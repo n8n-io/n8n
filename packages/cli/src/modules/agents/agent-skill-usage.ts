@@ -29,10 +29,6 @@ export class AgentSkillUsage extends SkillUsage {
 		return await this.agentSkillRepository.findAgents(agentIds, ctx);
 	}
 
-	async findAgentIdsInProjects(projectIds: string[], ctx: OperationContext) {
-		return await this.agentSkillRepository.findAgentIdsInProjects(projectIds, ctx);
-	}
-
 	async findUsage(
 		skillId: string,
 		projectIds: string[] | 'all',

@@ -12,7 +12,6 @@ import type {
 	User,
 	UserRepository,
 	WorkflowEntity,
-	WorkflowHistoryRepository,
 	WorkflowRepository,
 	WorkflowStatistics,
 	WorkflowStatisticsRepository,
@@ -138,7 +137,6 @@ describe('MigrationFindingQueryService', () => {
 	let migrationRegistry: MockProxy<MigrationRegistry>;
 	let breakingChangeService: MockProxy<BreakingChangeService>;
 	let workflowRepository: MockProxy<WorkflowRepository>;
-	let workflowHistoryRepository: MockProxy<WorkflowHistoryRepository>;
 	let workflowStatisticsRepository: MockProxy<WorkflowStatisticsRepository>;
 	let findingRepository: MockProxy<MigrationFindingRepository>;
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
@@ -153,7 +151,6 @@ describe('MigrationFindingQueryService', () => {
 		migrationRegistry = mock<MigrationRegistry>();
 		breakingChangeService = mock<BreakingChangeService>();
 		workflowRepository = mock<WorkflowRepository>();
-		workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		findingRepository = mock<MigrationFindingRepository>();
 		syncRepository = mock<MigrationFindingSyncRepository>();
@@ -166,6 +163,7 @@ describe('MigrationFindingQueryService', () => {
 		ruleRegistry.getRule.mockImplementation((id) => allRules.find((rule) => rule.id === id));
 		migrationRegistry.has.mockImplementation((id) => id === 'rule-b');
 		breakingChangeService.getAllInstanceRulesResults.mockResolvedValue([]);
+		breakingChangeService.loadPublishedNodes.mockResolvedValue(new Map());
 		workflowRepository.count.mockResolvedValue(0);
 		workflowRepository.findByIds.mockResolvedValue([]);
 		workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
@@ -183,7 +181,6 @@ describe('MigrationFindingQueryService', () => {
 			migrationRegistry,
 			breakingChangeService,
 			workflowRepository,
-			workflowHistoryRepository,
 			workflowStatisticsRepository,
 			findingRepository,
 			syncRepository,
@@ -607,14 +604,16 @@ describe('MigrationFindingQueryService', () => {
 						versionId: 'wf-2-v2',
 					},
 				] as WorkflowEntity[]);
-				workflowHistoryRepository.findNodesByVersionIds.mockResolvedValue([
-					{ versionId: 'wf-1-v1', nodes: workflowWithNodes('wf-1', ['n8n-nodes-base.a']).nodes },
-				] as never);
+				breakingChangeService.loadPublishedNodes.mockResolvedValue(
+					new Map([['wf-1', workflowWithNodes('wf-1', ['n8n-nodes-base.a']).nodes]]),
+				);
 
 				const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
 				// The draft of wf-2 has the issue, so its published version is not loaded.
-				expect(workflowHistoryRepository.findNodesByVersionIds).toHaveBeenCalledWith(['wf-1-v1']);
+				expect(breakingChangeService.loadPublishedNodes).toHaveBeenCalledWith([
+					expect.objectContaining({ id: 'wf-1' }),
+				]);
 				expect(result.affectedWorkflows).toEqual([
 					expect.objectContaining({ id: 'wf-1', status, issues: [expect.anything()] }),
 					expect.objectContaining({ id: 'wf-2', status: 'open', issues: [expect.anything()] }),
@@ -622,7 +621,7 @@ describe('MigrationFindingQueryService', () => {
 			},
 		);
 
-		it('loads no published version for a workflow whose latest version is published', async () => {
+		it('lists no issues when the draft has none and no older version is published', async () => {
 			findingRepository.listTriageableForRule.mockResolvedValue([
 				triageableFinding(
 					1,
@@ -641,7 +640,6 @@ describe('MigrationFindingQueryService', () => {
 
 			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
 
-			expect(workflowHistoryRepository.findNodesByVersionIds).not.toHaveBeenCalled();
 			expect(result.affectedWorkflows).toEqual([
 				expect.objectContaining({ id: 'wf-1', issues: [] }),
 			]);

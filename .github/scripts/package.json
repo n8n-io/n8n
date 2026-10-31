@@ -18,7 +18,7 @@
     "@cyclonedx/cdxgen": "12.8.9",
     "ajv": "8.20.0",
     "conventional-changelog": "7.2.0",
-    "minimatch": "10.2.4",
+    "minimatch": "10.2.5",
     "semver": "7.7.4",
     "tempfile": "6.0.1",
     "yaml": "^2.8.3"

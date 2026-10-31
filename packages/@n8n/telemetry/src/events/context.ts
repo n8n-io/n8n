@@ -1,4 +1,4 @@
-import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS } from '@n8n/api-types';
+import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -37,19 +37,17 @@ const optionalUserId = z
 		'The acting user. Absent on the events the editor fires, which identify the user already',
 	);
 
-/** Where a skill lives. An agent skill takes its project from its agent. */
+/** Where a skill lives. */
 const skillScope = z
-	.enum(['project', 'agent', 'instance'])
-	.describe('Where the skill lives: one project, one agent, or the whole instance');
+	.enum(skillScopeSchema.options)
+	.describe('Where the skill lives: one project, or the whole instance');
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
 
 const skillProjectId = z
 	.string()
 	.optional()
-	.describe(
-		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
-	);
+	.describe('The project of a project skill. Absent for an instance skill');
 
 /**
  * The surface that wrote the skill: the values of `skill.source` without `import`, as a
@@ -71,6 +69,13 @@ const skillMethod = z
 /** The type of a Skill Sync source. */
 const skillSourceProvider = z.enum(['github']).describe('The type of the source, such as GitHub');
 
+/** Whether n8n reads a source with a credential. */
+const skillSourceAccess = z
+	.enum(['public', 'credential'])
+	.describe(
+		'Whether n8n reads the source with a credential. `public` reads it without one, also after its credential is deleted. `credential` does not mean the source is private',
+	);
+
 /** Where a source puts its skills. */
 const skillSourceScopeType = z
 	.enum(['global', 'team', 'personal'])
@@ -86,6 +91,16 @@ const skillSourceReason = z
 	.describe(
 		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. `unexpected` is a failure with no known reason. A success carries only `too_many_skills` or `too_deep`, when the source had skills that n8n did not list. Absent on other successes',
 	);
+
+/** Where a synced skill comes from. Both are absent for a skill that Skill Sync did not import. */
+const skillOrigin = {
+	source_provider: skillSourceProvider
+		.optional()
+		.describe('The type of the source of a synced skill, such as GitHub'),
+	source_access: skillSourceAccess
+		.optional()
+		.describe('Whether n8n reads the source of a synced skill with a credential'),
+};
 
 const preferenceExampleId = z
 	.enum(['workflows', 'agents', 'credentials', 'answers'])
@@ -391,6 +406,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			project_id: skillProjectId,
 			source: skillSource,
 			method: skillMethod,
+			...skillOrigin,
 		}),
 	},
 	USER_UPDATED_SKILL: {
@@ -431,6 +447,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			file: z
 				.enum(['skill_md', 'reference'])
 				.describe('`skill_md` is the SKILL.md file. `reference` is a file under `references/`'),
+			...skillOrigin,
 		}),
 	},
 	USER_CONNECTED_SKILL_SOURCE: {
@@ -440,9 +457,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
-			access: z
-				.enum(['public', 'credential'])
-				.describe('`public` reads a public source without a credential'),
+			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
 			duplicate_result: z
 				.enum(['none', 'warning', 'blocked'])
@@ -460,6 +475,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
+			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
 			first_or_more: z
 				.enum(['first', 'more'])
@@ -503,6 +519,42 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			rule_codes: z
 				.array(z.enum(SKILL_SCAN_RULES))
 				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+		}),
+	},
+	SKILL_SOURCE_UPDATE_FOUND: {
+		name: 'Skill source update found',
+		description:
+			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			trigger: z
+				.enum(['background', 'manual'])
+				.describe(
+					'`background` is the check that runs on its own, every hour by default. `manual` is Check now',
+				),
+			skills_with_updates: z.number().describe('Synced skills with a new update in this check'),
+			pass: z.number().describe('New updates that the security check passed'),
+			needs_review: z.number().describe('New updates that the security check flagged for review'),
+			blocked: z.number().describe('New updates that the security check blocked'),
+		}),
+	},
+	USER_CHECKED_SKILL_SOURCE_NOW: {
+		name: 'User checked skill source now',
+		description:
+			'A user clicked Check for updates on a synced skill, which checks its whole source. Fires once per click, also when the check fails, with the reason code, and when n8n did not check again because the source was checked less than a minute ago.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			updates_found: z
+				.number()
+				.describe('Skills of the source with an update that waits for review, after the check'),
+			throttled: z
+				.boolean()
+				.describe(
+					'True when the source was checked less than a minute ago, so n8n did not check it again',
+				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
 		}),
 	},
 	USER_STOPPED_SKILL_SYNC: {

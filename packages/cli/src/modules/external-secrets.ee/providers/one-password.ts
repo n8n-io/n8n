@@ -10,6 +10,7 @@ import {
 	type LogContext,
 	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
+import { formatSecretPath } from '../secret-path';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
 
 export type OnePasswordContext = SecretsProviderSettings<{
@@ -195,7 +196,7 @@ export class OnePasswordProvider extends SecretsProvider {
 
 	getSecretNames(): string[] {
 		return Object.entries(this.cachedSecrets).flatMap(([itemName, fields]) =>
-			Object.keys(fields).map((fieldName) => `${itemName}.${fieldName}`),
+			Object.keys(fields).map((fieldName) => formatSecretPath([itemName, fieldName])),
 		);
 	}
 

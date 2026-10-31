@@ -94,9 +94,7 @@ export class SkillRuntimeService {
 
 	async findTargets(skillIds: string[], ctx: OperationContext = {}) {
 		const skills = await this.skillRepository.findByIds(skillIds, ctx);
-		return new Map<string, SkillTarget>(
-			skills.map(({ id, projectId, agentId }) => [id, { projectId, agentId }]),
-		);
+		return new Map<string, SkillTarget>(skills.map(({ id, projectId }) => [id, { projectId }]));
 	}
 
 	async lockForEdit(skillIds: string[], ctx: OperationContext): Promise<void> {
@@ -227,7 +225,6 @@ export class SkillRuntimeService {
 		projectId: string | null,
 	): Promise<boolean> {
 		return (
-			skill.agentId === null &&
 			skill.availableToAssistant &&
 			(skill.projectId === null || skill.projectId === projectId) &&
 			(await this.skillAccess.canAccess(context.user, skill, 'read'))

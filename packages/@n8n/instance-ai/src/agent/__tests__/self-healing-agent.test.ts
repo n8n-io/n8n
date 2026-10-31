@@ -110,8 +110,8 @@ describe('createSelfHealingAgent', () => {
 					{
 						type: 'tool-call',
 						toolCallId: 'read',
-						toolName: DOMAIN_TOOL_IDS.EXECUTIONS,
-						input: JSON.stringify({ action: 'get', executionId: 'execution' }),
+						toolName: DOMAIN_TOOL_IDS.GET_EXECUTION,
+						input: JSON.stringify({ executionId: 'execution' }),
 					},
 				],
 				true,
@@ -256,16 +256,24 @@ describe('createSelfHealingAgent', () => {
 			[
 				DOMAIN_TOOL_IDS.GET_WORKFLOW,
 				DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
-				DOMAIN_TOOL_IDS.EXECUTIONS,
-				DOMAIN_TOOL_IDS.DATA_TABLES,
+				DOMAIN_TOOL_IDS.LIST_EXECUTIONS,
+				DOMAIN_TOOL_IDS.GET_EXECUTION,
+				DOMAIN_TOOL_IDS.DEBUG_EXECUTION,
+				DOMAIN_TOOL_IDS.GET_EXECUTION_NODE_OUTPUT,
+				DOMAIN_TOOL_IDS.GET_RESOLVED_NODE_PARAMETERS,
+				DOMAIN_TOOL_IDS.LIST_DATA_TABLES,
+				DOMAIN_TOOL_IDS.GET_DATA_TABLE_SCHEMA,
+				DOMAIN_TOOL_IDS.QUERY_DATA_TABLE,
 				DOMAIN_TOOL_IDS.SEARCH_NODES,
 				DOMAIN_TOOL_IDS.GET_NODE_TYPES,
 				DOMAIN_TOOL_IDS.N8N_DOCS,
 				DOMAIN_TOOL_IDS.RESEARCH,
 				'verify_candidate',
 				'workspace_read_file',
+				'workspace_read_files',
 				'workspace_read_tool_result',
 				'workspace_write_file',
+				'workspace_edit_files',
 				'workspace_str_replace_file',
 				'workspace_execute_command',
 			].sort(),
@@ -279,20 +287,13 @@ describe('createSelfHealingAgent', () => {
 		expect(await loadInstanceAiSkills().loadSkill('self-healing')).toBeNull();
 	});
 
-	it.each([
-		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run', workflowId: 'workflow' }],
-		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run-step', workflowId: 'workflow', nodeName: 'Read' }],
-		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'stop', executionId: 'execution' }],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'create', name: 'Table', columns: [] }],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
-	])('rejects unavailable %s actions in the schema', async (name, input) => {
-		const agent = await createAgent();
-		const tool = findTool(agent.declaredTools, name);
-		expect(parseToolInput(tool, input).success).toBe(false);
-	});
-
 	it('does not declare workflow tools that change a workflow', async () => {
 		const names = (await createAgent()).declaredTools.map((tool) => tool.name);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW_STEP);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.STOP_EXECUTION);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.CREATE_DATA_TABLE);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.INSERT_DATA_TABLE_ROWS);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.SETUP_WORKFLOW);
 	});
@@ -303,14 +304,15 @@ describe('createSelfHealingAgent', () => {
 			executionId: 'execution',
 			status: 'error',
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.EXECUTIONS);
-		await expect(
-			executeTool(tool, { action: 'get', executionId: 'execution' }),
-		).resolves.toMatchObject({ status: 'error' });
-		vi.mocked(context.executionService.getStatus).mockRejectedValue(new Error('Access denied'));
-		await expect(executeTool(tool, { action: 'get', executionId: 'other' })).rejects.toThrow(
-			'Access denied',
+		const tool = findTool(
+			(await createAgent(context)).declaredTools,
+			DOMAIN_TOOL_IDS.GET_EXECUTION,
 		);
+		await expect(executeTool(tool, { executionId: 'execution' })).resolves.toMatchObject({
+			status: 'error',
+		});
+		vi.mocked(context.executionService.getStatus).mockRejectedValue(new Error('Access denied'));
+		await expect(executeTool(tool, { executionId: 'other' })).rejects.toThrow('Access denied');
 	});
 
 	it('keeps the candidate unchanged when a live workflow is read as source', async () => {
@@ -367,13 +369,16 @@ describe('createSelfHealingAgent', () => {
 			count: 1,
 			data: [{ id: 1, status: 'ready' }],
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.DATA_TABLES);
-		await expect(executeTool(tool, { action: 'list' })).resolves.toEqual({ tables: [] });
+		const tools = (await createAgent(context)).declaredTools;
+		const tool = (name: string) => findTool(tools, name);
+		await expect(executeTool(tool(DOMAIN_TOOL_IDS.LIST_DATA_TABLES), {})).resolves.toEqual({
+			tables: [],
+		});
 		await expect(
-			executeTool(tool, { action: 'schema', dataTableId: 'table' }),
+			executeTool(tool(DOMAIN_TOOL_IDS.GET_DATA_TABLE_SCHEMA), { dataTableId: 'table' }),
 		).resolves.toMatchObject({ columns: [] });
 		await expect(
-			executeTool(tool, { action: 'query', dataTableId: 'table', limit: 1 }),
+			executeTool(tool(DOMAIN_TOOL_IDS.QUERY_DATA_TABLE), { dataTableId: 'table', limit: 1 }),
 		).resolves.toMatchObject({ count: 1, data: [{ id: 1, status: 'ready' }] });
 	});
 

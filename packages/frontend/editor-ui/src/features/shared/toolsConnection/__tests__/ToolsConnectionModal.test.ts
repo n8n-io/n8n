@@ -466,7 +466,7 @@ describe('ToolsConnectionModal', () => {
 	});
 
 	describe('with hideEmptyCategories', () => {
-		const SKILL_CATEGORIES: ToolCategoryKey[] = ['all', 'project', 'this-agent', 'global'];
+		const SKILL_CATEGORIES: ToolCategoryKey[] = ['all', 'project', 'global'];
 
 		function skill(id: string, category: ToolCategoryKey, attached = false): ToolConnectionItem {
 			return {
@@ -482,14 +482,13 @@ describe('ToolsConnectionModal', () => {
 
 		it('hides empty tabs but keeps the all tab', () => {
 			const { getByTestId, queryByTestId } = renderWith({
-				items: [skill('tone', 'project'), skill('digest', 'this-agent')],
+				items: [skill('tone', 'project'), skill('digest', 'project')],
 				categories: SKILL_CATEGORIES,
 				hideEmptyCategories: true,
 			});
 
 			expect(getByTestId('tab-all').textContent).toContain('(2)');
-			expect(getByTestId('tab-project').textContent).toContain('(1)');
-			expect(getByTestId('tab-this-agent').textContent).toContain('(1)');
+			expect(getByTestId('tab-project').textContent).toContain('(2)');
 			expect(queryByTestId('tab-global')).toBeNull();
 		});
 

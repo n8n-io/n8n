@@ -68,9 +68,33 @@ describe('PrometheusMemoryGuardMetricsService', () => {
 		expect(await value('n8n_memory_guard_holds_total')).toBe(1);
 		expect(await value('n8n_memory_guard_holding')).toBe(1);
 
-		eventService.emit('memory-guard-hold-ended', { heldMs: 1_500 });
+		eventService.emit('memory-guard-hold-ended', {
+			heldMs: 1_500,
+			heldExecutions: 0,
+			longestWaitMs: 0,
+		});
 		expect(await value('n8n_memory_guard_holding')).toBe(0);
 		expect(await value('n8n_memory_guard_hold_seconds_total')).toBe(1.5);
+	});
+
+	it('should count held executions and their wait time', async () => {
+		service.init();
+
+		eventService.emit('memory-guard-execution-held', { executionId: '1' });
+		eventService.emit('memory-guard-execution-held', { executionId: '2' });
+		expect(await value('n8n_memory_guard_held_executions_total')).toBe(2);
+
+		eventService.emit('memory-guard-execution-released', {
+			executionId: '1',
+			waitedMs: 2_500,
+			started: true,
+		});
+		eventService.emit('memory-guard-execution-released', {
+			executionId: '2',
+			waitedMs: 500,
+			started: false,
+		});
+		expect(await value('n8n_memory_guard_held_wait_seconds_total')).toBe(3);
 	});
 
 	it('should start every stop series at 0', async () => {

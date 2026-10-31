@@ -171,7 +171,7 @@ export class AgentImporter {
 				},
 				plannedDestinations: plan.plannedDestinations,
 				writeSkills: plan.skills
-					? this.skillImporter.writerFor(context.user, plan.skills, item.sourceAgentId)
+					? this.skillImporter.writerFor(plan.skills, item.sourceAgentId)
 					: undefined,
 			};
 			let agent: ProjectAgent;

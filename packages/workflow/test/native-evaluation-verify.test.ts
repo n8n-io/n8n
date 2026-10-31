@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { createPairedItemPagination } from './fixtures/paired-item-pagination';
+import * as Helpers from './helpers';
 import type * as NativeEvaluation from '../src/expressions/native-evaluation';
 import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation/verify';
 import type { IDataObject } from '../src/interfaces';
@@ -104,6 +106,42 @@ describe('Expression - native evaluation verify mode', () => {
 	});
 
 	if (engine === 'vm' || engine === 'quickjs') {
+		test.each([1, 2])(
+			'verifies item ancestry across 5000 pages with %i rows per page',
+			async (rows) => {
+				const { Workflow } = await import('../src/workflow');
+				const fixture = createPairedItemPagination(5000, rows);
+				const workflow = new Workflow({ ...fixture.workflow, nodeTypes: Helpers.NodeTypes() });
+				const task = fixture.run.data.resultData.runData.Process[0];
+				const input = task.data!.main[0]!;
+				await workflow.expression.acquireIsolate();
+				try {
+					expect(modules.Expression.getActiveImplementation()).toBe(engine);
+					const value = workflow.expression.getParameterValue(
+						"={{ $('Trigger').item.json.timestamp }}",
+						fixture.run.data,
+						0,
+						0,
+						'Process',
+						input,
+						'manual',
+						{},
+						{
+							node: workflow.getNode('Process')!,
+							data: { main: [input] },
+							source: { main: task.source },
+						},
+					);
+
+					expect(value).toBe('2024-01-01T08:00:00.000Z');
+					expect(evaluateNatively).toHaveReturnedWith({ handled: true, value });
+					expect(report).not.toHaveBeenCalled();
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
+			},
+		);
+
 		test('returns the engine result and reports the mismatch without workflow data', () => {
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
 

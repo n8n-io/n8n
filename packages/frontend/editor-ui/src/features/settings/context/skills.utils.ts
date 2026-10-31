@@ -3,6 +3,7 @@ import {
 	type SkillListItem,
 	type SkillScanFinding,
 	type SkillScanRule,
+	type SkillScope,
 	type SkillSourceReason,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
@@ -13,8 +14,8 @@ import { splitName } from '@/features/collaboration/projects/projects.utils';
 
 export const PROJECT_SCOPE_PREFIX = 'project:';
 
-/** Settings creates and moves skills only to a project or the instance, never to one agent. */
-export function parseScope(value: string): { scope: 'project' | 'instance'; projectId?: string } {
+/** The scope and project of a scope picker value. */
+export function parseScope(value: string): { scope: SkillScope; projectId?: string } {
 	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
 		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
 	}
@@ -46,20 +47,11 @@ export function useSkillScopeDisplay() {
 	}
 
 	function scopeDisplay(
-		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'agentName'>,
+		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType'>,
 	): SkillScopeDisplay {
 		switch (skill.scope) {
 			case 'instance':
 				return { icon: 'globe', label: i18n.baseText('settings.context.skills.scope.instance') };
-			case 'agent':
-				return {
-					icon: 'bot',
-					label: skill.agentName
-						? i18n.baseText('settings.context.skills.scope.agent', {
-								interpolate: { name: skill.agentName },
-							})
-						: i18n.baseText('settings.context.skills.scope.agentFallback'),
-				};
 			case 'project':
 				if (!skill.projectId) {
 					return { icon: 'layers', label: i18n.baseText('settings.context.skills.scope.project') };

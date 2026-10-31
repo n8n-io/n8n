@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { OAuthDiscoveryClient } from '@n8n/backend-services';
+import { OAuthDiscoveryClient, EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import {
@@ -32,6 +32,7 @@ export class TrustedSourceDiscoveryService {
 		private readonly store: TrustedSourceDbStore,
 		private readonly client: OAuthDiscoveryClient,
 		private readonly localServer: LocalAuthorizationServer,
+		private readonly eventService: EventService,
 	) {}
 
 	async refresh(sourceId: string): Promise<void> {
@@ -55,14 +56,32 @@ export class TrustedSourceDiscoveryService {
 
 	/** Never throws: one source's failure must not end the run for the others. */
 	private async refreshSource(source: TrustedSource): Promise<void> {
+		let emitEvent = false;
 		try {
 			const token = await this.store.claimDiscovery(source);
 			if (token === null) return;
-			await this.store.recordDiscovery(source, token, await this.discover(source));
+			// `source` was listed up to a minute ago and another run may have written since. Nothing
+			// else writes the status while the lease is held, so the database holds the status to
+			// compare; the cache does not, an in-flight read can re-populate it with the old row.
+			const before = (await this.store.getStatus(source.id)) ?? source.status;
+			const result = await this.discover(source);
+			const recorded = await this.store.recordDiscovery(source, token, result);
+
+			emitEvent =
+				recorded &&
+				result.status === 'healthy' &&
+				before !== 'healthy' &&
+				source.managedBy === 'admin';
 		} catch (error) {
 			this.logger.error('Could not write the discovery result of a trusted source', {
 				id: source.id,
 				error,
+			});
+		}
+
+		if (emitEvent) {
+			this.eventService.emit('trusted-source-healthy', {
+				sourceId: source.id,
 			});
 		}
 	}

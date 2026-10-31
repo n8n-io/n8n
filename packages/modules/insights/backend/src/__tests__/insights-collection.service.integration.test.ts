@@ -10,7 +10,12 @@ import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { DateTime } from 'luxon';
-import { type ExecutionStatus, type IRun, type WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	type ExecutionStatus,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 import assert from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
@@ -41,6 +46,10 @@ beforeEach(async () => {
 afterAll(async () => {
 	await testDb.terminate();
 });
+
+// A deep mock answers `source` with a function, which the counting rules treat as unknown.
+const createCtx = (overrides: Partial<WorkflowExecuteAfterContext>) =>
+	mock<WorkflowExecuteAfterContext>({ source: undefined, ...overrides });
 
 describe('workflowExecuteAfterHandler', () => {
 	let insightsCollectionService: InsightsCollectionService;
@@ -74,7 +83,7 @@ describe('workflowExecuteAfterHandler', () => {
 		{ status: 'crashed', type: 'failure' },
 	])('stores events for executions with the status `$status`', async ({ status, type }) => {
 		// ARRANGE
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
 		ctx.runData = mock<IRun>({
@@ -142,7 +151,7 @@ describe('workflowExecuteAfterHandler', () => {
 		{ status: 'running' },
 	])('does not store events for executions with the status `$status`', async ({ status }) => {
 		// ARRANGE
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
 		ctx.runData = mock<IRun>({
@@ -170,7 +179,7 @@ describe('workflowExecuteAfterHandler', () => {
 		{ mode: 'chat' },
 	])('does not store events for executions with the mode `$mode`', async ({ mode }) => {
 		// ARRANGE
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
 		ctx.runData = mock<IRun>({
@@ -202,7 +211,7 @@ describe('workflowExecuteAfterHandler', () => {
 		'stores events for executions with the mode `$mode`',
 		async ({ mode, expectedInsightCount, billable }) => {
 			// ARRANGE
-			const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+			const ctx = createCtx({ workflow });
 			const startedAt = DateTime.utc();
 			const stoppedAt = startedAt.plus({ seconds: 5 });
 			ctx.runData = mock<IRun>({
@@ -260,7 +269,7 @@ describe('workflowExecuteAfterHandler', () => {
 	);
 
 	test('does not store events for instance_ai verification runs', async () => {
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, source: 'instance_ai' });
+		const ctx = createCtx({ workflow, source: 'instance_ai' });
 		const startedAt = DateTime.utc();
 		const stoppedAt = startedAt.plus({ seconds: 5 });
 		ctx.runData = mock<IRun>({
@@ -275,6 +284,27 @@ describe('workflowExecuteAfterHandler', () => {
 
 		expect(await insightsMetadataRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
 		expect(await insightsRawRepository.find()).toHaveLength(0);
+	});
+
+	test('stores a failure but no billable event for a run that failed before start', async () => {
+		const ctx = createCtx({ workflow });
+		const data = createEmptyRunExecutionData();
+		data.resultData.failedBeforeStart = true;
+		ctx.runData = {
+			mode: 'webhook',
+			status: 'error',
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			storedAt: 'db',
+			data,
+		};
+
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		await insightsCollectionService.flushEvents();
+
+		const allInsights = await insightsRawRepository.find();
+		expect(allInsights).toContainEqual(expect.objectContaining({ type: 'failure', value: 1 }));
+		expect(allInsights).not.toContainEqual(expect.objectContaining({ type: 'billable' }));
 	});
 });
 
@@ -339,7 +369,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 
 	test('reuses cached metadata for subsequent executions of the same workflow', async () => {
 		// ARRANGE
-		const ctx = mock<WorkflowExecuteAfterContext>({
+		const ctx = createCtx({
 			workflow: { ...workflow, settings: undefined },
 			runData,
 		});
@@ -378,7 +408,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 
 	test('updates cached metadata if workflow details change', async () => {
 		// ARRANGE
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow, runData });
 
 		// ACT
 		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
@@ -470,7 +500,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 	test('flushes events to the database once buffer is full', async () => {
 		// ARRANGE
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+		const ctx = createCtx({ workflow, runData });
 
 		// ACT
 		// each `workflowExecuteAfterHandler` adds 4 insights (status, billable, runtime, time saved);
@@ -498,7 +528,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		vi.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
 		insightsCollectionService.init();
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+		const ctx = createCtx({ workflow, runData });
 
 		try {
 			// ACT
@@ -523,7 +553,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		vi.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
 		insightsCollectionService.init();
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const ctx = createCtx({ workflow, runData });
 
 		try {
 			// ACT
@@ -569,7 +599,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	test('flushes events to the database on shutdown', async () => {
 		// ARRANGE
 		repoMocks.insertInsightsRaw.mockClear();
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+		const ctx = createCtx({ workflow, runData });
 
 		// ACT
 		for (let i = 0; i < 10; i++) {
@@ -590,7 +620,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// reset insights async flushing
 		insightsCollectionService.init();
 		repoMocks.insertInsightsRaw.mockClear();
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+		const ctx = createCtx({ workflow, runData });
 
 		// ACT
 		for (let i = 0; i < 10; i++) {
@@ -622,7 +652,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		repoMocks.insertInsightsRaw.mockClear();
 		repoMocks.insertInsightsRaw.mockRejectedValueOnce(new Error('Test error'));
 		insightsCollectionService.init();
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+		const ctx = createCtx({ workflow, runData });
 
 		try {
 			// ACT
@@ -651,7 +681,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		workflow.settings = {
 			timeSavedMode: 'dynamic',
 		};
-		const ctx = mock<WorkflowExecuteAfterContext>({
+		const ctx = createCtx({
 			workflow,
 			runData: mock<IRun>({
 				mode: 'webhook',
@@ -688,7 +718,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 				timeSavedMode: 'fixed',
 				timeSavedPerExecution,
 			};
-			const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+			const ctx = createCtx({ workflow, runData });
 
 			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 			await insightsCollectionService.flushEvents();
@@ -707,7 +737,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 			startedAt: new Date(Number.NaN),
 			stoppedAt: stoppedAt.toJSDate(),
 		});
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData: badRuntimeRunData });
+		const ctx = createCtx({ workflow, runData: badRuntimeRunData });
 
 		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
@@ -724,7 +754,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		insightsCollectionService.init();
 		repoMocks.insertInsightsRaw.mockClear();
 
-		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
+		const ctx = createCtx({ workflow, runData });
 
 		// Flush will hang until we manually resolve it
 		const { resolve: flushResolve, promise: flushPromise } = createDeferredPromise();

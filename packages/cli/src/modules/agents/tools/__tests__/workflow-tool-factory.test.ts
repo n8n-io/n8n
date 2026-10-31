@@ -1070,8 +1070,9 @@ describe('workflow tool → background job handoff', () => {
 		return tool;
 	}
 
-	function makeParentCtx() {
+	function makeParentCtx(resourceId = 'resource-1') {
 		const suspend = vi.fn().mockResolvedValue(undefined);
+
 		return {
 			ctx: {
 				suspend,
@@ -1079,7 +1080,7 @@ describe('workflow tool → background job handoff', () => {
 				toolCallId: 'call-1',
 				persistence: {
 					threadId: 'thread-1',
-					resourceId: 'resource-1',
+					resourceId,
 					hostMetadata: encodeAgentSandboxHostMetadata({
 						projectId: 'p1',
 						principalHash: parentPrincipalHash,
@@ -1095,6 +1096,24 @@ describe('workflow tool → background job handoff', () => {
 		Container.reset();
 	});
 
+	it('registers a draft workflow only when it becomes a background task', async () => {
+		setPersistence({ status: 'waiting' });
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx('draft-chat:user-1');
+		await tool.handler?.({}, ctx);
+
+		expect(jobService.registerWorkflowJob).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				executionId: 'exec-1',
+				parentThreadId: 'thread-1',
+				parentResourceId: 'draft-chat:user-1',
+			}),
+		);
+		expect(jobService.registerWorkflowJob).toHaveBeenCalledTimes(1);
+	});
+
 	it('returns a receipt for a waiting execution instead of polling or suspending', async () => {
 		const findSingleExecution = setPersistence({ status: 'waiting' });
 		const jobService = setJobService();
@@ -1107,7 +1126,7 @@ describe('workflow tool → background job handoff', () => {
 			executionId: 'exec-1',
 			status: 'running_in_background',
 			jobId: 'job-1',
-			note: expect.stringContaining('check_background_jobs'),
+			note: expect.stringContaining('background_jobs with action "check"'),
 		});
 		expect(jobService.registerWorkflowJob).toHaveBeenCalledWith({
 			id: expect.any(String),
@@ -1182,6 +1201,8 @@ describe('workflow tool → background job handoff', () => {
 			status: 'completed',
 			result: '{"Result":[{"approved":true}]}',
 			error: null,
+			files: null,
+			skippedFiles: null,
 		});
 		expect(jobService.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
 		expect(result).toMatchObject({
@@ -1257,6 +1278,8 @@ describe('workflow tool → background job handoff', () => {
 			status: 'failed',
 			result: null,
 			error: 'boom',
+			files: null,
+			skippedFiles: null,
 		});
 	});
 
@@ -1362,7 +1385,7 @@ describe('workflow tool → background job handoff', () => {
 		expect(result).toMatchObject({ status: 'unknown', jobId: 'job-1' });
 	});
 
-	it('points at check_background_jobs when the settle hook already recorded the outcome', async () => {
+	it('points at the background jobs check when the settle hook already recorded the outcome', async () => {
 		setPersistence(undefined);
 		const jobService = setJobService();
 		jobService.settle.mockResolvedValue(false);
@@ -1374,7 +1397,7 @@ describe('workflow tool → background job handoff', () => {
 		expect(result).toMatchObject({
 			status: 'unknown',
 			jobId: 'job-1',
-			note: expect.stringContaining('check_background_jobs'),
+			note: expect.stringContaining('background_jobs with action "check"'),
 		});
 		// The settle hook recorded the actual outcome. Leave it pending for delivery.
 		expect(jobService.markMailConsumed).not.toHaveBeenCalled();

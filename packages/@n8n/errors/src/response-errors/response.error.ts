@@ -12,6 +12,9 @@ export abstract class ResponseError extends BaseError {
 	 */
 	readonly meta?: Record<string, unknown>;
 
+	/** When `true`, `meta` is for server-side callers only and is not put in the response. */
+	readonly metaIsInternal?: boolean;
+
 	/**
 	 * Creates an instance of ResponseError.
 	 * Must be used inside a block with `ResponseHelper.send()`.
