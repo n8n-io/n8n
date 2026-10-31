@@ -41,6 +41,7 @@ import {
 	sanitizeNodeGroupDescriptions,
 } from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
+import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
@@ -320,86 +321,21 @@ export class ImportService {
 		return { violations };
 	}
 
-	/**
-	 * Sorts workflows to activate in dependency order so that subworkflows are activated
-	 * before the workflows that call them. Uses Kahn's topological sort algorithm.
-	 */
 	private sortWorkflowsForActivation(
 		allImportedWorkflows: IWorkflowWithVersionMetadata[],
 		toActivate: Array<{ workflowId: string; versionId: string }>,
 	): Array<{ workflowId: string; versionId: string }> {
-		if (toActivate.length <= 1) return toActivate;
-
 		const nodesByWorkflowId = new Map(allImportedWorkflows.map((w) => [w.id, w.nodes]));
-		const activateIds = new Set(toActivate.map((w) => w.workflowId));
-
-		// Fast path: skip the full graph build if no workflow in the batch references
-		// another batch workflow via an active executeWorkflow node.
-		const hasCrossReference = toActivate.some(({ workflowId }) =>
-			(nodesByWorkflowId.get(workflowId) ?? []).some(
-				(node) =>
-					!node.disabled &&
-					node.type === 'n8n-nodes-base.executeWorkflow' &&
-					activateIds.has(this.extractSubworkflowId(node) ?? ''),
-			),
-		);
-		if (!hasCrossReference) return toActivate;
-
-		const toActivateByWorkflowId = new Map(toActivate.map((w) => [w.workflowId, w]));
-		// callee id → set of caller ids that depend on it being activated first
-		const dependents = new Map<string, Set<string>>(
-			toActivate.map(({ workflowId }) => [workflowId, new Set()]),
-		);
-		// caller id → how many of its subworkflow dependencies in this batch are not yet activated
-		const unresolvedDepsCount = new Map<string, number>(
-			toActivate.map(({ workflowId }) => [workflowId, 0]),
-		);
-
-		for (const { workflowId } of toActivate) {
-			for (const node of nodesByWorkflowId.get(workflowId) ?? []) {
-				if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
-				const calleeId = this.extractSubworkflowId(node);
-				if (!calleeId || !activateIds.has(calleeId) || calleeId === workflowId) continue;
-				dependents.get(calleeId)!.add(workflowId);
-				unresolvedDepsCount.set(workflowId, unresolvedDepsCount.get(workflowId)! + 1);
-			}
-		}
-
-		const queue = toActivate.filter((w) => unresolvedDepsCount.get(w.workflowId) === 0);
-		const result: Array<{ workflowId: string; versionId: string }> = [];
-
-		while (queue.length > 0) {
-			const item = queue.shift()!;
-			result.push(item);
-			for (const callerId of dependents.get(item.workflowId)!) {
-				const remaining = unresolvedDepsCount.get(callerId)! - 1;
-				unresolvedDepsCount.set(callerId, remaining);
-				if (remaining === 0) queue.push(toActivateByWorkflowId.get(callerId)!);
-			}
-		}
-
-		if (result.length < toActivate.length) {
-			// Any workflow still with unresolvedDepsCount > 0 was never enqueued by the
-			// sort — it's part of a cycle (its dependency also waits on it). Append these
-			// so they still get activated rather than being silently dropped.
-			const cycleWorkflows = toActivate.filter(
-				(w) => Number(unresolvedDepsCount.get(w.workflowId)) > 0,
-			);
+		const { ordered, cyclic } = sortSubWorkflowsFirst(toActivate, ({ workflowId }) => ({
+			id: workflowId,
+			nodes: nodesByWorkflowId.get(workflowId) ?? [],
+		}));
+		if (cyclic.length > 0) {
 			this.logger.warn(
-				`Detected circular subworkflow references among workflows: [${cycleWorkflows.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
+				`Detected circular subworkflow references among workflows: [${cyclic.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
 			);
-			result.push(...cycleWorkflows);
 		}
-
-		return result;
-	}
-
-	private extractSubworkflowId(node: INode): string | undefined {
-		const source = node.parameters?.['source'];
-		if (source === 'parameter' || source === 'localFile' || source === 'url') return undefined;
-		const wfId = node.parameters?.['workflowId'];
-		const rawId = typeof wfId === 'string' ? wfId : (wfId as { value?: unknown } | null)?.value;
-		return typeof rawId === 'string' && !rawId.startsWith('=') ? rawId : undefined;
+		return ordered;
 	}
 
 	private async activateWorkflow(

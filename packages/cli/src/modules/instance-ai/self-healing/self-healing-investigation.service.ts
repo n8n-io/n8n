@@ -12,6 +12,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { selfHealingOutputSchema } from '@n8n/instance-ai';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import isEqual from 'lodash/isEqual';
 import { randomUUID } from 'node:crypto';
 
 import { DurableEventLog } from '../event-bus/durable-event-log';
@@ -20,6 +21,7 @@ import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import type { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
@@ -106,7 +108,7 @@ export class SelfHealingInvestigationService {
 			if (!claimed || 'kind' in claimed) return claimed;
 
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, baseline, actor).catch((error: unknown) => {
+			void this.run(claimed, baseline, actor, configuration).catch((error: unknown) => {
 				this.logger.error('Self-healing investigation failed.', {
 					investigationId: claimed.id,
 					error,
@@ -204,12 +206,15 @@ export class SelfHealingInvestigationService {
 		investigation: SelfHealingInvestigation,
 		baseline: WorkflowSuggestionBaseline,
 		user: User,
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'includeSubWorkflows'>,
 	) {
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
 					baseline,
+					configurationId: configuration.id,
+					includeSubWorkflows: configuration.includeSubWorkflows,
 					executionId: investigation.executionId,
 				},
 				{
@@ -252,28 +257,36 @@ export class SelfHealingInvestigationService {
 			completedAt: new Date().toISOString(),
 		};
 
-		if (output.candidateFilePath) {
-			if (!run.candidate || run.candidate.filePath !== output.candidateFilePath) {
-				throw new BadRequestError('The candidate file is unavailable.');
+		if (output.candidateFilePaths.length > 0) {
+			if (!run.candidates) throw new BadRequestError('The candidate files are unavailable.');
+
+			const missingSetup: string[] = [];
+			result.candidates = [];
+			for (const { baseline, compile } of run.candidates) {
+				const candidate = await compile();
+				if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
+				const { nodes, connections } = candidate.workflow;
+				if (
+					isEqual(baseline.original.nodes, nodes) &&
+					isEqual(baseline.original.connections, connections)
+				) {
+					continue;
+				}
+
+				const workflowName = baseline.original.name;
+				missingSetup.push(
+					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
+						([node, types]) =>
+							`- Connect credentials for ${node} in "${workflowName}": ${types.join(', ')}`,
+					),
+					...candidate.warnings
+						.filter(({ code }) => code === 'unresolved_placeholders')
+						.map(({ message }) => `- In "${workflowName}": ${message}`),
+				);
+				result.candidates.push({ baseline, graph: { nodes, connections } });
 			}
 
-			const candidate = await run.candidate.compile();
-			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
-
-			const placeholderWarnings = candidate.warnings.filter(
-				({ code }) => code === 'unresolved_placeholders',
-			);
-			if (
-				output.outcome === 'fix_ready' &&
-				(candidate.credentialResolution.mockedCredentialTypes.length > 0 ||
-					placeholderWarnings.length > 0)
-			) {
-				const missingSetup = [
-					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
-						([node, types]) => `- Connect credentials for ${node}: ${types.join(', ')}`,
-					),
-					...placeholderWarnings.map(({ message }) => `- ${message}`),
-				];
+			if (output.outcome === 'fix_ready' && missingSetup.length > 0) {
 				result.output = {
 					...output,
 					outcome: 'needs_you',
@@ -287,10 +300,6 @@ export class SelfHealingInvestigationService {
 						'Continue in chat to complete the setup and verify the repair.',
 				};
 			}
-
-			result.candidate = {
-				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
-			};
 		}
 
 		const outputFields = selfHealingOutputSchema.innerType().shape;

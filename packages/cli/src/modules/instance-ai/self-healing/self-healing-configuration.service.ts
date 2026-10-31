@@ -27,6 +27,7 @@ import { SelfHealingConfigurationRepository } from './database/self-healing-conf
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 
 export const REVIEWER_SCOPES: Scope[] = ['workflow:read', 'workflow:update'];
+export const ACTOR_SCOPES: Scope[] = ['workflow:read', 'workflow:update', 'execution:read'];
 
 const NO_ELIGIBLE_REVIEWER =
 	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
@@ -118,6 +119,7 @@ export class SelfHealingConfigurationService {
 
 			configuration.scope = input.scope;
 			configuration.includeAllProjectMembers = input.includeAllProjectMembers;
+			configuration.includeSubWorkflows = input.includeSubWorkflows;
 
 			await this.configurations.saveConfiguration(configuration, ctx);
 			await this.configurations.replaceSelections(configuration, input, ctx);
@@ -214,13 +216,21 @@ export class SelfHealingConfigurationService {
 		return await this.configurations.hasReviewerWithSharedWorkflowAccess(configuration, roles, ctx);
 	}
 
-	private async canEnable(user: User, projectId: string) {
-		return await userHasScopes(
-			user,
-			['workflow:read', 'workflow:update', 'execution:read'],
-			false,
-			{ projectId },
+	async hasReviewerWhoCanEditAll(
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'projectId'>,
+		workflowIds: string[],
+	) {
+		const roles = await this.reviewerRoles();
+		return await this.configurations.hasReviewerWhoCanEditAll(
+			configuration,
+			roles,
+			workflowIds,
+			{},
 		);
+	}
+
+	private async canEnable(user: User, projectId: string) {
+		return await userHasScopes(user, ACTOR_SCOPES, false, { projectId });
 	}
 
 	private changeEnabled(
@@ -295,12 +305,9 @@ export class SelfHealingConfigurationService {
 		if (configuration.enabledById) {
 			const user = await this.users.findByIdWithRole(configuration.enabledById, ctx);
 			if (user && !user.disabled) {
-				const workflow = await this.workflows.findWorkflowForUser(
-					workflowId,
-					user,
-					['workflow:read', 'workflow:update', 'execution:read'],
-					{ ctx },
-				);
+				const workflow = await this.workflows.findWorkflowForUser(workflowId, user, ACTOR_SCOPES, {
+					ctx,
+				});
 				if (workflow) return user;
 			}
 		}

@@ -12,6 +12,8 @@ const MAX_SAVE_WAIT_MS = 60_000;
 export class WorkflowSuggestionEventRelay {
 	private readonly pendingSaves = new Map<string, ReturnType<typeof debounce>>();
 
+	private readonly deletedMemberResults = new Map<string, string>();
+
 	constructor(
 		events: EventService,
 		private readonly suggestions: WorkflowSuggestionService,
@@ -37,6 +39,27 @@ export class WorkflowSuggestionEventRelay {
 
 	async afterWorkflowArchived(workflowId: string): Promise<void> {
 		await this.reconcile(workflowId);
+	}
+
+	async beforeWorkflowDeleted(workflowId: string): Promise<void> {
+		const resultId = await this.suggestions.getPendingResultId(workflowId);
+		if (resultId) this.deletedMemberResults.set(workflowId, resultId);
+	}
+
+	async afterWorkflowsDeleted(workflowIds: string[]): Promise<void> {
+		for (const workflowId of workflowIds) {
+			const resultId = this.deletedMemberResults.get(workflowId);
+			this.deletedMemberResults.delete(workflowId);
+			if (!resultId) continue;
+			try {
+				await this.suggestions.closeResultOfDeletedMember(resultId);
+			} catch (error) {
+				this.logger.warn('Could not close the self-healing result of a deleted workflow', {
+					workflowId,
+					error,
+				});
+			}
+		}
 	}
 
 	private async reconcile(workflowId: string): Promise<void> {

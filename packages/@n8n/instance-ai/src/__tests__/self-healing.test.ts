@@ -9,19 +9,24 @@ const report = {
 
 describe('self-healing output', () => {
 	it.each([
-		{ outcome: 'fix_ready', candidateFilePath: 'self-healing/candidate.workflow.ts' },
-		{ outcome: 'needs_you', candidateFilePath: 'self-healing/candidate.workflow.ts' },
-		{ outcome: 'needs_you', candidateFilePath: null },
-		{ outcome: 'could_not_fix', candidateFilePath: null },
+		{ outcome: 'fix_ready', candidateFilePaths: ['self-healing/candidate.workflow.ts'] },
+		{
+			outcome: 'fix_ready',
+			candidateFilePaths: ['self-healing/a.workflow.ts', 'self-healing/b.workflow.ts'],
+		},
+		{ outcome: 'needs_you', candidateFilePaths: ['self-healing/candidate.workflow.ts'] },
+		{ outcome: 'needs_you', candidateFilePaths: [] },
+		{ outcome: 'could_not_fix', candidateFilePaths: [] },
 	])('accepts $outcome with its candidate rules', (output) => {
 		expect(selfHealingOutputSchema.safeParse({ ...report, ...output }).success).toBe(true);
 	});
 
 	it.each([
 		{ outcome: 'fix_ready' },
-		{ outcome: 'needs_you', candidateFilePath: undefined },
-		{ outcome: 'could_not_fix', candidateFilePath: 'candidate.ts' },
-		{ outcome: 'needs_you', candidateFilePath: '' },
+		{ outcome: 'needs_you', candidateFilePaths: undefined },
+		{ outcome: 'needs_you', candidateFilePaths: null },
+		{ outcome: 'could_not_fix', candidateFilePaths: ['candidate.ts'] },
+		{ outcome: 'needs_you', candidateFilePaths: [''] },
 		{ outcome: 'needs_you', summary: ' ' },
 		{ outcome: 'needs_you', report: ' ' },
 		{ outcome: 'needs_you', report: 'x'.repeat(50_001) },
@@ -29,7 +34,7 @@ describe('self-healing output', () => {
 		{ outcome: 'needs_you', workflowId: 'other-workflow' },
 	])('rejects invalid output %#', (output) => {
 		expect(
-			selfHealingOutputSchema.safeParse({ ...report, candidateFilePath: null, ...output }).success,
+			selfHealingOutputSchema.safeParse({ ...report, candidateFilePaths: [], ...output }).success,
 		).toBe(false);
 	});
 
@@ -42,7 +47,7 @@ describe('self-healing output', () => {
 			...report,
 			outcome: 'needs_you',
 			summary,
-			candidateFilePath: null,
+			candidateFilePaths: [],
 		};
 		expect(selfHealingOutputSchema.parse(output)).toEqual({ ...output, summary: expected });
 	});

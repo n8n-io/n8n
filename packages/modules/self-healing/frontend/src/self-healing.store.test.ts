@@ -14,6 +14,7 @@ const configuration: SelfHealingConfigurationDto = {
 	workflowIds: [],
 	reviewerIds: ['reviewer'],
 	includeAllProjectMembers: false,
+	includeSubWorkflows: false,
 	lastActivity: null,
 };
 

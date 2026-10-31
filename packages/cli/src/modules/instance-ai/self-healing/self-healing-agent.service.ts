@@ -10,17 +10,19 @@ import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
 	generateWorkflowSource,
 	getSelfHealingResourceId,
+	normalizeWorkspaceRelativePath,
 	orchestratorAgentId,
 	SELF_HEALING_PROFILE_VERSION,
 	selfHealingOutputSchema,
 	streamAgentRun,
 	writeWorkspaceFile,
+	workflowSourceFileSlug,
 	MAX_STEPS,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
@@ -54,12 +56,18 @@ import { toWorkflowJSON } from '../workflow-json';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingCandidateService } from './self-healing-candidate.service';
 import type { CandidateWorkflowResult } from './candidate-workflow';
+import { SelfHealingConfigurationService } from './self-healing-configuration.service';
+import { SubWorkflowDiscoveryService } from './sub-workflow-discovery.service';
 
 export type SelfHealingRunInput = {
 	user: User;
 	baseline: WorkflowSuggestionBaseline;
+	configurationId: number;
+	includeSubWorkflows: boolean;
 	executionId: string;
 };
+
+type PreparedFiles = Map<string, WorkflowSuggestionBaseline>;
 
 export type SelfHealingRunResult = {
 	threadId: string;
@@ -71,10 +79,11 @@ export type SelfHealingRunResult = {
 	validationError?: string;
 	error?: unknown;
 	usage: SelfHealingResultUsage;
-	candidate?: {
+	candidates?: Array<{
 		filePath: string;
+		baseline: WorkflowSuggestionBaseline;
 		compile: () => Promise<CandidateWorkflowResult>;
-	};
+	}>;
 };
 
 export type SelfHealingRunLifecycle = {
@@ -113,7 +122,10 @@ export type SelfHealingRunOptions = {
 	) => void;
 };
 
-const CANDIDATE_FILE_PATH = 'self-healing/candidate.workflow.ts';
+const MAX_SUB_WORKFLOW_TARGETS = 10;
+
+const workflowFilePath = ({ workflowId, original }: WorkflowSuggestionBaseline) =>
+	`self-healing/${workflowSourceFileSlug(original.name, 'workflow')}-${workflowId}.workflow.ts`;
 const INVESTIGATION_MESSAGE = 'Investigate the failed execution using the execution tools.';
 
 @Service()
@@ -133,6 +145,8 @@ export class SelfHealingAgentService {
 		private readonly events: InProcessEventBus,
 		private readonly candidates: SelfHealingCandidateService,
 		private readonly errorReporter: InstanceAiErrorReporterService,
+		private readonly discovery: SubWorkflowDiscoveryService,
+		private readonly configurations: SelfHealingConfigurationService,
 	) {}
 
 	assertEnabled(): void {
@@ -204,7 +218,15 @@ export class SelfHealingAgentService {
 			user = await this.validateInput(input);
 			signal.throwIfAborted();
 
-			const environment = await this.prepareEnvironment({ ...input, user }, options);
+			const subWorkflows = input.includeSubWorkflows
+				? await this.captureSubWorkflows(user, input.configurationId, baseline, signal)
+				: [];
+			const targets = [baseline, ...subWorkflows];
+			const files: PreparedFiles = new Map(
+				targets.map((target) => [workflowFilePath(target), target]),
+			);
+
+			const environment = await this.prepareEnvironment({ ...input, user }, targets, options);
 			modelId = environment.modelId;
 			const { context, proxy, shareParameters } = environment;
 
@@ -235,12 +257,22 @@ export class SelfHealingAgentService {
 			signal.throwIfAborted();
 			const entry = await options.sandbox.getOrCreateWorkspace(threadId, user, context);
 			if (!entry) throw new UnexpectedError('The self-healing workspace is unavailable.');
-			const workspace = createScopedWorkspace(
-				entry.workspace,
-				await getWorkspaceRoot(entry.workspace),
-			);
+			const root = await getWorkspaceRoot(entry.workspace);
+			const workspace = createScopedWorkspace(entry.workspace, root);
 			context.workspace = workspace;
-			await this.prepareCandidate(baseline, workspace, shareParameters, signal);
+			await Promise.all(
+				[...files].map(
+					async ([filePath, target]) =>
+						await this.prepareFile(target, filePath, workspace, shareParameters, signal),
+				),
+			);
+			const resolveFile = (filePath: string) => {
+				try {
+					return files.get(normalizeWorkspaceRelativePath(filePath, { workspaceRoot: root }));
+				} catch {
+					return undefined;
+				}
+			};
 
 			signal.throwIfAborted();
 			stream = await this.runAgent({
@@ -249,6 +281,8 @@ export class SelfHealingAgentService {
 				context,
 				modelId,
 				metadata,
+				files,
+				resolveFile,
 				onStreamStart: () => {
 					providerStream = true;
 				},
@@ -260,16 +294,22 @@ export class SelfHealingAgentService {
 			const output = selfHealingOutputSchema.safeParse(stream.structuredOutput);
 			if (output.success) result.output = output.data;
 			else result.validationError = output.error.message;
-			if (output.success && output.data.candidateFilePath) {
-				const filePath = output.data.candidateFilePath;
-				result.candidate = {
-					filePath,
+			const filePaths = output.success ? output.data.candidateFilePaths : [];
+			const changed = filePaths.map(resolveFile);
+			if (
+				changed.length > 0 &&
+				changed.every((target) => target !== undefined) &&
+				new Set(changed).size === changed.length
+			) {
+				result.candidates = changed.map((target, index) => ({
+					filePath: filePaths[index],
+					baseline: target,
 					compile: async () =>
 						await this.candidates.compile(
-							{ baseline, context, filePath, abortSignal: signal },
-							await this.suggestions.requireEditor(baseline.backgroundUserId, baseline.workflowId),
+							{ baseline: target, context, filePath: filePaths[index], abortSignal: signal },
+							await this.suggestions.requireEditor(target.backgroundUserId, target.workflowId),
 						),
-				};
+				}));
 			}
 			if (stream.status === 'suspended') {
 				result.reason = 'unexpected_suspension';
@@ -350,7 +390,7 @@ export class SelfHealingAgentService {
 		result.status = 'cancelled';
 		result.reason = reason;
 		delete result.output;
-		delete result.candidate;
+		delete result.candidates;
 		delete result.finishReason;
 		delete result.validationError;
 	}
@@ -366,7 +406,39 @@ export class SelfHealingAgentService {
 		return actor;
 	}
 
-	private async prepareEnvironment(input: SelfHealingRunInput, options: SelfHealingRunOptions) {
+	private async captureSubWorkflows(
+		user: User,
+		configurationId: number,
+		{ workflowId, projectId }: WorkflowSuggestionBaseline,
+		signal: AbortSignal,
+	) {
+		const discovered = await this.discovery.discover(user, projectId, [workflowId]);
+		const subWorkflows: WorkflowSuggestionBaseline[] = [];
+		for (const { id, otherProject } of discovered[workflowId].subWorkflows) {
+			if (otherProject) continue;
+			signal.throwIfAborted();
+			if (await this.suggestions.hasPendingSuggestion(id)) continue;
+			const configuration = { id: configurationId, projectId };
+			if (!(await this.configurations.hasReviewerWhoCanEditAll(configuration, [workflowId, id]))) {
+				continue;
+			}
+			try {
+				const subWorkflow = await this.suggestions.captureBaseline(id, user.id);
+				if (subWorkflow.projectId === projectId) subWorkflows.push(subWorkflow);
+			} catch (error) {
+				if (error instanceof ConflictError || error instanceof ForbiddenError) continue;
+				throw error;
+			}
+			if (subWorkflows.length === MAX_SUB_WORKFLOW_TARGETS) break;
+		}
+		return subWorkflows;
+	}
+
+	private async prepareEnvironment(
+		input: SelfHealingRunInput,
+		targets: WorkflowSuggestionBaseline[],
+		options: SelfHealingRunOptions,
+	) {
 		const { user } = input;
 		const { signal, runId, threadId } = options;
 
@@ -408,36 +480,39 @@ export class SelfHealingAgentService {
 		}
 		context.threadMemory = this.memory;
 
-		this.bindWorkflowReads(context, input, shareParameters);
+		this.bindWorkflowReads(context, user, targets, shareParameters);
 
 		return { context, modelId, proxy, shareParameters };
 	}
 
 	private bindWorkflowReads(
 		context: InstanceAiContext,
-		{ user, baseline }: SelfHealingRunInput,
+		user: User,
+		targets: WorkflowSuggestionBaseline[],
 		shareParameters: boolean,
 	) {
 		const workflowService = context.workflowService;
+		const baselines = new Map(targets.map((target) => [target.workflowId, target]));
 
 		context.workflowService = {
 			...workflowService,
 			get: async (workflowId) => {
-				if (workflowId !== baseline.workflowId) return await workflowService.get(workflowId);
+				const target = baselines.get(workflowId);
+				if (!target) return await workflowService.get(workflowId);
 				await this.suggestions.requireEditor(user.id, workflowId);
 				const detail = await workflowService.get(workflowId);
 
 				return {
 					...detail,
-					name: baseline.original.name,
-					connections: structuredClone(baseline.original.connections),
-					settings: baseline.original.settings
-						? { ...structuredClone(baseline.original.settings) }
+					name: target.original.name,
+					connections: structuredClone(target.original.connections),
+					settings: target.original.settings
+						? { ...structuredClone(target.original.settings) }
 						: undefined,
-					versionId: baseline.expectedBaseline.savedVersionId,
-					activeVersionId: baseline.expectedBaseline.publishedVersionId,
-					checksum: baseline.expectedBaseline.checksum,
-					nodes: baseline.original.nodes.map((node) => ({
+					versionId: target.expectedBaseline.savedVersionId,
+					activeVersionId: target.expectedBaseline.publishedVersionId,
+					checksum: target.expectedBaseline.checksum,
+					nodes: target.original.nodes.map((node) => ({
 						...structuredClone(node),
 						parameters: shareParameters ? structuredClone(node.parameters) : undefined,
 					})),
@@ -445,36 +520,36 @@ export class SelfHealingAgentService {
 			},
 
 			getAsWorkflowJSON: async (workflowId, versionId) => {
-				if (workflowId !== baseline.workflowId) {
-					return await workflowService.getAsWorkflowJSON(workflowId, versionId);
-				}
+				const target = baselines.get(workflowId);
+				if (!target) return await workflowService.getAsWorkflowJSON(workflowId, versionId);
 				await this.suggestions.requireEditor(user.id, workflowId);
-				if (versionId && versionId !== baseline.expectedBaseline.publishedVersionId) {
+				if (versionId && versionId !== target.expectedBaseline.publishedVersionId) {
 					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
 				}
 
 				return toWorkflowJSON(
-					{ ...structuredClone(baseline.original), id: workflowId },
+					{ ...structuredClone(target.original), id: workflowId },
 					{ redactParameters: !shareParameters },
 				);
 			},
 			getVersion: async (workflowId, versionId) => {
-				if (workflowId === baseline.workflowId) {
+				const target = baselines.get(workflowId);
+				if (target) {
 					await this.suggestions.requireEditor(user.id, workflowId);
-					if (versionId !== baseline.expectedBaseline.publishedVersionId) {
+					if (versionId !== target.expectedBaseline.publishedVersionId) {
 						throw new ForbiddenError('Read the published baseline assigned to this investigation.');
 					}
 				}
 				const version = await workflowService.getVersion?.(workflowId, versionId);
 				if (!version) throw new BadRequestError('The requested workflow version is unavailable.');
-				if (workflowId !== baseline.workflowId) return version;
+				if (!target) return version;
 				return {
 					...version,
-					nodes: baseline.original.nodes.map((node) => ({
+					nodes: target.original.nodes.map((node) => ({
 						...structuredClone(node),
 						parameters: shareParameters ? structuredClone(node.parameters) : undefined,
 					})),
-					connections: structuredClone(baseline.original.connections),
+					connections: structuredClone(target.original.connections),
 				};
 			},
 		};
@@ -486,6 +561,8 @@ export class SelfHealingAgentService {
 		context,
 		modelId,
 		metadata,
+		files,
+		resolveFile,
 		onStreamStart,
 	}: {
 		input: SelfHealingRunInput;
@@ -493,6 +570,8 @@ export class SelfHealingAgentService {
 		context: InstanceAiContext;
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
+		files: PreparedFiles;
+		resolveFile: (filePath: string) => WorkflowSuggestionBaseline | undefined;
 		onStreamStart: () => void;
 	}): Promise<StreamRunResult> {
 		const { user, baseline, executionId } = input;
@@ -509,23 +588,37 @@ export class SelfHealingAgentService {
 			abortSignal: signal,
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();
+				const target = resolveFile(args.filePath);
+				if (!target) {
+					return {
+						filePath: args.filePath,
+						validation: { success: false, errors: ['Verify one of the prepared workflow files.'] },
+						verification: { status: 'not_run' },
+					};
+				}
 
 				return await this.candidates.verify({
 					...args,
 					user,
-					baseline,
+					baseline: target,
 					context,
 					abortSignal: signal,
 				});
 			},
 		});
+		const label = ({ workflowId, original }: WorkflowSuggestionBaseline) =>
+			`${JSON.stringify(original.name)} (${workflowId})`;
+		const preparedFiles = [...files].map(([filePath, target]) => `- ${label(target)}: ${filePath}`);
+		const message =
+			`${INVESTIGATION_MESSAGE}\n\nTriggering workflow: ${label(baseline)}\n` +
+			`Failed execution: ${executionId}\n\nPrepared workflow files:\n${preparedFiles.join('\n')}`;
 
 		signal.throwIfAborted();
 		const consume = async () => {
 			onStreamStart();
 			return await streamAgentRun(
 				agent,
-				`${INVESTIGATION_MESSAGE}\n\nWorkflow: ${baseline.workflowId}\nFailed execution: ${executionId}\nCandidate: ${CANDIDATE_FILE_PATH}`,
+				message,
 				{
 					maxIterations: MAX_STEPS.ORCHESTRATOR,
 					abortSignal: signal,
@@ -549,19 +642,20 @@ export class SelfHealingAgentService {
 		return tracing ? await tracing.withActiveSpan(tracing.actorRun, consume) : await consume();
 	}
 
-	private async prepareCandidate(
-		baseline: WorkflowSuggestionBaseline,
+	private async prepareFile(
+		target: WorkflowSuggestionBaseline,
+		filePath: string,
 		workspace: Workspace,
 		shareParameters: boolean,
 		abortSignal: AbortSignal,
 	): Promise<void> {
 		const workflow = toWorkflowJSON(
-			{ ...baseline.original, id: baseline.workflowId },
+			{ ...target.original, id: target.workflowId },
 			{ redactParameters: !shareParameters },
 		);
 		const source = await generateWorkflowSource(workflow);
 
-		await writeWorkspaceFile(workspace, CANDIDATE_FILE_PATH, source, {
+		await writeWorkspaceFile(workspace, filePath, source, {
 			logger: this.logger,
 			abortSignal,
 		});

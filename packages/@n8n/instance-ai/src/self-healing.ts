@@ -24,22 +24,24 @@ export const selfHealingOutputSchema = z
 				'A concise Markdown report under 150 words. Use only **What happened** and **What changed** sections. ' +
 					'Include verification limits and any next step under What changed. State when no changes were made.',
 			),
-		candidateFilePath: z.string().trim().min(1).nullable(),
+		candidateFilePaths: z
+			.array(z.string().trim().min(1))
+			.describe('Prepared files of the changed workflows. Use one path for each workflow.'),
 	})
 	.strict()
 	.superRefine((output, ctx) => {
-		if (output.outcome === 'fix_ready' && !output.candidateFilePath) {
+		if (output.outcome === 'fix_ready' && output.candidateFilePaths.length === 0) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				path: ['candidateFilePath'],
+				path: ['candidateFilePaths'],
 				message: 'A ready fix requires a candidate file.',
 			});
 		}
 
-		if (output.outcome === 'could_not_fix' && output.candidateFilePath !== null) {
+		if (output.outcome === 'could_not_fix' && output.candidateFilePaths.length > 0) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				path: ['candidateFilePath'],
+				path: ['candidateFilePaths'],
 				message: 'An unsuccessful investigation cannot return a candidate file.',
 			});
 		}
