@@ -1445,6 +1445,28 @@ describe('project member reviewers', () => {
 			).toMatchObject({ enabled: true });
 		});
 
+		it('requires one reviewer who can edit every given workflow', async () => {
+			const { project, workflow, reviewer, configuration } = await sharedReviewerFixture();
+			const subWorkflow = await createWorkflow({}, project);
+			const canEditAll = async () =>
+				await configurations.hasReviewerWhoCanEditAll(configuration, [workflow.id, subWorkflow.id]);
+			await shareWithPersonalProject(workflow, reviewer);
+			expect(await canEditAll()).toBe(false);
+
+			await shareWithPersonalProject(subWorkflow, reviewer);
+			expect(await canEditAll()).toBe(true);
+		});
+
+		it('accepts a reviewer whose project role can edit every workflow', async () => {
+			const { project, workflow, reviewer, configuration } = await sharedReviewerFixture();
+			const subWorkflow = await createWorkflow({}, project);
+			await linkUserToProject(reviewer, project, 'project:editor');
+
+			expect(
+				await configurations.hasReviewerWhoCanEditAll(configuration, [workflow.id, subWorkflow.id]),
+			).toBe(true);
+		});
+
 		it('rejects a selected reviewer who lost edit access, also with the project group', async () => {
 			const { user, project, input, reviewer, configuration } = await sharedReviewerFixture();
 

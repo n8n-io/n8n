@@ -30,7 +30,6 @@ import type { RuntimeSandboxEntry } from '../../sandbox/instance-ai-sandbox.serv
 import type { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import {
-	MAX_SUB_WORKFLOW_TARGETS,
 	SelfHealingAgentService,
 	type SelfHealingRunInput,
 	type SelfHealingRunOptions,
@@ -39,6 +38,7 @@ import type { SelfHealingExecutionReferenceService } from '../self-healing-execu
 import type { SelfHealingCandidateService } from '../self-healing-candidate.service';
 import type { CandidateWorkflowResult } from '../candidate-workflow';
 import type { SubWorkflowDiscoveryService } from '../sub-workflow-discovery.service';
+import type { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
@@ -92,6 +92,7 @@ const subWorkflow: WorkflowSuggestionBaseline = {
 const input: SelfHealingRunInput = {
 	user,
 	baseline,
+	configurationId: 1,
 	includeSubWorkflows: false,
 	executionId: '123',
 };
@@ -130,6 +131,7 @@ describe('SelfHealingAgentService', () => {
 	const events = mock<InProcessEventBus>();
 	const candidates = mock<SelfHealingCandidateService>();
 	const discovery = mock<SubWorkflowDiscoveryService>();
+	const configurations = mock<SelfHealingConfigurationService>();
 	const filesystem = mock<WorkspaceFilesystem>();
 	const workspace = mock<Workspace>({ filesystem });
 	const service = new SelfHealingAgentService(
@@ -148,6 +150,7 @@ describe('SelfHealingAgentService', () => {
 		candidates,
 		new InstanceAiErrorReporterService(logger, errorReporter),
 		discovery,
+		configurations,
 	);
 	const includeSubWorkflow = () => {
 		discovery.discover.mockResolvedValue(discovered(subWorkflow.workflowId));
@@ -161,6 +164,7 @@ describe('SelfHealingAgentService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		configurations.hasReviewerWhoCanEditAll.mockResolvedValue(true);
 		config.instanceAi.workflowSuggestionsEnabled = true;
 		controller = new AbortController();
 		files = new Map();
@@ -891,6 +895,7 @@ describe('SelfHealingAgentService', () => {
 				'unpublished-changes',
 				'moved',
 				'pending',
+				'no-reviewer',
 				'second',
 			);
 			preview[baseline.workflowId].subWorkflows.splice(1, 0, {
@@ -908,6 +913,9 @@ describe('SelfHealingAgentService', () => {
 			suggestions.hasPendingSuggestion.mockImplementation(
 				async (workflowId) => workflowId === 'pending',
 			);
+			configurations.hasReviewerWhoCanEditAll.mockImplementation(
+				async (_, workflowIds) => !workflowIds.includes('no-reviewer'),
+			);
 
 			await service.execute({ ...input, includeSubWorkflows: true }, options);
 
@@ -916,11 +924,17 @@ describe('SelfHealingAgentService', () => {
 			]);
 			expect(suggestions.captureBaseline).not.toHaveBeenCalledWith('other-project', user.id);
 			expect(suggestions.captureBaseline).not.toHaveBeenCalledWith('pending', user.id);
+			expect(suggestions.captureBaseline).not.toHaveBeenCalledWith('no-reviewer', user.id);
+			expect(configurations.hasReviewerWhoCanEditAll).toHaveBeenCalledWith(
+				{ id: input.configurationId, projectId: baseline.projectId },
+				[baseline.workflowId, 'eligible'],
+			);
 			expect(preparedIds()).toEqual([baseline.workflowId, 'eligible', 'second']);
 		});
 
 		it('limits the number of sub-workflows', async () => {
-			const ids = Array.from({ length: MAX_SUB_WORKFLOW_TARGETS + 2 }, (_, index) => `${index}`);
+			const limit = 10;
+			const ids = Array.from({ length: limit + 2 }, (_, index) => `${index}`);
 			discovery.discover.mockResolvedValue(discovered(...ids));
 			suggestions.captureBaseline.mockImplementation(async (workflowId) => {
 				if (workflowId === '0') throw new ConflictError('Unpublished changes');
@@ -929,10 +943,7 @@ describe('SelfHealingAgentService', () => {
 
 			await service.execute({ ...input, includeSubWorkflows: true }, options);
 
-			expect(preparedIds()).toEqual([
-				baseline.workflowId,
-				...ids.slice(1, MAX_SUB_WORKFLOW_TARGETS + 1),
-			]);
+			expect(preparedIds()).toEqual([baseline.workflowId, ...ids.slice(1, limit + 1)]);
 			expect(suggestions.captureBaseline).not.toHaveBeenCalledWith(ids.at(-1), user.id);
 		});
 	});

@@ -21,6 +21,7 @@ import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import type { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
@@ -107,14 +108,12 @@ export class SelfHealingInvestigationService {
 			if (!claimed || 'kind' in claimed) return claimed;
 
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, baseline, actor, configuration.includeSubWorkflows).catch(
-				(error: unknown) => {
-					this.logger.error('Self-healing investigation failed.', {
-						investigationId: claimed.id,
-						error,
-					});
-				},
-			);
+			void this.run(claimed, baseline, actor, configuration).catch((error: unknown) => {
+				this.logger.error('Self-healing investigation failed.', {
+					investigationId: claimed.id,
+					error,
+				});
+			});
 			return { kind: 'investigation', investigationId: claimed.id };
 		} catch (error) {
 			if (error instanceof ForbiddenError) {
@@ -207,14 +206,15 @@ export class SelfHealingInvestigationService {
 		investigation: SelfHealingInvestigation,
 		baseline: WorkflowSuggestionBaseline,
 		user: User,
-		includeSubWorkflows: boolean,
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'includeSubWorkflows'>,
 	) {
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
 					baseline,
-					includeSubWorkflows,
+					configurationId: configuration.id,
+					includeSubWorkflows: configuration.includeSubWorkflows,
 					executionId: investigation.executionId,
 				},
 				{
@@ -273,13 +273,15 @@ export class SelfHealingInvestigationService {
 					continue;
 				}
 
+				const workflowName = baseline.original.name;
 				missingSetup.push(
 					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
-						([node, types]) => `- Connect credentials for ${node}: ${types.join(', ')}`,
+						([node, types]) =>
+							`- Connect credentials for ${node} in "${workflowName}": ${types.join(', ')}`,
 					),
 					...candidate.warnings
 						.filter(({ code }) => code === 'unresolved_placeholders')
-						.map(({ message }) => `- ${message}`),
+						.map(({ message }) => `- In "${workflowName}": ${message}`),
 				);
 				result.candidates.push({ baseline, graph: { nodes, connections } });
 			}

@@ -20,7 +20,7 @@ Storage checks current edit access and basic graph structure. Apply runs credent
 
 The read requires an enabled user with current workflow read and edit access, including access through sharing. It checks the proposal's original project and the workflow's current owner project. Publish access is not required.
 
-The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for 30 seconds, with a maximum wait of 60 seconds during continuous saves. Publish and archive hooks, and unpublish events, cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving. When one suggestion of a group becomes outdated, every pending suggestion of the group closes as outdated.
+The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for 30 seconds, with a maximum wait of 60 seconds during continuous saves. Publish and archive hooks, and unpublish events, cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving. When one suggestion of a group becomes outdated, every pending suggestion of the group closes as outdated. Delete hooks record the group of a pending suggestion before its workflow is deleted, and close the group as outdated after the delete.
 
 ## Review actions
 
@@ -55,6 +55,6 @@ The review migration requires empty suggestion tables. Run it before any service
 
 A workflow transfer does not transfer its suggestions. Apply checks the current owner without locking the ownership row. A project transfer after this check can overlap with Apply. A normal workflow save that starts before Apply can finish after Apply.
 
-Deleting the workflow, original project, or background user deletes its suggestions and activity. For suggestions that remain, deleting the actor clears the activity's actor reference. The applied result keeps the actor ID. It also keeps the version ID if the history entry is deleted. Pending and closed suggestions have no time-based expiry. Workflow history, Assistant threads, reports, and execution evidence have separate lifetimes.
+Deleting the self-healing result, workflow, original project, or background user deletes its suggestions and activity. For suggestions that remain, deleting the actor clears the activity's actor reference. The applied result keeps the actor ID. It also keeps the version ID if the history entry is deleted. Pending and closed suggestions have no time-based expiry. Workflow history, Assistant threads, reports, and execution evidence have separate lifetimes.
 
 Tests under `__tests__` seed suggestions against published workflows. They require no model calls.

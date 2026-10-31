@@ -144,8 +144,9 @@ export class WorkflowSuggestionActionsService {
 				workflowId,
 				projectId,
 			});
-			if (!target.workflow || target.projectId !== projectId)
+			if (!target.workflow || target.projectId !== projectId) {
 				throw new NotFoundError('Suggestion not found.');
+			}
 			suggestions.push(suggestion);
 		}
 

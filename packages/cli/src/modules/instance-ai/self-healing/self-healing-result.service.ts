@@ -26,7 +26,6 @@ import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
-import { WorkflowSuggestionRepository } from '../workflow-suggestions/database/workflow-suggestion.repository';
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
 import {
 	WorkflowSuggestionService,
@@ -58,7 +57,6 @@ export class SelfHealingResultService {
 	constructor(
 		private readonly results: SelfHealingResultRepository,
 		private readonly suggestions: WorkflowSuggestionService,
-		private readonly suggestionRepository: WorkflowSuggestionRepository,
 		private readonly actions: WorkflowSuggestionActionsService,
 		private readonly ownership: SharedWorkflowRepository,
 		private readonly executionReferences: SelfHealingExecutionReferenceService,
@@ -376,7 +374,7 @@ export class SelfHealingResultService {
 	}
 
 	private async getSuggestions(result: SelfHealingResult, ctx: OperationContext = {}) {
-		const suggestions = await this.suggestionRepository.getForResult(result.id, ctx);
+		const suggestions = await this.suggestions.getForResult(result.id, ctx);
 		return suggestions.sort(
 			(a, b) =>
 				Number(b.workflowId === result.workflowId) - Number(a.workflowId === result.workflowId),

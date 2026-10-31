@@ -1,4 +1,5 @@
 import type {
+	SelfHealingReviewState,
 	WorkflowSuggestionContent,
 	WorkflowSuggestionBaseline,
 	WorkflowSuggestionActivity as WorkflowSuggestionActivityDto,
@@ -127,13 +128,21 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			},
 		);
 		if (result.affected !== 1) return false;
-		await this.managerFor(ctx).update(
-			SelfHealingResult,
-			{ id: suggestion.selfHealingResultId, reviewState: 'open' },
-			{ reviewState: reason === 'discarded' ? 'dismissed' : reason },
+		await this.closeResult(
+			suggestion.selfHealingResultId,
+			reason === 'discarded' ? 'dismissed' : reason,
+			ctx,
 		);
 		await this.appendActivity(suggestion.id, reason, actor, ctx);
 		return true;
+	}
+
+	async closeResult(id: string, reviewState: SelfHealingReviewState, ctx: OperationContext) {
+		await this.managerFor(ctx).update(
+			SelfHealingResult,
+			{ id, reviewState: 'open' },
+			{ reviewState },
+		);
 	}
 
 	async getPendingForWorkflow(workflowId: string, ctx: OperationContext = {}) {

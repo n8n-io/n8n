@@ -56,11 +56,13 @@ import { toWorkflowJSON } from '../workflow-json';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 import { SelfHealingCandidateService } from './self-healing-candidate.service';
 import type { CandidateWorkflowResult } from './candidate-workflow';
+import { SelfHealingConfigurationService } from './self-healing-configuration.service';
 import { SubWorkflowDiscoveryService } from './sub-workflow-discovery.service';
 
 export type SelfHealingRunInput = {
 	user: User;
 	baseline: WorkflowSuggestionBaseline;
+	configurationId: number;
 	includeSubWorkflows: boolean;
 	executionId: string;
 };
@@ -120,7 +122,7 @@ export type SelfHealingRunOptions = {
 	) => void;
 };
 
-export const MAX_SUB_WORKFLOW_TARGETS = 10;
+const MAX_SUB_WORKFLOW_TARGETS = 10;
 
 const workflowFilePath = ({ workflowId, original }: WorkflowSuggestionBaseline) =>
 	`self-healing/${workflowSourceFileSlug(original.name, 'workflow')}-${workflowId}.workflow.ts`;
@@ -144,6 +146,7 @@ export class SelfHealingAgentService {
 		private readonly candidates: SelfHealingCandidateService,
 		private readonly errorReporter: InstanceAiErrorReporterService,
 		private readonly discovery: SubWorkflowDiscoveryService,
+		private readonly configurations: SelfHealingConfigurationService,
 	) {}
 
 	assertEnabled(): void {
@@ -216,7 +219,7 @@ export class SelfHealingAgentService {
 			signal.throwIfAborted();
 
 			const subWorkflows = input.includeSubWorkflows
-				? await this.captureSubWorkflows(user, baseline, signal)
+				? await this.captureSubWorkflows(user, input.configurationId, baseline, signal)
 				: [];
 			const targets = [baseline, ...subWorkflows];
 			const files: PreparedFiles = new Map(
@@ -405,6 +408,7 @@ export class SelfHealingAgentService {
 
 	private async captureSubWorkflows(
 		user: User,
+		configurationId: number,
 		{ workflowId, projectId }: WorkflowSuggestionBaseline,
 		signal: AbortSignal,
 	) {
@@ -414,6 +418,10 @@ export class SelfHealingAgentService {
 			if (otherProject) continue;
 			signal.throwIfAborted();
 			if (await this.suggestions.hasPendingSuggestion(id)) continue;
+			const configuration = { id: configurationId, projectId };
+			if (!(await this.configurations.hasReviewerWhoCanEditAll(configuration, [workflowId, id]))) {
+				continue;
+			}
 			try {
 				const subWorkflow = await this.suggestions.captureBaseline(id, user.id);
 				if (subWorkflow.projectId === projectId) subWorkflows.push(subWorkflow);

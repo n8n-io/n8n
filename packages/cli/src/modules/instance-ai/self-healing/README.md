@@ -56,6 +56,7 @@ A workflow can have one unfinished investigation or open result.
 An unfinished investigation blocks the workflow across projects and configurations.
 An open result blocks investigations only in the workflow's current project.
 An open result also blocks investigations of each workflow that has a pending suggestion in it.
+This also applies when the result belongs to another configuration, whose reviewers are the only ones who see it.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic triggers and eligibility for a new failure remain the caller's responsibility.
 When an access check fails, the producer pauses the configuration. Another eligible user must
@@ -200,7 +201,9 @@ start investigations for sub-workflow failures. It defaults to `false`.
 When it is set, the agent run discovers the sub-workflows of the triggering workflow and
 captures their baselines before it prepares the files. It keeps the nearest sub-workflows in the
 same project that pass the baseline checks, up to `MAX_SUB_WORKFLOW_TARGETS`. Sub-workflows without
-edit access, with unpublished changes, or with a pending suggestion are left out. Sub-workflows get no admission reservation.
+edit access, with unpublished changes, or with a pending suggestion are left out. A sub-workflow is also
+left out when no reviewer can edit both it and the triggering workflow, so a reviewer can always see the
+result. Sub-workflows get no admission reservation.
 `POST .../self-healing-configurations/sub-workflows/preview` returns the discovery result for
 each selected workflow, so the form can show it.
 
@@ -354,7 +357,8 @@ a conflict and do not save or publish again. An outdated suggestion returns `out
 Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. When one suggestion becomes outdated, every pending
-suggestion of its result closes as outdated. If Apply fails, keep the review open and show the error.
+suggestion of its result closes as outdated. When a workflow with a pending suggestion is deleted,
+the result and its other pending suggestions also close as outdated. If Apply fails, keep the review open and show the error.
 
 The Discard and close button calls `POST /:resultId/dismiss`.
 Dismissal discards every pending suggestion of the result in one transaction, and the result gets the

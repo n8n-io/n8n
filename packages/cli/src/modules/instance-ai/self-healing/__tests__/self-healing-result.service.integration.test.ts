@@ -49,6 +49,7 @@ import { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { InstanceAiService } from '../../instance-ai.service';
 import { WorkflowSuggestionActivity } from '../../workflow-suggestions/database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestionRepository } from '../../workflow-suggestions/database/workflow-suggestion.repository';
+import { WorkflowSuggestionEventRelay } from '../../workflow-suggestions/workflow-suggestion-event-relay.service';
 import { WorkflowSuggestionActionsService } from '../../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
@@ -1689,6 +1690,34 @@ describe('grouped completion', () => {
 		expect(detail.reviewState).toBe('applied');
 		expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 1 });
 	});
+
+	it.each([
+		['the triggering workflow and the sub-workflow', false],
+		['only the sub-workflow', true],
+	])(
+		'closes a result that changes %s as outdated when the sub-workflow is deleted',
+		async (_, subWorkflowOnly) => {
+			const { investigation, user, project, original, subWorkflow, completion } =
+				await groupCompletion();
+			const [trigger, member] = completion.candidates;
+			const result = await completeResult({
+				investigationId: investigation.id,
+				...completion,
+				candidates: [subWorkflowOnly ? { ...trigger, graph: original } : trigger, member],
+			});
+			const relay = Container.get(WorkflowSuggestionEventRelay);
+
+			await relay.beforeWorkflowDeleted(subWorkflow.id);
+			await workflows.delete(subWorkflow.id);
+			await relay.afterWorkflowsDeleted([subWorkflow.id]);
+
+			const detail = await service.getDetail(user, project.id, original.id, result.id);
+			expect(detail.reviewState).toBe('outdated');
+			expect((await suggestions.getForResult(result.id)).map(({ state }) => state)).toEqual(
+				subWorkflowOnly ? [] : ['closed'],
+			);
+		},
+	);
 
 	it('saves nothing when a member no longer matches its baseline', async () => {
 		const { investigation, subWorkflow, completion } = await groupCompletion();

@@ -216,6 +216,19 @@ export class SelfHealingConfigurationService {
 		return await this.configurations.hasReviewerWithSharedWorkflowAccess(configuration, roles, ctx);
 	}
 
+	async hasReviewerWhoCanEditAll(
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'projectId'>,
+		workflowIds: string[],
+	) {
+		const roles = await this.reviewerRoles();
+		return await this.configurations.hasReviewerWhoCanEditAll(
+			configuration,
+			roles,
+			workflowIds,
+			{},
+		);
+	}
+
 	private async canEnable(user: User, projectId: string) {
 		return await userHasScopes(user, ACTOR_SCOPES, false, { projectId });
 	}

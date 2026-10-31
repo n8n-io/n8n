@@ -275,7 +275,10 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		return await query.getMany();
 	}
 
-	private reviewerMembers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
+	private reviewerMembers(
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'projectId'>,
+		ctx: OperationContext,
+	) {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(User, 'user')
 			.innerJoin(SelfHealingConfiguration, 'configuration', 'configuration.id = :configurationId', {
@@ -315,6 +318,31 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 
 		const covered = whereCoversWorkflow(sharedWorkflowEdit, 'configuration', 'share.workflowId');
 		return await query.andWhere(`EXISTS ${covered.getQuery()}`).getExists();
+	}
+
+	/** Call with workflows of the configuration's project. */
+	async hasReviewerWhoCanEditAll(
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'projectId'>,
+		roles: ReviewerRoles,
+		workflowIds: string[],
+		ctx: OperationContext,
+	) {
+		const query = this.reviewerMembers(configuration, ctx);
+		const shares = workflowIds.map((workflowId, index) =>
+			sharedWorkflowEditQuery(query, roles)?.andWhere(
+				`share.workflowId = :sharedWorkflow${index}`,
+				{
+					[`sharedWorkflow${index}`]: workflowId,
+				},
+			),
+		);
+		const editAccess = [
+			editRoleCondition(roles),
+			shares.every(Boolean) && shares.map((share) => `EXISTS ${share?.getQuery()}`).join(' AND '),
+		].filter(Boolean);
+		if (editAccess.length === 0) return false;
+
+		return await query.andWhere(`(${editAccess.join(' OR ')})`, roles).getExists();
 	}
 
 	async replaceSelections(

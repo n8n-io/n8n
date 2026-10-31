@@ -49,6 +49,8 @@ type SelfHealingInboxQuery = {
 	boundary?: SelfHealingInboxBoundary;
 };
 
+const INBOX_STATE = "CASE WHEN result.reviewState = 'open' THEN 'open' ELSE 'closed' END";
+
 type CooldownQuery = {
 	workflowId: string;
 	projectId: string;
@@ -63,10 +65,6 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		private readonly sharedWorkflows: SharedWorkflowRepository,
 	) {
 		super(SelfHealingResult, dataSource.manager, transactionRunner);
-	}
-
-	private inboxState() {
-		return "CASE WHEN result.reviewState = 'open' THEN 'open' ELSE 'closed' END";
 	}
 
 	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
@@ -141,7 +139,7 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 				'result.completedAt',
 				'workflow.name',
 			])
-			.andWhere(`(${this.inboxState()}) = :state`, { state })
+			.andWhere(`(${INBOX_STATE}) = :state`, { state })
 			.orderBy('result.updatedAt', 'DESC')
 			.addOrderBy('result.id', 'ASC');
 
@@ -171,11 +169,10 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 	}
 
 	async countForInbox(access: SelfHealingInboxAccess): Promise<InboxCounts> {
-		const state = this.inboxState();
 		const counts = await this.inboxQuery(access)
-			.select(state, 'state')
+			.select(INBOX_STATE, 'state')
 			.addSelect('COUNT(*)', 'count')
-			.groupBy(state)
+			.groupBy(INBOX_STATE)
 			.getRawMany<{ state: InboxState; count: number | string }>();
 		return {
 			open: Number(counts.find((row) => row.state === 'open')?.count ?? 0),

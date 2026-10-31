@@ -162,6 +162,7 @@ describe('SelfHealingInvestigationService', () => {
 			{
 				user,
 				baseline,
+				configurationId: configuration.id,
 				includeSubWorkflows: false,
 				executionId: input.executionId,
 			},
@@ -348,7 +349,10 @@ describe('SelfHealingInvestigationService', () => {
 	});
 
 	describe('candidate groups', () => {
-		const subWorkflow = mock<WorkflowSuggestionBaseline>({ workflowId: 'sub-workflow' });
+		const subWorkflow = mock<WorkflowSuggestionBaseline>({
+			workflowId: 'sub-workflow',
+			original: { name: 'Calculate tax' },
+		});
 		const compiled = (name: string) => ({
 			success: true,
 			workflow: { nodes: [mock({ name })], connections: {} },
@@ -389,7 +393,9 @@ describe('SelfHealingInvestigationService', () => {
 			]);
 			expect(resultInput?.output.outcome).toBe('needs_you');
 			expect(resultInput?.output.report).toContain('Connect credentials for Parent');
-			expect(resultInput?.output.report).toContain('Connect credentials for Child');
+			expect(resultInput?.output.report).toContain(
+				'Connect credentials for Child in "Calculate tax"',
+			);
 		});
 
 		it('omits an unchanged candidate and its missing setup', async () => {
