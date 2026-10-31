@@ -417,10 +417,6 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
-/**
- * The OTel context an execution propagates: its active span, carrying the
- * caller's baggage when the execution inherited any.
- */
 function spanContext(span: Span, baggage: Baggage | undefined): Context {
 	const ctx = trace.setSpan(ROOT_CONTEXT, span);
 	return baggage ? propagation.setBaggage(ctx, baggage) : ctx;
@@ -436,9 +432,6 @@ function toBaggage(header: string | undefined): Baggage | undefined {
 	const baggage = propagation.getBaggage(extracted);
 	if (!baggage) return undefined;
 
-	// Deliberately repeats the inbound `n8n.` filter. This one guards the wire
-	// for every entry regardless of origin — including rows written by another
-	// n8n version — so it is the copy to keep if the two ever look redundant.
 	const reserved = baggage
 		.getAllEntries()
 		.map(([key]) => key)

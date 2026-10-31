@@ -65,7 +65,6 @@ const stripEmptyResolutionNote = (message: string) =>
 
 @Service()
 export class OtelService {
-	// Read once: the propagator installed and the names warned about must agree.
 	private readonly propagatorNames = propagatorNamesFromEnv();
 
 	private readonly outboundPropagator = this.propagatorNames

@@ -70,11 +70,6 @@ export class OtelSettingsService {
 		private readonly logger: Logger,
 	) {}
 
-	/**
-	 * Whether outbound trace headers are being written. Reads the live config
-	 * directly: `getSettings()` shapes an API response, redacting exporter
-	 * headers on the way, which this per-request gate has no use for.
-	 */
 	isOutboundInjectionEnabled(): boolean {
 		return Boolean(this.currentSettings?.enabled && this.currentSettings?.injectOutbound);
 	}
