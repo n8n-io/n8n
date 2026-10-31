@@ -1,5 +1,7 @@
+import { createOpenAI } from '@ai-sdk/openai';
 import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { BuiltTool } from '../../types';
 import { executeTool, toAiSdkTools } from '../tools/tool-adapter';
@@ -193,6 +195,43 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 		expect(jsonSchemaMock).toHaveBeenCalledWith(rawSchema);
 		expect(jsonSchemaMock.mock.calls[0][0].required).toEqual(['team']);
 	});
+
+	it.each(['chat', 'responses'] as const)(
+		'prepares constrained MCP record keys for OpenAI %s',
+		async (apiStyle) => {
+			const rawSchema = zodToJsonSchema(
+				z.object({
+					tools: z.record(
+						z.string().min(1),
+						z.enum(['always_allow', 'require_approval', 'blocked']),
+					),
+				}),
+			) as JSONSchema7;
+			const originalSchema = structuredClone(rawSchema);
+			const tools = toAiSdkTools([makeJsonSchemaTool(rawSchema, { mcpTool: true })]);
+			const provider = createOpenAI({
+				apiKey: 'test-key',
+				fetch: async () => {
+					throw new Error('Schema accepted before network');
+				},
+			});
+
+			await expect(
+				provider[apiStyle]('gpt-4.1-mini').doGenerate({
+					prompt: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+					tools: [
+						{
+							type: 'function',
+							name: 'testTool',
+							inputSchema: jsonSchemaMock.mock.calls[0][0],
+							strict: tools.testTool.strict,
+						},
+					],
+				}),
+			).rejects.toThrow('Schema accepted before network');
+			expect(rawSchema).toEqual(originalSchema);
+		},
+	);
 });
 
 // ---------------------------------------------------------------------------
