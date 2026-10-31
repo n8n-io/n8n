@@ -6,6 +6,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 import { createArtifactPreviewMemory } from '../artifactPreviewMemory';
 import type { ArtifactThread } from '../artifactThread';
+import type { InstanceAiMessageAuthorship } from '../prefills';
 import { useResourceRegistry } from '../useResourceRegistry';
 import {
 	findArchivedAssistantWorkflowIds,
@@ -23,7 +24,11 @@ interface UseAssistantArtifactThreadOptions {
 	 * Sends a message to the chat, for the previews that ask the Assistant
 	 * something. The hand-off context goes with the message.
 	 */
-	sendMessage: (text: string, handoffContext?: InstanceAiHandoffContext) => void;
+	sendMessage: (
+		text: string,
+		authorship: InstanceAiMessageAuthorship,
+		handoffContext?: InstanceAiHandoffContext,
+	) => void;
 }
 
 /**
@@ -64,7 +69,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		// Hand-offs from the editor open Assistant runtime threads, never these.
 		consumePendingHandoff: () => undefined,
 		sendMessage: async (text: string, opts: Parameters<ArtifactThread['sendMessage']>[1]) => {
-			options.sendMessage(text, opts.handoffContext);
+			options.sendMessage(text, opts.authorship, opts.handoffContext);
 			return true;
 		},
 		...createArtifactPreviewMemory(),

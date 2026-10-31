@@ -193,6 +193,19 @@ const emit = defineEmits<{
 	'message-accepted': [
 		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
 	];
+	/**
+	 * The chat posts a new message now, before the server answers, so a refused
+	 * send emits this too. Typed text that cancels an open card emits this, but
+	 * answers to the card do not.
+	 */
+	'message-sending': [
+		payload: {
+			text: string;
+			files: File[];
+			clientContext?: Record<string, unknown>;
+			isFirstMessage: boolean;
+		},
+	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
 }>();
@@ -1114,6 +1127,17 @@ async function onSubmit(): Promise<SubmitResult> {
 	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
 }
 
+function emitMessageSending(message: {
+	text: string;
+	files: File[];
+	clientContext?: Record<string, unknown>;
+}) {
+	emit('message-sending', {
+		...message,
+		isFirstMessage: !messages.value.some((entry) => entry.role === 'user'),
+	});
+}
+
 async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
@@ -1146,6 +1170,8 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
+		// Steering sends the text without the files or the client context.
+		emitMessageSending({ text, files: [] });
 		const result = await cancelAndSteer(text, () => {
 			if (!isCurrentTarget()) return;
 			if (inputText.value.trim() === text) inputText.value = '';
@@ -1207,6 +1233,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		};
+		emitMessageSending({ text, files, clientContext });
 		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
 		const result = await sending;
