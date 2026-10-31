@@ -197,7 +197,7 @@ function buildUserPrompt(
 		sections.push(
 			'',
 			'## Required structured output',
-			'Your final `content` MUST be JSON matching this schema EXACTLY — include every declared property with the correct type, add no extra keys, and do not wrap it in another object unless the schema itself declares that wrapper:',
+			'Put your final answer in `structuredContent` as a JSON object matching this schema EXACTLY — include every declared property with the correct type, add no extra keys, and do not wrap it in another object unless the schema itself declares that wrapper:',
 			JSON.stringify(outputSchema),
 		);
 	}

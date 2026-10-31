@@ -4,6 +4,7 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -14,6 +15,7 @@ import { AgentSkillDependency } from '@/modules/agents/entities/agent-skill-depe
 import { AgentVersionSkillDependency } from '@/modules/agents/entities/agent-version-skill-dependency.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -61,7 +63,9 @@ async function readSourceRecords() {
 	const { manager } = agentRepository;
 	return await Promise.all([
 		agentRepository.find({ order: { id: 'ASC' } }),
-		historyRepository.find({ order: { versionId: 'ASC' } }),
+		Container.get(DataSource)
+			.getRepository(AgentHistory)
+			.find({ order: { versionId: 'ASC' } }),
 		taskRepository.find({ order: { id: 'ASC' } }),
 		taskSnapshotRepository.find({ order: { versionId: 'ASC', taskId: 'ASC' } }),
 		// The skill rows of the agents, so an export that changes them fails too.
@@ -137,13 +141,16 @@ beforeAll(async () => {
 				...task,
 			})),
 		);
-		const history = await historyRepository.saveVersion({
-			versionId: `${agent.id}_published`,
-			agentId: agent.id,
-			schema: fromAgentDocument(published.config).config,
-			tools: published.tools,
-			publishedBy: 'Package test',
-		});
+		const history = await historyRepository.saveVersion(
+			{
+				versionId: `${agent.id}_published`,
+				agentId: agent.id,
+				schema: fromAgentDocument(published.config).config,
+				tools: published.tools,
+				publishedBy: 'Package test',
+			},
+			{},
+		);
 		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
 		await Container.get(AgentSkillRepository).insertPins([
 			{ agentVersionId: history.versionId, skillId, skillVersionId: publishedSkillVersionId },

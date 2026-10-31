@@ -1,10 +1,11 @@
 import { mockInstance, createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { BinaryDataService } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
 import { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
-import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
+import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentFileGrantRepository } from '@/modules/agents/repositories/agent-file-grant.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -12,7 +13,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 describe('Agent file read grants', () => {
 	const binaryDataService = mockInstance(BinaryDataService);
 	let service: AgentChatAttachmentService;
-	let attachmentRepo: AgentChatAttachmentRepository;
+	let attachmentRepo: Repository<AgentChatAttachment>;
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
 	let projectId: string;
@@ -22,7 +23,7 @@ describe('Agent file read grants', () => {
 		await testModules.loadModules(['agents']);
 		await testDb.init();
 		service = Container.get(AgentChatAttachmentService);
-		attachmentRepo = Container.get(AgentChatAttachmentRepository);
+		attachmentRepo = Container.get(DataSource).getRepository(AgentChatAttachment);
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		agentRepo = Container.get(AgentRepository);
 	});
@@ -157,6 +158,36 @@ describe('Agent file read grants', () => {
 				childThreadId: tree.child,
 			}),
 		).rejects.toThrow(`File "${file.id}" not found in this conversation`);
+	});
+
+	it('passes a file to a grandchild and returns the child output to the parent', async () => {
+		const tree = await createTree();
+		const input = await storeFile(tree.root);
+		await service.grantToSubAgent([input.id], {
+			projectId,
+			parentThreadId: tree.root,
+			childThreadId: tree.child,
+		});
+		await service.grantToSubAgent([input.id], {
+			projectId,
+			parentThreadId: tree.child,
+			childThreadId: tree.grandchild,
+		});
+		expect(await canRead(input.id, tree.grandchild)).toBe(true);
+
+		const output = await storeFile(tree.grandchild);
+		expect(await canRead(output.id, tree.child)).toBe(false);
+
+		const files = await service.returnToParent({
+			projectId,
+			parentThreadId: tree.child,
+			childThreadId: tree.grandchild,
+		});
+
+		expect(files).toEqual([
+			{ fileId: output.id, fileName: 'file.txt', mimeType: 'text/plain', sizeBytes: 1 },
+		]);
+		expect(await canRead(output.id, tree.child)).toBe(true);
 	});
 
 	it('deletes grants with their file', async () => {

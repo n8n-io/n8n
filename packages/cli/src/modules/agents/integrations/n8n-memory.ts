@@ -615,11 +615,14 @@ export class N8nMemoryImpl
 		const resourceId = episodicWriteScopeId(candidate);
 		await this.resourceRepository.ensureExists(resourceId);
 		const { episodic: _episodic, ...candidateData } = candidate;
-		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate({
-			agentId: this.agentId,
-			...candidateData,
-			resourceId,
-		});
+		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate(
+			{
+				agentId: this.agentId,
+				...candidateData,
+				resourceId,
+			},
+			{},
+		);
 		return this.toEpisodicMemoryCaptureCandidate(entity);
 	}
 
@@ -631,12 +634,13 @@ export class N8nMemoryImpl
 			this.agentId,
 			episodicWriteScopeId(scope),
 			opts?.limit ?? 100,
+			{},
 		);
 		return entities.map((entity) => this.toEpisodicMemoryCaptureCandidate(entity));
 	}
 
 	private async completeEpisodicMemoryCaptureCandidates(ids: string[]): Promise<void> {
-		await this.memoryEntryCandidateRepository.markCandidatesCompleted(this.agentId, ids);
+		await this.memoryEntryCandidateRepository.markCandidatesCompleted(this.agentId, ids, {});
 	}
 
 	private async recordEpisodicMemoryCaptureCandidateFailure(
@@ -647,6 +651,7 @@ export class N8nMemoryImpl
 			this.agentId,
 			ids,
 			maxAttempts,
+			{},
 		);
 	}
 
@@ -844,6 +849,7 @@ export class N8nMemoryImpl
 		const sourceMessages = await this.memoryEntryCandidateRepository.findSourceMessages(
 			this.agentId,
 			sources.flatMap(({ candidateId }) => candidateId ?? []),
+			{},
 		);
 		return sources.map((source) => {
 			const message = source.candidateId ? sourceMessages.get(source.candidateId) : undefined;

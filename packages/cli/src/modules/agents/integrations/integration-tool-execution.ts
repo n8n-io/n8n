@@ -54,6 +54,18 @@ export function isSilentActionOutput(output: unknown): boolean {
 	);
 }
 
+/** File IDs that a respond queued for the final reply, on its own or inside a batch. */
+export function readQueuedFileIds(output: unknown): string[] {
+	if (!isRecord(output) || output.ok !== true) return [];
+	if (Array.isArray(output.queuedFileIds)) {
+		return output.queuedFileIds.filter((fileId): fileId is string => typeof fileId === 'string');
+	}
+	if (!Array.isArray(output.results)) return [];
+	return output.results.flatMap((entry) =>
+		isRecord(entry) ? readQueuedFileIds(entry.result) : [],
+	);
+}
+
 export function integrationActionApprovalKey(connectionId: string, action: string): string {
 	return JSON.stringify(['integration_action', connectionId, action]);
 }
@@ -153,8 +165,9 @@ export async function executeActionToolBatch(params: {
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
+	projectId?: string;
 }): Promise<unknown> {
-	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
+	const { operations, descriptor, messageContextStore, actionExecutor, ctx, projectId } = params;
 	let currentMessageContext = getOptionalCurrentContext({
 		descriptor,
 		persistence: ctx.persistence,
@@ -168,6 +181,7 @@ export async function executeActionToolBatch(params: {
 			messageContextStore,
 			actionExecutor,
 			ctx,
+			projectId,
 			currentMessageContext,
 			allowSuspend: false,
 		});
@@ -188,6 +202,8 @@ export async function executeActionToolOperation(params: {
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
 	interruptCtx?: InterruptibleToolContext;
+	/** Project of the agent. `input.fileIds` resolve in this project only. */
+	projectId?: string;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
 	/** Action the user just approved, so the gate below lets it through once. */
@@ -202,6 +218,7 @@ export async function executeActionToolOperation(params: {
 		interruptCtx,
 		allowSuspend,
 		approvedAction,
+		projectId,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -276,6 +293,9 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		...(projectId && persistence
+			? { fileScope: { projectId, threadId: persistence.threadId } }
+			: {}),
 	});
 
 	if (!result.ok) return result;
@@ -293,7 +313,9 @@ export async function executeActionToolOperation(params: {
 		// that task session. Chat mentions stay on their own thread.
 		// respond/edit/reaction operate on existing threads and do not bind.
 		if (
-			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
 			descriptor.agentId &&
 			messageContext.target.threadId &&
 			isTaskRunMemoryResourceId(persistence.resourceId)
@@ -302,6 +324,27 @@ export async function executeActionToolOperation(params: {
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 			);
+		}
+		// A delivery failure arrives later and names only the message. This lets
+		// it reach the session that sent the message.
+		if (
+			descriptor.integration.type === 'whatsapp' &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
+			descriptor.agentId &&
+			messageContext.messageId &&
+			messageContext.target.threadId
+		) {
+			try {
+				await messageContextStore.recordSentMessage(
+					`${descriptor.agentId}:${messageContext.target.threadId}`,
+					messageContext.messageId,
+					{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				);
+			} catch {
+				// The send worked. Without the record, a failure goes to the bound session.
+			}
 		}
 		actionResult = { ...result, messageContext };
 	}

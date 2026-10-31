@@ -13,7 +13,7 @@ export interface AgentPackageFixture {
 	files: Record<string, unknown>;
 }
 
-/** The skill of one Agent, in the `skills/` directory next to its `agents/` directory. */
+/** A project skill that one Agent uses, in the `skills/` directory next to its `agents/` directory. */
 function agentSkillFile(entry: ManifestEntry): {
 	entry: ManifestEntry;
 	files: Record<string, unknown>;
@@ -23,8 +23,7 @@ function agentSkillFile(entry: ManifestEntry): {
 	const target = entry.target.replace(/agents\/[^/]+$/, `skills/${id}`);
 	const skill: SerializedSkill = {
 		id,
-		scope: 'agent',
-		agentId: entry.id,
+		scope: 'project',
 		skill: {
 			name,
 			description: 'Use the support reference.',

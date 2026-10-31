@@ -3,7 +3,7 @@
  * turn. The window is a window: this is how the agent looks further back, filters to one kind of
  * entry, or opens a single one.
  *
- * It never fetches the live resource. `get_workflow`, `workflow_builder_executions` and `list_credentials` already do that,
+ * It never fetches the live resource. `get_workflow`, `get_execution` and `list_credentials` already do that,
  * and every entry carries the id to call them with.
  */
 import { Tool } from '@n8n/agents';
@@ -90,7 +90,7 @@ export function createActivityTool(context: InstanceAiContext) {
 				'open a single entry with `expand`. Expanding an entry also returns everything else the ' +
 				"log knows about the same resource, which is how you see a workflow's recent history at " +
 				'a glance. Read-only, and it returns log entries rather than live records — use ' +
-				'`get_workflow`, `workflow_builder_executions` or `list_credentials` with the ids it gives you for those. An ' +
+				'`get_workflow`, `get_execution` or `list_credentials` with the ids it gives you for those. An ' +
 				'entry may name a resource that has since been deleted.',
 		)
 		.input(activityInputSchema)

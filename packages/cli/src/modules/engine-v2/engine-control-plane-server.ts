@@ -10,19 +10,22 @@ import { send } from '@/response-helper';
 
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
 import { EngineCredentialsController } from './engine-credentials.controller';
+import { EngineDataTablesController } from './engine-data-tables.controller';
 import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
 import { EngineSubWorkflowController } from './engine-sub-workflow.controller';
 import {
 	CREDENTIALS_RESOLVE_PATH,
+	DATA_TABLES_CALL_PATH,
 	STATUS_CALLBACK_PATH,
 	SUB_WORKFLOWS_RESOLVE_PATH,
 } from './engine-v2.constants';
 
 /**
  * Receives lifecycle events from the data plane, and resolves credentials and
- * sub-workflows for it. It listens on its own host and port, separate from the REST API server,
- * so an operator can restrict these internal routes to the network that the
- * data plane uses without touching the editor's routes.
+ * sub-workflows for it, and runs data table operations for it. It listens on
+ * its own host and port, separate from the REST API server, so an operator can
+ * restrict these internal routes to the network that the data plane uses
+ * without touching the editor's routes.
  */
 @Service()
 export class EngineControlPlaneServer {
@@ -37,6 +40,7 @@ export class EngineControlPlaneServer {
 		private readonly engineConfig: EngineConfig,
 		private readonly lifecycleEventController: EngineLifecycleEventController,
 		private readonly credentialsController: EngineCredentialsController,
+		private readonly dataTablesController: EngineDataTablesController,
 		private readonly subWorkflowController: EngineSubWorkflowController,
 		private readonly logger: Logger,
 	) {
@@ -119,6 +123,14 @@ export class EngineControlPlaneServer {
 			rawBodyReader,
 			bodyParser,
 			send(async (req, res) => await this.credentialsController.resolveCredential(req, res)),
+		);
+
+		app.post(
+			DATA_TABLES_CALL_PATH,
+			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger, 'data-tables:use'),
+			rawBodyReader,
+			bodyParser,
+			send(async (req, res) => await this.dataTablesController.call(req, res)),
 		);
 
 		app.post(

@@ -134,6 +134,10 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 				'delegate_subagent',
 			]),
 		});
+		// Sub-agents get no background job tools, so their names are not eager.
+		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining(['background_jobs']),
+		});
 	});
 
 	it('attaches no workspace for sub-agent runs without a parent handle', async () => {

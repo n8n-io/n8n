@@ -113,7 +113,7 @@ describe('ExecutionListV2Service', () => {
 			const filtered = query({ user: owner, projectId: 'shared-project', isArchived: false });
 
 			expect(await service.resolveV2Scope(filtered)).toEqual(['wf-a']);
-			expect(workflows.findWorkflowIdsForExecutionList).toHaveBeenCalledWith(filtered);
+			expect(workflows.findWorkflowIdsForExecutionList).toHaveBeenCalledWith(filtered, {});
 		});
 
 		it('skips the DP for an inaccessible workflow', async () => {
@@ -291,6 +291,7 @@ describe('ExecutionListV2Service', () => {
 
 			const result = await service.findPageWithCount(query());
 
+			expect(workflows.findNamesForExecutionList).toHaveBeenCalledWith(['wf-a'], {});
 			expect(result.results).toEqual([expect.objectContaining({ workflowName: 'Workflow A' })]);
 		});
 	});

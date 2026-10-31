@@ -915,12 +915,11 @@ export class CredentialsService {
 				updateData.data as unknown as ICredentialDataDecryptedObject,
 				decryptedData,
 			);
+			const dataToSave = updateData.data as unknown as ICredentialDataDecryptedObject;
 			if (
 				decryptedData.oauthTokenData &&
-				!this.reissuesClientCredentialsToken(
-					updateData.data as unknown as ICredentialDataDecryptedObject,
-					decryptedData,
-				)
+				!this.reissuesClientCredentialsToken(dataToSave, decryptedData) &&
+				!this.changesOAuthApp(dataToSave, decryptedData)
 			) {
 				// @ts-expect-error data is typed as encrypted string
 				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
@@ -961,6 +960,21 @@ export class CredentialsService {
 			(field) =>
 				comparableCredentialField(dataToSave[field]) !==
 				comparableCredentialField(storedData[field]),
+		);
+	}
+
+	/**
+	 * Whether the update points the credential at another OAuth app, for example
+	 * from a custom app to the managed one. The stored token does not refresh with
+	 * another app, so the user must connect again. A new secret alone keeps the app.
+	 */
+	private changesOAuthApp(
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): boolean {
+		return (
+			comparableCredentialField(dataToSave.clientId) !==
+			comparableCredentialField(storedData.clientId)
 		);
 	}
 
@@ -1618,13 +1632,15 @@ export class CredentialsService {
 	 * Tests a stored credential by id. Takes the user rather than a user id: testing
 	 * makes a live call with the secret, so it has to go through the finder, which
 	 * requires `credential:use` for a caller who is not a member of the credential's
-	 * project. The route's `credential:read` scope decorator cannot express that.
+	 * project and drops project or sharing roles that only hold see-rights. The
+	 * route's `credential:read` scope decorator cannot express either.
 	 */
 	async testById(user: User, credentialId: string) {
 		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 
 		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
@@ -1641,7 +1657,7 @@ export class CredentialsService {
 			credentials.id,
 			user,
 			['credential:read'],
-			{ includeInstanceCredentials: true },
+			{ includeInstanceCredentials: true, excludeSeeOnlyRoles: true },
 		);
 
 		if (!storedCredential) {
@@ -1674,6 +1690,7 @@ export class CredentialsService {
 			credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 
 		if (!storedCredential) {
