@@ -1,11 +1,18 @@
-import { isAttachmentMediaTypeSupported, type AgentToolOutputFile } from '@n8n/api-types';
+import {
+	isAttachmentMediaTypeSupported,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	type AgentSessionFile,
+	type AgentToolOutputFile,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
 import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
 import { OperationalError, UserError, type IBinaryData } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
@@ -25,6 +32,14 @@ const ATTACHMENT_SOURCE_TYPE: SourceType = 'agent_chat_attachment';
 
 const RETENTION_BATCH_SIZE = 500;
 
+/** Sources of files that agents make, as opposed to files that users upload. */
+const GENERATED_SOURCES = ['tool', 'sandbox'];
+
+const BYTES_PER_MB = 1024 * 1024;
+
+/** A file would go over a storage cap of its conversation. The message is for the model or the user. */
+export class AgentFileLimitError extends UserError {}
+
 export interface StoreInboundAttachmentParams {
 	/** Row ID for the file. A new ID is made when it is not set. */
 	id?: string;
@@ -39,6 +54,12 @@ export interface StoreInboundAttachmentParams {
 	fileName: string;
 	mimeType: string;
 	data: Buffer;
+	/** SHA-256 of `data`, hex, when the caller has it already. */
+	contentHash?: string;
+}
+
+export function hashFileContent(data: Buffer): string {
+	return createHash('sha256').update(data).digest('hex');
 }
 
 /**
@@ -73,11 +94,25 @@ export class AgentChatAttachmentService {
 		private readonly repository: AgentChatAttachmentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly grantRepository: AgentFileGrantRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
+	/** Largest file that a tool or the sandbox can store. */
+	get maxGeneratedFileBytes(): number {
+		return this.agentsConfig.maxGeneratedFileSizeMb * BYTES_PER_MB;
+	}
+
+	/** Largest file of any source, an upload or a generated file. */
+	get maxStoredFileBytes(): number {
+		return Math.max(MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES, this.maxGeneratedFileBytes);
+	}
+
+	/** @throws {AgentFileLimitError} when the file would go over a cap. */
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
 		const attachmentId = params.id ?? generateNanoId();
 		const root = await this.findRootThread(params.threadId);
+		// ponytail: the check reads usage before the insert, so parallel stores can each pass and go over a cap by their sizes. The caps are soft. Lock the root thread if they must be exact.
+		await this.checkLimits(params, root.id);
 		// The download route authorizes by the owning agent, so a file that a
 		// sub-agent makes takes the agent of the root thread.
 		const agentId = root.id === params.threadId ? params.agentId : (root.agentId ?? params.agentId);
@@ -112,6 +147,7 @@ export class AgentChatAttachmentService {
 					mimeType: params.mimeType,
 					fileSizeBytes: params.data.byteLength,
 					source: params.source,
+					contentHash: params.contentHash ?? hashFileContent(params.data),
 				},
 				{},
 			);
@@ -139,6 +175,69 @@ export class AgentChatAttachmentService {
 	): Promise<AgentChatAttachment | null> {
 		const root = await this.findRootThread(scope.threadId);
 		return await this.findReadable(attachmentId, scope, root.id);
+	}
+
+	/**
+	 * The files of a session for the session files list, newest first. A
+	 * sandbox file can have many versions with the same bytes, so the list
+	 * keeps the newest file for each hash. Older files have no hash and all
+	 * stay. The caller checks access to the session.
+	 */
+	async listForSession(
+		scope: { projectId: string; threadId: string },
+		excludeSource?: string,
+	): Promise<AgentSessionFile[]> {
+		const files = await this.repository.findInThreadNewestFirst(scope, excludeSource, {});
+		const seen = new Set<string>();
+		return files
+			.filter((file) => {
+				if (!file.contentHash) return true;
+				if (seen.has(file.contentHash)) return false;
+				seen.add(file.contentHash);
+				return true;
+			})
+			.map((file) => ({
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				sizeBytes: file.fileSizeBytes,
+				source: file.source,
+				createdAt: file.createdAt.toISOString(),
+			}));
+	}
+
+	/**
+	 * Files with the given content hashes that the thread can read, keyed by
+	 * hash. Each hash maps to its newest readable file.
+	 */
+	async findReadableByHashes(
+		hashes: string[],
+		scope: { projectId: string; threadId: string },
+	): Promise<Map<string, AgentChatAttachment>> {
+		const result = new Map<string, AgentChatAttachment>();
+		if (hashes.length === 0) return result;
+		const root = await this.findRootThread(scope.threadId);
+		const files = await this.repository.findByHashesInThread(
+			hashes,
+			{ projectId: scope.projectId, threadId: root.id },
+			{},
+		);
+		const granted =
+			scope.threadId === root.id
+				? new Set<string>()
+				: await this.grantRepository.findGrantedIds(
+						files.map((file) => file.id),
+						scope.threadId,
+					);
+		for (const file of files) {
+			if (!file.contentHash || result.has(file.contentHash)) continue;
+			const readable =
+				scope.threadId === root.id ||
+				file.createdByThreadId === scope.threadId ||
+				granted.has(file.id);
+			if (readable) result.set(file.contentHash, file);
+		}
+		return result;
 	}
 
 	/**
@@ -208,6 +307,43 @@ export class AgentChatAttachmentService {
 			mimeType: file.mimeType,
 			sizeBytes: file.fileSizeBytes,
 		}));
+	}
+
+	/**
+	 * The caps count for the whole delegation tree.
+	 * ponytail: the sum and the insert are not atomic, so parallel stores can
+	 * go a little over a cap. Lock the tree if that matters.
+	 */
+	private async checkLimits(params: StoreInboundAttachmentParams, rootThreadId: string) {
+		const size = params.data.byteLength;
+		const generated = GENERATED_SOURCES.includes(params.source);
+		const config = this.agentsConfig;
+		if (generated && size > this.maxGeneratedFileBytes) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" is larger than ${config.maxGeneratedFileSizeMb} MB`,
+			);
+		}
+		const usage = await this.repository.sumUsageInThread(
+			{ projectId: params.projectId, threadId: rootThreadId },
+			GENERATED_SOURCES,
+			{},
+		);
+		if (usage.totalBytes + size > config.maxTotalMb * BYTES_PER_MB) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: a conversation can store up to ${config.maxTotalMb} MB of files`,
+			);
+		}
+		if (!generated) return;
+		if (usage.sourceCount + 1 > config.maxGeneratedFileCount) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: tools and the sandbox can store up to ${config.maxGeneratedFileCount} files in a conversation`,
+			);
+		}
+		if (usage.sourceBytes + size > config.maxGeneratedTotalMb * BYTES_PER_MB) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: tools and the sandbox can store up to ${config.maxGeneratedTotalMb} MB of files in a conversation`,
+			);
+		}
 	}
 
 	private async findRootThread(threadId: string) {

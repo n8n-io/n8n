@@ -67,7 +67,7 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 
 ### `read_binary_data`
 
-- Purpose: Reads a file by its fileId. The tool checks that the thread can read the file and that its bytes are still in storage. Other types than images, PDFs and text return an error.
+- Purpose: Reads a file by its fileId, or by `sandbox:<path>` for a file of `outputs/`. The tool checks that the thread can read the file and that its bytes are still in storage. Other types than images, PDFs and text return an error.
   - Images and PDFs go to the model as file parts. The model must support the type: PNG, JPEG, GIF and WebP for images. The limit is the chat attachment size (10 MB). The file stays attached in later model calls, under the same budget as user files. A file outside the budget shows the text `[File "<name>" (fileId: <id>) is not attached now.]`.
   - The tool description tells the model to read a file that is not attached now again, and not to read a file that is already attached.
   - Text files (up to 200 KB) go into the tool result as text, one time. The tool result size guard applies to them, and later model calls do not load them again.
@@ -99,6 +99,16 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 | `workspace_execute_command` | Runs a shell command in the sandbox. |
 | `workspace_list_processes` | Lists the processes that run in the sandbox. |
 | `workspace_kill_process` | Stops a process in the sandbox. |
+
+### `import_files`
+
+- Purpose: Copies conversation files by fileId into `inputs/` of the workspace. The tool checks that the thread can read each file. Paths must stay in `inputs/`. One call copies up to `N8N_AGENTS_FILES_MAX_IMPORT_MB`.
+- Attach condition: The same as the workspace tools, and the instance flag `137_agent_sandbox_files` is on. The runtime attaches it next to them, and adds the instructions about `outputs/`, `sandbox:<path>` references and `import_files` to the workspace instructions.
+- Source: [`tools/import-files.tool.ts`](./tools/import-files.tool.ts).
+
+### Sandbox output files
+
+Files in `outputs/` become conversation files with source `sandbox`. A turn that used a workspace tool stores the new files when it ends, and a sub-agent stores them before it returns its files. Where a tool takes a fileId, the model can also give `sandbox:<path>` to store one file of `outputs/` at once. When the instance flag `137_agent_sandbox_files` is off, n8n stores no sandbox files and rejects `sandbox:<path>`. Source: [`agent-sandbox-files.service.ts`](./agent-sandbox-files.service.ts).
 
 ### Knowledge retrieval tools
 

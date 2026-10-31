@@ -103,6 +103,7 @@ import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
+import type { AgentSandboxFilesService } from '@/modules/agents/agent-sandbox-files.service';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -283,6 +284,7 @@ describe('AgentExecutionRepository', () => {
 				steering,
 				mock<AgentToolApprovalService>(),
 				mock<AgentKnowledgeUsageTracker>(),
+				mock<AgentSandboxFilesService>(),
 			),
 		};
 	}
@@ -521,6 +523,7 @@ describe('AgentExecutionRepository', () => {
 						repository,
 						mock<SystemAgentUsageRelay>(),
 						mock<AgentChatAttachmentService>({ returnToParent: async () => [] }),
+						mock<AgentSandboxFilesService>(),
 					),
 					service,
 					mockLogger(),
