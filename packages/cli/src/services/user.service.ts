@@ -6,15 +6,14 @@ import type { Person, PublicUser } from '@n8n/db';
 import {
 	AuthIdentity,
 	Project,
-	ProjectRelation,
+	ProjectRelationRepository,
 	User,
 	UserRepository,
 	PersonRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	Not,
-	In,
+	TransactionRunner,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -81,6 +80,8 @@ export class UserService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly txRunner: TransactionRunner,
 		private readonly personRepository: PersonRepository,
 		private readonly scimSwitchReader: ScimSwitchReader,
 	) {}
@@ -369,8 +370,8 @@ export class UserService {
 			);
 		}
 
-		await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
+		await this.txRunner.run({}, async (ctx) => {
+			await this.userRepository.changeGlobalRole(user.id, newRole.newRoleName, ctx);
 
 			const isAdminRole = (roleName: string) => {
 				return roleName === 'global:admin' || roleName === 'global:owner';
@@ -384,20 +385,16 @@ export class UserService {
 
 			if (isDowngradedToChatUser) {
 				// Revoke user's project roles in any shared projects they have access to.
-				const projectRelations = await trx.find(ProjectRelation, {
-					where: { userId: user.id, role: { slug: Not(PROJECT_OWNER_ROLE_SLUG) } },
-					relations: ['role'],
-				});
+				const projectRelations =
+					await this.projectRelationRepository.findSharedProjectRelationsForUser(user.id, ctx);
 				for (const relation of projectRelations) {
 					if (relation.role.slug === PROJECT_ADMIN_ROLE_SLUG) {
 						// Ensure there is at least one other admin in the project
-						const adminCount = await trx.count(ProjectRelation, {
-							where: {
-								projectId: relation.projectId,
-								role: { slug: In([PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG]) },
-								userId: Not(user.id),
-							},
-						});
+						const adminCount = await this.projectRelationRepository.countOtherAdminsInProject(
+							relation.projectId,
+							user.id,
+							ctx,
+						);
 						if (adminCount === 0) {
 							throw new UserError(
 								`Cannot downgrade user as they are the only project admin in project "${relation.projectId}".`,
@@ -405,49 +402,46 @@ export class UserService {
 						}
 					}
 
-					await trx.delete(ProjectRelation, {
-						userId: user.id,
-						projectId: relation.projectId,
-					});
+					await this.projectRelationRepository.deleteUserFromProject(
+						relation.projectId,
+						user.id,
+						ctx,
+					);
 				}
 
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
-					trx,
+					ctx,
 				);
 
 				// Revoke 'project:personalOwner' role on their personal project
 				// and grant 'project:viewer' role instead.
-				await trx.update(
-					ProjectRelation,
-					{
-						userId: user.id,
-						role: { slug: PROJECT_OWNER_ROLE_SLUG },
-						projectId: personalProject.id,
-					},
-					{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+				await this.projectRelationRepository.changeRoleForUserInProject(
+					personalProject.id,
+					user.id,
+					PROJECT_OWNER_ROLE_SLUG,
+					PROJECT_VIEWER_ROLE_SLUG,
+					ctx,
 				);
 
 				// Revoke all API keys from chat users
-				await this.publicApiKeyService.deleteAllApiKeysForUser(user, trx);
+				await this.publicApiKeyService.deleteAllApiKeysForUser(user, ctx);
 			} else if (isDowngradedAdmin) {
-				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, ctx);
 			} else if (isUpgradedChatUser) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
-					trx,
+					ctx,
 				);
 
 				// Revoke previous 'project:viewer' role on their personal project
 				// and grant 'project:personalOwner' role instead.
-				await trx.update(
-					ProjectRelation,
-					{
-						userId: user.id,
-						role: { slug: PROJECT_VIEWER_ROLE_SLUG },
-						projectId: personalProject.id,
-					},
-					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+				await this.projectRelationRepository.changeRoleForUserInProject(
+					personalProject.id,
+					user.id,
+					PROJECT_VIEWER_ROLE_SLUG,
+					PROJECT_OWNER_ROLE_SLUG,
+					ctx,
 				);
 			}
 		});

@@ -11,6 +11,7 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import { randomString } from 'n8n-workflow';
@@ -45,14 +46,13 @@ async function signAndStoreMcpApiKey(owner: User): Promise<string> {
 		jti: randomUUID(),
 	});
 
-	const entity = Container.get(ApiKeyRepository).create({
+	await Container.get(ApiKeyRepository).createKey({
 		userId: owner.id,
 		apiKey,
 		audience: 'mcp-server-api',
 		scopes: [],
 		label: `Test MCP Key ${randomString(6)}`,
 	});
-	await Container.get(ApiKeyRepository).manager.insert(ApiKey, entity);
 
 	return apiKey;
 }
@@ -113,7 +113,7 @@ describe('ApiKeyAuthStrategy', () => {
 			const legacyApiKey = `n8n_api_${randomString(10)}`;
 			const owner = await createOwnerWithApiKey();
 			const [{ apiKey }] = owner.apiKeys;
-			await Container.get(ApiKeyRepository).update({ apiKey }, { apiKey: legacyApiKey });
+			await Container.get(DataSource).manager.update(ApiKey, { apiKey }, { apiKey: legacyApiKey });
 
 			const grant = await strategy.buildTokenGrant(legacyApiKey);
 
@@ -158,13 +158,13 @@ describe('ApiKeyAuthStrategy', () => {
 				const [{ apiKey, id: apiKeyId }] = owner.apiKeys;
 				const repo = Container.get(ApiKeyRepository);
 
-				expect((await repo.findOneByOrFail({ id: apiKeyId })).lastUsedAt).toBeNull();
+				expect((await repo.findByIdOrFail(apiKeyId)).lastUsedAt).toBeNull();
 
 				const grant = await strategy.buildTokenGrant(apiKey);
 				expect(grant).toBeTruthy();
 
 				const updated = await retryUntil(async () => {
-					const record = await repo.findOneByOrFail({ id: apiKeyId });
+					const record = await repo.findByIdOrFail(apiKeyId);
 					expect(record.lastUsedAt).toBeInstanceOf(Date);
 					return record;
 				});
@@ -177,9 +177,9 @@ describe('ApiKeyAuthStrategy', () => {
 				const repo = Container.get(ApiKeyRepository);
 
 				const recent = new Date();
-				await repo.update({ id: apiKeyId }, { lastUsedAt: recent });
+				await repo.updateLastUsedAt(apiKeyId, recent);
 
-				const updateSpy = vi.spyOn(repo, 'update');
+				const updateSpy = vi.spyOn(repo, 'updateLastUsedAt');
 
 				const grant = await strategy.buildTokenGrant(apiKey);
 				expect(grant).toBeTruthy();

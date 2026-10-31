@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import type { ApiKeyRepository, User, TokenGrant } from '@n8n/db';
+import type { ApiKeyRepository, TransactionRunner, User, TokenGrant } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@n8n/backend-services/auth';
@@ -22,7 +22,12 @@ describe('McpServerApiKeyService', () => {
 		apiKeys = mock<ApiKeyRepository>();
 		// EOF Experiment cleanup
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users): replace apiKeys with mock<ApiKeyRepository>(); keep the service.
-		service = new McpServerApiKeyService(apiKeys, mock<JwtService>(), authStrategyRegistry);
+		service = new McpServerApiKeyService(
+			apiKeys,
+			mock<JwtService>(),
+			authStrategyRegistry,
+			mock<TransactionRunner>(),
+		);
 	});
 
 	describe('verifyApiKey', () => {
@@ -84,7 +89,7 @@ describe('McpServerApiKeyService', () => {
 			});
 			const result = await service.verifyApiKey('secret-key');
 			expect(result?.caller).toEqual({ authType: 'api_key', apiKeyId: 'key-1' });
-			expect(apiKeys.findOne).not.toHaveBeenCalled();
+			expect(apiKeys.findByUserAndAudience).not.toHaveBeenCalled();
 		});
 
 		it('does not look up a key for a scoped JWT grant', async () => {
@@ -94,7 +99,7 @@ describe('McpServerApiKeyService', () => {
 			const result = await service.verifyApiKey('scoped-jwt');
 			expect(result?.user).toBe(actor);
 			expect(result?.caller).toEqual({ authType: 'api_key' });
-			expect(apiKeys.findOne).not.toHaveBeenCalled();
+			expect(apiKeys.findByUserAndAudience).not.toHaveBeenCalled();
 		});
 		// EOF Experiment cleanup
 

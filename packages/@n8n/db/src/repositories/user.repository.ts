@@ -123,6 +123,10 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
+	async changeGlobalRole(userId: string, roleSlug: string, ctx: OperationContext) {
+		await this.managerFor(ctx).update(User, { id: userId }, { role: { slug: roleSlug } });
+	}
+
 	async findByEmailWithRole(email: string): Promise<User | null> {
 		return await this.findOne({
 			where: { email },
