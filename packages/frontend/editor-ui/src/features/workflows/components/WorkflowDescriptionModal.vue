@@ -135,7 +135,7 @@ async function saveWorkflowDescription(id: string, description: string | null) {
 	}
 }
 
-const saveDescription = async () => {
+const saveDescription = async (): Promise<boolean> => {
 	isSaving.value = true;
 
 	try {
@@ -159,8 +159,11 @@ const saveDescription = async () => {
 				new_tag_count: tagIds.value.length,
 			});
 		}
+
+		return true;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflow.description.error.title'));
+		return false;
 	} finally {
 		isSaving.value = false;
 	}
@@ -171,8 +174,9 @@ const cancel = () => {
 };
 
 const save = async () => {
-	await saveDescription();
-	modalBus.emit('close');
+	if (await saveDescription()) {
+		modalBus.emit('close');
+	}
 };
 
 const handleKeyDown = async (event: KeyboardEvent) => {
