@@ -219,17 +219,23 @@ Walks the pnpm workspace dependency graph: directly-affected packages plus
 everything transitively downstream. Outputs one package name per line.
 
 Usage:
-  janitor affected-packages [--changed-files=<list>]
+  janitor affected-packages [--changed-files=<list>] [--base=<ref>]
+  janitor lockfile-impact --base=<ref> [--changed-files=<list>]
 
   --changed-files: newline- OR comma-separated repo-root-relative paths.
                    Defaults to $CHANGED_FILES env var.
+  --base:          ref to compare pnpm-lock.yaml with. A lockfile change then
+                   affects only the packages whose resolved dependencies changed.
 
 When neither --changed-files nor $CHANGED_FILES is set, returns ALL packages
 (safe default for local dev).
 
-Bailout triggers (return ALL packages): pnpm-lock.yaml, root package.json,
-anything under packages/@n8n/db/ (entities and migrations resolved at
-runtime via the DI container by every consuming package's integration tests).
+Bailout triggers (return ALL packages): root package.json, and pnpm-lock.yaml
+when the lockfile impact is unknown. A sink package change (@n8n/db, workflow,
+core, vitest-config) affects that package and its dependents.
+
+lockfile-impact prints the value for $LOCKFILE_IMPACTED_PACKAGES, which
+test-scoped reads when it has no --base: package names, NONE, or ALL.
 `);
 }
 
