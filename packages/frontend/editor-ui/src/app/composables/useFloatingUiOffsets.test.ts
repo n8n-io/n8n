@@ -77,7 +77,7 @@ describe(useFloatingUiOffsets, () => {
 				currentRouteName = view;
 				useSettingsStore().setSettings({
 					...defaultSettings,
-					aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
+					aiAssistant: { enabled: true, setup: true },
 				});
 
 				const { toastBottomOffset } = useFloatingUiOffsets(workflowDocumentIdRef);

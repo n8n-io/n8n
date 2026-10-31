@@ -24,19 +24,9 @@ vi.mock('@n8n/stores/cloudPlan.store', () => ({
 	})),
 }));
 
-let mockIsCloudUbbActive = false;
-vi.mock('@n8n/stores/composables/useCloudUbbActive', () => ({
-	useCloudUbbActive: vi.fn(() => ({
-		get isActive() {
-			return { value: mockIsCloudUbbActive };
-		},
-	})),
-}));
-
 describe('CreditWarningBanner', () => {
 	beforeEach(() => {
 		mockUserIsTrialing = false;
-		mockIsCloudUbbActive = false;
 	});
 
 	// Most call sites sit above a detached, fully rounded chat input, so the
@@ -64,6 +54,7 @@ describe('CreditWarningBanner', () => {
 	});
 
 	it('rounds remaining and total credits to two decimal places', () => {
+		mockUserIsTrialing = true;
 		const wrapper = mount(CreditWarningBanner, {
 			props: { creditsRemaining: 2.468, creditsQuota: 100.04 },
 		});
@@ -73,29 +64,9 @@ describe('CreditWarningBanner', () => {
 		expect(text).toContain('"total":"100.04"');
 	});
 
-	it('shows the monthly credits text when the user is not trialing', () => {
-		const wrapper = mount(CreditWarningBanner, {
-			props: { creditsRemaining: 0, creditsQuota: 800 },
-		});
-
-		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
-		expect(text).toContain('aiAssistant.builder.creditBanner.text');
-	});
-
-	it('shows the free trial credits text when the user is trialing', () => {
-		mockUserIsTrialing = true;
-		const wrapper = mount(CreditWarningBanner, {
-			props: { creditsRemaining: 0, creditsQuota: 800 },
-		});
-
-		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
-		expect(text).toContain('aiAssistant.builder.creditBanner.trialText');
-	});
-
-	// Under Cloud UBB the wallet's `creditsQuota` shrinks as top-ups deplete, so the
-	// legacy fraction would show a moving denominator and mislabel top-ups as monthly.
-	it('shows the UBB text (no fraction) for non-trialing users when Cloud UBB is active', () => {
-		mockIsCloudUbbActive = true;
+	// The wallet's `creditsQuota` shrinks as top-ups deplete, so a fraction would
+	// show a moving denominator.
+	it('shows the remaining count without a fraction for non-trialing users', () => {
 		const wrapper = mount(CreditWarningBanner, {
 			props: { creditsRemaining: 169, creditsQuota: 1769 },
 		});
@@ -106,9 +77,8 @@ describe('CreditWarningBanner', () => {
 		expect(text).not.toContain('"total"');
 	});
 
-	it('keeps the trial fraction even when Cloud UBB is active (trials hold no top-ups)', () => {
+	it('shows the trial fraction for trialing users (trials hold no top-ups)', () => {
 		mockUserIsTrialing = true;
-		mockIsCloudUbbActive = true;
 		const wrapper = mount(CreditWarningBanner, {
 			props: { creditsRemaining: 100, creditsQuota: 500 },
 		});
