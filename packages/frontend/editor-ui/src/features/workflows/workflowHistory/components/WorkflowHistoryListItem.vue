@@ -22,6 +22,7 @@ import type {
 } from '@/features/workflows/workflowHistory/types';
 import WorkflowVersionStatusIndicator from './WorkflowVersionStatusIndicator.vue';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
+import WorkflowVersionEngineBadge from './WorkflowVersionEngineBadge.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -190,10 +191,7 @@ onMounted(() => {
 		>
 			<!-- Timeline column -->
 			<span :class="$style.timelineColumn">
-				<template v-if="!props.isGrouped">
-					<WorkflowVersionStatusIndicator :status="versionStatus" />
-				</template>
-				<span v-else :class="$style.timelineLine" />
+				<WorkflowVersionStatusIndicator v-if="!props.isGrouped" :status="versionStatus" />
 			</span>
 
 			<div :class="$style.wrapper">
@@ -205,6 +203,7 @@ onMounted(() => {
 								({{ i18n.baseText('workflowHistory.item.active') }})
 							</template>
 						</N8nText>
+						<WorkflowVersionEngineBadge :settings="props.item.settings" />
 					</div>
 					<div :class="$style.metaRow">
 						<N8nText size="small" color="text-base" :class="$style.metaAuthor">
@@ -270,20 +269,17 @@ $hoverBackground: var(--color--background--light-1);
 		}
 	}
 
-	margin-top: var(--spacing--lg);
+	// The gap above the item. The timeline line spans it.
+	--timeline-gap: var(--spacing--lg);
+	margin-top: var(--timeline-gap);
 
 	&.firstItem {
-		margin-top: 0;
+		--timeline-gap: 0;
 	}
 
-	// Line segment in the gap above this item (not for first item)
-	&:not(.firstItem):not(.grouped)::before {
-		@include timeline-gap-line;
-	}
-
-	// Grouped items have smaller gap with line going through
+	// Grouped items have a smaller gap
 	&.grouped {
-		margin-top: var(--spacing--xs);
+		--timeline-gap: var(--spacing--xs);
 
 		.wrapper {
 			border-radius: var(--radius);
@@ -312,13 +308,8 @@ $hoverBackground: var(--color--background--light-1);
 	min-width: var(--spacing--lg);
 	position: relative;
 	align-self: stretch;
-}
 
-.timelineLine {
-	@include timeline-line-style;
-	position: absolute;
-	top: calc(-1 * var(--spacing--xs));
-	bottom: 0;
+	@include timeline-line;
 }
 
 .content {
