@@ -153,6 +153,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -546,6 +547,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 
 			vi.clearAllMocks();
@@ -1725,6 +1727,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 
 			// Bypass validation internals
@@ -2493,6 +2496,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				workflowIndexServiceMock,
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -2656,6 +2660,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -2972,6 +2977,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3152,6 +3158,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3345,6 +3352,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3454,6 +3462,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3566,6 +3575,7 @@ describe('WorkflowService', () => {
 				mock(), // projectScopeService
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
