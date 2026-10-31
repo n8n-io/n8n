@@ -6,6 +6,7 @@ import type {
 	WorkflowPublishGuardProxy,
 	RestrictedNodeTypesProviderProxy,
 } from '@n8n/backend-services';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Transaction,
@@ -66,6 +67,7 @@ import type { WorkflowValidationService } from '@/workflows/workflow-validation.
 import type { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
 vi.mock('@/permissions.ee/check-access');
@@ -3011,6 +3013,56 @@ describe('WorkflowService', () => {
 				expect.not.objectContaining({ isArchived: expect.anything() }),
 				expect.anything(),
 			);
+		});
+
+		describe('with sharing licensed', () => {
+			const user = mock<User>({ id: 'user-1', role: mock<Role>({ slug: 'global:admin' }) });
+			const updateData = { nodes: [], connections: {} } as unknown as WorkflowEntity;
+			let enterpriseWorkflowService: MockProxy<EnterpriseWorkflowService>;
+
+			beforeEach(() => {
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				enterpriseWorkflowService = mockInstance(EnterpriseWorkflowService);
+
+				const workflow = mock<WorkflowEntity>({
+					id: WORKFLOW_ID,
+					isArchived: false,
+					versionId: 'v1',
+					nodes: [],
+					connections: {},
+					settings: {},
+					activeVersionId: undefined as unknown as string,
+					tags: [],
+				});
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+				workflowRepositoryMock.get.mockResolvedValue(workflow);
+			});
+
+			test('asks the credential guard to reject read-only node edits when the caller sets the option', async () => {
+				await workflowService.update(user, updateData, WORKFLOW_ID, {
+					rejectReadOnlyNodeEdits: true,
+				});
+
+				expect(enterpriseWorkflowService.preventTampering).toHaveBeenCalledWith(
+					expect.anything(),
+					WORKFLOW_ID,
+					user,
+					undefined,
+					{ rejectReadOnlyNodeEdits: true },
+				);
+			});
+
+			test('leaves read-only node edits to the restore for a Public API caller that does not set the option', async () => {
+				await workflowService.update(user, updateData, WORKFLOW_ID, { publicApi: true });
+
+				expect(enterpriseWorkflowService.preventTampering).toHaveBeenCalledWith(
+					expect.anything(),
+					WORKFLOW_ID,
+					user,
+					undefined,
+					{ rejectReadOnlyNodeEdits: false },
+				);
+			});
 		});
 	});
 
