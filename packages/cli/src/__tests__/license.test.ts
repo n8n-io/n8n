@@ -266,6 +266,21 @@ describe('License', () => {
 		expect(mainPlan).toBeUndefined();
 	});
 
+	describe('isEnterprisePlan', () => {
+		it.each([
+			{ planName: 'Enterprise', expected: true },
+			{ planName: 'Business', expected: false },
+		])('returns $expected when the plan is $planName', ({ planName, expected }) => {
+			vi.spyOn(license, 'getPlanName').mockReturnValue(planName);
+
+			expect(license.isEnterprisePlan()).toBe(expected);
+		});
+
+		it('returns false when the license has no plan', () => {
+			expect(license.isEnterprisePlan()).toBe(false);
+		});
+	});
+
 	describe('onExpirySoon', () => {
 		it.each([
 			{

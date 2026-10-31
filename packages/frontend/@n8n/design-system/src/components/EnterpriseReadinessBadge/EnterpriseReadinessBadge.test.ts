@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event';
 import EnterpriseReadinessBadge from './EnterpriseReadinessBadge.vue';
 
 describe('EnterpriseReadinessBadge', () => {
-	it('renders the limited enterprise support label', () => {
+	it('renders the limited enterprise readiness label', () => {
 		const { getByText } = render(EnterpriseReadinessBadge);
-		expect(getByText('Limited enterprise support')).toBeInTheDocument();
+		expect(getByText('Limited enterprise readiness')).toBeInTheDocument();
 	});
 
 	it('renders xxsmall badge correctly', () => {
@@ -23,7 +23,7 @@ describe('EnterpriseReadinessBadge', () => {
 		const { getByText, findAllByText } = render(EnterpriseReadinessBadge);
 
 		await userEvent.tab();
-		expect(getByText('Limited enterprise support').closest('.n8n-badge')).toHaveFocus();
+		expect(getByText('Limited enterprise readiness').closest('.n8n-badge')).toHaveFocus();
 
 		expect(
 			await findAllByText(
