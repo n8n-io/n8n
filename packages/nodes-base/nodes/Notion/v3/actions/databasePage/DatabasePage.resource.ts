@@ -7,6 +7,11 @@ import type {
 import { toPathSegment, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { dataSourceSearchFilterDescriptions, mapDataSourceFilters } from './DataSourceFilters';
+import {
+	isFormulaFilter,
+	isFormulaOfUnknownTypeError,
+	matchesFormulaFilter,
+} from './FormulaFilterFallback';
 import { downloadFiles, type FileRecord } from '../../../shared/GenericFunctions';
 import {
 	getIconFromOptions,
@@ -23,6 +28,7 @@ import {
 } from '../../helpers/utils';
 import {
 	getDataSourceProperties,
+	isDataObject,
 	notionApiRequestAllItemsV3,
 	notionApiRequestV3,
 } from '../../transport';
@@ -600,6 +606,90 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 	return returnData;
 }
 
+/**
+ * Pages through a query and keeps the pages that match, stopping as soon as
+ * `limit` matches are collected so a small limit does not scan the whole data source.
+ */
+async function queryMatchingPages(
+	this: IExecuteFunctions,
+	endpoint: string,
+	body: IDataObject,
+	matches: (page: IDataObject) => boolean,
+	limit?: number,
+) {
+	const pages: IDataObject[] = [];
+	let cursor: unknown;
+	do {
+		const response = await notionApiRequestV3.call(
+			this,
+			'POST',
+			endpoint,
+			typeof cursor === 'string' ? { ...body, start_cursor: cursor } : body,
+		);
+		const results = Array.isArray(response.results) ? response.results.filter(isDataObject) : [];
+		for (const page of results) {
+			if (!matches(page)) continue;
+			pages.push(page);
+			if (limit && pages.length >= limit) return pages;
+		}
+		cursor = response.has_more === true ? response.next_cursor : undefined;
+	} while (typeof cursor === 'string');
+
+	return pages;
+}
+
+/**
+ * Notion refuses to filter on a formula whose result type it cannot determine.
+ * Sends the other conditions to Notion and evaluates the formula ones on the
+ * computed values of the returned pages instead.
+ */
+async function queryWithLocalFormulaFilters(
+	this: IExecuteFunctions,
+	endpoint: string,
+	sorts: unknown,
+	{
+		conditions,
+		matchType,
+		limit,
+	}: { conditions: IDataObject[]; matchType: string; limit?: number },
+) {
+	const timezone = this.getTimezone();
+	const formulaConditions = conditions.filter(isFormulaFilter);
+	const otherConditions = conditions.filter((condition) => !isFormulaFilter(condition));
+	const otherFilter = mapDataSourceFilters(otherConditions, matchType, timezone);
+	const sortBody: IDataObject = sorts ? { sorts } : {};
+
+	if (matchType === 'allFilters') {
+		return await queryMatchingPages.call(
+			this,
+			endpoint,
+			{ ...sortBody, ...(otherFilter ? { filter: otherFilter } : {}) },
+			(page) =>
+				formulaConditions.every((condition) => matchesFormulaFilter(page, condition, timezone)),
+			limit,
+		);
+	}
+
+	// Pages matching the other conditions are found by Notion, so only that
+	// filtered set is fetched in full; the unfiltered scan stops at the limit
+	const matchedIds = new Set<unknown>();
+	if (otherFilter) {
+		const matchedPages = await notionApiRequestAllItemsV3.call(this, 'results', 'POST', endpoint, {
+			filter: otherFilter,
+		});
+		for (const page of matchedPages) matchedIds.add(page.id);
+	}
+	return await queryMatchingPages.call(
+		this,
+		endpoint,
+		sortBody,
+		(page) =>
+			matchedIds.has(page.id) ||
+			formulaConditions.some((condition) => matchesFormulaFilter(page, condition, timezone)),
+		limit,
+	);
+}
+
 export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[]) {
 	const returnData: INodeExecutionData[] = [];
 	for (let i = 0; i < items.length; i++) {
@@ -632,15 +722,31 @@ export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[
 				body.sorts = mapSorting(sort);
 			}
 			const limit = returnAll ? undefined : this.getNodeParameter('limit', i);
-			if (limit) body.page_size = Math.min(limit, 100);
-			const response: IDataObject[] = await notionApiRequestAllItemsV3.call(
-				this,
-				'results',
-				'POST',
-				`/data_sources/${toPathSegment(dataSourceId)}/query`,
-				body,
-				limit ? { limit } : {},
-			);
+			const queryEndpoint = `/data_sources/${toPathSegment(dataSourceId)}/query`;
+			let response: IDataObject[];
+			try {
+				response = await notionApiRequestAllItemsV3.call(
+					this,
+					'results',
+					'POST',
+					queryEndpoint,
+					limit ? { ...body, page_size: Math.min(limit, 100) } : body,
+					limit ? { limit } : {},
+				);
+			} catch (error) {
+				const conditions =
+					filterType === 'manual'
+						? (this.getNodeParameter('filters.conditions', i, []) as IDataObject[])
+						: [];
+				if (!isFormulaOfUnknownTypeError(error) || !conditions.some(isFormulaFilter)) {
+					throw error;
+				}
+				response = await queryWithLocalFormulaFilters.call(this, queryEndpoint, body.sorts, {
+					conditions,
+					matchType: this.getNodeParameter('matchType', i) as string,
+					limit,
+				});
+			}
 			const download = this.getNodeParameter('options.downloadFiles', i, false) as boolean;
 			const simple = this.getNodeParameter('simple', i) as boolean;
 			let executionData: INodeExecutionData[];
