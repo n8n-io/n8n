@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { ProjectType } from '@n8n/rest-api-client';
 import {
 	unrefElement,
 	useActiveElement,
@@ -10,6 +11,7 @@ import {
 } from '@vueuse/core';
 import { computed, getCurrentInstance, nextTick, ref, watch } from 'vue';
 
+import { ESCAPE_OWNER_ATTRIBUTE } from '../composables/useCloseOnEscape';
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { useRestrictionContact, type OptionalVerdict } from '../composables/useNodeTypeRestriction';
 import {
@@ -33,6 +35,8 @@ const props = withDefaults(
 		align?: 'start' | 'center' | 'end';
 		sideOffset?: number;
 		markerSize?: 'small' | 'xsmall';
+		/** The project the restriction applies to, when it is not the open one. */
+		projectType?: ProjectType | null;
 	}>(),
 	{
 		kind: 'node',
@@ -99,7 +103,11 @@ function reopen() {
 }
 useEventListener(anchorElement, 'mouseenter', reopen, { passive: true });
 
-const { copy: contactCopy } = useRestrictionContact(() => props.restriction);
+const { copy: contactCopy } = useRestrictionContact(
+	() => props.restriction,
+	undefined,
+	() => props.projectType,
+);
 const scopeKey = computed<BaseTextKey>(() => {
 	const scope = props.restriction?.scope;
 	return scope ? SCOPE_LABEL_KEY[scope] : RESTRICTED_TYPE_COPY[props.kind].title;
@@ -165,6 +173,7 @@ function onContentKeydown(event: KeyboardEvent) {
 					tabindex="0"
 					role="img"
 					:aria-label="i18n.baseText(RESTRICTED_TYPE_COPY[kind].title)"
+					:[ESCAPE_OWNER_ATTRIBUTE]="open ? '' : undefined"
 					@keydown="onMarkerKeydown"
 					@pointerdown="reopen"
 				>
@@ -178,6 +187,7 @@ function onContentKeydown(event: KeyboardEvent) {
 					ref="contentRef"
 					:class="$style.popover"
 					data-test-id="node-restricted-popover"
+					:[ESCAPE_OWNER_ATTRIBUTE]="''"
 					@pointerdown.stop
 					@mousedown.prevent
 					@keydown="onContentKeydown"

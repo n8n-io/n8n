@@ -1,5 +1,6 @@
 import { ROLE } from '@n8n/api-types';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
+import type { Project } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -111,6 +112,73 @@ describe('ContactAdminModal', () => {
 			'mailto:ada@example.com?subject=Access%20request%20for%20Anthropic%20credentials',
 		);
 		expect(getByText(/request access to Anthropic credentials/)).toBeInTheDocument();
+	});
+
+	describe('with several type names', () => {
+		it('uses the several copy, joins the names and looks up admins by the given kind', async () => {
+			const usersStore = setup([owner]);
+			const { findByTestId, getByText } = renderComponent({
+				props: {
+					open: true,
+					nodeTypeName: ['Slack', 'GitHub API'],
+					kind: 'credential',
+					audience: 'instance',
+				},
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({
+				filter: { scope: 'credentialTypePolicy:manage' },
+			});
+			expect(
+				getByText(
+					'Instance admins manage which nodes and credential types are available. Contact one of them to request access to Slack, GitHub API.',
+				),
+			).toBeInTheDocument();
+			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+				'href',
+				`mailto:ada@example.com?subject=${encodeURIComponent('Access request for Slack, GitHub API')}`,
+			);
+		});
+
+		it('uses the several copy for the project audience', async () => {
+			setup([owner]);
+			mockPolicyProject({
+				type: 'team',
+				relations: [
+					{
+						id: 'admin-1',
+						firstName: 'Grace',
+						lastName: 'Hopper',
+						email: 'grace@example.com',
+						role: 'project:admin',
+					},
+				],
+			});
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: ['Slack', 'GitHub API'], audience: 'project' },
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(getByText(/request access to Slack, GitHub API\./)).toBeInTheDocument();
+		});
+
+		it('keeps the single copy for an array of one name', async () => {
+			setup([owner]);
+			const { findByTestId, getByText } = renderComponent({
+				props: { open: true, nodeTypeName: ['Slack'], audience: 'instance' },
+			});
+
+			await findByTestId('contact-admin-list');
+
+			expect(getByText(/request access to 'Slack'/)).toBeInTheDocument();
+			expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
+				'href',
+				'mailto:ada@example.com?subject=Access%20request%20for%20the%20Slack%20node',
+			);
+		});
 	});
 
 	it('keeps loading until the latest owner lookup resolves after a reopen', async () => {
@@ -304,6 +372,53 @@ describe('ContactAdminModal', () => {
 			expect(await findByTestId('contact-admin-empty')).toHaveTextContent(
 				'No project admin is listed here.',
 			);
+		});
+
+		describe('with an explicit project', () => {
+			const destinationAdmin = {
+				...projectAdmin,
+				id: 'destination-admin-1',
+				firstName: 'Dorothy',
+				lastName: 'Vaughan',
+				email: 'dorothy@example.com',
+			};
+			const destination: Project = {
+				id: 'project-dest',
+				name: 'Marketing',
+				type: 'team',
+				icon: null,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				relations: [destinationAdmin],
+				scopes: [],
+				rolesManaged: false,
+			};
+
+			it('lists the admins of the given project instead of the open one', async () => {
+				setup([owner]);
+				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
+				const { findByTestId } = renderComponent({
+					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: destination },
+				});
+
+				const list = await findByTestId('contact-admin-list');
+
+				expect(list).toHaveTextContent('Dorothy Vaughan');
+				expect(list).not.toHaveTextContent('Grace Hopper');
+			});
+
+			it('lists no admin of the open project while the given project is null', async () => {
+				setup([owner]);
+				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
+				const { findByTestId, queryByText } = renderComponent({
+					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: null },
+				});
+
+				expect(await findByTestId('contact-admin-empty')).toHaveTextContent(
+					'No project admin is listed here.',
+				);
+				expect(queryByText('Grace Hopper')).not.toBeInTheDocument();
+			});
 		});
 	});
 });

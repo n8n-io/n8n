@@ -10,10 +10,9 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { staticRolesWithScope } from '@n8n/permissions';
-import type { IUserResponse } from '@n8n/rest-api-client';
+import type { IUserResponse, Project } from '@n8n/rest-api-client';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useEventListener } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
 import {
@@ -23,16 +22,21 @@ import {
 	type ContactAudience,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
+import { useCloseOnEscape } from '../composables/useCloseOnEscape';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const {
 	nodeTypeName,
 	kind = 'node',
 	audience,
+	project,
 } = defineProps<{
-	nodeTypeName: string;
+	/** Several names switch to copy that does not assume one node or one credential type. */
+	nodeTypeName: string | string[];
 	kind?: RestrictedTypeKind;
 	audience: ContactAudience;
+	/** Whose project admins to list. Defaults to the open project. */
+	project?: Project | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -45,10 +49,17 @@ const policiesStore = useTypeAvailabilityPoliciesStore();
 const isLoading = ref(false);
 let lookupId = 0;
 
+const typeNames = computed(() => (Array.isArray(nodeTypeName) ? nodeTypeName : [nodeTypeName]));
+const isSeveral = computed(() => typeNames.value.length > 1);
+const typeLabel = computed(() => typeNames.value.join(', '));
+
 const mailSubject = computed(() =>
-	i18n.baseText(RESTRICTED_TYPE_COPY[kind].mailSubject, {
-		interpolate: { nodeType: nodeTypeName },
-	}),
+	i18n.baseText(
+		isSeveral.value
+			? 'typeAvailabilityPolicies.contactAdmin.several.mailSubject'
+			: RESTRICTED_TYPE_COPY[kind].mailSubject,
+		{ interpolate: { nodeType: typeLabel.value } },
+	),
 );
 
 type Admin = Pick<IUserResponse, 'id' | 'firstName' | 'lastName'> & { email: string };
@@ -73,14 +84,18 @@ const projectManagerRoles = computed(() => {
 	]);
 });
 
+const listedProject = computed(() =>
+	project === undefined ? policiesStore.policyProject : project,
+);
+
 const projectManagers = computed<Admin[]>(() =>
-	(policiesStore.policyProject?.relations ?? [])
+	(listedProject.value?.relations ?? [])
 		.filter((relation) => projectManagerRoles.value.has(relation.role))
 		.filter(hasEmail),
 );
 
 const implicitInstanceAdmins = computed<Admin[]>(() =>
-	(policiesStore.policyProject?.implicitMembers ?? []).filter(hasEmail),
+	(listedProject.value?.implicitMembers ?? []).filter(hasEmail),
 );
 
 const listedAudience = computed<ContactAudience>(() =>
@@ -98,8 +113,8 @@ const admins = computed(() => {
 
 const copy = computed(() => CONTACT_DIALOG_COPY[listedAudience.value]);
 const description = computed(() =>
-	i18n.baseText(copy.value.description[kind], {
-		interpolate: { nodeType: nodeTypeName },
+	i18n.baseText(copy.value.description[isSeveral.value ? 'several' : kind], {
+		interpolate: { nodeType: typeLabel.value },
 	}),
 );
 
@@ -121,18 +136,7 @@ watch(
 	{ immediate: true },
 );
 
-// An Element Plus modal under the dialog closes on a document Escape listener, which runs before
-// the dialog's own window listener. Only a window capture listener runs before it.
-useEventListener(
-	() => (open.value ? window : null),
-	'keydown',
-	(event: KeyboardEvent) => {
-		if (event.key !== 'Escape') return;
-		event.stopPropagation();
-		open.value = false;
-	},
-	{ capture: true },
-);
+useCloseOnEscape(open, () => (open.value = false));
 
 function mailtoHref(email: string): string {
 	return `mailto:${email}?subject=${encodeURIComponent(mailSubject.value)}`;
