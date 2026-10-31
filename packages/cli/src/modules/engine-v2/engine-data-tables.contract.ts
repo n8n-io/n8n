@@ -162,11 +162,86 @@ export type DataTableCallRequest = z.infer<typeof dataTableCallRequestSchema>;
 /**
  * Success response of `POST /internal/data-tables/call`. `data` is the return
  * value of the operation as JSON carries it: a `Date` in a row is its ISO
- * string on this side.
+ * string on this side. The data plane parses it with the result schema of the
+ * call's kind, below.
  */
 export interface DataTableCallResponse {
 	data: unknown;
 }
+
+/**
+ * A `Date` as the control plane serialised it, revived. Only the fields whose
+ * proxy type promises a `Date` use this: the table and row timestamps. A date
+ * cell stays the ISO string JSON made of it, which its cell type allows, so no
+ * column lookup is needed to read a row.
+ */
+const serialisedDate = z
+	.string()
+	.datetime({ offset: true })
+	.transform((value) => new Date(value));
+
+const columnResultSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	type: z.enum(['string', 'number', 'boolean', 'date']),
+	index: z.number(),
+	dataTableId: z.string(),
+});
+
+const dataTableResultSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	columns: z.array(columnResultSchema),
+	createdAt: serialisedDate,
+	updatedAt: serialisedDate,
+	projectId: z.string(),
+});
+
+const rowResultSchema = z
+	.object({ id: z.number(), createdAt: serialisedDate, updatedAt: serialisedDate })
+	.catchall(cellValueSchema);
+
+/** A dry run reports rows before and after, and a row that does not exist yet has no id. */
+const rowWithStateResultSchema = z
+	.object({
+		id: z.number().nullable(),
+		createdAt: serialisedDate.nullable(),
+		updatedAt: serialisedDate.nullable(),
+		dryRunState: z.enum(['before', 'after']),
+	})
+	.catchall(cellValueSchema);
+
+const rowsOrRowsWithStateResultSchema = z.union([
+	z.array(rowResultSchema),
+	z.array(rowWithStateResultSchema),
+]);
+
+/** What `data` holds for each kind of call. The data plane parses the result with these. */
+export const dataTableCallResultSchemas = {
+	getProjectId: z.string(),
+	getManyAndCount: z.object({ count: z.number(), data: z.array(dataTableResultSchema) }),
+	createDataTable: dataTableResultSchema,
+	updateDataTable: z.boolean(),
+	deleteDataTable: z.boolean(),
+	getColumns: z.array(columnResultSchema),
+	addColumn: columnResultSchema,
+	moveColumn: z.boolean(),
+	deleteColumn: z.boolean(),
+	getManyRowsAndCount: z.object({ count: z.number(), data: z.array(rowResultSchema) }),
+	insertRows: z.union([
+		z.array(rowResultSchema),
+		z.array(z.object({ id: z.number() })),
+		z.object({ success: z.literal(true), insertedRows: z.number() }),
+	]),
+	updateRows: rowsOrRowsWithStateResultSchema,
+	upsertRow: rowsOrRowsWithStateResultSchema,
+	deleteRows: z.array(rowResultSchema),
+	clearRows: z.object({ deletedCount: z.number() }),
+} satisfies Record<DataTableCallKind, z.ZodTypeAny>;
+
+export type DataTableCallResult<K extends DataTableCallKind> = z.infer<
+	(typeof dataTableCallResultSchemas)[K]
+>;
 
 /**
  * Which v1 error the data plane raises for a refused call, so the node and the
