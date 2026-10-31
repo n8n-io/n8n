@@ -169,7 +169,7 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 			: (body as SlackInteractionPayload);
 
 	// Fail closed: approve only when both signals agree — the HMAC-minted callback reference
-	// (verified at the CLI layer) and Slack's native action_id. Anything else counts as declined.
+	// (verified before node code runs) and Slack's native action_id. Anything else counts as declined.
 	const action = payload.actions?.[0];
 	const parsed = parseHitlCallbackReference(action?.value ?? '');
 	const approved = parsed?.decision === 'a' && action?.action_id === HITL_APPROVE_ACTION_ID;

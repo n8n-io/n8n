@@ -1,5 +1,3 @@
-import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions, INode, Logger } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -9,9 +7,6 @@ import { mock } from 'vitest-mock-extended';
 import * as genericFunctions from '../../GenericFunctions';
 import { prepareChatApproval } from '../../hitl/setup';
 import { deriveHitlSecretToken } from '../../hitl/tokens';
-
-const TEST_HMAC_SECRET = 'test-hmac-secret';
-Container.set(InstanceSettings, { hmacSignatureSecret: TEST_HMAC_SECRET } as InstanceSettings);
 
 const ACCESS_TOKEN = '123456:test-bot-token';
 const SIGNED_RESUME_URL =
@@ -160,6 +155,28 @@ describe('prepareChatApproval', () => {
 			'POST',
 			'setWebhook',
 			expect.anything(),
+		);
+	});
+
+	it('registers the fixed endpoint when the signed URL names a step instead of the execution', async () => {
+		// Engine v2 puts the step id where engine v1 puts the execution id.
+		const context = makeContext();
+		context.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'responseType' ? 'approval' : true,
+		);
+		context.getSignedResumeUrl.mockReturnValue(
+			'https://mybot.example.com/webhook-waiting/01926a4e-7f5c-7000-8000-000000000001/node-1?approved=true&signature=abc',
+		);
+		mockWebhookInfo({ url: '' });
+
+		const effective = await prepareChatApproval(context);
+
+		expect(effective).toBe(true);
+		expect(context.logger.warn).not.toHaveBeenCalled();
+		expect(genericFunctions.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			'setWebhook',
+			expect.objectContaining({ url: FIXED_ENDPOINT_URL }),
 		);
 	});
 

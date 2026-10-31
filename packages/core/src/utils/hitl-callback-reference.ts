@@ -62,12 +62,41 @@ export function isTelegramInteractionRequest(req: object): boolean {
 	return (req as Record<PropertyKey, unknown>)[TELEGRAM_INTERACTION_REQUEST] === true;
 }
 
+/**
+ * Prefix of an engine v2 approval callback. It names the step, not the
+ * execution, and the data plane that minted it verifies it. The layout lives
+ * with the engine's resume token; this module only reads the step id out of it.
+ */
+export const HITL_CALLBACK_PREFIX_V2 = 'nhitl2|';
+
 export type HitlCallbackDecision = 'a' | 'd';
 
-export interface ParsedHitlCallbackReference {
+/** An engine v1 reference. The instance HMAC secret signs it. */
+export interface ExecutionBoundHitlCallbackReference {
+	kind: 'execution';
 	executionId: string;
 	decision: HitlCallbackDecision;
 	hmac: string;
+}
+
+/** An engine v2 reference. The data plane's resume secret signs it. */
+export interface StepBoundHitlCallbackReference {
+	kind: 'step';
+	stepId: string;
+	decision: HitlCallbackDecision;
+	hmac: string;
+}
+
+export type ParsedHitlCallbackReference =
+	| ExecutionBoundHitlCallbackReference
+	| StepBoundHitlCallbackReference;
+
+/** The 16 bytes of a UUID in 22 base64url characters, as the engine encodes a step id. */
+function decodeStepId(encoded: string): string | undefined {
+	if (!/^[A-Za-z0-9_-]{22}$/.test(encoded)) return undefined;
+	const hex = Buffer.from(encoded, 'base64url').toString('hex');
+	if (hex.length !== 32) return undefined;
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function buildHmacInput(executionId: string, decision: HitlCallbackDecision): string {
@@ -105,26 +134,38 @@ export function buildHitlCallbackReference(
 
 /**
  * Parses a raw callback payload into its constituent parts, without verifying
- * the HMAC. Returns `null` if the payload does not match the expected format.
+ * the HMAC. An engine v1 reference names the execution, an engine v2 reference
+ * names the step. Returns `null` if the payload does not match either format.
  */
 export function parseHitlCallbackReference(data: string): ParsedHitlCallbackReference | null {
+	if (data.startsWith(HITL_CALLBACK_PREFIX_V2)) {
+		const [encodedStepId, decision, hmac] = data.slice(HITL_CALLBACK_PREFIX_V2.length).split('|');
+		if (!encodedStepId || !hmac || (decision !== 'a' && decision !== 'd')) return null;
+		const stepId = decodeStepId(encodedStepId);
+		if (!stepId) return null;
+		return { kind: 'step', stepId, decision, hmac };
+	}
+
 	if (!data.startsWith(HITL_CALLBACK_PREFIX)) return null;
 
 	const [executionId, decision, hmac] = data.slice(HITL_CALLBACK_PREFIX.length).split('|');
 	if (!executionId || !hmac || (decision !== 'a' && decision !== 'd')) return null;
 
-	return { executionId, decision, hmac };
+	return { kind: 'execution', executionId, decision, hmac };
 }
 
 /**
  * Verifies a parsed reference's HMAC against the instance secret, using a
  * timing-safe comparison. This is the only check needed to prove the reference
  * was minted by this instance; it says nothing about the caller's identity.
+ * A step-bound reference never passes: the data plane that minted it holds
+ * its secret.
  */
 export function verifyHitlCallbackReference(
 	parsed: ParsedHitlCallbackReference,
 	secret: string,
 ): boolean {
+	if (parsed.kind !== 'execution') return false;
 	const expected = computeHmac(parsed.executionId, parsed.decision, secret);
 	const expectedBuffer = Buffer.from(expected);
 	const providedBuffer = Buffer.from(parsed.hmac);
