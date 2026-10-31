@@ -1,4 +1,7 @@
-ARG NODE_VERSION=26.12.1
+# check=skip=InvalidDefaultArgInFrom
+# docker/docker-bake.hcl sets this. Build with `pnpm build:docker` or
+# `docker buildx bake`, not plain `docker build`.
+ARG NODE_VERSION
 ARG PNPM_VERSION=12.4.2
 ARG PYTHON_VERSION=3.13
 

@@ -12,7 +12,8 @@
  *   IMAGE_BASE_NAME, IMAGE_TAG, RUNNERS_IMAGE_BASE_NAME - image naming
  *   NODE_VERSION, BUILDER_IMAGE, RUNTIME_IMAGE          - read by bake directly
  *   DOCKER_PLATFORM                                     - cross-platform builds
- *   DOCKER_BUILD_NO_CACHE, DOCKER_BUILD_BASE_IMAGE, DOCKER_BUILD_DISTROLESS
+ *   DOCKER_BUILD_NO_CACHE, DOCKER_BUILD_BASE_IMAGE, DOCKER_BUILD_DISTROLESS,
+ *   DOCKER_BUILD_DEBIAN
  *   DOCKER_BUILD_TARBALL_DIR - write per-target docker-archives here instead of
  *                              loading into the daemon (CI image distribution)
  *   CONTAINER_ENGINE                                    - force 'docker' or 'podman'
@@ -34,6 +35,8 @@ const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
 // Opt-in: only cloud deploys the distroless runners image, so local builds skip it.
 const withDistroless = process.env.DOCKER_BUILD_DISTROLESS === 'true';
+// Opt-in: also build the Debian (glibc) n8n image, tagged with a -debian suffix.
+const withDebian = process.env.DOCKER_BUILD_DEBIAN === 'true';
 // Build n8n on the pointer-compressed bases. The pins live in the bake file.
 const pointerCompressed = process.env.DOCKER_BUILD_PC === 'true';
 
@@ -53,8 +56,8 @@ const compiledAppDir = path.join(rootDir, 'compiled');
 const compiledTaskRunnerDir = path.join(rootDir, 'dist', 'task-runner-javascript');
 
 /**
- * Which bake targets to build. n8n and runners are always built; the base image
- * and the distroless runners are opt-in.
+ * Which bake targets to build. n8n and runners are always built; the base image,
+ * the distroless runners and the Debian n8n image are opt-in.
  * @returns {string[]}
  */
 function selectTargets() {
@@ -62,6 +65,7 @@ function selectTargets() {
 	// downstream jobs load `n8nio/n8n:local` either way.
 	const targets = [pointerCompressed ? 'n8n-pc' : 'n8n', 'runners'];
 	if (withDistroless) targets.push('runners-distroless');
+	if (withDebian) targets.push('n8n-debian');
 	if (withBaseImage) targets.unshift('base');
 	return targets;
 }
@@ -175,31 +179,53 @@ async function buildWithBake(targets) {
 }
 
 /**
+ * Podman has no bake, so read a pin from the default of its bake variable. An
+ * environment variable overrides the default, as it does for bake.
+ */
+async function bakeVariable(name) {
+	if (process.env[name]) return process.env[name];
+	const hcl = await fs.readFile(BAKE_FILE, 'utf8');
+	const match = hcl.match(new RegExp(`^variable "${name}" \\{\\s*default = "([^"]+)"`, 'm'));
+	if (!match) throw new Error(`${BAKE_FILE} has no plain string default for ${name}`);
+	return match[1];
+}
+
+/**
  * Podman has no bake. A podman-only host also has no buildx to resolve the bake
- * plan, so this list repeats the targets. It sends no build args, because this
- * path has always used the Dockerfile defaults.
+ * plan, so this list repeats the targets and their pins.
  */
 async function buildWithPodman(platform) {
+	const nodeVersion = ['NODE_VERSION', await bakeVariable('NODE_VERSION')];
 	const podmanTargets = [
-		{ dockerfile: 'docker/images/n8n/Dockerfile', tag: `${imageBaseName}:${imageTag}` },
+		{
+			dockerfile: 'docker/images/n8n/Dockerfile',
+			tag: `${imageBaseName}:${imageTag}`,
+			args: [
+				['BUILDER_IMAGE', await bakeVariable('BUILDER_IMAGE')],
+				['RUNTIME_IMAGE', await bakeVariable('RUNTIME_IMAGE')],
+			],
+		},
 		{
 			dockerfile: 'docker/images/runners/Dockerfile',
 			tag: `${runnersImageBaseName}:${imageTag}`,
+			args: [nodeVersion],
 		},
 	];
 	if (withDistroless) {
 		podmanTargets.push({
 			dockerfile: 'docker/images/runners/Dockerfile.distroless',
 			tag: `${runnersImageBaseName}:${imageTag}-distroless`,
+			args: [nodeVersion],
 		});
 	}
 
 	echo(chalk.yellow('INFO: docker buildx bake unavailable - building with podman...'));
 
-	for (const { dockerfile, tag } of podmanTargets) {
+	for (const { dockerfile, tag, args } of podmanTargets) {
+		const buildArgs = args.flatMap(([name, value]) => ['--build-arg', `${name}=${value}`]);
 		await $({
 			verbose: true,
-		})`podman build --platform ${platform} --build-arg TARGETPLATFORM=${platform} ${noCache ? ['--no-cache'] : []} -t ${tag} -f ${path.join(rootDir, dockerfile)} ${rootDir}`;
+		})`podman build --platform ${platform} --build-arg TARGETPLATFORM=${platform} ${buildArgs} ${noCache ? ['--no-cache'] : []} -t ${tag} -f ${path.join(rootDir, dockerfile)} ${rootDir}`;
 	}
 
 	return podmanTargets.map(({ tag }) => tag);
@@ -225,6 +251,7 @@ async function main() {
 		const unsupported = [
 			withBaseImage && 'DOCKER_BUILD_BASE_IMAGE',
 			pointerCompressed && 'DOCKER_BUILD_PC',
+			withDebian && 'DOCKER_BUILD_DEBIAN',
 			tarballDir && 'DOCKER_BUILD_TARBALL_DIR',
 		].filter(Boolean);
 		if (unsupported.length > 0) {
