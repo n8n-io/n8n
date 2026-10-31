@@ -209,6 +209,9 @@ async function onDropdownSelect(action: string) {
 				:class="$style.groupButtonLeft"
 				:loading="publishing"
 				:disabled="isPublishDisabled"
+				:focusable-when-disabled="
+					buttonConfig.enabled && !isSaving && canPublish && isConfigInvalid
+				"
 				variant="ghost"
 				data-testid="publish-agent-button"
 				@click="onPublishClick"
@@ -274,7 +277,7 @@ async function onDropdownSelect(action: string) {
 	border-left: var(--border);
 }
 
-.buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {
+.buttonGroup:has(.groupButtonLeft:not([aria-disabled='true']):hover) .groupButtonRight {
 	border-left-color: transparent;
 }
 

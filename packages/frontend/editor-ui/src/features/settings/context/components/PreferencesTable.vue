@@ -1,7 +1,14 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nActionToggle, N8nDataTableServer, N8nText, N8nUserInfo } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nDataTableServer,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+	N8nUserInfo,
+} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -205,7 +212,18 @@ const headers = computed<Array<TableHeader<Preference>>>(() => [
 						:actions="actionsFor(item)"
 						data-test-id="preference-actions"
 						@action="(action: PreferenceAction) => onAction(item, action)"
-					/>
+					>
+						<N8nTooltip as-child :disabled="permissions(item).update && permissions(item).delete">
+							<template #content>{{ readOnlyHint }}</template>
+							<N8nIconButton
+								variant="ghost"
+								icon="ellipsis-12"
+								size="small"
+								icon-size="small"
+								:aria-label="i18n.baseText('node.moreActions')"
+							/>
+						</N8nTooltip>
+					</N8nActionToggle>
 				</div>
 			</template>
 		</N8nDataTableServer>

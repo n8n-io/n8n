@@ -85,6 +85,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 			</div>
 			<N8nTooltip
 				v-if="props.vectorStores.length > 0"
+				as-child
 				:content="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
 				placement="top"
 			>
@@ -93,6 +94,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 					size="small"
 					icon="plus"
 					:disabled="props.disabled"
+					focusable-when-disabled
 					:aria-label="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
 					data-testid="agent-vector-stores-connect"
 					@click="emit('connect')"

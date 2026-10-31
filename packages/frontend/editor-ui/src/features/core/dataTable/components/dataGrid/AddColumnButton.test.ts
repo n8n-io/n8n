@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { UserEvent } from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_COLUMN_NAME_LENGTH } from '@/features/core/dataTable/constants';
+import { getTooltip } from '@/__tests__/utils';
 
 vi.mock('@/features/core/dataTable/composables/useDataTableTypes', () => ({
 	useDataTableTypes: () => ({
@@ -137,7 +138,7 @@ describe('AddColumnButton', () => {
 	describe('disabled tooltip', () => {
 		const hoverTrigger = async (rendered: ReturnType<typeof renderComponent>) => {
 			const trigger = rendered.getByTestId('data-table-add-column-trigger-button');
-			await user.hover(trigger.closest('.add-column-header-component-wrapper') ?? trigger);
+			await user.hover(trigger);
 		};
 
 		it('should show the disabled reason when disabled', async () => {
@@ -153,8 +154,28 @@ describe('AddColumnButton', () => {
 
 			await hoverTrigger(rendered);
 
-			expect(await rendered.findByText('Protected instance')).toBeInTheDocument();
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Protected instance'));
 		});
+
+		it.each([false, true])(
+			'keeps the explanation focusable without opening the popover, text trigger: %s',
+			async (useTextTrigger) => {
+				const rendered = renderComponent({
+					props: { useTextTrigger, disabled: true, disabledTooltip: 'Protected instance' },
+					global: { stubs: { N8nPopover: false } },
+				});
+				const button = rendered.getByTestId('data-table-add-column-trigger-button');
+				await user.tab();
+				expect(button).toHaveFocus();
+				await waitFor(() => expect(getTooltip()).toHaveTextContent('Protected instance'));
+				expect(button).toHaveAccessibleDescription('Protected instance');
+				expect(button).toHaveAttribute('aria-disabled', 'true');
+				await user.keyboard('{Enter} ');
+				await user.click(button);
+				expect(rendered.queryByTestId('add-column-popover-content')).not.toBeInTheDocument();
+				expect(addColumnHandler).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should show the default label when enabled', async () => {
 			const rendered = renderComponent({

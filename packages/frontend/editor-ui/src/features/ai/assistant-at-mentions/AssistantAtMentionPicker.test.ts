@@ -142,7 +142,8 @@ describe('AssistantAtMentionPicker', () => {
 			props: { modelValue: false, query: '', disabled: true },
 		});
 
-		expect(getByTestId('instance-ai-mention-button')).toBeDisabled();
+		expect(getByTestId('instance-ai-mention-button')).not.toBeDisabled();
+		expect(getByTestId('instance-ai-mention-button')).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('shows the empty state without section headers when nothing is mentionable', async () => {
