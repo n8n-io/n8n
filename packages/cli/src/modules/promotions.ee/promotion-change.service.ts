@@ -44,9 +44,7 @@ import {
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { generateSlug } from '@/modules/n8n-packages/io/slug.utils';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import {
-	packageManifestSchema,
 	type ManifestEntry,
 	type PackageManifest,
 	type WorkflowManifestEntry,
@@ -54,8 +52,9 @@ import {
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
-import type { PackageFile } from './base-branch-files';
+import { parsePackageFiles, type PackageFile } from './base-branch-files';
 import { projectHolding } from './branch-placement';
+import { readBranchManifest } from './package-manifest';
 import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { diffPackageFiles } from './diff-package-files';
@@ -181,7 +180,7 @@ export class PromotionChangeService {
 		// other projects while this project has no files on the branch yet, and the move markers
 		// still need it.
 		const promoteBase =
-			branch.hasManifest || branch.files.length > 0 ? await this.readBranchManifest(branch) : null;
+			branch.blobShaByPath.size > 0 ? await this.readBranchManifest(branch) : null;
 		const { resources, dependencies } = buildPreview({
 			operation: { direction, planned: null },
 			projectIds: [projectId],
@@ -353,9 +352,10 @@ export class PromotionChangeService {
 						commitSha,
 						paths,
 					);
-		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-		const [branchFiles, instance] = await Promise.all([
-			readBranch([manifestPath]),
+		const [branchPaths, instance] = await Promise.all([
+			commitSha === null
+				? new Map<string, string>()
+				: this.promotionsService.listBranchFilesAtCommit(projectId, direction, commitSha),
 			exportInstancePackage(this.packagesService, user, projectId, {
 				// Keep the content of the requested resources only. Variables match by name, not by ID.
 				keepContent: (path) =>
@@ -363,8 +363,26 @@ export class PromotionChangeService {
 					path.includes(`/${PACKAGE_ENTITY_LAYOUT.variables.directory}/`),
 			}),
 		]);
-		const branchManifest = parseBranchManifest(branchFiles.get(manifestPath), projectId);
-		const branchIndex = indexSide({ manifest: branchManifest, blobByPath: new Map() }, projectId);
+		const projectFiles = new Set(
+			parsePackageFiles(
+				[...branchPaths].map(([path, blobSha]) => ({ path, blobSha })),
+				{ exportRoot: PACKAGE_SUBFOLDER, projectId },
+			).map(({ path }) => path),
+		);
+		const branchManifest = await readBranchManifest({
+			paths: branchPaths.keys(),
+			blobShaByPath: branchPaths,
+			prefix: PACKAGE_SUBFOLDER,
+			readFiles: readBranch,
+			readsContentOf: (path) => projectFiles.has(path),
+		});
+		const branchIndex = indexSide(
+			{
+				manifest: branchManifest && scopeManifestToProject(branchManifest, projectId),
+				blobByPath: new Map(),
+			},
+			projectId,
+		);
 		const instanceIndex = indexSide(
 			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
 			projectId,
@@ -514,12 +532,18 @@ export class PromotionChangeService {
 
 	/** The whole branch manifest, across every project of the package. */
 	private async readBranchManifest(branch: BranchPackage): Promise<PackageManifest> {
-		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-		const manifest = parsePackageManifest(
-			(await branch.readFiles([manifestPath])).get(manifestPath),
-		);
+		// This project's files give the names. Other projects only show where a workflow sits.
+		const projectFiles = new Set(branch.files.map(({ path }) => path));
+		const manifest = await readBranchManifest({
+			paths: branch.blobShaByPath.keys(),
+			blobShaByPath: branch.blobShaByPath,
+			prefix: PACKAGE_SUBFOLDER,
+			readFiles: branch.readFiles,
+			readsContentOf: (path) =>
+				projectFiles.has(path) || path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.projects.fileName}`),
+		});
 		if (!manifest) {
-			throw new BadRequestError('The package manifest on the branch cannot be read');
+			throw new BadRequestError('A requirements file on the branch cannot be read');
 		}
 		return manifest;
 	}
@@ -531,18 +555,6 @@ function parseBranchJson<T = unknown>(raw: string): T | undefined {
 	} catch {
 		return undefined;
 	}
-}
-
-/** Parses a package manifest read from Git. `null` when the file is missing or invalid. */
-export function parsePackageManifest(raw: string | undefined): PackageManifest | null {
-	const manifest = packageManifestSchema.safeParse(parseBranchJson(raw ?? ''));
-	return manifest.success ? manifest.data : null;
-}
-
-/** Parses the branch manifest and keeps this project's part. `null` when the file is missing or invalid. */
-function parseBranchManifest(raw: string | undefined, projectId: string): PackageManifest | null {
-	const manifest = parsePackageManifest(raw);
-	return manifest && scopeManifestToProject(manifest, projectId);
 }
 
 function blobsByPath(files: readonly PackageFile[]): Map<string, string> {

@@ -1,10 +1,9 @@
-import { jsonParse } from 'n8n-workflow';
-
 import { BadRequestError } from '@n8n/errors';
 
 import type { PackageReader } from '@/modules/n8n-packages/io/package-reader';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+
+import { manifestFromFiles } from './package-manifest';
 
 /**
  * Reads a package from the files of one commit, as `readTreeAtCommit` returns them. Git already
@@ -23,13 +22,13 @@ export class GitCommitPackageReader implements PackageReader {
 		return content;
 	}
 
+	/** The importer asks for the manifest many times, and each build parses every entity file. */
+	private manifest?: PackageManifest;
+
+	/** The branch holds no manifest. It is built from the entity files, and a stale one is ignored. */
 	async readManifest(): Promise<PackageManifest> {
-		const raw = this.files.get(MANIFEST_FILE);
-		if (!raw) throw new BadRequestError('Package is missing manifest.json');
-		try {
-			return jsonParse<PackageManifest>(raw.toString('utf-8'));
-		} catch {
-			throw new BadRequestError('Package manifest is not valid JSON');
-		}
+		const manifest = this.manifest ?? manifestFromFiles(this.files);
+		this.manifest = manifest;
+		return manifest;
 	}
 }

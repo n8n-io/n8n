@@ -25,6 +25,7 @@ const { mockGit, simpleGitMock, GitError, GitPluginError } = vi.hoisted(() => {
 		clone: vi.fn(),
 		addRemote: vi.fn(),
 		show: vi.fn(),
+		binaryCatFile: vi.fn(),
 		branch: vi.fn(),
 	};
 	instance.env.mockReturnValue(instance);
@@ -613,22 +614,38 @@ describe('PromotionsGitService (git operations)', () => {
 				...over,
 			});
 
-		it('reads the files of one commit in a batch with bounded concurrency', async () => {
-			mockGit.show.mockImplementation(async ([spec]: string[]) => `content of ${spec}`);
+		const batch = (contents: string[]) =>
+			Buffer.concat(
+				contents.map((content, index) =>
+					Buffer.from(
+						`${commitSha}:${filePaths[index]} blob ${Buffer.byteLength(content)}\n${content}\n`,
+					),
+				),
+			);
+
+		it('reads the files of one commit with one batch', async () => {
+			mockGit.binaryCatFile.mockResolvedValue(batch(['{"a":1}', 'é{"b":2}']));
 
 			const files = await read();
 
-			expect([...files]).toEqual(
-				filePaths.map((filePath) => [filePath, `content of ${commitSha}:${filePath}`]),
-			);
+			expect([...files]).toEqual([
+				[filePaths[0], '{"a":1}'],
+				[filePaths[1], 'é{"b":2}'],
+			]);
 			expect(simpleGitMock).toHaveBeenCalledTimes(1);
 			expect(simpleGitMock).toHaveBeenCalledWith(
-				expect.objectContaining({
-					baseDir: paths.repositoryFolder,
-					trimmed: false,
-					maxConcurrentProcesses: 4,
-				}),
+				expect.objectContaining({ baseDir: paths.repositoryFolder, trimmed: false }),
 			);
+			expect(mockGit.binaryCatFile).toHaveBeenCalledWith(['--batch']);
+			expect(mockGit.show).not.toHaveBeenCalled();
+		});
+
+		it('fails when Git reports a file as missing', async () => {
+			mockGit.binaryCatFile.mockResolvedValue(
+				Buffer.from(`${commitSha}:${filePaths[0]} missing\n`),
+			);
+
+			await expect(read()).rejects.toThrow('Could not complete the Git operation');
 		});
 
 		it('waits for the checkout lock, so a fetch in progress finishes first', async () => {
@@ -636,7 +653,7 @@ describe('PromotionsGitService (git operations)', () => {
 			mockGit.fetch.mockReturnValueOnce(fetching.promise);
 			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
 			mockGit.raw.mockResolvedValue('');
-			mockGit.show.mockResolvedValue('{}');
+			mockGit.binaryCatFile.mockResolvedValue(batch(['{}', '{}']));
 			const listing = gitService.listBranchTree({
 				remoteUrl,
 				credentials,
@@ -649,11 +666,11 @@ describe('PromotionsGitService (git operations)', () => {
 
 			const reading = read();
 			await new Promise((resolve) => setImmediate(resolve));
-			expect(mockGit.show).not.toHaveBeenCalled();
+			expect(mockGit.binaryCatFile).not.toHaveBeenCalled();
 
 			fetching.resolve();
 			await Promise.all([listing, reading]);
-			expect(mockGit.show).toHaveBeenCalledTimes(filePaths.length);
+			expect(mockGit.binaryCatFile).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns nothing without calling Git for an empty list', async () => {
@@ -665,11 +682,11 @@ describe('PromotionsGitService (git operations)', () => {
 			await expect(read({ commitSha: 'origin/main' })).rejects.toThrow(
 				'The commit SHA is not a Git object name',
 			);
-			expect(mockGit.show).not.toHaveBeenCalled();
+			expect(mockGit.binaryCatFile).not.toHaveBeenCalled();
 		});
 
 		it('redacts a read failure', async () => {
-			mockGit.show.mockRejectedValue(new Error("fatal: path 'secret' does not exist"));
+			mockGit.binaryCatFile.mockRejectedValue(new Error("fatal: path 'secret' does not exist"));
 
 			await expect(read()).rejects.toThrow('Could not complete the Git operation');
 			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secret');

@@ -17,11 +17,7 @@ import {
 
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
-import {
-	GIT_COMMAND_STALL_TIMEOUT_MS,
-	GIT_READ_CONCURRENCY,
-	PROMOTION_KEY_COMMENT,
-} from './constants';
+import { GIT_COMMAND_STALL_TIMEOUT_MS, PROMOTION_KEY_COMMENT } from './constants';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
@@ -595,17 +591,17 @@ export class PromotionsGitService {
 		if (filePaths.length === 0) return new Map();
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
-				const git = simpleGit({
+				// One `cat-file --batch` reads every file. A `git show` per file takes seconds for a large package.
+				const names = filePaths.map((filePath) => `${commitSha}:${filePath}`);
+				if (names.some((name) => name.includes('\n'))) {
+					throw new UnexpectedError('A file path contains a line break');
+				}
+				const output: Buffer = await simpleGit({
 					...BASE_GIT_OPTIONS,
 					baseDir: paths.repositoryFolder,
-					maxConcurrentProcesses: GIT_READ_CONCURRENCY,
-				});
-				const files = await Promise.all(
-					filePaths.map(
-						async (filePath) => [filePath, await git.show([`${commitSha}:${filePath}`])] as const,
-					),
-				);
-				return new Map(files);
+					input: () => names.join('\n') + '\n',
+				}).binaryCatFile(['--batch']);
+				return splitNamedBatchOutput(output, filePaths);
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
@@ -941,6 +937,36 @@ function assertWithinLimits(entries: TreeEntry[], limits: TreeReadLimits) {
 }
 
 /** `cat-file --batch` prints `<name> <type> <size>\n<content>\n` for each object, in input order. */
+/**
+ * Splits the output of `cat-file --batch` for named objects. Each object has a header line of
+ * `<object name> <type> <size>` and then its content. An object that does not exist has the header
+ * `<object name> missing`, and the read fails, as a `git show` of a missing file does.
+ */
+function splitNamedBatchOutput(output: Buffer, filePaths: readonly string[]): Map<string, string> {
+	const files = new Map<string, string>();
+	let offset = 0;
+	for (const filePath of filePaths) {
+		const headerEnd = output.indexOf('\n', offset);
+		if (headerEnd === -1) {
+			throw new UnexpectedError('Git returned fewer files than it was asked for');
+		}
+		const header = output.toString('utf8', offset, headerEnd);
+		const size = /^\S+ \S+ (\d+)$/.exec(header)?.[1];
+		if (size === undefined) {
+			throw new UnexpectedError('Git could not read a file of the commit');
+		}
+		const contentStart = headerEnd + 1;
+		files.set(filePath, output.toString('utf8', contentStart, contentStart + Number(size)));
+		offset = contentStart + Number(size) + 1;
+	}
+	if (offset !== output.length) {
+		throw new UnexpectedError(
+			'Git returned a different amount of file content than it was asked for',
+		);
+	}
+	return files;
+}
+
 function splitBatchOutput(output: Buffer, entries: TreeEntry[]): Map<string, Buffer> {
 	const files = new Map<string, Buffer>();
 	let offset = 0;

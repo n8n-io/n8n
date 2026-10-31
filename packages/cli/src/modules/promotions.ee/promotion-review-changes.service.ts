@@ -13,7 +13,6 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { PACKAGE_SUBFOLDER } from './constants';
@@ -26,15 +25,14 @@ import {
 	parseGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
-import { parsePackageManifest, toDetail, type DetailSide } from './promotion-change.service';
+import { toDetail, type DetailSide } from './promotion-change.service';
+import { readBranchManifest } from './package-manifest';
 import { buildPreview, indexProjects, type PreviewSide } from './promotion-preview';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { PromotionReviewInboxService } from './promotion-review-inbox.service';
 import { PromotionsService } from './promotions.service';
 import type { PackageCommit } from './promotions.types';
-
-const MANIFEST_PATH = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 
 type ReviewSide = { side: PreviewSide; manifestUnreadable: boolean };
 
@@ -260,14 +258,24 @@ function newestBranchName({ runs }: PromotionReview): string | null {
 	return details.success ? details.data.branchName : null;
 }
 
-async function readManifest(commit: PackageCommit): Promise<PackageManifest | null> {
-	return parsePackageManifest((await commit.readFiles([MANIFEST_PATH])).get(MANIFEST_PATH));
+async function readManifest(
+	commit: PackageCommit,
+	listed?: ReadonlyMap<string, string>,
+): Promise<PackageManifest | null> {
+	const blobs = listed ?? (await commit.listFiles());
+	return await readBranchManifest({
+		paths: blobs.keys(),
+		blobShaByPath: blobs,
+		prefix: PACKAGE_SUBFOLDER,
+		readFiles: commit.readFiles,
+	});
 }
 
 async function readSide(commit: PackageCommit): Promise<ReviewSide> {
 	const blobByPath = await commit.listFiles();
-	const manifest = await readManifest(commit);
-	// A commit before the first promotion has no package, so it has no manifest either.
+	const manifest = await readManifest(commit, blobByPath);
+	// A commit before the first promotion has no package. An invalid requirements file makes a side
+	// unreadable.
 	return { side: { manifest, blobByPath }, manifestUnreadable: !manifest && blobByPath.size > 0 };
 }
 
