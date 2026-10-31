@@ -32,12 +32,15 @@
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "change-case": "catalog:",
+    "culori": "catalog:",
+    "fast-xml-parser": "catalog:",
     "fastest-levenshtein": "catalog:",
     "pluralize": "^8.0.0"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/culori": "catalog:",
     "@types/node": "catalog:",
     "@types/pluralize": "^0.0.33",
     "n8n-workflow": "workspace:*",
