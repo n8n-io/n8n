@@ -85,9 +85,15 @@ export function reconstructError(data: ErrorSentinel): Error {
 	return error;
 }
 
+type CopyHostValue = (value: unknown) => unknown;
+
 /** Read a host path and return its value or metadata for lazy access. */
-export function getValueAtPath(resolver: HostDataResolver, pathArr: readonly string[]): unknown {
-	return toHostMetadata(resolver.resolve(pathArr));
+export function getValueAtPath(
+	resolver: HostDataResolver,
+	pathArr: readonly string[],
+	copyValue?: CopyHostValue,
+): unknown {
+	return toHostMetadata(resolver.resolve(pathArr), copyValue);
 }
 
 /** Read one array item and return its value or metadata for lazy access. */
@@ -95,6 +101,7 @@ export function getArrayElement(
 	resolver: HostDataResolver,
 	pathArr: readonly string[],
 	index: number,
+	copyValue?: CopyHostValue,
 ): unknown {
 	const arr = resolver.resolve(pathArr);
 	if (!Array.isArray(arr)) {
@@ -106,18 +113,20 @@ export function getArrayElement(
 		return undefined;
 	}
 
-	return toHostMetadata(arr[index]);
+	return toHostMetadata(arr[index], copyValue);
 }
 
 /** Describe objects and arrays without reading their contents. */
-function toHostMetadata(value: unknown): unknown {
+function toHostMetadata(value: unknown, copyValue?: CopyHostValue): unknown {
 	// Host functions use the callHost channel, not the lazy data path.
 	if (typeof value === 'function') {
 		return undefined;
 	}
 
 	if (value instanceof Error) {
-		return prepareForGuest(value);
+		const result = prepareForGuest(value);
+		// Error properties can still contain host values, such as proxy dates.
+		return copyValue ? copyValue(result) : result;
 	}
 
 	if (Array.isArray(value)) {
@@ -128,9 +137,9 @@ function toHostMetadata(value: unknown): unknown {
 		};
 	}
 
-	// Dates have no enumerable own keys. Transfer the value directly.
+	// Dates need a value transfer. Fresh object and array metadata do not need a copy.
 	if (value instanceof Date) {
-		return value;
+		return copyValue ? copyValue(value) : value;
 	}
 
 	if (value !== null && typeof value === 'object') {
