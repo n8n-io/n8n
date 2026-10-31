@@ -34,7 +34,8 @@ export class N8n implements INodeType {
 		],
 		requestDefaults: {
 			returnFullResponse: true,
-			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/$"), "") }}',
+			baseURL:
+				'={{ $credentials.baseUrl.replace(new RegExp("([^:])/{2,}", "g"), "$1/").replace(new RegExp("/+$"), "") }}',
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',
