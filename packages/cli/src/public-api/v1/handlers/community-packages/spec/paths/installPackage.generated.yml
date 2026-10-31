@@ -65,6 +65,9 @@ responses:
             failedLoading:
               type: boolean
               description: Whether the package failed to load
+            failedLoadingReason:
+              type: string
+              description: Why the package failed to load, when n8n knows the reason
             policyRestrictions:
               type: object
               properties:
