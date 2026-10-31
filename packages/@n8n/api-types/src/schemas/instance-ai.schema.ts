@@ -2604,17 +2604,6 @@ export type InstanceAiVerificationResponse =
 			error?: string;
 	  };
 
-// ---------------------------------------------------------------------------
-// User preferences — per-user, self-service
-// ---------------------------------------------------------------------------
-
-export interface InstanceAiUserPreferencesResponse {
-	credentialId: string | null;
-	credentialType: string | null;
-	credentialName: string | null;
-	modelName: string;
-}
-
 export interface InstanceAiProviderConnection {
 	id: string;
 	name: string;

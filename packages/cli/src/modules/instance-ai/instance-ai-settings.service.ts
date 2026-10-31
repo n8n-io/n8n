@@ -14,7 +14,6 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiConnectionUpdate,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	McpToolPermissions,
@@ -1024,33 +1023,6 @@ export class InstanceAiSettingsService {
 		const persisted = await this.readPersistedAdminSettings();
 		this.applyAdminSettings(persisted);
 		this.emitSettingsUpdated(previous, this.snapshotAdminSettings());
-	}
-
-	// ── User preferences ──────────────────────────────────────────────────
-
-	async getUserPreferences(user: User): Promise<InstanceAiUserPreferencesResponse> {
-		const prefs = this.readUserPreferences(user);
-		const credentialId = prefs.credentialId ?? null;
-
-		let credentialType: string | null = null;
-		let credentialName: string | null = null;
-
-		if (credentialId) {
-			const cred = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-				'credential:read',
-			]);
-			if (cred) {
-				credentialType = cred.type;
-				credentialName = cred.name;
-			}
-		}
-
-		return {
-			credentialId,
-			credentialType,
-			credentialName,
-			modelName: prefs.modelName || this.extractModelName(this.config.model),
-		};
 	}
 
 	// ── Shared accessors ──────────────────────────────────────────────────
