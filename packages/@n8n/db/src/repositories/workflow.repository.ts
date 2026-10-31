@@ -42,6 +42,12 @@ import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
+import {
+	getWithWorkflowCollections,
+	joinsSeveralRows,
+	splitWorkflowRelations,
+	type WorkflowCollections,
+} from '../utils/workflow-collections';
 
 export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
 
@@ -224,15 +230,88 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return availability;
 	}
 
+	/** `tags` and `shared` come back as JSON arrays in the same statement instead of joined. */
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
 		ctx: OperationContext = {},
-	) {
-		return await this.managerFor(ctx).findOne(WorkflowEntity, {
-			where,
-			relations: options?.relations,
+	): Promise<WorkflowEntity | null> {
+		const manager = this.managerFor(ctx);
+		const { relations, collections } = splitWorkflowRelations(options?.relations, where);
+		const qb = manager
+			.createQueryBuilder(WorkflowEntity, 'workflow')
+			.setFindOptions({ where, relations });
+		if (joinsSeveralRows(qb.expressionMap.mainAlias!.metadata, relations)) qb.take(1);
+		else qb.limit(1);
+
+		const [workflow] = await getWithWorkflowCollections(qb, collections);
+		return workflow ?? null;
+	}
+
+	/**
+	 * Workflows to export, with their tags and shares, in one statement. `projectId` keeps the
+	 * workflows shared with that project and, as the export always has, only that project's
+	 * share.
+	 */
+	async findForExport({ workflowId, projectId }: { workflowId?: string; projectId?: string } = {}) {
+		const where: FindOptionsWhere<WorkflowEntity> = workflowId
+			? { id: workflowId }
+			: projectId
+				? { shared: { projectId } }
+				: {};
+		return await this.findWithCollections(
+			{ where },
+			{ tags: true, shared: { project: true }, sharedProjectId: projectId },
+		);
+	}
+
+	/** Workflows matching `options`, with the requested tags and shares, in one statement. */
+	private async findWithCollections(
+		options: Pick<FindManyOptions<WorkflowEntity>, 'where' | 'select' | 'relations'>,
+		collections: WorkflowCollections,
+	): Promise<WorkflowEntity[]> {
+		return await getWithWorkflowCollections(
+			this.createQueryBuilder('workflow').setFindOptions(options),
+			collections,
+		);
+	}
+
+	/**
+	 * Workflows with the given ids that `user` can reach with `sharingOptions`, in no particular
+	 * order. The access check and the workflow come from one statement per batch of ids, so a
+	 * share revoked mid-read cannot return the workflow. Tags come back as a JSON array.
+	 */
+	async findAccessibleByIds(
+		user: User,
+		sharingOptions: { scopes: Scope[]; projectRoles: string[]; workflowRoles: string[] },
+		workflowIds: string[],
+		options: {
+			includeParentFolder?: boolean;
+			includeActiveVersion?: boolean;
+			includeTags?: boolean;
+		},
+	): Promise<WorkflowEntity[]> {
+		const accessible = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, {
+			...sharingOptions,
+			globalScopes: sharingOptions.scopes,
 		});
+		const workflows: WorkflowEntity[] = [];
+
+		// Unique ids, so a repeated id in two batches does not return the workflow twice.
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
+			const qb = this.createBaseQuery(chunk)
+				.andWhere(`workflow.id IN (${accessible.getQuery()})`)
+				.setParameters(accessible.getParameters());
+			if (options.includeParentFolder) {
+				qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+			}
+			if (options.includeActiveVersion) {
+				qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
+			}
+			workflows.push(...(await getWithWorkflowCollections(qb, { tags: options.includeTags })));
+		}
+
+		return workflows;
 	}
 
 	/**
@@ -599,11 +678,14 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.execute();
 	}
 
-	async findById(workflowId: string) {
-		return await this.findOne({
-			where: { id: workflowId },
-			relations: { shared: { project: true }, activeVersion: true },
-		});
+	async findById(workflowId: string): Promise<WorkflowEntity | null> {
+		// The id is unique and the join has one row, so no LIMIT is needed.
+		const qb = this.createQueryBuilder('workflow')
+			.leftJoinAndSelect('workflow.activeVersion', 'activeVersion')
+			.where('workflow.id = :workflowId', { workflowId });
+
+		const [workflow] = await getWithWorkflowCollections(qb, { shared: { project: true } });
+		return workflow ?? null;
 	}
 
 	async findByIdInContext(workflowId: string, ctx: OperationContext) {
@@ -674,17 +756,19 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		for (const chunk of chunkIds(folderIds)) {
 			workflows.push(
-				...(await this.find({
-					select: [
-						'id',
-						'name',
-						'activeVersionId',
-						'shared',
-						...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
-					],
-					relations: ['shared', 'shared.project', ...(withNodes ? ['activeVersion'] : [])],
-					where: { parentFolder: { id: In(chunk) } },
-				})),
+				...(await this.findWithCollections(
+					{
+						select: [
+							'id',
+							'name',
+							'activeVersionId',
+							...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
+						],
+						relations: { activeVersion: withNodes },
+						where: { parentFolder: { id: In(chunk) } },
+					},
+					{ shared: { project: true } },
+				)),
 			);
 		}
 
@@ -1329,11 +1413,21 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		/**
+		 * Tags and shares to return as JSON arrays in the same statement, instead of selecting
+		 * them through `options.select`, which joins them and repeats each workflow per row.
+		 */
+		collections?: WorkflowCollections,
 	): Promise<WorkflowListResult> {
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
 
-		const [workflows, count] = await query.getManyAndCount();
-		return { workflows, count };
+		if (!collections) {
+			const [workflows, count] = await query.getManyAndCount();
+			return { workflows, count };
+		}
+
+		const workflows = await getWithWorkflowCollections(query, collections);
+		return { workflows, count: await query.getCount() };
 	}
 
 	/**
