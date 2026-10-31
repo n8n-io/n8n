@@ -316,13 +316,8 @@ export class ExecutionLevelTracer {
 			if (!span) return;
 
 			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
-			const ctx = trace.setSpan(ROOT_CONTEXT, span);
 
-			propagation.inject(
-				baggage ? propagation.setBaggage(ctx, baggage) : ctx,
-				headers,
-				defaultTextMapSetter,
-			);
+			propagation.inject(spanContext(span, baggage), headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -422,6 +417,15 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
+/**
+ * The OTel context an execution propagates: its active span, carrying the
+ * caller's baggage when the execution inherited any.
+ */
+function spanContext(span: Span, baggage: Baggage | undefined): Context {
+	const ctx = trace.setSpan(ROOT_CONTEXT, span);
+	return baggage ? propagation.setBaggage(ctx, baggage) : ctx;
+}
+
 function toBaggage(header: string | undefined): Baggage | undefined {
 	if (!header) return undefined;
 	const extracted = baggagePropagator.extract(
@@ -432,12 +436,15 @@ function toBaggage(header: string | undefined): Baggage | undefined {
 	const baggage = propagation.getBaggage(extracted);
 	if (!baggage) return undefined;
 
-	const reserved: string[] = [];
-	for (const [key] of baggage.getAllEntries()) {
-		if (isReservedBaggageKey(key)) reserved.push(key);
-	}
+	// Deliberately repeats the inbound `n8n.` filter. This one guards the wire
+	// for every entry regardless of origin — including rows written by another
+	// n8n version — so it is the copy to keep if the two ever look redundant.
+	const reserved = baggage
+		.getAllEntries()
+		.map(([key]) => key)
+		.filter(isReservedBaggageKey);
 
-	const kept = reserved.length ? baggage.removeEntries(...reserved) : baggage;
+	const kept = baggage.removeEntries(...reserved);
 	return kept.getAllEntries().length ? kept : undefined;
 }
 
@@ -447,14 +454,9 @@ function toTracingParentContext(
 	baggage: Baggage | undefined,
 ): TracingContext {
 	const carrier: Record<string, string> = {};
-	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
-	if (baggage) {
-		baggagePropagator.inject(
-			propagation.setBaggage(ROOT_CONTEXT, baggage),
-			carrier,
-			defaultTextMapSetter,
-		);
-	}
+	const ctx = spanContext(span, baggage);
+	propagator.inject(ctx, carrier, defaultTextMapSetter);
+	baggagePropagator.inject(ctx, carrier, defaultTextMapSetter);
 	return {
 		traceparent: carrier.traceparent,
 		tracestate: carrier.tracestate,

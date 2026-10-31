@@ -11,6 +11,7 @@ import {
 	DeleteDateColumn,
 } from '@n8n/typeorm';
 import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
+import type { ExecutionTracingContext } from 'n8n-workflow';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { DateTimeColumn, datetimeColumnType, jsonColumnType } from './abstract-entity';
@@ -95,12 +96,7 @@ export class ExecutionEntity {
 	storedAt: ExecutionDataStorageLocation;
 
 	@Column({ type: jsonColumnType, nullable: true })
-	tracingContext: {
-		traceparent?: string;
-		tracestate?: string;
-		identity?: Record<string, string>;
-		baggage?: string;
-	} | null;
+	tracingContext: ExecutionTracingContext | null;
 	/**
 	 * Optional caller-supplied key that uniquely identifies this logical
 	 * execution. Enforced unique via an index, so concurrent attempts

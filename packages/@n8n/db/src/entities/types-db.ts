@@ -16,6 +16,7 @@ import type {
 	IDataObject,
 	IBinaryKeyData,
 	IPairedItemData,
+	ExecutionTracingContext,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -67,12 +68,7 @@ export interface IExecutionBase {
 	 * correlated across queue-mode boundaries.
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
-	tracingContext?: {
-		traceparent?: string;
-		tracestate?: string;
-		identity?: Record<string, string>;
-		baggage?: string;
-	} | null;
+	tracingContext?: ExecutionTracingContext | null;
 	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`

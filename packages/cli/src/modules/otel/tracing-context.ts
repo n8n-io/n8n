@@ -1,13 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ExecutionTracingContext } from 'n8n-workflow';
 
-export type TracingContext = {
-	traceparent?: string;
-	tracestate?: string;
-	identity?: Record<string, string>;
-	baggage?: string;
-};
+export type TracingContext = ExecutionTracingContext;
 
 @Service()
 export class TraceContextService {

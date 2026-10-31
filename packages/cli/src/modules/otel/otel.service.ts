@@ -30,7 +30,7 @@ import { N8N_VERSION } from '@/constants';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
-	DEFAULT_PROPAGATOR_NAMES,
+	DEFAULT_OUTBOUND_PROPAGATOR,
 	propagatorFor,
 	propagatorNamesFromEnv,
 	TRACING_OFF,
@@ -68,9 +68,9 @@ export class OtelService {
 	// Read once: the propagator installed and the names warned about must agree.
 	private readonly propagatorNames = propagatorNamesFromEnv();
 
-	private readonly outboundPropagator = propagatorFor(
-		this.propagatorNames ?? DEFAULT_PROPAGATOR_NAMES,
-	);
+	private readonly outboundPropagator = this.propagatorNames
+		? propagatorFor(this.propagatorNames)
+		: DEFAULT_OUTBOUND_PROPAGATOR;
 
 	private activeExport?: ActiveExport;
 

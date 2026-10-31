@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
@@ -11,8 +12,9 @@ describe('OtelModule', () => {
 	describe('extractInboundBaggage', () => {
 		const extractorWith = async (enabled: boolean, injectOutbound: boolean) => {
 			const settingsService = mockInstance(OtelSettingsService);
-			settingsService.getSettings.mockReturnValue({ enabled, injectOutbound } as never);
+			settingsService.isOutboundInjectionEnabled.mockReturnValue(enabled && injectOutbound);
 			mockInstance(ExecutionLevelTracer);
+			mockInstance(Logger);
 
 			const context = await new OtelModule().context();
 			return context.extractInboundBaggage as ExtractInboundBaggage;

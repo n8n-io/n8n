@@ -20,7 +20,7 @@ export const OTEL_ENV_VARS = {
 } as const;
 
 export const CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR = 'N8N_OTEL_TRACES_CUSTOM_ATTRIBUTE_PREFIXES';
-export const RESERVED_BAGGAGE_KEY_PREFIX = 'n8n.';
+const RESERVED_BAGGAGE_KEY_PREFIX = 'n8n.';
 
 export function isReservedBaggageKey(key: string): boolean {
 	return key.toLowerCase().startsWith(RESERVED_BAGGAGE_KEY_PREFIX);

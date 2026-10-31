@@ -32,6 +32,7 @@ import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
+	ExecutionTracingContext,
 	IRunExecutionData,
 	IRunExecutionDataAll,
 	IWorkflowSettings,
@@ -83,12 +84,7 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: {
-		traceparent?: string;
-		tracestate?: string;
-		identity?: Record<string, string>;
-		baggage?: string;
-	};
+	tracingContext?: ExecutionTracingContext;
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
