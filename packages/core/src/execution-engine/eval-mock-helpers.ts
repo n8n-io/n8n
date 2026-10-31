@@ -8,7 +8,13 @@
  */
 
 import { isRecord } from '@n8n/utils/is-record';
-import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import type {
+	IHttpRequestOptions,
+	INode,
+	INodeProperties,
+	IRequestOptions,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { STATUS_CODES } from 'node:http';
 import { Readable } from 'node:stream';
@@ -320,4 +326,38 @@ function throwHttpError(response: EvalMockHttpResponse, library: 'axios' | 'lega
 			headers: response.headers,
 		},
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Simulated-services runs
+// ---------------------------------------------------------------------------
+
+/** The eval run's egress proxy URL, or `undefined` outside a simulated-services run. */
+export function getEvalEgressProxy(
+	additionalData: Pick<IWorkflowExecuteAdditionalData, 'evalEgressProxy'> | undefined,
+): string | undefined {
+	const proxy = additionalData?.evalEgressProxy;
+	return typeof proxy === 'string' && proxy !== '' ? proxy : undefined;
+}
+
+/**
+ * Sends a node request through the eval run's egress proxy, when the run has one.
+ * Called on the final request object, after credential auth and signing.
+ */
+export function withEvalEgressProxy<T extends IHttpRequestOptions>(
+	requestOptions: T,
+	additionalData: Pick<IWorkflowExecuteAdditionalData, 'evalEgressProxy'> | undefined,
+): T {
+	const proxy = getEvalEgressProxy(additionalData);
+	if (!proxy) return requestOptions;
+	const { hostname, port, protocol, username, password } = new URL(proxy);
+	requestOptions.proxy = {
+		host: hostname,
+		port: Number(port) || (protocol === 'https:' ? 443 : 80),
+		protocol: protocol.replace(/:$/, ''),
+		...(username
+			? { auth: { username: decodeURIComponent(username), password: decodeURIComponent(password) } }
+			: {}),
+	};
+	return requestOptions;
 }

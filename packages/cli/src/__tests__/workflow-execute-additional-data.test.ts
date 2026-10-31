@@ -287,6 +287,17 @@ describe('WorkflowExecuteAdditionalData', () => {
 			).rejects.toThrow('Stop after persistence check');
 		});
 
+		it("sends a simulated-services eval run's sub-workflow requests through its egress proxy", async () => {
+			await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				mock<IWorkflowExecuteAdditionalData>({ evalEgressProxy: 'http://127.0.0.1:4567' }),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+			);
+
+			const subExecutionData = vi.mocked(WorkflowExecute).mock.calls.at(-1)?.[0];
+			expect(subExecutionData?.evalEgressProxy).toBe('http://127.0.0.1:4567');
+		});
+
 		it('should execute workflow, return data and execution id', async () => {
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
