@@ -350,6 +350,23 @@ describe('Test Google Sheets, autoMapInputData', () => {
 		expect(getData).toHaveBeenCalledTimes(1);
 		expect(setColumnNamesHint).toHaveBeenCalledWith(['id', 'name']);
 	});
+
+	it('reports the original item index for compacted input items', async () => {
+		const items = [{ json: { id: 1 } }, { json: { unexpected: true } }];
+		const googleSheet = new GoogleSheet('spreadsheetId', fakeExecuteFunction);
+
+		const result = autoMapInputData.call(
+			fakeExecuteFunction,
+			'Sheet1',
+			googleSheet,
+			items,
+			{ handlingExtraData: 'error' },
+			['id'],
+			[2, 5],
+		);
+
+		await expect(result).rejects.toMatchObject({ context: { itemIndex: 5 } });
+	});
 });
 
 describe('Test Google Sheets, lookupValues', () => {
