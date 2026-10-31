@@ -1420,6 +1420,66 @@ describe('WorkflowExecute', () => {
 			}
 			expect(error).toBeInstanceOf(UserError);
 		});
+
+		//                 ┌────┐ PD
+		//            ┌───►│set1├─────┐
+		//┌───────┐1  │    └────┘     │   ┌─────┐ ►►
+		//│trigger├───┤               ├──►│merge│
+		//└───────┘   │    ┌────┐     │   └─────┘
+		//            └───►│set2├─────┘
+		//                 └────┘
+		test.each([
+			{ parameters: { mode: 'append' } },
+			{
+				parameters: {
+					mode: 'chooseBranch',
+					chooseBranchMode: 'waitForAll',
+					output: 'specifiedInput',
+					useDataOfInput: 1,
+				},
+			},
+		])(
+			'passes the pinned data of a merge input without run data to the merge node in $parameters.mode mode',
+			async ({ parameters }) => {
+				// ARRANGE
+				const waitPromise = createDeferredPromise<IRun>();
+				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+				const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+				const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+				const set1 = createNodeData({ name: 'set1' });
+				const set2 = createNodeData({ name: 'set2' });
+				const merge = {
+					...createNodeData({ name: 'merge', type: 'n8n-nodes-base.merge', parameters }),
+					typeVersion: 3,
+				};
+				const workflow = new DirectedGraph()
+					.addNodes(trigger, set1, set2, merge)
+					.addConnections(
+						{ from: trigger, to: set1 },
+						{ from: trigger, to: set2 },
+						{ from: set1, to: merge, inputIndex: 0 },
+						{ from: set2, to: merge, inputIndex: 1 },
+					)
+					.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+				const runData: IRunData = {
+					[trigger.name]: [toITaskData([{ data: { name: trigger.name } }])],
+				};
+				const pinData: IPinData = { [set1.name]: [{ json: { name: set1.name } }] };
+
+				// ACT
+				await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, [], {
+					nodeName: merge.name,
+					mode: 'inclusive',
+				});
+				const result = await waitPromise.promise;
+
+				// ASSERT
+				const mergeOutput = result.data.resultData.runData[merge.name]?.[0]?.data?.main?.[0];
+				expect(mergeOutput?.map((item) => item.json)).toContainEqual({ name: set1.name });
+			},
+		);
 	});
 
 	describe('checkReadyForExecution', () => {

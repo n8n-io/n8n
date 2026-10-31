@@ -503,6 +503,83 @@ describe('recreateNodeExecutionStack', () => {
 			expect(waitingExecutionSource).toEqual({});
 		});
 	});
+
+	//                 ┌─────┐
+	//            ┌───►│node1├──────┐
+	//┌───────┐   │    └─────┘      │   ┌─────┐
+	//│trigger├───┤                 ├──►│merge│
+	//└───────┘   │    ┌─────┐      │   └─────┘
+	//            └───►│node2├──────┘
+	//                 └─────┘
+	describe('multiple inputs with an incomplete group', () => {
+		// ARRANGE
+		const trigger = createNodeData({ name: 'trigger' });
+		const node1 = createNodeData({ name: 'node1' });
+		const node2 = createNodeData({ name: 'node2' });
+		const merge = createNodeData({ name: 'merge' });
+		const graph = new DirectedGraph()
+			.addNodes(trigger, node1, node2, merge)
+			.addConnections(
+				{ from: trigger, to: node1 },
+				{ from: trigger, to: node2 },
+				{ from: node1, to: merge, inputIndex: 0 },
+				{ from: node2, to: merge, inputIndex: 1 },
+			);
+		const startNodes = new Set([node2, merge]);
+
+		test('adds the pinned data of a parent without run data to the waiting execution', () => {
+			// ARRANGE
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+			};
+			const pinData: IPinData = { [node1.name]: [{ json: { node: 'node1' } }] };
+
+			// ACT
+			const { waitingExecution, waitingExecutionSource } = recreateNodeExecutionStack(
+				graph,
+				startNodes,
+				runData,
+				pinData,
+			);
+
+			// ASSERT
+			expect(waitingExecution).toEqual({
+				[merge.name]: { '0': { main: [[{ json: { node: 'node1' } }]] } },
+			});
+			expect(waitingExecutionSource).toEqual({
+				[merge.name]: {
+					'0': { main: [{ previousNode: 'node1', previousNodeOutput: 0, previousNodeRun: 0 }] },
+				},
+			});
+		});
+
+		test('sets previousNodeRun to the run of the parent that produced the data', () => {
+			// ARRANGE
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { node: 'trigger' } }])],
+				[node1.name]: [toITaskData([]), toITaskData([{ data: { node: 'node1' } }])],
+			};
+			const pinData: IPinData = {};
+
+			// ACT
+			const { waitingExecution, waitingExecutionSource } = recreateNodeExecutionStack(
+				graph,
+				startNodes,
+				runData,
+				pinData,
+			);
+
+			// ASSERT
+			expect(waitingExecution).toEqual({
+				[merge.name]: { '0': { main: [[{ json: { node: 'node1' } }]] } },
+			});
+			expect(waitingExecutionSource).toEqual({
+				[merge.name]: {
+					'0': { main: [{ previousNode: 'node1', previousNodeOutput: 0, previousNodeRun: 1 }] },
+				},
+			});
+		});
+	});
 });
 
 describe('addWaitingExecution', () => {
