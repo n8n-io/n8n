@@ -10,7 +10,6 @@ import type {
 	ITaskData,
 	IPinData,
 	StartNodeData,
-	INode,
 	IDataObject,
 	IWorkflowBase,
 	IDestinationNode,
@@ -450,30 +449,10 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			) {
 				chatEventBus.emit('setupWebsocket', runWorkflowApiResponse.executionId);
 			}
-			const pinData = workflowData.pinData ?? {};
-
-			const getTestUrl = (() => {
-				return (node: INode) => {
-					const path =
-						node.parameters.path ||
-						(node.parameters.options as IDataObject)?.path ||
-						node.webhookId;
-					return `${rootStore.formTestUrl}/${path as string}`;
-				};
-			})();
-
-			try {
-				await displayForm({
-					nodes: workflowData.nodes,
-					runData: workflowExecutionState.value.activeExecution?.data?.resultData?.runData,
-					destinationNode: options.destinationNode?.nodeName,
-					triggerNode: options.triggerNode,
-					pinData,
-					directParentNodes,
-					source: options.source,
-					getTestUrl,
-				});
-			} catch (error) {}
+			displayForm({
+				formTestUrls: runWorkflowApiResponse.formTestUrls ?? [],
+				source: options.source,
+			});
 
 			await externalHooks.run('workflowRun.runWorkflow', {
 				nodeName: options.destinationNode?.nodeName,
