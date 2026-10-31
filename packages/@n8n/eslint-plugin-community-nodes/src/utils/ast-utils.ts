@@ -34,7 +34,7 @@ export function isTriggerNodeClass(node: TSESTree.ClassDeclaration): boolean {
 	return node.id?.name.endsWith('Trigger') ?? false;
 }
 
-function hasTriggerGroup(descriptionValue: TSESTree.ObjectExpression): boolean {
+export function hasTriggerGroup(descriptionValue: TSESTree.ObjectExpression): boolean {
 	const groupArray = findArrayLiteralProperty(descriptionValue, 'group');
 	return (
 		groupArray?.elements.some(
