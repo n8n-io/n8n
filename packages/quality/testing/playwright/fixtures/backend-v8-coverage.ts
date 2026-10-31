@@ -72,12 +72,10 @@ export const backendV8CoverageFixtures: Fixtures<
 				);
 			}
 
-			const ctx = await request.newContext({ baseURL: n8nUrl });
 			try {
-				const res = await ctx.post('/rest/e2e/coverage/start');
+				const { body } = await postHook(n8nUrl, '/rest/e2e/coverage/start');
 				// The first start on an n8n process returns the code that ran at boot.
-				const body = (await res.json()) as { data?: { boot?: unknown[] } };
-				const boot = body?.data?.boot;
+				const boot = (body as { data?: { boot?: unknown[] } })?.data?.boot;
 				if (Array.isArray(boot) && boot.length) {
 					const name = `${slugify(n8nUrl)}-${Date.now()}.json`;
 					mkdirSync(BACKEND_BOOT_DIR, { recursive: true });
@@ -92,10 +90,9 @@ export const backendV8CoverageFixtures: Fixtures<
 			await use(undefined);
 
 			try {
-				const res = await ctx.post('/rest/e2e/coverage/take');
+				const { status, body } = await postHook(n8nUrl, '/rest/e2e/coverage/take');
 				// n8n wraps controller returns in { data: ... } (response-helper.ts).
-				const body = (await res.json()) as { data?: { result?: unknown[] } };
-				const result = body?.data?.result ?? [];
+				const result = (body as { data?: { result?: unknown[] } })?.data?.result ?? [];
 				if (Array.isArray(result) && result.length) {
 					const spec = specId(testInfo);
 					const specDir = join(BACKEND_BY_SPEC_DIR, slugify(spec));
@@ -111,7 +108,7 @@ export const backendV8CoverageFixtures: Fixtures<
 				} else if (!warnedHookError) {
 					warnedHookError = true;
 					console.warn(
-						`backend coverage: /rest/e2e/coverage/take returned ${res.status()} with ` +
+						`backend coverage: /rest/e2e/coverage/take returned ${status} with ` +
 							`${Array.isArray(result) ? result.length : 'no'} entries — no backend rows this run.`,
 					);
 				}
@@ -120,10 +117,23 @@ export const backendV8CoverageFixtures: Fixtures<
 					warnedHookError = true;
 					console.warn(`backend coverage: take failed — ${String(error)}`);
 				}
-			} finally {
-				await ctx.dispose();
 			}
 		},
 		{ auto: true },
 	],
 };
+
+/**
+ * POST to a coverage hook on a new connection. A connection kept open from
+ * `start` can be closed by the server's keep-alive timeout as `take` reuses it,
+ * which fails `take` with "socket hang up".
+ */
+async function postHook(baseURL: string, path: string) {
+	const ctx = await request.newContext({ baseURL });
+	try {
+		const res = await ctx.post(path);
+		return { status: res.status(), body: (await res.json()) as unknown };
+	} finally {
+		await ctx.dispose();
+	}
+}
