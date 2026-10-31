@@ -493,12 +493,9 @@ describe('McpClientManager', () => {
 			});
 		});
 
-		it('uses run permissions when a server has no policy', async () => {
+		it('allows read tools and asks approval for write tools when a server has no policy', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }], mockLogger, {
-				mcpRead: 'blocked',
-				mcpWrite: 'always_allow',
-			});
+			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }], mockLogger);
 
 			const [nativeConfigs] = mockedMcpClient.mock.lastCall ?? [];
 			const configureTools = nativeConfigs[0].configureTools;
@@ -508,25 +505,9 @@ describe('McpClientManager', () => {
 					{ name: 'change', annotations: { readOnlyHint: false } },
 				]),
 			).toEqual({
-				toolFilter: { mode: 'exclude', tools: ['lookup'] },
-				requireApproval: [],
+				toolFilter: { mode: 'exclude', tools: [] },
+				requireApproval: ['change'],
 			});
-		});
-
-		it('reloads tools when run permissions change', async () => {
-			const manager = new McpClientManager();
-			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
-
-			await manager.getRegularTools(configs, mockLogger, {
-				mcpRead: 'always_allow',
-				mcpWrite: 'require_approval',
-			});
-			await manager.getRegularTools(configs, mockLogger, {
-				mcpRead: 'always_allow',
-				mcpWrite: 'blocked',
-			});
-
-			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 	});
 

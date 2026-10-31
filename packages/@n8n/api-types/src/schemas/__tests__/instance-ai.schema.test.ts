@@ -370,8 +370,6 @@ describe('applyBranchReadOnlyOverrides', () => {
 
 		// These should remain unchanged (safe for read-only instances)
 		expect(result.fetchUrl).toBe('require_approval');
-		expect(result.mcpRead).toBe('always_allow');
-		expect(result.mcpWrite).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
 		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
@@ -440,8 +438,6 @@ describe('resolveInstanceAiPermissions', () => {
 		expect(result.createWorkflow).toBe('always_allow');
 		expect(result.deleteWorkflow).toBe('require_approval');
 		expect(result.executeNode).toBe('require_approval');
-		expect(result.mcpRead).toBe('always_allow');
-		expect(result.mcpWrite).toBe('require_approval');
 	});
 
 	it('should carry a blocked runWorkflow over to executeNode', () => {
