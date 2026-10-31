@@ -5,6 +5,8 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+	addMissingRootRanges,
+	collectRootRanges,
 	createBackendResolveStats,
 	forceSpecTn,
 	resolveBackendEntries,
@@ -106,6 +108,39 @@ describe('specBackendRawPaths', () => {
 			expect(new Set(paths)).toEqual(
 				new Set([join(dir, 'raw-a.json'), '/boot/c1.json', '/boot/c2.json']),
 			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe('addMissingRootRanges', () => {
+	const fn = (functionName: string, startOffset: number, endOffset: number, count: number) => ({
+		functionName,
+		isBlockCoverage: true,
+		ranges: [{ startOffset, endOffset, count }],
+	});
+
+	it('adds a zero-count root to a window that omits the code that did not run', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'cov-'));
+		try {
+			// The window in which the script loaded has its root range.
+			writeFileSync(
+				join(dir, 'window-1.json'),
+				JSON.stringify({ result: [{ url: 'file:///a.js', functions: [fn('', 0, 180, 1)] }] }),
+			);
+			const roots = collectRootRanges([join(dir, 'window-1.json')]);
+			const later = [
+				{ url: 'file:///a.js', functions: [fn('run', 13, 57, 2)] },
+				{ url: 'file:///b.js', functions: [fn('', 0, 90, 1)] },
+				{ url: 'file:///unknown.js', functions: [fn('x', 5, 9, 1)] },
+			];
+
+			const [a, b, unknown] = addMissingRootRanges(later, roots);
+
+			expect(a.functions).toEqual([fn('', 0, 180, 0), fn('run', 13, 57, 2)]);
+			expect(b).toBe(later[1]);
+			expect(unknown).toBe(later[2]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

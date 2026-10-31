@@ -18,8 +18,6 @@ import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Request } from 'express';
 import type nodeFs from 'node:fs';
-import type { Profiler } from 'node:inspector';
-import type * as nodeInspectorPromises from 'node:inspector/promises';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -36,6 +34,8 @@ import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { ProcessInternalsService } from '@/services/process-internals.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+import { CoverageWindows } from './e2e-coverage-windows';
 
 if (!inE2ETests) {
 	Container.get(Logger).error('E2E endpoints only allowed during E2E tests');
@@ -405,82 +405,34 @@ export class E2EController {
 	// E2E impact map (today the map is frontend-only). Test-only: the whole
 	// controller hard-exits outside E2E (see top of file).
 	//
-	// Each start and take calls `Profiler.takePreciseCoverage`, which returns the
-	// call counts since the previous take and resets them. Best-effort coverage
-	// is not usable here: it reports 0 or 1 for each function, so only the first
-	// spec in a container got credit for code that every spec runs.
-	//
-	// The reset is process-wide, so the `NODE_V8_COVERAGE` exit dump keeps only
-	// the counts after the last take. To keep the shard total (the Codecov path)
-	// complete, every window is also written to the `NODE_V8_COVERAGE` folder.
+	// Each start and take ends a coverage window (see CoverageWindows), so each
+	// spec gets the call counts of its own window. Best-effort coverage is not
+	// usable here: it reports 0 or 1 for each function, so only the first spec
+	// in a container got credit for code that every spec runs.
 	//
 	// REQUIRES the coverage run to be single-worker (it is — coverage project
 	// runs `--workers=1`). Precise coverage is process-global, so the start→take
 	// window is only attributable to one spec when specs don't run concurrently.
-	private coverageSession?: nodeInspectorPromises.Session;
-
-	private coverageWindows = 0;
-
-	/** Return the counts since the previous take, or since boot on the first call. */
-	private async takeCoverageWindow(): Promise<{
-		boot: boolean;
-		result: Profiler.ScriptCoverage[];
-	}> {
-		const boot = !this.coverageSession;
-		if (!this.coverageSession) {
-			const inspector = require('node:inspector/promises') as typeof nodeInspectorPromises;
-			this.coverageSession = new inspector.Session();
-			this.coverageSession.connect();
-			await this.coverageSession.post('Profiler.enable');
-			// Same mode as NODE_V8_COVERAGE, so the counts since boot are kept.
-			await this.coverageSession.post('Profiler.startPreciseCoverage', {
-				callCount: true,
-				detailed: true,
-			});
-		}
-		const { result } = await this.coverageSession.post('Profiler.takePreciseCoverage');
-		const window = E2EController.scriptsThatRan(result);
-		await this.writeCoverageWindow(window);
-		return { boot, result: window };
-	}
-
-	/**
-	 * Keep each script that ran code in the window. Keep its zero-count
-	 * functions: V8 ranges nest, so a reader treats a missing function as
-	 * covered by its enclosing range.
-	 */
-	private static scriptsThatRan(scripts: Profiler.ScriptCoverage[]): Profiler.ScriptCoverage[] {
-		return scripts.filter((script) =>
-			script.functions.some((fn) => fn.ranges.some((range) => range.count > 0)),
-		);
-	}
-
-	private async writeCoverageWindow(result: Profiler.ScriptCoverage[]) {
-		const dir = process.env.NODE_V8_COVERAGE;
-		if (!dir || result.length === 0) return;
-		const fs = require('node:fs') as typeof nodeFs;
-		// The timestamp keeps names unique when a restarted process reuses the pid.
-		const file = `${dir}/window-${process.pid}-${Date.now()}-${++this.coverageWindows}.json`;
-		await fs.promises.writeFile(file, JSON.stringify({ result }));
-	}
+	private readonly coverageWindows = new CoverageWindows();
 
 	/**
 	 * Test-only: mark the start of a spec's backend-coverage window. The first
 	 * call returns the code that ran at boot, which every spec depends on.
 	 */
 	@Post('/coverage/start', { skipAuth: true })
-	async startCoverage() {
-		const { boot, result } = await this.takeCoverageWindow();
-		return boot ? { success: true, boot: result } : { success: true };
+	startCoverage() {
+		const window = this.coverageWindows.take();
+		if (!window) return { success: false };
+		return window.boot ? { success: true, boot: window.result } : { success: true };
 	}
 
 	/** Test-only: return the V8 coverage executed since `start` (this spec's
 	 * window), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
 	@Post('/coverage/take', { skipAuth: true })
-	async takeCoverage() {
-		if (!this.coverageSession) return { success: false, result: [] };
-		const { result } = await this.takeCoverageWindow();
-		return { success: true, result };
+	takeCoverage() {
+		const window = this.coverageWindows.take();
+		if (!window) return { success: false, result: [] };
+		return { success: true, result: window.result };
 	}
 
 	/**

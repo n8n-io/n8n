@@ -73,6 +73,59 @@ export function specBackendRawPaths(
 	return [...rawFiles.map((f) => join(dir, f)), ...boots];
 }
 
+interface V8Function {
+	functionName: string;
+	isBlockCoverage: boolean;
+	ranges: Array<{ startOffset: number; endOffset: number; count: number }>;
+}
+type V8Script = { url: string; functions?: V8Function[] };
+
+const isRootFunction = (fn: V8Function) =>
+	fn.functionName === '' && fn.ranges[0]?.startOffset === 0;
+
+/**
+ * Map each script url to the end offset of its top-level (root) range. A
+ * coverage window has the root of each script that loaded in that window.
+ */
+export function collectRootRanges(files: string[]): Map<string, number> {
+	const roots = new Map<string, number>();
+	for (const file of files) {
+		let parsed: { result?: V8Script[] };
+		try {
+			parsed = JSON.parse(readFileSync(file, 'utf8'));
+		} catch {
+			continue;
+		}
+		for (const script of parsed.result ?? []) {
+			const root = script.functions?.find(isRootFunction);
+			if (root) roots.set(script.url, root.ranges[0].endOffset);
+		}
+	}
+	return roots;
+}
+
+/**
+ * Give each script without a root range a root range with count 0. V8 omits
+ * code that did not run in a coverage window. A reader treats code outside
+ * every range as covered, so without this the window marks the whole file as
+ * covered.
+ */
+export function addMissingRootRanges<T extends V8Script>(
+	scripts: T[],
+	roots: Map<string, number>,
+): T[] {
+	return scripts.map((script) => {
+		const end = roots.get(script.url);
+		if (end === undefined || script.functions?.some(isRootFunction)) return script;
+		const root: V8Function = {
+			functionName: '',
+			isBlockCoverage: true,
+			ranges: [{ startOffset: 0, endOffset: end, count: 0 }],
+		};
+		return { ...script, functions: [root, ...(script.functions ?? [])] };
+	});
+}
+
 /** A resolved backend entry: where to read .js/.map bytes, and the repo dist
  * dir its map sources resolve against (→ checkout `src/*.ts`). */
 export function resolveBackendUrl(url: string, pkgMap: Map<string, string>) {
