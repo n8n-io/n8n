@@ -813,7 +813,6 @@ const commonStubs = {
 		template: '<div data-testid="stub-n8n-user-stack" />',
 		props: ['users', 'currentUserEmail'],
 	},
-	N8nAssistantIcon: { template: '<i data-testid="stub-assistant-icon" />', props: ['size'] },
 	N8nTooltip: {
 		template: '<span data-testid="stub-tooltip"><slot /></span>',
 		props: ['placement', 'content'],
