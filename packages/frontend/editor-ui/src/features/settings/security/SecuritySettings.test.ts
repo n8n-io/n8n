@@ -995,7 +995,7 @@ describe('SecuritySettings', () => {
 				availableTypes: ['workflow_review'],
 				failedTypes: [],
 			});
-			expect(toggle).not.toHaveClass('is-disabled');
+			expect(toggle).toBeEnabled();
 			expect(showError).not.toHaveBeenCalled();
 			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
@@ -1013,7 +1013,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('security-workflow-reviews-toggle')).toHaveClass('is-disabled');
+			expect(getByTestId('security-workflow-reviews-toggle')).toBeDisabled();
 		});
 
 		it('should show alert dialog and proceed when confirming disable workflow reviews', async () => {
