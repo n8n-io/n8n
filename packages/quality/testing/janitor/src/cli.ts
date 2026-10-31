@@ -47,6 +47,7 @@ import {
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
+import { matchesSinkPackage } from './core/global-triggers.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -695,6 +696,10 @@ function runTestScopedCmd(options: CliOptions): void {
 		changedFiles,
 		packageName: readPackageName(packageDir),
 		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
+		sinkAffectedPackages: resolveAffectedPackages(
+			rootDir,
+			changedFiles?.filter(matchesSinkPackage) ?? null,
+		),
 		passthroughArgs: options.passthroughArgs,
 		collectCoverage: process.env.COVERAGE_ENABLED === 'true',
 	});
@@ -711,6 +716,10 @@ function runScope(options: CliOptions): void {
 		rootDir,
 		packageName: readPackageName(packageDir),
 		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
+		sinkAffectedPackages: resolveAffectedPackages(
+			rootDir,
+			changedFiles?.filter(matchesSinkPackage) ?? null,
+		),
 	});
 	console.log(formatScope(result));
 }
