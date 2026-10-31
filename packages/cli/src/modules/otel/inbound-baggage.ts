@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 
-const RESERVED_KEY_PREFIX = 'n8n.';
+import { isReservedBaggageKey } from './otel.constants';
+
 const MAX_ENTRIES = 180;
 const MAX_ENTRY_BYTES = 4096;
 const MAX_TOTAL_BYTES = 8192;
@@ -29,7 +30,7 @@ export function sanitizeInboundBaggage(header: unknown, logger: Logger): string 
 			continue;
 		}
 
-		if (key.toLowerCase().startsWith(RESERVED_KEY_PREFIX)) {
+		if (isReservedBaggageKey(key)) {
 			dropped.reservedPrefix++;
 			continue;
 		}

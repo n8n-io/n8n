@@ -42,7 +42,7 @@ const PROPAGATORS_BY_NAME = new Map<string, () => TextMapPropagator>([
 	['baggage', () => new W3CBaggagePropagator()],
 ]);
 
-export const PROPAGATORS_ENV_VAR = 'OTEL_PROPAGATORS';
+const PROPAGATORS_ENV_VAR = 'OTEL_PROPAGATORS';
 
 export const DEFAULT_PROPAGATOR_NAMES = ['tracecontext', 'baggage'];
 
@@ -68,11 +68,6 @@ export function propagatorFor(names: string[]): TextMapPropagator {
 
 export function propagatorNamesFromEnv(): string[] | undefined {
 	return getStringListFromEnv(PROPAGATORS_ENV_VAR);
-}
-
-export function propagatorFromEnv(): TextMapPropagator | undefined {
-	const names = propagatorNamesFromEnv();
-	return names && propagatorFor(names);
 }
 
 export const DEFAULT_OUTBOUND_PROPAGATOR = propagatorFor(DEFAULT_PROPAGATOR_NAMES);

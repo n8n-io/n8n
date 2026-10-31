@@ -1,6 +1,5 @@
-import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelModule } from '../otel.module';
@@ -11,12 +10,9 @@ type ExtractInboundBaggage = (header: unknown) => string | undefined;
 describe('OtelModule', () => {
 	describe('extractInboundBaggage', () => {
 		const extractorWith = async (enabled: boolean, injectOutbound: boolean) => {
-			const settingsService = mock<OtelSettingsService>();
+			const settingsService = mockInstance(OtelSettingsService);
 			settingsService.getSettings.mockReturnValue({ enabled, injectOutbound } as never);
-
-			Container.set(OtelSettingsService, settingsService);
-			Container.set(ExecutionLevelTracer, mock<ExecutionLevelTracer>());
-			Container.set(Logger, mock<Logger>());
+			mockInstance(ExecutionLevelTracer);
 
 			const context = await new OtelModule().context();
 			return context.extractInboundBaggage as ExtractInboundBaggage;

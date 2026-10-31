@@ -30,8 +30,8 @@ import { N8N_VERSION } from '@/constants';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
-	DEFAULT_OUTBOUND_PROPAGATOR,
-	propagatorFromEnv,
+	DEFAULT_PROPAGATOR_NAMES,
+	propagatorFor,
 	propagatorNamesFromEnv,
 	TRACING_OFF,
 	unknownPropagatorNames,
@@ -65,7 +65,12 @@ const stripEmptyResolutionNote = (message: string) =>
 
 @Service()
 export class OtelService {
-	private readonly envPropagator = propagatorFromEnv();
+	// Read once: the propagator installed and the names warned about must agree.
+	private readonly propagatorNames = propagatorNamesFromEnv();
+
+	private readonly outboundPropagator = propagatorFor(
+		this.propagatorNames ?? DEFAULT_PROPAGATOR_NAMES,
+	);
 
 	private activeExport?: ActiveExport;
 
@@ -87,7 +92,7 @@ export class OtelService {
 	}
 
 	private warnUnknownPropagators(): void {
-		const unknown = unknownPropagatorNames(propagatorNamesFromEnv() ?? []);
+		const unknown = unknownPropagatorNames(this.propagatorNames ?? []);
 		if (unknown.length === 0) return;
 
 		this.logger.warn(
@@ -227,9 +232,7 @@ export class OtelService {
 			sampler: new ParentBasedSampler({
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
-			propagator: settings.injectOutbound
-				? (this.envPropagator ?? DEFAULT_OUTBOUND_PROPAGATOR)
-				: TRACING_OFF.propagator,
+			propagator: settings.injectOutbound ? this.outboundPropagator : TRACING_OFF.propagator,
 		};
 	}
 

@@ -36,12 +36,11 @@ import {
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
-import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
+import { ATTR, BUILT_IN_ATTRIBUTE_KEYS, isReservedBaggageKey } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
 const propagator = new W3CTraceContextPropagator();
 const baggagePropagator = new W3CBaggagePropagator();
-const RESERVED_BAGGAGE_KEY_PREFIX = 'n8n.';
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -433,17 +432,13 @@ function toBaggage(header: string | undefined): Baggage | undefined {
 	const baggage = propagation.getBaggage(extracted);
 	if (!baggage) return undefined;
 
-	const kept = withoutReservedEntries(baggage);
+	const reserved: string[] = [];
+	for (const [key] of baggage.getAllEntries()) {
+		if (isReservedBaggageKey(key)) reserved.push(key);
+	}
+
+	const kept = reserved.length ? baggage.removeEntries(...reserved) : baggage;
 	return kept.getAllEntries().length ? kept : undefined;
-}
-
-function withoutReservedEntries(baggage: Baggage): Baggage {
-	const reserved = baggage
-		.getAllEntries()
-		.map(([key]) => key)
-		.filter((key) => key.toLowerCase().startsWith(RESERVED_BAGGAGE_KEY_PREFIX));
-
-	return reserved.length ? baggage.removeEntries(...reserved) : baggage;
 }
 
 function toTracingParentContext(

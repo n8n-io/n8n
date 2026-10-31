@@ -5,7 +5,6 @@ import {
 	DEFAULT_OUTBOUND_PROPAGATOR,
 	DEFAULT_PROPAGATOR_NAMES,
 	propagatorFor,
-	propagatorFromEnv,
 	propagatorNamesFromEnv,
 	unknownPropagatorNames,
 } from '../swappable-pipeline';
@@ -91,25 +90,17 @@ describe('outbound header propagators', () => {
 		});
 	});
 
-	describe('propagatorFromEnv', () => {
-		it.each([undefined, ''])('gives way to the stored setting when the variable is %p', (value) => {
+	describe('propagatorNamesFromEnv', () => {
+		it.each([undefined, ''])('names nothing when the variable is %p', (value) => {
 			setNames(value);
 
 			expect(propagatorNamesFromEnv()).toBeUndefined();
-			expect(propagatorFromEnv()).toBeUndefined();
 		});
 
-		it('decides the headers when the variable is set', () => {
+		it('names what the variable sets', () => {
 			setNames('tracecontext');
 
 			expect(propagatorNamesFromEnv()).toEqual(['tracecontext']);
-			expect(propagatorFromEnv()?.fields()).toEqual(['traceparent', 'tracestate']);
-		});
-
-		it('writes no header when the variable asks for none', () => {
-			setNames('none');
-
-			expect(propagatorFromEnv()?.fields()).toEqual([]);
 		});
 	});
 });
