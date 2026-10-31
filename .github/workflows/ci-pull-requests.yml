@@ -284,7 +284,9 @@ jobs:
           MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
         run: |
           JANITOR=packages/quality/testing/janitor/dist/cli.js
-          LOCKFILE_IMPACT=$(node "$JANITOR" lockfile-impact "--base=$MERGE_BASE")
+          # Without a built janitor (a workflow-only PR skips the build), report no
+          # signal: every package then treats a lockfile change as a full run.
+          LOCKFILE_IMPACT=$(node "$JANITOR" lockfile-impact "--base=$MERGE_BASE" || echo ALL)
           echo "Lockfile impact: $LOCKFILE_IMPACT"
           echo "lockfile-impact=$LOCKFILE_IMPACT" >> "$GITHUB_OUTPUT"
           PACKAGES=$(LOCKFILE_IMPACTED_PACKAGES="$LOCKFILE_IMPACT" node "$JANITOR" affected-packages | tr '\n' ' ' | sed 's/ *$//')
