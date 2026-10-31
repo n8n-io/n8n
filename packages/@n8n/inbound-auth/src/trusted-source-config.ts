@@ -132,12 +132,15 @@ export const RoleMappingSchema = z.object({
 });
 export type RoleMapping = z.infer<typeof RoleMappingSchema>;
 
-export const IdentitySchema = z.object({
+const IdentityV1Schema = z.object({
 	subject: z.enum(['n8n-user-id', 'binding']).default('binding'),
 	claimMapping: ClaimMappingSchema.default({}),
 	linkByEmail: z.enum(['off', 'verified-only', 'any']).default('verified-only'),
 	provision: z.object({ human: z.enum(['off', 'jit']).default('off') }).default({}),
 	roleMapping: RoleMappingSchema.default({}),
+});
+export const IdentitySchema = IdentityV1Schema.extend({
+	provision: z.object({ person: z.enum(['off', 'jit']).default('off') }).default({}),
 });
 export type TrustedSourceIdentity = z.infer<typeof IdentitySchema>;
 
@@ -146,10 +149,16 @@ export const TrustedSourceConfigV1Schema = z.object({
 	// No default: the authentication method is an explicit choice.
 	authentication: AuthenticationSchema,
 	surfaces: SurfacesSchema,
-	identity: IdentitySchema.default({}),
+	identity: IdentityV1Schema.default({}),
 });
 export type TrustedSourceConfigV1 = z.infer<typeof TrustedSourceConfigV1Schema>;
 export type TrustedSourceConfigV1Input = z.input<typeof TrustedSourceConfigV1Schema>;
+export const TrustedSourceConfigV2Schema = TrustedSourceConfigV1Schema.extend({
+	version: z.literal(2),
+	identity: IdentitySchema.default({}),
+});
+export type TrustedSourceConfigV2 = z.infer<typeof TrustedSourceConfigV2Schema>;
+export type TrustedSourceConfigV2Input = z.input<typeof TrustedSourceConfigV2Schema>;
 export type TrustedSourceConfigInput = z.input<typeof TrustedSourceConfigSchema>;
 
 const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
@@ -168,9 +177,11 @@ const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
  * has to stay a plain object, and the rules hold for every version anyway.
  */
 export const TrustedSourceConfigSchema = z
-	.discriminatedUnion('version', [TrustedSourceConfigV1Schema])
+	.discriminatedUnion('version', [TrustedSourceConfigV1Schema, TrustedSourceConfigV2Schema])
 	.superRefine((config, ctx) => {
 		const { authentication, identity } = config;
+		const provisionPerson =
+			config.version === 1 ? config.identity.provision.human : config.identity.provision.person;
 		if (
 			authentication.discovery.mode === 'manual' &&
 			authentication.keys.kind === 'jwks-uri' &&
@@ -184,14 +195,14 @@ export const TrustedSourceConfigSchema = z
 			});
 		}
 		// Without a lookup, provisioning would create a second user for an email that exists.
-		if (identity.provision.human === 'jit' && identity.linkByEmail === 'off') {
+		if (provisionPerson === 'jit' && identity.linkByEmail === 'off') {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'jit provisioning requires email linking',
 				path: ['identity', 'linkByEmail'],
 			});
 		}
-		if (identity.provision.human === 'jit' && identity.roleMapping.mode === 'off') {
+		if (provisionPerson === 'jit' && identity.roleMapping.mode === 'off') {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'jit provisioning requires a role-mapping mode',
@@ -267,10 +278,22 @@ export const trustedSourceConfigSchemaFor = (managedBy: ManagedBy) =>
 
 type ConfigMigration = (config: TrustedSourceConfig) => TrustedSourceConfig;
 
-/** One step per version, keyed by the version it migrates from. Empty until a v2 exists. */
-export const configMigrations: Record<number, ConfigMigration> = {};
+/** One step per version, keyed by the version it migrates from. */
+export const configMigrations: Record<number, ConfigMigration> = {
+	1: (config) => {
+		if (config.version !== 1) return config;
+		return {
+			...config,
+			version: 2,
+			identity: {
+				...config.identity,
+				provision: { person: config.identity.provision.human },
+			},
+		};
+	},
+};
 
-const LATEST_VERSION = 1;
+const LATEST_VERSION = 2;
 
 export type TrustedSourceConfigLatest = Extract<
 	TrustedSourceConfig,
@@ -290,8 +313,6 @@ export function migrateToLatest(
 	migrations: Readonly<Record<number, ConfigMigration>> = configMigrations,
 ): TrustedSourceConfigLatest {
 	let current: TrustedSourceConfig = config;
-	// A plain number, not `current.version`: comparing the discriminant would narrow `current` to
-	// `never` while the union has one member.
 	let version: number = current.version;
 	while (version !== LATEST_VERSION) {
 		const migrate: ConfigMigration | undefined = migrations[version];

@@ -1,23 +1,24 @@
 import { UnexpectedError } from 'n8n-workflow';
 
 import {
-	configMigrations,
 	JwtAlgorithmSchema,
 	migrateToLatest,
 	TrustedSourceConfigSchema,
 	trustedSourceConfigSchemaFor,
 	type TrustedSourceConfig,
+	type TrustedSourceConfigV1,
 } from '../trusted-source-config';
 import { trustedSourceConfigV1Fixture } from './fixtures/trusted-source-config.v1';
+import { trustedSourceConfigV2Fixture } from './fixtures/trusted-source-config.v2';
 
 const minimalDocument = {
-	version: 1,
+	version: 2,
 	authentication: { type: 'oauth2' },
 	surfaces: {},
 };
 
 const fullyDefaultedDocument = {
-	version: 1,
+	version: 2,
 	authentication: {
 		type: 'oauth2',
 		discovery: { mode: 'auto' },
@@ -40,7 +41,7 @@ const fullyDefaultedDocument = {
 			scopes: 'scope',
 		},
 		linkByEmail: 'verified-only',
-		provision: { human: 'off' },
+		provision: { person: 'off' },
 		roleMapping: { mode: 'off', instanceRoleRules: [], projectRoleRules: [] },
 	},
 };
@@ -62,6 +63,14 @@ const issuesOf = (result: ReturnType<typeof TrustedSourceConfigSchema.safeParse>
 	result.success ? [] : result.error.issues;
 
 describe('TrustedSourceConfigSchema defaults', () => {
+	test('keeps the v1 defaults for stored documents', () => {
+		expect(TrustedSourceConfigSchema.parse({ ...minimalDocument, version: 1 })).toEqual({
+			...fullyDefaultedDocument,
+			version: 1,
+			identity: { ...fullyDefaultedDocument.identity, provision: { human: 'off' } },
+		});
+	});
+
 	test('a minimal document with only version, authentication type and surfaces gets every default applied', () => {
 		expect(TrustedSourceConfigSchema.parse(minimalDocument)).toEqual(fullyDefaultedDocument);
 	});
@@ -69,10 +78,10 @@ describe('TrustedSourceConfigSchema defaults', () => {
 
 describe('TrustedSourceConfigSchema shape', () => {
 	test.each([
-		{ name: 'an unknown version', document: { ...minimalDocument, version: 2 }, path: ['version'] },
+		{ name: 'an unknown version', document: { ...minimalDocument, version: 3 }, path: ['version'] },
 		{
 			name: 'a missing authentication block',
-			document: { version: 1, surfaces: {} },
+			document: { version: 2, surfaces: {} },
 			path: ['authentication'],
 		},
 		{
@@ -132,11 +141,23 @@ describe('TrustedSourceConfigSchema shape', () => {
 	});
 });
 
-describe('TrustedSourceConfigSchema refinement rules', () => {
+describe.each([1, 2] as const)('TrustedSourceConfigSchema v%s refinement rules', (version) => {
+	const forVersion = (document: ReturnType<typeof withIdentity>) => ({
+		...document,
+		version,
+		identity:
+			version === 1
+				? {
+						...document.identity,
+						provision: { human: document.identity.provision.person },
+					}
+				: document.identity,
+	});
+
 	test.each([
 		{
 			rule: 'jit provisioning requires a role-mapping mode',
-			document: withIdentity({ provision: { human: 'jit' } }),
+			document: withIdentity({ provision: { person: 'jit' } }),
 			path: ['identity', 'roleMapping', 'mode'],
 		},
 		{
@@ -148,7 +169,7 @@ describe('TrustedSourceConfigSchema refinement rules', () => {
 			rule: 'jit provisioning requires email linking',
 			document: withIdentity({
 				linkByEmail: 'off',
-				provision: { human: 'jit' },
+				provision: { person: 'jit' },
 				roleMapping: { mode: 'on-provision', fallbackInstanceRole: 'global:member' },
 			}),
 			path: ['identity', 'linkByEmail'],
@@ -179,7 +200,7 @@ describe('TrustedSourceConfigSchema refinement rules', () => {
 			path: ['identity', 'roleMapping', 'projectRoleRules', 0, 'projectId'],
 		},
 	])('fails validation and names the rule: $rule', ({ rule: message, document, path }) => {
-		const result = TrustedSourceConfigSchema.safeParse(document);
+		const result = TrustedSourceConfigSchema.safeParse(forVersion(document));
 
 		expect(result.success).toBe(false);
 		expect(issuesOf(result)).toContainEqual(expect.objectContaining({ path, message }));
@@ -193,7 +214,7 @@ describe('TrustedSourceConfigSchema refinement rules', () => {
 		{
 			name: 'jit provisioning with a role-mapping mode and a fallback role',
 			document: withIdentity({
-				provision: { human: 'jit' },
+				provision: { person: 'jit' },
 				roleMapping: {
 					mode: 'continuous',
 					fallbackInstanceRole: 'global:member',
@@ -216,7 +237,7 @@ describe('TrustedSourceConfigSchema refinement rules', () => {
 			}),
 		},
 	])('accepts $name', ({ document }) => {
-		expect(TrustedSourceConfigSchema.safeParse(document).success).toBe(true);
+		expect(TrustedSourceConfigSchema.safeParse(forVersion(document)).success).toBe(true);
 	});
 });
 
@@ -329,11 +350,37 @@ describe('migrateToLatest', () => {
 	const asConfig = (document: Record<string, unknown>) =>
 		document as unknown as TrustedSourceConfig;
 
-	test('returns a v1 document unchanged', () => {
-		const parsed = TrustedSourceConfigSchema.parse(trustedSourceConfigV1Fixture);
+	test('returns a v2 document unchanged', () => {
+		const parsed = TrustedSourceConfigSchema.parse(trustedSourceConfigV2Fixture);
 
-		expect(migrateToLatest(parsed)).toEqual(trustedSourceConfigV1Fixture);
+		expect(migrateToLatest(parsed)).toBe(parsed);
 	});
+
+	test.each(['off', 'jit'] as const)(
+		'migrates v1 provisioning %s without changing other settings',
+		(mode) => {
+			const document: TrustedSourceConfigV1 = structuredClone(trustedSourceConfigV1Fixture);
+			document.identity.provision.human = mode;
+			document.identity.roleMapping = {
+				mode: 'on-provision',
+				instanceRoleRules: [],
+				projectRoleRules: [],
+				fallbackInstanceRole: 'global:member',
+			};
+			const parsed = TrustedSourceConfigSchema.parse(document);
+			const original = structuredClone(parsed);
+
+			const migrated = migrateToLatest(parsed);
+
+			expect(migrated).toEqual({
+				...document,
+				version: 2,
+				identity: { ...document.identity, provision: { person: mode } },
+			});
+			expect(migrated.identity.provision).not.toHaveProperty('human');
+			expect(parsed).toEqual(original);
+		},
+	);
 
 	test('throws on a version without a migration', () => {
 		const v0 = asConfig({ ...trustedSourceConfigV1Fixture, version: 0 });
@@ -352,17 +399,14 @@ describe('migrateToLatest', () => {
 		expect(() => migrateToLatest(v0, stuck)).toThrow('did not advance the version');
 	});
 
-	test('the shipped migration map is empty while v1 is the only version', () => {
-		expect(configMigrations).toEqual({});
+	test.each([
+		{ name: 'v1', fixture: trustedSourceConfigV1Fixture },
+		{ name: 'v2', fixture: trustedSourceConfigV2Fixture },
+	])('migrates the $name fixture to a document the latest schema accepts', ({ fixture }) => {
+		const parsed = TrustedSourceConfigSchema.parse(fixture);
+		const migrated = migrateToLatest(parsed);
+
+		expect(TrustedSourceConfigSchema.safeParse(migrated).success).toBe(true);
+		expect(migrated.version).toBe(2);
 	});
-
-	test.each([{ name: 'v1', fixture: trustedSourceConfigV1Fixture }])(
-		'migrates the $name fixture to a document the latest schema accepts',
-		({ fixture }) => {
-			const parsed = TrustedSourceConfigSchema.parse(fixture);
-			const migrated = migrateToLatest(parsed);
-
-			expect(TrustedSourceConfigSchema.safeParse(migrated).success).toBe(true);
-		},
-	);
 });
