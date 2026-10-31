@@ -85,6 +85,8 @@ const props = withDefaults(
 		canManageInstanceMcp?: boolean;
 		isWorkflowCardMcpToggleEnabled?: boolean;
 		areFoldersEnabled?: boolean;
+		/** 'row' renders a compact table row for the workflows list */
+		layout?: 'card' | 'row';
 	}>(),
 	{
 		readOnly: false,
@@ -96,6 +98,7 @@ const props = withDefaults(
 		canManageInstanceMcp: false,
 		isWorkflowCardMcpToggleEnabled: false,
 		areFoldersEnabled: false,
+		layout: 'card',
 	},
 );
 
@@ -383,7 +386,7 @@ const hasDynamicCredentials = computed(() => {
 
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id, 'workflow'));
 
-async function onClick(event?: KeyboardEvent | PointerEvent) {
+async function onClick(event?: KeyboardEvent | MouseEvent) {
 	// Experiment cleanup: remove with openWorkflowInAssistant.
 	if (openInAssistant(event)) return;
 
@@ -682,7 +685,107 @@ const tags = computed(
 </script>
 
 <template>
+	<div
+		v-if="layout === 'row'"
+		:class="{ [$style.row]: true, [$style.rowArchived]: data.isArchived }"
+		data-test-id="workflow-card"
+		role="link"
+		tabindex="0"
+		@click="onClick"
+		@keydown.enter="onClick"
+	>
+		<div :class="$style.rowName">
+			<span :class="$style.rowToggleSpacer" />
+			<N8nIcon icon="workflow" size="large" :class="$style.rowIcon" />
+			<N8nText
+				:class="{ [$style.rowTitle]: true, [$style.cardHeadingArchived]: data.isArchived }"
+				data-test-id="workflow-card-name"
+			>
+				{{ data.name }}
+			</N8nText>
+			<N8nText
+				v-if="data.isArchived"
+				color="text-light"
+				size="small"
+				bold
+				:class="$style.rowCell"
+				data-test-id="workflow-card-archived"
+			>
+				{{ locale.baseText('workflows.item.archived') }}
+			</N8nText>
+			<PublicationIndicator
+				v-else-if="publicationIndicator"
+				:class="$style.rowCell"
+				:variant="publicationIndicator.variant"
+				:label="publicationIndicator.label"
+				:tooltip="publicationIndicator.tooltip"
+				:data-state="publicationIndicator.state"
+				data-test-id="workflow-card-publish-indicator"
+			/>
+			<N8nBadge v-if="!workflowPermissions.update" variant="outline">
+				{{ locale.baseText('workflows.item.readonly') }}
+			</N8nBadge>
+			<N8nTooltip
+				v-if="showLegacyMcpIndicator"
+				placement="right"
+				:content="locale.baseText('workflows.item.availableInMCP')"
+			>
+				<N8nIcon icon="mcp" size="small" :class="$style.rowIcon" data-test-id="workflow-card-mcp" />
+			</N8nTooltip>
+			<PrivateCredentialIcon
+				v-if="hasDynamicCredentials"
+				:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+				:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+				size="small"
+				data-test-id="workflow-card-private-credential"
+			/>
+		</div>
+		<N8nText size="small" color="text-light" :class="$style.rowCell">
+			<TimeAgo :date="String(data.updatedAt)" />
+		</N8nText>
+		<N8nText size="small" color="text-light" :class="$style.rowCell">
+			{{ formattedCreatedAtDate }}
+		</N8nText>
+		<div :class="$style.rowActions" @click.stop @keydown.enter.stop>
+			<DependencyPill
+				v-if="workflowHasDependencies"
+				resource-type="workflow"
+				:resource-id="data.id"
+				source="workflow_card"
+				data-test-id="workflow-card-dependencies"
+			/>
+			<ProjectCardBadge
+				v-if="showOwnershipBadge"
+				:class="$style.cardBadge"
+				:resource="data"
+				:resource-type="ResourceType.Workflow"
+				:resource-type-label="resourceTypeLabel"
+				:personal-project="projectsStore.personalProject"
+				:show-badge-border="false"
+			/>
+			<WorkflowCardMcpToggle
+				v-if="props.isWorkflowCardMcpToggleEnabled"
+				:workflow-id="data.id"
+				:available-in-mcp="data.settings?.availableInMCP ?? false"
+				:can-edit="canEditMcp"
+				:is-mcp-enabled="props.isMcpEnabled"
+				:is-mcp-module-active="props.isMcpModuleActive"
+				:can-manage-instance-mcp="props.canManageInstanceMcp"
+			/>
+			<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+			<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
+			<N8nActionToggle
+				:actions="actions"
+				placement="bottom-end"
+				theme="dark"
+				icon-size="medium"
+				data-test-id="workflow-card-actions"
+				@action="onAction"
+			/>
+		</div>
+	</div>
 	<N8nCard
+		v-else
 		:class="{
 			[$style.cardLink]: true,
 			[$style.cardArchived]: data.isArchived,
@@ -833,6 +936,41 @@ const tags = computed(
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
+@use '@/app/css/workflows-list';
+
+.row {
+	@include workflows-list.row;
+	@include workflows-list.row-interactive;
+}
+
+.rowArchived {
+	color: var(--color--text--tint-1);
+}
+
+.rowName {
+	@include workflows-list.row-name;
+}
+
+// Aligns workflow icons with folder icons, which have a chevron in front
+.rowToggleSpacer {
+	@include workflows-list.row-toggle;
+}
+
+.rowIcon {
+	@include workflows-list.row-icon;
+}
+
+.rowTitle {
+	@include workflows-list.row-title;
+}
+
+.rowCell {
+	@include workflows-list.row-cell;
+}
+
+.rowActions {
+	@include workflows-list.row-actions;
+}
 
 .cardLink {
 	padding: 0;

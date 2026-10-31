@@ -1,5 +1,7 @@
 <script lang="ts" setup generic="ResourceType extends Resource = Resource">
+import { createReusableTemplate, useIntersectionObserver } from '@vueuse/core';
 import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
+import { useI18n } from '@n8n/i18n';
 
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
@@ -8,7 +10,7 @@ import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropd
 import ResourcesListEmptyState, {
 	isEmptyStateResourceKey,
 } from '@/app/components/layouts/ResourcesListEmptyState.vue';
-import type { DatatableColumn } from '@n8n/design-system';
+import type { DatatableColumn, DropdownMenuItemProps } from '@n8n/design-system';
 import type { SlotResourcesListLayoutProps } from '@n8n/frontend-module-sdk';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -21,10 +23,13 @@ import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import {
 	N8nDatatable,
+	N8nDropdownMenu,
 	N8nIcon,
+	N8nIconButton,
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
+	N8nLoading,
 	N8nOption,
 	N8nPagination,
 	N8nRecycleScroller,
@@ -32,6 +37,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 const route = useRoute();
+const i18n = useI18n();
 const router = useRouter();
 const { callDebounced } = useDebounce();
 const telemetry = useTelemetry();
@@ -61,6 +67,10 @@ const props = withDefaults(defineProps<SlotResourcesListLayoutProps<ResourceType
 	}),
 	tabKey: 'workflows',
 	persistKeyExclusions: () => [],
+	filtersInHeader: false,
+	infiniteScroll: false,
+	loadingMore: false,
+	hasMore: false,
 });
 
 const { getResourceText } = useResourcesListI18n(props.resourceKey);
@@ -73,6 +83,7 @@ const resettingFilters = ref(false);
 const search = ref<HTMLElement | null>(null);
 const listWrapperRef = ref<HTMLElement | null>(null);
 const listItemsRef = ref<HTMLElement | null>(null);
+const loadMoreSentinelRef = ref<HTMLElement | null>(null);
 
 // Preferred sorting and page size
 // These refs store the values that are set by the user and preserved in local storage
@@ -84,10 +95,15 @@ const emit = defineEmits<{
 	'click:add': [event: Event];
 	'update:pagination-and-sort': [value: SortingAndPaginationUpdates];
 	'update:search': [value: string];
+	'load-more': [];
 }>();
 
+// Lets the header slot render the toolbar when filtersInHeader is set
+const [DefineToolbar, ReuseToolbar] = createReusableTemplate();
+
 const slots = defineSlots<{
-	header(): unknown;
+	header(props: { toolbar: typeof ReuseToolbar }): unknown;
+	skeleton(props: { rows: number }): unknown;
 	empty(): unknown;
 	preamble(): unknown;
 	postamble(): unknown;
@@ -138,6 +154,50 @@ const showLoadingState = computed(() => {
 			!filtersModel.value.search)
 	);
 });
+
+const sortMenuItems = computed<DropdownMenuItemProps[]>(() =>
+	props.sortOptions.map((sortOption) => ({
+		id: sortOption,
+		label: getResourceText(`sort.${sortOption}`, `sort.${sortOption}`),
+		checked: sortBy.value === sortOption,
+		testId: 'resources-list-sort-item',
+	})),
+);
+
+const onSortSelect = async (sortOption: string) => {
+	await setSorting(sortOption);
+};
+
+// Infinite scroll: ask for the next page when the end of the list comes into view
+const requestMoreIfVisible = () => {
+	if (!props.infiniteScroll || !props.hasMore || props.loadingMore || props.resourcesRefreshing) {
+		return;
+	}
+	const sentinel = loadMoreSentinelRef.value;
+	const container = listItemsRef.value;
+	if (!sentinel || !container) return;
+
+	const LOAD_MORE_THRESHOLD = 200;
+	const sentinelTop = sentinel.getBoundingClientRect().top;
+	const containerBottom = container.getBoundingClientRect().bottom;
+	if (sentinelTop - containerBottom <= LOAD_MORE_THRESHOLD) {
+		emit('load-more');
+	}
+};
+
+useIntersectionObserver(loadMoreSentinelRef, () => requestMoreIfVisible(), {
+	root: listItemsRef,
+	rootMargin: '0px 0px 200px 0px',
+});
+
+// A short page can leave the end of the list in view, so check again after each load
+watch(
+	() => [props.loadingMore, props.resources.length, props.hasMore],
+	async () => {
+		await nextTick();
+		requestMoreIfVisible();
+	},
+);
 
 const filterKeys = computed(() => {
 	return Object.keys(filtersModel.value);
@@ -514,7 +574,8 @@ const loadPaginationPreferences = async () => {
 
 	const emitPayload: SortingAndPaginationUpdates = {};
 
-	if (query.page) {
+	// Infinite scroll always starts at the first page
+	if (query.page && !props.infiniteScroll) {
 		const newPage = parseInt(query.page as string, 10);
 		if (newPage > 1) {
 			currentPage.value = newPage;
@@ -567,7 +628,83 @@ defineExpose({
 <template>
 	<PageViewLayout>
 		<template #header>
-			<slot name="header" />
+			<!-- Defined in the header slot, which renders before the list body that can reuse it -->
+			<DefineToolbar>
+				<div
+					v-if="!props.filtersInHeader || (!showLoadingState && !showEmptyState)"
+					:class="[$style['filters-row'], props.filtersInHeader && $style['header-toolbar']]"
+				>
+					<div :class="$style.filters">
+						<slot name="breadcrumbs"></slot>
+						<N8nInput
+							v-if="props.uiConfig.searchEnabled"
+							ref="search"
+							:model-value="filtersModel.search"
+							:class="$style.search"
+							:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
+							size="medium"
+							clearable
+							data-test-id="resources-list-search"
+							@update:model-value="onSearch"
+						>
+							<template #prefix>
+								<N8nIcon icon="search" />
+							</template>
+						</N8nInput>
+						<N8nDropdownMenu
+							v-if="props.uiConfig.sortEnabled && props.filtersInHeader"
+							:items="sortMenuItems"
+							placement="bottom-end"
+							@select="onSortSelect"
+						>
+							<template #trigger>
+								<N8nIconButton
+									variant="outline"
+									icon="arrow-up-down"
+									size="medium"
+									:title="i18n.baseText('generic.sort')"
+									:aria-label="i18n.baseText('generic.sort')"
+									data-test-id="resources-list-sort"
+								/>
+							</template>
+						</N8nDropdownMenu>
+						<div v-else-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
+							<N8nSelect
+								v-model="sortBy"
+								size="small"
+								:class="$style.resourceList"
+								data-test-id="resources-list-sort"
+								@change="setSorting(sortBy)"
+							>
+								<N8nOption
+									v-for="sortOption in sortOptions"
+									:key="sortOption"
+									data-test-id="resources-list-sort-item"
+									:value="sortOption"
+									:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
+								/>
+							</N8nSelect>
+						</div>
+						<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
+							<ResourceFiltersDropdown
+								:keys="filterKeys"
+								:reset="resetFilters"
+								:model-value="filtersModel"
+								:shareable="shareable"
+								:just-icon="true"
+								@update:model-value="onUpdateFilters"
+								@update:filters-length="onUpdateFiltersLength"
+							>
+								<template #default="resourceFiltersSlotProps">
+									<slot name="filters" v-bind="resourceFiltersSlotProps" />
+								</template>
+							</ResourceFiltersDropdown>
+							<slot name="add-button"></slot>
+						</div>
+					</div>
+				</div>
+			</DefineToolbar>
+			<slot name="header" :toolbar="ReuseToolbar" />
 		</template>
 		<ResourcesListSkeleton v-if="showLoadingState" />
 		<template v-else>
@@ -583,59 +720,7 @@ defineExpose({
 			</div>
 			<PageViewLayoutList v-else>
 				<template #header>
-					<div :class="$style['filters-row']">
-						<div :class="$style.filters">
-							<slot name="breadcrumbs"></slot>
-							<N8nInput
-								v-if="props.uiConfig.searchEnabled"
-								ref="search"
-								:model-value="filtersModel.search"
-								:class="$style.search"
-								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="medium"
-								clearable
-								data-test-id="resources-list-search"
-								@update:model-value="onSearch"
-							>
-								<template #prefix>
-									<N8nIcon icon="search" />
-								</template>
-							</N8nInput>
-							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
-								<N8nSelect
-									v-model="sortBy"
-									size="small"
-									:class="$style.resourceList"
-									data-test-id="resources-list-sort"
-									@change="setSorting(sortBy)"
-								>
-									<N8nOption
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
-									/>
-								</N8nSelect>
-							</div>
-							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
-								<ResourceFiltersDropdown
-									:keys="filterKeys"
-									:reset="resetFilters"
-									:model-value="filtersModel"
-									:shareable="shareable"
-									:just-icon="true"
-									@update:model-value="onUpdateFilters"
-									@update:filters-length="onUpdateFiltersLength"
-								>
-									<template #default="resourceFiltersSlotProps">
-										<slot name="filters" v-bind="resourceFiltersSlotProps" />
-									</template>
-								</ResourceFiltersDropdown>
-								<slot name="add-button"></slot>
-							</div>
-						</div>
-					</div>
+					<ReuseToolbar v-if="!props.filtersInHeader" />
 
 					<slot name="callout"></slot>
 
@@ -662,7 +747,11 @@ defineExpose({
 
 				<slot name="preamble" />
 
-				<ResourcesListSkeleton v-if="resourcesRefreshing" :rows="rowsPerPage" immediate />
+				<template v-if="resourcesRefreshing">
+					<slot name="skeleton" :rows="rowsPerPage">
+						<ResourcesListSkeleton :rows="rowsPerPage" immediate />
+					</slot>
+				</template>
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
 					ref="listWrapperRef"
@@ -693,8 +782,16 @@ defineExpose({
 									{{ item }}
 								</slot>
 							</div>
+							<template v-if="infiniteScroll">
+								<div v-if="loadingMore" data-test-id="resources-list-loading-more">
+									<slot name="skeleton" :rows="3">
+										<N8nLoading :rows="3" :shrink-last="false" />
+									</slot>
+								</div>
+								<div ref="loadMoreSentinelRef" :class="$style.loadMoreSentinel" />
+							</template>
 						</div>
-						<div :class="$style.listPagination">
+						<div v-if="!infiniteScroll" :class="$style.listPagination">
 							<N8nPagination
 								:page="currentPage"
 								:items-per-page="rowsPerPage"
@@ -782,6 +879,19 @@ defineExpose({
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
 	}
+}
+
+.header-toolbar {
+	width: auto;
+
+	.filters {
+		display: flex;
+		gap: var(--spacing--2xs);
+	}
+}
+
+.loadMoreSentinel {
+	height: var(--border-width);
 }
 
 .search {

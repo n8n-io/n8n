@@ -588,7 +588,8 @@ describe('Folders', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
 	});
 
-	it('should show folder actions menu when not in the overview or sharing pages', async () => {
+	// Folders expand inline, so the project root shows no breadcrumbs
+	it('should not show the breadcrumbs actions menu at the project root', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
 		const projectsStore = mockedStore(useProjectsStore);
@@ -600,12 +601,12 @@ describe('Folders', () => {
 		} as Project;
 
 		workflowsListStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
-		const { getByTestId } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			pinia,
 		});
 		await waitAllPromises();
 
-		expect(getByTestId('folder-breadcrumbs-actions')).toBeInTheDocument();
+		expect(queryByTestId('folder-breadcrumbs-actions')).not.toBeInTheDocument();
 	});
 
 	it('refreshes the current project after a folder is created', async () => {

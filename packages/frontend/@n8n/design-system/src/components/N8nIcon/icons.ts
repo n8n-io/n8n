@@ -270,6 +270,7 @@ import {
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
 import IconLucideArrowLeftRight from '~icons/lucide/arrow-left-right';
+import IconLucideArrowUpDown from '~icons/lucide/arrow-up-down';
 import IconLucideBookmark from '~icons/lucide/bookmark';
 import IconLucideCalculator from '~icons/lucide/calculator';
 import IconLucideCaseUpper from '~icons/lucide/case-upper';
@@ -660,6 +661,7 @@ export const updatedIconSet = {
 	'arrow-down': BrandArrowDown,
 	'arrow-left': BrandArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
+	'arrow-up-down': IconLucideArrowUpDown,
 	'arrow-right': BrandArrowRight,
 	'arrow-right-from-line': BrandArrowRightFromLine,
 	'arrow-right-to-line': BrandArrowRightToLine,

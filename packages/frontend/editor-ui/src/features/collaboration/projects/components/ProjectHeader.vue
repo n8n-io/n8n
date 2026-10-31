@@ -576,12 +576,17 @@ const onSelect = (action: string, source: CreateSource) => {
 		</div>
 		<slot></slot>
 		<div :class="$style.actions">
-			<ProjectTabs
-				:page-type="pageType"
-				:show-executions="!projectPages.isSharedSubPage"
-				:show-settings="showSettings"
-				:additional-tabs="customProjectTabs"
-			/>
+			<div :class="$style.tabs">
+				<ProjectTabs
+					:page-type="pageType"
+					:show-executions="!projectPages.isSharedSubPage"
+					:show-settings="showSettings"
+					:additional-tabs="customProjectTabs"
+				/>
+			</div>
+			<div v-if="$slots.toolbar" :class="$style.toolbar">
+				<slot name="toolbar" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -624,7 +629,42 @@ const onSelect = (action: string, source: CreateSource) => {
 }
 
 .actions {
-	padding: var(--spacing--xs) 0 var(--spacing--xs);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	margin-bottom: var(--spacing--xs);
+	padding-top: var(--spacing--xs);
+	border-bottom: var(--border-width) var(--border-style) var(--border-color--subtle);
+}
+
+.tabs {
+	min-width: 0;
+	align-self: stretch;
+	// Lets the active tab underline sit on top of the border
+	margin-bottom: calc(-1 * var(--border-width));
+
+	:global(.n8n-tabs) {
+		height: 100%;
+		min-height: var(--height--2xl);
+	}
+
+	// A tab with a badge is taller than the others, and the tab list centers its items.
+	// Stretch every tab to the full height, so each underline sits on the border.
+	// The tooltip trigger span sits between the tab wrapper and the tab.
+	[role='tablist'] {
+		align-items: stretch;
+	}
+
+	[role='tablist'] > div,
+	[role='tablist'] > div > span {
+		display: flex;
+	}
+}
+
+.toolbar {
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
 .projectDescriptionWrapper {
@@ -675,6 +715,17 @@ const onSelect = (action: string, source: CreateSource) => {
 
 .projectDetails:hover .favoriteBtn {
 	opacity: 1;
+}
+
+@include breakpoints.breakpoint('sm-and-down') {
+	.actions {
+		flex-direction: column-reverse;
+		align-items: stretch;
+	}
+
+	.toolbar {
+		margin-left: 0;
+	}
 }
 
 @include breakpoints.breakpoint('xs-only') {

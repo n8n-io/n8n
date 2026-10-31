@@ -1,0 +1,90 @@
+// Shared row styles for the workflows list table.
+// The list view sets --workflows-list--columns. Each row sets --list-row--depth.
+// WorkflowsListGuides.vue draws the vertical guide lines of nested rows.
+
+$default-columns: minmax(0, 1fr) 140px 140px 240px;
+$indent: var(--spacing--lg);
+// Width of the chevron slot in front of the row icon
+$toggle-width: var(--spacing--md);
+$row-padding-x: var(--spacing--sm);
+// Horizontal position of the first guide line, under the chevron of a top-level folder
+$guide-offset: calc(#{$row-padding-x} + #{$toggle-width} / 2);
+// Hover transition for rows and guide lines. Half of the snappy duration (100ms).
+$hover-transition: background-color calc(var(--duration--snappy) / 2) var(--easing--ease-out);
+
+@mixin row {
+	position: relative;
+	display: grid;
+	grid-template-columns: var(--workflows-list--columns, #{$default-columns});
+	gap: var(--spacing--sm);
+	align-items: center;
+	min-height: var(--spacing--2xl);
+	padding: var(--spacing--3xs) $row-padding-x;
+
+	// Bottom border. It starts at the innermost guide line that this row shares with the
+	// next row, so no border shows to the left of a folder's guide line.
+	&::after {
+		content: '';
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		left: calc(
+			min(var(--list-row--border-depth, 0), 1) * #{$guide-offset} +
+				max(var(--list-row--border-depth, 0) - 1, 0) * #{$indent}
+		);
+		height: var(--border-width);
+		background-color: var(--border-color--subtle);
+		pointer-events: none;
+	}
+}
+
+@mixin row-interactive {
+	cursor: pointer;
+	transition: $hover-transition;
+
+	&:hover,
+	&:focus-visible {
+		background-color: var(--color--background--light-2);
+		outline: none;
+	}
+}
+
+@mixin row-name {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	padding-left: calc(var(--list-row--depth, 0) * #{$indent});
+}
+
+@mixin row-toggle {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: $toggle-width;
+	color: var(--color--text--tint-1);
+}
+
+@mixin row-icon {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+}
+
+@mixin row-title {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+@mixin row-cell {
+	white-space: nowrap;
+}
+
+@mixin row-actions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
+	justify-content: flex-end;
+	cursor: default;
+}

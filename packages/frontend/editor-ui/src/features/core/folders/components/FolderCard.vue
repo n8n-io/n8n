@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, ref } from 'vue';
+import { computed, getCurrentInstance, onBeforeUnmount, ref } from 'vue';
 import { FOLDER_LIST_ITEM_ACTIONS, MCP_ACCESS_ACTIONS } from '../folders.constants';
 import { ProjectTypes, type Project } from '@/features/collaboration/projects/projects.types';
 import { useI18n } from '@n8n/i18n';
@@ -12,6 +12,7 @@ import { useFoldersStore } from '../folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { type IUser } from 'n8n-workflow';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import dateformat from 'dateformat';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
 import {
@@ -43,6 +44,10 @@ type Props = {
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 	showMcpAccessActions?: boolean;
+	/** 'row' renders a compact table row that expands inline instead of opening the folder */
+	layout?: 'card' | 'row';
+	expanded?: boolean;
+	loading?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,6 +55,9 @@ const props = withDefaults(defineProps<Props>(), {
 	readOnly: true,
 	showOwnershipBadge: false,
 	showMcpAccessActions: false,
+	layout: 'card',
+	expanded: false,
+	loading: false,
 });
 
 const i18n = useI18n();
@@ -61,7 +69,40 @@ const favoritesStore = useFavoritesStore();
 const emit = defineEmits<{
 	action: [{ action: string; folderId: string }];
 	folderOpened: [{ folder: FolderResource }];
+	toggle: [];
+	prefetch: [];
 }>();
+
+// Short hover intent, so moving the pointer across the list does not fetch every folder
+const PREFETCH_HOVER_DELAY = 100;
+let prefetchTimer: ReturnType<typeof setTimeout> | undefined;
+
+const onRowMouseEnter = () => {
+	if (!hasChildren.value) return;
+	prefetchTimer = setTimeout(() => emit('prefetch'), PREFETCH_HOVER_DELAY);
+};
+
+const onRowMouseLeave = () => {
+	clearTimeout(prefetchTimer);
+};
+
+onBeforeUnmount(() => clearTimeout(prefetchTimer));
+
+const hasChildren = computed(() => props.data.workflowCount + props.data.subFolderCount > 0);
+
+const formattedCreatedAtDate = computed(() => {
+	const currentYear = new Date().getFullYear().toString();
+
+	return dateformat(
+		props.data.createdAt,
+		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
+	);
+});
+
+const onRowToggle = () => {
+	if (!hasChildren.value && !props.expanded) return;
+	emit('toggle');
+};
 
 const dropdownId = `folder-card-actions-dropdown-${getCurrentInstance()?.uid ?? 0}`;
 
@@ -216,7 +257,122 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 <template>
 	<div data-test-id="folder-card">
-		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
+		<div
+			v-if="layout === 'row'"
+			:class="$style.row"
+			role="button"
+			tabindex="0"
+			:aria-expanded="expanded"
+			:aria-label="
+				i18n.baseText(expanded ? 'folders.row.collapse' : 'folders.row.expand', {
+					interpolate: { folderName: data.name },
+				})
+			"
+			@click="onRowToggle"
+			@mouseenter="onRowMouseEnter"
+			@mouseleave="onRowMouseLeave"
+			@focus="onRowMouseEnter"
+			@blur="onRowMouseLeave"
+			@keydown.enter.self="onRowToggle"
+			@keydown.space.self.prevent="onRowToggle"
+		>
+			<div :class="$style['row-name']">
+				<span :class="$style['row-toggle']" data-test-id="folder-card-toggle">
+					<N8nIcon v-if="loading" icon="spinner" size="small" spin />
+					<N8nIcon
+						v-else-if="hasChildren"
+						:icon="expanded ? 'chevron-down' : 'chevron-right'"
+						size="small"
+					/>
+				</span>
+				<N8nIcon
+					data-test-id="folder-card-icon"
+					size="large"
+					:class="$style['row-icon']"
+					:icon="expanded ? 'folder-open' : 'folder'"
+				/>
+				<N8nText :class="$style['row-title']" data-test-id="folder-card-name">
+					{{ data.name }}
+				</N8nText>
+				<N8nBadge v-if="readOnly" variant="outline">
+					{{ i18n.baseText('workflows.item.readonly') }}
+				</N8nBadge>
+			</div>
+			<N8nText
+				size="small"
+				color="text-light"
+				:class="$style['row-cell']"
+				data-test-id="folder-card-last-updated"
+			>
+				<TimeAgo :date="String(data.updatedAt)" />
+			</N8nText>
+			<N8nText
+				size="small"
+				color="text-light"
+				:class="$style['row-cell']"
+				data-test-id="folder-card-created"
+			>
+				{{ formattedCreatedAtDate }}
+			</N8nText>
+			<div :class="$style['row-actions']" @click.stop @keydown.stop>
+				<ProjectCardBadge
+					v-if="data.homeProject && showOwnershipBadge"
+					:class="$style.cardBadge"
+					:resource="data"
+					:resource-type="ResourceType.Workflow"
+					:resource-type-label="resourceTypeLabel"
+					:personal-project="personalProject"
+					:show-badge-border="false"
+				/>
+				<span data-test-id="folder-card-actions">
+					<N8nDropdownMenu
+						:id="dropdownId"
+						:items="menuItems"
+						placement="bottom-end"
+						:extra-popper-class="$style['actions-menu-dropdown']"
+						@select="onAction"
+					>
+						<template #trigger>
+							<N8nIconButton
+								:class="['action-toggle', $style['actions-menu']]"
+								variant="ghost"
+								icon="ellipsis-12"
+								size="small"
+								icon-size="medium"
+								role="button"
+								:aria-controls="dropdownId"
+							/>
+						</template>
+						<template #item-label="{ item, ui }">
+							<N8nTooltip
+								v-if="item.data?.tooltip"
+								:content="item.data.tooltip"
+								placement="left"
+								:show-after="300"
+								teleported
+							>
+								<N8nText
+									:class="ui.class"
+									size="medium"
+									:color="item.disabled ? 'text-light' : 'text-dark'"
+								>
+									{{ item.label }}
+								</N8nText>
+							</N8nTooltip>
+							<N8nText
+								v-else
+								:class="ui.class"
+								size="medium"
+								:color="item.disabled ? 'text-light' : 'text-dark'"
+							>
+								{{ item.label }}
+							</N8nText>
+						</template>
+					</N8nDropdownMenu>
+				</span>
+			</div>
+		</div>
+		<RouterLink v-else :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<N8nCard :class="$style.card" hoverable>
 				<template #prepend>
 					<N8nIcon
@@ -372,6 +528,39 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
+@use '@/app/css/workflows-list';
+
+.row {
+	@include workflows-list.row;
+	@include workflows-list.row-interactive;
+	// A fixed height lets nested sticky folder headers stack without gaps
+	height: var(--spacing--2xl);
+	user-select: none;
+}
+
+.row-name {
+	@include workflows-list.row-name;
+}
+
+.row-toggle {
+	@include workflows-list.row-toggle;
+}
+
+.row-icon {
+	@include workflows-list.row-icon;
+}
+
+.row-title {
+	@include workflows-list.row-title;
+}
+
+.row-cell {
+	@include workflows-list.row-cell;
+}
+
+.row-actions {
+	@include workflows-list.row-actions;
+}
 
 .folder-icon {
 	flex-shrink: 0;

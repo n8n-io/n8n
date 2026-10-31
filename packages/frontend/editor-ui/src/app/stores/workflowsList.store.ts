@@ -182,6 +182,31 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		return data;
 	}
 
+	/**
+	 * Fetches the direct children of one folder for inline expansion in the list.
+	 * Unlike fetchWorkflowsPage, this does not change the total workflow count of the page.
+	 */
+	async function fetchFolderContents(
+		projectId: string | undefined,
+		parentFolderId: string,
+		sortBy?: string,
+		filters: Omit<WorkflowListFilters, 'parentFolderId'> = {},
+		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
+	): Promise<WorkflowListResource[]> {
+		const { data } = await workflowsApi.getWorkflowsAndFolders(
+			rootStore.restApiContext,
+			{ ...filters, parentFolderId, projectId },
+			{ skip: 0, take: pageSize, sortBy },
+			true,
+		);
+		data
+			.filter((item) => item.resource !== 'folder')
+			.forEach((item) => {
+				addWorkflow({ ...item, nodes: [], connections: {}, versionId: '' });
+			});
+		return data;
+	}
+
 	// Callable rows can belong to workflows the user cannot read, so they are not
 	// added to the workflows cache.
 	async function fetchCallableSubworkflowsPage(
@@ -342,6 +367,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		// Fetching
 		fetchWorkflowsPageWithCount,
 		fetchWorkflowsPage,
+		fetchFolderContents,
 		fetchCallableSubworkflowsPage,
 		searchWorkflows,
 		fetchAllWorkflows,

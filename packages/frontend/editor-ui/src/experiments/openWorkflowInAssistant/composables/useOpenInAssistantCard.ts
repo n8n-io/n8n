@@ -25,7 +25,7 @@ export function useOpenInAssistantCard(props: { data: WorkflowResource; readOnly
 	const router = useRouter();
 	const store = useOpenWorkflowInAssistantStore();
 
-	return (event?: KeyboardEvent | PointerEvent) => {
+	return (event?: KeyboardEvent | MouseEvent) => {
 		if (!canOpenInAssistant(props.data, props.readOnly) || !store.opensInAssistant) return false;
 
 		const route = { name: INSTANCE_AI_NEW_VIEW, query: { workflowId: props.data.id } };

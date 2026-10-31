@@ -12,6 +12,8 @@ import ResourcesListLoadingState from '@/app/components/layouts/ResourcesListLoa
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
+import WorkflowsListGuides from '@/app/components/WorkflowsListGuides.vue';
+import WorkflowsListRowSkeleton from '@/app/components/WorkflowsListRowSkeleton.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
@@ -92,10 +94,11 @@ import {
 	type ProjectSharingData,
 	ProjectTypes,
 } from '@/features/collaboration/projects/projects.types';
-import type { PathItem } from '@n8n/design-system';
+import type { DropdownMenuItemProps, PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { createReusableTemplate } from '@vueuse/core';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
@@ -108,7 +111,9 @@ import {
 	N8nCallout,
 	N8nCard,
 	N8nCheckbox,
+	N8nDropdownMenu,
 	N8nIcon,
+	N8nIconButton,
 	N8nInfoTip,
 	N8nInlineTextEdit,
 	N8nInputLabel,
@@ -117,6 +122,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
@@ -224,6 +230,96 @@ type ResourcesListLayoutExpose = {
 const resourcesListLayoutRef = useTemplateRef('resourcesListLayout');
 
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
+
+// Folders expand inline in the list instead of navigating to a folder page
+const expandedFolderIds = ref<Set<string>>(new Set());
+const folderChildren = ref<Record<string, WorkflowListResource[]>>({});
+const loadingFolderIds = ref<Set<string>>(new Set());
+
+// ancestorIds holds the expanded folders above the row, from the top level down
+type ListRow = { resource: WorkflowListResource; depth: number; ancestorIds: string[] };
+
+const flattenedRows = computed<ListRow[]>(() => {
+	const rows: ListRow[] = [];
+	const visit = (items: WorkflowListResource[], ancestorIds: string[]) => {
+		for (const item of items) {
+			rows.push({ resource: item, depth: ancestorIds.length, ancestorIds });
+			if (item.resource === 'folder' && expandedFolderIds.value.has(item.id)) {
+				visit(folderChildren.value[item.id] ?? [], [...ancestorIds, item.id]);
+			}
+		}
+	};
+	visit(workflowsAndFolders.value, []);
+	return rows;
+});
+
+// The row under the pointer. It decides which folder guide lines are highlighted.
+const hoveredRowId = ref<string | null>(null);
+
+/** The folders above the hovered row, and the hovered row itself when it is an expanded folder */
+const highlightedFolderIds = computed<string[]>(() => {
+	if (!hoveredRowId.value) return [];
+	const row = flattenedRows.value.find((r) => r.resource.id === hoveredRowId.value);
+	if (!row) return [];
+	if (row.resource.resource === 'folder' && expandedFolderIds.value.has(row.resource.id)) {
+		return [...row.ancestorIds, row.resource.id];
+	}
+	return row.ancestorIds;
+});
+
+/** Number of guide lines of a row that belong to highlighted folders */
+const getHighlightDepth = (ancestorIds: string[]) => {
+	const highlighted = highlightedFolderIds.value;
+	let depth = 0;
+	while (depth < ancestorIds.length && ancestorIds[depth] === highlighted[depth]) depth++;
+	return depth;
+};
+
+const onFolderRowMouseEnter = (event: MouseEvent, folderId: string) => {
+	hoveredRowId.value = folderId;
+	folderHelpers.onDragEnter(event);
+};
+
+const onWorkflowRowMouseEnter = (workflowId: string) => {
+	hoveredRowId.value = workflowId;
+	if (isDragging.value) folderHelpers.resetDropTarget();
+};
+
+const onRowMouseLeave = (id: string) => {
+	if (hoveredRowId.value === id) hoveredRowId.value = null;
+};
+
+/**
+ * Row styles for the tree. --list-row--border-depth is the number of guide lines that the
+ * row shares with the next row. The bottom border starts at the innermost shared line.
+ */
+const rowStyleById = computed(
+	() =>
+		new Map(
+			flattenedRows.value.map((row, index) => {
+				const nextDepth = flattenedRows.value[index + 1]?.depth ?? 0;
+				return [
+					row.resource.id,
+					{
+						'--list-row--depth': row.depth,
+						'--list-row--border-depth': Math.min(row.depth, nextDepth),
+					},
+				];
+			}),
+		),
+);
+
+const rowGuidesById = computed(
+	() =>
+		new Map(
+			flattenedRows.value.map((row) => [
+				row.resource.id,
+				{ depth: row.depth, highlightDepth: getHighlightDepth(row.ancestorIds) },
+			]),
+		),
+);
+
+const allListItems = computed(() => flattenedRows.value.map((row) => row.resource));
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
@@ -502,49 +598,82 @@ const breadcrumbsActions = computed<BreadcrumbAction[]>(() => {
 	return mcpAction ? [...actions, mcpAction] : actions;
 });
 
+// Project (or folder) actions in the list toolbar, next to the filters button
+type ListActionMenuData = { tooltip?: string };
+
+const toListActionMenuItem = (
+	action: BreadcrumbAction,
+): DropdownMenuItemProps<string, ListActionMenuData> => ({
+	id: action.value,
+	testId: `action-${action.value}`,
+	label: action.label,
+	disabled: action.disabled,
+	children: action.children?.map(toListActionMenuItem),
+	data: action.tooltip ? { tooltip: action.tooltip } : undefined,
+});
+
+const listActionMenuItems = computed(() => breadcrumbsActions.value.map(toListActionMenuItem));
+
 const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
 });
 
-const workflowListResources = computed<Resource[]>(() => {
-	const resources: Resource[] = (workflowsAndFolders.value || []).map((resource) => {
-		if (resource.resource === 'folder') {
-			return {
-				resourceType: 'folder',
-				id: resource.id,
-				name: resource.name,
-				createdAt: resource.createdAt.toString(),
-				updatedAt: resource.updatedAt.toString(),
-				homeProject: resource.homeProject,
-				workflowCount: resource.workflowCount,
-				subFolderCount: resource.subFolderCount,
-				parentFolder: resource.parentFolder,
-			} satisfies FolderResource;
-		} else {
-			return {
-				resourceType: 'workflow',
-				id: resource.id,
-				name: resource.name,
-				description: resource.description,
-				active: resource.active ?? false,
-				activeVersionId: resource.activeVersionId,
-				isArchived: resource.isArchived,
-				updatedAt: resource.updatedAt.toString(),
-				createdAt: resource.createdAt.toString(),
-				homeProject: resource.homeProject,
-				scopes: resource.scopes,
-				sharedWithProjects: resource.sharedWithProjects,
-				readOnly: !getResourcePermissions(resource.scopes).workflow.update,
-				tags: resource.tags,
-				parentFolder: resource.parentFolder,
-				settings: resource.settings,
-				hasResolvableCredentials: resource.hasResolvableCredentials,
-				publicationStatus: resource.publicationStatus,
-			} satisfies WorkflowResource;
-		}
-	});
-	return resources;
+const toListResource = (resource: WorkflowListResource): Resource => {
+	if (resource.resource === 'folder') {
+		return {
+			resourceType: 'folder',
+			id: resource.id,
+			name: resource.name,
+			createdAt: resource.createdAt.toString(),
+			updatedAt: resource.updatedAt.toString(),
+			homeProject: resource.homeProject,
+			workflowCount: resource.workflowCount,
+			subFolderCount: resource.subFolderCount,
+			parentFolder: resource.parentFolder,
+		} satisfies FolderResource;
+	} else {
+		return {
+			resourceType: 'workflow',
+			id: resource.id,
+			name: resource.name,
+			description: resource.description,
+			active: resource.active ?? false,
+			activeVersionId: resource.activeVersionId,
+			isArchived: resource.isArchived,
+			updatedAt: resource.updatedAt.toString(),
+			createdAt: resource.createdAt.toString(),
+			homeProject: resource.homeProject,
+			scopes: resource.scopes,
+			sharedWithProjects: resource.sharedWithProjects,
+			readOnly: !getResourcePermissions(resource.scopes).workflow.update,
+			tags: resource.tags,
+			parentFolder: resource.parentFolder,
+			settings: resource.settings,
+			hasResolvableCredentials: resource.hasResolvableCredentials,
+			publicationStatus: resource.publicationStatus,
+		} satisfies WorkflowResource;
+	}
+};
+
+// Top-level items only. Children of expanded folders render inside their folder group.
+const workflowListResources = computed<Resource[]>(() =>
+	workflowsAndFolders.value.map(toListResource),
+);
+
+const childResourcesByFolderId = computed<Record<string, Resource[]>>(() => {
+	const result: Record<string, Resource[]> = {};
+	for (const folderId of expandedFolderIds.value) {
+		result[folderId] = (folderChildren.value[folderId] ?? []).map(toListResource);
+	}
+	return result;
 });
+
+const isExpandedFolder = (resource: Resource) =>
+	resource.resourceType === 'folder' && expandedFolderIds.value.has(resource.id);
+
+// Reusable templates render the list as a tree. A tree node can render its children.
+const [DefineListRow, ReuseListRow] = createReusableTemplate<{ data: Resource }>();
+const [DefineListNode, ReuseListNode] = createReusableTemplate<{ data: Resource }>();
 
 const statusFilterOptions = computed(() => [
 	{
@@ -653,6 +782,7 @@ watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
+		resetExpandedFolders();
 		filters.value.search = '';
 		saveFiltersOnQueryString();
 		await Promise.all([
@@ -817,6 +947,7 @@ const initialize = async () => {
 		await setFiltersFromQueryString();
 
 		currentFolderId.value = route.params.folderId as string | null;
+		resetExpandedFolders();
 
 		// Fetched in parallel to avoid a second round-trip on first run
 		const emptinessUnknown = projectPages.isOverviewSubPage && !hasKnownInstanceContent.value;
@@ -861,15 +992,8 @@ const initialize = async () => {
  * - Total count of workflows and folders in the current project
  * - Path to the current folder (if not cached)
  */
-const fetchWorkflows = async () => {
-	const isCurrent = nextFetch();
-
-	// We debounce here so that fast enough fetches don't trigger
-	// the placeholder graphics for a few milliseconds, which would cause a flicker
-	const delayedLoading = debounce(() => {
-		loading.value = true;
-	}, 300);
-
+/** Builds the request for one page of the list from the route and the current filters */
+const getListQuery = () => {
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
@@ -888,10 +1012,10 @@ const fetchWorkflows = async () => {
 	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
 
-	try {
-		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
+	const fetchPage = async (page: number) =>
+		await workflowsListStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
-			currentPage.value,
+			page,
 			pageSize.value,
 			currentSort.value,
 			{
@@ -905,13 +1029,92 @@ const fetchWorkflows = async () => {
 			projectPages.isSharedSubPage,
 		);
 
+	return { routeProjectId, parentFolder, fetchPage };
+};
+
+const dedupeListItems = (items: WorkflowListResource[]) => {
+	const seen = new Set<string>();
+	return items.filter((item) => {
+		const key = `${item.resource ?? 'workflow'}-${item.id}`;
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+};
+
+const cacheListFolders = (resources: WorkflowListResource[]) => {
+	foldersStore.cacheFolders(
+		resources
+			.filter((resource) => resource.resource === 'folder')
+			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
+	);
+};
+
+// Infinite scroll state. currentPage is the number of pages loaded so far.
+const loadingMore = ref(false);
+let listGeneration = 0;
+
+const hasMoreWorkflows = computed(
+	() => workflowsAndFolders.value.length < workflowsListStore.totalWorkflowCount,
+);
+
+const loadMoreWorkflows = async () => {
+	if (loadingMore.value || loading.value || !hasMoreWorkflows.value) return;
+
+	const generation = listGeneration;
+	const nextPage = currentPage.value + 1;
+	loadingMore.value = true;
+	try {
+		const { fetchPage } = getListQuery();
+		const resources = await fetchPage(nextPage);
+		// A refresh started while this page loaded, so this page is stale
+		if (generation !== listGeneration) return;
+
+		cacheListFolders(resources);
+		workflowsAndFolders.value = dedupeListItems([...workflowsAndFolders.value, ...resources]);
+		currentPage.value = nextPage;
+
+		const workflowIds = resources.filter((r) => r.resource !== 'folder').map((r) => r.id);
+		if (workflowIds.length > 0) {
+			void fetchDependencyCounts(workflowIds, 'workflow');
+		}
+	} catch (error) {
+		if (generation === listGeneration) {
+			toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
+		}
+	} finally {
+		if (generation === listGeneration) {
+			loadingMore.value = false;
+		}
+	}
+};
+
+const fetchWorkflows = async () => {
+	const isCurrent = nextFetch();
+	listGeneration++;
+	loadingMore.value = false;
+
+	// We debounce here so that fast enough fetches don't trigger
+	// the placeholder graphics for a few milliseconds, which would cause a flicker
+	const delayedLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
+
+	const { routeProjectId, parentFolder, fetchPage } = getListQuery();
+
+	try {
+		// Reload every page that is already on screen, so a refresh keeps the scroll position.
+		// The API returns at most 100 items for each request, so the pages load in parallel.
+		const pages = await Promise.all(
+			Array.from({ length: Math.max(currentPage.value, 1) }, async (_, index) => {
+				return await fetchPage(index + 1);
+			}),
+		);
+		const fetchedResources = dedupeListItems(pages.flat());
+
 		if (!isCurrent()) return [];
 
-		foldersStore.cacheFolders(
-			fetchedResources
-				.filter((resource) => resource.resource === 'folder')
-				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
-		);
+		cacheListFolders(fetchedResources);
 
 		// This is for the case when user lands straight on a folder page
 		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
@@ -924,6 +1127,7 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+		void refreshExpandedFolders();
 
 		// Async-fetch dependency counts for visible workflows (fire-and-forget)
 		// in the overview page we don't have a resource type
@@ -982,6 +1186,143 @@ const getParentFolderId = (routeId?: string) => {
 	return PROJECT_ROOT;
 };
 
+// Inline folder expansion methods
+
+// Requests in flight, so a hover prefetch and a click share one request
+const folderChildrenRequests = new Map<string, Promise<WorkflowListResource[]>>();
+// Changes when the list resets, so responses for an old list are dropped
+let folderCacheGeneration = 0;
+
+const resetExpandedFolders = () => {
+	folderCacheGeneration++;
+	folderChildrenRequests.clear();
+	expandedFolderIds.value = new Set();
+	folderChildren.value = {};
+	loadingFolderIds.value = new Set();
+};
+
+const setFolderLoading = (folderId: string, isLoading: boolean) => {
+	const next = new Set(loadingFolderIds.value);
+	if (isLoading) next.add(folderId);
+	else next.delete(folderId);
+	loadingFolderIds.value = next;
+};
+
+const fetchFolderChildren = async (folderId: string) => {
+	const projectId =
+		(route.params?.projectId as string | undefined) ?? (filters.value.homeProject || undefined);
+	const children = await workflowsListStore.fetchFolderContents(
+		projectId,
+		folderId,
+		currentSort.value,
+		{ isArchived: filters.value.showArchived ? undefined : false },
+		pageSize.value,
+	);
+
+	foldersStore.cacheFolders(
+		children
+			.filter((resource) => resource.resource === 'folder')
+			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id ?? folderId })),
+	);
+
+	const workflowIds = children.filter((r) => r.resource !== 'folder').map((r) => r.id);
+	if (workflowIds.length > 0) {
+		void fetchDependencyCounts(workflowIds, 'workflow');
+	}
+
+	return children;
+};
+
+/** Loads the children of a folder into the cache. Shares a request that is already in flight. */
+const loadFolderChildren = async (folderId: string) => {
+	const pending = folderChildrenRequests.get(folderId);
+	if (pending) return await pending;
+
+	const generation = folderCacheGeneration;
+	const request = fetchFolderChildren(folderId);
+	folderChildrenRequests.set(folderId, request);
+	try {
+		const children = await request;
+		if (generation === folderCacheGeneration) {
+			folderChildren.value = { ...folderChildren.value, [folderId]: children };
+		}
+		return children;
+	} finally {
+		if (folderChildrenRequests.get(folderId) === request) {
+			folderChildrenRequests.delete(folderId);
+		}
+	}
+};
+
+/** Fetches the children on hover, so the folder opens without a wait */
+const prefetchFolderChildren = (folderId: string) => {
+	if (folderChildren.value[folderId] || folderChildrenRequests.has(folderId)) return;
+	// A failed prefetch is silent. The click shows the error.
+	loadFolderChildren(folderId).catch(() => {});
+};
+
+const toggleFolderExpanded = async (folderId: string) => {
+	const next = new Set(expandedFolderIds.value);
+	if (next.has(folderId)) {
+		next.delete(folderId);
+		expandedFolderIds.value = next;
+		return;
+	}
+
+	next.add(folderId);
+	expandedFolderIds.value = next;
+	if (folderChildren.value[folderId]) return;
+
+	setFolderLoading(folderId, true);
+	try {
+		const children = await loadFolderChildren(folderId);
+		// A list refresh can drop the cached result while the request runs
+		if (expandedFolderIds.value.has(folderId) && !folderChildren.value[folderId]) {
+			folderChildren.value = { ...folderChildren.value, [folderId]: children };
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
+		const collapsed = new Set(expandedFolderIds.value);
+		collapsed.delete(folderId);
+		expandedFolderIds.value = collapsed;
+	} finally {
+		setFolderLoading(folderId, false);
+	}
+};
+
+/**
+ * Reloads the children of every expanded folder after the list changes.
+ * Cached children of collapsed folders are dropped, so they reload on the next expand or hover.
+ */
+const refreshExpandedFolders = async () => {
+	folderCacheGeneration++;
+	folderChildrenRequests.clear();
+	const generation = folderCacheGeneration;
+	const expandedIds = [...expandedFolderIds.value];
+	if (expandedIds.length === 0) {
+		folderChildren.value = {};
+		return;
+	}
+
+	const results = await Promise.allSettled(
+		expandedIds.map(async (id) => [id, await fetchFolderChildren(id)] as const),
+	);
+	if (generation !== folderCacheGeneration) return;
+
+	// Keep folders that the user expanded while the refresh ran
+	const nextChildren: Record<string, WorkflowListResource[]> = {};
+	for (const id of expandedFolderIds.value) {
+		const children = folderChildren.value[id];
+		if (!expandedIds.includes(id) && children) nextChildren[id] = children;
+	}
+	for (const result of results) {
+		if (result.status !== 'fulfilled') continue;
+		const [id, children] = result.value;
+		if (expandedFolderIds.value.has(id)) nextChildren[id] = children;
+	}
+	folderChildren.value = nextChildren;
+};
+
 // Filter and sort methods
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
@@ -1008,8 +1349,11 @@ const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
 	}
 	if (payload.pageSize) {
 		pageSize.value = payload.pageSize;
+		currentPage.value = 1;
 	}
 	if (payload.sort) {
+		// The sort order changes every page, so infinite scroll starts again from the top
+		currentPage.value = 1;
 		currentSort.value =
 			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
 	}
@@ -1320,7 +1664,7 @@ const onWorkflowPublished = async (data: { id: string }) => {
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
-	return workflowsAndFolders.value.find(
+	return allListItems.value.find(
 		(resource): resource is FolderListItem =>
 			resource.resource === 'folder' && resource.id === folderId,
 	);
@@ -1395,6 +1739,16 @@ const moveFolderToProjectRoot = async (id: string, name: string) => {
  * @param draggedResource
  * @param dropTarget
  */
+const removeListItem = (id: string) => {
+	workflowsAndFolders.value = workflowsAndFolders.value.filter((item) => item.id !== id);
+	folderChildren.value = Object.fromEntries(
+		Object.entries(folderChildren.value).map(([folderId, children]) => [
+			folderId,
+			children.filter((item) => item.id !== id),
+		]),
+	);
+};
+
 const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropTarget) => {
 	if (draggedResource.type === 'folder') {
 		await moveFolder({
@@ -1402,10 +1756,7 @@ const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropT
 			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
 			options: { skipFetch: true, skipNavigation: true },
 		});
-		// Remove the dragged folder from the list
-		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(folder) => folder.id !== draggedResource.id,
-		);
+		removeListItem(draggedResource.id);
 		// Increase the count of the target folder
 		const targetFolder = getFolderListItem(dropTarget.id);
 		if (targetFolder) {
@@ -1421,16 +1772,15 @@ const moveResourceOnDrop = async (draggedResource: DragTarget, dropTarget: DropT
 			newParent: { id: dropTarget.id, name: dropTarget.name, type: dropTarget.type },
 			options: { skipFetch: true },
 		});
-		// Remove the dragged workflow from the list
-		workflowsAndFolders.value = workflowsAndFolders.value.filter(
-			(workflow) => workflow.id !== draggedResource.id,
-		);
+		removeListItem(draggedResource.id);
 		// Increase the count of the target folder
 		const targetFolder = getFolderListItem(dropTarget.id);
 		if (targetFolder) {
 			targetFolder.workflowCount += 1;
 		}
 	}
+	// The drop target can be an expanded folder, so its children must reload
+	void refreshExpandedFolders();
 };
 
 // Breadcrumbs methods
@@ -1710,8 +2060,11 @@ const onFolderCardAction = async (payload: { action: string; folderId: string })
 					name: clickedFolder.name,
 					type: 'folder',
 				},
-				{ openAfterCreate: true },
+				{ openAfterCreate: false },
 			);
+			// Show the new subfolder inline under its parent
+			expandedFolderIds.value = new Set([...expandedFolderIds.value, clickedFolder.id]);
+			await refreshExpandedFolders();
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE_WORKFLOW:
 			currentFolderId.value = clickedFolder.id;
@@ -2114,7 +2467,7 @@ const onWorkflowMoved = async (payload: WorkflowListEventMap['workflow-moved']) 
 			},
 		}).href;
 		if (!payload.options?.skipApiCall) {
-			const workflowResource = workflowsAndFolders.value.find(
+			const workflowResource = allListItems.value.find(
 				(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
 			);
 			await workflowsStore.updateWorkflow(payload.workflow.id, {
@@ -2235,7 +2588,12 @@ const onNameSubmit = async (name: string) => {
 	<ResourcesListLayout
 		v-else
 		ref="resourcesListLayout"
+		:class="$style['workflows-list']"
 		v-model:filters="filters"
+		filters-in-header
+		infinite-scroll
+		:loading-more="loadingMore"
+		:has-more="hasMoreWorkflows"
 		resource-key="workflows"
 		type="list-paginated"
 		:resources="workflowListResources"
@@ -2253,13 +2611,17 @@ const onNameSubmit = async (name: string) => {
 		@update:search="onSearchUpdated"
 		@update:filters="onFiltersUpdated"
 		@update:pagination-and-sort="setPaginationAndSort"
+		@load-more="loadMoreWorkflows"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
-		<template #header>
+		<template #header="{ toolbar: ListToolbar }">
 			<ProjectHeader
 				:has-active-callouts="hasActiveCallouts"
 				@create-folder="createFolderInCurrent"
 			>
+				<template #toolbar>
+					<component :is="ListToolbar" />
+				</template>
 				<InsightsSummary
 					v-if="showInsights"
 					:loading="insightsStore.weeklySummary.isLoading"
@@ -2334,19 +2696,34 @@ const onNameSubmit = async (name: string) => {
 					</div>
 				</template>
 			</N8nCallout>
+			<div
+				v-if="workflowListResources.length > 0 && !loading"
+				:class="$style['table-header']"
+				data-test-id="workflows-table-header"
+			>
+				<span>
+					{{ i18n.baseText('generic.name') }}
+					<span :class="$style['table-header-count']">
+						{{ workflowsListStore.totalWorkflowCount }}
+					</span>
+				</span>
+				<span>{{ i18n.baseText('workflows.item.updated') }}</span>
+				<span>{{ i18n.baseText('workflows.item.created') }}</span>
+				<span />
+			</div>
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
 				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
-				v-else-if="showMainBreadcrumbs"
+				v-else-if="showMainBreadcrumbs && currentFolderId"
 				:class="$style['breadcrumbs-container']"
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
 					:current-folder="currentFolderParent"
-					:actions="breadcrumbsActions"
+					:actions="[]"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
@@ -2371,102 +2748,184 @@ const onNameSubmit = async (name: string) => {
 				</FolderBreadcrumbs>
 			</div>
 		</template>
-		<template #item="{ item: data, index }">
-			<Draggable
-				v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
-				:key="`folder-${index}`"
-				:disabled="!isDragNDropEnabled"
-				type="move"
-				target-data-key="folder"
-				@dragstart="folderHelpers.onDragStart"
-				@dragend="folderHelpers.onDragEnd"
+		<template #add-button>
+			<N8nDropdownMenu
+				v-if="showFolders && listActionMenuItems.length"
+				:items="listActionMenuItems"
+				placement="bottom-end"
+				:extra-popper-class="$style['list-actions-dropdown']"
+				@select="onBreadCrumbsAction"
 			>
-				<template #preview>
-					<N8nCard>
-						<N8nText tag="h2" bold>
-							{{ (data as FolderResource).name }}
-						</N8nText>
-					</N8nCard>
+				<template #trigger>
+					<N8nIconButton
+						variant="outline"
+						icon="ellipsis"
+						size="medium"
+						:title="i18n.baseText('workflows.list.actions')"
+						:aria-label="i18n.baseText('workflows.list.actions')"
+						data-test-id="workflows-list-actions"
+					/>
 				</template>
-				<FolderCard
-					:data="data as FolderResource"
-					:actions="folderCardActions"
-					:read-only="
-						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
-					"
-					:personal-project="personalProject"
-					:data-resourceid="(data as FolderResource).id"
-					:data-resourcename="(data as FolderResource).name"
-					:class="{
-						['mb-2xs']: true,
-						[$style['drag-active']]: isDragging,
-						[$style.dragging]:
-							foldersStore.draggedElement?.type === 'folder' &&
-							foldersStore.draggedElement?.id === (data as FolderResource).id,
-						[$style['drop-active']]:
-							foldersStore.activeDropTarget?.id === (data as FolderResource).id,
-					}"
-					:show-ownership-badge="showCardsBadge"
-					:show-mcp-access-actions="showMcpAccessActions"
-					data-target="folder"
-					data-droppable
-					class="mb-2xs"
-					@action="onFolderCardAction"
-					@mouseenter="folderHelpers.onDragEnter"
-					@mouseup="onFolderCardDrop"
-				/>
-			</Draggable>
-			<Draggable
-				v-else
-				:key="`workflow-${index}`"
-				:disabled="!isDragNDropEnabled"
-				type="move"
-				target-data-key="workflow"
-				@dragstart="folderHelpers.onDragStart"
-				@dragend="folderHelpers.onDragEnd"
-			>
-				<template #preview>
-					<N8nCard>
-						<N8nText tag="h2" bold>
-							{{ (data as WorkflowResource).name }}
+				<template #item-label="{ item, ui }">
+					<N8nTooltip
+						v-if="item.data?.tooltip"
+						:content="item.data.tooltip"
+						placement="left"
+						:show-after="300"
+						teleported
+					>
+						<N8nText
+							:class="ui.class"
+							size="medium"
+							:color="item.disabled ? 'text-light' : 'text-dark'"
+						>
+							{{ item.label }}
 						</N8nText>
-					</N8nCard>
+					</N8nTooltip>
+					<N8nText
+						v-else
+						:class="ui.class"
+						size="medium"
+						:color="item.disabled ? 'text-light' : 'text-dark'"
+					>
+						{{ item.label }}
+					</N8nText>
 				</template>
-				<WorkflowCard
-					data-test-id="resources-list-item-workflow"
-					data-target="workflow"
-					:class="{
-						['mb-2xs']: true,
-						[$style['drag-active']]: isDragging,
-						[$style.dragging]:
-							foldersStore.draggedElement?.type === 'workflow' &&
-							foldersStore.draggedElement?.id === (data as WorkflowResource).id,
-					}"
-					:data="data as WorkflowResource"
-					:workflow-list-event-bus="workflowListEventBus"
-					:read-only="readOnlyEnv"
-					:data-resourceid="(data as WorkflowResource).id"
-					:data-resourcename="(data as WorkflowResource).name"
-					:show-ownership-badge="showCardsBadge"
-					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
-					:are-tags-enabled="settingsStore.areTagsEnabled"
-					:is-mcp-enabled="mcpEnabled"
-					:is-mcp-module-active="mcpModuleActive"
-					:can-manage-instance-mcp="canManageInstanceMcp"
-					:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
-					@click:tag="onClickTag"
-					@workflow:deleted="refreshWorkflows"
-					@workflow:archived="refreshWorkflows"
-					@workflow:unarchived="refreshWorkflows"
-					@workflow:moved="fetchWorkflows"
-					@workflow:duplicated="fetchWorkflows"
-					@workflow:unpublished="onWorkflowUnpublished"
-					@workflow:published="onWorkflowPublished"
-					@workflow:active-toggle="onWorkflowActiveToggle"
-					@action:move-to-folder="moveWorkflowToFolder"
-					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
-				/>
-			</Draggable>
+			</N8nDropdownMenu>
+		</template>
+		<template #skeleton="{ rows }">
+			<WorkflowsListRowSkeleton :rows="rows" />
+		</template>
+		<template #item="{ item }">
+			<!-- One row: a folder or a workflow -->
+			<DefineListRow v-slot="{ data }">
+				<Draggable
+					v-if="(data as FolderResource | WorkflowResource).resourceType === 'folder'"
+					:key="`folder-${(data as FolderResource).id}`"
+					:class="$style['list-row']"
+					:disabled="!isDragNDropEnabled"
+					type="move"
+					target-data-key="folder"
+					@dragstart="folderHelpers.onDragStart"
+					@dragend="folderHelpers.onDragEnd"
+				>
+					<template #preview>
+						<N8nCard>
+							<N8nText tag="h2" bold>
+								{{ (data as FolderResource).name }}
+							</N8nText>
+						</N8nCard>
+					</template>
+					<FolderCard
+						layout="row"
+						:data="data as FolderResource"
+						:expanded="expandedFolderIds.has((data as FolderResource).id)"
+						:loading="loadingFolderIds.has((data as FolderResource).id)"
+						:style="rowStyleById.get((data as FolderResource).id)"
+						:actions="folderCardActions"
+						:read-only="
+							readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
+						"
+						:personal-project="personalProject"
+						:data-resourceid="(data as FolderResource).id"
+						:data-resourcename="(data as FolderResource).name"
+						:class="{
+							[$style['drag-active']]: isDragging,
+							[$style.dragging]:
+								foldersStore.draggedElement?.type === 'folder' &&
+								foldersStore.draggedElement?.id === (data as FolderResource).id,
+							[$style['drop-active']]:
+								foldersStore.activeDropTarget?.id === (data as FolderResource).id,
+						}"
+						:show-ownership-badge="showCardsBadge"
+						:show-mcp-access-actions="showMcpAccessActions"
+						data-target="folder"
+						data-droppable
+						@action="onFolderCardAction"
+						@toggle="toggleFolderExpanded((data as FolderResource).id)"
+						@prefetch="prefetchFolderChildren((data as FolderResource).id)"
+						@mouseenter="onFolderRowMouseEnter($event, (data as FolderResource).id)"
+						@mouseleave="onRowMouseLeave((data as FolderResource).id)"
+						@mouseup="onFolderCardDrop"
+					/>
+					<WorkflowsListGuides v-bind="rowGuidesById.get((data as FolderResource).id)" />
+				</Draggable>
+				<Draggable
+					v-else
+					:key="`workflow-${(data as WorkflowResource).id}`"
+					:class="$style['list-row']"
+					:disabled="!isDragNDropEnabled"
+					type="move"
+					target-data-key="workflow"
+					@dragstart="folderHelpers.onDragStart"
+					@dragend="folderHelpers.onDragEnd"
+				>
+					<template #preview>
+						<N8nCard>
+							<N8nText tag="h2" bold>
+								{{ (data as WorkflowResource).name }}
+							</N8nText>
+						</N8nCard>
+					</template>
+					<WorkflowCard
+						layout="row"
+						data-test-id="resources-list-item-workflow"
+						data-target="workflow"
+						:style="rowStyleById.get((data as WorkflowResource).id)"
+						:class="{
+							[$style['drag-active']]: isDragging,
+							[$style.dragging]:
+								foldersStore.draggedElement?.type === 'workflow' &&
+								foldersStore.draggedElement?.id === (data as WorkflowResource).id,
+						}"
+						:data="data as WorkflowResource"
+						:workflow-list-event-bus="workflowListEventBus"
+						:read-only="readOnlyEnv"
+						:data-resourceid="(data as WorkflowResource).id"
+						:data-resourcename="(data as WorkflowResource).name"
+						:show-ownership-badge="showCardsBadge"
+						:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
+						:are-tags-enabled="settingsStore.areTagsEnabled"
+						:is-mcp-enabled="mcpEnabled"
+						:is-mcp-module-active="mcpModuleActive"
+						:can-manage-instance-mcp="canManageInstanceMcp"
+						:is-workflow-card-mcp-toggle-enabled="isWorkflowCardMcpToggleEnabled"
+						@click:tag="onClickTag"
+						@workflow:deleted="refreshWorkflows"
+						@workflow:archived="refreshWorkflows"
+						@workflow:unarchived="refreshWorkflows"
+						@workflow:moved="fetchWorkflows"
+						@workflow:duplicated="fetchWorkflows"
+						@workflow:unpublished="onWorkflowUnpublished"
+						@workflow:published="onWorkflowPublished"
+						@workflow:active-toggle="onWorkflowActiveToggle"
+						@action:move-to-folder="moveWorkflowToFolder"
+						@mouseenter="onWorkflowRowMouseEnter((data as WorkflowResource).id)"
+						@mouseleave="onRowMouseLeave((data as WorkflowResource).id)"
+					/>
+					<WorkflowsListGuides v-bind="rowGuidesById.get((data as WorkflowResource).id)" />
+				</Draggable>
+			</DefineListRow>
+			<!-- An expanded folder is a group: a sticky header row, then its children -->
+			<DefineListNode v-slot="{ data }">
+				<div
+					v-if="isExpandedFolder(data)"
+					:class="$style['folder-group']"
+					:style="rowStyleById.get(data.id)"
+					data-test-id="workflows-list-folder-group"
+				>
+					<div :class="$style['folder-group-header']">
+						<ReuseListRow :data="data" />
+					</div>
+					<ReuseListNode
+						v-for="child in childResourcesByFolderId[data.id] ?? []"
+						:key="`${child.resourceType}-${child.id}`"
+						:data="child"
+					/>
+				</div>
+				<ReuseListRow v-else :data="data" />
+			</DefineListNode>
+			<ReuseListNode :data="item as Resource" />
 		</template>
 		<template #empty>
 			<EmptySharedSectionActionBox
@@ -2591,6 +3050,13 @@ const onNameSubmit = async (name: string) => {
 <style lang="scss" module>
 @use '@/app/css/variables' as *;
 
+.workflows-list {
+	// Shared by the table header and the rows in WorkflowCard and FolderCard
+	--workflows-list--columns: minmax(0, 1fr) 140px 140px 240px;
+	// Sticky folder headers need an opaque background that matches the page
+	--workflows-list--background: var(--color--background--light-2);
+}
+
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing--xs);
@@ -2637,10 +3103,44 @@ const onNameSubmit = async (name: string) => {
 }
 
 .drop-active {
-	:global(.card) {
-		border-color: var(--color--secondary);
-		background-color: var(--callout--color--background--secondary);
-	}
+	background-color: var(--callout--color--background--secondary);
+	box-shadow: inset 0 0 0 1px var(--color--secondary);
+}
+
+// Keep these columns in sync with the row layout in WorkflowCard and FolderCard
+// Positions the guide lines of the row
+.list-row {
+	position: relative;
+}
+
+.folder-group-header {
+	position: sticky;
+	// Nested headers stack below the headers of their parent folders
+	top: calc(var(--list-row--depth, 0) * var(--spacing--2xl));
+	z-index: calc(10 - var(--list-row--depth, 0));
+	background-color: var(--workflows-list--background);
+}
+
+.list-actions-dropdown {
+	width: 200px;
+}
+
+.table-header {
+	display: grid;
+	grid-template-columns: var(--workflows-list--columns);
+	gap: var(--spacing--sm);
+	align-items: center;
+	margin-top: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	padding-right: calc(var(--spacing--sm) + var(--spacing--4xs));
+	border-bottom: var(--border-width) var(--border-style) var(--border-color--subtle);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
+.table-header-count {
+	margin-left: var(--spacing--4xs);
+	color: var(--color--text--tint-2);
 }
 
 .path-separator {

@@ -123,4 +123,10 @@ export type SlotResourcesListLayoutProps<ResourceType> = {
 	uiConfig?: { searchEnabled: boolean; showFiltersDropdown: boolean; sortEnabled: boolean };
 	tabKey?: SlotResourcesListTabKey;
 	persistKeyExclusions?: string[];
+	/** Render search, sort and filters in the page header, next to the tabs */
+	filtersInHeader?: boolean;
+	/** Load the next page when the user scrolls to the end, instead of showing pagination */
+	infiniteScroll?: boolean;
+	loadingMore?: boolean;
+	hasMore?: boolean;
 };
