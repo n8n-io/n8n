@@ -14,7 +14,7 @@ import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type { IDataObject, INodeCredentials, IWorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, omitVersionedSettings } from 'n8n-workflow';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
@@ -419,8 +419,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 		}
 
+		// Only the changed key is saved on top of the stored settings. The version-scoped settings, such
+		// as the engine, stay out unless they are the changed key, so a stale cache can't overwrite them.
 		const newSettings: IWorkflowSettings = {
-			...(currentSettings ?? ({} as IWorkflowSettings)),
+			...omitVersionedSettings(currentSettings ?? ({} as IWorkflowSettings)),
 			[key]: value,
 		};
 
