@@ -659,4 +659,28 @@ describe('ExecutionRepository', () => {
 			},
 		);
 	});
+
+	describe('findWorkflowIdByExecutionId', () => {
+		test('returns null for a non-integer id without querying', async () => {
+			await expect(executionRepository.findWorkflowIdByExecutionId('abc')).resolves.toBeNull();
+
+			expect(entityManager.findOne).not.toHaveBeenCalled();
+		});
+
+		test('returns null when the id is above the PostgreSQL integer limit', async () => {
+			await expect(
+				executionRepository.findWorkflowIdByExecutionId('2147483648'),
+			).resolves.toBeNull();
+
+			expect(entityManager.findOne).not.toHaveBeenCalled();
+		});
+
+		test('returns the workflow id for the largest PostgreSQL integer id', async () => {
+			entityManager.findOne.mockResolvedValueOnce({ workflowId: 'wf-1' });
+
+			await expect(executionRepository.findWorkflowIdByExecutionId('2147483647')).resolves.toBe(
+				'wf-1',
+			);
+		});
+	});
 });

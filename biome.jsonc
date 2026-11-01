@@ -18,6 +18,10 @@
 			"**/cl100k_base.json",
 			"**/o200k_base.json",
 			"**/*.generated.ts",
+			// Frozen contract snapshots, compared byte for byte.
+			// format:check runs inside the package, where Biome sees `api/v1.d.ts`.
+			"packages/@n8n/hooks-api/api/**",
+			"api/v*.d.ts",
 			"**/benchmark/scripts/mock-api/**",
 			"**/expectations/**"
 		]
