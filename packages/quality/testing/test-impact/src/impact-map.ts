@@ -316,12 +316,14 @@ function specsInMap(map: ImpactMap): Set<string> {
 }
 
 /**
- * The specs for a change outside every function of a file: the specs that ran
- * one of its functions during their own test. Code that ran at boot is left out,
- * because a module that fails to load fails every spec, so any of them detects
- * it. If only boot ran the file, every spec is selected.
+ * The specs for a change that cannot be pinned to one function (module-level
+ * code, an insertion between functions, or no line data): the specs that ran
+ * one of the file's functions during their own test. Code that ran at boot is
+ * left out, so that a fallback does not select every spec for each file that
+ * loads at boot. This matches file-level selection before boot was recorded.
+ * If only boot ran the file, every spec is selected.
  */
-function moduleLevelSpecs(fileMap: Record<string, string[]>): string[] {
+function fileSpecs(fileMap: Record<string, string[]>): string[] {
 	const own = new Set<string>();
 	let boot = false;
 	for (const line of Object.keys(fileMap)) {
@@ -393,9 +395,9 @@ function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
  * covered by its unit tests + the always-on sanity spec; the gap is surfaced.
  * Reserve `'broad'` for genuine fail-open (an unusable map) — the caller decides.
  *
- * BOOT ({@link BOOT_SPEC}): a function that ran at boot selects every spec. A
- * scoped change outside every function selects only the specs that ran the
- * file's functions in their own tests (see {@link moduleLevelSpecs}).
+ * BOOT ({@link BOOT_SPEC}): a changed function that ran at boot selects every
+ * spec. A change that falls back to the whole file selects only the specs that
+ * ran the file's functions in their own tests (see {@link fileSpecs}).
  */
 export function resolveImpact(
 	changed: ChangedFile[],
@@ -443,21 +445,17 @@ export function resolveImpact(
 		const fnStarts = Object.keys(fileMap)
 			.map(Number)
 			.sort((a, b) => a - b);
-		const addFile = () => {
-			for (const fnLine of fnStarts) addSpecs(fileMap[String(fnLine)]);
-		};
+		const addFile = () => addSpecs(fileSpecs(fileMap));
 		if (scope) {
 			const scoped = resolveSpans(fileMap, scope.ranges, scope.spans);
 			if (scoped === null) {
 				addFile();
 				continue;
 			}
-			const fileSpecs = scoped.moduleLevel
-				? [...scoped.specs, ...moduleLevelSpecs(fileMap)]
-				: scoped.specs;
-			addSpecs(fileSpecs);
+			const selected = scoped.moduleLevel ? [...scoped.specs, ...fileSpecs(fileMap)] : scoped.specs;
+			addSpecs(selected);
 			// Only functions that no spec ran changed: no E2E checks this change.
-			if (declare && fileSpecs.length === 0) uncovered.push(file);
+			if (declare && selected.length === 0) uncovered.push(file);
 			continue;
 		}
 		if (!lines || lines.length === 0) {

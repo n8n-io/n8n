@@ -215,12 +215,22 @@ describe('resolveImpact with boot coverage', () => {
 		expect(resolve('f.ts', 9)).toEqual(['a.spec', 'b.spec']);
 	});
 
-	it('selects every spec for a change outside every function of a file that only boot ran', () => {
-		expect(resolve('boot-only.ts', 30)).toEqual(every);
+	it('leaves boot out when the map has no entry for the changed function', () => {
+		const unrun = [...ranges, { start: 30, end: 40 }];
+		const result = resolveImpact(
+			[{ file: 'f.ts', scope: { spans: [{ lo: 35, hi: 35 }], ranges: unrun } }],
+			map,
+		);
+		expect(result.specs).toEqual(['a.spec', 'b.spec']);
 	});
 
-	it('selects every spec for a whole-file change to a file that ran at boot', () => {
-		expect(resolveImpact([{ file: 'f.ts' }], map).specs).toEqual(every);
+	it('leaves boot out of a whole-file change', () => {
+		expect(resolveImpact([{ file: 'f.ts' }], map).specs).toEqual(['a.spec', 'b.spec']);
+	});
+
+	it('selects every spec for a fallback in a file that only boot ran', () => {
+		expect(resolve('boot-only.ts', 30)).toEqual(every);
+		expect(resolveImpact([{ file: 'boot-only.ts' }], map).specs).toEqual(every);
 	});
 
 	it('leaves boot out of the sibling fallback for a new file', () => {
