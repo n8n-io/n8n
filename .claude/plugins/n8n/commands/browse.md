@@ -2,7 +2,7 @@
 description: Start an isolated n8n dev instance (own ports, own sqlite DB) from the current checkout and test changes in a browser — never touches your long-running dev servers
 ---
 
-Start an isolated n8n dev instance from the directory where this conversation modified code, then use a browser MCP (e.g. Chrome DevTools MCP or Playwright) to test the changes.
+Start an isolated n8n dev instance from the directory where this conversation modified code, then test the changes in a browser.
 
 Since PRs #35724/#35770, `N8N_PORT` + `N8N_EDITOR_PORT` relocate a whole dev instance (backend port, injected `BASE_PATH`, and the editor's REST base URL), so **the default is a fresh instance on free ports** — never touch already-running dev servers (default ports: editor 8080, backend 5678), never kill anything, no cwd detection.
 
@@ -73,7 +73,7 @@ If it rejects (payload shape drifts), complete the setup wizard in the browser w
 
 ## Step 6 — Test
 
-Check the browser MCP is responsive first (e.g. `list_pages` for Chrome DevTools MCP); if it hangs or the browser is stuck, close the open pages and open a new one. If calls still fail, say so — a broken MCP needs a manual `/mcp` reconnect that can't be done from here.
+Check the browser responds first (e.g. `list_pages` in Chrome DevTools); if it hangs or is stuck, close the open pages and open a new one. If calls still fail, say so: a broken MCP server needs a manual `/mcp` reconnect that can't be done from here.
 
 Then: decide which parts of the app the changes affect, navigate under `http://localhost:$FE`, log in, and verify. If a `/rest/*` call goes to 5678 instead of `$BE`, `N8N_PORT` did not reach the editor process — fix that before drawing conclusions.
 
