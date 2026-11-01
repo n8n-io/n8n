@@ -7392,6 +7392,7 @@
 	"evaluation.listRuns.allTestCases": "All test cases | All test cases ({count})",
 	"evaluation.listRuns.testCasesListHeader": "Run #{index}",
 	"evaluation.listRuns.runNumber": "Run",
+	"evaluation.listRuns.runAt": "Run at",
 	"evaluation.listRuns.runDate": "Run date",
 	"evaluation.listRuns.runStatus": "Run status",
 	"evaluation.listRuns.noRuns": "No test runs",
