@@ -160,6 +160,8 @@ export type BreakingChangeWorkflowRuleResult = z.infer<typeof workflowRuleResult
 // The rule detail lists each workflow with the status of its finding.
 const ruleDetailWorkflowSchema = affectedWorkflowSchema.extend({
 	status: migrationFindingListedStatusSchema,
+	// The report hides archived workflows unless the user includes them.
+	isArchived: z.boolean(),
 	// When the owner was last notified about the finding. Absent until the first notification.
 	notifiedAt: z.date().optional(),
 });
