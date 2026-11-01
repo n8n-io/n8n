@@ -33,7 +33,6 @@ export const Default = {
 			return { args };
 		},
 		template: `
-		<div>
 			<Switch
 				:model-value="args.modelValue"
 				:label="args.label"
@@ -41,7 +40,6 @@ export const Default = {
 				:size="args.size"
 				@update:model-value="args.modelValue = $event"
 			/>
-		</div>
 		`,
 	}),
 	args: {
@@ -99,13 +97,11 @@ export const WithCustomLabel = {
 			return { value };
 		},
 		template: `
-		<div>
 			<Switch v-model="value">
 				<template #label>
 					I accept the <a href="#" style="color: var(--color--primary);">terms and conditions</a>
 				</template>
 			</Switch>
-		</div>
 		`,
 	}),
 } satisfies Story;
