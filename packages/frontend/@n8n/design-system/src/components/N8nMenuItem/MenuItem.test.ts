@@ -383,5 +383,54 @@ describe('N8nMenuItem', () => {
 			await userEvent.click(getByTestId('menu-item'));
 			expect(emitted('click')).toHaveLength(1);
 		});
+
+		it('renders a button when the item has no route', () => {
+			const { getByTestId } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem(),
+				},
+				global: { stubs },
+			});
+			expect(getByTestId('menu-item').tagName).toBe('BUTTON');
+		});
+
+		it('activates a command item with the keyboard', async () => {
+			const { getByTestId, emitted } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem(),
+				},
+				global: { stubs },
+			});
+			getByTestId('menu-item').focus();
+			await userEvent.keyboard('{Enter}');
+			expect(emitted('click')).toHaveLength(1);
+		});
+	});
+
+	describe('label slot', () => {
+		it('renders the label slot instead of the item label', () => {
+			const { getByText, queryByText } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem({ label: 'Item Label' }),
+				},
+				slots: { label: '<span>Custom body</span>' },
+				global: { stubs },
+			});
+			expect(getByText('Custom body')).toBeVisible();
+			expect(queryByText('Item Label')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('aria-current', () => {
+		it('sets aria-current when the item is current', () => {
+			const { getByTestId } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem(),
+					ariaCurrent: 'true',
+				},
+				global: { stubs },
+			});
+			expect(getByTestId('menu-item')).toHaveAttribute('aria-current', 'true');
+		});
 	});
 });
