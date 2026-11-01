@@ -2073,6 +2073,65 @@ describe('SourceControlImportService', () => {
 				);
 			});
 
+			it('should store the engine of a new workflow on import', async () => {
+				const importingUser = await getGlobalOwner();
+
+				const workflow = makeWorkflowImport({
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId: workflow.versionId, workflowId: workflow.id },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v2' });
+			});
+
+			it('should update workflow history when versionId exists and only the engine changed', async () => {
+				const importingUser = await getGlobalOwner();
+				const workflowId = nanoid();
+				const versionId = nanoid();
+				const nodes = [
+					{
+						id: 'node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				];
+
+				await createWorkflowWithHistory(
+					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
+					importingUser,
+				);
+
+				const workflow = makeWorkflowImport({
+					id: workflowId,
+					versionId,
+					nodes,
+					connections: {},
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
+				const file = putWorkflowFile(workflowId, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflowId, file })],
+					importingUser.id,
+				);
+
+				const historyRecord = await workflowHistoryRepository.findOneOrFail({
+					where: { versionId, workflowId },
+				});
+				expect(historyRecord.settings).toEqual({ engineType: 'v2' });
+			});
+
 			it('should update workflow history when versionId exists but nodes changed', async () => {
 				const importingUser = await getGlobalOwner();
 				const workflowId = nanoid();

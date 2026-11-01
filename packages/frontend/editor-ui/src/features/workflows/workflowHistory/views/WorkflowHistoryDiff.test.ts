@@ -28,6 +28,7 @@ const availableVersions: WorkflowHistory[] = [
 		workflowPublishHistory: [],
 		name: 'Source Version',
 		description: null,
+		settings: {},
 	},
 	{
 		versionId: targetVersionId,
@@ -37,6 +38,7 @@ const availableVersions: WorkflowHistory[] = [
 		workflowPublishHistory: [],
 		name: 'Target Version',
 		description: null,
+		settings: {},
 	},
 	{
 		versionId: otherVersionId,
@@ -46,6 +48,7 @@ const availableVersions: WorkflowHistory[] = [
 		workflowPublishHistory: [],
 		name: 'Other Version',
 		description: null,
+		settings: {},
 	},
 ];
 
@@ -90,6 +93,7 @@ const createWorkflowVersion = (versionId: string): WorkflowVersion => ({
 	workflowPublishHistory: [],
 	name: `Version ${versionId}`,
 	description: null,
+	settings: {},
 	nodes: [],
 	connections: {},
 });
