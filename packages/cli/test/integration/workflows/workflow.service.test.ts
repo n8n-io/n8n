@@ -1888,7 +1888,7 @@ describe('version-scoped settings on save', () => {
 			const owner = await createOwner();
 			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
 			const versionWithoutEngine = await createWorkflowHistoryItem(workflow.id, {
-				settings: null,
+				settings: {},
 			});
 
 			const updated = await workflowService.update(
@@ -1903,7 +1903,7 @@ describe('version-scoped settings on save', () => {
 
 			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
 			expect(saved.settings?.engineType).toBeUndefined();
-			expect(await versionSettings(updated.versionId)).toBeNull();
+			expect(await versionSettings(updated.versionId)).toEqual({});
 		});
 
 		test('rejects a restore of a version that is not in the history of the workflow', async () => {
