@@ -1,4 +1,5 @@
 import {
+	AGENT_SANDBOX_FILES_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
@@ -236,6 +237,7 @@ describe('PostHog', () => {
 					mockEvaluatedFlags({
 						[CREDENTIAL_DESCRIPTIONS_FLAG]: distinctId === `company_${instanceId}`,
 						[ASSISTANT_SKILLS_FLAG]: distinctId === `company_${instanceId}`,
+						[AGENT_SANDBOX_FILES_FLAG]: distinctId === `company_${instanceId}`,
 					}),
 				);
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -248,13 +250,15 @@ describe('PostHog', () => {
 					const flags = await ph.getFeatureFlags({ id, createdAt });
 					expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
 					expect(flags[ASSISTANT_SKILLS_FLAG]).toBe(true);
+					expect(flags[AGENT_SANDBOX_FILES_FLAG]).toBe(true);
 				}
 				expect(await ph.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)).toBe(true);
 				expect(await ph.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG)).toBe(true);
+				expect(await ph.getFeatureFlagForInstance(AGENT_SANDBOX_FILES_FLAG)).toBe(true);
 				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
 				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
 					groups: { company: instanceId },
-					flagKeys: [CREDENTIAL_DESCRIPTIONS_FLAG, ASSISTANT_SKILLS_FLAG],
+					flagKeys: [CREDENTIAL_DESCRIPTIONS_FLAG, ASSISTANT_SKILLS_FLAG, AGENT_SANDBOX_FILES_FLAG],
 				});
 			},
 		);
@@ -314,6 +318,7 @@ describe('PostHog', () => {
 					...flags,
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 				},
 				featureFlagPayloads: payloads,
 			};
@@ -341,11 +346,13 @@ describe('PostHog', () => {
 				...flags,
 				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 				[ASSISTANT_SKILLS_FLAG]: false,
+				[AGENT_SANDBOX_FILES_FLAG]: false,
 			});
 			expect(second).toEqual({
 				...flags,
 				[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 				[ASSISTANT_SKILLS_FLAG]: false,
+				[AGENT_SANDBOX_FILES_FLAG]: false,
 			});
 			expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(2);
 		});
@@ -503,6 +510,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'some-other-flag': true,
 					'multivariate-flag': 'variant',
 					'boolean-flag': true,
@@ -523,6 +531,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'contested-flag': 'variant',
 				});
 			});
@@ -559,6 +568,7 @@ describe('PostHog', () => {
 					featureFlags: {
 						[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 						[ASSISTANT_SKILLS_FLAG]: false,
+						[AGENT_SANDBOX_FILES_FLAG]: false,
 						'value-only-flag': 'variant',
 						'payload-flag': 'variant',
 						'untouched-flag': true,
@@ -586,6 +596,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'live-flag': false,
 				});
 			});
@@ -618,6 +629,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'some-other-flag': true,
 				});
 			});
@@ -634,6 +646,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'084_eval_collections': true,
 				});
 			});
@@ -662,6 +675,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'101_agent_evals': true,
 				});
 			});
@@ -694,6 +708,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'104_canvas_aia_node_context': true,
 				});
 			});
@@ -714,6 +729,7 @@ describe('PostHog', () => {
 				expect(flags).toEqual({
 					[CREDENTIAL_DESCRIPTIONS_FLAG]: false,
 					[ASSISTANT_SKILLS_FLAG]: false,
+					[AGENT_SANDBOX_FILES_FLAG]: false,
 					'084_eval_collections': true,
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,

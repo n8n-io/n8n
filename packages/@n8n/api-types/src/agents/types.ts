@@ -516,6 +516,19 @@ export interface AgentToolOutputFile {
 	sizeBytes: number;
 }
 
+/** A file of an agent session, for the session files list. */
+export interface AgentSessionFile extends AgentToolOutputFile {
+	/** Where the file came from, e.g. 'chat', 'tool' or 'sandbox'. */
+	source: string;
+	/** ISO 8601 time when the file was stored. */
+	createdAt: string;
+}
+
+export interface AgentSessionFilesResponse {
+	/** Newest first. One entry for each content, plus each older file without a hash. */
+	files: AgentSessionFile[];
+}
+
 /** A tool output file that was not stored. The model gets the reason in the tool result. */
 export interface AgentToolSkippedFile {
 	fileName: string;
@@ -753,6 +766,11 @@ export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
  * except `control` turns them on.
  */
 export const AGENTS_N8N_CHAT_FLAG = '125_agents_n8n_chat';
+/**
+ * Instance-level PostHog flag for the sandbox files of agents and the session
+ * files panel in the agent chat.
+ */
+export const AGENT_SANDBOX_FILES_FLAG = '137_agent_sandbox_files';
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;

@@ -1,6 +1,7 @@
 import {
 	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
+	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
 	AgentTaskCancellationDto,
@@ -44,6 +45,7 @@ import { AgentChatRelayService } from './agent-chat-relay.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecutionService } from './agent-execution.service';
 import {
 	type AgentSessionMode,
@@ -127,6 +129,37 @@ export class AgentChatController {
 			}))
 		)
 			throw new NotFoundError(`Thread "${threadId}" not found`);
+	}
+
+	/**
+	 * Return the suspended checkpoint of a preview thread. Throw when the checkpoint
+	 * belongs to another user, or to a user draft of a project-scoped thread.
+	 */
+	private async findReadableCheckpoint(
+		thread: AgentExecutionThread | null,
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	) {
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
+		if (
+			checkpoint &&
+			(thread?.accessScope === 'project'
+				? userIdFromDraftChatMemoryResourceId(checkpoint.persistence?.resourceId ?? '') !==
+					undefined
+				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(userId) ||
+					(!thread &&
+						!(await this.agentExecutionService.canUseDraftThread(
+							threadId,
+							projectId,
+							agentId,
+							userId,
+						))))
+		) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return checkpoint;
 	}
 
 	private assertQueueId(queueId: string): void {
@@ -457,6 +490,22 @@ export class AgentChatController {
 		}
 		await this.requireProductionThread(attachment.threadId, projectId, agentId, req.user.id);
 		await this.chatRelay.streamAttachment(attachment, res);
+	}
+
+	// Same reasoning as `getProductionChatAttachment`: `requireProductionThread`
+	// 404s a thread that isn't this user's own, so `agent:execute` is safe.
+	@Get('/:agentId/n8n-chat/:threadId/files')
+	@ProjectScope('agent:execute')
+	async getProductionSessionFiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		// A new session has no thread until its first execution starts.
+		if (!(await this.agentExecutionService.findThreadById(threadId))) return { files: [] };
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+		const files = await this.agentChatAttachmentService.listForSession({ projectId, threadId });
+		return { files };
 	}
 
 	// Same reasoning as `getProductionChatMessages`: `messageQueue.listPending`
@@ -965,23 +1014,13 @@ export class AgentChatController {
 			agentId,
 			userId: req.user.id,
 		});
-		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
-		if (
-			checkpoint &&
-			(thread?.accessScope === 'project'
-				? userIdFromDraftChatMemoryResourceId(checkpoint.persistence?.resourceId ?? '') !==
-					undefined
-				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
-					(!thread &&
-						!(await this.agentExecutionService.canUseDraftThread(
-							threadId,
-							projectId,
-							agentId,
-							req.user.id,
-						))))
-		) {
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
+		const checkpoint = await this.findReadableCheckpoint(
+			thread,
+			threadId,
+			projectId,
+			agentId,
+			req.user.id,
+		);
 		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
 		return threadMessagesResponse(history, checkpoint);
 	}
@@ -1013,6 +1052,33 @@ export class AgentChatController {
 			messagesToDto(messages),
 			ownCheckpoint(checkpoint, draftChatMemoryResourceId(req.user.id)),
 		);
+	}
+
+	@Get('/:agentId/chat/:threadId/files')
+	@ProjectScope('agent:read')
+	async getSessionFiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		// A new preview session has no thread until its first execution starts.
+		if (!thread) return { files: [] };
+		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		if (thread.accessScope === 'user') {
+			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
+		}
+		// The same checkpoint check as the message history, so both routes show the same threads.
+		await this.findReadableCheckpoint(thread, threadId, projectId, agentId, req.user.id);
+		// The download route does not serve production chat files, so the list leaves them out.
+		const files = await this.agentChatAttachmentService.listForSession(
+			{ projectId, threadId },
+			N8N_CHAT_PRODUCTION_SOURCE,
+		);
+		return { files };
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')

@@ -122,9 +122,6 @@ export interface AgentChatIntegrationBuilderGuidance {
 	useNodeToolWhen: string[];
 }
 
-/** A temporary cap, because sends load files into memory. Rework it with the storage caps of the session files. */
-export const MAX_CHANNEL_SEND_FILE_BYTES = 50 * 1024 * 1024;
-
 /** One send posts at most this many messages of files, so a runaway call cannot flood the conversation. */
 export const MAX_FILE_MESSAGES_PER_SEND = 3;
 

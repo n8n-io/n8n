@@ -57,6 +57,7 @@ import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type * as WorkflowToolFactory from '../tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -192,6 +193,7 @@ function makeService(overrides: {
 		credentialsService,
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
+		mock<AgentSandboxFilesService>(),
 	);
 
 	return {

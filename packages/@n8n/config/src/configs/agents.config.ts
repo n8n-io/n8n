@@ -2,6 +2,7 @@ import { Time } from '@n8n/constants';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
+import { nonnegativeIntSchema } from '../schemas';
 
 /**
  * Known agent sub-feature modules. Add a token here to make it valid in
@@ -104,6 +105,42 @@ export class AgentsConfig {
 	/** When true, the sandbox provider deletes the knowledge sandbox once it goes idle. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
+
+	/**
+	 * Largest file, in megabytes, that an agent can store from a tool result or from its
+	 * sandbox. n8n skips a larger file and tells the agent.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_GENERATED_FILE_SIZE_MB', nonnegativeIntSchema)
+	maxGeneratedFileSizeMb: number = 50;
+
+	/**
+	 * Most files that tools and the sandbox can store in one agent conversation, sub-agents
+	 * included. Files that users upload don't count.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_GENERATED_COUNT', nonnegativeIntSchema)
+	maxGeneratedFileCount: number = 100;
+
+	/**
+	 * Most data, in megabytes, that tools and the sandbox can store in one agent
+	 * conversation, sub-agents included.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_GENERATED_TOTAL_MB', nonnegativeIntSchema)
+	maxGeneratedTotalMb: number = 500;
+
+	/**
+	 * Most data, in megabytes, that one agent conversation can store, sub-agents included.
+	 * This counts user uploads and files from tools and the sandbox. When a conversation is
+	 * full, n8n rejects new uploads.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_TOTAL_MB', nonnegativeIntSchema)
+	maxTotalMb: number = 1536;
+
+	/**
+	 * Most data, in megabytes, that an agent can copy from its conversation files into its
+	 * sandbox in one step.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_IMPORT_MB', nonnegativeIntSchema)
+	maxImportMb: number = 200;
 
 	/**
 	 * How often (seconds) each main checks that the channels of its published

@@ -610,6 +610,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/** The workspace attached with {@link workspace}, if any. */
+	getWorkspace(): Workspace | undefined {
+		return this.workspaceInstance;
+	}
+
 	/**
 	 * Add an MCP client as a tool source for this agent.
 	 * Tools from all servers in the client become available to the agent.
