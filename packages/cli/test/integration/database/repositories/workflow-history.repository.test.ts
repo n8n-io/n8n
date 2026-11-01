@@ -135,7 +135,7 @@ describe('WorkflowHistoryRepository', () => {
 				expect(history).toEqual([expect.objectContaining({ versionId: id2 })]);
 			}
 		});
-		it('should not prune a version that differs only in the engine', async () => {
+		it('should not prune an additive change when the engine changed', async () => {
 			const v1Engine = uuid();
 			const latest = uuid();
 

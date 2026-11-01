@@ -2122,7 +2122,7 @@ describe('SourceControlImportService', () => {
 					versionId,
 					nodes,
 					connections: {},
-					settings: { engineType: 'v2' },
+					settings: { engineType: 'v2', availableInMCP: true },
 				});
 				const file = putWorkflowFile(workflowId, workflow);
 
