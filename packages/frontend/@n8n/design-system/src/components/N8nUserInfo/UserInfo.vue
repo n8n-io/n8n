@@ -70,9 +70,6 @@ const fullName = computed(() =>
 </template>
 
 <style lang="scss" module>
-// The component never grows past its parent (a table cell, a dropdown option): text that
-// does not fit truncates with an ellipsis and the badge next to it keeps its size, so
-// neither one spills into the neighbouring column.
 .container {
 	display: inline-flex;
 	gap: var(--spacing--xs);

@@ -239,11 +239,13 @@ describe('N8nDataTableServer', () => {
 
 		const headerCells = container.querySelectorAll('thead tr th');
 		expect(headerCells[0]).toHaveClass('is-pinned');
+		expect(headerCells[0]).toHaveClass('is-pinned-edge');
 		expect(headerCells[0]).toHaveStyle({ left: '0px' });
 		expect(headerCells[1]).not.toHaveClass('is-pinned');
 
 		const bodyCells = container.querySelectorAll('tbody tr:first-child td');
 		expect(bodyCells[0]).toHaveClass('is-pinned');
+		expect(bodyCells[0]).toHaveClass('is-pinned-edge');
 		expect(bodyCells[1]).not.toHaveClass('is-pinned');
 
 		await rerender({ showSelect: true });
@@ -251,10 +253,31 @@ describe('N8nDataTableServer', () => {
 		await waitFor(() => {
 			const cells = container.querySelectorAll('tbody tr:first-child td');
 			expect(cells[0]).toHaveClass('is-pinned');
+			expect(cells[0]).not.toHaveClass('is-pinned-edge');
 			expect(cells[1]).toHaveClass('is-pinned');
-			expect(cells[1]).toHaveStyle({ left: '38px' });
+			expect(cells[1]).toHaveClass('is-pinned-edge');
+			expect(cells[1]).toHaveStyle({ left: '40px' });
 			expect(cells[2]).not.toHaveClass('is-pinned');
 		});
+	});
+
+	it('should pin the leading columns when given a count', () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 2 },
+		});
+
+		const headerCells = container.querySelectorAll('thead tr th');
+		expect(headerCells[0]).toHaveClass('is-pinned');
+		expect(headerCells[0]).not.toHaveClass('is-pinned-edge');
+		expect(headerCells[1]).toHaveClass('is-pinned-edge');
+		expect(headerCells[1]).toHaveStyle({ left: '150px' });
+		expect(headerCells[2]).not.toHaveClass('is-pinned');
+
+		const bodyCells = container.querySelectorAll('tbody tr:first-child td');
+		expect(bodyCells[0]).toHaveClass('is-pinned');
+		expect(bodyCells[1]).toHaveClass('is-pinned-edge');
+		expect(bodyCells[2]).not.toHaveClass('is-pinned');
 	});
 
 	it('should not pin any column by default', () => {
@@ -266,18 +289,17 @@ describe('N8nDataTableServer', () => {
 		expect(container.querySelector('.is-pinned')).toBeNull();
 	});
 
-	it('should hint at the edge that still hides columns while scrolling sideways', async () => {
+	it('should show the pinned edge only after the table has scrolled sideways', async () => {
 		const { container } = render(N8nDataTableServer, {
 			//@ts-expect-error testing-library errors due to header generics
-			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinFirstColumn: true },
 		});
 
 		const wrapper = container.querySelector('.n8n-data-table-server-wrapper')!;
 		const scroller = container.querySelector<HTMLElement>('.table-scroll')!;
+		expect(wrapper).not.toHaveClass('is-scrolled-left');
 
-		// jsdom has no layout, so stand in for a table twice as wide as its container
-		Object.defineProperty(scroller, 'scrollWidth', { value: 800, configurable: true });
-		Object.defineProperty(scroller, 'clientWidth', { value: 400, configurable: true });
+		// jsdom has no layout, so stand in for a table that has been scrolled.
 		let scrollLeft = 0;
 		Object.defineProperty(scroller, 'scrollLeft', {
 			get: () => scrollLeft,
@@ -287,24 +309,16 @@ describe('N8nDataTableServer', () => {
 			configurable: true,
 		});
 
+		scroller.scrollLeft = 40;
 		scroller.dispatchEvent(new Event('scroll'));
 		await waitFor(() => {
-			expect(wrapper).toHaveClass('can-scroll-right');
-			expect(wrapper).not.toHaveClass('can-scroll-left');
+			expect(wrapper).toHaveClass('is-scrolled-left');
 		});
 
-		scroller.scrollLeft = 200;
+		scroller.scrollLeft = 0;
 		scroller.dispatchEvent(new Event('scroll'));
 		await waitFor(() => {
-			expect(wrapper).toHaveClass('can-scroll-left');
-			expect(wrapper).toHaveClass('can-scroll-right');
-		});
-
-		scroller.scrollLeft = 400;
-		scroller.dispatchEvent(new Event('scroll'));
-		await waitFor(() => {
-			expect(wrapper).toHaveClass('can-scroll-left');
-			expect(wrapper).not.toHaveClass('can-scroll-right');
+			expect(wrapper).not.toHaveClass('is-scrolled-left');
 		});
 	});
 

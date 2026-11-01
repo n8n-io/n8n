@@ -146,28 +146,47 @@ export const Default: StoryFn = () => ({
 	`,
 });
 
-export const HorizontalScroll: StoryFn = (args) => ({
-	components: { N8nDataTableServer: N8nDataTableServer as unknown as Component },
-	setup() {
-		return { args, headers: wideHeaders, items: accounts, total: accounts.length };
-	},
-	template: `
-		<div style="max-width: 720px; padding: var(--spacing--md);">
-			<N8nDataTableServer
-				v-bind="args"
-				:headers="headers"
-				:items="items"
-				:items-length="total"
-			/>
-		</div>
-	`,
-});
-HorizontalScroll.args = { pinFirstColumn: true, showSelect: false };
+function wideTableStory(): StoryFn {
+	return (args) => ({
+		components: { N8nDataTableServer: N8nDataTableServer as unknown as Component },
+		setup() {
+			return { args, headers: wideHeaders, items: accounts, total: accounts.length };
+		},
+		template: `
+			<div style="max-width: 720px; padding: var(--spacing--md);">
+				<N8nDataTableServer
+					v-bind="args"
+					:headers="headers"
+					:items="items"
+					:items-length="total"
+				/>
+			</div>
+		`,
+	});
+}
+
+export const HorizontalScroll = wideTableStory();
+HorizontalScroll.args = { pinFirstColumn: false, showSelect: false };
 HorizontalScroll.parameters = {
 	docs: {
 		description: {
+			story: 'The table is wider than its container. It scrolls sideways. No column stays in place.',
+		},
+	},
+};
+
+export const PinnedColumn = wideTableStory();
+PinnedColumn.args = { pinColumns: 1, showSelect: true };
+PinnedColumn.argTypes = {
+	pinColumns: {
+		control: { type: 'number', min: 0, max: wideHeaders.length, step: 1 },
+	},
+};
+PinnedColumn.parameters = {
+	docs: {
+		description: {
 			story:
-				'Wider than its container, so it scrolls sideways. A shadow fades in over whichever edge still hides columns. With `pin-first-column` the first column (and the selection column) stays in place and the left shadow sits at its edge.',
+				'Leading columns stay in place while the table scrolls. Change Pin columns in the controls. The selection column stays in front of them when it is shown. A border appears on the inner edge once you scroll.',
 		},
 	},
 };

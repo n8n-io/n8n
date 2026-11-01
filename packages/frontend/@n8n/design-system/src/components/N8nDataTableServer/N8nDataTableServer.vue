@@ -86,11 +86,17 @@ const props = withDefaults(
 		showAll?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
 		/**
-		 * Keep the first column (and the selection column, if shown) in place while the rest of
-		 * the table scrolls horizontally.
+		 * Keep the first column in place while the table scrolls horizontally.
+		 * Same as `pinColumns` set to 1. The selection column stays with it when shown.
 		 * @default false
 		 */
 		pinFirstColumn?: boolean;
+		/**
+		 * How many leading columns stay in place while the table scrolls horizontally.
+		 * The selection column is pinned in front of these when it is shown.
+		 * @default 0
+		 */
+		pinColumns?: number;
 	}>(),
 	{
 		itemSelectable: undefined,
@@ -100,6 +106,7 @@ const props = withDefaults(
 		showAll: false,
 		rowProps: undefined,
 		pinFirstColumn: false,
+		pinColumns: 0,
 	},
 );
 
@@ -245,12 +252,11 @@ const columnsDefinition = computed(() => {
 	return [...(props.showSelect ? [selectColumn] : []), ...mapHeaders(props.headers)];
 });
 
-// The pinned set is the selection column plus the first header column, so a pinned
-// checkbox never scrolls away from the row it belongs to.
 const columnPinning = computed<ColumnPinningState>(() => {
-	if (!props.pinFirstColumn) return { left: [], right: [] };
+	const dataColumnCount = props.pinColumns > 0 ? props.pinColumns : props.pinFirstColumn ? 1 : 0;
+	if (dataColumnCount === 0) return { left: [], right: [] };
 
-	const pinnedCount = props.showSelect ? 2 : 1;
+	const pinnedCount = dataColumnCount + (props.showSelect ? 1 : 0);
 	const left = columnsDefinition.value
 		.slice(0, pinnedCount)
 		.map((column) => column.id)
@@ -262,12 +268,15 @@ const columnPinning = computed<ColumnPinningState>(() => {
 function getPinnedCellBindings(column: Column<T, unknown>) {
 	if (column.getIsPinned() !== 'left') return undefined;
 
-	return { class: 'is-pinned', style: { left: `${column.getStart('left')}px` } };
+	return {
+		class: column.getIsLastColumn('left') ? 'is-pinned is-pinned-edge' : 'is-pinned',
+		style: { left: `${column.getStart('left')}px` },
+	};
 }
 
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
-const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
+const { canScrollLeft } = useHorizontalScrollEdges(scrollContainer, tableElement);
 
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
@@ -324,7 +333,8 @@ const SELECT_COLUMN_ID = 'data-table-select';
 const selectColumn: ColumnDef<T> = {
 	id: SELECT_COLUMN_ID,
 	enableResizing: false,
-	size: 38,
+	// 16px leading inset, 16px checkbox, 8px trailing padding.
+	size: 40,
 	enablePinning: true,
 	header: ({ table }) => {
 		return h(N8nCheckbox, {
@@ -452,11 +462,7 @@ const table = useVueTable({
 
 <template>
 	<div>
-		<div
-			class="n8n-data-table-server-wrapper"
-			:class="{ 'can-scroll-left': canScrollLeft, 'can-scroll-right': canScrollRight }"
-			:style="{ '--data-table--pinned-width': `${table.getLeftTotalSize()}px` }"
-		>
+		<div class="n8n-data-table-server-wrapper" :class="{ 'is-scrolled-left': canScrollLeft }">
 			<div ref="scrollContainer" class="table-scroll">
 				<table
 					ref="tableElement"
@@ -477,21 +483,24 @@ const table = useVueTable({
 									:style="{
 										cursor: header.column.getCanSort() ? 'pointer' : undefined,
 										width: `${header.getSize()}px`,
+										maxWidth: `${header.getSize()}px`,
 									}"
 									:class="{
+										'cell-select': header.column.id === SELECT_COLUMN_ID,
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,
 									}"
 									@mousedown="header.column.getToggleSortingHandler()?.($event)"
 								>
-									<FlexRender
-										v-if="!header.isPlaceholder"
-										:render="header.column.columnDef.header"
-										:props="header.getContext()"
-									/>
-
-									<template v-if="header.column.getCanSort()">
-										{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-									</template>
+									<div class="cell-content">
+										<FlexRender
+											v-if="!header.isPlaceholder"
+											:render="header.column.columnDef.header"
+											:props="header.getContext()"
+										/>
+										<template v-if="header.column.getCanSort()">
+											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
+										</template>
+									</div>
 
 									<div
 										v-if="header.column.getCanResize()"
@@ -541,16 +550,23 @@ const table = useVueTable({
 										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
 											<td
 												v-bind="getPinnedCellBindings(cell.column)"
+												:style="{
+													width: `${cell.column.getSize()}px`,
+													maxWidth: `${cell.column.getSize()}px`,
+												}"
 												:class="{
+													'cell-select': cell.column.id === SELECT_COLUMN_ID,
 													[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
 														getColumnMeta(cell.column).cellProps.align,
 													),
 												}"
 											>
-												<FlexRender
-													:render="cell.column.columnDef.cell"
-													:props="cell.getContext()"
-												/>
+												<div class="cell-content">
+													<FlexRender
+														:render="cell.column.columnDef.cell"
+														:props="cell.getContext()"
+													/>
+												</div>
 											</td>
 										</template>
 									</tr>
@@ -577,8 +593,6 @@ const table = useVueTable({
 </template>
 
 <style lang="scss" scoped>
-@use '../../css/mixins/motion';
-
 .n8n-data-table-server {
 	height: 100%;
 	font-size: var(--font-size--sm);
@@ -619,8 +633,6 @@ const table = useVueTable({
 		border-bottom: 1px solid var(--color--foreground);
 	}
 
-	// Pinned cells stay put while the rest of the row scrolls under them, so they need an
-	// opaque background. Body cells take the row's, which keeps the hover colour in sync.
 	th.is-pinned,
 	td.is-pinned {
 		position: sticky;
@@ -657,6 +669,7 @@ const table = useVueTable({
 		color: var(--color--text--shade-1);
 		padding: 0 8px;
 		height: 48px;
+		overflow: hidden;
 
 		&:first-child {
 			padding-left: 16px;
@@ -673,6 +686,15 @@ const table = useVueTable({
 			overflow: visible;
 		}
 	}
+
+	th.cell-select,
+	td.cell-select {
+		overflow: visible;
+
+		.cell-content {
+			overflow: visible;
+		}
+	}
 }
 
 .n8n-data-table-server-wrapper {
@@ -681,36 +703,16 @@ const table = useVueTable({
 	border: 1px solid var(--color--foreground);
 	overflow: hidden;
 
-	// Scroll hints: a shadow fades in over whichever edge still has columns hidden behind it.
-	// The left one sits at the inner edge of the pinned columns, if any, so they read as fixed.
-	&::before,
-	&::after {
+	// border-right on a sticky cell scrolls away. This line stays with the cell, under the scrollbar.
+	&.is-scrolled-left .is-pinned-edge::after {
 		content: '';
 		position: absolute;
 		top: 0;
-		bottom: 0;
-		width: var(--spacing--xl);
-		z-index: 3;
-		pointer-events: none;
-		opacity: 0;
-		transition: opacity var(--duration--snappy) var(--easing--ease-out);
-
-		@include motion.reduced-motion;
-	}
-
-	&::before {
-		left: var(--data-table--pinned-width, 0);
-		background: linear-gradient(to right, var(--shadow-color), transparent);
-	}
-
-	&::after {
 		right: 0;
-		background: linear-gradient(to left, var(--shadow-color), transparent);
-	}
-
-	&.can-scroll-left::before,
-	&.can-scroll-right::after {
-		opacity: 1;
+		bottom: 0;
+		width: 1px;
+		background-color: var(--color--foreground);
+		pointer-events: none;
 	}
 }
 
@@ -794,6 +796,20 @@ th.loading-row {
 
 th:hover:not(:last-child) > .resizer {
 	display: block;
+}
+
+// The handle extends past the cell edge. A later pinned header covers that
+// part, so the handle looks thinner than on an unpinned column.
+th:hover:has(.resizer),
+th:has(.resizer.is-resizing) {
+	z-index: 2;
+}
+
+.cell-content {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 
 .cell-align {
