@@ -26,6 +26,53 @@ describe.each([
 			{ filename },
 		);
 
+	it.each([
+		"jsonrpc: '2.0'",
+		"'jsonrpc': '2.0'",
+		"['jsonrpc']: '2.0'",
+		"method: 'tools/call'",
+		"method: 'tools/list'",
+		"method: 'initialize'",
+		"method: 'resources/list'",
+		"method: 'resources/read'",
+		"method: 'prompts/list'",
+		"method: 'prompts/get'",
+		"method: 'notifications/initialized'",
+		"'Mcp-Session-Id': sessionId",
+		"'MCP-Protocol-Version': '2024-11-05'",
+		"'mcp-session-id': sessionId",
+	])('rejects a standalone protocol property: %s', (property) => {
+		expect(lint(`export const transport = { ${property} };`)).toEqual([
+			expect.objectContaining({ ruleId: mcpRuleId, severity: 2, message: mcpMessage }),
+		]);
+	});
+
+	it.each(["jsonrpc: '2.0'", "method: 'tools/list'"])(
+		'reports protocolVersion before and after %s in the same file',
+		(property) => {
+			expect(
+				lint(`
+export const before = { protocolVersion: '2024-11-05' };
+export const transport = { ${property} };
+export const after = { protocolVersion: '2024-11-05' };
+`),
+			).toEqual([
+				expect.objectContaining({ line: 2, message: mcpMessage }),
+				expect.objectContaining({ line: 3, message: mcpMessage }),
+				expect.objectContaining({ line: 4, message: mcpMessage }),
+			]);
+		},
+	);
+
+	it.each([
+		"export const request = { jsonrpc: '1.0', method: 'POST' };",
+		"export const settings = { protocolVersion: '1.0', value: 'tools/call' };",
+		"export const { jsonrpc = '2.0', method = 'initialize' } = settings;",
+		"export const request = { [jsonrpc]: '2.0', [method]: 'initialize' };",
+	])('accepts properties without protocol evidence: %s', (code) => {
+		expect(lint(code)).toEqual([]);
+	});
+
 	// CE-3542: Detect the protocol in node files and helpers, without an MCP URL.
 	it.each(['nodes/Example/Example.node.ts', 'nodes/Example/GenericFunctions.ts'])(
 		'rejects an MCP JSON-RPC transport in %s',
