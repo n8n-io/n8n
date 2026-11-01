@@ -1016,7 +1016,11 @@ describe('SourceControlImportService', () => {
 						expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(
 							mockUser,
 							'workflow1',
-							{ versionId: 'published-version', publishHistory: 'none' },
+							{
+								versionId: 'published-version',
+								publishHistory: 'none',
+								onlyIfActiveVersionIs: 'published-version',
+							},
 						);
 						expect(
 							workflowRepository.upsertImportedContent.mock.invocationCallOrder[0],

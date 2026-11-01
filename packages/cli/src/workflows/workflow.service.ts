@@ -1157,6 +1157,7 @@ export class WorkflowService {
 			expectedChecksum?: string;
 			source?: WorkflowActionSource;
 			publishHistory?: PublishHistoryScope;
+			onlyIfActiveVersionIs?: string;
 		},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
@@ -1194,6 +1195,12 @@ export class WorkflowService {
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
+		if (
+			options?.onlyIfActiveVersionIs !== undefined &&
+			previousActiveVersionId !== options.onlyIfActiveVersionIs
+		) {
+			return workflow;
+		}
 
 		// Reached with access to the workflow but not the right to release a version, so there is no
 		// existence to hide behind a 404 here.
@@ -1291,13 +1298,22 @@ export class WorkflowService {
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			await this._publishViaOutbox(
+			const published = await this._publishViaOutbox(
 				user.id,
 				workflowId,
 				versionIdToActivate,
 				previousActiveVersionId,
 				workflow.updatedAt,
+				options?.onlyIfActiveVersionIs === undefined
+					? undefined
+					: { onlyIfActiveVersionIs: options.onlyIfActiveVersionIs },
 			);
+			if (!published) {
+				return await this.workflowRepository.findOneOrFail({
+					where: { id: workflowId },
+					relations: ['activeVersion'],
+				});
+			}
 
 			if (previousActiveVersionId) {
 				this.eventService.emit('workflow-deactivated', {
@@ -1327,6 +1343,19 @@ export class WorkflowService {
 				source,
 			});
 		} else {
+			if (options?.onlyIfActiveVersionIs !== undefined) {
+				// Commit the guard before trigger teardown. A newer publication takes precedence.
+				const result = await this.workflowRepository.update(
+					{ id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
+					{ activeVersionId: versionIdToActivate, active: true, updatedAt: workflow.updatedAt },
+				);
+				if ((result.affected ?? 0) === 0) {
+					return await this.workflowRepository.findOneOrFail({
+						where: { id: workflowId },
+						relations: ['activeVersion'],
+					});
+				}
+			}
 			if (previousActiveVersionId) {
 				await this.activeWorkflowManager.remove(workflowId);
 
@@ -1348,12 +1377,14 @@ export class WorkflowService {
 
 			const activationMode = previousActiveVersionId ? 'update' : 'activate';
 
-			await this.workflowRepository.update(workflowId, {
-				activeVersionId: versionIdToActivate,
-				active: true,
-				// workflow content did not change, so we keep updatedAt as is
-				updatedAt: workflow.updatedAt,
-			});
+			if (options?.onlyIfActiveVersionIs === undefined) {
+				await this.workflowRepository.update(workflowId, {
+					activeVersionId: versionIdToActivate,
+					active: true,
+					// workflow content did not change, so we keep updatedAt as is
+					updatedAt: workflow.updatedAt,
+				});
+			}
 
 			const workflowForActivation = await this.workflowRepository.findOne({
 				where: { id: workflowId },
@@ -2171,21 +2202,24 @@ export class WorkflowService {
 		versionIdToActivate: string,
 		previousActiveVersionId: string | null,
 		updatedAt: Date,
-	): Promise<void> {
-		await this.workflowRepository.manager.transaction(async (trx) => {
-			await this._recordPublishInTransaction(
+		options?: { onlyIfActiveVersionIs: string },
+	): Promise<boolean> {
+		const published = await this.workflowRepository.manager.transaction(async (trx) => {
+			return await this._recordPublishInTransaction(
 				trx,
 				userId,
 				workflowId,
 				versionIdToActivate,
 				previousActiveVersionId,
 				updatedAt,
+				options && { ...options, reason: WorkflowPublicationReason.SettingsUpdate },
 			);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
 		// waiting for the next poll cycle.
-		this.workflowPublicationNotifier.requestDrain();
+		if (published) this.workflowPublicationNotifier.requestDrain();
+		return published;
 	}
 
 	/**
@@ -2203,7 +2237,7 @@ export class WorkflowService {
 		versionIdToActivate: string,
 		previousActiveVersionId: string | null,
 		updatedAt: Date,
-		options?: { onlyIfActiveVersionIs: string },
+		options?: { onlyIfActiveVersionIs: string; reason?: WorkflowPublicationReason },
 	): Promise<boolean> {
 		const result = await trx.update(
 			WorkflowEntity,
@@ -2249,7 +2283,7 @@ export class WorkflowService {
 		await this.outboxRepository.enqueue(
 			workflowId,
 			versionIdToActivate,
-			WorkflowPublicationReason.Publish,
+			options?.reason ?? WorkflowPublicationReason.Publish,
 			trx,
 		);
 

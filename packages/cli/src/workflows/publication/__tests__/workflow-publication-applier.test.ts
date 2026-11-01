@@ -467,6 +467,36 @@ describe('WorkflowPublicationApplier', () => {
 		});
 	});
 
+	test('re-registers unchanged triggers with current settings for a settings refresh', async () => {
+		const trigger = triggerNode('schedule');
+		setTriggerSets([trigger], [{ ...trigger }]);
+		const workflow = makeWorkflow({
+			activeVersionId: oldVersion.versionId,
+			settings: { timezone: 'Europe/Berlin' },
+		});
+		workflowRepository.findOneBy.mockResolvedValue(workflow);
+		workflowHistoryRepository.findOneBy.mockResolvedValue(oldVersion);
+
+		await applier.apply(
+			makeRecord({ reason: 'settings-update', publishedVersionId: oldVersion.versionId }),
+			abort,
+		);
+
+		expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
+			workflow,
+			oldVersion,
+			new Set(['schedule']),
+			abort,
+		);
+		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+			workflow,
+			oldVersion,
+			new Set(['schedule']),
+			'update',
+			abort,
+		);
+	});
+
 	test('registers only added triggers', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 

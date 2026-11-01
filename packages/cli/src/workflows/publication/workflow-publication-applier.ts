@@ -62,6 +62,7 @@ type PartitionedVersion = { runnable: WorkflowTriggerVersion; unresolvable: Unre
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
 	[WorkflowPublicationReason.Publish]: 'update',
+	[WorkflowPublicationReason.SettingsUpdate]: 'update',
 	[WorkflowPublicationReason.Startup]: 'init',
 	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
 	[WorkflowPublicationReason.Reconcile]: 'update',
@@ -174,6 +175,11 @@ export class WorkflowPublicationApplier {
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
 			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
 		});
+		// Settings are not versioned. Rebuild registrations that can retain old settings.
+		if (record.reason === WorkflowPublicationReason.SettingsUpdate) {
+			oldTriggerCandidates.forEach((node) => toRemove.add(node.id));
+			desiredTriggerNodes.forEach((node) => toAdd.add(node.id));
+		}
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,

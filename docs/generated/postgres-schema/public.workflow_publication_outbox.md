@@ -17,7 +17,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_workflow_publication_outbox_reason | CHECK | CHECK (((reason)::text = ANY ((ARRAY['publish'::character varying, 'startup'::character varying, 'leadership-takeover'::character varying, 'reconcile'::character varying])::text[]))) |
+| CHK_workflow_publication_outbox_reason | CHECK | CHECK (((reason)::text = ANY ((ARRAY['publish'::character varying, 'startup'::character varying, 'leadership-takeover'::character varying, 'reconcile'::character varying, 'settings-update'::character varying])::text[]))) |
 | CHK_workflow_publication_outbox_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'in_progress'::character varying, 'completed'::character varying, 'partial_success'::character varying, 'failed'::character varying])::text[]))) |
 | PK_b3e2eeee36a4bd044d56468d311 | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_publication_outbox_createdAt_not_null | n | NOT NULL "createdAt" |

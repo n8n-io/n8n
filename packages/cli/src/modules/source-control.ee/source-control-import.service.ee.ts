@@ -1029,7 +1029,9 @@ export class SourceControlImportService {
 				id,
 				versionIdToActivate,
 				userId,
-				activeVersionIdToRefresh ? { publishHistory: 'none' } : {},
+				activeVersionIdToRefresh
+					? { publishHistory: 'none', onlyIfActiveVersionIs: activeVersionIdToRefresh }
+					: {},
 			);
 			if (!publishResult.success) {
 				finalPublishingError = publishResult.error;
@@ -1111,7 +1113,7 @@ export class SourceControlImportService {
 		workflowId: string,
 		versionId: string,
 		userId: string,
-		options: { publishHistory?: PublishHistoryScope } = {},
+		options: { publishHistory?: PublishHistoryScope; onlyIfActiveVersionIs?: string } = {},
 	): Promise<{
 		success: boolean;
 		error?: string;
