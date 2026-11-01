@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_f6ecac1d27039d::t_9ff3adbeea0a1f 3,24,463,1397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "df6d58e5df82f440ad3913d6f0eaee20338a030f",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

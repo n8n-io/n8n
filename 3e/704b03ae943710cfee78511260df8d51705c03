@@ -1,0 +1,68 @@
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_ab5e1eee0c772b::t_fc2f77be1d73c3 350-389
+packages/@n8n/api-types/src/agents/dto.ts
+  s_ab5e1eee0c772b::t_65dc11506cf2c5 164-168
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_ab5e1eee0c772b::t_7f2c42f2ca7db1 1088-1101
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  s_ab5e1eee0c772b::t_9eb7c9d1b5f2c0 27,73-76,78,90-91,98-99,109-115,119,124,167,173,175,182,194,198
+  s_ab5e1eee0c772b::t_e2d6747da882fd 122
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_ab5e1eee0c772b::t_3da2baee61e805 223
+  s_ab5e1eee0c772b::t_efd8c75dc06474 31
+  s_ab5e1eee0c772b::t_5c92d383985551 29,271-289
+  s_ab5e1eee0c772b::t_3125046925c447 32
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/usePagedAssistantAgentThreads.ts
+  s_ab5e1eee0c772b::t_71d863e9ceb1b6 40
+  s_ab5e1eee0c772b::t_efd8c75dc06474 8
+  s_ab5e1eee0c772b::t_491df1050af979 26-39,41-43
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_ab5e1eee0c772b::t_58af4a2cfb6ae8 215-218,318-324,326-340,342-345,352,354,357-358,360,405-410,419
+  s_ab5e1eee0c772b::t_c161ed55cfefd4 325
+  s_ab5e1eee0c772b::t_4b650073ce5e30 492-493
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_ab5e1eee0c772b::t_4b650073ce5e30 225,228,231
+  s_ab5e1eee0c772b::t_eb449c5cad3347 223-224,226-227,229-230,232-239
+  s_ab5e1eee0c772b::t_961e55ac991f9a 367,374,396-413
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/usePagedAssistantAgentThreads.test.ts
+  s_ab5e1eee0c772b::t_15674662ca3ccc 1-104
+packages/@n8n/api-types/src/agents/__tests__/system-agent-query.dto.test.ts
+  s_ab5e1eee0c772b::t_d636b6d56aabe4 1-5,68-80
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  s_ab5e1eee0c772b::t_cf925e7c0038ed 196-198,200-203
+  s_ab5e1eee0c772b::t_589de7f732c1cd 194-195,199
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAgentThreads.store.test.ts
+  s_ab5e1eee0c772b::t_07d74eacf9baf5 9,19,44,75-106
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store.ts
+  s_ab5e1eee0c772b::t_71d863e9ceb1b6 12,56,131-141,156
+  s_ab5e1eee0c772b::t_efd8c75dc06474 21-29,52-55,62,150
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.test.ts
+  s_ab5e1eee0c772b::t_8735072798eaa5 259,275,277-288,290,293
+  s_ab5e1eee0c772b::t_3125046925c447 260-274,276,289,291-292,294
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_ab5e1eee0c772b::t_f99e8337f62071 515-521
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_ab5e1eee0c772b::t_f99e8337f62071 689-693
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_ab5e1eee0c772b::t_37f523a8ab6bac 13,47-48,134-148
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_ab5e1eee0c772b::t_fc2f77be1d73c3 5,28-51
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_ab5e1eee0c772b::t_cc5851fe3204c4 1261-1266,1289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e704b03ae943710cfee78511260df8d51705c03",
+  "prompts": {},
+  "sessions": {
+    "s_ab5e1eee0c772b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7dda971-8eb3-4e75-b5e4-fbc2f355a358",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

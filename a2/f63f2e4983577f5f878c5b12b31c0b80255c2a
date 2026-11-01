@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  ai_agent 212-218,224-228
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_b3df909994b475::t_f376760034fa8f 678,701,787
+  s_b3df909994b475::t_bcb940ac28ca46 849-875
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b3df909994b475::t_f89a5726a3727c 296,300
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_b3df909994b475::t_f89a5726a3727c 50,516,525-527,536-537,539
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a2f63f2e4983577f5f878c5b12b31c0b80255c2a",
+  "prompts": {},
+  "sessions": {
+    "s_b3df909994b475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ecbb022-eecd-4d86-a9e8-f27685592a87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

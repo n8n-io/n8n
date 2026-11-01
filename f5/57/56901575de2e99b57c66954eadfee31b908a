@@ -1,0 +1,48 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_b3123eaa9590ea::t_51b696fedff58a 93-97,409-411
+  s_b3123eaa9590ea::t_0fd9750843e44a 15,83-92,98-115,382,442-445,493-494,763-766,778-779,1895,1924
+  s_b3123eaa9590ea::t_7f7b49dd0d11d8 194
+packages/cli/src/modules/promotions.ee/promotions.types.ts
+  s_b3123eaa9590ea::t_2f7a9616a12dc1 79-80
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_b3123eaa9590ea::t_2f7a9616a12dc1 43-45,51-57
+packages/cli/src/modules/promotions.ee/__tests__/utils/promotion-fixtures.ts
+  s_b3123eaa9590ea::t_8cd7acd3ea5f9d 49,57-58
+  s_b3123eaa9590ea::t_d4fbc00dfcec6c 15
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_b3123eaa9590ea::t_d71bb39b519632 90,418-436,797,2878,3487
+  s_b3123eaa9590ea::t_649b44a51d129f 938-939
+packages/cli/src/modules/promotions.ee/promotion-review-changes.service.ts
+  s_b3123eaa9590ea::t_9718ac7ecd86a6 28-29,240-250,255-256
+packages/cli/src/modules/promotions.ee/git-commit-package-reader.ts
+  s_b3123eaa9590ea::t_52e9c14e9fef30 6-7,30-32
+  s_b3123eaa9590ea::t_a63ec22996f9c2 25-28
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_b3123eaa9590ea::t_5861f90543d818 364
+packages/cli/src/modules/promotions.ee/package-manifest.ts
+  s_b3123eaa9590ea::t_a63ec22996f9c2 7-8,45-51,60-97
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_b3123eaa9590ea::t_9718ac7ecd86a6 54,56,182,354-357,365-384,534-543,545
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_b3123eaa9590ea::t_d71bb39b519632 535-544,547,551,553
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_b3123eaa9590ea::t_2f7a9616a12dc1 61-65,1019,1117,1119-1121,1128,1170-1186,1285-1287,1325-1330,1332,1337,1342,1345,1348,1350-1356,1361,1367,1596-1598
+  s_b3123eaa9590ea::t_42a9244d5b6e31 66
+  s_b3123eaa9590ea::t_d60482c6af67cc 1588
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f55756901575de2e99b57c66954eadfee31b908a",
+  "prompts": {},
+  "sessions": {
+    "s_b3123eaa9590ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca14baa9-48c7-4b9c-8882-614adc7aee20",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
