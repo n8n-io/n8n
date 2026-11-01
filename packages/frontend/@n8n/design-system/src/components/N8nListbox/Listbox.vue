@@ -1,96 +1,139 @@
 <script setup lang="ts">
-import { reactiveOmit, reactivePick } from '@vueuse/core';
-import { computed, getCurrentInstance, ref, useAttrs } from 'vue';
+import { reactivePick } from '@vueuse/core';
+import { computed, getCurrentInstance, ref } from 'vue';
 
 import type { ListboxProps, ListboxSlots, ListboxValue } from './Listbox.types';
-import { ListboxContent, ListboxRoot, useForwardProps } from './reka-ui';
+import { ListboxContent, ListboxRoot, useForwardProps, type AcceptableValue } from './reka-ui';
 
-defineOptions({ name: 'N8nListbox', inheritAttrs: false });
-
-const attrs = useAttrs();
-const rootClass = computed(() => attrs.class);
-const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+defineOptions({ name: 'N8nListbox' });
+defineSlots<ListboxSlots>();
 
 const props = withDefaults(defineProps<ListboxProps>(), {
 	selectionBehavior: 'replace',
 	orientation: 'vertical',
 	disabled: false,
-	highlightOnHover: true,
 });
+
+type ListboxRootExposed = {
+	highlightItem: (value: ListboxValue) => void;
+};
+
+const rootRef = ref<ListboxRootExposed | null>(null);
+
+const rootProps = useForwardProps(
+	reactivePick(props, 'disabled', 'orientation', 'selectionBehavior'),
+);
+
+const forwardedRootProps = computed(() => ({
+	...rootProps.value,
+	highlightOnHover: true,
+}));
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ListboxValue | undefined];
 }>();
 
-defineSlots<ListboxSlots>();
-
-// vnode.props records a passed model, including when the value is undefined.
 const vnodeProps = getCurrentInstance()?.vnode.props ?? {};
 const isModelControlled = 'modelValue' in vnodeProps || 'model-value' in vnodeProps;
 const internalValue = ref<ListboxValue | undefined>(props.defaultValue);
 const rootModelValue = computed(() => (isModelControlled ? props.modelValue : internalValue.value));
 
-function onModelUpdate(value: ListboxValue | undefined) {
-	if (!isModelControlled) internalValue.value = value;
-	emit('update:modelValue', value);
+function isListboxUpdate(
+	value: AcceptableValue | undefined,
+): value is ListboxValue | null | undefined {
+	return typeof value === 'string' || value === null || value === undefined;
 }
 
-const rootProps = useForwardProps(
-	reactivePick(props, 'disabled', 'orientation', 'dir', 'selectionBehavior', 'highlightOnHover'),
-);
+function onModelUpdate(value: AcceptableValue | undefined) {
+	if (!isListboxUpdate(value)) return;
+	const next = value ?? undefined;
+	if (!isModelControlled) internalValue.value = next;
+	emit('update:modelValue', next);
+}
+
+function onKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return;
+
+	const listbox = event.currentTarget;
+	const target = event.target;
+
+	if (!(listbox instanceof HTMLElement) || !(target instanceof HTMLElement)) return;
+
+	const option = optionIn(listbox, target);
+
+	if (!option || option === target || option.hasAttribute('data-disabled')) return;
+
+	if (event.shiftKey) {
+		const previous = adjacentTabStop(target, true);
+		if (!previous || !option.contains(previous)) moveHighlight(option, event);
+		return;
+	}
+
+	const nextOption = optionIn(listbox, adjacentTabStop(target, false));
+	if (!nextOption || nextOption === option) return;
+
+	const destination = nextOption.hasAttribute('data-disabled')
+		? nextEnabledOption(listbox, nextOption)
+		: nextOption;
+	if (destination) moveHighlight(destination, event);
+}
+
+function optionIn(listbox: HTMLElement, node: HTMLElement | null) {
+	if (!node) return null;
+	const option = node.closest('[role="option"]');
+	return option instanceof HTMLElement && listbox.contains(option) ? option : null;
+}
+
+function moveHighlight(option: HTMLElement, event: KeyboardEvent) {
+	const value = option.dataset.value;
+	if (value === undefined) return;
+	event.preventDefault();
+	event.stopPropagation();
+	rootRef.value?.highlightItem(value);
+}
+
+function nextEnabledOption(listbox: HTMLElement, after: HTMLElement) {
+	const options = [...listbox.querySelectorAll<HTMLElement>('[role="option"]')];
+	const start = options.indexOf(after);
+	return options.slice(start + 1).find((option) => !option.hasAttribute('data-disabled')) ?? null;
+}
+
+function adjacentTabStop(from: HTMLElement, backwards: boolean) {
+	const stops = [...document.querySelectorAll<HTMLElement>('body *')].filter(isTabStop);
+	const index = stops.indexOf(from);
+	return index < 0 ? null : (stops[index + (backwards ? -1 : 1)] ?? null);
+}
+
+function isTabStop(element: HTMLElement) {
+	return element.tabIndex >= 0 && !element.hasAttribute('disabled');
+}
 </script>
 
 <template>
-	<div :class="[$style.root, rootClass]" v-bind="rootAttrs">
-		<ListboxRoot
-			v-bind="rootProps"
-			:model-value="rootModelValue"
-			@update:model-value="onModelUpdate"
+	<ListboxRoot
+		ref="rootRef"
+		v-bind="forwardedRootProps"
+		:model-value="rootModelValue"
+		@update:model-value="onModelUpdate"
+	>
+		<ListboxContent
+			:class="$style.content"
+			:aria-label="label"
+			@keydown="onKeydown"
 		>
-			<ListboxContent as-child>
-				<div :class="$style.content" :aria-label="label">
-					<slot />
-				</div>
-			</ListboxContent>
-		</ListboxRoot>
-	</div>
+			<slot />
+		</ListboxContent>
+	</ListboxRoot>
 </template>
 
 <style lang="scss" module>
-.root {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	min-width: 0;
-}
-
-// Reka's root is the only child. It has to pass the height through to the list.
-.root > * {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	min-width: 0;
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	min-width: 0;
-	outline: none;
+	gap: var(--listbox--gap, var(--spacing--4xs));
 
-	// Reka sets data-orientation. A horizontal list lays its items in a row.
 	&[data-orientation='horizontal'] {
 		flex-direction: row;
-		flex-wrap: wrap;
-
-		:global([role='option']) {
-			width: auto;
-			flex: none;
-		}
 	}
 }
 </style>

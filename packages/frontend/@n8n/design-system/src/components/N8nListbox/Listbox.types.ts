@@ -2,7 +2,6 @@ export type ListboxValue = string;
 
 export type ListboxOrientation = 'vertical' | 'horizontal';
 
-/** How a second activation treats the current value. */
 export type ListboxSelectionBehavior = 'replace' | 'toggle';
 
 export type ListboxProps = {
@@ -35,14 +34,6 @@ export type ListboxProps = {
 	 * @default 'vertical'
 	 */
 	orientation?: ListboxOrientation;
-	/** Reading direction. Omit it to inherit the page direction. */
-	dir?: 'ltr' | 'rtl';
-	/**
-	 * Pointer movement moves the highlight.
-	 * The highlight fill follows `data-highlighted`.
-	 * @default true
-	 */
-	highlightOnHover?: boolean;
 };
 
 export type ListboxSlots = {

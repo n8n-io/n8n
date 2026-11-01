@@ -1,10 +1,12 @@
 import type { ListboxValue } from './Listbox.types';
 
 export type ListboxItemProps = {
-	/** Value this item selects. Unique among the items in the list. */
+	/** Unique value this item selects. */
 	value: ListboxValue;
 	/**
 	 * The user cannot highlight or select this item. Arrow keys skip it.
+	 * Tab from another item skips it when an enabled item follows.
+	 * A click does not change the value.
 	 * @default false
 	 */
 	disabled?: boolean;
@@ -19,6 +21,6 @@ export type ListboxItemEmits = {
 };
 
 export type ListboxItemSlots = {
-	/** Row content. The item has no padding. The highlight and the focus ring cover this content. */
+	/** Row content.*/
 	default(): unknown;
 };
