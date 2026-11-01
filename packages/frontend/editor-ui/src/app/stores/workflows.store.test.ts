@@ -696,6 +696,27 @@ describe('useWorkflowsStore', () => {
 			});
 		});
 
+		it('leaves the cached version-scoped settings out of the request', async () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.workflowsById = {
+				w4: createTestWorkflow({
+					id: 'w4',
+					versionId: 'v4',
+					nodes: [],
+					connections: {},
+					settings: { executionOrder: 'v1', engineType: 'v1' },
+				}),
+			};
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockResolvedValue(createTestWorkflow({ id: 'w4', versionId: 'v4', settings: {} }));
+
+			await workflowsStore.updateWorkflowSetting('w4', 'timezone', 'UTC');
+
+			const payload = makeRestApiRequestSpy.mock.lastCall?.[3];
+			expect(payload?.settings).toEqual({ executionOrder: 'v1', timezone: 'UTC' });
+		});
+
 		it('fetches workflow when not cached and updates store', async () => {
 			const workflowsListStore = useWorkflowsListStore();
 			workflowsListStore.workflowsById = {} as Record<string, IWorkflowDb>;

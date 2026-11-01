@@ -100,7 +100,11 @@ describe('restore-workflow-version MCP tool', () => {
 				connections: { Set: { main: [] } },
 				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
 			});
-			expect(updateOptions).toMatchObject({ forceSave: true, source: 'n8n-mcp' });
+			expect(updateOptions).toMatchObject({
+				forceSave: true,
+				source: 'n8n-mcp',
+				restoredFromVersionId: 'v1',
+			});
 
 			expect(result.structuredContent).toMatchObject({
 				success: true,
