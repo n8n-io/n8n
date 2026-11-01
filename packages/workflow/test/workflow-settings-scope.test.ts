@@ -67,7 +67,7 @@ describe('applyVersionedSettings', () => {
 	});
 
 	it('clears a version-scoped setting that the version does not set', () => {
-		const result = applyVersionedSettings({ engineType: 'v2', timezone: 'UTC' }, null);
+		const result = applyVersionedSettings({ engineType: 'v2', timezone: 'UTC' }, {});
 
 		expect(result).toHaveProperty('engineType', undefined);
 		expect({ engineType: 'v2', ...result }).toHaveProperty('engineType', undefined);
