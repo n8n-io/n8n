@@ -43,6 +43,14 @@
                             "type": "string"
                         }
                     }
+                },
+                "website": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
@@ -50,5 +58,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }
