@@ -12,7 +12,7 @@
 | name | varchar(128) |  | true |  |  |  |
 | nodeGroups | json | '[]'::json | false |  |  |  |
 | nodes | json |  | false |  |  |  |
-| settings | json |  | true |  |  | Version-scoped workflow settings, e.g. {"engineType":"v2"}. Null means no version-scoped setting was saved with this version |
+| settings | json | '{}'::json | false |  |  | Version-scoped workflow settings, e.g. {"engineType":"v2"}. An empty object means the version has no version-scoped setting |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | versionId | varchar(36) |  | false | [public.workflow_entity](public.workflow_entity.md) [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) [public.workflow_publish_history](public.workflow_publish_history.md) [public.workflow_published_version](public.workflow_published_version.md) [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
@@ -29,6 +29,7 @@
 | workflow_history_createdAt_not_null | n | NOT NULL "createdAt" |
 | workflow_history_nodeGroups_not_null | n | NOT NULL "nodeGroups" |
 | workflow_history_nodes_not_null | n | NOT NULL nodes |
+| workflow_history_settings_not_null | n | NOT NULL settings |
 | workflow_history_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_history_versionId_not_null | n | NOT NULL "versionId" |
 | workflow_history_workflowId_not_null | n | NOT NULL "workflowId" |
