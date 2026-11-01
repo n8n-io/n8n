@@ -6,6 +6,7 @@ import { containsExpression } from '@n8n/utils/string/contains-expression';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
 import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
+import omit from 'lodash/omit';
 import {
 	deepCopy,
 	jsonParse,
@@ -344,7 +345,7 @@ export function hasOwnerChanged(
 
 /**
  * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
- * descriptions and owners between local and remote versions
+ * descriptions, settings, and owners between local and remote versions.
  */
 function normalizeDescription(description: string | null | undefined): string | null {
 	return description ? description : null;
@@ -364,9 +365,23 @@ export function isWorkflowModified(
 		direction === 'pull' && remote.description === undefined
 			? false
 			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
+	// Resolver IDs belong to one instance. Missing remote settings do not replace local settings.
+	const hasSettingsChanged =
+		direction === 'pull' && remote.settings === undefined
+			? false
+			: !isEqual(
+					omit(remote.settings ?? {}, 'credentialResolverId'),
+					omit(local.settings ?? {}, 'credentialResolverId'),
+				);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;
+	return (
+		hasVersionIdChanged ||
+		hasParentFolderIdChanged ||
+		hasDescriptionChanged ||
+		hasSettingsChanged ||
+		ownerChanged
+	);
 }
 
 /**

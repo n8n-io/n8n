@@ -29,6 +29,8 @@ export type WorkflowPublicationOutboxStatus =
 export const WorkflowPublicationReason = {
 	/** A user published or unpublished the workflow. */
 	Publish: 'publish',
+	/** Workflow settings changed without publishing a different graph. */
+	SettingsUpdate: 'settings-update',
 	/** The leader's initial pass after the process booted. */
 	Startup: 'startup',
 	/** A running instance became leader without restarting. */

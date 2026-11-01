@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "publishedVersionId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "reason" varchar(20) NOT NULL DEFAULT ('publish'), CONSTRAINT "CHK_workflow_publication_outbox_status" CHECK (("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed'))), CONSTRAINT "CHK_workflow_publication_outbox_reason" CHECK ("reason" IN ('publish', 'startup', 'leadership-takeover', 'reconcile')))
+CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "publishedVersionId" varchar(36) NOT NULL, "status" varchar(20) NOT NULL, "errorMessage" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "reason" varchar(20) NOT NULL DEFAULT ('publish'), CONSTRAINT "CHK_workflow_publication_outbox_status" CHECK ((("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed')))), CONSTRAINT "CHK_workflow_publication_outbox_reason" CHECK ("reason" IN ('publish', 'startup', 'leadership-takeover', 'reconcile', 'settings-update')))
 ```
 
 </details>
@@ -28,8 +28,8 @@ CREATE TABLE "workflow_publication_outbox" ("id" integer PRIMARY KEY NOT NULL, "
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed'))) |
-| - | CHECK | CHECK ("reason" IN ('publish', 'startup', 'leadership-takeover', 'reconcile')) |
+| - | CHECK | CHECK ((("status" IN ('pending', 'in_progress', 'completed', 'partial_success', 'failed')))) |
+| - | CHECK | CHECK ("reason" IN ('publish', 'startup', 'leadership-takeover', 'reconcile', 'settings-update')) |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes

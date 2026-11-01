@@ -1,6 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createActiveWorkflow,
+	createTeamProject,
+	createWorkflow,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsEntity,
 	type Folder,
@@ -9,20 +16,31 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	Project,
+	ScheduledJobRepository,
 	type TagEntity,
 	type User,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
-import { Cipher } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
+import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ExternalHooks } from '@/external-hooks';
 import { DataTable } from '@/modules/data-table/data-table.entity';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -43,6 +61,9 @@ import type { ExportableDataTable } from '@/modules/source-control.ee/types/expo
 import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
 import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';
 import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner';
+import { NodeTypes } from '@/node-types';
+import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createFolder } from '@test-integration/db/folders';
@@ -643,12 +664,411 @@ describe('SourceControlService', () => {
 		fsReadFile.mockImplementation(async (path) => {
 			const pathStr = String(path);
 			const pathWithoutCwd = isAbsolute(pathStr) ? basename(pathStr) : pathStr;
-			return JSON.stringify(gitFiles[pathWithoutCwd]);
+			return JSON.stringify(
+				gitFiles[pathWithoutCwd] ??
+					gitFiles[`${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${pathWithoutCwd}`],
+			);
 		});
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	describe('workflow settings imports', () => {
+		test.each([false, true])(
+			'rebuilds the durable schedule after a timezone-only pull (unpublished draft: %s)',
+			async (hasUnpublishedDraft) => {
+				const workflow = await createActiveWorkflow(
+					{
+						settings: { timezone: 'UTC' },
+						nodes: [
+							{
+								id: randomUUID(),
+								name: 'Schedule Trigger',
+								type: 'n8n-nodes-base.scheduleTrigger',
+								typeVersion: 1.2,
+								position: [0, 0],
+								parameters: { rule: { interval: [{ field: 'days', triggerAtHour: 9 }] } },
+							},
+						],
+						connections: {},
+					},
+					projectA,
+				);
+				const workflowRepository = Container.get(WorkflowRepository);
+				const outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
+				const jobs = Container.get(ScheduledJobRepository);
+				const nodeTypeSpy = vi
+					.spyOn(Container.get(NodeTypes), 'getByNameAndVersion')
+					.mockReturnValue(new ScheduleTrigger());
+				const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+				const drainSpy = vi
+					.spyOn(Container.get(WorkflowPublicationNotifier), 'requestDrain')
+					.mockReturnValue(undefined);
+				const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+				Container.get(InstanceSettings).markAsLeader();
+				try {
+					await activeWorkflowManager.add(workflow.id, 'activate');
+					expect(await jobs.findBy({ ownerId: workflow.id })).toEqual([
+						expect.objectContaining({ timezone: 'UTC' }),
+					]);
+					const draftVersionId = hasUnpublishedDraft ? randomUUID() : workflow.versionId;
+					if (hasUnpublishedDraft) {
+						await workflowRepository.update(workflow.id, { versionId: draftVersionId, nodes: [] });
+					}
+					gitFiles[fileName] = {
+						...toExportableWorkflow(workflow, projectA),
+						versionId: draftVersionId,
+						...(hasUnpublishedDraft && { nodes: [] }),
+						settings: { timezone: 'Europe/Berlin' },
+					};
+					const options = { direction: 'pull', preferLocalVersion: false, verbose: false } as const;
+					const status = await statusService.getStatus(globalAdmin, options);
+					const result = await Container.get(
+						SourceControlImportService,
+					).importWorkflowFromWorkFolder(
+						status.filter((file) => file.id === workflow.id),
+						globalAdmin.id,
+						'none',
+					);
+					expect(result).toEqual([
+						expect.objectContaining({ id: workflow.id, publishingError: undefined }),
+					]);
+					const record = await outboxRepository.claimNextPendingRecord();
+					expect(record).toMatchObject({
+						workflowId: workflow.id,
+						publishedVersionId: workflow.activeVersionId,
+						reason: 'settings-update',
+					});
+					const applied = await Container.get(WorkflowPublicationApplier).apply(record!, {
+						signal: new AbortController().signal,
+						onDetached: vi.fn(),
+					});
+					expect(applied.type).toBe('completed');
+					expect(await jobs.findBy({ ownerId: workflow.id })).toEqual([
+						expect.objectContaining({ timezone: 'Europe/Berlin' }),
+					]);
+					expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+						versionId: draftVersionId,
+						activeVersionId: workflow.activeVersionId,
+					});
+					const nextStatus = await statusService.getStatus(globalAdmin, options);
+					expect(nextStatus.filter((file) => file.id === workflow.id)).toEqual([]);
+				} finally {
+					await activeWorkflowManager.remove(workflow.id);
+					drainSpy.mockRestore();
+					nodeTypeSpy.mockRestore();
+					delete gitFiles[fileName];
+					await outboxRepository.delete({ workflowId: workflow.id });
+					await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(
+						workflow.id,
+					);
+					await workflowRepository.delete(workflow.id);
+				}
+			},
+		);
+
+		test.each([false, true])(
+			'keeps a concurrent publication during a settings refresh (outbox: %s)',
+			async (usePublicationService) => {
+				const workflow = await createActiveWorkflow(
+					{
+						settings: { timezone: 'UTC' },
+						nodes: [
+							{
+								id: randomUUID(),
+								name: 'Schedule Trigger',
+								type: 'n8n-nodes-base.scheduleTrigger',
+								typeVersion: 1.2,
+								position: [0, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+					},
+					projectA,
+				);
+				const workflowRepository = Container.get(WorkflowRepository);
+				const nextVersionId = randomUUID();
+				await Container.get(WorkflowHistoryRepository).save({
+					workflowId: workflow.id,
+					versionId: nextVersionId,
+					nodes: workflow.nodes,
+					connections: {},
+					authors: 'Test',
+				});
+				const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+				gitFiles[fileName] = {
+					...toExportableWorkflow(workflow, projectA),
+					settings: { timezone: 'Europe/Berlin' },
+				};
+				const config = Container.get(GlobalConfig).workflows;
+				const originalUsePublicationService = config.useWorkflowPublicationService;
+				config.useWorkflowPublicationService = usePublicationService;
+				const nodeTypeSpy = vi
+					.spyOn(Container.get(NodeTypes), 'getByNameAndVersion')
+					.mockReturnValue(new ScheduleTrigger());
+				const hookSpy = vi
+					.spyOn(Container.get(ExternalHooks), 'run')
+					.mockImplementation(async (name) => {
+						if (name === 'workflow.activate') {
+							await workflowRepository.update(workflow.id, { activeVersionId: nextVersionId });
+						}
+					});
+				const removeSpy = vi.spyOn(Container.get(ActiveWorkflowManager), 'remove');
+				try {
+					const status = await statusService.getStatus(globalAdmin, {
+						direction: 'pull',
+						preferLocalVersion: false,
+						verbose: false,
+					});
+					const result = await Container.get(
+						SourceControlImportService,
+					).importWorkflowFromWorkFolder(
+						status.filter((file) => file.id === workflow.id),
+						globalAdmin.id,
+						'none',
+					);
+					expect(result).toEqual([
+						expect.objectContaining({ id: workflow.id, publishingError: undefined }),
+					]);
+					expect(hookSpy).toHaveBeenCalledWith('workflow.activate', expect.any(Array));
+					expect(
+						(await workflowRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+					).toBe(nextVersionId);
+					expect(removeSpy).not.toHaveBeenCalled();
+					expect(
+						await Container.get(WorkflowPublicationOutboxRepository).findBy({
+							workflowId: workflow.id,
+						}),
+					).toEqual([]);
+				} finally {
+					config.useWorkflowPublicationService = originalUsePublicationService;
+					hookSpy.mockRestore();
+					nodeTypeSpy.mockRestore();
+					removeSpy.mockRestore();
+					delete gitFiles[fileName];
+					await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(
+						workflow.id,
+					);
+					await workflowRepository.delete(workflow.id);
+				}
+			},
+		);
+
+		test.each([false, true])(
+			'refreshes the published Schedule Trigger after a timezone-only pull (unpublished draft: %s)',
+			async (hasUnpublishedDraft) => {
+				const workflow = await createActiveWorkflow(
+					{
+						settings: { timezone: 'UTC' },
+						nodes: [
+							{
+								id: randomUUID(),
+								name: 'Schedule Trigger',
+								type: 'n8n-nodes-base.scheduleTrigger',
+								typeVersion: 1.2,
+								position: [0, 0],
+								parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 1 }] } },
+							},
+						],
+						connections: {},
+					},
+					projectA,
+				);
+				const workflowRepository = Container.get(WorkflowRepository);
+				const draftVersionId = hasUnpublishedDraft ? randomUUID() : workflow.versionId;
+				if (hasUnpublishedDraft) {
+					await workflowRepository.update(workflow.id, { versionId: draftVersionId, nodes: [] });
+				}
+				const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+				gitFiles[fileName] = {
+					...toExportableWorkflow(workflow, projectA),
+					versionId: draftVersionId,
+					...(hasUnpublishedDraft && { nodes: [] }),
+					settings: { timezone: 'Europe/Berlin' },
+				};
+				const workflowsConfig = Container.get(GlobalConfig).workflows;
+				const originalUsePublicationService = workflowsConfig.useWorkflowPublicationService;
+				workflowsConfig.useWorkflowPublicationService = false;
+				const nodeTypeSpy = vi
+					.spyOn(Container.get(NodeTypes), 'getByNameAndVersion')
+					.mockReturnValue(new ScheduleTrigger());
+				const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+				const removeSpy = vi.spyOn(activeWorkflowManager, 'remove').mockResolvedValue(undefined);
+				const registrations: WorkflowEntity[] = [];
+				const addSpy = vi.spyOn(activeWorkflowManager, 'add').mockImplementation(async (id) => {
+					registrations.push(
+						await workflowRepository.findOneOrFail({
+							where: { id },
+							relations: ['activeVersion'],
+						}),
+					);
+					return { webhooks: false, triggersAndPollers: true };
+				});
+
+				try {
+					const options = { direction: 'pull', preferLocalVersion: false, verbose: false } as const;
+					const status = await statusService.getStatus(globalAdmin, options);
+					const candidates = status.filter((file) => file.id === workflow.id);
+					expect(candidates).toEqual([
+						expect.objectContaining({ type: 'workflow', status: 'modified', location: 'remote' }),
+					]);
+
+					const result = await Container.get(
+						SourceControlImportService,
+					).importWorkflowFromWorkFolder(candidates, globalAdmin.id, 'none');
+
+					expect(result).toEqual([
+						expect.objectContaining({ id: workflow.id, publishingError: undefined }),
+					]);
+					expect(removeSpy).toHaveBeenCalledExactlyOnceWith(workflow.id);
+					expect(addSpy).toHaveBeenCalledExactlyOnceWith(workflow.id, 'update', undefined, {
+						actor: { kind: 'user', user: expect.objectContaining({ id: globalAdmin.id }) },
+					});
+					expect(registrations).toEqual([
+						expect.objectContaining({
+							settings: { timezone: 'Europe/Berlin' },
+							versionId: draftVersionId,
+							activeVersionId: workflow.activeVersionId,
+							activeVersion: expect.objectContaining({ nodes: workflow.nodes }),
+						}),
+					]);
+					const nextStatus = await statusService.getStatus(globalAdmin, options);
+					expect(nextStatus.filter((file) => file.id === workflow.id)).toEqual([]);
+				} finally {
+					workflowsConfig.useWorkflowPublicationService = originalUsePublicationService;
+					nodeTypeSpy.mockRestore();
+					removeSpy.mockRestore();
+					addSpy.mockRestore();
+					delete gitFiles[fileName];
+					await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(
+						workflow.id,
+					);
+					await workflowRepository.delete(workflow.id);
+				}
+			},
+		);
+
+		const cases: Array<{
+			name: string;
+			localSettings: IWorkflowSettings;
+			remoteSettings?: IWorkflowSettings | null;
+			expectedSettings: IWorkflowSettings;
+			changeVersion?: boolean;
+			expectModified?: boolean;
+		}> = [
+			{
+				name: 'preserves the local resolver binding when other settings change',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'remote-resolver' },
+				expectedSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'local-resolver' },
+			},
+			{
+				name: 'keeps the default resolver when the remote file has a resolver binding',
+				localSettings: { timezone: 'UTC' },
+				remoteSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'remote-resolver' },
+				expectedSettings: { timezone: 'Europe/Berlin' },
+			},
+			{
+				name: 'preserves the local resolver when the remote settings omit it',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: { timezone: 'Europe/Berlin' },
+				expectedSettings: { timezone: 'Europe/Berlin', credentialResolverId: 'local-resolver' },
+			},
+			{
+				name: 'preserves an unchanged legacy redaction policy below the instance floor',
+				localSettings: { timezone: 'UTC', redactionPolicy: 'none' },
+				remoteSettings: { timezone: 'Europe/Berlin', redactionPolicy: 'none' },
+				expectedSettings: { timezone: 'Europe/Berlin', redactionPolicy: 'none' },
+			},
+			{
+				name: 'ignores omitted remote settings when workflow versions match',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				expectedSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				expectModified: false,
+			},
+			{
+				name: 'preserves local settings when the remote file omits settings',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				expectedSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				changeVersion: true,
+			},
+			{
+				name: 'clears ordinary settings but keeps the local resolver for empty remote settings',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: {},
+				expectedSettings: { credentialResolverId: 'local-resolver' },
+			},
+			{
+				name: 'clears ordinary settings but keeps the local resolver for null remote settings',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				remoteSettings: null,
+				expectedSettings: { credentialResolverId: 'local-resolver' },
+			},
+			{
+				name: 'normalizes null remote settings without a local resolver',
+				localSettings: { timezone: 'UTC' },
+				remoteSettings: null,
+				expectedSettings: {},
+			},
+		];
+
+		test.each(cases)(
+			'$name',
+			async ({
+				localSettings,
+				remoteSettings,
+				expectedSettings,
+				changeVersion,
+				expectModified = true,
+			}) => {
+				const workflow = await createWorkflow({ settings: localSettings }, projectA);
+				const versionId = changeVersion ? randomUUID() : workflow.versionId;
+				const workflowRepository = Container.get(WorkflowRepository);
+				const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+				gitFiles[fileName] = {
+					...toExportableWorkflow(workflow, projectA),
+					versionId,
+					...(remoteSettings !== undefined && { settings: remoteSettings }),
+				};
+				const floorSpy = vi
+					.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
+					.mockResolvedValue('all');
+
+				try {
+					const options = { direction: 'pull', preferLocalVersion: false, verbose: false } as const;
+					const initialStatus = await statusService.getStatus(globalAdmin, options);
+					const candidates = initialStatus.filter((file) => file.id === workflow.id);
+					expect(candidates).toEqual(
+						expectModified
+							? [
+									expect.objectContaining({
+										type: 'workflow',
+										status: 'modified',
+										location: 'remote',
+									}),
+								]
+							: [],
+					);
+					await Container.get(SourceControlImportService).importWorkflowFromWorkFolder(
+						candidates,
+						globalAdmin.id,
+					);
+
+					const updatedWorkflow = await workflowRepository.findOneByOrFail({ id: workflow.id });
+					expect(updatedWorkflow.settings).toEqual(expectedSettings);
+					expect(updatedWorkflow.versionId).toBe(versionId);
+					const nextStatus = await statusService.getStatus(globalAdmin, options);
+					expect(nextStatus.filter((file) => file.id === workflow.id)).toEqual([]);
+				} finally {
+					floorSpy.mockRestore();
+					delete gitFiles[fileName];
+					await workflowRepository.delete(workflow.id);
+				}
+			},
+		);
 	});
 
 	describe('getStatus', () => {
@@ -716,6 +1136,52 @@ describe('SourceControlService', () => {
 					expect(new Set(modifiedWorkflows.map((wf) => wf.id))).toEqual(
 						new Set([movedOutOfScopeWorkflow.id, movedIntoScopeWorkflow.id]),
 					);
+				});
+
+				it('should list a workflow as modified when only Available in MCP changes', async () => {
+					// LIGO-836: A settings-only change must appear in the push preview.
+					const workflow = await createWorkflow({ settings: { availableInMCP: false } }, projectA);
+					const workflowRepository = Container.get(WorkflowRepository);
+					const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+					gitFiles[fileName] = {
+						...toExportableWorkflow(workflow, projectA),
+						settings: { ...workflow.settings },
+					};
+
+					try {
+						const options = {
+							direction: 'push',
+							preferLocalVersion: true,
+							verbose: false,
+						} as const;
+						const initialStatus = await statusService.getStatus(globalAdmin, options);
+						expect(initialStatus.filter((file) => file.id === workflow.id)).toEqual([]);
+
+						await workflowRepository.update(workflow.id, {
+							settings: { ...workflow.settings, availableInMCP: true },
+						});
+						const updatedWorkflow = await workflowRepository.findOneByOrFail({ id: workflow.id });
+						expect(updatedWorkflow).toMatchObject({
+							versionId: workflow.versionId,
+							nodes: workflow.nodes,
+							connections: workflow.connections,
+							settings: { ...workflow.settings, availableInMCP: true },
+						});
+
+						const status = await statusService.getStatus(globalAdmin, options);
+
+						expect(status.filter((file) => file.id === workflow.id)).toEqual([
+							expect.objectContaining({
+								id: workflow.id,
+								type: 'workflow',
+								status: 'modified',
+								location: 'local',
+							}),
+						]);
+					} finally {
+						delete gitFiles[fileName];
+						await workflowRepository.delete(workflow.id);
+					}
 				});
 
 				it('should see all credentials', async () => {
