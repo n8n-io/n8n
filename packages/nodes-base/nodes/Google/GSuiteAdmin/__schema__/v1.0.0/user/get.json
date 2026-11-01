@@ -105,6 +105,9 @@
                     "description": {
                         "type": "string"
                     },
+                    "primary": {
+                        "type": "boolean"
+                    },
                     "title": {
                         "type": "string"
                     }
@@ -121,5 +124,5 @@
             "type": "boolean"
         }
     },
-    "version": 6
+    "version": 7
 }
