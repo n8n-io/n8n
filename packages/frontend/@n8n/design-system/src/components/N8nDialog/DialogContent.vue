@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { DialogContent, DialogTitle, DialogDescription, VisuallyHidden } from 'reka-ui';
+import { DialogContent, DialogTitle, DialogDescription } from 'reka-ui';
 import { computed, provide, useCssModule } from 'vue';
 
+import N8nVisuallyHidden from '../N8nVisuallyHidden';
 import N8nDialogClose from './DialogClose.vue';
 import { dialogCloseButtonKey } from './dialogContext';
 
@@ -146,14 +147,14 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 		@close-auto-focus="emit('closeAutoFocus', $event)"
 	>
 		<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
-		<VisuallyHidden v-if="needsFallbackTitle" as-child>
+		<N8nVisuallyHidden v-if="needsFallbackTitle" as-child>
 			<DialogTitle>{{ ariaLabel }}</DialogTitle>
-		</VisuallyHidden>
+		</N8nVisuallyHidden>
 
 		<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
-		<VisuallyHidden v-if="needsFallbackDescription" as-child>
+		<N8nVisuallyHidden v-if="needsFallbackDescription" as-child>
 			<DialogDescription>{{ ariaDescription }}</DialogDescription>
-		</VisuallyHidden>
+		</N8nVisuallyHidden>
 
 		<slot />
 
