@@ -45,10 +45,11 @@ const isVersionedEntry = (
 	entry: [string, WorkflowSettingScope],
 ): entry is [VersionedWorkflowSettingKey, 'version'] => entry[1] === 'version';
 
-export const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] =
-	Object.entries(WORKFLOW_SETTINGS_SCOPE)
-		.filter(isVersionedEntry)
-		.map(([key]) => key);
+const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = Object.entries(
+	WORKFLOW_SETTINGS_SCOPE,
+)
+	.filter(isVersionedEntry)
+	.map(([key]) => key);
 
 export function pickVersionedSettings(
 	settings?: IWorkflowSettings | null,
