@@ -9,7 +9,7 @@ import type {
 	IRun,
 	ITriggerFunctions,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, setSafeObjectProperty } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
@@ -61,6 +61,16 @@ export async function rabbitmqCreateChannel(
 	});
 }
 
+export const parseAssertOptionArguments = (options: Options | TriggerOptions) => {
+	const args: IDataObject = {};
+	if (options.arguments?.argument?.length) {
+		for (const { key, value } of options.arguments.argument) {
+			if (key) setSafeObjectProperty(args, key, value);
+		}
+	}
+	return args;
+};
+
 export async function rabbitmqConnectQueue(
 	this: IExecuteFunctions | ITriggerFunctions,
 	queue: string,
@@ -71,7 +81,15 @@ export async function rabbitmqConnectQueue(
 	return await new Promise(async (resolve, reject) => {
 		try {
 			if (options.assertQueue) {
-				await channel.assertQueue(queue, options);
+				const queueArgs = parseAssertOptionArguments(options);
+				const assertOptions: amqplib.Options.AssertQueue = {
+					durable: options.durable,
+					autoDelete: options.autoDelete,
+					exclusive: options.exclusive,
+					arguments: queueArgs,
+				};
+
+				await channel.assertQueue(queue, assertOptions);
 			} else {
 				await channel.checkQueue(queue);
 			}
