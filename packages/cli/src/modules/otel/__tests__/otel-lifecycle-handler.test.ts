@@ -321,6 +321,39 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
+		it('should pass the caller baggage of the parent to the tracer for sub-workflows', async () => {
+			const withBaggage = { ...parentTracingContext, baggage: 'tenant=acme' };
+			traceContextService.get.mockResolvedValueOnce(withBaggage);
+
+			await handler.onWorkflowStart({
+				...baseCtx,
+				executionData: {
+					parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+				} as IRunExecutionData,
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ tracingContext: withBaggage }),
+			);
+		});
+
+		it('should pass the caller baggage of the parent to the tracer for error workflows', async () => {
+			const withBaggage = { ...parentTracingContext, baggage: 'tenant=acme' };
+			traceContextService.get.mockResolvedValueOnce(withBaggage);
+
+			await handler.onWorkflowStart({
+				...baseCtx,
+				mode: 'error',
+				executionData: {
+					parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+				} as IRunExecutionData,
+			});
+
+			expect(tracer.startWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ tracingContext: withBaggage }),
+			);
+		});
+
 		it('should not pass the saved identity of the parent to the tracer for sub-workflows', async () => {
 			traceContextService.get.mockResolvedValueOnce({
 				...parentTracingContext,

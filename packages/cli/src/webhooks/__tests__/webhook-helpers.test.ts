@@ -108,6 +108,7 @@ import {
 	invokeWebhook,
 	handleImmediateWebhookResponse,
 	checkTriggerCredentialGate,
+	extractTracingContext,
 } from '../webhook-helpers';
 import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
@@ -1342,6 +1343,68 @@ describe('getWebhookErrorMessage', () => {
 	});
 });
 
+describe('extractTracingContext', () => {
+	const traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
+	const otel = {
+		injectTraceHeaders: vi.fn(),
+		extractInboundBaggage: vi.fn((header: unknown) =>
+			header === 'tenant=acme' ? 'tenant=acme' : undefined,
+		),
+	};
+
+	it('returns undefined without trace headers', () => {
+		expect(extractTracingContext({}, otel)).toBeUndefined();
+	});
+
+	it('reads traceparent and tracestate', () => {
+		expect(extractTracingContext({ traceparent, tracestate: 'vendor=1' }, otel)).toEqual({
+			traceparent,
+			tracestate: 'vendor=1',
+		});
+	});
+
+	it('ignores an invalid traceparent', () => {
+		expect(extractTracingContext({ traceparent: 'not-a-traceparent' }, otel)).toBeUndefined();
+	});
+
+	it('ignores baggage when the otel module is not loaded', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, undefined)).toEqual({
+			traceparent,
+		});
+	});
+
+	it('reads the baggage that the otel module returns', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, otel)).toEqual({
+			traceparent,
+			baggage: 'tenant=acme',
+		});
+		expect(otel.extractInboundBaggage).toHaveBeenCalledWith('tenant=acme');
+	});
+
+	it('reads baggage without a traceparent', () => {
+		expect(extractTracingContext({ baggage: 'tenant=acme' }, otel)).toEqual({
+			baggage: 'tenant=acme',
+		});
+	});
+
+	it('returns undefined when the otel module returns no baggage', () => {
+		expect(extractTracingContext({ baggage: 'n8n.workflow.id=forged' }, otel)).toBeUndefined();
+	});
+
+	it('keeps the trace context when the otel module throws', () => {
+		const throwing = {
+			...otel,
+			extractInboundBaggage: vi.fn(() => {
+				throw new Error('boom');
+			}),
+		};
+
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, throwing)).toEqual({
+			traceparent,
+		});
+	});
+});
+
 // Shared by the two `executeWebhook` blocks below: `mockInstance` overwrites the
 // container binding, so registering these per-describe would leave the first block
 // holding a mock the code under test no longer resolves.
@@ -1624,7 +1687,7 @@ describe('executeWebhook form content type', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		webhookService.runWebhook.mockResolvedValue({});
 
@@ -2481,7 +2544,7 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 	 */
 	const startWebhook = async () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -2677,6 +2740,7 @@ describe('executeWebhook response-mode callback contract', () => {
 			mock<IWorkflowExecuteAdditionalData>({
 				// A real string: the formPage branch builds a URL from it.
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				otel: undefined,
 			}),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
@@ -2863,7 +2927,7 @@ describe('executeWebhook on engine v2', () => {
 		vi.clearAllMocks();
 
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -3533,7 +3597,7 @@ describe('executeWebhook when the node webhook throws', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
 		if (webhookResult !== undefined) {
