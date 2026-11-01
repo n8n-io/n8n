@@ -134,10 +134,9 @@ export const wrappedComponentBans = [
 		replacement: 'N8nTree2',
 	},
 	{
-		// N8nDialog keeps VisuallyHidden for accessible title and description fallbacks.
 		library: 'reka-ui',
 		prefixes: ['VisuallyHidden'],
-		allowedFolders: ['components/N8nVisuallyHidden', 'components/N8nDialog'],
+		allowedFolders: ['components/N8nVisuallyHidden'],
 		replacement: 'N8nVisuallyHidden',
 	},
 	{
