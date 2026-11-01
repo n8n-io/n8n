@@ -141,6 +141,23 @@ export const wrappedComponentBans = [
 		allowedFolders: ['components/N8nNavigationDropdown'],
 		replacement: 'N8nNavigationDropdown',
 	},
+	{
+		library: 'element-plus',
+		names: ['ElRadio', 'ElRadioButton', 'ElRadioGroup'],
+		componentPaths: ['radio', 'radio-button', 'radio-group'],
+		templateNames: [
+			'el-radio',
+			'ElRadio',
+			'el-radio-button',
+			'ElRadioButton',
+			'el-radio-group',
+			'ElRadioGroup',
+		],
+		// N8nRadioGroup uses Reka, not Element Plus. Keep the folder so the
+		// ban points at the replacement, and so a future deep import stays local.
+		allowedFolders: ['components/N8nRadioGroup'],
+		replacement: 'N8nRadioGroup',
+	},
 ] as const satisfies readonly WrappedComponentBan[];
 
 export function formatWrappedComponentReplacement(replacement: string | readonly string[]): string {
