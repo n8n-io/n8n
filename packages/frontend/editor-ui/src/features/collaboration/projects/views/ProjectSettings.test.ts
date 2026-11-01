@@ -291,7 +291,7 @@ describe('ProjectSettings', () => {
 		await nextTick();
 		expect(r1.getByTestId('project-settings-delete-confirm-button')).toBeInTheDocument();
 
-		const transferRadio = document.querySelector('input[value="transfer"]') as HTMLInputElement;
+		const [transferRadio] = r1.getAllByRole('radio');
 		await userEvent.click(transferRadio);
 		await nextTick();
 
