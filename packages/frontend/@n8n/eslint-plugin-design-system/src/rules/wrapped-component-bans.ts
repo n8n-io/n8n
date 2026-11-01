@@ -135,6 +135,21 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'element-plus',
+		names: ['ElDropdown', 'ElDropdownItem', 'ElDropdownMenu'],
+		componentPaths: ['dropdown', 'dropdown-item', 'dropdown-menu'],
+		templateNames: [
+			'el-dropdown',
+			'ElDropdown',
+			'el-dropdown-item',
+			'ElDropdownItem',
+			'el-dropdown-menu',
+			'ElDropdownMenu',
+		],
+		allowedFolders: ['components/N8nDropdownMenu'],
+		replacement: 'N8nDropdownMenu',
+	},
+	{
+		library: 'element-plus',
 		names: ['ElMenu', 'ElSubMenu', 'ElMenuItem'],
 		componentPaths: ['menu', 'menu-item', 'sub-menu'],
 		templateNames: ['el-menu', 'ElMenu', 'el-sub-menu', 'ElSubMenu', 'el-menu-item', 'ElMenuItem'],
