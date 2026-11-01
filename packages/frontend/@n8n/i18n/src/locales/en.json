@@ -8110,7 +8110,7 @@
 	"instanceAi.cloudBrowser.stop": "Stop browser task",
 	"instanceAi.cloudBrowser.openBrowser": "Open browser",
 	"instanceAi.cloudBrowser.tabName": "Browser",
-	"instanceAi.cloudBrowser.frameTitle": "Live view of the cloud browser",
+	"instanceAi.cloudBrowser.frameTitle": "Live view of the browser",
 	"instanceAi.cloudBrowser.stopPopover.title": "Stop browser task? | Stop browser tasks?",
 	"instanceAi.cloudBrowser.stopPopover.body": "The response was stopped, but {count} browser is still running. | The response was stopped, but {count} browsers are still running.",
 	"instanceAi.cloudBrowser.stopPopover.keepRunning": "Keep running",
