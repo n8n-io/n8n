@@ -25,6 +25,7 @@ import {
 import { Container } from '@n8n/di';
 import * as fastGlob from 'fast-glob';
 import { Cipher } from 'n8n-core';
+import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -672,9 +673,6 @@ describe('SourceControlService', () => {
 		test.each([false, true])(
 			'refreshes the published Schedule Trigger after a timezone-only pull (unpublished draft: %s)',
 			async (hasUnpublishedDraft) => {
-				const { ScheduleTrigger } = await import(
-					'n8n-nodes-base/dist/nodes/Schedule/ScheduleTrigger.node'
-				);
 				const workflow = await createActiveWorkflow(
 					{
 						settings: { timezone: 'UTC' },
@@ -711,7 +709,7 @@ describe('SourceControlService', () => {
 					.spyOn(Container.get(NodeTypes), 'getByNameAndVersion')
 					.mockReturnValue(new ScheduleTrigger());
 				const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-				const removeSpy = vi.spyOn(activeWorkflowManager, 'remove').mockResolvedValue(true);
+				const removeSpy = vi.spyOn(activeWorkflowManager, 'remove').mockResolvedValue(undefined);
 				const registrations: WorkflowEntity[] = [];
 				const addSpy = vi.spyOn(activeWorkflowManager, 'add').mockImplementation(async (id) => {
 					registrations.push(
