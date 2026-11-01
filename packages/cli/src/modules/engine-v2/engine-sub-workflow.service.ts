@@ -20,13 +20,13 @@ import {
 } from 'n8n-workflow';
 
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { toWorkflowDocument } from '@/executions/execution-data/types';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
+import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import { findSubworkflowStart, withExpressionIsolate } from '@/utils';
 import {
 	getBase,
@@ -70,19 +70,21 @@ export class EngineSubWorkflowService {
 		const workflowData = await this.load(workflowId, parent);
 		await this.assertCallable(workflowData, parent, context);
 		const trigger = this.findTrigger(workflowData);
-		const outputs = await this.runTrigger(workflowData, trigger, items, executionId, context);
-
-		// Lazily imported: a top-level import would pull the v1 step executor and
-		// its dependencies into every n8n process, including ones with the module off.
-		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
-		const slots = toStepOutputs(outputs);
+		const triggerOutputs = await this.runTrigger(
+			workflowData,
+			trigger,
+			items,
+			executionId,
+			context,
+		);
 
 		return {
 			workflowId: workflowData.id,
-			graph: new V1WorkflowConverter().convert(workflowData, trigger.name),
-			workflow: toWorkflowDocument(workflowData),
-			// The wire schema rejects an empty array; `null` is how "no slots" is sent.
-			triggerOutputs: slots.length === 0 ? null : slots,
+			...(await toEngineWorkflowPayload({
+				workflowData,
+				triggerName: trigger.name,
+				triggerOutputs,
+			})),
 			returnLastRunOnly: triggerReturnsLastRunOnly(workflowData.nodes),
 		};
 	}
