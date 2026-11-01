@@ -929,7 +929,7 @@ describe('SkillSourceController', () => {
 
 	describe('new skills', () => {
 		const check = async (agent: SuperAgentTest, id: string, status = 200) =>
-			(await agent.post(`/skill-sources/${id}/check`).send().expect(status))
+			(await agent.post(`/skill-sources/${id}/new-skills`).send().expect(status))
 				.body as Body<SkillSourceNewSkills>;
 		const more = async (agent: SuperAgentTest, id: string) =>
 			await agent.post(`/skill-sources/${id}/discover`).send().expect(200);

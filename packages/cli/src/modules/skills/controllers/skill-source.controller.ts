@@ -1,6 +1,8 @@
 import {
 	AddSkillSourceSkillsDto,
+	AcceptSkillUpdatesDto,
 	ConnectSkillSourceDto,
+	ReviewSkillUpdateDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
@@ -60,6 +62,68 @@ export class SkillSourceController {
 		return await this.skillSourceService.listRepositories(req.user, query);
 	}
 
+	/** The sources that the user can see, for the Sources tab. */
+	@Get('/')
+	async list(req: AuthenticatedRequest) {
+		return await this.skillSourceService.list(req.user);
+	}
+
+	/** The "Updates from" dialog: the updates of one source that wait for review. */
+	@Get('/:sourceId/updates')
+	async updates(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		return await this.skillSyncService.listUpdates(req.user, sourceId);
+	}
+
+	/** Check now from the Sources tab: checks the source for updates. */
+	@Post('/:sourceId/check')
+	async checkSource(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+	) {
+		return await this.skillSyncService.checkNowBySource(req.user, sourceId);
+	}
+
+	/** Update all: accepts each reviewed update of the source that is not blocked. */
+	@Post('/:sourceId/updates/accept')
+	async acceptAll(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: AcceptSkillUpdatesDto,
+	) {
+		return await this.skillSyncService.acceptAll(req.user, sourceId, payload);
+	}
+
+	/** The review of the update of one synced skill. */
+	@Get('/skills/:skillId/update')
+	async update(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
+		return await this.skillSyncService.getUpdate(req.user, skillId);
+	}
+
+	/** Accept: the reviewed update becomes the next version of the skill. */
+	@Post('/skills/:skillId/update/accept')
+	async accept(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+		@Body payload: ReviewSkillUpdateDto,
+	) {
+		return await this.skillSyncService.accept(req.user, skillId, payload);
+	}
+
+	/** Skip: hides the update until the source changes again. */
+	@Post('/skills/:skillId/update/skip')
+	async skip(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+		@Body payload: ReviewSkillUpdateDto,
+	) {
+		await this.skillSyncService.skip(req.user, skillId, payload);
+		return { ok: true };
+	}
+
 	/** Reads a link and lists its skills for the picker. Writes nothing. */
 	@Post('/discover')
 	async discover(req: AuthenticatedRequest, _res: Response, @Body payload: DiscoverSkillSourceDto) {
@@ -72,12 +136,6 @@ export class SkillSourceController {
 		return await this.skillSourceService.connect(req.user, payload);
 	}
 
-	/** Access follows the source's stored project, through SkillAccessService in the service. */
-	@Get('/')
-	async list(req: AuthenticatedRequest) {
-		return await this.skillSourceService.list(req.user);
-	}
-
 	@Post('/:sourceId/discover')
 	async discoverMore(
 		req: AuthenticatedRequest,
@@ -88,8 +146,8 @@ export class SkillSourceController {
 	}
 
 	/** Counts the importable skills that the source gained since the user last imported from it. */
-	@Post('/:sourceId/check')
-	async check(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+	@Post('/:sourceId/new-skills')
+	async newSkills(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
 		return await this.skillSourceService.checkNewSkills(req.user, sourceId);
 	}
 

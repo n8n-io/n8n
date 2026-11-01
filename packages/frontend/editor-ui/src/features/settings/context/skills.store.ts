@@ -1,4 +1,6 @@
 import type {
+	AcceptSkillUpdatesDto,
+	ReviewSkillUpdateDto,
 	ConnectSkillSourceDto,
 	AddSkillSourceSkillsDto,
 	SkillSourceListItem,
@@ -117,12 +119,6 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.stopSyncingSkill(rootStore.restApiContext, id);
 	}
 
-	async function fetchSources() {
-		const result = await api.getSkillSources(rootStore.restApiContext);
-		sources.value = result;
-		return result;
-	}
-
 	async function discoverMore(sourceId: string) {
 		return await api.discoverMoreSkills(rootStore.restApiContext, sourceId);
 	}
@@ -133,7 +129,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 
 	/** Asks the server how many skills the source gained. The server lists the source at most every few minutes. */
 	async function checkSourceForNewSkills(sourceId: string) {
-		const { newSkillCount } = await api.checkSkillSource(rootStore.restApiContext, sourceId);
+		const { newSkillCount } = await api.checkSourceForNewSkills(rootStore.restApiContext, sourceId);
 		newSkillCounts.value = { ...newSkillCounts.value, [sourceId]: newSkillCount };
 		return newSkillCount;
 	}
@@ -149,6 +145,40 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.checkSkillForUpdates(rootStore.restApiContext, id);
 	}
 
+	let latestSourcesRead = 0;
+
+	/** The sources that the user can see. A newer read wins, as for skills. */
+	async function fetchSources() {
+		const read = ++latestSourcesRead;
+		const response = await api.listSkillSources(rootStore.restApiContext);
+		if (read === latestSourcesRead) sources.value = response;
+		return response;
+	}
+
+	async function checkSource(sourceId: string) {
+		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchSourceUpdates(sourceId: string) {
+		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
+	}
+
+	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillUpdatesDto) {
+		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
+	}
+
+	async function fetchSkillUpdate(skillId: string) {
+		return await api.getSkillUpdate(rootStore.restApiContext, skillId);
+	}
+
+	async function acceptSkillUpdate(skillId: string, payload: ReviewSkillUpdateDto) {
+		return await api.acceptSkillUpdate(rootStore.restApiContext, skillId, payload);
+	}
+
+	async function skipSkillUpdate(skillId: string, payload: ReviewSkillUpdateDto) {
+		await api.skipSkillUpdate(rootStore.restApiContext, skillId, payload);
+	}
+
 	return {
 		sources,
 		newSkillCounts,
@@ -159,6 +189,12 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		deleteSource,
 		skills,
 		collapsedSources,
+		checkSource,
+		fetchSourceUpdates,
+		acceptSourceUpdates,
+		fetchSkillUpdate,
+		acceptSkillUpdate,
+		skipSkillUpdate,
 		count,
 		loading,
 		fetchSkills,

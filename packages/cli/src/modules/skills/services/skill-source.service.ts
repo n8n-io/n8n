@@ -227,28 +227,47 @@ export class SkillSourceService {
 		}
 	}
 
-	/** The minimal Sources tab. All filtering happens before source data leaves the service. */
+	/**
+	 * The sources that the user can see: Global and every project where the user can list
+	 * skills. All filtering happens before source data leaves the service.
+	 */
 	async list(user: User): Promise<SkillSourceListItem[]> {
 		await this.flagGate.assertEnabled(user);
 		const sources = await this.sourceRepository.findVisible(
 			await this.skillAccess.visibleSourceProjects(user),
 		);
-		const counts = await this.sourceRepository.countSkills(sources.map((source) => source.id));
-		const projects = await this.skillRepository.findProjects(
-			sources.flatMap((source) => (source.projectId ? [source.projectId] : [])),
-		);
-		const canAdd = await this.skillAccess.sourceAccessCheck(user, 'addSkills');
-		const canDisconnect = await this.skillAccess.sourceAccessCheck(user, 'disconnect');
-		const skillIdsBySource = await this.sourceRepository.findLinkedSkillIdsBySource(
-			sources.map((source) => source.id),
-		);
+		return await this.describeSources(user, sources);
+	}
+
+	/**
+	 * The list row of each source whose type has a client on this build, with its skills, its
+	 * updates and what the user may do with it.
+	 */
+	async describeSources(
+		user: User,
+		sources: SkillSourceConnection[],
+	): Promise<SkillSourceListItem[]> {
+		const shown = sources.filter((source) => this.clients.get(source.type) !== undefined);
+		const ids = shown.map((source) => source.id);
+		const [counts, projects, canAdd, canDisconnect, canReview, skillIdsBySource] =
+			await Promise.all([
+				this.sourceRepository.countLinksBySource(ids),
+				this.skillRepository.findProjects(shown.flatMap((source) => source.projectId ?? [])),
+				this.skillAccess.sourceAccessCheck(user, 'addSkills'),
+				this.skillAccess.sourceAccessCheck(user, 'disconnect'),
+				this.skillAccess.sourceAccessCheck(user, 'review'),
+				this.sourceRepository.findLinkedSkillIdsBySource(ids),
+			]);
 		const inUse = await this.skillService.findSkillsInUse([...skillIdsBySource.values()].flat());
-		return sources.map((source) => {
-			const project = source.projectId ? projects.get(source.projectId) : undefined;
-			const skillCount = counts.get(source.id) ?? 0;
-			return this.sourceItem(source, skillCount, project, {
+		return shown.map((source) => {
+			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
+			return this.sourceItem(source, source.projectId ? projects.get(source.projectId) : undefined, {
+				skillCount: count.skills,
+				updatesAvailable: count.available,
+				updatesBlocked: count.blocked,
 				canAddSkills: canAdd(source),
 				canDelete: canDisconnect(source),
+				canReview: canReview(source),
 				skillsInUse: (skillIdsBySource.get(source.id) ?? []).filter((id) => inUse.has(id)).length,
 			});
 		});
@@ -268,15 +287,9 @@ export class SkillSourceService {
 		const names = await this.skillRepository.findLatestNamesInTarget({
 			projectId: stored.projectId,
 		});
-		const project = stored.projectId
-			? (await this.skillRepository.findProjects([stored.projectId])).get(stored.projectId)
-			: undefined;
+		const [item] = await this.describeSources(user, [stored]);
 		return {
-			source: this.sourceItem(stored, linked.length, project, {
-				canAddSkills: true,
-				canDelete: false,
-				skillsInUse: 0,
-			}),
+			source: item,
 			skills: this.pickerSkills(source, reads, names, discovered),
 			truncated: discovered.truncated,
 			tooDeep: discovered.tooDeep,
@@ -376,9 +389,17 @@ export class SkillSourceService {
 
 	private sourceItem(
 		source: SkillSourceConnection,
-		skillCount: number,
 		project: { name: string; type: 'personal' | 'team' } | undefined,
-		access: Pick<SkillSourceListItem, 'canAddSkills' | 'canDelete' | 'skillsInUse'>,
+		details: Pick<
+			SkillSourceListItem,
+			| 'skillCount'
+			| 'updatesAvailable'
+			| 'updatesBlocked'
+			| 'canAddSkills'
+			| 'canDelete'
+			| 'canReview'
+			| 'skillsInUse'
+		>,
 	): SkillSourceListItem {
 		const { client, locator } = this.storedLocation(source);
 		return {
@@ -390,8 +411,8 @@ export class SkillSourceService {
 			projectId: source.projectId,
 			projectName: project?.name ?? null,
 			projectType: project?.type ?? null,
-			skillCount,
-			...access,
+			lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
+			...details,
 		};
 	}
 

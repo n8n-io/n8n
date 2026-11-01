@@ -26,6 +26,10 @@ describe('SkillSyncService', () => {
 		mock(),
 		mock(),
 		telemetry,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
 	);
 	const user = mock<User>({ id: 'user-1' });
 	const source = mock<SkillSourceConnection>({ id: 'source-1', type: 'github', projectId: 'p1' });

@@ -13,7 +13,13 @@ import type {
 	SkillNewNameResponse,
 	SkillSaveResponse,
 	SkillSortOption,
+	AcceptSkillUpdatesDto,
+	ReviewSkillUpdateDto,
 	SkillSourceCheckResponse,
+	SkillSourceUpdates,
+	SkillUpdateAcceptResponse,
+	SkillUpdateReview,
+	SkillUpdatesAcceptResponse,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -192,7 +198,8 @@ export async function stopSyncingSkill(context: IRestApiContext, skillId: string
 	);
 }
 
-export async function getSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
+/** The sources that the user can see. */
+export async function listSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
 	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
 }
 
@@ -207,13 +214,24 @@ export async function discoverMoreSkills(
 	);
 }
 
-/** Deletes a source with no skills left. */
 /** Counts the importable skills that a source gained since the user last imported from it. */
-export async function checkSkillSource(
+export async function checkSourceForNewSkills(
 	context: IRestApiContext,
 	sourceId: string,
 ): Promise<SkillSourceNewSkills> {
 	return await makeRestApiRequest<SkillSourceNewSkills>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/new-skills`,
+	);
+}
+
+/** Check now from the Sources tab. */
+export async function checkSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceCheckResponse> {
+	return await makeRestApiRequest<SkillSourceCheckResponse>(
 		context,
 		'POST',
 		`${SOURCES_ENDPOINT}/${sourceId}/check`,
@@ -233,6 +251,72 @@ export async function addSourceSkills(
 		context,
 		'POST',
 		`${SOURCES_ENDPOINT}/${sourceId}/skills`,
+		payload,
+	);
+}
+
+/** The "Updates from" dialog of one source. */
+export async function getSkillSourceUpdates(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceUpdates> {
+	return await makeRestApiRequest<SkillSourceUpdates>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates`,
+	);
+}
+
+/** Update all: accepts each reviewed update of the source. */
+export async function acceptSkillSourceUpdates(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: AcceptSkillUpdatesDto,
+): Promise<SkillUpdatesAcceptResponse> {
+	return await makeRestApiRequest<SkillUpdatesAcceptResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates/accept`,
+		payload,
+	);
+}
+
+/** The review of the update of one synced skill. */
+export async function getSkillUpdate(
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillUpdateReview> {
+	return await makeRestApiRequest<SkillUpdateReview>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/skills/${skillId}/update`,
+	);
+}
+
+/** Accept: the reviewed update becomes the next version. */
+export async function acceptSkillUpdate(
+	context: IRestApiContext,
+	skillId: string,
+	payload: ReviewSkillUpdateDto,
+): Promise<SkillUpdateAcceptResponse> {
+	return await makeRestApiRequest<SkillUpdateAcceptResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/skills/${skillId}/update/accept`,
+		payload,
+	);
+}
+
+/** Skip: hides the update until the source changes again. */
+export async function skipSkillUpdate(
+	context: IRestApiContext,
+	skillId: string,
+	payload: ReviewSkillUpdateDto,
+): Promise<void> {
+	await makeRestApiRequest<{ ok: true }>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/skills/${skillId}/update/skip`,
 		payload,
 	);
 }

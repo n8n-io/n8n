@@ -23,7 +23,7 @@ vi.mock('./skills.api', () => ({
 	connectSkillSource: async (...args: unknown[]) => await connectSource(...args),
 	getSkillSourceCredentials: async (...args: unknown[]) => await sourceCredentials(...args),
 	getSkillSourceRepositories: async (...args: unknown[]) => await sourceRepositories(...args),
-	checkSkillSource: async (...args: unknown[]) => await checkSource(...args),
+	checkSourceForNewSkills: async (...args: unknown[]) => await checkSource(...args),
 }));
 
 function deferred<T>() {

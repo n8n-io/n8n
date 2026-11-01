@@ -27,6 +27,9 @@ const STATUS: Record<SkillSourceReason, number> = {
 	credential_out_of_scope: 403,
 	host_blocked: 400,
 	unreachable: 503,
+	stale: 409,
+	name_clash: 409,
+	skill_deleted: 404,
 };
 
 /**

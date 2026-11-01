@@ -162,22 +162,6 @@ export class SkillSourceRepository {
 		});
 	}
 
-	/** Counts links without loading skill content or remote refs. */
-	async countSkills(sourceIds: string[]): Promise<Map<string, number>> {
-		const counts = new Map<string, number>();
-		for (const ids of chunkIds(sourceIds)) {
-			const rows = await this.links.manager
-				.createQueryBuilder(SkillSourceLink, 'link')
-				.select('link.sourceId', 'sourceId')
-				.addSelect('COUNT(*)', 'count')
-				.where('link.sourceId IN (:...ids)', { ids })
-				.groupBy('link.sourceId')
-				.getRawMany<{ sourceId: string; count: string | number }>();
-			for (const row of rows) counts.set(row.sourceId, Number(row.count));
-		}
-		return counts;
-	}
-
 	async findImportedRefs(
 		sourceId: string,
 		ctx: OperationContext = {},
@@ -452,6 +436,89 @@ export class SkillSourceRepository {
 				pendingRevision: pending.revision,
 				state: pending.state,
 			} as QueryDeepPartialEntity<SkillSourceLink>,
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** The synced skills of each source, and its updates by state, in one query. */
+	async countLinksBySource(
+		sourceIds: string[],
+	): Promise<Map<string, { skills: number; available: number; blocked: number }>> {
+		const counts = new Map<string, { skills: number; available: number; blocked: number }>();
+		for (const chunk of chunkIds(sourceIds)) {
+			const rows = await this.links
+				.managerFor({})
+				.createQueryBuilder(SkillSourceLink, 'link')
+				.select('link.sourceId', 'sourceId')
+				.addSelect('link.state', 'state')
+				.addSelect('COUNT(*)', 'count')
+				.where('link.sourceId IN (:...chunk)', { chunk })
+				.groupBy('link.sourceId')
+				.addGroupBy('link.state')
+				.getRawMany<{ sourceId: string; state: SkillSourceLinkState; count: string | number }>();
+			for (const { sourceId, state, count } of rows) {
+				const entry = counts.get(sourceId) ?? { skills: 0, available: 0, blocked: 0 };
+				const n = Number(count);
+				entry.skills += n;
+				if (state === 'update_available') entry.available += n;
+				if (state === 'update_blocked') entry.blocked += n;
+				counts.set(sourceId, entry);
+			}
+		}
+		return counts;
+	}
+
+	/** The links of the source with an update that waits for review. */
+	async findPendingLinks(sourceId: string): Promise<SkillSourceLink[]> {
+		return await this.links.managerFor({}).find(SkillSourceLink, {
+			where: { sourceId, pendingContentHash: Not(IsNull()) },
+		});
+	}
+
+	/**
+	 * Accept: the reviewed update becomes the base, and nothing waits any more. Only when the
+	 * link still holds the reviewed update (`contentHash`), so a newer update, or a decision
+	 * by another user, is never overwritten. Answers false then. Runs in the transaction of
+	 * the new version.
+	 */
+	async acceptPending(
+		skillId: string,
+		contentHash: string,
+		revision: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.links.managerFor(ctx).update(
+			SkillSourceLink,
+			{ skillId, pendingContentHash: contentHash },
+			{
+				baseRevision: revision,
+				baseContentHash: contentHash,
+				pendingContent: null,
+				pendingContentHash: null,
+				pendingScan: null,
+				pendingRevision: null,
+				state: 'up_to_date',
+			},
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Skip: the check hides content with this hash until the source changes again. Only when
+	 * the link still holds the reviewed update. Answers false otherwise.
+	 */
+	async skipPending(skillId: string, contentHash: string): Promise<boolean> {
+		const result = await this.links.managerFor({}).update(
+			SkillSourceLink,
+			{ skillId, pendingContentHash: contentHash },
+			{
+				skippedContentHash: contentHash,
+				pendingContent: null,
+				pendingContentHash: null,
+				pendingScan: null,
+				pendingRevision: null,
+				state: 'up_to_date',
+			},
 		);
 		return (result.affected ?? 0) > 0;
 	}
