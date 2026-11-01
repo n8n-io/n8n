@@ -313,7 +313,7 @@ describe('ImportService', () => {
 	});
 
 	test('should store the engine of the imported workflow in its history', async () => {
-		const workflowToImport = newWorkflow({ settings: { engineType: 'v2', timezone: 'UTC' } });
+		const workflowToImport = newWorkflow({ settings: { engineType: 'v2', availableInMCP: true } });
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {});
 
