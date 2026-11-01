@@ -110,8 +110,235 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
+<<<<<<< HEAD
 		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
+=======
+		expect(executionPersistence.create).toHaveBeenCalledTimes(0);
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
+
+	// CAT-3862: the claim used to be hardcoded to `waiting`, so an execution
+	// enqueued before a restart (status `new`) could never be claimed.
+	test.each(['waiting', 'new'] as const)(
+		'Should only claim an existing execution while it is still in status %s',
+		async (expectedStatus) => {
+			await activeExecutions.add(executionData, {
+				executionId: FAKE_SECOND_EXECUTION_ID,
+				expectedStatus,
+			});
+
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				FAKE_SECOND_EXECUTION_ID,
+				expect.objectContaining({
+					id: FAKE_SECOND_EXECUTION_ID,
+					status: 'running',
+					resumeAttempts: 0,
+				}),
+				{ requireStatus: expectedStatus },
+			);
+		},
+	);
+
+	test('Should set startedAt without overwriting an existing value when claiming an enqueued execution', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'new',
+		});
+
+		expect(executionRepository.setRunning).toHaveBeenCalledWith(FAKE_SECOND_EXECUTION_ID);
+		const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
+		expect(update).not.toHaveProperty('startedAt');
+	});
+
+	test('Should preserve startedAt when resuming a waiting execution', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
+
+		expect(executionRepository.setRunning).not.toHaveBeenCalled();
+		const update = executionPersistence.updateExistingExecution.mock.calls[0][1];
+		expect(update).not.toHaveProperty('startedAt');
+	});
+
+	test('Should forward deduplicationKey to executionPersistence.create', async () => {
+		const executionDataWithKey: IWorkflowExecutionDataProcess = {
+			...executionData,
+			deduplicationKey: 'wf-1:node-1:1700000000000',
+		};
+
+		await activeExecutions.add(executionDataWithKey);
+
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				deduplicationKey: 'wf-1:node-1:1700000000000',
+			}),
+		);
+	});
+
+	test('Should record the starter of a new execution', async () => {
+		await activeExecutions.add(executionData);
+
+		expect(unsavedManualExecutionService.recordStarter).toHaveBeenCalledWith(
+			FAKE_EXECUTION_ID,
+			executionData,
+		);
+	});
+
+	test('Should not record a starter when an execution resumes', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
+
+		expect(unsavedManualExecutionService.recordStarter).not.toHaveBeenCalled();
+	});
+
+	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
+		// Mock updateExistingExecution to return false (status check failed)
+		executionPersistence.updateExistingExecution.mockResolvedValue(false);
+
+		await expect(
+			activeExecutions.add(executionData, {
+				executionId: FAKE_SECOND_EXECUTION_ID,
+				expectedStatus: 'waiting',
+			}),
+		).rejects.toThrow('Execution is already being resumed by another process');
+
+		// Verify execution was NOT added to active executions
+		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+	});
+
+	describe('add capacity release on error', () => {
+		test('Should release capacity when updateExistingExecution returns false', async () => {
+			// Mock updateExistingExecution to return false (another process is resuming)
+			executionPersistence.updateExistingExecution.mockResolvedValue(false);
+
+			await expect(
+				activeExecutions.add(executionData, {
+					executionId: FAKE_SECOND_EXECUTION_ID,
+					expectedStatus: 'waiting',
+				}),
+			).rejects.toThrow('Execution is already being resumed by another process');
+
+			// Verify capacity was reserved and then released
+			expect(concurrencyControl.throttle).toHaveBeenCalledWith({
+				mode: 'manual',
+				executionId: FAKE_SECOND_EXECUTION_ID,
+			});
+			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'manual' });
+		});
+
+		test('Should release capacity when setRunning throws after reserve', async () => {
+			const dbError = new Error('Failed to set running status');
+			executionRepository.setRunning.mockRejectedValue(dbError);
+
+			await expect(activeExecutions.add(executionData)).rejects.toThrow(
+				'Failed to set running status',
+			);
+
+			// Verify capacity was reserved and then released
+			expect(concurrencyControl.throttle).toHaveBeenCalledWith({
+				mode: 'manual',
+				executionId: FAKE_EXECUTION_ID,
+			});
+			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'manual' });
+
+			// Verify execution was NOT added to active executions
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
+	});
+
+	// TRUST-144: evaluation executions stayed in status 'new' (startedAt
+	// null) and never got picked up. The test-runner fan-out already throttles
+	// the shared evaluation concurrency queue before launching each case, so a
+	// second reservation here consumed a second slot from the same queue for
+	// the same case. Once the fan-out filled the queue up to its cap, this
+	// nested reservation blocked forever — before `setRunning` ran — leaving
+	// the execution stuck at status 'new'.
+	describe('evaluation executions do not double-reserve concurrency (TRUST-144)', () => {
+		// A real service whose evaluation queue has a single slot, already
+		// taken by the test-runner fan-out for this case.
+		const buildFullEvalConcurrencyControl = () => {
+			const service = new ConcurrencyControlService(
+				mockLogger(),
+				executionRepository,
+				mock<Telemetry>(),
+				mock<EventService>(),
+				mock<GlobalConfig>({
+					executions: {
+						mode: 'regular',
+						concurrency: { productionLimit: -1, evaluationLimit: 1 },
+					},
+					deployment: { type: 'default' },
+				}),
+				mock<License>(),
+				new ProductionHold(mock<EventService>()),
+			);
+			return service;
+		};
+
+		const evalExecutionData: IWorkflowExecutionDataProcess = {
+			...executionData,
+			executionMode: 'evaluation',
+		};
+
+		test('reaches setRunning even when the evaluation queue is full', async () => {
+			const realConcurrencyControl = buildFullEvalConcurrencyControl();
+
+			// The fan-out has taken the only evaluation slot for this case.
+			await realConcurrencyControl.throttle({
+				mode: 'evaluation',
+				executionId: 'run-1-case-0',
+			});
+
+			const evalActiveExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+				instanceSettings,
+				unsavedManualExecutionService,
+			);
+
+			let resolvedId: string | undefined;
+			const addPromise = evalActiveExecutions.add(evalExecutionData).then((id) => {
+				resolvedId = id;
+				return id;
+			});
+
+			// If `add` re-reserved a slot it would block here (queue is full).
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(resolvedId).toBe(FAKE_EXECUTION_ID);
+			expect(executionRepository.setRunning).toHaveBeenCalledWith(FAKE_EXECUTION_ID);
+
+			await addPromise;
+		});
+
+		test('does not throttle the evaluation queue', async () => {
+			const realConcurrencyControl = buildFullEvalConcurrencyControl();
+			const throttleSpy = vi.spyOn(realConcurrencyControl, 'throttle');
+
+			const evalActiveExecutions = new ActiveExecutions(
+				mock(),
+				executionRepository,
+				executionPersistence,
+				realConcurrencyControl,
+				mock(),
+				executionsConfig,
+				instanceSettings,
+				unsavedManualExecutionService,
+			);
+
+			await evalActiveExecutions.add(evalExecutionData);
+
+			expect(throttleSpy).not.toHaveBeenCalled();
+		});
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 	});
 
 	describe('attachWorkflowExecution', () => {

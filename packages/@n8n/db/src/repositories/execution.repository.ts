@@ -64,6 +64,38 @@ class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	}
 }
 
+<<<<<<< HEAD
+=======
+export type CrashedExecution = {
+	id: string;
+	workflowId: string;
+	workflowName?: string;
+	mode: WorkflowExecuteMode;
+	startedAt: Date | null;
+	stoppedAt: Date;
+	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
+	workflowVersionId?: string;
+	retryOf?: string;
+	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
+};
+
+export type ResumableExecutionStatus = 'waiting' | 'new';
+
+export type ResumeAttemptClaim =
+	| { outcome: 'claimed'; attempts: number }
+	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }
+	| { outcome: 'conflict' };
+
+export interface UpdateExecutionConditions {
+	requireStatus?: ExecutionStatus;
+	requireNotFinished?: boolean;
+	requireNotCanceled?: boolean;
+	/** Also update a soft-deleted execution. */
+	includeDeleted?: boolean;
+}
+
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
 	finished?: boolean;
@@ -406,6 +438,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
+<<<<<<< HEAD
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
@@ -413,6 +446,129 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.delete(ids.executionId),
 			this.binaryDataService.deleteMany([{ type: 'execution', ...ids }]),
 		]);
+=======
+	 * Set a `waiting` or `new` execution to `crashed`, which `markAsCrashed` skips on purpose.
+	 * With `expectedAttempts`, the row is left alone if its count changed since it was read.
+	 */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		{
+			expectedAttempts,
+			onTransitioned,
+		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
+	): Promise<CrashedExecution[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
+
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionToCrashed(where, [status]),
+		);
+
+		if (transitioned.length > 0) {
+			onTransitioned?.(transitioned);
+			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		}
+
+		return transitioned;
+	}
+
+	/**
+	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
+	 * candidates; the status guard and the identity of the written rows are added here.
+	 */
+	private async transitionToCrashed(
+		where: FindOptionsWhere<ExecutionEntity>,
+		fromStatuses: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES,
+	): Promise<CrashedExecution[]> {
+		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
+		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
+		// batch that partly overlaps a concurrent sweep still reads the shared rows back.
+		const stoppedAt = new Date();
+
+		return await this.runInTransaction({}, async (tx) => {
+			// Guard against overwriting executions that have since moved to a `waiting` or
+			// terminal status: recovery can race a `running` -> `waiting` transition and flag a
+			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
+			const updateResult = await tx.update(
+				ExecutionEntity,
+				{ ...where, status: In(fromStatuses) },
+				{ status: 'crashed', stoppedAt, waitTill: null },
+			);
+
+			// An unreported `affected` is unknown rather than zero, so it falls through to the read.
+			if (updateResult?.affected === 0) return [];
+
+			const rows = await tx.find(ExecutionEntity, {
+				select: {
+					id: true,
+					workflowId: true,
+					workflowVersionId: true,
+					mode: true,
+					retryOf: true,
+					startedAt: true,
+					// TypeORM types a JSON column's select as a nested select, but any truthy
+					// value here selects the whole column.
+					tracingContext: { traceparent: true, tracestate: true },
+					workflow: { id: true, name: true, settings: { customTelemetryTags: true } },
+				},
+				relations: { workflow: true },
+				where: { ...where, status: 'crashed', stoppedAt },
+				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
+				withDeleted: true,
+			});
+
+			return rows.map(
+				({
+					id,
+					workflowId,
+					workflowVersionId,
+					mode,
+					retryOf,
+					startedAt,
+					tracingContext,
+					workflow,
+				}) => ({
+					id,
+					workflowId,
+					workflowName: workflow?.name,
+					workflowVersionId: workflowVersionId ?? undefined,
+					mode,
+					retryOf: retryOf ?? undefined,
+					startedAt,
+					stoppedAt,
+					tracingContext: tracingContext ?? undefined,
+					workflowCustomTelemetryTags: workflow?.settings?.customTelemetryTags,
+				}),
+			);
+		});
+	}
+
+	/** Add the owner project of each execution's workflow. */
+	private async withOwnerProjects(executions: CrashedExecution[]): Promise<CrashedExecution[]> {
+		if (executions.length === 0) return executions;
+
+		try {
+			const projects = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([
+				...new Set(executions.map(({ workflowId }) => workflowId)),
+			]);
+
+			return executions.map((execution) => {
+				const project = projects.get(execution.workflowId);
+				if (!project) return execution;
+
+				return {
+					...execution,
+					project: { id: project.id, customTelemetryTags: project.customTelemetryTags },
+				};
+			});
+		} catch (error) {
+			// The project only decorates the report, so a failed lookup must still let the
+			// crash be counted and announced.
+			this.logger.warn('Failed to load owner projects for crashed executions', { error });
+			return executions;
+		}
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 	}
 
 	async setRunning(executionId: string) {
@@ -620,6 +776,61 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	async deleteByIds(executionIds: string[]) {
 		return await this.delete({ id: In(executionIds) });
+	}
+
+	/**
+	 * Count one resume attempt before the load, so a load that kills the process stays
+	 * counted. `conflict` means the row is no longer in `status`.
+	 */
+	async claimResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		maxAttempts: number,
+	): Promise<ResumeAttemptClaim> {
+		const execution = await this.findOne({
+			select: ['id', 'resumeAttempts', 'jsonSizeBytes'],
+			where: { id: executionId, status },
+		});
+		if (!execution) return { outcome: 'conflict' };
+
+		const { resumeAttempts: attempts, jsonSizeBytes } = execution;
+		if (attempts >= maxAttempts) return { outcome: 'exhausted', attempts, jsonSizeBytes };
+
+		// The count just read is part of the predicate, so two processes cannot take the same attempt.
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts + 1 },
+		);
+		if ((result.affected ?? 0) === 0) return { outcome: 'conflict' };
+
+		return { outcome: 'claimed', attempts: attempts + 1 };
+	}
+
+	/**
+	 * Give back an attempt. `attempts` is the count the claim returned, so a newer claim by
+	 * another process is not undone.
+	 */
+	async releaseResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		attempts: number,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts - 1 },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findEnqueuedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
+
+		return rows.map(({ id }) => id);
 	}
 
 	async getWaitingExecutions() {

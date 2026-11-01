@@ -424,6 +424,7 @@ export class ExecutionService {
 		return true;
 	}
 
+<<<<<<< HEAD
 	/**
 	 * @param countQuery the query to count executions
 	 * @returns
@@ -456,6 +457,10 @@ export class ExecutionService {
 			},
 			{ includeData: true, unflattenData: true },
 		);
+=======
+	async findEnqueuedExecutionIds() {
+		return await this.executionRepository.findEnqueuedIds();
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
