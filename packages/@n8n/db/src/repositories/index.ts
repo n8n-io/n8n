@@ -8,8 +8,19 @@ export { CredentialsRepository } from './credentials.repository';
 export { ExecutionAnnotationRepository } from './execution-annotation.repository';
 export { ExecutionDataRepository } from './execution-data.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
+<<<<<<< HEAD
 export { ExecutionRepository } from './execution.repository';
 export { EventDestinationsRepository } from './event-destinations.repository';
+=======
+export {
+	ExecutionRepository,
+	type CrashedExecution,
+	type ExecutionDeletionCriteria,
+	type ResumableExecutionStatus,
+	type ResumeAttemptClaim,
+	type UpdateExecutionConditions,
+} from './execution.repository';
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 export { FolderRepository } from './folder.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';

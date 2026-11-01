@@ -58,6 +58,27 @@ export interface IExecutionBase {
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
 	waitTill?: Date | null;
+<<<<<<< HEAD
+=======
+	storedAt: ExecutionDataStorageLocation;
+	/**
+	 * W3C trace context propagated with the execution so outbound spans can be
+	 * correlated across queue-mode boundaries.
+	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
+	 */
+	tracingContext?: {
+		traceparent: string;
+		tracestate?: string;
+		identity?: Record<string, string>;
+	} | null;
+	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`
+	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
+	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
+	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
+	resumeAttempts?: number; // see `ExecutionEntity.resumeAttempts`
+	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
+	usedPrivateCredentials?: boolean; // see `ExecutionEntity.usedPrivateCredentials`
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 }
 
 // Required by PublicUser

@@ -11,7 +11,37 @@ import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.ser
 
 import type { AiEventMap } from './ai.event-map';
 
+<<<<<<< HEAD
 export type UserLike = {
+=======
+export type WorkflowActionSource =
+	| 'ui'
+	| 'api'
+	| 'n8n-mcp'
+	| 'n8n-ai'
+	| 'import'
+	| 'review-approval'
+	| 'cli';
+
+export type { UserLike };
+
+/**
+ * Which write path produced a policy document event. A composed save emits a document event
+ * of its own, so a consumer that already reports the composed save uses this to skip it
+ * instead of counting one save twice.
+ */
+export type PolicyWriteOrigin = 'composed-save' | 'document-api';
+
+export type CrashDetector =
+	| 'stall'
+	| 'queue-recovery'
+	| 'startup-recovery'
+	| 'start-failure'
+	| 'resume-limit'
+	| 'workflow-deactivation';
+
+export type ProjectSummary = {
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 	id: string;
 	email?: string;
 	firstName?: string;

@@ -68,9 +68,77 @@ export class ActiveExecutions {
 
 			fullExecutionData.retryOf = executionData.retryOf ?? undefined;
 
+<<<<<<< HEAD
 			const workflowId = executionData.workflowData.id;
 			if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
 				fullExecutionData.workflowId = workflowId;
+=======
+		try {
+			if (existingExecution === undefined) {
+				const fullExecutionData: CreateExecutionPayload = {
+					data: executionData.executionData!,
+					mode,
+					finished: false,
+					workflowData: executionData.workflowData,
+					status: executionStatus,
+					workflowId: executionData.workflowData.id,
+					retryOf: executionData.retryOf ?? undefined,
+					tracingContext: executionData.tracingContext ?? null,
+					deduplicationKey: executionData.deduplicationKey,
+				};
+
+				const workflowId = executionData.workflowData.id;
+				if (workflowId !== undefined && isWorkflowIdValid(workflowId)) {
+					fullExecutionData.workflowId = workflowId;
+				}
+
+				executionId = await this.executionPersistence.create(fullExecutionData);
+				assert(executionId);
+				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
+
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId });
+				}
+
+				if (this.executionsConfig.mode === 'regular') {
+					await this.executionRepository.setRunning(executionId);
+				}
+				executionStatus = 'running';
+			} else {
+				// Is an existing execution we want to finish so update in DB
+				executionId = existingExecution.executionId;
+
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId });
+				}
+
+				const execution: Pick<
+					IExecutionDb,
+					'id' | 'data' | 'waitTill' | 'status' | 'resumeAttempts'
+				> = {
+					id: executionId,
+					data: executionData.executionData!,
+					waitTill: null,
+					status: executionStatus,
+					resumeAttempts: 0,
+				};
+
+				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
+					executionId,
+					execution,
+					// Only claim the execution if it is still in the status the caller expected
+					{ requireStatus: existingExecution.expectedStatus },
+				);
+
+				if (!updateSucceeded) {
+					// Another process is already resuming this execution
+					throw new ExecutionAlreadyResumingError(executionId);
+				}
+
+				if (existingExecution.expectedStatus === 'new') {
+					await this.executionRepository.setRunning(executionId);
+				}
+>>>>>>> c08ba2dd3 (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 			}
 
 			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
