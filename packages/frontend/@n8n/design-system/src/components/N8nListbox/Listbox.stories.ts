@@ -370,7 +370,15 @@ export const ActionsMenu: Story = {
 				lastAction.value = `${actionLabels[actionId] ?? actionId} · ${workflowName}`;
 			}
 
-			return { workflows, workflowActions, value, lastAction, selected, onAction, actionsMenuStyle };
+			return {
+				workflows,
+				workflowActions,
+				value,
+				lastAction,
+				selected,
+				onAction,
+				actionsMenuStyle,
+			};
 		},
 		template: `
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--sm); width: 24rem">
