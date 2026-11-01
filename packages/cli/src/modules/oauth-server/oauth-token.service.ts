@@ -6,7 +6,7 @@ import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { TransactionRunner, User, UserRepository } from '@n8n/db';
+import { User, UserRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { JsonWebTokenError } from 'jsonwebtoken';
@@ -30,6 +30,7 @@ import { OAUTH_ACCESS_TOKEN_TTL_SECONDS } from './oauth-signing-key.constants';
 import { OAuthSigningKeyService } from './oauth-signing-key.service';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 import { isSameProtectedResource } from './resource-identity';
+import { OAuthGrantService } from './oauth-grant.service';
 
 /**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
@@ -51,10 +52,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
-		private readonly txRunner: TransactionRunner,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly urlService: UrlService,
 		private readonly signingKeyService: OAuthSigningKeyService,
+		private readonly grantService: OAuthGrantService,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
@@ -109,21 +110,26 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		userId: string,
 		scopes: string[],
 		resource: string,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		await this.txRunner.run({}, async (ctx) => {
-			await this.accessTokenRepository.insertToken({ token: accessToken, clientId, userId }, ctx);
-			await this.refreshTokenRepository.insertToken(
-				{
-					token: refreshToken,
-					clientId,
-					userId,
-					expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
-					scope: scopes,
-					resource,
-				},
-				ctx,
-			);
-		});
+		await this.grantService.runForActiveUser(
+			userId,
+			async (ctx) => {
+				await this.accessTokenRepository.insertToken({ token: accessToken, clientId, userId }, ctx);
+				await this.refreshTokenRepository.insertToken(
+					{
+						token: refreshToken,
+						clientId,
+						userId,
+						expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+						scope: scopes,
+						resource,
+					},
+					ctx,
+				);
+			},
+			ctx,
+		);
 	}
 
 	/**
@@ -136,38 +142,37 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		clientId: string,
 		resource?: string,
 	): Promise<OAuthTokens> {
-		return await this.txRunner.run({}, async (ctx) => {
-			const now = Date.now();
+		const refreshTokenRecord = await this.refreshTokenRepository.findByToken(
+			refreshToken,
+			clientId,
+			{},
+		);
 
-			const refreshTokenRecord = await this.refreshTokenRepository.findByToken(
-				refreshToken,
+		// InvalidGrantError so the SDK token handler responds 400 invalid_grant (RFC 6749 §5.2)
+		// instead of 500 server_error, letting clients fall back to re-authorization.
+		if (!refreshTokenRecord) {
+			throw new InvalidGrantError('Invalid refresh token');
+		}
+
+		// The resource approved at authorization bounds every later token request on
+		// the grant (RFC 8707 §2.2), so a request naming another one is refused and a
+		// request naming none reuses the grant's own — never the default resource.
+		// Checked before the row is consumed, so a refused request leaves the refresh
+		// token usable.
+		const grantedResource = refreshTokenRecord.resource;
+		if (
+			resource &&
+			!(await isSameProtectedResource(this.resourceRegistry, resource, grantedResource))
+		) {
+			this.logger.warn('Refresh token request denied: resource is outside the grant', {
 				clientId,
-				ctx,
-			);
+				userId: refreshTokenRecord.userId,
+			});
+			throw new InvalidTargetError('Requested resource is not part of this grant');
+		}
 
-			// InvalidGrantError so the SDK token handler responds 400 invalid_grant (RFC 6749 §5.2)
-			// instead of 500 server_error, letting clients fall back to re-authorization.
-			if (!refreshTokenRecord) {
-				throw new InvalidGrantError('Invalid refresh token');
-			}
-
-			// The resource approved at authorization bounds every later token request on
-			// the grant (RFC 8707 §2.2), so a request naming another one is refused and a
-			// request naming none reuses the grant's own — never the default resource.
-			// Checked before the row is consumed, so a refused request leaves the refresh
-			// token usable.
-			const grantedResource = refreshTokenRecord.resource;
-			if (
-				resource &&
-				!(await isSameProtectedResource(this.resourceRegistry, resource, grantedResource))
-			) {
-				this.logger.warn('Refresh token request denied: resource is outside the grant', {
-					clientId,
-					userId: refreshTokenRecord.userId,
-				});
-				throw new InvalidTargetError('Requested resource is not part of this grant');
-			}
-
+		return await this.grantService.runForActiveUser(refreshTokenRecord.userId, async (ctx) => {
+			const now = Date.now();
 			const numAffected = await this.refreshTokenRepository.deleteValidByToken(
 				refreshToken,
 				clientId,
@@ -325,6 +330,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 			if (!user) {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
+			}
+
+			if (user.disabled) {
+				return { user: null, context: { reason: 'user_disabled', auth_type: 'oauth' } };
 			}
 
 			if (!(await this.isAuthorized(user, resource, grant))) {

@@ -26,6 +26,7 @@ import {
 } from '@n8n/db';
 import {
 	FolderRepository,
+	PersonRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -149,6 +150,7 @@ describe('SourceControlImportService', () => {
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
 			userRepository,
+			Container.get(PersonRepository),
 			variablesRepository,
 			workflowRepository,
 			workflowTagMappingRepository,
@@ -1323,6 +1325,46 @@ describe('SourceControlImportService', () => {
 			return await workflowTagMappingRepository.findBy({ workflowId });
 		}
 
+		// LIGO-1113: One missing tag must not stop valid tag links in the same import.
+		it('should skip mappings for missing tags and import valid mappings for all workflows', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const [workflow1, workflow2] = await Promise.all([
+				createWorkflowWithHistory({ id: 'workflow-1', name: 'Workflow 1' }, teamProject),
+				createWorkflowWithHistory({ id: 'workflow-2', name: 'Workflow 2' }, teamProject),
+			]);
+
+			setupTagsFileMock([
+				{ tagId: 'tag-1', workflowId: workflow1.id },
+				{ tagId: 'missing-tag', workflowId: workflow1.id },
+				{ tagId: 'tag-2', workflowId: workflow2.id },
+			]);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const workflow1Mappings = await getMappingsForWorkflow(workflow1.id);
+			expect(workflow1Mappings.map((mapping) => mapping.tagId)).toEqual(['tag-1']);
+			const workflow2Mappings = await getMappingsForWorkflow(workflow2.id);
+			expect(workflow2Mappings.map((mapping) => mapping.tagId)).toEqual(['tag-2']);
+		});
+
+		it('should keep mappings for local tags that are absent from the imported tags list', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const workflow = await createWorkflowWithHistory(
+				{ id: 'workflow-1', name: 'Workflow 1' },
+				teamProject,
+			);
+			const localTag = await createTag({ id: 'local-tag', name: 'Local tag' }, workflow);
+
+			setupTagsFileMock([{ tagId: localTag.id, workflowId: workflow.id }]);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const finalMappings = await getMappingsForWorkflow(workflow.id);
+			expect(finalMappings.map((mapping) => mapping.tagId)).toEqual([localTag.id]);
+		});
+
 		it('should remove tags from workflows when they are removed in source control', async () => {
 			const user = await getGlobalOwner();
 			const teamProject = await createTeamProject('Team 1');
@@ -1556,6 +1598,48 @@ describe('SourceControlImportService', () => {
 				});
 
 				expect(sharing).toBeTruthy(); // original user missing, so importing user owns credential
+			});
+		});
+
+		// A service account has no email, so the export writes a null `personalEmail`.
+		// The importing user is not the global owner, so the test fails if the import
+		// gives the credential to some other person.
+		describe('if the personal owner specified by `ownedBy` has no email', () => {
+			it.each([
+				['a null email', { type: 'personal', personalEmail: null }],
+				['no email', { type: 'personal' }],
+			])('should assign credential ownership to importing user for %s', async (_, ownedBy) => {
+				const importingUser = await createAdmin();
+
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
+
+				const CREDENTIAL_ID = nanoid();
+
+				const stub = {
+					id: CREDENTIAL_ID,
+					name: 'My Credential',
+					type: 'someCredentialType',
+					data: {},
+					ownedBy,
+				} as ExportableCredential;
+
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
+
+				await service.importCredentialsFromWorkFolder(
+					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+					importingUser.id,
+				);
+
+				const personalProject = await getPersonalProject(importingUser);
+
+				const sharing = await sharedCredentialsRepository.findOneBy({
+					credentialsId: CREDENTIAL_ID,
+					role: 'credential:owner',
+				});
+
+				expect(sharing?.projectId).toBe(personalProject.id);
 			});
 		});
 	});
@@ -2155,6 +2239,35 @@ describe('SourceControlImportService', () => {
 				// Verify workflow was not created in database
 				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
 				expect(workflowInDb).toBeNull();
+			});
+		});
+
+		// A service account has no email, so the export writes a null `personalEmail`.
+		// The importing user is not the global owner, so the test fails if the import
+		// gives the workflow to some other person.
+		describe('if the personal owner has no email', () => {
+			it.each([
+				['a null email', { type: 'personal', personalEmail: null }],
+				['no email', { type: 'personal' }],
+			])('should give the workflow to the importing user for %s', async (_, owner) => {
+				const importingUser = await createAdmin();
+				const workflow = {
+					...makeWorkflowImport(),
+					owner: owner as IWorkflowToImport['owner'],
+				};
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const personalProject = await getPersonalProject(importingUser);
+				const sharing = await sharedWorkflowRepository.findOneBy({
+					workflowId: workflow.id,
+					role: 'workflow:owner',
+				});
+				expect(sharing?.projectId).toBe(personalProject.id);
 			});
 		});
 

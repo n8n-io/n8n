@@ -4,9 +4,11 @@ import { z } from 'zod';
 
 import {
 	createCancelExecutionHandler,
+	createFindLatestExecutionHandler,
 	createGetExecutionHandler,
 	createSearchExecutionsHandler,
 } from './workflow-executions.handlers';
+import { createResumeTargetHandler } from './resume-requests';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
@@ -74,6 +76,7 @@ const StartExecutionBody = z.object({
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
 	router.post('/search', createSearchExecutionsHandler(deps.executionQuery));
+	router.post('/search/latest', createFindLatestExecutionHandler(deps.executionQuery));
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
@@ -104,6 +107,10 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
 	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
+	router.post(
+		'/:id/resume-target',
+		createResumeTargetHandler(deps.resumeRequests, deps.executionQuery),
+	);
 
 	return router;
 }

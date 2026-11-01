@@ -152,7 +152,9 @@ async function transferScriptsToVm(sshClient, config) {
 	const tarFilename = 'scripts.tar.gz';
 	const scriptsTarPath = path.join(tmpdir('n8n-benchmark'), tarFilename);
 
-	const $$ = $({ verbose: config.isVerbose });
+	// COPYFILE_DISABLE stops macOS tar from adding `._*` AppleDouble files, which
+	// WireMock fails to load as mappings
+	const $$ = $({ verbose: config.isVerbose, env: { ...process.env, COPYFILE_DISABLE: '1' } });
 
 	// Compress the scripts folder
 	await $$`tar -czf ${scriptsTarPath} ${scriptsDir} -C ${cwd} ./scripts`;

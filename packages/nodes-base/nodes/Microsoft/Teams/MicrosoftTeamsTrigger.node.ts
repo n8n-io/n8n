@@ -368,12 +368,14 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						? matchingSubscriptions.filter((subscription) => isLiveSubscription(subscription))
 						: [];
 					const validIds = new Set(validSubscriptions.map((subscription) => subscription.id));
+					const failedRemovalIds: string[] = [];
 					// What does not count is removed, so `create()` adds no duplicate next to it.
 					for (const { id } of matchingSubscriptions) {
 						if (validIds.has(id)) continue;
 						try {
 							await deleteSubscription.call(this, id);
 						} catch (error) {
+							failedRemovalIds.push(id);
 							this.logger.warn('Microsoft Teams Trigger: failed to remove a stale subscription', {
 								workflowId: this.getWorkflow().id,
 								nodeName: this.getNode().name,
@@ -382,7 +384,15 @@ export class MicrosoftTeamsTrigger implements INodeType {
 							});
 						}
 					}
-					if (!hasSecret) return false;
+					if (!hasSecret) {
+						delete webhookData.subscriptionIds;
+						if (failedRemovalIds.length > 0) {
+							webhookData.staleSubscriptionIds = failedRemovalIds;
+						} else {
+							delete webhookData.staleSubscriptionIds;
+						}
+						return false;
+					}
 
 					const resourcePaths = await getResourcePath.call(this, event);
 					const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
@@ -392,10 +402,40 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						subscribedResources.includes(resource),
 					);
 
-					if (!allResourcesSubscribed) return false;
+					if (allResourcesSubscribed) {
+						webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
+						if (failedRemovalIds.length > 0) {
+							webhookData.staleSubscriptionIds = failedRemovalIds;
+						} else {
+							delete webhookData.staleSubscriptionIds;
+						}
+						return true;
+					}
 
-					webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
-					return true;
+					// create() mints a fresh clientState, so a leftover subscription on this
+					// URL would keep delivering with a secret we can no longer verify.
+					for (const { id } of validSubscriptions) {
+						try {
+							await deleteSubscription.call(this, id);
+						} catch (error) {
+							failedRemovalIds.push(id);
+							this.logger.warn('Microsoft Teams Trigger: failed to remove a stale subscription', {
+								workflowId: this.getWorkflow().id,
+								nodeName: this.getNode().name,
+								subscriptionId: id,
+								error: ensureError(error).message,
+							});
+						}
+					}
+					if (failedRemovalIds.length > 0) {
+						webhookData.staleSubscriptionIds = failedRemovalIds;
+					} else {
+						delete webhookData.staleSubscriptionIds;
+					}
+
+					delete webhookData.subscriptionIds;
+					delete webhookData.webhookSecret;
+					return false;
 				} catch (error) {
 					return false;
 				}
@@ -449,20 +489,31 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const storedIds = webhookData.subscriptionIds as string[] | undefined;
+				const staleIds = webhookData.staleSubscriptionIds as string[] | undefined;
 
-				if (!Array.isArray(storedIds)) {
+				if (!Array.isArray(storedIds) && !Array.isArray(staleIds)) {
 					return false;
 				}
 
+				// A stale id checkExists could not remove is retried here. The helper
+				// tolerates a 404, so an id that has since gone is harmless.
+				const idsToDelete = [
+					...new Set([
+						...(Array.isArray(storedIds) ? storedIds : []),
+						...(Array.isArray(staleIds) ? staleIds : []),
+					]),
+				];
+
 				try {
 					await Promise.all(
-						storedIds.map(
+						idsToDelete.map(
 							async (subscriptionId) => await deleteSubscription.call(this, subscriptionId),
 						),
 					);
 
 					delete webhookData.subscriptionIds;
 					delete webhookData.webhookSecret;
+					delete webhookData.staleSubscriptionIds;
 					return true;
 				} catch (error) {
 					return false;
@@ -486,8 +537,8 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			return { noWebhookResponse: true };
 		}
 
-		// `verifyWebhook` proved a non-empty array. Without a stored secret it accepts any
-		// item shape, so only records become workflow items.
+		// `verifyWebhook` proved a non-empty array with the expected client state.
+		// Only records become workflow items.
 		const notifications: unknown[] = req.body.value;
 		const lifecycleNotifications = notifications.filter(isLifecycleNotification);
 		const changeNotifications = notifications.filter(

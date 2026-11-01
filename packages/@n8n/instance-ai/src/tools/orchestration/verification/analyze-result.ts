@@ -333,7 +333,7 @@ function classifyVerificationFailure(
 			shouldEdit: false,
 			reason: 'mocked_credentials_or_placeholders',
 			guidance:
-				'Workflow verification reached an unresolved setup value. Stop code edits and route to workflow_builder_workflows(action="setup").',
+				'Workflow verification reached an unresolved setup value. Stop code edits and route to setup_workflow.',
 		});
 	}
 
@@ -356,8 +356,8 @@ function classifyVerificationFailure(
 				? 'mocked_credentials_or_placeholders'
 				: 'credential_or_setup_failure',
 			guidance: hasMockedCredentialContext
-				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflow_builder_workflows(action="setup").'
-				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflow_builder_workflows(action="setup").${quotaGuidance}`,
+				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to setup_workflow.'
+				: `Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to setup_workflow.${quotaGuidance}`,
 		});
 	}
 

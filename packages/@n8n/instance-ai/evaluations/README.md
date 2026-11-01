@@ -12,6 +12,8 @@ Five harnesses live here:
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
+To compare the model context of two commits (tokens for each LLM call, tool list size), use the A/B context benchmark: `eval:ab-bench`. See [ab-bench/README.md](./ab-bench/README.md).
+
 > **Writing a test case?** This README is the reference and quick-start. Use the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) for the shared process and workflow cases. Use the [`create-agent-builder-eval` skill](../../../../.agents/skills/create-agent-builder-eval/SKILL.md) for standalone Agent cases. To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
@@ -156,7 +158,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
 | `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
 | `ANTHROPIC_MODEL` (env) | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model. Not a flag: it rides `claude`'s native env var, and the CLI pins the default when unset so builds never float with claude-code's bundled default |
-| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
+| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills. When unset, each build runs isolated (see [Building via MCP](#building-via-mcp---build-via-mcp)) |
 | `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
 | `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
 | `--build-timeout-ms` | `1800000` | Wall-clock cap per build attempt; on expiry the `claude` process is killed so a hung build can't hold its lane. `0` disables. A timed-out build is not retried (`--build-via-mcp`) |
@@ -167,7 +169,7 @@ Set the mock settings on the n8n server process and the judge settings on the CL
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-4-6` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI |
+| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-5-5` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI. `eval:discovery` reads it as the orchestrator model under test and falls back to `anthropic/claude-sonnet-4-6` |
 | `N8N_INSTANCE_AI_EVAL_EFFORT` | `medium` | Effort of the same agents |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` | `anthropic/claude-sonnet-5-5` | Model of the judges: checklist verifier, expectations judge, binary LLM checks, computer-use grader. The user proxy and the mocks keep their model |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT` | `high` | Effort of the judges |
@@ -261,8 +263,8 @@ Operational details:
 
 A test case can declare optional natural-language assertions, split by what they judge:
 
-- **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
-- **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
+- **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt runs**. MCP runs capture the `claude` transcript, so they are judged there. e.g. `"Before building, the agent asked which Slack channel to use."`
+- **`outcomeExpectations: string[]`** — about the **resulting artifact**. Judged from the **workflow JSON**, or from the Agent when the build made one, so they **also run in prebuilt runs** (which have no transcript) and MCP runs. e.g. `"The final workflow splits the records envelope before posting."`
 
 Both are graded by the same judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
 
@@ -507,10 +509,50 @@ How it differs from the manifest flow:
   can't obtain the accept token — eval instances never have SMTP). Build users are
   deleted with the built workflows after the run; under `--keep-workflows` they
   stay, since deleting a user deletes their remaining data.
+- **Same conversation as the Instance AI arm.** `claude` gets only the first user
+  turn, without the `WORKFLOW_ID` trailer (the workflow id comes from the
+  `create_workflow_from_code` tool result). Harness context still goes with it:
+  the project to build in, the note on pre-created scenario tables, and for a
+  seeded case the earlier conversation and the attached resource. After each reply, the same simulated user (`UserProxyLlm`) decides on a
+  follow-up, which is sent with `claude -p --resume`, until it is done or the
+  case's `messageBudget` is spent. Stage directions stay with the simulated user
+  and never reach `claude`. A conversation that ends without a workflow or an
+  Agent is a build failure and is not retried. The `--build-timeout-ms` cap
+  covers the whole conversation.
+- **Seeded cases.** A case `seed` (inline or replay) is restored before `claude`
+  starts, through an owner thread bound to the build user's project
+  (`run/mcp-seed.ts`). Workflows, data tables, folders and Agents land in that
+  project and are exposed to MCP (`availableInMCP`), recorded runs are restored,
+  prior runs execute, and a
+  seeded team project is shared with the build user as a viewer. The opening
+  message names an attached workflow or Agent with its id. `claude` has no n8n
+  thread, so the earlier conversation is sent as text before the opening
+  message. That is the one part that differs from the Instance AI arm, which
+  restores the history as real thread messages. The judge sees the seeded turns
+  ahead of the live ones, as on that arm. A seeded case whose conversation edits
+  a workflow with `update_workflow`, or only inspects one, builds that workflow.
+  An Agent edited with `mutate_agent` is graded the same way.
+- **Agents.** When `claude` creates an n8n Agent with `create_agent`, the build
+  records it as an `agent` artifact. The case then runs its Agent scenarios and
+  judges, like an Instance AI Agent build. Build-user cleanup deletes the Agent
+  with the user's project.
+- **Transcripts.** The build reads `claude`'s `stream-json` output into the
+  harness transcript format (narration plus MCP tool calls), so
+  `processExpectations` are judged and the report shows the conversation. The
+  raw stream of each attempt is kept as a `.jsonl` file in the build log dir.
+  An expectation that grades the structured question tool, which only Instance
+  AI has, is recorded as ungraded and does not count toward the pass rate.
+- **Isolation.** Without `--build-cwd`, every attempt gets a temp
+  `CLAUDE_CONFIG_DIR` and an empty temp cwd, and runs with `--tools Read`. The
+  only file `claude` may read is in that config dir, where it saves a large MCP
+  tool result (for example the SDK reference) and shows the model a preview. So
+  `claude` uses the MCP server and nothing else on the host. Your `~/.claude` settings, skills,
+  memory and login are not loaded, so auth must come from `ANTHROPIC_API_KEY`
+  (or another env-based token). With `--build-cwd`, `claude` keeps the host setup.
 - **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
-  `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
-  `claude` prints, so a build that times out or never emits the trailer can leave
-  its workflow behind on the lane even though cleanup is on.
+  `--keep-workflows`. Known limitation: cleanup keys off the workflow id the build
+  reports, so a build that times out before the id is known can leave its
+  workflow behind on the lane even though cleanup is on.
 - **Per-case spend reporting.** Each build's `claude` cost/turns (summed across
   attempts — failed attempts cost money too) land as `build_cost_usd` /
   `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
@@ -578,7 +620,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
-and `data_tables(action="list")`, and verify there are no planning,
+and `list_data_tables`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ### Routing mode
@@ -644,6 +686,7 @@ before the turn:
 - `seed.messages` are earlier messages in the thread.
 - `seed.workflows` and `seed.dataTables` are on the instance.
 - `seed.priorRuns` are failed runs. `hints` is the error of the run.
+  The stub instance cannot serve `seed.recordedRuns`, so it skips cases that have them.
 - `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
   turn sends it in the same `<thread-context>` block as production.
 - `credentials` are accounts. Each account passes its connection test, unless
@@ -753,9 +796,8 @@ error class — it counts as a primary fail in the comparison report.
 The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
-- `askUserCount` — `workflow_builder_ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `workflow_builder_create_tasks` was invoked (single-prompt dataset shouldn't trigger planning)
-- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
+- `askUserCount` — `ask_user` tool was invoked (eval responds with `{ approved: false }`)
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `create_data_table`); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
 ### Comparison report
@@ -886,7 +928,7 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 
 ### Build isolation
 
-Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
+Each orchestrator build runs in its own empty project, named like the lane owner. The owner drives the build. When the license allows team projects, the project is a team project the owner creates, so the owner is its admin and n8n shows it the build's execution output. Cleanup deletes the project; lane setup and the run end also delete any marked build project a crashed or failed build left, because with team projects licensed the agent's project list shows every project. Without team projects, the project is the personal project of a freshly invited member, the only new project an unlicensed instance can create. n8n then hides execution output from the owner, because the owner has no direct access to the member's credentials, and lane setup logs a warning. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there. Under `--keep-workflows`, build projects and members stay. Like the MCP lane, the member path needs a lane without SMTP, so invites return their accept token.
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
 
@@ -896,13 +938,15 @@ By default a build sees **no credentials**: the harness pins every build thread'
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
 
+Live resource lookups (`get_node_parameter_options`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
+
 A case that tests credential behaviour declares what should exist:
 
 ```json
 "credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
 ```
 
-Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. A type n8n has no connection test for (Header, Basic or Bearer Auth) is not bypassed: its test returns production's "No testing function found for this credential." Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
@@ -982,6 +1026,28 @@ requires the agent to read it.
   against history the instance does not have.
 - Runs execute sequentially in declared order, before the live turn, on a 120s budget —
   tighter than a scenario execution, which gets the case's build budget (900s by default).
+
+#### `seed.recordedRuns` — the same failure on every run
+
+`priorRuns` asks the mock layer to fail again on each eval, so the failure can differ from
+run to run. `recordedRuns` restores a failed run recorded once, so every eval sees the same
+record: the same node outputs, the same error.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "recordedRuns": [{ "workflow": "dS8xQ2mV6bTn4Kp1", "envelope": { "format": "n8n-instance-ai-failed-execution", "version": 1 /* … */ } }]
+}
+```
+
+- Get an `envelope` from `POST /rest/instance-ai/eval/export-execution` on an eval
+  instance (`N8N_INSTANCE_AI_EVAL_INSTANCE=true`), for one failed run (`error` or
+  `crashed`) of a thread's project.
+- `workflow` is the seed workflow's `id`, as for `priorRuns`. The restore binds the run to
+  the restored workflow and moves its timestamps so it ends at restore time.
+- Recorded runs restore in declared order, before any `priorRuns`. A restore that fails is
+  a seeding failure (framework issue), not an agent failure.
 
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 
@@ -1067,7 +1133,7 @@ The seed lives **in the case body** rather than in a sibling file, so it travels
 
 A seed can create folders in the thread's project before the live turn, and place its
 workflows inside them. Use it to grade how the agent finds the contents of a folder the
-user names (CONTEXT-86: `workflow_builder_workflows(action="list")` takes `folderPath` or `folderId`).
+user names (CONTEXT-86: `list_workflows` takes `folderPath` or `folderId`).
 
 ```jsonc
 "seed": {

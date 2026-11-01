@@ -23,6 +23,41 @@ export type OtelConnectionParams = Pick<
 	| 'startupConnectivityTimeoutMs'
 >;
 
+type HeaderEntry = [key: string, value: string];
+
+export type InvalidHeaderEntry = {
+	position: number;
+	problem: 'missing "=" separator' | 'empty key';
+};
+
+export function parseOtlpHeaders(raw: string): {
+	headers: Record<string, string>;
+	invalidEntries: InvalidHeaderEntry[];
+} {
+	const headers: Record<string, string> = {};
+	const invalidEntries: InvalidHeaderEntry[] = [];
+	for (const [index, pair] of raw.split(',').entries()) {
+		const trimmedPair = pair.trim();
+		if (!trimmedPair) continue;
+
+		const position = index + 1;
+		if (!trimmedPair.includes('=')) {
+			invalidEntries.push({ position, problem: 'missing "=" separator' });
+			continue;
+		}
+
+		const [key, ...rest] = trimmedPair.split('=');
+		const trimmedKey = key.trim();
+		if (!trimmedKey) {
+			invalidEntries.push({ position, problem: 'empty key' });
+			continue;
+		}
+
+		headers[trimmedKey] = rest.join('=').trim();
+	}
+	return { headers, invalidEntries };
+}
+
 @Service()
 export class OtelSettingsService {
 	private currentSettings: OtelConfig | null = null;
@@ -145,11 +180,11 @@ export class OtelSettingsService {
 
 	/** Keys stay visible in API responses; header values never leave the server. */
 	private redactHeaders(headers: string): string {
-		return this.serializeHeaderPairs(
-			this.parseHeaderPairs(headers).map(({ key, value }) => ({
+		return this.serializeHeaders(
+			this.headerEntries(headers).map(([key, value]) => [
 				key,
-				value: value ? CREDENTIAL_BLANKING_VALUE : '',
-			})),
+				value ? CREDENTIAL_BLANKING_VALUE : '',
+			]),
 		);
 	}
 
@@ -159,34 +194,22 @@ export class OtelSettingsService {
 	 * stored counterpart has nothing to keep, so the pair is dropped.
 	 */
 	private resolveHeaders(incoming: string, stored: string): string {
-		const storedByKey = new Map(this.parseHeaderPairs(stored).map((p) => [p.key, p.value]));
-		return this.serializeHeaderPairs(
-			this.parseHeaderPairs(incoming).flatMap(({ key, value }) => {
-				if (value !== CREDENTIAL_BLANKING_VALUE) return [{ key, value }];
+		const storedByKey = new Map(this.headerEntries(stored));
+		return this.serializeHeaders(
+			this.headerEntries(incoming).flatMap(([key, value]): HeaderEntry[] => {
+				if (value !== CREDENTIAL_BLANKING_VALUE) return [[key, value]];
 				const storedValue = storedByKey.get(key);
-				return storedValue === undefined ? [] : [{ key, value: storedValue }];
+				return storedValue === undefined ? [] : [[key, storedValue]];
 			}),
 		);
 	}
 
-	private parseHeaderPairs(headers: string): Array<{ key: string; value: string }> {
-		if (!headers.trim()) return [];
-		return headers
-			.split(',')
-			.map((pair) => {
-				const idx = pair.indexOf('=');
-				return idx === -1
-					? { key: pair.trim(), value: '' }
-					: { key: pair.slice(0, idx).trim(), value: pair.slice(idx + 1).trim() };
-			})
-			.filter((p) => p.key);
+	private headerEntries(headers: string): HeaderEntry[] {
+		return Object.entries(parseOtlpHeaders(headers).headers);
 	}
 
-	private serializeHeaderPairs(pairs: Array<{ key: string; value: string }>): string {
-		return pairs
-			.filter((p) => p.key.trim())
-			.map((p) => `${p.key}=${p.value}`)
-			.join(',');
+	private serializeHeaders(entries: HeaderEntry[]): string {
+		return entries.map(([key, value]) => `${key}=${value}`).join(',');
 	}
 
 	private isEnvManaged(key: keyof OtelConfig): boolean {

@@ -24,6 +24,7 @@ import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
+import { assertFunctionId } from '../runtime/telemetry/function-id';
 import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
 import {
 	LOAD_TOOL_TOOL_NAME,
@@ -87,7 +88,7 @@ import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentBuilder } from '../types/sdk/agent-builder';
 import type { AgentMessage } from '../types/sdk/message';
-import { modelConfigToId } from '../utils/model';
+import { getCatalogModelId, modelConfigToId } from '../utils/model';
 import type { Workspace } from '../workspace/workspace';
 
 type ToolParameter = BuiltTool | { build(): BuiltTool };
@@ -174,6 +175,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private modelConfig?: ModelConfig;
 
 	private modelFetchValue?: FetchFn;
+
+	private functionIdValue?: string;
 
 	private instructionProviderOpts?: ProviderOptions;
 
@@ -282,11 +285,23 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
-	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * Provide a proxy-aware `fetch` for the agent's model and catalog calls. When unset, model
 	 * construction falls back to the ambient HTTP_PROXY resolver.
 	 */
 	modelFetch(fetch: FetchFn): this {
 		this.modelFetchValue = fetch;
+		return this;
+	}
+
+	/**
+	 * Name the caller of this agent's model calls, sent as the `x-n8n-function-id`
+	 * header (for example `instance-ai.orchestrator`). Sub-agents send
+	 * `<id>.subagent`. When unset, no header is sent. Only `[A-Za-z0-9._-]`: fetch
+	 * rejects a header value outside Latin-1 on every call.
+	 */
+	functionId(id: string): this {
+		assertFunctionId(id);
+		this.functionIdValue = id;
 		return this;
 	}
 
@@ -582,6 +597,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	private readonly prewarmWorkspace = (): void => {
+		this.workspaceInstance?.prewarm();
+	};
+
 	/**
 	 * Attach a workspace to this agent. Workspace tools and instructions
 	 * are injected at build time.
@@ -713,20 +732,17 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	get snapshot(): AgentSnapshot {
 		let model: AgentSnapshot['model'];
-		const rawModelId =
-			typeof this.modelConfig === 'string'
-				? this.modelConfig
-				: this.modelConfig && typeof this.modelConfig === 'object' && 'id' in this.modelConfig
-					? this.modelConfig.id
-					: undefined;
+		const rawModelId = this.modelConfig ? modelConfigToId(this.modelConfig) : undefined;
 
 		if (rawModelId) {
 			const slashIdx = rawModelId.indexOf('/');
 			if (slashIdx === -1) {
 				model = { provider: null, name: rawModelId };
 			} else {
+				// A pre-built model reports `<provider>.<api>`, for example `anthropic.messages`.
+				const provider = rawModelId.slice(0, slashIdx).split('.')[0];
 				model = {
-					provider: rawModelId.slice(0, slashIdx),
+					provider: provider || null,
 					name: rawModelId.slice(slashIdx + 1),
 				};
 			}
@@ -1140,13 +1156,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let modelCost: Awaited<ReturnType<typeof getModelCost>> | undefined;
 		try {
-			const modelId =
-				typeof modelConfig === 'string'
-					? modelConfig
-					: 'id' in modelConfig && typeof modelConfig.id === 'string'
-						? modelConfig.id
-						: undefined;
-			modelCost = modelId ? await getModelCost(modelId) : undefined;
+			modelCost = await getModelCost(getCatalogModelId(modelConfig), this.modelFetchValue);
 		} catch {
 			modelCost = undefined;
 		}
@@ -1155,6 +1165,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			name: this.name,
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+			...(this.functionIdValue !== undefined ? { functionId: this.functionIdValue } : {}),
 			instructions,
 			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
@@ -1162,6 +1173,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
 				? { workspaceFilesystem: this.workspaceInstance.filesystem }
 				: {}),
+			...(this.workspaceInstance ? { prewarmWorkspace: this.prewarmWorkspace } : {}),
 			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,
@@ -1315,6 +1327,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				// Inherit the parent's transport so children can't bypass a
 				// guarded/instrumented fetch via the ambient default.
 				...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+				...(this.functionIdValue !== undefined
+					? { functionId: `${this.functionIdValue}.subagent` }
+					: {}),
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,

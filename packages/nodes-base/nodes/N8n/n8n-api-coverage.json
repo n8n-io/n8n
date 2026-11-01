@@ -68,6 +68,9 @@
 		"POST /credentials/{credentialId}/test": {
 			"status": "gap"
 		},
+		"GET /credentials/{credentialId}/dependencies": {
+			"status": "gap"
+		},
 		"GET /community-packages": {
 			"status": "gap"
 		},
@@ -190,6 +193,9 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /workflows/{workflowId}/dependencies": {
+			"status": "gap"
+		},
 		"GET /workflows/{workflowId}/test-runs": {
 			"status": "gap"
 		},
@@ -304,6 +310,12 @@
 		"PUT /settings/security-policy": {
 			"status": "gap"
 		},
+		"GET /settings/rate-limits": {
+			"status": "gap"
+		},
+		"PUT /settings/rate-limits": {
+			"status": "gap"
+		},
 		"GET /settings/sso/saml": {
 			"status": "gap"
 		},
@@ -356,6 +368,9 @@
 			"status": "gap"
 		},
 		"GET /data-tables/{dataTableId}": {
+			"status": "gap"
+		},
+		"GET /data-tables/{dataTableId}/dependencies": {
 			"status": "gap"
 		},
 		"PATCH /data-tables/{dataTableId}": {

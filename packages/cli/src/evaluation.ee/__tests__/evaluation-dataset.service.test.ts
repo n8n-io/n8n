@@ -327,8 +327,23 @@ describe('EvaluationDatasetService', () => {
 			});
 		});
 
+		it('throws NotFoundError without loading the execution when the user cannot read the workflow executions', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('execution:read'),
+			);
+			await expect(
+				service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID),
+			).rejects.toThrow(NotFoundError);
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['execution:read'], false, {
+				workflowId: WORKFLOW_ID,
+			});
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+		});
+
 		it('throws ForbiddenError when the user cannot read the data table', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('dataTable:readRow'),
+			);
 			await expect(
 				service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID),
 			).rejects.toThrow(ForbiddenError);
@@ -337,8 +352,26 @@ describe('EvaluationDatasetService', () => {
 	});
 
 	describe('addRow', () => {
+		it('throws NotFoundError without loading the execution when the user cannot read the workflow executions', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('execution:read'),
+			);
+			const dto: AddDatasetRowDto = {
+				executionId: EXECUTION_ID,
+				mapping: { question: { source: 'input', field: 'question' } },
+			};
+
+			await expect(service.addRow(user, WORKFLOW_ID, CONFIG_ID, dto)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+			expect(dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
 		it('enforces write access on the data table and throws ForbiddenError when denied', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('dataTable:writeRow'),
+			);
 			const dto: AddDatasetRowDto = {
 				executionId: EXECUTION_ID,
 				mapping: { question: { source: 'input', field: 'question' } },

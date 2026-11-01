@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
-import type { ExecutionResponseSender } from '@n8n/engine';
+import { mintResumeToken, type ExecutionResponseSender } from '@n8n/engine';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -84,6 +84,7 @@ vi.mock('@n8n/engine', () => ({
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
 	createEngineRuntime: mocks.createEngineRuntime,
+	mintResumeToken: vi.fn((_secret: string, executionId: string) => `token-for-${executionId}`),
 }));
 
 vi.mock('@n8n/node-engine-compatibility', () => ({
@@ -92,8 +93,14 @@ vi.mock('@n8n/node-engine-compatibility', () => ({
 }));
 
 describe('EngineV2Runtime', () => {
-	const engineConfig = (databaseUrl: string) =>
-		mock<EngineConfig>({ databaseUrl, host: '0.0.0.0', port: 3000 });
+	const engineConfig = (databaseUrl: string, overrides: Partial<EngineConfig> = {}) =>
+		mock<EngineConfig>({
+			databaseUrl,
+			host: '0.0.0.0',
+			port: 3000,
+			resumeSecret: '',
+			...overrides,
+		});
 
 	const nodeTypes = mock<NodeTypes>();
 
@@ -107,9 +114,9 @@ describe('EngineV2Runtime', () => {
 	// `@n8n/engine` is mocked below, so the sender is a stand-in too.
 	const responseSender = () => mock<ExecutionResponseSender>();
 
-	const newRuntime = (databaseUrl = 'postgres://engine') =>
+	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
 		new EngineV2Runtime(
-			engineConfig(databaseUrl),
+			engineConfig(databaseUrl, config),
 			nodeTypes,
 			mockLogger(),
 			controlPlaneClient,
@@ -237,6 +244,33 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.createEngineStepDataLoader).toHaveBeenCalledWith(
 				stores.executionStore,
 				stores.stepStore,
+			);
+		});
+
+		it('gives the engine the resume secret and the executor a minter when a secret is set', async () => {
+			const resumeSecret = 's'.repeat(32);
+			await newRuntime('postgres://engine', { resumeSecret }).init(responseSender());
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ resumeSecret }),
+			);
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			const deps = mocks.V1StepExecutor.mock.calls[0][0] as unknown as {
+				resumeToken?: (context: { executionId: string }) => string;
+			};
+			expect(deps.resumeToken?.({ executionId: 'exec-1' })).toBe('token-for-exec-1');
+			expect(mintResumeToken).toHaveBeenCalledWith(resumeSecret, 'exec-1');
+		});
+
+		it('passes an unset secret through and gives the executor no minter', async () => {
+			await newRuntime().init(responseSender());
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ resumeSecret: '' }),
+			);
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			expect(mocks.V1StepExecutor.mock.calls[0][0]).toEqual(
+				expect.objectContaining({ resumeToken: undefined }),
 			);
 		});
 

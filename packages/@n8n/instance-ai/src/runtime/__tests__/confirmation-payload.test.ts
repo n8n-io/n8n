@@ -9,7 +9,6 @@ import type { ZodType } from 'zod';
 import { domainGatingResumeSchema } from '../../domain-access';
 import { credentialsResumeSchema } from '../../tools/credentials.tool';
 import { gatewayConfirmationResumeSchema } from '../../tools/create-tools-from-mcp-server';
-import { planResumeSchema } from '../../tools/orchestration/plan.tool';
 import { askUserResumeSchema } from '../../tools/shared/ask-user.tool';
 import { workflowsResumeSchema } from '../../tools/workflows.tool';
 import { buildResumeData, toConfirmationData } from '../confirmation-payload';
@@ -63,7 +62,6 @@ describe('confirmation payload → tool resume schema contract', () => {
 			'shared approval envelope (workflow_builder_build_workflow, data_tables, workspace, executions)',
 			instanceAiApprovalResumeSchema,
 		],
-		['plan', planResumeSchema],
 	];
 
 	/** Cards rendered by a dedicated component, all of which offer a whole-card
@@ -71,7 +69,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	const wizardSchemas: Array<[string, ZodType]> = [
 		['workflows (setup wizard)', workflowsResumeSchema],
 		['credentials', credentialsResumeSchema],
-		['workflow_builder_ask_user', askUserResumeSchema],
+		['ask_user', askUserResumeSchema],
 		['Browser Use MCP', gatewayConfirmationResumeSchema],
 		['domain gating', domainGatingResumeSchema],
 		['mcp-servers', mcpConnectResumeSchema],
@@ -98,11 +96,6 @@ describe('confirmation payload → tool resume schema contract', () => {
 			targets: [...approvalEnvelopeSchemas, ...wizardSchemas],
 		},
 		{
-			label: 'plan hard denial',
-			request: { kind: 'planDeny' },
-			targets: [['plan', planResumeSchema]],
-		},
-		{
 			label: 'questions submission',
 			request: {
 				kind: 'questions',
@@ -112,7 +105,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					{ questionId: 'q3', selectedOptions: [], skipped: true },
 				],
 			},
-			targets: [['workflow_builder_ask_user', askUserResumeSchema]],
+			targets: [['ask_user', askUserResumeSchema]],
 		},
 		{
 			label: 'credential selection',
@@ -203,7 +196,6 @@ describe('confirmation payload → tool resume schema contract', () => {
 		credentialDestination: true,
 		domainAccessApprove: true,
 		domainAccessDeny: true,
-		planDeny: true,
 		resourceDecision: true,
 		setupWorkflowApply: true,
 		setupWorkflowTestTrigger: true,

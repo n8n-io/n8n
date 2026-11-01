@@ -9,9 +9,11 @@ import {
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	DataTableRowListPublicDto,
+	DependencyListPublicDto,
 	DeleteDataTableRowsPublicQueryDto,
 	DeleteDataTableRowsResponsePublicDto,
 	InsertDataTableRowsResponsePublicDto,
+	ListDependenciesQueryDto,
 	PublicApiListDataTableQueryDto,
 	PublicApiListDataTableRowsQueryDto,
 	UpdateDataTableColumnPublicDto,
@@ -47,7 +49,6 @@ import type { DataTableRow, DataTableRowReturn, DataTableRowReturnWithState } fr
 
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
@@ -56,6 +57,8 @@ import { DataTableNameConflictError } from '@/modules/data-table/errors/data-tab
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
+import { toDependencyListPublicDto } from '@/public-api/v1/shared/dependency.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -166,6 +169,7 @@ export class DataTablesPublicController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	@Get('/')
@@ -260,6 +264,36 @@ export class DataTablesPublicController {
 		} catch (error) {
 			return handleError(error);
 		}
+	}
+
+	@Get('/:dataTableId/dependencies')
+	@ApiKeyScope('dataTable:read')
+	@ProjectScope('dataTable:read')
+	@ApiSummary('List data table dependencies')
+	@ApiDescription('List the workflows that use the data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DependencyListPublicDto)
+	@ApiErrorResponse(404)
+	async getDataTableDependencies(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: ListDependenciesQueryDto,
+	): Promise<DependencyListPublicDto> {
+		const pagination = resolveOffsetPagination(query);
+		try {
+			await this.dataTableService.getProjectIdForDataTable(dataTableId);
+		} catch (error) {
+			return handleError(error);
+		}
+
+		const result = await this.workflowDependencyQueryService.getResourceDependencies(
+			[dataTableId],
+			'dataTable',
+			req.user,
+		);
+
+		return toDependencyListPublicDto(result[dataTableId], pagination);
 	}
 
 	@Patch('/:dataTableId')
@@ -508,7 +542,10 @@ export class DataTablesPublicController {
 		const { filter, data, returnData, dryRun } = body;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.upsertRow(
@@ -542,7 +579,10 @@ export class DataTablesPublicController {
 		const { filter, data, returnData, dryRun } = body;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.updateRows(
@@ -604,7 +644,10 @@ export class DataTablesPublicController {
 		const { filter, returnData, dryRun } = query;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.deleteRows(

@@ -392,6 +392,91 @@ describe('TrustedSourceStore (integration)', () => {
 		});
 	});
 
+	describe('first authentication', () => {
+		it('stamps the row once from the database clock and reports the win to the first caller only', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			expect(source.firstAuthenticatedAt).toBeNull();
+
+			expect(await store.recordFirstAuthentication(source)).toBe(true);
+			expect(await store.recordFirstAuthentication(source)).toBe(false);
+
+			const updated = await rows.findOneByOrFail({ id: row.id });
+			expect(updated.firstAuthenticatedAt).toBeInstanceOf(Date);
+			expect(Math.abs(Date.now() - (updated.firstAuthenticatedAt?.getTime() ?? 0))).toBeLessThan(
+				5000,
+			);
+			// The win invalidates the cache, so the next read carries the stamp.
+			expect((await loadSource(row.id)).firstAuthenticatedAt).toBe(
+				updated.firstAuthenticatedAt?.toISOString(),
+			);
+		});
+
+		it('lets exactly one of two concurrent callers win', async () => {
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+
+			const results = await Promise.all([
+				store.recordFirstAuthentication(source),
+				store.recordFirstAuthentication(source),
+			]);
+
+			expect(results.filter(Boolean)).toHaveLength(1);
+		});
+
+		it('returns false without touching the row when the snapshot already carries the stamp', async () => {
+			const row = await seedRow();
+			const stamped = {
+				...(await loadSource(row.id)),
+				firstAuthenticatedAt: '2026-10-01T12:00:00.000Z',
+			};
+
+			expect(await store.recordFirstAuthentication(stamped)).toBe(false);
+
+			expect((await rows.findOneByOrFail({ id: row.id })).firstAuthenticatedAt).toBeNull();
+		});
+
+		// A snapshot cached before another instance won stays null for up to the TTL; the loss must
+		// drop it, or every request on this instance keeps paying the conditional write.
+		it('refreshes the cache after a loss so a stale snapshot stops writing', async () => {
+			const row = await seedRow();
+			const stale = await loadSource(row.id);
+			await rows.update({ id: row.id }, { firstAuthenticatedAt: new Date() });
+
+			expect(await store.recordFirstAuthentication(stale)).toBe(false);
+
+			expect((await loadSource(row.id)).firstAuthenticatedAt).toEqual(expect.any(String));
+		});
+
+		it('treats a snapshot cached before the column existed as unstamped', async () => {
+			const row = await seedRow();
+			const { firstAuthenticatedAt: _, ...legacy } = await loadSource(row.id);
+
+			expect(await store.recordFirstAuthentication(legacy as TrustedSource)).toBe(true);
+
+			expect((await rows.findOneByOrFail({ id: row.id })).firstAuthenticatedAt).toBeInstanceOf(
+				Date,
+			);
+		});
+
+		it('reports the win when the cache invalidation fails after the stamp', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			expect(await store.recordFirstAuthentication(source)).toBe(true);
+
+			expect((await rows.findOneByOrFail({ id: row.id })).firstAuthenticatedAt).toBeInstanceOf(
+				Date,
+			);
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: row.id }),
+			);
+		});
+	});
+
 	describe('discovery lease', () => {
 		const metadata: TrustedSourceMetadata = {
 			version: 1,
@@ -441,6 +526,41 @@ describe('TrustedSourceStore (integration)', () => {
 				discoveryClaimToken: token,
 			});
 			expect(await loadSource(row.id)).toMatchObject({ metadata: null, status: 'unchecked' });
+		});
+
+		it('getStatus reads the database and bypasses the cache', async () => {
+			const row = await seedRow();
+			expect((await loadSource(row.id)).status).toBe('unchecked');
+
+			await rows.update({ id: row.id }, { status: 'healthy' });
+
+			expect(await store.getStatus(row.id)).toBe('healthy');
+			expect((await loadSource(row.id)).status).toBe('unchecked');
+			expect(await store.getStatus('missing')).toBeUndefined();
+		});
+
+		it('reports the committed write when the cache invalidation fails afterwards', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			const token = await claim(source);
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			const recorded = await store.recordDiscovery(source, token, {
+				metadata,
+				status: 'healthy',
+				lastError: null,
+			});
+
+			expect(recorded).toBe(true);
+			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({
+				status: 'healthy',
+				discoveryClaimToken: null,
+			});
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: row.id }),
+			);
 		});
 
 		it('records a healthy result, releases the lease and stamps lastCheckedAt from the database', async () => {

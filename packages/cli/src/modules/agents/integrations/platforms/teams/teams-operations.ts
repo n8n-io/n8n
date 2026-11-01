@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
+import { UserError } from 'n8n-workflow';
 
 import type { ChatInstance } from '../../chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';
@@ -18,11 +19,16 @@ const CHANNEL_REQUESTS_AT_ONCE = 5;
 const PARTIAL_CHANNEL_SEARCH = `Some teams or channels in this organisation were not searched: at most ${MAX_TEAMS_SEARCHED} teams and the first page of channels in each. If the channel is missing, ask someone to mention the bot in it once and use the channelId from get_current_message_context.`;
 
 const getUserSchema = z.object({ userId: z.string().min(1) });
-const searchUsersSchema = z.object({
-	query: z.string().trim().min(1).optional(),
-	email: z.string().trim().min(1).optional(),
-	limit: z.number().int().min(1).max(50).default(10),
-});
+const searchUsersSchema = z
+	.object({
+		query: z.string().trim().min(1).optional(),
+		email: z.string().trim().min(1).optional(),
+		limit: z.number().int().min(1).max(50).default(10),
+		cursor: z.string().min(1).optional(),
+	})
+	.refine((input) => input.query !== undefined || input.email !== undefined, {
+		message: 'Provide query or email.',
+	});
 const searchChannelsSchema = z.object({
 	query: z.string().trim().min(1),
 	limit: z.number().int().min(1).max(50).default(10),
@@ -54,8 +60,10 @@ export async function executeTeamsContextQuery(params: {
 	chat: ChatInstance;
 	query: IntegrationContextQuery;
 	input: Record<string, unknown>;
+	abortSignal?: AbortSignal;
 }): Promise<unknown> {
 	const { chat, query, input } = params;
+	params.abortSignal?.throwIfAborted();
 	const http = graphHttpOf(chat.getAdapter(PLATFORM));
 	if (!http) return unsupportedQuery(PLATFORM, query);
 
@@ -65,22 +73,22 @@ export async function executeTeamsContextQuery(params: {
 		if (userId.startsWith('29:')) return { ok: true, user: await chat.getUser(userId) };
 		return await withGraphAccess('users', async () => ({
 			ok: true,
-			user: await getGraphUser(http, userId),
+			user: await getGraphUser(http, userId, params.abortSignal),
 		}));
 	}
 
 	if (query === 'search_users') {
 		const parsed = searchUsersSchema.parse(input);
 		return await withGraphAccess('users', async () => {
-			const users = await searchGraphUsers(http, parsed);
-			return { ok: true, users, resultCount: users.length };
+			const { users, nextCursor } = await searchGraphUsers(http, parsed, params.abortSignal);
+			return { ok: true, users, resultCount: users.length, ...(nextCursor ? { nextCursor } : {}) };
 		});
 	}
 
 	if (query === 'search_channels') {
 		const parsed = searchChannelsSchema.parse(input);
 		return await withGraphAccess('channels', async () => {
-			const { channels, partial } = await searchGraphChannels(http, parsed);
+			const { channels, partial } = await searchGraphChannels(http, parsed, params.abortSignal);
 			return {
 				ok: true,
 				channels,
@@ -107,10 +115,15 @@ async function withGraphAccess(
 	}
 }
 
-async function getGraphUser(http: GraphHttp, id: string): Promise<TeamsUserResult | null> {
+async function getGraphUser(
+	http: GraphHttp,
+	id: string,
+	abortSignal?: AbortSignal,
+): Promise<TeamsUserResult | null> {
 	try {
 		const { data } = await http.get(
 			`${GRAPH_V1}/users/${encodeURIComponent(id)}?$select=${USER_FIELDS}`,
+			{ signal: abortSignal },
 		);
 		return toUser(data) ?? null;
 	} catch (error) {
@@ -122,7 +135,24 @@ async function getGraphUser(http: GraphHttp, id: string): Promise<TeamsUserResul
 async function searchGraphUsers(
 	http: GraphHttp,
 	input: z.infer<typeof searchUsersSchema>,
-): Promise<TeamsUserResult[]> {
+	abortSignal?: AbortSignal,
+): Promise<{ users: TeamsUserResult[]; nextCursor?: string }> {
+	if (input.cursor) {
+		if (!URL.canParse(input.cursor)) {
+			throw new UserError('The Teams user search cursor is invalid. Start the search again.');
+		}
+		const url = new URL(input.cursor);
+		if (
+			url.origin !== 'https://graph.microsoft.com' ||
+			url.pathname !== '/v1.0/users' ||
+			url.username ||
+			url.password ||
+			url.hash
+		) {
+			throw new UserError('The Teams user search cursor is invalid. Start the search again.');
+		}
+		return await listUsersPage(http, input.cursor, abortSignal);
+	}
 	const email = input.email ?? (input.query?.includes('@') ? input.query : undefined);
 	if (email) {
 		const address = odataString(email);
@@ -130,6 +160,7 @@ async function searchGraphUsers(
 			http,
 			`userPrincipalName eq ${address} or mail eq ${address}`,
 			input.limit,
+			abortSignal,
 		);
 	}
 
@@ -138,26 +169,41 @@ async function searchGraphUsers(
 		http,
 		`startswith(displayName,${term}) or startswith(mail,${term}) or startswith(userPrincipalName,${term})`,
 		input.limit,
+		abortSignal,
 	);
 }
 
-async function listUsers(http: GraphHttp, filter: string, limit: number) {
+async function listUsers(
+	http: GraphHttp,
+	filter: string,
+	limit: number,
+	abortSignal?: AbortSignal,
+) {
 	const query = new URLSearchParams({ $filter: filter, $select: USER_FIELDS, $top: String(limit) });
-	const { data } = await http.get(`${GRAPH_V1}/users?${query.toString()}`);
-	return valuesOf(data)
+	return await listUsersPage(http, `${GRAPH_V1}/users?${query.toString()}`, abortSignal);
+}
+
+async function listUsersPage(http: GraphHttp, url: string, abortSignal?: AbortSignal) {
+	abortSignal?.throwIfAborted();
+	const { data } = await http.get(url, { signal: abortSignal });
+	const users = valuesOf(data)
 		.map(toUser)
 		.filter((user): user is TeamsUserResult => user !== undefined);
+	const nextCursor = stringProperty(data, '@odata.nextLink');
+	return { users, ...(nextCursor ? { nextCursor } : {}) };
 }
 
 async function searchGraphChannels(
 	http: GraphHttp,
 	input: z.infer<typeof searchChannelsSchema>,
+	abortSignal?: AbortSignal,
 ): Promise<{ channels: TeamsChannelResult[]; partial: boolean }> {
 	const query = new URLSearchParams({
 		$select: 'id,displayName',
 		$top: String(MAX_TEAMS_SEARCHED),
 	});
-	const { data } = await http.get(`${GRAPH_V1}/teams?${query.toString()}`);
+	const { data } = await http.get(`${GRAPH_V1}/teams?${query.toString()}`, { signal: abortSignal });
+	abortSignal?.throwIfAborted();
 	const teams = valuesOf(data).flatMap((team) => {
 		const id = stringProperty(team, 'id');
 		return id ? [{ id, name: stringProperty(team, 'displayName') ?? id }] : [];
@@ -171,11 +217,14 @@ async function searchGraphChannels(
 		start < teams.length && matches.length < input.limit;
 		start += CHANNEL_REQUESTS_AT_ONCE
 	) {
+		abortSignal?.throwIfAborted();
 		const batch = teams.slice(start, start + CHANNEL_REQUESTS_AT_ONCE);
 		const channelLists = await Promise.all(
 			batch.map(async (team) => {
 				const channels = await http
-					.get(`${GRAPH_V1}/teams/${encodeURIComponent(team.id)}/channels?$select=id,displayName`)
+					.get(`${GRAPH_V1}/teams/${encodeURIComponent(team.id)}/channels?$select=id,displayName`, {
+						signal: abortSignal,
+					})
 					.then(({ data: body }) => {
 						if (hasNextPage(body)) partial = true;
 						return valuesOf(body);

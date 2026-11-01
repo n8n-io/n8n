@@ -1,7 +1,10 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
+	node,
+	trigger,
 	validateWorkflow,
 	workflow as workflowBuilder,
+	type IDataObject,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
 
@@ -850,6 +853,94 @@ describe('compileWorkflowSource > Slack Block Kit shape', () => {
 			JSON.stringify({
 				blocks: [{ type: 'section', text: { type: 'mrkdwn', text: 'Departs 12:30' } }],
 			}),
+		);
+
+		expect(warnings).toEqual([]);
+	});
+});
+
+/**
+ * The sandbox validates with the published SDK. These tests stand in for an
+ * older published SDK: the sandbox reports no warnings, and the host must add
+ * findings from the validators in the monorepo SDK.
+ */
+describe('compileWorkflowSource > host SDK validators', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	function authorFetchNodes(names: string[], output: IDataObject[]) {
+		let chain = workflowBuilder('wf-1', 'Mocks').add(
+			trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } }),
+		);
+		for (const name of names) {
+			chain = chain.to(
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.3,
+					config: { name, parameters: { url: 'https://example.com' }, output },
+				}),
+			);
+		}
+		return chain;
+	}
+
+	async function compileInSandbox(
+		authored: ReturnType<typeof authorFetchNodes>,
+		sandboxWarnings: unknown[] = [],
+	) {
+		vi.mocked(runInSandbox).mockResolvedValueOnce({
+			exitCode: 0,
+			stdout: JSON.stringify({
+				success: true,
+				workflow: authored.toJSON({ tidyUp: true }),
+				declaredOutputFixtures: authored.generatePinData().toJSON().pinData,
+				warnings: sandboxWarnings,
+			}),
+			stderr: '',
+		});
+		const result = await compileWorkflowSource(makeContext(), 'src/workflows/main.workflow.ts', '');
+		if (!result.success) throw new Error('expected compile success');
+		return result.warnings.filter((w) => w.code === 'MOCK_OUTPUT_JSON_ENVELOPE');
+	}
+
+	it('reports a wrapped mock output that the sandbox SDK did not report', async () => {
+		const warnings = await compileInSandbox(
+			authorFetchNodes(['Fetch Orders'], [{ json: { orderId: 'ord_1' } }]),
+		);
+
+		expect(warnings).toEqual([
+			expect.objectContaining({
+				code: 'MOCK_OUTPUT_JSON_ENVELOPE',
+				nodeName: 'Fetch Orders',
+				severity: 'warning',
+			}),
+		]);
+	});
+
+	it('does not repeat a finding that the sandbox SDK already reported', async () => {
+		const authored = authorFetchNodes(['Fetch Orders'], [{ json: { orderId: 'ord_1' } }]);
+		const sandbox = authored.validate();
+
+		const warnings = await compileInSandbox(authored, [...sandbox.errors, ...sandbox.warnings]);
+
+		expect(warnings).toHaveLength(1);
+	});
+
+	it('caps host-only findings to keep the build result small', async () => {
+		const names = Array.from({ length: 8 }, (_, index) => `Fetch ${index + 1}`);
+
+		const warnings = await compileInSandbox(
+			authorFetchNodes(names, [{ json: { orderId: 'ord_1' } }]),
+		);
+
+		expect(warnings).toHaveLength(5);
+	});
+
+	it('reports nothing extra for raw mock items', async () => {
+		const warnings = await compileInSandbox(
+			authorFetchNodes(['Fetch Orders'], [{ orderId: 'ord_1' }]),
 		);
 
 		expect(warnings).toEqual([]);

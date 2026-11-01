@@ -7,11 +7,12 @@ import type {
 	SerializedSecret,
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { LLMResult } from '@langchain/core/outputs';
-import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
+import type { Generation, LLMResult } from '@langchain/core/outputs';
+import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
-import { toRunDataGeneration } from './extract-responding-model';
+import { buildChatGenAiAttributes, type GenAiProviderName } from '../gen-ai';
+import { extractRespondingModel, toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
 import { stripNonXHeaders } from './strip-non-x-headers';
@@ -58,6 +59,8 @@ type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
+	isChatModel?: boolean;
+	requestModel?: string;
 };
 
 const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
@@ -111,6 +114,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		tokensUsageParser: TokensUsageParser;
 		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
 		redactedHeaders?: string[];
+		genAiProviderName?: GenAiProviderName;
 	} = {
 		// Default(OpenAI format) parser
 		tokensUsageParser: (result: LLMResult) => {
@@ -137,6 +141,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			tokensUsageParser?: TokensUsageParser;
 			errorDescriptionMapper?: (error: NodeError) => string;
 			redactedHeaders?: string[];
+			genAiProviderName?: GenAiProviderName;
 		},
 	) {
 		super();
@@ -184,8 +189,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			response: { generations: output.generations },
 		};
 
+		const isUsageReported = tokenUsage.completionTokens > 0;
+
 		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
-		if (tokenUsage.completionTokens > 0) {
+		if (isUsageReported) {
 			response.tokenUsage = tokenUsage;
 			this.applyTracingTokenMetadata({
 				promptTokens: tokenUsage.promptTokens,
@@ -221,7 +228,11 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			this.connectionType,
 			runDetails.index,
 			[[{ json: { ...response } }]],
-			undefined,
+			this.buildGenAiMetadata(
+				runDetails,
+				output.generations[0]?.[0],
+				isUsageReported ? tokenUsage : undefined,
+			),
 			sourceNodeRunIndex,
 		);
 
@@ -232,7 +243,15 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		});
 	}
 
-	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
+	async handleLLMStart(
+		llm: Serialized,
+		prompts: string[],
+		runId: string,
+		_parentRunId?: string,
+		_extraParams?: Record<string, unknown>,
+		_tags?: string[],
+		metadata?: Record<string, unknown>,
+	) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 		const sourceNodeRunIndex =
 			this.#parentRunIndex !== undefined
@@ -264,6 +283,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			index,
 			options,
 			messages: prompts,
+			isChatModel: metadata?.ls_model_type === 'chat',
+			requestModel:
+				typeof metadata?.ls_model_name === 'string' ? metadata.ls_model_name : undefined,
 		};
 		this.promptTokensEstimate = estimatedTokens;
 	}
@@ -301,6 +323,24 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	// Used to associate subsequent runs with the correct parent run in subnodes of subnodes
 	setParentRunIndex(runIndex: number) {
 		this.#parentRunIndex = runIndex;
+	}
+
+	private buildGenAiMetadata(
+		runDetails: Partial<RunDetail>,
+		generation: Generation | undefined,
+		usage: TokenUsageResult | undefined,
+	): ITaskMetadata | undefined {
+		if (!runDetails.isChatModel) return undefined;
+
+		return {
+			tracing: buildChatGenAiAttributes({
+				nodeType: this.executionFunctions.getNode().type,
+				providerName: this.options.genAiProviderName,
+				requestModel: runDetails.requestModel,
+				responseModel: generation ? extractRespondingModel(generation) : undefined,
+				usage,
+			}),
+		};
 	}
 
 	private applyTracingTokenMetadata(params: {

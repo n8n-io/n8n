@@ -1,4 +1,4 @@
-// Builds the job matrix for test-db-reusable.yml. Node builtins only: it runs in a
+// Builds the job matrices for test-db-reusable.yml. Node builtins only: it runs in a
 // job that installs the monorepo's dependencies, not this folder's.
 
 import fs from 'node:fs';
@@ -7,13 +7,14 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-export const POSTGRES_VERSIONS_PATH = 'packages/quality/environments/containers/postgres-versions.json';
+export const POSTGRES_VERSIONS_PATH =
+	'packages/quality/environments/containers/postgres-versions.json';
 
 /** The matrix wall is bounded by its slowest leg, so a larger runner buys nothing. */
 const RUNNER = 'blacksmith-4vcpu-ubuntu-2204';
 
-// Each leg runs one suite on its own runner, so use every CPU. The CI default
-// (half the CPUs) is for jobs that run many suites at once. Every test file
+// Each shard of a leg runs one suite on its own runner, so use every CPU. The CI
+// default (half the CPUs) is for jobs that run many suites at once. Every test file
 // gets its own database, so more workers do not share state.
 const MAX_WORKERS = '--maxWorkers=100%';
 
@@ -109,9 +110,58 @@ export function buildMatrix(versions, scope = 'full') {
 	];
 }
 
+/**
+ * Every leg splits its integration suite across this many runners. One runner per
+ * leg takes more than 10 minutes. Vitest splits files by path hash, not by duration,
+ * so the shards are not equal.
+ */
+export const INTEGRATION_SHARDS = 2;
+
+const PACKAGED_MODULES_CMD = `pnpm --filter './packages/modules/*/backend' --if-present run test:postgres ${MAX_WORKERS}`;
+
+/**
+ * Expands the legs into the jobs of test-db-reusable.yml. The workflow runs each
+ * entry as given, so shard and leg decisions stay in this file.
+ *
+ * Integration: one job per leg and shard. The packaged backend module tests and the
+ * schema-docs check do not shard, so only the first shard runs them.
+ * Migration: one job per leg, not sharded.
+ *
+ * @param {PostgresVersions} versions
+ * @param {'pr' | 'full'} scope
+ */
+export function buildJobMatrices(versions, scope = 'full') {
+	const legs = buildMatrix(versions, scope);
+
+	const integration = legs.flatMap((leg) =>
+		Array.from({ length: INTEGRATION_SHARDS }, (_, i) => {
+			const shard = `${i + 1}/${INTEGRATION_SHARDS}`;
+			const isFirstShard = i === 0;
+			return {
+				name: `${leg.name} Integration (${shard})`,
+				runner: leg.runner,
+				'test-cmd': `${leg['test-cmd']} --shard=${shard}`,
+				'packaged-modules-cmd': isFirstShard && leg.TEST_IMAGE_POSTGRES ? PACKAGED_MODULES_CMD : '',
+				'schema-check-cmd': isFirstShard ? leg['schema-check-cmd'] : '',
+				TEST_IMAGE_POSTGRES: leg.TEST_IMAGE_POSTGRES,
+				collectCoverage: leg.collectCoverage,
+			};
+		}),
+	);
+
+	const migration = legs.map((leg) => ({
+		name: `${leg.name} Migrations`,
+		runner: leg.runner,
+		'migration-cmd': leg['migration-cmd'],
+		TEST_IMAGE_POSTGRES: leg.TEST_IMAGE_POSTGRES,
+	}));
+
+	return { integration, migration };
+}
+
 // Skipped when imported by the tests.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const scopeArg = process.argv.find((arg) => arg.startsWith('--scope='));
 	const scope = scopeArg ? scopeArg.slice('--scope='.length) : 'full';
-	console.log(JSON.stringify(buildMatrix(readPostgresVersions(), scope)));
+	console.log(JSON.stringify(buildJobMatrices(readPostgresVersions(), scope)));
 }

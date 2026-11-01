@@ -30,7 +30,11 @@ describe('EngineV2Module', () => {
 		vi.clearAllMocks();
 
 		executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
-		engineConfig = mockInstance(EngineConfig, { authSecret: '', mode: 'in-process' });
+		engineConfig = mockInstance(EngineConfig, {
+			authSecret: '',
+			mode: 'in-process',
+			resumeSecret: '',
+		});
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
@@ -175,6 +179,13 @@ describe('EngineV2Module', () => {
 			await module.init().catch(() => {});
 
 			expect(engineConfig.authSecret).toBe('');
+		});
+
+		it('refuses to start with the resume secret, which only the data plane reads', async () => {
+			engineConfig.resumeSecret = 'r'.repeat(32);
+
+			await expect(module.init()).rejects.toThrow('N8N_ENGINE_RESUME_SECRET');
+			expect(controlPlaneServer.start).not.toHaveBeenCalled();
 		});
 
 		it('refuses to start without the data plane address', async () => {

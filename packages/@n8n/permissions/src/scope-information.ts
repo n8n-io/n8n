@@ -63,6 +63,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Export Agent',
 		description: 'Allows including agents in a portable package export.',
 	},
+	'agent:import': {
+		displayName: 'Import Agent',
+		description: 'Allows importing agents from a portable package.',
+	},
 	'agent:update': {
 		displayName: 'Update Agent',
 		description: 'Allows updating, building, publishing, and managing integrations of agents.',
@@ -192,53 +196,56 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
-	'gitConnection:create': {
-		displayName: 'Create Git Connection',
-		description: 'Allows creating Git connections and their authentication material.',
+	'promotions:create': {
+		displayName: 'Create promotion setup',
+		description: 'Allows creating promotion providers and environments.',
 	},
-	'gitConnection:read': {
-		displayName: 'Read Git Connection',
-		description: 'Allows reading Git connection configuration. Secrets are never returned.',
-	},
-	'gitConnection:update': {
-		displayName: 'Update Git Connection',
-		description: 'Allows updating Git connections, including their authentication material.',
-	},
-	'gitConnection:delete': {
-		displayName: 'Delete Git Connection',
-		description: 'Allows deleting Git connections and their local files.',
-	},
-	'gitConnection:list': {
-		displayName: 'List Git Connections',
-		description: 'Allows listing Git connections.',
-	},
-	'gitConnection:discover': {
-		displayName: 'Discover Git repositories',
-		description: 'Allows listing remote repositories and branches with saved provider credentials.',
-	},
-	'gitConnection:clone': {
-		displayName: 'Clone Git Connection',
-		description: 'Allows cloning and removing the local working copy of a Git connection.',
-	},
-	'gitConnection:push': {
-		displayName: 'Push Git Connection',
-		description: 'Allows pushing all projects linked to a Git connection to its remote repository.',
-	},
-	'gitConnection:manageProjects': {
-		displayName: 'Manage Git Connection Projects',
-		description: 'Allows adding projects to and removing projects from a Git connection.',
-	},
-	'gitConnection:pull': {
-		displayName: 'Pull Git Connection',
+	'promotions:read': {
+		displayName: 'Read promotion setup',
 		description:
-			'Allows importing all projects from a Git connection working copy into the instance.',
+			'Allows reading promotion providers, environments, and the projects linked to each environment.',
 	},
-	'gitConnection:readReviews': {
+	'promotions:update': {
+		displayName: 'Update promotion setup',
+		description: 'Allows updating promotion providers and environments.',
+	},
+	'promotions:delete': {
+		displayName: 'Delete promotion setup',
+		description: 'Allows deleting promotion providers and environments.',
+	},
+	'promotions:list': {
+		displayName: 'List promotion setup',
+		description: 'Allows listing promotion providers and environments.',
+	},
+	'promotions:discover': {
+		displayName: 'Discover promotion locations',
+		description: 'Allows listing the locations that a promotion provider can reach.',
+	},
+	'promotions:connect': {
+		displayName: 'Connect promotion environment',
+		description: 'Allows connecting this instance to a promotion environment and disconnecting it.',
+	},
+	'promotions:promote': {
+		displayName: 'Promote',
+		description:
+			'Allows previewing and promoting changes from team projects to a promotion environment.',
+	},
+	'promotions:manageProjects': {
+		displayName: 'Manage promotion environment projects',
+		description: 'Allows adding projects to and removing projects from a promotion environment.',
+	},
+	'promotions:apply': {
+		displayName: 'Apply',
+		description:
+			'Allows previewing and applying changes from a promotion environment to this instance.',
+	},
+	'promotions:readReviews': {
 		displayName: 'Read promotion reviews',
-		description: 'Allows listing promotion reviews and reading their state from the Git host.',
+		description: 'Allows listing promotion reviews and viewing their status and changes.',
 	},
-	'gitConnection:approveReviews': {
+	'promotions:approveReviews': {
 		displayName: 'Approve promotion reviews',
-		description: 'Allows approving and merging promotion reviews on the Git host.',
+		description:
+			'Allows approving promotion reviews, which adds their changes to the promotion environment.',
 	},
 };

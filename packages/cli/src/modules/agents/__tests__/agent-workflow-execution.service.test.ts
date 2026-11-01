@@ -1,3 +1,4 @@
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
@@ -11,8 +12,7 @@ import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflo
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
-import { SkillService } from '@/modules/skills/skill.service';
-import { AgentSkillUsageService } from '../agent-skill-usage.service';
+import { SkillRuntimeService, SkillService } from '@/modules/skills';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
@@ -140,6 +140,7 @@ function makeService() {
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const telemetry = mock<Telemetry>();
+	const knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const agentRunTracingService = mock<AgentRunTracingService>();
@@ -172,6 +173,7 @@ function makeService() {
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
+			knowledgeUsageTracker,
 		),
 		telemetry,
 		credentialsService,
@@ -192,6 +194,7 @@ function makeService() {
 		agentRepository,
 		executionService,
 		telemetry,
+		knowledgeUsageTracker,
 		reconstructionService,
 		agentRunTracingService,
 		executionLevelTracer,
@@ -355,6 +358,30 @@ describe('AgentWorkflowExecutionService', () => {
 				source: 'workflow',
 				executionId: 'execution-1',
 			}),
+		);
+	});
+
+	it('sends the knowledge use of the workflow run when it ends', async () => {
+		const { service, agentRepository, reconstructionService, knowledgeUsageTracker } =
+			makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(
+			makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
+		);
+
+		await service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			projectId,
+			userId,
+		);
+
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledTimes(1);
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
+			'runtime-run-1',
+			expect.objectContaining({ agentId }),
 		);
 	});
 
@@ -895,7 +922,7 @@ describe('AgentWorkflowExecutionService', () => {
 
 		it('runs the embedded skills and never calls the skill service', async () => {
 			const skillService = mockInstance(SkillService);
-			const agentSkillUsage = mockInstance(AgentSkillUsageService);
+			const skillRuntime = mockInstance(SkillRuntimeService);
 			const { service, reconstructionService, skillRefs } = makeService();
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(
 				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
@@ -928,9 +955,9 @@ describe('AgentWorkflowExecutionService', () => {
 				skillRefs.readDraft,
 				skillRefs.readVersion,
 				skillRefs.skillsForRefs,
-				skillService.resolveForAgentDraft,
-				agentSkillUsage.checkRefs,
-				skillService.create,
+				skillRuntime.resolveForAgentDraft,
+				skillRefs.checkRefs,
+				skillService.createTrusted,
 			]) {
 				expect(read).not.toHaveBeenCalled();
 			}

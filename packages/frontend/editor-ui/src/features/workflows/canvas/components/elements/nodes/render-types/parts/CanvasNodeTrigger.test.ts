@@ -5,7 +5,10 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import CanvasNodeTrigger from './CanvasNodeTrigger.vue';
 
 const runEntireWorkflow = vi.hoisted(() => vi.fn());
@@ -97,6 +100,63 @@ describe('CanvasNodeTrigger', () => {
 			await userEvent.click(button);
 
 			expect(runEntireWorkflow).toHaveBeenCalledWith('node', 'Schedule Trigger');
+		});
+	});
+
+	describe('when the node type is restricted', () => {
+		const renderRestricted = (type = 'n8n-nodes-base.slack', scope = 'instance') => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			vi.spyOn(useTypeAvailabilityPoliciesStore(pinia), 'getNodeTypeAvailability').mockReturnValue({
+				name: type,
+				available: false,
+				scope,
+			} as never);
+
+			return renderComponent({
+				pinia,
+				props: { name: 'Trigger', type, isExperimentalNdvActive: false },
+				global: {
+					provide: {
+						...createCanvasNodeProvide({ data: { type } }),
+						[WorkflowDocumentStoreKey as symbol]: shallowRef({
+							documentId: 'workflow-1',
+							usedCredentials: {},
+							allNodes: [],
+						}),
+					},
+				},
+			});
+		};
+
+		it('should disable the execute button and not run the workflow', async () => {
+			const { getByTestId } = renderRestricted();
+			const button = getByTestId('execute-workflow-button-Trigger');
+
+			expect(button).toBeDisabled();
+
+			await userEvent.click(button);
+
+			expect(runEntireWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should disable Open chat on a restricted chat trigger and show the scope in a tooltip', async () => {
+			const { getByTestId } = renderRestricted(CHAT_TRIGGER_NODE_TYPE);
+			const button = getByTestId('execute-workflow-button-Trigger');
+
+			expect(button).toBeDisabled();
+
+			await hoverTooltipTrigger(button);
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Restricted on this instance'));
+		});
+
+		it('should show the scope in a tooltip', async () => {
+			const { getByTestId } = renderRestricted('n8n-nodes-base.slack', 'project');
+
+			await hoverTooltipTrigger(getByTestId('execute-workflow-button-Trigger'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Restricted in this project'));
 		});
 	});
 });

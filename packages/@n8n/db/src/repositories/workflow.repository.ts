@@ -13,14 +13,13 @@ import type {
 	EntityManager,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { PROJECT_ROOT, UnexpectedError, UserError } from 'n8n-workflow';
+import { PROJECT_ROOT, UnexpectedError, UserError, type IWorkflowSettings } from 'n8n-workflow';
 
 import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { runWorkflowContentWrite } from './workflow-content-write-context';
-import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
 	TagEntity,
@@ -102,6 +101,17 @@ export function agentToolReferenceWhere(
 	return where;
 }
 
+/** The fields the migration report scan rules and the report read. */
+const MIGRATION_SCAN_FIELDS: Array<keyof WorkflowEntity> = [
+	'id',
+	'name',
+	'active',
+	'activeVersionId',
+	'versionId',
+	'nodes',
+	'updatedAt',
+];
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -109,7 +119,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		transactionRunner: TransactionRunner,
 	) {
 		super(WorkflowEntity, dataSource.manager, transactionRunner);
@@ -241,6 +250,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			select: { isArchived: true },
 			where: { id: workflowId },
 		});
+	}
+
+	/** The settings of a workflow, or `undefined` when it has none or no longer exists. */
+	async findSettings(workflowId: string): Promise<IWorkflowSettings | undefined> {
+		const workflow = await this.findOne({ select: ['settings'], where: { id: workflowId } });
+		return workflow?.settings;
 	}
 
 	async getAllActiveIds() {
@@ -647,6 +662,35 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	/**
+	 * Every workflow in the given folders, with its owner sharing. `withNodes` adds the nodes of
+	 * the draft and of the published version, for policy checks.
+	 */
+	async findInFoldersForTransfer(
+		folderIds: string[],
+		{ withNodes }: { withNodes: boolean },
+	): Promise<WorkflowEntity[]> {
+		const workflows: WorkflowEntity[] = [];
+
+		for (const chunk of chunkIds(folderIds)) {
+			workflows.push(
+				...(await this.find({
+					select: [
+						'id',
+						'name',
+						'activeVersionId',
+						'shared',
+						...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
+					],
+					relations: ['shared', 'shared.project', ...(withNodes ? ['activeVersion'] : [])],
+					where: { parentFolder: { id: In(chunk) } },
+				})),
+			);
+		}
+
+		return workflows;
+	}
+
 	async findOneByAgentToolReference(
 		projectId: string,
 		reference: { workflowId?: string; workflowName: string },
@@ -676,6 +720,27 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 
 		return workflows.map(({ id }) => id);
+	}
+
+	/**
+	 * One page of workflows for the migration report scan, keyset-paged like `getIdsAfter`.
+	 * It returns only the fields the scan rules and the report read.
+	 */
+	async findMigrationScanPage(
+		afterId: string | undefined,
+		take: number,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select: MIGRATION_SCAN_FIELDS,
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/** One workflow with the fields of `findMigrationScanPage`, for a re-check after a save. */
+	async findMigrationScanWorkflow(workflowId: string): Promise<WorkflowEntity | null> {
+		return await this.findOne({ select: MIGRATION_SCAN_FIELDS, where: { id: workflowId } });
 	}
 
 	/** The subset of `workflowIds` that still exists, in no particular order. */
@@ -1939,52 +2004,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		}
 	}
 
-	/**
-	 * Publish a specific version of a workflow
-	 * @param workflowId - The ID of the workflow
-	 * @param versionId - The ID of the version to publish (optional; if not provided, uses the current version)
-	 * */
-	async publishVersion(workflowId: string, versionId?: string) {
-		const workflow = await this.findOne({
-			where: { id: workflowId },
-			select: ['id', 'versionId', 'isArchived'],
-		});
-
-		if (!workflow) {
-			throw new UserError(`Workflow "${workflowId}" not found.`);
-		}
-
-		if (workflow.isArchived) {
-			throw new UserError('Cannot publish archived Workflow', {
-				extra: { workflowId },
-			});
-		}
-
-		const versionIdToPublish = versionId ?? workflow.versionId;
-
-		const version = await this.workflowHistoryRepository.findOneBy({
-			workflowId,
-			versionId: versionIdToPublish,
-		});
-		if (!version) {
-			throw new UserError(
-				`Version "${versionIdToPublish}" not found for workflow "${workflowId}".`,
-			);
-		}
-
-		return await this.update(
-			{ id: workflowId },
-			{ active: true, activeVersionId: versionIdToPublish },
-		);
-	}
-
-	async unpublishAll() {
-		return await this.update(
-			{ activeVersionId: Not(IsNull()) },
-			{ active: false, activeVersionId: null },
-		);
-	}
-
 	async findByActiveState(activeState: boolean) {
 		return await this.findBy({ activeVersionId: activeState ? Not(IsNull()) : IsNull() });
 	}
@@ -2054,11 +2073,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		// `settings` holds the error workflow, which the indexer records.
 		qb.select([
 			'workflow.id',
 			'workflow.versionCounter',
 			'workflow.activeVersionId',
 			'workflow.nodes',
+			'workflow.settings',
 		]);
 
 		qb.leftJoin(
@@ -2114,8 +2135,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		// Only select columns needed for indexing to avoid loading large unused
 		// JSON columns (connections, staticData, pinData) that can cause OOM.
 		// For published version indexing we need the published version's nodes
-		// (from activeVersion), not the draft nodes.
-		qb.select(['workflow.id', 'workflow.versionCounter', 'workflow.activeVersionId']);
+		// (from activeVersion), not the draft nodes. `settings` holds the error workflow.
+		qb.select([
+			'workflow.id',
+			'workflow.versionCounter',
+			'workflow.activeVersionId',
+			'workflow.settings',
+		]);
 
 		// Left join to find matching published version dependencies
 		qb.leftJoin(

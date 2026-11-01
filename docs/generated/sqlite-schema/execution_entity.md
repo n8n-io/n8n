@@ -50,6 +50,7 @@ CREATE TABLE "execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL
 | IDX_execution_entity_deduplicationKey | CREATE UNIQUE INDEX "IDX_execution_entity_deduplicationKey" ON "execution_entity" ("deduplicationKey") WHERE "deduplicationKey" IS NOT NULL |
 | IDX_execution_entity_deletedAt | CREATE INDEX "IDX_execution_entity_deletedAt" ON "execution_entity" ("deletedAt")  |
 | IDX_execution_entity_stoppedAt | CREATE INDEX "IDX_execution_entity_stoppedAt" ON "execution_entity" ("stoppedAt")  |
+| IDX_execution_entity_workflowId | CREATE INDEX "IDX_execution_entity_workflowId" ON "execution_entity" ("workflowId")  |
 
 ## Relations
 

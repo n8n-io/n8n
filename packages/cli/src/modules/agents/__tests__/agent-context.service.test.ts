@@ -170,7 +170,7 @@ describe('AgentContextService', () => {
 				useNodeToolWhen: ['The agent creates Linear tickets'],
 			},
 		];
-		agentIntegrationService.listChatIntegrations.mockReturnValue(channels);
+		agentIntegrationService.listBuilderChatIntegrations.mockResolvedValue(channels);
 		mcpRegistryService.search.mockResolvedValue([]);
 		agentsToolsService.searchAgentToolNodes.mockResolvedValue({
 			results: '',
@@ -179,6 +179,7 @@ describe('AgentContextService', () => {
 		const reader = service.createReader(user, 'project-1');
 
 		expect(await reader.lookup({ type: 'integrations' })).toEqual({ channels });
+		expect(agentIntegrationService.listBuilderChatIntegrations).toHaveBeenCalledWith(user);
 		expect(await reader.lookup({ type: 'integrations', queries: ['linear'] })).toEqual({
 			kind: 'node',
 			results: '',
@@ -264,7 +265,7 @@ describe('AgentContextService', () => {
 		await expect(lookup).rejects.toThrow(error.message);
 	});
 
-	it('lists the hub skills attached to the agent', async () => {
+	it('lists the skills attached to the agent', async () => {
 		const { service, agentsService, agentSkillRefs } = makeService();
 		agentSkillRefs.bodies.notes = {
 			name: 'Notes',
@@ -583,5 +584,31 @@ describe('AgentContextService', () => {
 			'Agents are disabled',
 		);
 		expect(agentExecutionService.getThreadDetail).toHaveBeenCalledTimes(1);
+	});
+
+	it('lists sessions for the user and checks access on each list', async () => {
+		const { service, agentExecutionService } = makeService();
+		agentExecutionService.getThreads.mockResolvedValue({ threads: [], nextCursor: 'next' });
+
+		await expect(
+			service.listSessions(user, 'project-1', 'agent-1', {
+				origin: 'mcp',
+				updatedAfter: '2026-09-17T10:00:00.000Z',
+			}),
+		).resolves.toEqual({ sessions: [], nextCursor: 'next' });
+		expect(agentExecutionService.getThreads).toHaveBeenCalledWith(
+			'project-1',
+			'agent-1',
+			user.id,
+			20,
+			undefined,
+			{ origin: 'mcp', updatedAfter: new Date('2026-09-17T10:00:00.000Z') },
+		);
+
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		await expect(service.listSessions(user, 'project-1', 'agent-1', {})).rejects.toThrow(
+			ForbiddenError,
+		);
+		expect(agentExecutionService.getThreads).toHaveBeenCalledTimes(1);
 	});
 });

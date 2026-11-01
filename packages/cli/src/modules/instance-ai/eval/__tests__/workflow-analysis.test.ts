@@ -18,6 +18,7 @@ import {
 	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	identifyNodesForRunMock,
 	partitionAiRoots,
 } from '../workflow-analysis';
 
@@ -67,23 +68,13 @@ describe('identifyNodesForPinData', () => {
 		expect(names).not.toContain('Set');
 	});
 
-	it('should identify protocol/bypass nodes as needing pin data', () => {
+	it('does not pin nodes the run-time node mock answers for', () => {
 		const nodes = [
 			makeNode({ name: 'My Redis', type: 'n8n-nodes-base.redis' }),
-			makeNode({ name: 'My Postgres', type: 'n8n-nodes-base.postgres' }),
-			makeNode({ name: 'My Kafka', type: 'n8n-nodes-base.kafka' }),
-			makeNode({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' }),
-			makeNode({ name: 'Set', type: 'n8n-nodes-base.set' }),
+			makeNode({ name: 'Send Email', type: 'n8n-nodes-base.emailSend' }),
 		];
 
-		const result = identifyNodesForPinData(makeWorkflow(nodes));
-		const names = result.map((n) => n.name);
-
-		expect(names).toContain('My Redis');
-		expect(names).toContain('My Postgres');
-		expect(names).toContain('My Kafka');
-		expect(names).not.toContain('HTTP Request');
-		expect(names).not.toContain('Set');
+		expect(identifyNodesForPinData(makeWorkflow(nodes))).toEqual([]);
 	});
 
 	it('should exclude disabled nodes', () => {
@@ -131,32 +122,6 @@ describe('identifyNodesForPinData', () => {
 		expect(names).toEqual(['Agent']);
 	});
 
-	it('should identify all bypass node types', () => {
-		const bypassTypes = [
-			'n8n-nodes-base.redis',
-			'n8n-nodes-base.mongoDb',
-			'n8n-nodes-base.mySql',
-			'n8n-nodes-base.postgres',
-			'n8n-nodes-base.microsoftSql',
-			'n8n-nodes-base.snowflake',
-			'n8n-nodes-base.kafka',
-			'n8n-nodes-base.rabbitmq',
-			'n8n-nodes-base.mqtt',
-			'n8n-nodes-base.amqp',
-			'n8n-nodes-base.ftp',
-			'n8n-nodes-base.ssh',
-			'n8n-nodes-base.ldap',
-			'n8n-nodes-base.emailSend',
-			'n8n-nodes-base.rssFeedRead',
-			'n8n-nodes-base.git',
-		];
-
-		const nodes = bypassTypes.map((type, i) => makeNode({ name: `Node${i}`, type }));
-		const result = identifyNodesForPinData(makeWorkflow(nodes));
-
-		expect(result).toHaveLength(bypassTypes.length);
-	});
-
 	describe('exclusionSet', () => {
 		const agentNodes = [
 			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
@@ -195,15 +160,6 @@ describe('identifyNodesForPinData', () => {
 			);
 			expect(result.map((n) => n.name)).toEqual([]);
 		});
-
-		it('keeps protocol-binary bypass nodes pinned even when present in the exclusion set', () => {
-			const nodes = [...agentNodes, makeNode({ name: 'Cache', type: 'n8n-nodes-base.redis' })];
-			const result = identifyNodesForPinData(
-				makeWorkflow(nodes, agentConnections),
-				new Set(['Agent', 'Cache']),
-			);
-			expect(result.map((n) => n.name)).toEqual(['Cache']);
-		});
 	});
 
 	it('leaves Data Table nodes unpinned: they run for real against a prepared table', () => {
@@ -223,7 +179,55 @@ describe('identifyNodesForPinData', () => {
 
 		const result = identifyNodesForPinData(makeWorkflow(nodes));
 
-		expect(result.map((n) => n.name)).toEqual(['Cache']);
+		expect(result.map((n) => n.name)).toEqual([]);
+	});
+});
+
+describe('identifyNodesForRunMock', () => {
+	it('selects every enabled node type the HTTP mock cannot reach', () => {
+		const runMockTypes = [
+			'n8n-nodes-base.redis',
+			'n8n-nodes-base.mongoDb',
+			'n8n-nodes-base.mySql',
+			'n8n-nodes-base.postgres',
+			'n8n-nodes-base.microsoftSql',
+			'n8n-nodes-base.snowflake',
+			'n8n-nodes-base.kafka',
+			'n8n-nodes-base.rabbitmq',
+			'n8n-nodes-base.mqtt',
+			'n8n-nodes-base.amqp',
+			'n8n-nodes-base.ftp',
+			'n8n-nodes-base.ssh',
+			'n8n-nodes-base.ldap',
+			'n8n-nodes-base.emailSend',
+			'n8n-nodes-base.rssFeedRead',
+			'n8n-nodes-base.git',
+		];
+		const nodes = [
+			...runMockTypes.map((type, i) => makeNode({ name: `Node${i}`, type })),
+			makeNode({ name: 'Disabled', type: 'n8n-nodes-base.redis', disabled: true }),
+			makeNode({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' }),
+			makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+		];
+
+		const result = identifyNodesForRunMock(makeWorkflow(nodes));
+
+		expect(result.map((n) => n.type)).toEqual(runMockTypes);
+	});
+
+	it('selects send-and-wait nodes, which park the run until a person answers', () => {
+		const nodes = [
+			makeNode({
+				name: 'Ask Approval',
+				type: 'n8n-nodes-base.slack',
+				parameters: { operation: 'sendAndWait' },
+			}),
+			makeNode({ name: 'Post', type: 'n8n-nodes-base.slack', parameters: { operation: 'post' } }),
+		];
+
+		const result = identifyNodesForRunMock(makeWorkflow(nodes));
+
+		expect(result.map((n) => n.name)).toEqual(['Ask Approval']);
 	});
 });
 
@@ -1010,7 +1014,7 @@ describe('identifyNodesForHints', () => {
 		expect(names).toContain('Slack');
 	});
 
-	it('should exclude pinned bypass nodes from hints', () => {
+	it('should give hints to nodes the run-time node mock answers for', () => {
 		const nodes = [
 			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
 			makeNode({ name: 'Redis', type: 'n8n-nodes-base.redis' }),
@@ -1021,7 +1025,7 @@ describe('identifyNodesForHints', () => {
 		const result = identifyNodesForHints(makeWorkflow(nodes));
 		const names = result.map((n) => n.name);
 
-		expect(names).not.toContain('Redis');
+		expect(names).toContain('Redis');
 		expect(names).toContain('Webhook');
 		expect(names).toContain('Slack');
 		expect(names).toContain('Set');
@@ -1040,7 +1044,7 @@ describe('identifyNodesForHints', () => {
 		expect(names).toContain('Gmail');
 	});
 
-	it('should return only HTTP-interceptible nodes for a mixed workflow', () => {
+	it('should return only the nodes the mocks answer at run time for a mixed workflow', () => {
 		const nodes = [
 			makeNode({ name: 'Webhook', type: 'n8n-nodes-base.webhook' }),
 			makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
@@ -1056,14 +1060,14 @@ describe('identifyNodesForHints', () => {
 		const result = identifyNodesForHints(makeWorkflow(nodes, connections));
 		const names = result.map((n) => n.name);
 
-		// Should include: Webhook (trigger, gets hints), Slack (HTTP service), Set (logic)
+		// Should include: Webhook (trigger), Slack (HTTP mock), Postgres (node mock), Set (logic)
 		expect(names).toContain('Webhook');
 		expect(names).toContain('Slack');
+		expect(names).toContain('Postgres');
 		expect(names).toContain('Set');
-		// Should exclude: OpenAI (AI sub-node), Agent (AI root, pinned), Postgres (bypass, pinned)
+		// Should exclude: OpenAI (AI sub-node), Agent (AI root, pinned)
 		expect(names).not.toContain('OpenAI');
 		expect(names).not.toContain('Agent');
-		expect(names).not.toContain('Postgres');
 	});
 });
 

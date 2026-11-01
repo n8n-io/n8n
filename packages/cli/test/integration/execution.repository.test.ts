@@ -355,4 +355,75 @@ describe('UserRepository', () => {
 			expect(row?.status).toBe('canceled');
 		});
 	});
+
+	describe('unsaved manual executions', () => {
+		/** A finished manual run that n8n did not save, soft-deleted when it finished. */
+		const createUnsavedManualExecution = async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			await executionRepository.softDelete(execution.id);
+			return { workflow, execution };
+		};
+
+		test('finds the execution inside the hard-delete buffer', async () => {
+			const { workflow, execution } = await createUnsavedManualExecution();
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toMatchObject({
+				id: execution.id,
+				workflowId: workflow.id,
+			});
+			expect(await executionRepository.findSingleExecution(execution.id)).toBeUndefined();
+		});
+
+		test('does not find the execution after the hard-delete buffer', async () => {
+			const { execution } = await createUnsavedManualExecution();
+			await executionRepository.update(
+				{ id: execution.id },
+				{ deletedAt: DateTime.utc().minus({ hours: 2 }).toJSDate() },
+			);
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toBeNull();
+		});
+
+		test('does not find a kept, an unfinished or a non-manual execution', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const kept = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			const { execution: unfinished } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: unfinished.id }, { status: 'running' });
+			const { execution: webhook } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: webhook.id }, { mode: 'webhook' });
+
+			expect(await executionRepository.findUnsavedManualExecution(kept.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(unfinished.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(webhook.id)).toBeNull();
+		});
+	});
+
+	describe('findForDeletionByWorkflowId', () => {
+		test('should return live and soft-deleted executions of the workflow, up to the limit', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const otherWorkflow = await createWorkflow({}, owner);
+			const live = await createExecution({ status: 'success' }, workflow);
+			const softDeleted = await createExecution(
+				{ status: 'success', deletedAt: new Date() },
+				workflow,
+			);
+			const onFilesystem = await createExecution({ status: 'success' }, workflow);
+			await executionRepository.update(onFilesystem.id, { storedAt: 'fs' });
+			await createExecution({ status: 'success' }, otherWorkflow);
+
+			const targets = await executionRepository.findForDeletionByWorkflowId(workflow.id, 500);
+
+			expect(targets).toHaveLength(3);
+			expect(targets).toEqual(
+				expect.arrayContaining([
+					{ executionId: live.id, workflowId: workflow.id, storedAt: 'db' },
+					{ executionId: softDeleted.id, workflowId: workflow.id, storedAt: 'db' },
+					{ executionId: onFilesystem.id, workflowId: workflow.id, storedAt: 'fs' },
+				]),
+			);
+			expect(await executionRepository.findForDeletionByWorkflowId(workflow.id, 2)).toHaveLength(2);
+			expect(await executionRepository.findForDeletionByWorkflowId('missing', 500)).toEqual([]);
+		});
+	});
 });

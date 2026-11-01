@@ -2,7 +2,7 @@
 import { EventService } from '@n8n/backend-services';
 // EOF Experiment cleanup
 import type { GlobalConfig } from '@n8n/config';
-import type { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import type { InvalidAuthTokenRepository, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
@@ -18,7 +18,7 @@ describe('AuthService Browser ID Whitelist', () => {
 		});
 		const jwtService = mock<JwtService>();
 		const urlService = mock<UrlService>();
-		const userRepository = mock<UserRepository>();
+		const personRepository = mock<PersonRepository>();
 		const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 		const mfaService = mock<MfaService>();
 
@@ -31,7 +31,7 @@ describe('AuthService Browser ID Whitelist', () => {
 			mock(),
 			jwtService,
 			urlService,
-			userRepository,
+			personRepository,
 			invalidAuthTokenRepository,
 			mfaService,
 		);

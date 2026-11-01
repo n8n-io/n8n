@@ -8,7 +8,7 @@ import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { OtelConnectionParams } from '../otel-settings.service';
-import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
+import { OTEL_SETTINGS_KEY, OtelSettingsService, parseOtlpHeaders } from '../otel-settings.service';
 import { OtelConfig } from '../otel.config';
 
 describe('OtelSettingsService', () => {
@@ -297,6 +297,18 @@ describe('OtelSettingsService', () => {
 			expect(result.envManagedFields).toEqual([]);
 			expect(result.enabled).toBe(false);
 		});
+
+		it('drops invalid header entries without logging', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterHeaders: 'auth=token,broken' }),
+			} as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(result.exporterHeaders).toBe(`auth=${CREDENTIAL_BLANKING_VALUE}`);
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('saveSettings', () => {
@@ -451,6 +463,29 @@ describe('OtelSettingsService', () => {
 			});
 
 			expect(result.exporterProtocol).toBe('grpc');
+		});
+	});
+
+	describe('parseOtlpHeaders', () => {
+		it('parses headers and keeps "=" in values', () => {
+			expect(parseOtlpHeaders(' k1 = v1 ,Authorization=Bearer abc=def,')).toEqual({
+				headers: { k1: 'v1', Authorization: 'Bearer abc=def' },
+				invalidEntries: [],
+			});
+		});
+
+		it('returns no headers for an empty string', () => {
+			expect(parseOtlpHeaders('')).toEqual({ headers: {}, invalidEntries: [] });
+		});
+
+		it('reports the position of invalid entries without their content', () => {
+			expect(parseOtlpHeaders('k1=v1,pasted-token,=secret-value')).toEqual({
+				headers: { k1: 'v1' },
+				invalidEntries: [
+					{ position: 2, problem: 'missing "=" separator' },
+					{ position: 3, problem: 'empty key' },
+				],
+			});
 		});
 	});
 });

@@ -47,7 +47,9 @@ export class SourceControlContext {
 			return this.authorizedProjectsByOwnerEmail.get(owner);
 		}
 		if (owner.type === 'personal') {
-			return this.authorizedProjectsByOwnerEmail.get(owner.personalEmail);
+			return owner.personalEmail
+				? this.authorizedProjectsByOwnerEmail.get(owner.personalEmail)
+				: undefined;
 		}
 		return this.authorizedProjectsByTeamId.get(owner.teamId);
 	}

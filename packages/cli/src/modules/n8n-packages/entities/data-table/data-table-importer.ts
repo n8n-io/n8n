@@ -22,7 +22,7 @@ import type {
 	DataTableSchemaOperation,
 	DataTableUpdate,
 } from './data-table.types';
-import { DataTableMatchingMode, DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
+import { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { DataTableMissingMode, ImportContext } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
 
@@ -63,7 +63,14 @@ export class DataTableImporter {
 	): Promise<DataTableImportPlan> {
 		const requirements = request.requirements ?? [];
 		if (requirements.length === 0) {
-			return { creations: [], updates: [], columnAlignments: [], failures: [], matchedCount: 0 };
+			return {
+				creations: [],
+				updates: [],
+				columnAlignments: [],
+				matched: [],
+				failures: [],
+				matchedCount: 0,
+			};
 		}
 
 		if (!this.moduleRegistry.isActive('data-table')) {
@@ -71,6 +78,7 @@ export class DataTableImporter {
 				creations: [],
 				updates: [],
 				columnAlignments: [],
+				matched: [],
 				failures: [{ kind: 'module-disabled' }],
 				matchedCount: 0,
 			};
@@ -88,8 +96,8 @@ export class DataTableImporter {
 		const creations: PlannedCreation[] = [];
 		const updates: PlannedUpdate[] = [];
 		const columnAlignments: PlannedAlignment[] = [];
+		const matched: string[] = [];
 		const failures: DataTableResolutionFailure[] = [];
-		let matchedCount = 0;
 
 		for (const requirement of requirements) {
 			const packageTable = packageTablesById.get(requirement.id);
@@ -114,54 +122,25 @@ export class DataTableImporter {
 				updates.push({ table: packageTable, operations: effect.operations, requirement });
 			} else if (effect.action === 'align-columns') {
 				columnAlignments.push({ table: packageTable, requirement });
-				matchedCount++;
 			} else if (effect.action === 'fail') failures.push(effect.failure);
-			else if (matchedTargetTable) matchedCount++;
+			else if (matchedTargetTable) matched.push(requirement.id);
 		}
 
-		failures.push(...(await this.writeFailures(context, creations, updates, columnAlignments)));
-
-		await this.assertColumnIdsAvailable(
-			[...creations, ...updates, ...columnAlignments].map(({ table }) => table),
+		failures.push(
+			...(await this.writeFailures(context, creations, updates, columnAlignments)),
+			...(await this.columnIdConflicts(
+				[...creations, ...updates, ...columnAlignments].map(({ table }) => table),
+			)),
 		);
 
 		return {
 			creations: creations.map(({ table }) => table),
 			updates: updates.map(({ table, operations }) => ({ table, operations })),
 			columnAlignments: columnAlignments.map(({ table }) => table),
+			matched,
 			failures,
-			matchedCount,
+			matchedCount: matched.length + columnAlignments.length,
 		};
-	}
-
-	/**
-	 * Matched tables that `overwrite-non-destructive` blocks, with every change
-	 * `overwrite` would make. A table has one project, so each id yields at most
-	 * one result.
-	 */
-	async findDestructiveChanges<T extends { id: string; projectId: string }>(
-		references: T[],
-		packageDataTables: SerializedDataTable[],
-	): Promise<Array<DataTableUpdate & { reference: T }>> {
-		if (!this.moduleRegistry.isActive('data-table')) return [];
-
-		const packageTablesById = new Map(
-			packageDataTables.map((table) => [table.id, normalizeColumnIndexes(table)]),
-		);
-		const targets = await this.dataTableService.findDataTablesByIds(references.map(({ id }) => id));
-		const targetsById = new Map(targets.map((table) => [table.id, table]));
-
-		return references.flatMap((reference) => {
-			const packageTable = packageTablesById.get(reference.id);
-			const target = matchTargetTable(DataTableMatchingMode.ById, reference, {
-				projectId: reference.projectId,
-				targetsById,
-			});
-			if (!packageTable || !target) return [];
-			const operations = diffDataTableSchema(packageTable, target);
-			if (!operations.some(({ destructive }) => destructive)) return [];
-			return [{ table: packageTable, operations, reference }];
-		});
 	}
 
 	/**
@@ -200,7 +179,9 @@ export class DataTableImporter {
 	}
 
 	/** Column ids are globally unique, so a package column id must not belong to another table. */
-	private async assertColumnIdsAvailable(tables: SerializedDataTable[]): Promise<void> {
+	private async columnIdConflicts(
+		tables: SerializedDataTable[],
+	): Promise<DataTableResolutionFailure[]> {
 		const packageColumnsById = new Map<
 			string,
 			{ table: SerializedDataTable; column: SerializedDataTableColumn }
@@ -210,19 +191,23 @@ export class DataTableImporter {
 				if (column.id) packageColumnsById.set(column.id, { table, column });
 			}
 		}
-		if (packageColumnsById.size === 0) return;
+		if (packageColumnsById.size === 0) return [];
 
 		const existing = await this.dataTableService.findTableIdsByColumnIds([
 			...packageColumnsById.keys(),
 		]);
-		for (const { id, dataTableId } of existing) {
+		return existing.flatMap(({ id, dataTableId }): DataTableResolutionFailure[] => {
 			const packageColumn = packageColumnsById.get(id);
-			if (packageColumn && packageColumn.table.id !== dataTableId) {
-				throw new UserError(
-					`Data table "${packageColumn.table.name}": column "${packageColumn.column.name}" has id "${id}", but a column in another data table already uses this id.`,
-				);
-			}
-		}
+			if (!packageColumn || packageColumn.table.id === dataTableId) return [];
+			return [
+				{
+					kind: 'column-id-conflict',
+					sourceId: packageColumn.table.id,
+					name: packageColumn.table.name,
+					column: { id, name: packageColumn.column.name },
+				},
+			];
+		});
 	}
 
 	/** Guards that only apply to tables about to be written: permission, and name uniqueness inside the target project. */
@@ -374,4 +359,11 @@ async function hasProjectScope(
 	scope: 'dataTable:create' | 'dataTable:update',
 ): Promise<boolean> {
 	return await userHasScopes(context.user, [scope], false, { projectId: context.projectId });
+}
+
+/** The error that an import throws for a column id conflict. */
+export function columnIdConflictError(failure: DataTableResolutionFailure): UserError {
+	return new UserError(
+		`Data table "${failure.name}": column "${failure.column?.name}" has id "${failure.column?.id}", but a column in another data table already uses this id.`,
+	);
 }

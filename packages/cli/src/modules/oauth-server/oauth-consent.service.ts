@@ -1,6 +1,6 @@
 import type { ConsentUiHints } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { User, OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -8,6 +8,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
+import { OAuthGrantService } from './oauth-grant.service';
 import { OAuthHelpers } from './oauth.helpers';
 import { ForbiddenError } from '@n8n/errors';
 import { UrlService } from '@n8n/backend-services';
@@ -60,6 +61,7 @@ export class OAuthConsentService {
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly protectedResourceRegistry: ProtectedResourceRegistry,
 		private readonly urlService: UrlService,
+		private readonly grantService: OAuthGrantService,
 	) {}
 
 	/**
@@ -277,42 +279,47 @@ export class OAuthConsentService {
 		user: User,
 		sessionPayload: OAuthSessionPayload,
 		grantedScopes: string[],
+		ctx: OperationContext = {},
 	): Promise<{ redirectUrl: string }> {
-		const issuer = this.urlService.getInstanceBaseUrl();
-
-		await this.userConsentRepository.upsert(
-			{
-				userId: user.id,
-				clientId: sessionPayload.clientId,
-				grantedAt: Date.now(),
-				scope: grantedScopes,
-			},
-			['userId', 'clientId'],
-		);
-
-		const code = await this.authorizationCodeService.createAuthorizationCode(
-			sessionPayload.clientId,
+		return await this.grantService.runForActiveUser(
 			user.id,
-			sessionPayload.redirectUri,
-			sessionPayload.codeChallenge,
-			sessionPayload.state,
-			sessionPayload.resource,
-			grantedScopes,
+			async (ctx) => {
+				const issuer = this.urlService.getInstanceBaseUrl();
+
+				await this.userConsentRepository.saveGrant(
+					user.id,
+					sessionPayload.clientId,
+					grantedScopes,
+					ctx,
+				);
+
+				const code = await this.authorizationCodeService.createAuthorizationCode(
+					sessionPayload.clientId,
+					user.id,
+					sessionPayload.redirectUri,
+					sessionPayload.codeChallenge,
+					sessionPayload.state,
+					sessionPayload.resource,
+					grantedScopes,
+					ctx,
+				);
+
+				const successRedirectUrl = OAuthHelpers.buildSuccessRedirectUrl(
+					sessionPayload.redirectUri,
+					code,
+					sessionPayload.state,
+					issuer,
+				);
+
+				this.logger.info('Consent approved', {
+					clientId: sessionPayload.clientId,
+					userId: user.id,
+				});
+
+				return { redirectUrl: successRedirectUrl };
+			},
+			ctx,
 		);
-
-		const successRedirectUrl = OAuthHelpers.buildSuccessRedirectUrl(
-			sessionPayload.redirectUri,
-			code,
-			sessionPayload.state,
-			issuer,
-		);
-
-		this.logger.info('Consent approved', {
-			clientId: sessionPayload.clientId,
-			userId: user.id,
-		});
-
-		return { redirectUrl: successRedirectUrl };
 	}
 
 	/**
@@ -367,9 +374,11 @@ export class OAuthConsentService {
 			(await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource));
 		if (!resource?.isFirstParty) return null;
 
-		const consent = await this.userConsentRepository.findOne({
-			where: { clientId: sessionPayload.clientId, userId: user.id },
-		});
+		const consent = await this.userConsentRepository.findGrant(
+			user.id,
+			sessionPayload.clientId,
+			{},
+		);
 
 		if (!consent) {
 			return null;
@@ -408,6 +417,20 @@ export class OAuthConsentService {
 			return null;
 		}
 
-		return await this.issueGrant(user, sessionPayload, consented);
+		return await this.grantService.runForActiveUser(user.id, async (ctx) => {
+			// Recheck after the user lock: consent can change while resource checks run.
+			const currentConsent = await this.userConsentRepository.findGrant(
+				user.id,
+				sessionPayload.clientId,
+				ctx,
+			);
+			if (
+				!currentConsent ||
+				currentConsent.id !== consent.id ||
+				currentConsent.grantedAt !== consent.grantedAt
+			)
+				return null;
+			return await this.issueGrant(user, sessionPayload, consented, ctx);
+		});
 	}
 }

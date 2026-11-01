@@ -36,6 +36,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
 import { FolderService } from '@/services/folder.service';
+import { validateWorkflowNodeGroups } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -316,6 +317,7 @@ export class EvalThreadRestoreService {
 					id: agent.id,
 					schema,
 					...(agent.skills ? { skills: agent.skills } : {}),
+					...(agent.tools ? { tools: agent.tools } : {}),
 				});
 				created.push(agent.id);
 			}
@@ -419,6 +421,10 @@ export class EvalThreadRestoreService {
 					folderIdMap,
 				);
 				if (isNew) created.push(workflow.id);
+				// Every saved workflow has a history row for its current version, and
+				// publishing looks the version up there ("Version not found" without it),
+				// so a restored draft gets its row as the product's own save would write.
+				await this.workflowHistoryService.snapshotCurrent(workflow.id);
 			}
 		} catch (error) {
 			await this.deleteWorkflows(created);
@@ -444,7 +450,8 @@ export class EvalThreadRestoreService {
 			for (const workflow of workflows) {
 				if (!workflow.published) continue;
 				// Activation looks the versionId up in the history ("Version not found"
-				// without the row); the snapshot writes it once and verifies it landed.
+				// without the row). `restoreWorkflows` already wrote it; this is a no-op
+				// then, and keeps publishing a seed safe for any other caller.
 				await this.workflowHistoryService.snapshotCurrent(workflow.id);
 				// Before the await: activation can throw after its triggers are registered.
 				attempted.push(workflow.id);
@@ -566,6 +573,17 @@ export class EvalThreadRestoreService {
 			throw new BadRequestError(`Seed workflow ${workflow.id} connections must be an object`);
 		}
 
+		const nodeGroups = workflow.nodeGroups ?? [];
+		try {
+			// Structural checks only, as a source-control import applies: groups were
+			// valid on the instance the seed came from.
+			validateWorkflowNodeGroups({ nodes, connections, nodeGroups }, null);
+		} catch (error) {
+			throw new BadRequestError(
+				`Seed workflow ${workflow.id} node groups are invalid: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+
 		// Never overwrite a workflow owned by a different project (id collision).
 		const owningProject = await this.sharedWorkflowRepo.getWorkflowOwningProject(workflow.id);
 		if (owningProject && owningProject.id !== projectId) {
@@ -583,6 +601,7 @@ export class EvalThreadRestoreService {
 			name: workflow.name,
 			nodes,
 			connections,
+			nodeGroups,
 			active: false,
 			versionId: randomUUID(),
 			parentFolder: parentFolderId === null ? null : { id: parentFolderId },
@@ -592,10 +611,10 @@ export class EvalThreadRestoreService {
 		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
 			if (stored) {
 				// oxlint-disable-next-line typescript/no-deprecated
-				const { name, nodes, connections, active, versionId, parentFolder } = entity;
+				const { name, nodes, connections, nodeGroups, active, versionId, parentFolder } = entity;
 				await this.workflowRepo.updateContent(
 					workflow.id,
-					{ name, nodes, connections, active, versionId, parentFolder },
+					{ name, nodes, connections, nodeGroups, active, versionId, parentFolder },
 					ctx,
 				);
 			} else {

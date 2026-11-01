@@ -343,6 +343,43 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		});
 	});
 
+	it('keeps metadata-less reasoning in history for providers that replay reasoning text', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Chain of thought from an OpenAI-compatible vendor' },
+					{ type: 'text', text: 'The answer.' },
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input, 'custom');
+		const parts = (aiMessages[0] as { content: Array<{ type: string; text?: string }> }).content;
+
+		expect(parts).toEqual([
+			{ type: 'reasoning', text: 'Chain of thought from an OpenAI-compatible vendor' },
+			{ type: 'text', text: 'The answer.' },
+		]);
+	});
+
+	it('still drops metadata-less reasoning for providers without text replay', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Thinking without replayable metadata' },
+					{ type: 'text', text: 'The answer.' },
+				],
+			},
+		];
+
+		for (const aiMessages of [toAiMessages(input, 'anthropic'), toAiMessages(input)]) {
+			const parts = (aiMessages[0] as { content: Array<{ type: string; text?: string }> }).content;
+			expect(parts).toEqual([{ type: 'text', text: 'The answer.' }]);
+		}
+	});
+
 	it('round-trips SDK 7 reasoning files with provider replay state', () => {
 		const aiMessage: ModelMessage = {
 			role: 'assistant',

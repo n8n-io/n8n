@@ -51,6 +51,7 @@ export type {
 	Thread,
 	EpisodicMemoryConfig,
 	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureGuidance,
 	EpisodicMemoryCaptureKind,
 	EpisodicMemoryCaptureMethods,
 	EpisodicMemoryCaptureStatus,
@@ -59,14 +60,16 @@ export type {
 	EpisodicMemoryEntrySource,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
-	EpisodicMemoryReflectFn,
-	EpisodicMemoryReflectResult,
-	EpisodicMemoryReflection,
+	EpisodicMemoryConsolidateFn,
+	EpisodicMemoryConsolidateResult,
+	EpisodicMemoryConsolidation,
+	EpisodicMemoryConsolidationFact,
+	EpisodicMemoryConsolidationNeighbour,
+	EpisodicMemoryConsolidatorInput,
+	EpisodicMemoryFactRelation,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
-	EpisodicMemoryReflectionMerge,
 	EpisodicMemoryReflectionResult,
-	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
 	EpisodicScopeDecision,
 	ResolvedEpisodicScope,
@@ -202,6 +205,7 @@ export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
 export * as evals from './evals/index';
 export { Telemetry } from './sdk/telemetry';
 export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry';
+export { X_N8N_FUNCTION_ID_HEADER } from './runtime/telemetry/function-id';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
@@ -220,8 +224,11 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	findRuntimeSkillEntry,
+	isMainSkillFilePath,
 	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
+	hashRuntimeSkillRegistry,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -230,6 +237,7 @@ export {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_LIFETIMES,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_NAME_PATTERN,
@@ -251,13 +259,17 @@ export type {
 	RuntimeSkillLinkedFileGroup,
 	RuntimeSkillLinkedFiles,
 	RuntimeSkillLoader,
+	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
+	RuntimeSkillLifetime,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
 	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillContextUsage,
+	RuntimeSkillState,
 	RuntimeSkillStateScope,
 	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
@@ -296,7 +308,7 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
-export { stripHydratedFileData } from './types/sdk/message';
+export { isTextMediaType, stripHydratedFileData } from './types/sdk/message';
 export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
@@ -327,7 +339,7 @@ export type {
 	VectorFilter,
 } from './types';
 
-export { createModel } from './runtime/model/model-factory';
+export { createModel, mintAzureFoundryDeploymentsToken } from './runtime/model/model-factory';
 export type { FetchFn, EmbeddingProviderOptions } from './runtime/model/model-factory';
 export {
 	hasAzureApiKey,
@@ -419,17 +431,18 @@ export {
 	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+	DEFAULT_EPISODIC_MEMORY_CONSOLIDATION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
-	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	buildEpisodicMemoryReflectorPrompt,
-	createEpisodicMemoryReflectFn,
+	buildEpisodicMemoryConsolidatorPrompt,
+	createEpisodicMemoryConsolidateFn,
 } from './runtime/memory/episodic-memory-defaults';
-export type { CreateEpisodicMemoryReflectFnOptions } from './runtime/memory/episodic-memory-defaults';
+export type { CreateEpisodicMemoryConsolidateFnOptions } from './runtime/memory/episodic-memory-defaults';
 export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
+export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
 export {
 	parseObservationLogMarkdown,

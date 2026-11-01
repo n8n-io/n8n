@@ -87,6 +87,18 @@ export class TrustedSourceRepository {
 		return await this.table.managerFor(ctx).find(TrustedSourceEntity, { order: { name: 'ASC' } });
 	}
 
+	/** Stamps the first authentication from the database clock; `false` when the row already carries one. */
+	async markFirstAuthenticated(id: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder()
+			.update(TrustedSourceEntity)
+			.set({ firstAuthenticatedAt: () => dbNowLiteral(this.isPostgres) })
+			.where('id = :id AND "firstAuthenticatedAt" IS NULL', { id })
+			.execute();
+		return result.affected === 1;
+	}
+
 	/**
 	 * Sources whose last check is missing or older than the interval for their status. Unchecked
 	 * sources come first, then those never checked, then the oldest check. The lease is not

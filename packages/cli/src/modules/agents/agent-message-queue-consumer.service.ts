@@ -1,4 +1,4 @@
-import type { AgentSseEvent } from '@n8n/api-types';
+import { AGENT_CHAT_ERROR_CODES, type AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, type User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -13,7 +13,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { emitChunkEvents, toChatErrorEvent } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
@@ -36,7 +36,7 @@ export class AgentMessageQueueConsumer {
 		private readonly queue: AgentMessageQueueService,
 		private readonly repository: AgentMessageQueueRepository,
 		private readonly executionService: AgentExecutionService,
-		private readonly previewStreams: AgentQueuedPreviewStreamService,
+		private readonly previewStreams: AgentQueuedTestStreamService,
 		private readonly testRunService: AgentTestRunService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
@@ -187,10 +187,11 @@ export class AgentMessageQueueConsumer {
 				const user = await this.getThreadOwner(thread, surface);
 				sender.send({
 					type: 'execution-started',
+					...(payload.kind !== 'integration' && payload.stopReportId ? { stopReport: true } : {}),
 					executionId: admission.executionId,
 					sessionId: thread.id,
 					inputMessageIds: admission.inputMessageIds,
-					message: payload.message,
+					...(payload.kind !== 'integration' && payload.hidden ? {} : { message: payload.message }),
 				});
 				signal.throwIfAborted();
 
@@ -292,7 +293,7 @@ export class AgentMessageQueueConsumer {
 				type: 'error',
 				message,
 				...(prepared.status === 'agent_misconfigured'
-					? { errorCode: 'agent_misconfigured', missing: prepared.missing }
+					? { errorCode: AGENT_CHAT_ERROR_CODES.agentMisconfigured, missing: prepared.missing }
 					: {}),
 			});
 			return;
@@ -303,6 +304,8 @@ export class AgentMessageQueueConsumer {
 			projectId: thread.projectId,
 			user,
 			message: payload.message,
+			pauseReport: Boolean(payload.stopReportId),
+			hideUserMessageFromTranscript: payload.hidden,
 			attachments: payload.attachments,
 			sessionId: thread.id,
 			sessionMode: 'existing',

@@ -79,6 +79,42 @@ describe('EvalThreadRestoreService', () => {
 		licenseState.isFoldersLicensed.mockReturnValue(true);
 	});
 
+	it('writes a history row for every restored workflow, draft or published', async () => {
+		await service.restoreWorkflows(
+			[
+				{ id: 'wf-draft', name: 'Draft', nodes: [makeNode()], connections: {} },
+				{ id: 'wf-live', name: 'Live', nodes: [makeNode()], connections: {}, published: true },
+			],
+			'project-1',
+			evalUser,
+		);
+
+		expect(workflowHistoryService.snapshotCurrent.mock.calls).toEqual([['wf-draft'], ['wf-live']]);
+		// After the content is written, so the row records the restored version.
+		expect(workflowRepo.createContent.mock.invocationCallOrder[0]).toBeLessThan(
+			workflowHistoryService.snapshotCurrent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('rolls back the workflows it created when a history snapshot fails', async () => {
+		workflowHistoryService.snapshotCurrent
+			.mockResolvedValueOnce({ versionId: 'v1' })
+			.mockRejectedValueOnce(new Error('history write failed'));
+		const deleteWorkflows = vi.spyOn(service, 'deleteWorkflows').mockResolvedValue();
+
+		await expect(
+			service.restoreWorkflows(
+				[
+					{ id: 'wf-1', name: 'One', nodes: [makeNode()], connections: {} },
+					{ id: 'wf-2', name: 'Two', nodes: [makeNode()], connections: {} },
+				],
+				'project-1',
+				evalUser,
+			),
+		).rejects.toThrow('history write failed');
+		expect(deleteWorkflows).toHaveBeenCalledWith(['wf-1', 'wf-2']);
+	});
+
 	it('recreates the workflow pinned to its seeded id and grants project ownership', async () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-original', name: 'Daily digest', nodes: [makeNode()], connections: {} }],
@@ -375,6 +411,58 @@ describe('EvalThreadRestoreService', () => {
 		expect(created).toEqual([]); // not newly created
 	});
 
+	it('keeps seed node groups in the same write, on create and on re-seed', async () => {
+		const nodeGroups = [{ id: 'group-1', name: 'Notify', nodeIds: ['node-1'] }];
+		const grouped = { id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {}, nodeGroups };
+
+		await service.restoreWorkflows([grouped], 'project-1', evalUser);
+		expect(workflowRepo.createContent).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ nodeGroups }),
+			expect.anything(),
+		);
+
+		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({ id: 'project-1' } as Project);
+		workflowRepo.findByIds.mockResolvedValue([{ id: 'wf-1', name: 'wf', nodes: [] }] as never);
+		await service.restoreWorkflows([grouped], 'project-1', evalUser);
+		expect(workflowRepo.updateContent).toHaveBeenCalledExactlyOnceWith(
+			'wf-1',
+			expect.objectContaining({ nodeGroups }),
+			expect.anything(),
+		);
+	});
+
+	it('restores a seed without node groups ungrouped', async () => {
+		await service.restoreWorkflows(
+			[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
+			'project-1',
+			evalUser,
+		);
+		expect(workflowRepo.createContent).toHaveBeenCalledWith(
+			expect.objectContaining({ nodeGroups: [] }),
+			expect.anything(),
+		);
+	});
+
+	it('refuses node groups that name a missing node without writing anything', async () => {
+		await expect(
+			service.restoreWorkflows(
+				[
+					{
+						id: 'wf-1',
+						name: 'wf',
+						nodes: [makeNode()],
+						connections: {},
+						nodeGroups: [{ id: 'group-1', name: 'Notify', nodeIds: ['node-missing'] }],
+					},
+				],
+				'project-1',
+				evalUser,
+			),
+		).rejects.toThrow('Seed workflow wf-1 node groups are invalid');
+		expect(workflowRepo.createContent).not.toHaveBeenCalled();
+		expect(workflowRepo.updateContent).not.toHaveBeenCalled();
+	});
+
 	it('refuses to overwrite a workflow owned by another project', async () => {
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue({
 			id: 'other-project',
@@ -641,6 +729,48 @@ describe('EvalThreadRestoreService', () => {
 					id: 'agent-original',
 					schema: agent.config,
 					skills: agent.skills,
+				},
+			);
+		});
+
+		it('creates the agent with its custom tool bodies', async () => {
+			const tools = {
+				lookup_order: {
+					code: 'export default new Tool("lookup_order");',
+					descriptor: {
+						name: 'lookup_order',
+						description: 'Look up an order',
+						systemInstruction: null,
+						inputSchema: { type: 'object' },
+						outputSchema: null,
+						hasSuspend: false,
+						hasResume: false,
+						hasToMessage: false,
+						requireApproval: false,
+						providerOptions: null,
+					},
+				},
+			};
+			const agent = {
+				...seedAgent(),
+				config: {
+					...seedAgent().config,
+					tools: [{ type: 'custom' as const, id: 'lookup_order' }],
+				},
+				tools,
+			};
+
+			await service.restoreAgents([agent], 'project-1', evalUser);
+
+			expect(agentsService.createDraft).toHaveBeenCalledExactlyOnceWith(
+				evalUser,
+				'project-1',
+				'Support Triage',
+				{
+					id: 'agent-original',
+					schema: agent.config,
+					skills: agent.skills,
+					tools,
 				},
 			);
 		});

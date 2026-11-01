@@ -1,27 +1,23 @@
 import { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
 import type { InstanceAiSkillService } from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 
-import {
-	SkillNameTakenError,
-	skillNameTakenToolMessage,
-} from '@/modules/skills/skill-name-taken.error';
-import { SkillsApiService } from '@/modules/skills/skills-api.service';
+import { SkillService, toSkillToolRefusal } from '@/modules/skills';
 
 const STALE_SKILL_TOOL_MESSAGE =
 	'The skill changed since you read it, so nothing was saved. Read it again with the get action and retry with its new skillHash.';
 
 @Service()
 export class InstanceAiSkillsAdapterService {
-	constructor(private readonly skillsApi: SkillsApiService) {}
+	constructor(private readonly skillService: SkillService) {}
 
-	createService(user: User): InstanceAiSkillService {
+	createService(user: User, assistantSkillsEnabled: boolean): InstanceAiSkillService {
 		return {
+			assistantSkillsEnabled,
 			list: async ({ query, scope, projectId, attachableToAgentId, limit, skip }) =>
-				await this.skillsApi.list(
+				await this.skillService.list(
 					user,
 					ListSkillsQueryDto.parse({
 						search: query,
@@ -32,31 +28,36 @@ export class InstanceAiSkillsAdapterService {
 						skip: String(skip),
 					}),
 				),
-			get: async (skillId) => await this.skillsApi.get(user, skillId),
+			get: async (skillId) => await this.skillService.get(user, skillId),
 			create: async (input) => {
 				try {
-					return await this.skillsApi.create(user, CreateSkillDto.parse(input), 'assistant');
+					return await this.skillService.create(user, CreateSkillDto.parse(input), 'assistant');
 				} catch (error) {
-					if (error instanceof SkillNameTakenError) {
-						throw new UserError(skillNameTakenToolMessage(error.skillName));
-					}
+					const refusal = await toSkillToolRefusal(error);
+					if (refusal?.code === 'skill_name_taken') throw new UserError(refusal.message);
 					throw error;
 				}
 			},
 			update: async (skillId, input) => {
 				try {
-					return await this.skillsApi.update(user, skillId, SaveSkillDto.parse(input), 'assistant');
+					return await this.skillService.update(
+						user,
+						skillId,
+						SaveSkillDto.parse(input),
+						'assistant',
+					);
 				} catch (error) {
-					if (error instanceof SkillNameTakenError) {
-						throw new UserError(skillNameTakenToolMessage(error.skillName));
-					}
-					if (!(error instanceof ConflictError)) throw error;
-					const { skillHash } = await this.skillsApi.get(user, skillId);
-					if (skillHash === input.baseSkillHash) throw error;
-					throw new UserError(STALE_SKILL_TOOL_MESSAGE);
+					const refusal = await toSkillToolRefusal(error, {
+						baseSkillHash: input.baseSkillHash,
+						currentHash: async () => (await this.skillService.get(user, skillId)).skillHash,
+					});
+					if (!refusal) throw error;
+					throw new UserError(
+						refusal.code === 'stale_skill' ? STALE_SKILL_TOOL_MESSAGE : refusal.message,
+					);
 				}
 			},
-			delete: async (skillId) => await this.skillsApi.delete(user, skillId, 'assistant'),
+			delete: async (skillId) => await this.skillService.delete(user, skillId, 'assistant'),
 		};
 	}
 }

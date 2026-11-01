@@ -1,5 +1,10 @@
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import isEqual from 'lodash/isEqual';
+import { N8N_CHAT_INTEGRATION_TYPE, isCredentialAgentIntegration } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentVectorStoreProvider,
+	ListAgentsQueryDto,
+} from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -20,6 +25,7 @@ import {
 	type ProjectAgent,
 	type ProjectScoped,
 } from '../entities/agent.entity';
+import type { AgentDefinitionMetadata } from '../utils/agent-definition';
 
 export interface AgentListResult {
 	count: number;
@@ -35,6 +41,11 @@ const projectScope = 'project' as const;
 const projectScopeSql = "agent.scope = 'project'";
 /** The same filter for UPDATE builders, which have no `agent` alias. */
 const projectScopeUpdateSql = "scope = 'project'";
+
+export interface PublishedAgentVectorStores {
+	agentId: string;
+	vectorStoreProviders: AgentVectorStoreProvider[];
+}
 
 /** In-memory twin of `AgentRepository.publishedN8nChatSql`: the published integrations carry n8n Chat. */
 export function hasN8nChatChannel(integrations: Array<{ type: string }> | undefined): boolean {
@@ -72,8 +83,29 @@ export class AgentRepository extends BaseRepository<Agent> {
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
 	}
 
-	async hasRevision(id: string, revision: number): Promise<boolean> {
-		return await this.existsBy({ id, revision });
+	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
+		const manager = this.managerFor(ctx);
+		const agent = await manager.findOne(Agent, {
+			where: { id, scope: projectScope },
+			...(this.manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+
+		if (agent && !agent.versionId) {
+			agent.versionId = randomUUID();
+			await manager.update(
+				Agent,
+				{ id },
+				{ versionId: agent.versionId, updatedAt: agent.updatedAt },
+			);
+		}
+
+		return agent;
+	}
+
+	async hasRevision(id: string, revision: number, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(Agent, { id, revision });
 	}
 
 	async findByProjectId(projectId: string): Promise<ProjectAgent[]> {
@@ -179,7 +211,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		if (options.query) {
-			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${options.query}%` });
+			// `%` and `_` in the search match themselves, as in the skill search.
+			query.andWhere(`LOWER(agent.name) LIKE :query ${LIKE_ESCAPE_CLAUSE}`, {
+				query: `%${escapeLike(options.query.toLowerCase())}%`,
+			});
 		}
 		if (options.publishedOnly) {
 			query.andWhere('agent.activeVersionId IS NOT NULL');
@@ -456,9 +491,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 	 * for callers whose access check does not hinge on a specific project (e.g.
 	 * users with global agent scopes). Returns no instance agent.
 	 */
-	async findById(id: string): Promise<ProjectAgent | null> {
+	async findById(id: string, ctx: OperationContext = {}): Promise<ProjectAgent | null> {
 		return projectAgentOrNull(
-			await this.findOne({
+			await this.managerFor(ctx).findOne(Agent, {
 				where: { id, scope: projectScope },
 				relations: { activeVersion: true },
 			}),
@@ -585,7 +620,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
 		if (agentIds.length === 0) return;
-		await this.update({ id: In(agentIds), scope: projectScope }, { availableInMCP });
+		await this.update(
+			{ id: In(agentIds), scope: projectScope },
+			{ availableInMCP, revision: () => 'revision + 1' },
+		);
 	}
 
 	/**
@@ -620,17 +658,25 @@ export class AgentRepository extends BaseRepository<Agent> {
 		integrations: AgentIntegrationConfig[],
 		expected: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		versionId: string | null,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await this.update(
-			{
-				id,
-				scope: projectScope,
-				revision: expected.revision,
-				versionId: expected.versionId ?? IsNull(),
-				activeVersionId: expected.activeVersionId ?? IsNull(),
-			},
-			{ integrations, versionId, revision: () => 'revision + 1' },
-		);
+		const result = await this.managerFor(ctx)
+			.getRepository(Agent)
+			.update(
+				{
+					id,
+					scope: projectScope,
+					revision: expected.revision,
+					versionId: expected.versionId ?? IsNull(),
+					activeVersionId: expected.activeVersionId ?? IsNull(),
+				},
+				{
+					integrations,
+					versionId,
+					revision: () => 'revision + 1',
+					publicationRevision: () => '"publicationRevision" + 1',
+				},
+			);
 
 		return (result.affected ?? 0) > 0;
 	}
@@ -749,46 +795,48 @@ export class AgentRepository extends BaseRepository<Agent> {
 			);
 	}
 
-	/**
-	 * Atomically advances publication state only when the row's `revision` still
-	 * matches the value the caller observed at load — the optimistic revision
-	 * fence for publish/unpublish. Writes only the publication-owned columns
-	 * (`activeVersionId`, `versionId`) and bumps `revision`, so a concurrent
-	 * draft edit (autosave) that bumped `revision` in between makes this affect
-	 * zero rows instead of clobbering the newer draft. Returns whether this
-	 * caller won the fence.
-	 */
+	/** Draft writes do not conflict with publication of a fixed saved version. */
 	async setActiveVersionFenced(
 		id: string,
-		expectedRevision: number,
-		next: { activeVersionId: string | null; versionId: string },
+		publicationRevision: number,
+		activeVersionId: string | null,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
 		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
-			.set({
-				activeVersionId: next.activeVersionId,
-				versionId: next.versionId,
-				revision: () => 'revision + 1',
+			.set({ activeVersionId, publicationRevision: () => '"publicationRevision" + 1' })
+			.where('id = :id AND "publicationRevision" = :publicationRevision', {
+				id,
+				publicationRevision,
 			})
-			.where('id = :id AND revision = :expected', { id, expected: expectedRevision })
 			.andWhere(projectScopeUpdateSql)
 			.execute();
 		return (result.affected ?? 0) > 0;
 	}
 
 	/**
-	 * Persists a draft edit behind the same optimistic revision fence as
-	 * publish/unpublish. Writes only the draft-owned columns and bumps
+	 * Persists a draft edit behind its own optimistic revision fence. Writes only the draft-owned columns and bumps
 	 * `revision` in SQL, so it can neither clobber `activeVersionId` written by
 	 * a concurrent publish nor mask that publish by writing a stale in-memory
 	 * revision over the row. On a win the in-memory entity's `revision` and
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, ctx: OperationContext = {}): Promise<boolean> {
+	async saveDraftFenced(
+		agent: Agent,
+		ctx: OperationContext = {},
+		metadata: AgentDefinitionMetadata = {},
+	): Promise<boolean> {
 		const expectedRevision = agent.revision;
+		const previous = await this.managerFor(ctx).findOne(Agent, {
+			where: { id: agent.id },
+			select: ['integrations'],
+		});
+		const connectionsChanged = !isEqual(
+			(previous?.integrations ?? []).filter(isCredentialAgentIntegration),
+			(agent.integrations ?? []).filter(isCredentialAgentIntegration),
+		);
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
 		const updatedAt = new Date();
@@ -800,31 +848,28 @@ export class AgentRepository extends BaseRepository<Agent> {
 				schema: agent.schema,
 				integrations: agent.integrations,
 				tools: agent.tools,
-				skills: agent.skills,
 				versionId: agent.versionId,
+				...(metadata.availableInMCP !== undefined
+					? { availableInMCP: metadata.availableInMCP }
+					: {}),
 				updatedAt,
 				revision: () => 'revision + 1',
+				...(connectionsChanged ? { publicationRevision: () => '"publicationRevision" + 1' } : {}),
 			})
 			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
 			.andWhere(projectScopeUpdateSql)
 			.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}
 		return won;
 	}
 
-	/**
-	 * A skill that these agents follow got a new saved version. Give each agent that is in
-	 * sync with its published version a new draft version id, so it shows unpublished
-	 * changes. One conditional UPDATE per agent and no read first, so a concurrent draft
-	 * edit cannot make the skill save fail. `revision` does not move: a draft edit also
-	 * moves `versionId` away from `activeVersionId`, so neither write undoes the other.
-	 * Returns the agents it changed.
-	 */
-	async markDraftChangedIfInSync(
+	/** Give every changed follower a new draft ID, including already modified drafts. */
+	async markFollowerDraftsChanged(
 		agentIds: string[],
 		ctx: OperationContext = {},
 	): Promise<string[]> {
@@ -833,65 +878,13 @@ export class AgentRepository extends BaseRepository<Agent> {
 			const result = await this.managerFor(ctx)
 				.createQueryBuilder()
 				.update(Agent)
-				.set({ versionId: randomUUID() })
+				.set({ versionId: randomUUID(), revision: () => 'revision + 1' })
 				.where('id = :id', { id })
-				.andWhere('"versionId" = "activeVersionId"')
 				.andWhere(projectScopeUpdateSql)
 				.execute();
 			if ((result.affected ?? 0) > 0) changed.push(id);
 		}
 		return changed;
-	}
-
-	/**
-	 * One page of agent keys, oldest first, for the startup skill copy. Pages by the last
-	 * row seen, so an agent deleted meanwhile cannot shift later agents past the next page.
-	 */
-	async findPageForSkillCopy(
-		after: Pick<Agent, 'createdAt' | 'id'> | null,
-		take: number,
-		ctx: OperationContext = {},
-	): Promise<Array<Pick<Agent, 'id' | 'createdAt'>>> {
-		const query = this.managerFor(ctx)
-			.createQueryBuilder(Agent, 'agent')
-			.select(['agent.id', 'agent.createdAt'])
-			.orderBy('agent.createdAt', 'ASC')
-			.addOrderBy('agent.id', 'ASC')
-			.limit(take);
-		if (after) {
-			query.where(
-				'(agent.createdAt > :createdAt OR (agent.createdAt = :createdAt AND agent.id > :id))',
-				{
-					createdAt: after.createdAt,
-					id: after.id,
-				},
-			);
-		}
-		return await query.getMany();
-	}
-
-	/** The inline skill columns of one agent, for the startup skill copy. */
-	async findForSkillCopy(
-		agentId: string,
-		ctx: OperationContext = {},
-	): Promise<Pick<Agent, 'id' | 'schema' | 'skills'> | null> {
-		return await this.managerFor(ctx).findOne(Agent, {
-			select: ['id', 'schema', 'skills'],
-			where: { id: agentId },
-		});
-	}
-
-	/**
-	 * Holds the agent row until the transaction ends, so a draft write to the agent waits
-	 * for the startup skill copy of it. SQLite allows one write transaction at a time.
-	 */
-	async lockForSkillCopy(agentId: string, ctx: OperationContext): Promise<void> {
-		if (this.manager.connection.options.type !== 'postgres') return;
-		await this.managerFor(ctx).find(Agent, {
-			select: ['id'],
-			where: { id: agentId },
-			lock: { mode: 'pessimistic_write' },
-		});
 	}
 
 	/** The project of each agent, to send an update push to the right project. */
@@ -912,27 +905,6 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return agents.filter(isProjectAgent);
 	}
 
-	/**
-	 * Write the `schema` column of a draft. Write `updatedAt` too, with the value
-	 * from the fenced save: without it, TypeORM sets `CURRENT_TIMESTAMP`. This
-	 * write does not check `revision`: call it only in the same transaction as a
-	 * won `saveDraftFenced`.
-	 */
-	async updateDraftSkills(
-		agent: Pick<Agent, 'id' | 'schema' | 'skills' | 'updatedAt'>,
-		ctx: OperationContext,
-	): Promise<void> {
-		// Write `updatedAt` too, with the value of the fenced save: without it, TypeORM
-		// sets `CURRENT_TIMESTAMP`, which drops the milliseconds on SQLite.
-		await this.managerFor(ctx)
-			.createQueryBuilder()
-			.update(Agent)
-			.set({ schema: agent.schema, skills: agent.skills, updatedAt: agent.updatedAt })
-			.where('id = :id', { id: agent.id })
-			.andWhere(projectScopeUpdateSql)
-			.execute();
-	}
-
 	async updateDraftSchema(
 		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
 		ctx: OperationContext,
@@ -944,6 +916,36 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.where('id = :id', { id: agent.id })
 			.andWhere(projectScopeUpdateSql)
 			.execute();
+	}
+
+	/**
+	 * Returns up to `limit` published project agents, sorted by id.
+	 * For each agent, it lists the vector store providers of the published version. The draft is ignored.
+	 * To read the next page, pass the last `agentId` of this page as `afterId`.
+	 */
+	async findPublishedVectorStoreProvidersPage(
+		afterId: string | null,
+		limit: number,
+	): Promise<PublishedAgentVectorStores[]> {
+		const query = this.createQueryBuilder('agent')
+			.innerJoin('agent.activeVersion', 'activeVersion')
+			.select(['agent.id', 'activeVersion.versionId', 'activeVersion.schema'])
+			.where(projectScopeSql)
+			.orderBy('agent.id', 'ASC')
+			.limit(limit);
+
+		if (afterId) {
+			query.andWhere('agent.id > :afterId', { afterId });
+		}
+
+		const agents = await query.getMany();
+
+		return agents.map((agent) => ({
+			agentId: agent.id,
+			vectorStoreProviders: (agent.activeVersion?.schema?.vectorStores ?? []).map(
+				(vectorStore) => vectorStore.provider,
+			),
+		}));
 	}
 }
 

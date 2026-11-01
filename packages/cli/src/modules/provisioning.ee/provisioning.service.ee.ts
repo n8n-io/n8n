@@ -3,7 +3,7 @@ import {
 	ProvisioningConfigDto,
 	ProvisioningConfigPatchDto,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -18,7 +18,7 @@ import {
 	ProjectRelation,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
@@ -29,6 +29,7 @@ import { BadRequestError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
+import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { SsoAccessDeniedError } from './errors/sso-access-denied.error';
@@ -496,21 +497,17 @@ export class ProvisioningService {
 	 * Expression mapping is a single global toggle covering both scopes, so it only marks a scope
 	 * as managed when rules for that specific scope actually exist.
 	 */
-	/**
-	 * When the SCIM module is active, the IdP's SCIM push is the system of
-	 * record for the instance role, and login-time role mapping must not
-	 * overwrite it. This matches IdP vendor guidance: with both SSO and
-	 * SCIM active, SCIM owns attributes and SSO only authenticates.
-	 */
-	private isScimActive(): boolean {
-		return Container.get(ModuleRegistry).isActive('scim');
-	}
-
 	private async hasRoleMappingRulesOfType(type: 'instance' | 'project'): Promise<boolean> {
 		return (await this.roleMappingRuleRepository.count({ where: { type } })) > 0;
 	}
 
+	/**
+	 * The provisioning settings stay when an admin turns SAML or OIDC sign-in
+	 * off, but then no sign-in applies the mapped roles. So the manual role
+	 * lock applies only while SAML or OIDC sign-in is on.
+	 */
 	async isInstanceRoleManaged(): Promise<boolean> {
+		if (!isSamlOrOidcLoginEnabled()) return false;
 		if (await this.isInstanceRoleProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) &&
@@ -519,6 +516,7 @@ export class ProvisioningService {
 	}
 
 	async isProjectRoleManaged(): Promise<boolean> {
+		if (!isSamlOrOidcLoginEnabled()) return false;
 		if (await this.isProjectRolesProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) && (await this.hasRoleMappingRulesOfType('project'))
@@ -815,10 +813,6 @@ export class ProvisioningService {
 			this.hasRoleMappingRulesOfType('project'),
 		]);
 
-		// SCIM is the system of record for the instance role while it is active.
-		const skipInstanceRole = this.isScimActive();
-		const applyInstanceRole = instanceRolesManaged && !skipInstanceRole;
-
 		this.logger.debug('SSO role resolution complete', {
 			userId: user.id,
 			provider: context.$provider,
@@ -829,18 +823,11 @@ export class ProvisioningService {
 		});
 
 		await this.applyResolvedRoles(user, resolved, {
-			instanceRole: applyInstanceRole,
+			instanceRole: instanceRolesManaged,
 			projectRoles: projectRolesManaged,
 		});
 
-		const newInstanceRole = skipInstanceRole
-			? {
-					role: previousInstanceRole,
-					matchedRuleId: null,
-					expression: null,
-					isFallback: false,
-				}
-			: resolved.instanceRole;
+		const newInstanceRole = resolved.instanceRole;
 		// Report only what was actually applied, so an unmanaged scope doesn't emit phantom changes.
 		const projectRoles = projectRolesManaged
 			? [...resolved.projectRoles.values()].map((pr) => {
