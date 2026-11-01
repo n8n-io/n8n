@@ -28,6 +28,7 @@ export function useLocalBrowserCoachmark() {
 		() =>
 			hasOpenBrowser.value &&
 			settingsStore.isBrowserUseAvailable &&
+			settingsStore.browserStatusLoaded &&
 			settingsStore.browserUseConnectionStatus === 'none' &&
 			!isCalloutDismissed(LOCAL_BROWSER_COACHMARK_KEY),
 	);

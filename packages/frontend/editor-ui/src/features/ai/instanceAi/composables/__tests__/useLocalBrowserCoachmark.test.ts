@@ -8,6 +8,7 @@ import { LOCAL_BROWSER_COACHMARK_KEY, useLocalBrowserCoachmark } from '../useLoc
 const { settings, isCalloutDismissed, dismissCallout } = vi.hoisted(() => ({
 	settings: {
 		isBrowserUseAvailable: true,
+		browserStatusLoaded: true,
 		browserUseConnectionStatus: 'none' as ToolConnectionStatus,
 	},
 	isCalloutDismissed: vi.fn(),
@@ -57,6 +58,7 @@ describe('useLocalBrowserCoachmark', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		settings.isBrowserUseAvailable = true;
+		settings.browserStatusLoaded = true;
 		settings.browserUseConnectionStatus = 'none';
 		isCalloutDismissed.mockReturnValue(false);
 	});
@@ -91,6 +93,13 @@ describe('useLocalBrowserCoachmark', () => {
 
 	it('does not show when the user cannot connect a local browser', () => {
 		settings.isBrowserUseAvailable = false;
+		const { coachmark } = setup([makeTask()]);
+
+		expect(coachmark.shouldShowCoachmark.value).toBe(false);
+	});
+
+	it('does not show before the local browser status has loaded', () => {
+		settings.browserStatusLoaded = false;
 		const { coachmark } = setup([makeTask()]);
 
 		expect(coachmark.shouldShowCoachmark.value).toBe(false);
