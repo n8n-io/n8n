@@ -170,7 +170,8 @@ HorizontalScroll.args = { showSelect: false };
 HorizontalScroll.parameters = {
 	docs: {
 		description: {
-			story: 'The table is wider than its container. It scrolls sideways. No column stays in place.',
+			story:
+				'The table is wider than its container. It scrolls sideways. No column stays in place.',
 		},
 	},
 };
