@@ -4,7 +4,6 @@ import {
 	AGENT_VERSION_METADATA_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
-	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_PUBLISHED_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
@@ -92,16 +91,6 @@ export const AGENTS_MODALS: ModalDefinition[] = [
 				projectId: '',
 				agentId: '',
 				existingNames: [],
-				onConfirm: () => {},
-			},
-		},
-	},
-	{
-		key: AGENT_JSON_IMPORT_MODAL_KEY,
-		component: async () => await import('./components/AgentJsonImportModal.vue'),
-		initialState: {
-			open: false,
-			data: {
 				onConfirm: () => {},
 			},
 		},
