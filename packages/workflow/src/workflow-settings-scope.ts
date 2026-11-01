@@ -50,26 +50,20 @@ const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = 
 	.filter(isVersionedEntry)
 	.map(([key]) => key);
 
-export function pickVersionedSettings(
-	settings?: IWorkflowSettings | null,
-): VersionedWorkflowSettings | null {
-	if (!settings) return null;
-
+export function pickVersionedSettings(settings?: IWorkflowSettings): VersionedWorkflowSettings {
 	const result: VersionedWorkflowSettings = {};
-	let hasValue = false;
 	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) {
-		const value = settings[key];
+		const value = settings?.[key];
 		if (value === undefined || value === null) continue;
 		result[key] = value;
-		hasValue = true;
 	}
 
-	return hasValue ? result : null;
+	return result;
 }
 
 export function versionedSettingsEqual(
-	settingsA?: IWorkflowSettings | null,
-	settingsB?: IWorkflowSettings | null,
+	settingsA?: IWorkflowSettings,
+	settingsB?: IWorkflowSettings,
 ): boolean {
 	return isEqual(pickVersionedSettings(settingsA), pickVersionedSettings(settingsB));
 }
