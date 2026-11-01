@@ -1,11 +1,12 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, IBinaryData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
+import { gunzipSync } from 'node:zlib';
 
 import { Compression } from '../../Compression.node';
 import { boundedUntar } from '../../decompress/BoundedUntar';
 
-describe('Compression Node - Compress Operation (tar)', () => {
+describe('Compression Node - Compress Operation', () => {
 	let compression: Compression;
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	// the archive buffer handed to prepareBinaryData by the node
@@ -20,13 +21,17 @@ describe('Compression Node - Compress Operation (tar)', () => {
 		parameters: {},
 	};
 
-	const setParams = (outputFormat: string, binaryPropertyName = 'data') => {
+	const setParams = (
+		outputFormat: string,
+		binaryPropertyName = 'data',
+		fileName = 'archive.tar',
+	) => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 			const params: Record<string, string> = {
 				operation: 'compress',
 				binaryPropertyName,
 				outputFormat,
-				fileName: 'archive.tar',
+				fileName,
 				binaryPropertyOutput: 'data',
 			};
 			return params[paramName];
@@ -103,5 +108,31 @@ describe('Compression Node - Compress Operation (tar)', () => {
 
 		const extracted = await boundedUntar(outputArchive, 1024 * 1024, 100);
 		expect(Object.keys(extracted).sort()).toEqual(['a.txt', 'b.txt']);
+	});
+
+	describe('gzip file names', () => {
+		it.each([
+			['archive.gzip', 'archive.csv.gz'],
+			['archive.gz', 'archive.csv.gz'],
+			['archive', 'archive.csv.gz'],
+			['report.final.gzip', 'report.final.csv.gz'],
+			['archive.gz.backup', 'archive.gz.backup.csv.gz'],
+			['archive.gzip.backup', 'archive.gzip.backup.csv.gz'],
+			['archive.gz.gzip', 'archive.gz.csv.gz'],
+			['archive.gzip.gz', 'archive.gzip.csv.gz'],
+		])('should preserve the custom name %s as %s', async (fileName, expectedFileName) => {
+			setParams('gzip', 'data', fileName);
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue({
+				data: 'base64data',
+				mimeType: 'text/csv',
+				fileName: 'source.csv',
+				fileExtension: 'csv',
+			});
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.data?.fileName).toBe(expectedFileName);
+			expect(gunzipSync(outputArchive).toString()).toBe('hello');
+		});
 	});
 });
