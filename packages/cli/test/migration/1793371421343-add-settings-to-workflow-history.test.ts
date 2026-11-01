@@ -8,6 +8,7 @@ import {
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'AddSettingsToWorkflowHistory1793371421343';
@@ -74,14 +75,7 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 			{ versionId },
 		);
 
-		if (typeof row.settings === 'string') {
-			try {
-				return JSON.parse(row.settings);
-			} catch {
-				return null;
-			}
-		}
-		return row.settings;
+		return typeof row.settings === 'string' ? jsonParse<unknown>(row.settings) : row.settings;
 	}
 
 	async function publishedVersionId(): Promise<string | undefined> {
