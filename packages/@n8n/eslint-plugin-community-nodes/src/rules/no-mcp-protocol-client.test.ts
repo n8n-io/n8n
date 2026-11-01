@@ -27,9 +27,6 @@ describe.each([
 		);
 
 	it.each([
-		"jsonrpc: '2.0'",
-		"'jsonrpc': '2.0'",
-		"['jsonrpc']: '2.0'",
 		"method: 'tools/call'",
 		"method: 'tools/list'",
 		"method: 'initialize'",
@@ -47,20 +44,35 @@ describe.each([
 		]);
 	});
 
-	it.each(["jsonrpc: '2.0'", "method: 'tools/list'"])(
-		'reports protocolVersion before and after %s in the same file',
+	it.each([
+		"method: 'tools/list'",
+		"'Mcp-Session-Id': sessionId",
+		"'MCP-Protocol-Version': '2024-11-05'",
+	])('reports JSON-RPC and protocolVersion before and after %s in the same file', (property) => {
+		expect(
+			lint(`
+export const before = { jsonrpc: '2.0', protocolVersion: '2024-11-05' };
+export const transport = { ${property} };
+export const after = { ['jsonrpc']: '2.0', protocolVersion: '2024-11-05' };
+`),
+		).toEqual([
+			expect.objectContaining({ line: 2, message: mcpMessage }),
+			expect.objectContaining({ line: 2, message: mcpMessage }),
+			expect.objectContaining({ line: 3, message: mcpMessage }),
+			expect.objectContaining({ line: 4, message: mcpMessage }),
+			expect.objectContaining({ line: 4, message: mcpMessage }),
+		]);
+	});
+
+	it.each(["jsonrpc: '2.0'", "'jsonrpc': '2.0'", "['jsonrpc']: '2.0'"])(
+		'accepts non-MCP JSON-RPC requests with %s',
 		(property) => {
 			expect(
 				lint(`
-export const before = { protocolVersion: '2024-11-05' };
-export const transport = { ${property} };
-export const after = { protocolVersion: '2024-11-05' };
+export const request = { ${property}, id: 1, method: 'eth_blockNumber', params: [] };
+export const settings = { protocolVersion: '1.0' };
 `),
-			).toEqual([
-				expect.objectContaining({ line: 2, message: mcpMessage }),
-				expect.objectContaining({ line: 3, message: mcpMessage }),
-				expect.objectContaining({ line: 4, message: mcpMessage }),
-			]);
+			).toEqual([]);
 		},
 	);
 

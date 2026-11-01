@@ -12,14 +12,15 @@ the package is not currently eligible for verification.
 
 This rule checks all `.ts` files, including helpers. It reports these object properties:
 
-- `jsonrpc` with the string value `'2.0'`.
 - `method` with the string value `tools/call`, `tools/list`, `initialize`,
   `resources/list`, `resources/read`, `prompts/list`, `prompts/get`, or
   `notifications/initialized`.
 - The header keys `Mcp-Session-Id` and `MCP-Protocol-Version`. Header names are case-insensitive.
-- `protocolVersion` when the same file has a matching `jsonrpc` or `method` property.
+- `jsonrpc` with the string value `'2.0'` and `protocolVersion` when the same file has
+  a matching MCP method or header key.
 
 The rule does not match URLs, display text, option values, aliases, or comments.
+JSON-RPC requests without a matching MCP method or header key are allowed.
 A REST endpoint can use an `mcp.` hostname or an `/mcp` path.
 A vendor-side bridge that exposes only REST still needs manual review.
 
@@ -45,5 +46,12 @@ const request = {
   method: 'POST',
   url: 'https://mcp.example.com/v1/images',
   body: { imageUrl },
+};
+
+const jsonRpcRequest = {
+  jsonrpc: '2.0',
+  id: 1,
+  method: 'eth_blockNumber',
+  params: [],
 };
 ```

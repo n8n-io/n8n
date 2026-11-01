@@ -36,8 +36,8 @@ export const NoMcpProtocolClientRule = createRule({
 	create(context) {
 		if (!isFileType(context.filename, '.ts')) return {};
 
-		let hasProtocol = false;
-		const protocolVersions: TSESTree.Property[] = [];
+		let hasMcpProtocol = false;
+		const protocolProperties: TSESTree.Property[] = [];
 
 		return {
 			Property(node) {
@@ -45,24 +45,20 @@ export const NoMcpProtocolClientRule = createRule({
 
 				const key = getPropertyKeyName(node);
 				const value = getStringLiteralValue(node.value);
-				if (
-					(key === 'jsonrpc' && value === '2.0') ||
-					(key === 'method' && value !== null && MCP_METHODS.has(value))
-				) {
-					hasProtocol = true;
-					context.report({ node, messageId: 'mcpProtocol' });
-				} else if (key === 'protocolVersion') {
-					protocolVersions.push(node);
+				if ((key === 'jsonrpc' && value === '2.0') || key === 'protocolVersion') {
+					protocolProperties.push(node);
 				} else if (
+					(key === 'method' && value !== null && MCP_METHODS.has(value)) ||
 					key?.toLowerCase() === 'mcp-session-id' ||
 					key?.toLowerCase() === 'mcp-protocol-version'
 				) {
+					hasMcpProtocol = true;
 					context.report({ node, messageId: 'mcpProtocol' });
 				}
 			},
 			'Program:exit'() {
-				if (!hasProtocol) return;
-				for (const node of protocolVersions) {
+				if (!hasMcpProtocol) return;
+				for (const node of protocolProperties) {
 					context.report({ node, messageId: 'mcpProtocol' });
 				}
 			},
