@@ -35,10 +35,6 @@ export class WorkflowHistory extends WithTimestamps {
 	@Column({ default: false })
 	autosaved: boolean;
 
-	/**
-	 * The version-scoped workflow settings of this version, such as the engine.
-	 * An empty object when the version has none, for example on versions saved before this column existed.
-	 */
 	@JsonColumn({ default: '{}' })
 	settings: VersionedWorkflowSettings;
 
