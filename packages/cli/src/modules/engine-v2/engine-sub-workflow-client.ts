@@ -57,7 +57,10 @@ export class EngineSubWorkflowClient {
 			const message =
 				messageOf(response.body) ??
 				`Control plane refused to resolve sub-workflow "${request.workflowId}" with ${response.statusCode}`;
-			const callerCanFix = response.statusCode < 500 && response.statusCode !== 401;
+			// Only a 4xx names a problem the caller can fix, and a 401 names a
+			// disagreement between the planes rather than with the caller.
+			const callerCanFix =
+				response.statusCode >= 400 && response.statusCode < 500 && response.statusCode !== 401;
 			throw callerCanFix ? new UserError(message) : new OperationalError(message);
 		}
 

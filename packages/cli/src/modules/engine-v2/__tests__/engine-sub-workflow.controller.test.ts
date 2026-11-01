@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import type {
 	ResolveSubWorkflowRequest,
@@ -78,5 +78,15 @@ describe('EngineSubWorkflowController', () => {
 			BadRequestError,
 		);
 		expect(service.resolve).not.toHaveBeenCalled();
+	});
+
+	it('passes a service error on without writing a response', async () => {
+		const error = new ForbiddenError('The sub-workflow limits which workflows can call it');
+		vi.mocked(service.resolve).mockRejectedValue(error);
+		const res = newResponse();
+
+		await expect(controller.resolveSubWorkflow(newRequest(), res)).rejects.toBe(error);
+		expect(res.status).not.toHaveBeenCalled();
+		expect(res.json).not.toHaveBeenCalled();
 	});
 });

@@ -102,6 +102,12 @@ describe('EngineSubWorkflowClient', () => {
 		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
 	});
 
+	it('reports a redirect as operational, since the control plane is misconfigured', async () => {
+		respondWith(302, {});
+
+		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
+	});
+
 	it('rejects a malformed 200 body', async () => {
 		respondWith(200, { workflowId: 'wf-sub' });
 
