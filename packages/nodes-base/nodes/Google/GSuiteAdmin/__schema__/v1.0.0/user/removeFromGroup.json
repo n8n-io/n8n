@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "removed": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}
