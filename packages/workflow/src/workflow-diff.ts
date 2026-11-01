@@ -300,7 +300,6 @@ function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
 	return next.authors !== prev.authors;
 }
 
-/** Keeps a version that runs with other version-scoped settings, such as another engine. */
 function skipDifferentVersionedSettings(
 	prev: Pick<WorkflowDiffBase, 'settings'>,
 	next: Pick<WorkflowDiffBase, 'settings'>,

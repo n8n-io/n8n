@@ -1417,12 +1417,18 @@ describe('GET /workflows/:id/history', () => {
 
 	test('should not return the version-scoped settings', async () => {
 		const workflow = await createWorkflow({}, owner);
-		await createWorkflowHistoryItem(workflow.id, { settings: { engineType: 'v2' } });
+		const version = await createWorkflowHistoryItem(workflow.id, {
+			settings: { engineType: 'v2' },
+		});
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data[0]).not.toHaveProperty('settings');
+		const returned = response.body.data.find(
+			(item: { versionId: string }) => item.versionId === version.versionId,
+		);
+		expect(returned).toBeDefined();
+		expect(returned).not.toHaveProperty('settings');
 	});
 
 	test('should paginate with limit and cursor', async () => {
