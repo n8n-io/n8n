@@ -610,7 +610,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				user,
-				{ ...prepared.changes, settings: prepared.workflow.settings },
+				{ ...prepared.changes },
 				original.id,
 				false,
 				'n8n-ai',
