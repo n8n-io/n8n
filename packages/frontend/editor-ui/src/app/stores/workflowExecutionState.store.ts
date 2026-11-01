@@ -7,6 +7,8 @@ import {
 	readonly,
 	ref,
 	shallowReactive,
+	shallowReadonly,
+	shallowRef,
 	type ComputedRef,
 } from 'vue';
 import { createEventHook } from '@vueuse/core';
@@ -133,7 +135,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * an execution id. `promotePendingExecution(executionId)` migrates this
 		 * payload into a real execution-data store keyed by the new id.
 		 */
-		const pendingExecution = ref<IExecutionResponse | null>(null);
+		const pendingExecution = shallowRef<IExecutionResponse | null>(null);
 		const executionWaitingForWebhook = ref(false);
 		const isInDebugMode = ref(false);
 		const chatMessages = ref<string[]>([]);
@@ -301,9 +303,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 *    -> the displayed executionData store (preserved after active is cleared)
 		 *  - otherwise null
 		 *
-		 * Typed as a mutable `IExecutionResponse` for consumers (the executionData
-		 * store exposes a readonly ref); treat it as read-only — all writes go
-		 * through the store actions.
+		 * Typed as a mutable `IExecutionResponse` for consumers; treat it as
+		 * read-only — all writes go through the store actions.
 		 */
 		const activeExecution = computed<IExecutionResponse | null>(() => {
 			if (activeExecutionId.value === null) return pendingExecution.value;
@@ -314,12 +315,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 						? displayedExecutionId.value
 						: undefined;
 			if (executionId === undefined) return null;
-			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
-			// Track the timestamp so in-place mutations that preserve the execution
-			// object reference still propagate to consumers (same defensive pattern
-			// as `activeExecutionRunData`).
-			void executionDataStore.executionResultDataLastUpdate;
-			return executionDataStore.execution as IExecutionResponse | null;
+			// Every executionData store mutation replaces the execution object, so
+			// its identity is the change signal.
+			return useExecutionDataStore(createExecutionDataId(executionId)).execution;
 		});
 
 		/**
@@ -376,10 +374,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				return null;
 			}
 
+			// Every executionData store mutation that changes runData replaces the
+			// runData object, so its identity is the change signal.
 			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
-			// Track the timestamp so in-place mutations to runData (which keep
-			// the runData object reference) still propagate.
-			void executionDataStore.executionResultDataLastUpdate;
 
 			return dropRunDataOfReplacedNodes(
 				executionDataStore.executionRunData,
@@ -496,10 +493,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		const lastSuccessfulExecution = computed<IExecutionResponse | null>(() => {
 			const lid = lastSuccessfulExecutionId.value;
 			if (!lid) return null;
-			// Mutable-typed for consumers (the executionData store exposes a
-			// readonly ref); treat it as read-only.
-			return useExecutionDataStore(createExecutionDataId(lid))
-				.execution as IExecutionResponse | null;
+			// Mutable-typed for consumers; treat it as read-only.
+			return useExecutionDataStore(createExecutionDataId(lid)).execution;
 		});
 
 		const isWorkflowRunning = computed(() => {
@@ -721,6 +716,21 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				stoppedAt: stopData.stoppedAt,
 			};
 			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
+		}
+
+		/**
+		 * Copies the IN_PROGRESS store's execution into the pending scaffold.
+		 * Writers to the IN_PROGRESS store call this while a run is pending, so
+		 * `activeExecution` and `promotePendingExecution` see their change.
+		 * No-op when there is no pending scaffold.
+		 */
+		function syncPendingExecution() {
+			if (!pendingExecution.value) return;
+			setPendingExecution(
+				useExecutionDataStore(
+					createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+				).getExecutionSnapshot(),
+			);
 		}
 
 		/**
@@ -947,6 +957,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 					nameData.new,
 				);
 			}
+			if (activeExecutionId.value === null) {
+				syncPendingExecution();
+			}
 
 			renameExecutionStateNode(nameData.old, nameData.new);
 
@@ -1023,6 +1036,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				);
 				executionDataStore.clearExecutionStartedData();
 				executionDataStore.markAsStopped(stopData);
+				syncPendingExecution();
 				if (stopData) {
 					applyStopDataToPendingExecution(stopData);
 				}
@@ -1047,7 +1061,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			activeExecutionId: readonly(activeExecutionId),
 			displayedExecutionId: readonly(displayedExecutionId),
 			previousExecutionId: readonly(previousExecutionId),
-			pendingExecution: readonly(pendingExecution),
+			pendingExecution: shallowReadonly(pendingExecution),
 			executionWaitingForWebhook: readonly(executionWaitingForWebhook),
 			isInDebugMode: readonly(isInDebugMode),
 			chatMessages: readonly(chatMessages),
