@@ -9,6 +9,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import WorkflowPublishTimelineContent from './WorkflowPublishTimelineContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 
 const workflowId = 'wf-1';
@@ -22,6 +23,7 @@ const buildEvent = (overrides: Partial<PublishTimelineEvent> = {}): PublishTimel
 	userId: null,
 	user: null,
 	versionName: null,
+	settings: null,
 	...overrides,
 });
 
@@ -74,6 +76,28 @@ describe('WorkflowPublishTimelineContent', () => {
 		]);
 
 		expect(await findByText('Published Release 1')).toBeInTheDocument();
+	});
+
+	it('should show the engine of a published version with the engine-v2 module', async () => {
+		const { findByText, getAllByTestId } = renderWithEvents([
+			buildEvent({ id: 2, event: 'activated', versionId: null, versionName: null }),
+			buildEvent({
+				id: 1,
+				event: 'activated',
+				versionId: 'v1',
+				versionName: 'Release 1',
+				settings: { engineType: 'v2' },
+			}),
+		]);
+		mockedStore(useSettingsStore).isModuleActive.mockImplementation(
+			(name: string) => name === 'engine-v2',
+		);
+
+		await findByText('Published Release 1');
+		// The deleted version has no badge: its engine is unknown.
+		const badges = getAllByTestId('workflow-history-engine-badge');
+		expect(badges).toHaveLength(1);
+		expect(badges[0]).toHaveTextContent('Engine v2');
 	});
 
 	it('should render a deactivated entry', async () => {

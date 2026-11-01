@@ -5876,6 +5876,7 @@
 	"workflowReviews.editorBanner.changesRequested.support": "Make your edits on this canvas, then submit the latest changes back to the review.",
 	"workflowHistory.content.actions": "Actions",
 	"workflowHistory.item.id": "ID: {id}",
+	"workflowHistory.item.engine": "Engine {engine}",
 	"workflowHistory.item.createdAt": "{date} at {time}",
 	"workflowHistory.item.savedAtLabel": "Saved:",
 	"workflowHistory.item.publishedAtLabel": "Last published by",
