@@ -110,6 +110,14 @@ export const properties: INodeProperties[] = [
 				default: '',
 				description: 'Sender name or email to filter by',
 			},
+			{
+				displayName: 'Sender Domain',
+				name: 'senderDomain',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. example.com',
+				description: 'Domain of the sender to filter by. Subdomains of the domain also match.',
+			},
 		],
 	},
 	{
