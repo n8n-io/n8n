@@ -30,7 +30,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	/** The folded sources on the page, each one row in place of its skills. */
 	const collapsedSources = ref<SkillListCollapsedSource[]>([]);
 	const sources = ref<SkillSourceListItem[]>([]);
-	/** The skills that each source gained since the user last saw its import picker, by source id. */
+	/** The skills that each source gained since the user last imported from it, by source id. */
 	const newSkillCounts = ref<Record<string, number>>({});
 	const count = ref(0);
 	const loading = ref(false);

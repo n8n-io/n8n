@@ -634,7 +634,7 @@ describe('SkillRepository', () => {
 			expect(ids(byDefault)).toEqual([second, first]);
 		});
 
-		it('groups by source: unsynced skills first, then each source by repository', async () => {
+		it('sizes the source groups by repository, then the unsynced skills, and reads each group', async () => {
 			const manager = Container.get(DataSource).manager;
 			const source = async (identityKey: string) => {
 				const id = randomUUID();
@@ -670,20 +670,16 @@ describe('SkillRepository', () => {
 			await updateSkillRow(alphaNew, { updatedAt: new Date('2026-02-01T00:00:00.000Z') });
 			const visibility = { projectIds: [], agentIds: [] };
 
-			const page = await skills.findVisiblePage(visibility, { skip: 0, groupBySource: true });
-			const second = await skills.findVisiblePage(visibility, {
-				skip: 1,
-				take: 2,
-				groupBySource: true,
-			});
+			const alphaPage = await skills.findVisiblePage(visibility, { skip: 0, sourceId: alpha });
 
-			expect(ids(page)).toEqual([plain, alphaNew, alphaOld, zebraSkill]);
-			expect(ids(second)).toEqual([alphaNew, alphaOld]);
-			expect(second.count).toBe(4);
+			expect(ids(alphaPage)).toEqual([alphaNew, alphaOld]);
+			expect(
+				ids(await skills.findVisiblePage(visibility, { skip: 1, take: 1, sourceId: alpha })),
+			).toEqual([alphaOld]);
 			expect(await skills.findSourceGroupSizes(visibility, {})).toEqual([
-				{ sourceId: null, count: 1 },
 				{ sourceId: alpha, count: 2 },
 				{ sourceId: zebra, count: 1 },
+				{ sourceId: null, count: 1 },
 			]);
 			expect(
 				await skills.findSourceGroupSizes(visibility, { search: plainName.toLowerCase() }),

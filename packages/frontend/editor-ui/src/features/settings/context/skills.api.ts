@@ -41,8 +41,10 @@ export type SkillListQuery = {
 	sortBy?: SkillSortOption;
 	/** `source` sorts the rows by source, so the table can group them. */
 	groupBy?: 'source';
-	/** Comma-separated ids of the folded sources. Each one counts as one row of the page. */
-	collapsedSourceIds?: string;
+	/** Comma-separated ids of the sources that the user opened. Every other source is folded. */
+	expandedSourceIds?: string;
+	/** Comma-separated ids of the sources that come first, such as the sources with new skills. */
+	pinnedSourceIds?: string;
 };
 
 export async function getSkills(
@@ -206,7 +208,7 @@ export async function discoverMoreSkills(
 }
 
 /** Deletes a source with no skills left. */
-/** Counts the skills that a source gained since the user last saw its import picker. */
+/** Counts the importable skills that a source gained since the user last imported from it. */
 export async function checkSkillSource(
 	context: IRestApiContext,
 	sourceId: string,

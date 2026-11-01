@@ -17,7 +17,7 @@
 | locator | json |  | false |  |  | Where the skills are, as the client parsed it from the link. Opaque to the core |
 | probeCursor | text |  | true |  |  | Opaque value of the last change probe, e.g. a commit SHA. NULL before the first check |
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) | The scope: a team or personal project. NULL = Global |
-| seenRefKeys | json |  | true |  |  | Keys of the remote refs that the user last saw in the import picker. Other refs count as new skills |
+| seenRefKeys | json |  | true |  |  | Keys of the remote refs in the source when the user last imported from it. Other refs count as new skills |
 | status | varchar(32) | 'connected'::character varying | false |  |  | Health of the source, set by the last check |
 | type | varchar(16) |  | false |  |  | Source type, "github". Selects the client |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |

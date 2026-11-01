@@ -8,7 +8,7 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['success', 'warning', 'danger'],
+			options: ['success', 'warning', 'danger', 'primary'],
 		},
 		pulse: {
 			control: 'boolean',
@@ -52,6 +52,9 @@ export const Variants = {
 			</div>
 			<div style="display: flex; align-items: center; gap: 8px;">
 				<N8nStatusDot variant="danger" /> Danger
+			</div>
+			<div style="display: flex; align-items: center; gap: 8px;">
+				<N8nStatusDot variant="primary" /> Primary
 			</div>
 		</div>
 		`,

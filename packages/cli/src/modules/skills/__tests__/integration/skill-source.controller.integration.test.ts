@@ -18,6 +18,7 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
+import { randomUUID } from 'node:crypto';
 import type { MockInstance } from 'vitest';
 
 import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from '../../testing';
@@ -29,6 +30,8 @@ import { GitHubSkillSourceClient } from '../../sources/github/github-skill-sourc
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { PostHogClient } from '@/posthog';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
@@ -849,6 +852,81 @@ describe('SkillSourceController', () => {
 		});
 	});
 
+	describe('delete a source', () => {
+		const sourcesOf = async (agent: SuperAgentTest) =>
+			((await agent.get('/skill-sources').expect(200)).body as Body<SkillSourceListItem[]>).data;
+		async function connectTwo() {
+			const { data } = await discover(owner, { url: REPO, scope: 'instance' });
+			return (
+				await connect(owner, {
+					url: REPO,
+					scope: 'instance',
+					skillKeys: keysOf(data, ['pdf', 'docx']),
+				})
+			).data;
+		}
+		/** An agent draft that uses the skill, as the agent builder saves it. */
+		async function attachToAgent(skillId: string) {
+			const agents = Container.get(AgentRepository);
+			const agent = await agents.save(
+				agents.create({
+					id: randomUUID(),
+					name: 'Support bot',
+					projectId: personal.id,
+					integrations: [],
+					tools: {},
+					versionId: randomUUID(),
+				}),
+			);
+			await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
+			return agent;
+		}
+
+		afterEach(async () => {
+			await Container.get(AgentRepository).delete({});
+		});
+
+		it('offers the delete with the count of skills that agents use', async () => {
+			const { sourceId, imported } = await connectTwo();
+			expect(await sourcesOf(owner)).toEqual([
+				expect.objectContaining({ id: sourceId, skillCount: 2, canDelete: true, skillsInUse: 0 }),
+			]);
+
+			await attachToAgent(imported[0].skillId);
+
+			expect(await sourcesOf(owner)).toEqual([
+				expect.objectContaining({ id: sourceId, canDelete: true, skillsInUse: 1 }),
+			]);
+			expect(await sourcesOf(member)).toEqual([expect.objectContaining({ canDelete: false })]);
+		});
+
+		it('deletes the source and its skills when no agent uses them', async () => {
+			const { sourceId, imported } = await connectTwo();
+
+			await owner.delete(`/skill-sources/${sourceId}`).expect(200);
+
+			expect(await sourcesOf(owner)).toEqual([]);
+			for (const { skillId } of imported) expect(await findSkill(skillId)).toBeNull();
+		});
+
+		it('deletes nothing when an agent uses one of the skills', async () => {
+			const { sourceId, imported } = await connectTwo();
+			await attachToAgent(imported[1].skillId);
+
+			await owner.delete(`/skill-sources/${sourceId}`).expect(409);
+
+			expect(await sourcesOf(owner)).toHaveLength(1);
+			for (const { skillId } of imported) expect(await findSkill(skillId)).not.toBeNull();
+		});
+
+		it('refuses a user who cannot delete in the scope of the source', async () => {
+			const { sourceId } = await connectTwo();
+
+			await member.delete(`/skill-sources/${sourceId}`).expect(403);
+			expect(await sourcesOf(owner)).toHaveLength(1);
+		});
+	});
+
 	describe('new skills', () => {
 		const check = async (agent: SuperAgentTest, id: string, status = 200) =>
 			(await agent.post(`/skill-sources/${id}/check`).send().expect(status))
@@ -877,15 +955,37 @@ describe('SkillSourceController', () => {
 			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 0 });
 		});
 
-		it('counts a skill that the source gained, until the user opens Add more skills', async () => {
+		it('counts a skill that the source gained, until the user imports from the source', async () => {
 			const { sourceId } = await connectPdf();
 			github.push('acme/skills', { ...FILES, 'skills/xlsx/SKILL.md': skillMd('xlsx') });
 			await ageListing(sourceId);
 
 			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 1 });
 
-			await more(owner, sourceId);
+			// Opening Add more skills and closing it keeps the count.
+			const { body } = await more(owner, sourceId);
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 1 });
+
+			const { skills } = (body as Body<SkillSourceMoreDiscovery>).data;
+			const docx = skills.find((skill) => skill.name === 'docx')!;
+			await owner
+				.post(`/skill-sources/${sourceId}/skills`)
+				.send({ skillKeys: [docx.key] })
+				.expect(200);
 			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 0 });
+		});
+
+		it('does not count a new skill that n8n blocks or cannot read', async () => {
+			const { sourceId } = await connectPdf();
+			github.push('acme/skills', {
+				...FILES,
+				'skills/xlsx/SKILL.md': skillMd('xlsx'),
+				'skills/huge/SKILL.md': skillMd('huge', 'x'.repeat(2000)),
+				'skills/unreadable/SKILL.md': 'no frontmatter here\n',
+			});
+			await ageListing(sourceId);
+
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 1 });
 		});
 
 		it('lists the source again only after the check interval', async () => {

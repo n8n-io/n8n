@@ -1095,6 +1095,7 @@ describe('SettingsSkillsView', () => {
 				skillCount: 1,
 				canAddSkills: true,
 				canDelete: false,
+				skillsInUse: 0,
 				...overrides,
 			};
 		}
@@ -1119,6 +1120,8 @@ describe('SettingsSkillsView', () => {
 			);
 			// Only a source with no skills shows a count.
 			expect(view.queryByTestId('skill-group-count')).not.toBeInTheDocument();
+			// A source starts folded, so the user opens it to see its skills.
+			await userEvent.click(view.getByTestId('skill-group-toggle'));
 			// A synced skill has the scope of its source, so only its group row shows the scope.
 			const syncedRow = view.getByText('synced-skill').closest('tr')!;
 			const manualRow = view.getByText('manual-skill').closest('tr')!;
@@ -1141,7 +1144,7 @@ describe('SettingsSkillsView', () => {
 			await waitFor(() => expect(skillsStore.fetchSources).toHaveBeenCalled());
 		});
 
-		it('lists a source with no skills after the last row, and deletes it after a confirm', async () => {
+		it('lists a source with no skills before the first row, and deletes it after a confirm', async () => {
 			enableSkillSync();
 			const empty = source({ id: 'src-2', label: 'acme/old', skillCount: 0, canDelete: true });
 			skillsStore.fetchSources.mockImplementation(async () => {
@@ -1166,7 +1169,52 @@ describe('SettingsSkillsView', () => {
 			expect(confirmMock).toHaveBeenCalled();
 		});
 
-		it('folds a source from the chevron or the whole row, without a count', async () => {
+		it('deletes a source with its skills after a confirm that names them, and reloads', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source({ skillCount: 2, canDelete: true })];
+				return skillsStore.sources;
+			});
+			// The server folds the source into one row.
+			skillsStore.collapsedSources = [{ sourceId: 'src-1', index: 0, skillCount: 2 }];
+			skillsStore.count = 1;
+			skillsStore.deleteSource.mockResolvedValue(undefined);
+			const view = renderWithDialogStub();
+			const menu = await view.findByTestId('skill-source-menu-src-1');
+			skillsStore.fetchSkills.mockClear();
+
+			await userEvent.click(menu.querySelector('button')!);
+			await userEvent.click(await view.findByText('Delete source'));
+
+			expect(confirmMock).toHaveBeenCalledWith(
+				'Deleting acme/skills also deletes its 2 skills from n8n. No agent uses them. You can connect the repository again at any time.',
+				'Delete acme/skills?',
+				expect.anything(),
+			);
+			await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1'));
+			await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+		});
+
+		it('disables the delete while an agent uses a skill of the source', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source({ skillCount: 2, canDelete: true, skillsInUse: 1 })];
+				return skillsStore.sources;
+			});
+			// The server folds the source into one row.
+			skillsStore.collapsedSources = [{ sourceId: 'src-1', index: 0, skillCount: 2 }];
+			skillsStore.count = 1;
+			const view = renderWithDialogStub();
+			const menu = await view.findByTestId('skill-source-menu-src-1');
+
+			await userEvent.click(menu.querySelector('button')!);
+			await userEvent.click(await view.findByText('Delete source'));
+
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+		});
+
+		it('starts each source folded, and opens it from the chevron or the whole row', async () => {
 			enableSkillSync();
 			skillsStore.fetchSources.mockImplementation(async () => {
 				skillsStore.sources = [source({ skillCount: 1 })];
@@ -1179,25 +1227,25 @@ describe('SettingsSkillsView', () => {
 			const view = renderWithDialogStub();
 
 			const toggle = await view.findByTestId('skill-group-toggle');
-			expect(toggle).toHaveAttribute('aria-expanded', 'true');
-			await userEvent.click(toggle);
-
-			expect(toggle).toHaveAttribute('aria-expanded', 'false');
-			expect(view.queryByTestId('skill-group-count')).not.toBeInTheDocument();
+			await waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'false'));
 			expect(view.queryByText('synced-skill')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skill-group-count')).not.toBeInTheDocument();
 
-			// The whole group row unfolds the source too, not only the chevron.
-			await userEvent.click(view.getByTestId('skill-group-title'));
+			await userEvent.click(toggle);
 			expect(toggle).toHaveAttribute('aria-expanded', 'true');
 			expect(view.getByText('synced-skill')).toBeInTheDocument();
-			expect(view.queryByTestId('skill-group-count')).not.toBeInTheDocument();
 
-			// The source menu opens without folding the source.
+			// The whole group row folds the source too, not only the chevron.
+			await userEvent.click(view.getByTestId('skill-group-title'));
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			expect(view.queryByText('synced-skill')).not.toBeInTheDocument();
+
+			// The source menu opens without opening the source.
 			await userEvent.click(view.getByTestId('skill-source-menu-src-1').querySelector('button')!);
-			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
 		});
 
-		it('asks the server to count a folded source as one row', async () => {
+		it('asks the server to open only the sources that the user opened', async () => {
 			enableSkillSync();
 			skillsStore.fetchSources.mockImplementation(async () => {
 				skillsStore.sources = [source()];
@@ -1208,18 +1256,22 @@ describe('SettingsSkillsView', () => {
 			];
 			skillsStore.count = 1;
 			const view = renderWithDialogStub();
-			await userEvent.click(await view.findByTestId('skill-group-toggle'));
+			const toggle = await view.findByTestId('skill-group-toggle');
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+				expect.not.objectContaining({ expandedSourceIds: expect.anything() }),
+			);
 
+			await userEvent.click(toggle);
 			await waitFor(() =>
 				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
-					expect.objectContaining({ groupBy: 'source', collapsedSourceIds: 'src-1' }),
+					expect.objectContaining({ groupBy: 'source', expandedSourceIds: 'src-1' }),
 				),
 			);
 
-			await userEvent.click(view.getByTestId('skill-group-toggle'));
+			await userEvent.click(toggle);
 			await waitFor(() =>
 				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
-					expect.not.objectContaining({ collapsedSourceIds: expect.anything() }),
+					expect.not.objectContaining({ expandedSourceIds: expect.anything() }),
 				),
 			);
 		});
@@ -1267,15 +1319,37 @@ describe('SettingsSkillsView', () => {
 
 			const link = await view.findByTestId('skill-group-new-skills');
 			expect(link).toHaveTextContent('2 new skills');
+			expect(link).toHaveAccessibleName('2 new skills to add');
 			// A source the user cannot add to has nothing to offer, so n8n does not check it.
 			expect(skillsStore.checkSourceForNewSkills).toHaveBeenCalledTimes(1);
 			expect(skillsStore.checkSourceForNewSkills).toHaveBeenCalledWith('src-1');
 
+			// A source with new skills starts folded, and the link does not unfold it.
 			const toggle = view.getByTestId('skill-group-toggle');
-			await userEvent.click(link);
+			await waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'false'));
+			await userEvent.click(view.getByTestId('skill-group-new-skills'));
 			expect(view.getByTestId('connect-dialog-stub')).toHaveAttribute('data-source-id', 'src-1');
-			// The link does not fold the source.
-			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+		});
+
+		it('asks for the sources with new skills first, once their counts arrive', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source(), source({ id: 'src-2', label: 'acme/other' })];
+				return skillsStore.sources;
+			});
+			skillsStore.checkSourceForNewSkills.mockImplementation(async (id: string) => {
+				const count = id === 'src-2' ? 3 : 0;
+				skillsStore.newSkillCounts = { ...skillsStore.newSkillCounts, [id]: count };
+				return count;
+			});
+			renderWithDialogStub();
+
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ groupBy: 'source', pinnedSourceIds: 'src-2' }),
+				),
+			);
 		});
 
 		it('shows the table when a check for new skills fails', async () => {
@@ -1292,7 +1366,7 @@ describe('SettingsSkillsView', () => {
 			const view = renderWithDialogStub();
 
 			await waitFor(() => expect(skillsStore.checkSourceForNewSkills).toHaveBeenCalled());
-			expect(view.getByText('synced-skill')).toBeInTheDocument();
+			expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills');
 			expect(view.queryByTestId('skill-group-new-skills')).not.toBeInTheDocument();
 			expect(showErrorMock).not.toHaveBeenCalled();
 		});

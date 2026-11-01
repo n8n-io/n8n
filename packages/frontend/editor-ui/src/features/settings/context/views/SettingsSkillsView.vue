@@ -186,21 +186,43 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 		...(sortBy ? { sortBy } : {}),
 		// Sources group the rows, so the rows of each source come together.
 		...(skillSyncEnabled.value ? { groupBy: 'source' as const } : {}),
-		// A folded source counts as one row, so the pages hold what the table shows.
-		...(skillSyncEnabled.value && collapsedSourceIds.value.length > 0
-			? { collapsedSourceIds: collapsedSourceIds.value.join(',') }
+		// Every source is folded, and counts as one row, until the user opens it.
+		...(skillSyncEnabled.value && expandedSourceIds.value.length > 0
+			? { expandedSourceIds: expandedSourceIds.value.join(',') }
+			: {}),
+		// Sources with new skills come first, so the user sees them before any other source.
+		...(skillSyncEnabled.value && pinnedSourceIds.value.length > 0
+			? { pinnedSourceIds: pinnedSourceIds.value.join(',') }
 			: {}),
 	};
 }
 
-/** The sources that the user folded, for this visit. */
-const collapsedSourceIds = ref<string[]>([]);
+/** The sources that the user opened, for this visit. Every other source is folded. */
+const expandedSourceIds = ref<string[]>([]);
+/** The pinned sources of the last load, to know when the order changed. */
+let loadedPinnedSourceIds = '';
 
-/** Folds or unfolds a source. The page reloads, as a folded source changes how many rows each page holds. */
+/** The sources with new skills that the user can add. They come first. */
+const pinnedSourceIds = computed(() =>
+	skillSyncEnabled.value
+		? skillsStore.sources
+				.filter((source) => source.canAddSkills && (skillsStore.newSkillCounts[source.id] ?? 0) > 0)
+				.map((source) => source.id)
+		: [],
+);
+
+/** The folded sources, for the table: every source that the user did not open. */
+const collapsedSourceIds = computed(() =>
+	skillsStore.sources
+		.map((source) => source.id)
+		.filter((id) => !expandedSourceIds.value.includes(id)),
+);
+
+/** Opens or folds a source. The page reloads, as a folded source changes how many rows each page holds. */
 async function onToggleSource(sourceId: string) {
-	collapsedSourceIds.value = collapsedSourceIds.value.includes(sourceId)
-		? collapsedSourceIds.value.filter((id) => id !== sourceId)
-		: [...collapsedSourceIds.value, sourceId];
+	expandedSourceIds.value = expandedSourceIds.value.includes(sourceId)
+		? expandedSourceIds.value.filter((id) => id !== sourceId)
+		: [...expandedSourceIds.value, sourceId];
 	await load();
 }
 
@@ -210,17 +232,18 @@ const tableSources = computed(() =>
 );
 
 /**
- * Sources with no skills have no rows to head, so they come after the last row. A search or
- * a filter hides them, as they match nothing.
+ * Sources with no skills have no rows to head. They come first on the first page, with the
+ * other sources, and the pinned ones lead. A search or a filter hides them, as they match
+ * nothing.
  */
 const emptySources = computed<SkillSourceListItem[]>(() => {
 	if (!tableSources.value || !hasLoaded.value || loadFailed.value || loadedFiltered.value) {
 		return [];
 	}
-	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
-	const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
-	if (page < lastPage) return [];
-	return tableSources.value.filter((source) => source.skillCount === 0);
+	if ((tableOptions.value.page ?? 0) > 0) return [];
+	const empty = tableSources.value.filter((source) => source.skillCount === 0);
+	const isPinned = (source: SkillSourceListItem) => pinnedSourceIds.value.includes(source.id);
+	return [...empty.filter(isPinned), ...empty.filter((source) => !isPinned(source))];
 });
 
 /** The counts and the delete rule of a source change with its skills, so it reloads with them. */
@@ -236,8 +259,8 @@ async function loadSources() {
 }
 
 /**
- * Asks each source the user can add to for skills it gained since the user last saw its
- * picker. The table does not wait for it, and a failed check only leaves the count out.
+ * Asks each source the user can add to for skills it gained since the user last imported from
+ * it. The table does not wait for it, and a failed check only leaves the count out.
  */
 async function checkForNewSkills() {
 	await Promise.allSettled(
@@ -245,13 +268,21 @@ async function checkForNewSkills() {
 			.filter((source) => source.canAddSkills)
 			.map(async (source) => await skillsStore.checkSourceForNewSkills(source.id)),
 	);
+	// New counts can move a source to the top, so the page reloads once for them.
+	if (pinnedSourceIds.value.join(',') !== loadedPinnedSourceIds) await load();
 }
 
 /** Asks first, as a deleted source cannot come back. The user can connect the repository again. */
 async function onDeleteSource(source: SkillSourceListItem) {
 	const repo = source.label;
+	const count = source.skillCount;
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.context.sources.delete.confirm.message', { interpolate: { repo } }),
+		count > 0
+			? i18n.baseText('settings.context.sources.delete.confirm.withSkills', {
+					interpolate: { repo, count },
+					adjustToNumber: count,
+				})
+			: i18n.baseText('settings.context.sources.delete.confirm.message', { interpolate: { repo } }),
 		i18n.baseText('settings.context.sources.delete.confirm.title', { interpolate: { repo } }),
 		{
 			confirmButtonText: i18n.baseText('settings.context.sources.delete'),
@@ -269,6 +300,9 @@ async function onDeleteSource(source: SkillSourceListItem) {
 		title: i18n.baseText('settings.context.sources.delete.success', { interpolate: { repo } }),
 		type: 'success',
 	});
+	// The skills of the source are gone too, and one may have been the last of its creator.
+	void loadCreators();
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -313,6 +347,7 @@ async function load() {
 	const isLatest = nextLoad();
 	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	const query = listQuery(page, itemsPerPage);
+	loadedPinnedSourceIds = query.pinnedSourceIds ?? '';
 	// Sort and paging do not narrow the list, so they do not count as filters.
 	const filtered = [query.search, query.scope, query.agentId, query.createdById].some(
 		(value) => value !== undefined,

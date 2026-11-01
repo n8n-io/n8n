@@ -16,7 +16,7 @@ describe('components/N8nStatusDot', () => {
 		expect(wrapper.container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
 	});
 
-	it.each(['success', 'warning', 'danger'] as const)(
+	it.each(['success', 'warning', 'danger', 'primary'] as const)(
 		'should render %s variant class',
 		(variant) => {
 			const wrapper = render(N8nStatusDot, {

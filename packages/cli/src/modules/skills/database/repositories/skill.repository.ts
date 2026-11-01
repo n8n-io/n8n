@@ -59,14 +59,12 @@ export type SkillListFilter = {
 	availableToMCP?: boolean;
 	/** Most recently changed first when absent. */
 	sort?: SkillListSort;
-	/** Skills that no source syncs first, then each source by repository. `sort` applies in each group. */
-	groupBySource?: boolean;
 	skip: number;
 	take?: number;
 };
 
 /** The part of `SkillListFilter` that decides which skills match, without the order and the page. */
-export type SkillMatchFilter = Omit<SkillListFilter, 'groupBySource' | 'skip' | 'take'>;
+export type SkillMatchFilter = Omit<SkillListFilter, 'skip' | 'take'>;
 
 /** Name sorts by the latest version, without case. */
 export type SkillListSort = { by: 'name' | 'updatedAt'; order: 'ASC' | 'DESC' };
@@ -103,20 +101,8 @@ export class SkillRepository {
 	): Promise<{ skills: Skill[]; count: number }> {
 		const query = this.filteredQuery(visibility, filter, ctx);
 		if (!query) return { skills: [], count: 0 };
-		const sortExpression = filter.sort?.by === 'name' ? 'LOWER(latest.name)' : 'skill.updatedAt';
 		const order = filter.sort?.order ?? 'DESC';
-		if (filter.groupBySource) {
-			query
-				.leftJoin(SkillSourceLink, 'groupLink', 'groupLink.skillId = skill.id')
-				.leftJoin(SkillSourceConnection, 'groupSource', 'groupSource.id = groupLink.sourceId')
-				.orderBy('CASE WHEN groupLink.sourceId IS NULL THEN 0 ELSE 1 END', 'ASC')
-				.addOrderBy('groupSource.identityKey', 'ASC')
-				// Two sources of one repository in two scopes stay apart.
-				.addOrderBy('groupLink.sourceId', 'ASC')
-				.addOrderBy(sortExpression, order);
-		} else {
-			query.orderBy(sortExpression, order);
-		}
+		query.orderBy(filter.sort?.by === 'name' ? 'LOWER(latest.name)' : 'skill.updatedAt', order);
 		// The id breaks ties, so a skill never shows on two pages or on none.
 		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
 		if (filter.take !== undefined) query.limit(filter.take);
@@ -125,9 +111,9 @@ export class SkillRepository {
 	}
 
 	/**
-	 * How many visible skills match the filter in each source group, in the order of
-	 * `groupBySource`: the skills that no source syncs first (`sourceId` null), then each
-	 * source by repository. A group with no match is left out.
+	 * How many visible skills match the filter in each source group, in table order: each
+	 * source by repository, then the skills that no source syncs (`sourceId` null). A group
+	 * with no match is left out.
 	 */
 	async findSourceGroupSizes(
 		visibility: SkillVisibility,
@@ -143,8 +129,9 @@ export class SkillRepository {
 			.addSelect('COUNT(*)', 'count')
 			.groupBy('groupLink.sourceId')
 			.addGroupBy('groupSource.identityKey')
-			.orderBy('CASE WHEN groupLink.sourceId IS NULL THEN 0 ELSE 1 END', 'ASC')
+			.orderBy('CASE WHEN groupLink.sourceId IS NULL THEN 1 ELSE 0 END', 'ASC')
 			.addOrderBy('groupSource.identityKey', 'ASC')
+			// Two sources of one repository in two scopes stay apart.
 			.addOrderBy('groupLink.sourceId', 'ASC')
 			.getRawMany<{ sourceId: string | null; count: string | number }>();
 		return rows.map((row) => ({ sourceId: row.sourceId ?? null, count: Number(row.count) }));

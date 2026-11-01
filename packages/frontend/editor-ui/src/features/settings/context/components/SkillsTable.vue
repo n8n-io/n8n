@@ -9,8 +9,10 @@ import type {
 import {
 	N8nActionToggle,
 	N8nBadge,
+	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
+	N8nStatusDot,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -57,9 +59,9 @@ const props = defineProps<{
 	 * by source, as `groupBy: 'source'` sorts them.
 	 */
 	sources?: SkillSourceListItem[];
-	/** Sources with no skills, after the last row. They have no rows to head. */
+	/** Sources with no skills, before the first row. They have no rows to head. */
 	emptySources?: SkillSourceListItem[];
-	/** The skills that each source gained since the user last saw its import picker, by source id. */
+	/** The skills that each source gained since the user last imported from it, by source id. */
 	newSkillCounts?: Record<string, number>;
 	/** The sources that the user folded. */
 	collapsedSourceIds?: string[];
@@ -193,7 +195,14 @@ function groupRowProps(sourceId: string) {
 type SourceAction = 'add' | 'open' | 'delete';
 
 function sourceActions(source: SkillSourceListItem) {
-	const items: Array<{ value: SourceAction; label: string; icon: IconName }> = [];
+	const items: Array<{
+		value: SourceAction;
+		label: string;
+		icon: IconName;
+		disabled?: boolean;
+		tooltip?: string;
+		destructive?: boolean;
+	}> = [];
 	if (source.canAddSkills) {
 		items.push({
 			value: 'add',
@@ -206,12 +215,21 @@ function sourceActions(source: SkillSourceListItem) {
 		label: i18n.baseText('settings.context.sources.openGithub'),
 		icon: 'external-link',
 	});
-	// Only a source with no skills left can go. Its skills would keep it otherwise.
+	// A delete takes the skills of the source with it, so no agent may use one of them.
 	if (source.canDelete) {
 		items.push({
 			value: 'delete',
 			label: i18n.baseText('settings.context.sources.delete'),
 			icon: 'trash-2',
+			disabled: source.skillsInUse > 0,
+			tooltip:
+				source.skillsInUse > 0
+					? i18n.baseText('settings.context.sources.delete.inUse', {
+							interpolate: { count: source.skillsInUse },
+							adjustToNumber: source.skillsInUse,
+						})
+					: undefined,
+			destructive: true,
 		});
 	}
 	return items;
@@ -240,15 +258,21 @@ function skillCount(sourceId: string): string {
 	});
 }
 
+/** The new skills of a source that the user can add to it. Zero hides the link. */
+function newSkillCount(sourceId: string): number {
+	if (!sourcesById.value.get(sourceId)?.canAddSkills) return 0;
+	return props.newSkillCounts?.[sourceId] ?? 0;
+}
+
 /** A synced skill sits under the group row of its source. */
 function isNested(skill: SkillListItem): boolean {
 	return !!props.sources && !!skill.sourceId;
 }
 
-/** Folded sources sit where the server put them. Empty sources come after the last row. */
+/** Empty sources come first. Folded sources sit where the server put them. */
 const extraGroups = computed(() => [
+	...(props.emptySources ?? []).map(({ id }) => ({ group: id, index: 0 })),
 	...(props.collapsedSources ?? []).map(({ sourceId, index }) => ({ group: sourceId, index })),
-	...(props.emptySources ?? []).map(({ id }) => ({ group: id, index: props.skills.length })),
 ]);
 
 /** The whole group row folds its source. */
@@ -267,7 +291,7 @@ function creatorName(creator: SkillUserDto): string {
 
 /** The badge of a synced skill whose source has new content that waits for review. */
 const SYNC_BADGES = {
-	update_available: { variant: 'info', key: 'settings.context.skills.sync.updateAvailable' },
+	update_available: { variant: 'warning', key: 'settings.context.skills.sync.updateAvailable' },
 	update_blocked: { variant: 'danger', key: 'settings.context.skills.sync.updateBlocked' },
 } as const;
 
@@ -283,34 +307,36 @@ function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
 
 // The endpoint sorts by name and by last update only. Pixel widths are the starting
 // sizes; the user can resize each column, as in the users table. The actions column stays fixed.
+// The other columns fit their content, and the skill column takes the rest of the row.
 const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.skill'),
 		key: 'name',
-		width: 300,
+		width: 240,
+		grow: true,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
-		width: 220,
+		width: 140,
 		disableSort: true,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.agents'),
 		key: 'usedByAgents',
-		width: 110,
+		width: 90,
 		disableSort: true,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.createdBy'),
 		key: 'createdBy',
-		width: 220,
+		width: 180,
 		disableSort: true,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
-		width: 130,
+		width: 120,
 	},
 	{
 		title: '',
@@ -387,30 +413,38 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 					>
 						· {{ skillCount(group) }}
 					</N8nText>
+					<!-- The new skills follow the source name. Nothing comes after them in the cell, so
+					     their late answer moves nothing. -->
+					<N8nButton
+						v-if="newSkillCount(group) > 0"
+						variant="outline"
+						size="xsmall"
+						:class="$style.newSkills"
+						:title="i18n.baseText('settings.context.skills.more.title')"
+						:aria-label="
+							i18n.baseText('settings.context.skills.group.newSkills.label', {
+								interpolate: { count: newSkillCount(group) },
+								adjustToNumber: newSkillCount(group),
+							})
+						"
+						data-test-id="skill-group-new-skills"
+						@click.stop="emit('addMore', group)"
+					>
+						<template #icon>
+							<N8nStatusDot variant="warning" />
+						</template>
+						{{
+							i18n.baseText('settings.context.skills.group.newSkills', {
+								interpolate: { count: newSkillCount(group) },
+								adjustToNumber: newSkillCount(group),
+							})
+						}}
+					</N8nButton>
 				</div>
 			</template>
 
 			<template #[`group.scope`]="{ group }">
 				<SkillScopeBadge v-if="sourcesById.get(group)" :skill="sourcesById.get(group)!" />
-			</template>
-
-			<!-- The new skills sit in the empty Agents cell, so the late answer moves nothing. -->
-			<template #[`group.usedByAgents`]="{ group }">
-				<button
-					v-if="(props.newSkillCounts?.[group] ?? 0) > 0 && sourcesById.get(group)?.canAddSkills"
-					type="button"
-					:class="$style.newSkills"
-					:title="i18n.baseText('settings.context.skills.more.title')"
-					data-test-id="skill-group-new-skills"
-					@click.stop="emit('addMore', group)"
-				>
-					{{
-						i18n.baseText('settings.context.skills.group.newSkills', {
-							interpolate: { count: props.newSkillCounts?.[group] ?? 0 },
-							adjustToNumber: props.newSkillCounts?.[group] ?? 0,
-						})
-					}}
-				</button>
 			</template>
 
 			<!-- The creator cell sets the height of a skill row. A hidden copy keeps the group row
@@ -435,16 +469,27 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			<template #[`item.name`]="{ item }">
 				<div :class="[$style.skillCell, isNested(item) && $style.skillCellNested]">
 					<div :class="$style.skillTitle">
-						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
+						<N8nText
+							size="medium"
+							color="text-dark"
+							:class="$style.skillName"
+							data-test-id="skill-name"
+						>
 							{{ item.name }}
 						</N8nText>
 						<N8nTooltip v-if="syncBadgeOf(item)" :content="syncBadgeOf(item)?.tooltip">
-							<N8nBadge
-								:variant="syncBadgeOf(item)?.variant"
+							<!-- The click goes on to the row, which opens the skill to review the update. -->
+							<N8nButton
+								variant="outline"
+								size="xsmall"
+								:class="$style.syncButton"
 								:data-test-id="`skill-sync-badge-${item.syncState}`"
 							>
+								<template #icon>
+									<N8nStatusDot :variant="syncBadgeOf(item)!.variant" />
+								</template>
 								{{ syncBadgeOf(item)?.label }}
-							</N8nBadge>
+							</N8nButton>
 						</N8nTooltip>
 						<N8nTooltip
 							v-if="props.showAssistantAvailability && item.availableToAssistant"
@@ -556,11 +601,24 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	cursor: pointer;
 }
 
+/* The badges stay on the line of the name. A long name gives way first and ends in an ellipsis. */
 .skillTitle {
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
+	min-width: 0;
+
+	> * {
+		flex-shrink: 0;
+	}
+
+	> .skillName {
+		flex-shrink: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 }
 
 .description {
@@ -605,27 +663,13 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	flex-shrink: 0;
 }
 
+.syncButton {
+	flex-shrink: 0;
+}
+
 .newSkills {
-	max-width: 100%;
-	padding: 0;
-	overflow: hidden;
-	border: 0;
-	background: transparent;
-	color: var(--color--primary);
-	font-size: var(--font-size--2xs);
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	cursor: pointer;
-
-	&:hover {
-		text-decoration: underline;
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width, 2px) solid var(--color--primary);
-		outline-offset: 2px;
-		border-radius: var(--radius);
-	}
+	flex-shrink: 0;
+	margin-inline-start: var(--spacing--2xs);
 }
 
 .heightSpacer {

@@ -69,7 +69,7 @@ export class SkillSourceConnection extends WithTimestamps {
 	@DateTimeColumn({ nullable: true })
 	listedAt: Date | null;
 
-	/** Keys of the remote refs that the user last saw in the import picker. Other refs are new skills. */
+	/** Keys of the remote refs in the source at the last import. Other refs are new skills. */
 	@JsonColumn({ nullable: true })
 	seenRefKeys: string[] | null;
 }

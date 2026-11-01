@@ -8,6 +8,11 @@ export type TableHeader<T> = {
 	width?: number;
 	align?: 'end' | 'start' | 'center';
 	resize?: boolean;
+	/**
+	 * The column takes the width that the other columns leave. Its `width` stays its
+	 * minimum, so the table scrolls before the column gets narrower.
+	 */
+	grow?: boolean;
 } & (
 	| { title: string; key?: never; value?: never } // Ensures an object with only `title` is valid
 	| { key: DeepKeys<T> }
@@ -214,6 +219,7 @@ function isAccessorColumn(
 }
 
 type ColumnMeta = {
+	grow?: boolean;
 	cellProps: {
 		align?: 'end' | 'start' | 'center';
 	};
@@ -243,6 +249,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
 			size: column.width,
 			meta: {
+				grow: column.grow,
 				cellProps: {
 					align: column.align ?? 'start',
 				},
@@ -258,6 +265,7 @@ function getValueAccessor(column: Required<TableHeader<T>>) {
 			minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
 			size: column.width,
 			meta: {
+				grow: column.grow,
 				cellProps: {
 					align: column.align ?? 'start',
 				},
@@ -284,6 +292,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 				minSize: column.minWidth ?? MIN_COLUMN_WIDTH,
 				size: column.width,
 				meta: {
+					grow: column.grow,
 					cellProps: {
 						align: column.align ?? 'start',
 					},
@@ -296,6 +305,7 @@ function mapHeaders(columns: Array<TableHeader<T>>) {
 			header: () => getHeaderTitle(column),
 			size: column.width,
 			meta: {
+				grow: column.grow,
 				cellProps: {
 					align: column.align ?? 'start',
 				},
@@ -506,7 +516,8 @@ const table = useVueTable({
 								<th
 									:style="{
 										cursor: header.column.getCanSort() ? 'pointer' : undefined,
-										width: `${header.getSize()}px`,
+										// A fixed table gives the space that is left to the columns with no width.
+										width: getColumnMeta(header.column).grow ? undefined : `${header.getSize()}px`,
 									}"
 									:class="{
 										[`cell-align--${getColumnMeta(header.column).cellProps.align}`]: true,

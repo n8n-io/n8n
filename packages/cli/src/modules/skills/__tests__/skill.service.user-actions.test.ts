@@ -189,7 +189,6 @@ describe('SkillService user actions', () => {
 					scope: 'project',
 					projectId: 'project-1',
 					search: 'rules',
-					groupBySource: false,
 					skip: 10,
 					take: 5,
 				},
@@ -197,14 +196,14 @@ describe('SkillService user actions', () => {
 			expect(result.count).toBe(3);
 		});
 
-		it('counts a folded source as one row and reads only the slices on the page', async () => {
+		it('folds each source the user did not open into one row, and reads only the slices on the page', async () => {
 			const SOURCE_A = '01a1914f-7e04-70ac-840d-64eb6af0baf2';
 			const SOURCE_B = '01a19174-d817-75dd-a803-e011ae3f55c2';
-			// Unsynced skills take rows 0 to 2, folded A row 3, and B rows 4 and 5.
+			// Folded A is row 0, open B rows 1 and 2, and the unsynced skills rows 3 to 5.
 			repository.findSourceGroupSizes.mockResolvedValue([
-				{ sourceId: null, count: 3 },
 				{ sourceId: SOURCE_A, count: 5 },
 				{ sourceId: SOURCE_B, count: 2 },
+				{ sourceId: null, count: 3 },
 			]);
 			repository.findVisiblePage.mockImplementation(async (_visibility, filter) => ({
 				skills: filter.withoutSource ? [skill('skill_c')] : [skill('skill_a')],
@@ -213,40 +212,69 @@ describe('SkillService user actions', () => {
 
 			const result = await service.list(
 				user,
-				query({ groupBy: 'source', collapsedSourceIds: [SOURCE_A], skip: 2, take: 3 }),
+				query({ groupBy: 'source', expandedSourceIds: [SOURCE_B], skip: 0, take: 4 }),
 			);
 
 			expect(result.count).toBe(6);
-			expect(result.data.map((item) => item.id)).toEqual(['skill_c', 'skill_a']);
-			expect(result.collapsedSources).toEqual([{ sourceId: SOURCE_A, index: 1, skillCount: 5 }]);
+			expect(result.data.map((item) => item.id)).toEqual(['skill_a', 'skill_c']);
+			expect(result.collapsedSources).toEqual([{ sourceId: SOURCE_A, index: 0, skillCount: 5 }]);
 			expect(repository.findVisiblePage).toHaveBeenCalledTimes(2);
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ withoutSource: true, skip: 2, take: 1 }),
+				expect.objectContaining({ sourceId: SOURCE_B, skip: 0, take: 2 }),
 			);
 			expect(repository.findVisiblePage).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ sourceId: SOURCE_B, skip: 0, take: 1 }),
+				expect.objectContaining({ withoutSource: true, skip: 0, take: 1 }),
 			);
 		});
 
-		it('ignores folded sources without the source grouping', async () => {
+		it('folds every source when the user opened none', async () => {
+			const SOURCE_A = '01a1914f-7e04-70ac-840d-64eb6af0baf2';
+			repository.findSourceGroupSizes.mockResolvedValue([
+				{ sourceId: SOURCE_A, count: 5 },
+				{ sourceId: null, count: 1 },
+			]);
+
+			const result = await service.list(user, query({ groupBy: 'source', take: 10 }));
+
+			expect(result.count).toBe(2);
+			expect(result.collapsedSources).toEqual([{ sourceId: SOURCE_A, index: 0, skillCount: 5 }]);
+			expect(repository.findVisiblePage).toHaveBeenCalledTimes(1);
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ withoutSource: true }),
+			);
+		});
+
+		it('puts the pinned sources before the other sources', async () => {
+			const SOURCE_A = '01a1914f-7e04-70ac-840d-64eb6af0baf2';
+			const SOURCE_B = '01a19174-d817-75dd-a803-e011ae3f55c2';
+			repository.findSourceGroupSizes.mockResolvedValue([
+				{ sourceId: SOURCE_A, count: 3 },
+				{ sourceId: SOURCE_B, count: 4 },
+				{ sourceId: null, count: 2 },
+			]);
+
 			const result = await service.list(
 				user,
-				query({ collapsedSourceIds: ['01a1914f-7e04-70ac-840d-64eb6af0baf2'] }),
+				query({ groupBy: 'source', pinnedSourceIds: [SOURCE_B], take: 10 }),
+			);
+
+			expect(result.collapsedSources).toEqual([
+				{ sourceId: SOURCE_B, index: 0, skillCount: 4 },
+				{ sourceId: SOURCE_A, index: 0, skillCount: 3 },
+			]);
+		});
+
+		it('ignores the source options without the source grouping', async () => {
+			const result = await service.list(
+				user,
+				query({ expandedSourceIds: ['01a1914f-7e04-70ac-840d-64eb6af0baf2'] }),
 			);
 
 			expect(repository.findSourceGroupSizes).not.toHaveBeenCalled();
 			expect(result.collapsedSources).toBeUndefined();
-		});
-
-		it('asks the repository to group by source', async () => {
-			await service.list(user, query({ groupBy: 'source' }));
-
-			expect(repository.findVisiblePage).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ groupBySource: true }),
-			);
 		});
 
 		it('passes the creator filter and the sort to the repository', async () => {

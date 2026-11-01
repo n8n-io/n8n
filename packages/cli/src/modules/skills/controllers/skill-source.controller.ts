@@ -87,7 +87,7 @@ export class SkillSourceController {
 		return await this.skillSourceService.discoverMore(req.user, sourceId);
 	}
 
-	/** Counts the skills that the source gained since the user last saw its import picker. */
+	/** Counts the importable skills that the source gained since the user last imported from it. */
 	@Post('/:sourceId/check')
 	async check(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
 		return await this.skillSourceService.checkNewSkills(req.user, sourceId);
@@ -107,10 +107,10 @@ export class SkillSourceController {
 	 * Stop syncing one skill: it becomes a normal skill that n8n can edit, and keeps its
 	 * versions. It cannot be undone.
 	 */
-	/** Deletes a source with no skills left. The service checks the scope of the source. */
+	/** Deletes a source and its skills, when no agent uses them. The service checks the scope of the source. */
 	@Delete('/:sourceId')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
-		await this.skillSourceService.deleteEmpty(req.user, sourceId);
+		await this.skillSourceService.delete(req.user, sourceId);
 	}
 
 	@Post('/skills/:skillId/stop-syncing')

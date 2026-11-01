@@ -177,12 +177,14 @@ export class SkillService {
 			search: query.search,
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
 		};
-		const collapsed = query.groupBy === 'source' ? (query.collapsedSourceIds ?? []) : [];
-		if (collapsed.length > 0) {
-			const page = await this.findPageWithCollapsedSources(
+		if (query.groupBy === 'source') {
+			const page = await this.findGroupedPage(
 				visibility,
 				match,
-				new Set(collapsed),
+				{
+					expanded: new Set(query.expandedSourceIds ?? []),
+					pinned: new Set(query.pinnedSourceIds ?? []),
+				},
 				query.skip,
 				query.take,
 			);
@@ -194,7 +196,6 @@ export class SkillService {
 		}
 		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
 			...match,
-			groupBySource: query.groupBy === 'source',
 			skip: query.skip,
 			take: query.take,
 		});
@@ -202,24 +203,30 @@ export class SkillService {
 	}
 
 	/**
-	 * One page of the source groups, where each folded source is one row in place of its
-	 * skills. The group sizes decide which groups the page cuts, and each open group on the
-	 * page reads only its own slice. So the page reads at most one query for each group on it.
+	 * One page of the source groups: the sources first, pinned ones before the others, then the
+	 * skills that no source syncs. Each source that the user did not open is one folded row in
+	 * place of its skills. The group sizes decide which groups the page cuts, and each open
+	 * group on the page reads only its own slice. So the page reads at most one query for each
+	 * group on it.
 	 */
-	private async findPageWithCollapsedSources(
+	private async findGroupedPage(
 		visibility: SkillVisibility,
 		match: SkillMatchFilter,
-		collapsed: Set<string>,
+		{ expanded, pinned }: { expanded: Set<string>; pinned: Set<string> },
 		skip: number,
 		take: number | undefined,
 	): Promise<{ skills: Skill[]; count: number; collapsedSources: SkillListCollapsedSource[] }> {
-		const groups = await this.skillRepository.findSourceGroupSizes(visibility, match);
+		const sizes = await this.skillRepository.findSourceGroupSizes(visibility, match);
+		const isPinned = ({ sourceId }: { sourceId: string | null }) =>
+			sourceId !== null && pinned.has(sourceId);
+		// The pinned groups keep the order of the sizes among themselves.
+		const groups = [...sizes.filter(isPinned), ...sizes.filter((group) => !isPinned(group))];
 		const pageEnd = take === undefined ? Number.POSITIVE_INFINITY : skip + take;
 		const skills: Skill[] = [];
 		const collapsedSources: SkillListCollapsedSource[] = [];
 		let position = 0;
 		for (const { sourceId, count } of groups) {
-			const folded = sourceId !== null && collapsed.has(sourceId);
+			const folded = sourceId !== null && !expanded.has(sourceId);
 			const start = position;
 			position += folded ? 1 : count;
 			if (position <= skip || start >= pageEnd) continue;
@@ -468,6 +475,39 @@ export class SkillService {
 	}
 
 	// ---------------------------------------------------------------- trusted writes
+
+	/**
+	 * Deletes the synced skills of a source that the caller deletes, in its transaction. It
+	 * refuses when an agent uses one of them, as a single delete does, and then deletes none.
+	 * The caller checks that the user may delete the source. Returns the deleted skills.
+	 */
+	async deleteSourceSkills(
+		user: User,
+		skillIds: string[],
+		ctx: OperationContext,
+	): Promise<Skill[]> {
+		if (skillIds.length === 0) return [];
+		// The conflict message names only the agents the user may read, as a single delete does.
+		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		await this.skillRepository.lockForEdit(skillIds, ctx);
+		const skills = await this.skillRepository.findByIds(skillIds, ctx);
+		for (const skill of skills) {
+			const usage = await this.skillUsage.findUsage(skill.id, agentProjectIds ?? 'all', ctx);
+			if (blocksDelete(usage)) {
+				const name =
+					(await this.skillRuntime.latestNames([skill.id], ctx)).get(skill.id) ?? skill.id;
+				throw new ConflictError(deleteRefusalMessage(name, usage));
+			}
+		}
+		for (const skill of skills) await this.skillRepository.deleteSkill(skill.id, ctx);
+		return skills;
+	}
+
+	/** The skills among `skillIds` that an agent draft or a published agent version uses. */
+	async findSkillsInUse(skillIds: string[]): Promise<Set<string>> {
+		const usage = await this.skillUsage.countUsingAgents(skillIds);
+		return new Set(skillIds.filter((id) => (usage.get(id) ?? 0) > 0));
+	}
 
 	/**
 	 * Creates a skill with its v1. Returns the new id. `checkNameTaken` is for a name that a

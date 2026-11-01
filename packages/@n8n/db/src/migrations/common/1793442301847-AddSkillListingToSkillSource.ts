@@ -27,13 +27,13 @@ const columns = [
 		postgres: 'json',
 		sqlite: 'text',
 		comment:
-			'Keys of the remote refs that the user last saw in the import picker. Other refs count as new skills',
+			'Keys of the remote refs in the source when the user last imported from it. Other refs count as new skills',
 	},
 ] as const;
 
 /**
  * The skill listing of a source, so the skills page can show the skills that a source has
- * gained since the user last saw its import picker. It is separate from `probeCursor`, which
+ * gained since the user last imported from it. It is separate from `probeCursor`, which
  * the update check owns.
  */
 export class AddSkillListingToSkillSource1793442301847 implements ReversibleMigration {

@@ -207,9 +207,9 @@ export type SkillSourceDiscovery = {
 	tooDeep?: number;
 };
 
-/** The skills that a source has gained since the user last saw its import picker. */
+/** The skills that a source has gained since the user last imported from it. */
 export type SkillSourceNewSkills = {
-	/** Skills in the source that the user has not seen in the picker and has not imported. */
+	/** Skills that are new in the source since the last import, and that n8n can import. Blocked skills do not count. */
 	newSkillCount: number;
 };
 
@@ -289,8 +289,10 @@ export type SkillSourceListItem = SkillSourceSummary & {
 	projectType: 'personal' | 'team' | null;
 	skillCount: number;
 	canAddSkills: boolean;
-	/** True when no skill is left in the source and the user may delete it. */
+	/** True when the user may delete the source. A delete also deletes its skills. */
 	canDelete: boolean;
+	/** How many skills of the source an agent uses. A delete needs none. */
+	skillsInUse: number;
 };
 
 /** Remaining remote skills and the fixed destination for Add more. */

@@ -93,10 +93,10 @@ export type SkillListCollapsedSource = {
 };
 
 export type SkillListResponse = {
-	/** The rows of all pages. With `collapsedSourceIds`, each folded source counts as one row. */
+	/** The rows of all pages. With `groupBy: 'source'`, each folded source counts as one row. */
 	count: number;
 	data: SkillListItem[];
-	/** The folded sources on this page. Only with `groupBy: 'source'` and `collapsedSourceIds`. */
+	/** The folded sources on this page. Only with `groupBy: 'source'`. */
 	collapsedSources?: SkillListCollapsedSource[];
 };
 
@@ -173,6 +173,13 @@ export const SKILLS_SORT_OPTIONS = [
 
 export type SkillSortOption = (typeof SKILLS_SORT_OPTIONS)[number];
 
+/** A comma-separated list of source ids in a query string. */
+const sourceIdList = z
+	.string()
+	.optional()
+	.transform((value) => (value ? value.split(',') : undefined))
+	.pipe(z.array(z.string().uuid()).max(SKILLS_MAX_PAGE_SIZE).optional());
+
 export class ListSkillsQueryDto extends Z.class({
 	/** Only skills that remain linked to this connected source. */
 	sourceId: z.string().uuid().optional(),
@@ -199,19 +206,18 @@ export class ListSkillsQueryDto extends Z.class({
 		})
 		.optional(),
 	/**
-	 * `source` puts the skills that no source syncs first, then the skills of each source, by
-	 * repository. `sortBy` sorts the skills in each group.
+	 * `source` puts the sources first, by repository, and then the skills that no source syncs.
+	 * Each source is folded, as one row of the page in place of its skills, unless it is in
+	 * `expandedSourceIds`. `sortBy` sorts the skills in each group.
 	 */
 	groupBy: z.enum(['source']).optional(),
+	/** Comma-separated ids of the sources that the user opened. Only with `groupBy: 'source'`. */
+	expandedSourceIds: sourceIdList,
 	/**
-	 * Comma-separated ids of sources that the user folded. With `groupBy: 'source'`, each one is
-	 * a single row of the page in place of its skills.
+	 * Comma-separated ids of sources that come first, before every other group, such as the
+	 * sources with new skills. Only with `groupBy: 'source'`.
 	 */
-	collapsedSourceIds: z
-		.string()
-		.optional()
-		.transform((value) => (value ? value.split(',') : undefined))
-		.pipe(z.array(z.string().uuid()).max(SKILLS_MAX_PAGE_SIZE).optional()),
+	pinnedSourceIds: sourceIdList,
 }) {}
 
 export const SKILL_AGENTS_MAX_PAGE_SIZE = 50;

@@ -239,12 +239,17 @@ export class SkillSourceService {
 		);
 		const canAdd = await this.skillAccess.sourceAccessCheck(user, 'addSkills');
 		const canDisconnect = await this.skillAccess.sourceAccessCheck(user, 'disconnect');
+		const skillIdsBySource = await this.sourceRepository.findLinkedSkillIdsBySource(
+			sources.map((source) => source.id),
+		);
+		const inUse = await this.skillService.findSkillsInUse([...skillIdsBySource.values()].flat());
 		return sources.map((source) => {
 			const project = source.projectId ? projects.get(source.projectId) : undefined;
 			const skillCount = counts.get(source.id) ?? 0;
 			return this.sourceItem(source, skillCount, project, {
 				canAddSkills: canAdd(source),
-				canDelete: skillCount === 0 && canDisconnect(source),
+				canDelete: canDisconnect(source),
+				skillsInUse: (skillIdsBySource.get(source.id) ?? []).filter((id) => inUse.has(id)).length,
 			});
 		});
 	}
@@ -256,8 +261,6 @@ export class SkillSourceService {
 		const linked = await this.sourceRepository.findImportedRefs(sourceId);
 		const linkedKeys = new Set(linked.map(refKey));
 		const discovered = await this.discoverAll(source);
-		// The user sees every skill of the source here, so none of them counts as new after this.
-		await this.saveSeenListing(sourceId, discovered);
 		const reads = await this.readAll(source, {
 			...discovered,
 			refs: discovered.refs.filter((ref) => !linkedKeys.has(refKey(ref))),
@@ -272,6 +275,7 @@ export class SkillSourceService {
 			source: this.sourceItem(stored, linked.length, project, {
 				canAddSkills: true,
 				canDelete: false,
+				skillsInUse: 0,
 			}),
 			skills: this.pickerSkills(source, reads, names, discovered),
 			truncated: discovered.truncated,
@@ -308,30 +312,31 @@ export class SkillSourceService {
 	}
 
 	/**
-	 * Deletes a source that has no skills left, such as after the user deleted or stopped syncing
-	 * each of them. Its skills, if any, would keep their content, but this removes only an empty
-	 * source.
+	 * Deletes a source and its synced skills, in one transaction. It refuses when an agent uses
+	 * one of the skills, and then deletes nothing. The user can connect the repository again.
 	 */
-	async deleteEmpty(user: User, sourceId: string): Promise<void> {
+	async delete(user: User, sourceId: string): Promise<void> {
 		await this.flagGate.assertEnabled(user);
 		const source = await this.sourceRepository.findById(sourceId);
 		if (!source) throw new NotFoundError('Skill source not found');
+		// The skills of a source share its scope, so the right to delete the source covers them.
 		if (!(await this.skillAccess.canOnSource(user, source, 'disconnect'))) {
 			if (!(await this.skillAccess.canOnSource(user, source, 'view'))) {
 				throw new NotFoundError('Skill source not found');
 			}
 			throw new ForbiddenError('You are not allowed to delete this source.');
 		}
-		const result = await this.txRunner.run(
-			{},
-			async (ctx) => await this.sourceRepository.deleteIfEmpty(sourceId, ctx),
-		);
-		if (result === 'not_found') throw new NotFoundError('Skill source not found');
-		if (result === 'has_skills') {
-			throw new ConflictError(
-				'This source still has skills. Delete them or stop syncing them first.',
-			);
-		}
+		const deleted = await this.txRunner.run({}, async (ctx) => {
+			// The lock stops an import from linking a skill between the read and the delete.
+			if (!(await this.sourceRepository.lockForImport(sourceId, ctx))) {
+				throw new NotFoundError('Skill source not found');
+			}
+			const skillIds = await this.sourceRepository.findLinkedSkillIds(sourceId, ctx);
+			const skills = await this.skillService.deleteSourceSkills(user, skillIds, ctx);
+			await this.sourceRepository.deleteSource(sourceId, ctx);
+			return skills;
+		});
+		for (const skill of deleted) await this.skillsTelemetry.deleted(user.id, skill, 'ui');
 	}
 
 	private async requireAddAccess(user: User, sourceId: string): Promise<SkillSourceConnection> {
@@ -373,7 +378,7 @@ export class SkillSourceService {
 		source: SkillSourceConnection,
 		skillCount: number,
 		project: { name: string; type: 'personal' | 'team' } | undefined,
-		{ canAddSkills, canDelete }: { canAddSkills: boolean; canDelete: boolean },
+		access: Pick<SkillSourceListItem, 'canAddSkills' | 'canDelete' | 'skillsInUse'>,
 	): SkillSourceListItem {
 		const { client, locator } = this.storedLocation(source);
 		return {
@@ -386,8 +391,7 @@ export class SkillSourceService {
 			projectName: project?.name ?? null,
 			projectType: project?.type ?? null,
 			skillCount,
-			canAddSkills,
-			canDelete,
+			...access,
 		};
 	}
 
@@ -513,7 +517,8 @@ export class SkillSourceService {
 						throw error;
 					}
 				}
-				// The picker showed every skill of the source, so none of them counts as new.
+				// The user imported from a picker that showed every skill of the source, so none of
+				// them counts as new after this. Only opening the picker does not mark them.
 				await this.saveSeenListing(sourceId, discovered, ctx);
 				const linked = existingSourceId
 					? new Set(
@@ -590,13 +595,14 @@ export class SkillSourceService {
 	}
 
 	/**
-	 * How many skills the source has that the user has not seen in its import picker and has
-	 * not imported. n8n lists the source again only when its revision changed, and at most once
+	 * How many skills the source has gained since the user last imported from it, that n8n
+	 * can import. n8n lists the source again only when its revision changed, and at most once
 	 * for each check interval. A source checked for the first time takes its current skills as
 	 * seen, so only later skills count.
 	 */
 	async checkNewSkills(user: User, sourceId: string): Promise<SkillSourceNewSkills> {
 		const stored = await this.requireAddAccess(user, sourceId);
+		const imported = (await this.sourceRepository.findImportedRefs(sourceId)).map(refKey);
 		let listed = stored.listedRefKeys;
 		let seen = stored.seenRefKeys;
 		const fresh =
@@ -608,7 +614,9 @@ export class SkillSourceService {
 			const revision = await source.client.currentRevision?.(source.locator, source.auth);
 			let listing = { revision: revision ?? null, refKeys: listed ?? [] };
 			if (listed === null || revision === undefined || revision !== stored.listedRevision) {
-				listing = await this.listRefKeys(source);
+				// A source without a seen list takes its skills as seen, so it reads none of them.
+				const known = seen === null ? null : new Set([...seen, ...imported]);
+				listing = await this.listImportableRefKeys(source, known);
 			}
 			listed = listing.refKeys;
 			await this.sourceRepository.saveListing(sourceId, { ...listing, listedAt: new Date() });
@@ -617,28 +625,42 @@ export class SkillSourceService {
 				await this.sourceRepository.saveSeenRefKeys(sourceId, seen);
 			}
 		}
-		const known = new Set([
-			...(seen ?? listed ?? []),
-			...(await this.sourceRepository.findImportedRefs(sourceId)).map(refKey),
-		]);
+		const known = new Set([...(seen ?? listed ?? []), ...imported]);
 		return { newSkillCount: (listed ?? []).filter((key) => !known.has(key)).length };
 	}
 
-	/** The keys of the skills in the source, at its revision. A source with no skills lists none. */
-	private async listRefKeys(
+	/**
+	 * The keys of the skills in the source that n8n can import, at its revision. n8n reads and
+	 * checks only the skills that are not in `known`, as the others do not count as new. A
+	 * blocked skill, or one that n8n cannot read, is left out, as the user could not import
+	 * it. A source with no skills lists none.
+	 */
+	private async listImportableRefKeys(
 		source: ParsedSource,
+		known: Set<string> | null,
 	): Promise<{ revision: string | null; refKeys: string[] }> {
+		let discovered: Discovered;
 		try {
-			const discovered = await this.discoverAll(source);
-			return { revision: discovered.revision ?? null, refKeys: discovered.refs.map(refKey) };
+			discovered = await this.discoverAll(source);
 		} catch (error) {
 			const reason = error instanceof SkillSourceRequestError ? error.reason : undefined;
 			if (reason !== 'no_skills_found' && reason !== 'too_deep') throw error;
 			return { revision: null, refKeys: [] };
 		}
+		const candidates = known ? discovered.refs.filter((ref) => !known.has(refKey(ref))) : [];
+		const reads = await this.readAll(source, { ...discovered, refs: candidates });
+		const blocked = new Set(
+			reads
+				.filter((read) => read.error !== undefined || read.check?.verdict === 'blocked')
+				.map((read) => read.key),
+		);
+		return {
+			revision: discovered.revision ?? null,
+			refKeys: discovered.refs.map(refKey).filter((key) => !blocked.has(key)),
+		};
 	}
 
-	/** Saves a listing that the user saw in the import picker, so its skills are not new. */
+	/** Saves a listing that the user imported from, so its skills are not new. */
 	private async saveSeenListing(
 		sourceId: string,
 		discovered: Pick<Discovered, 'refs' | 'revision'>,

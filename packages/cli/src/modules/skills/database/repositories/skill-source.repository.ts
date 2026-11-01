@@ -206,7 +206,7 @@ export class SkillSourceRepository {
 		);
 	}
 
-	/** Saves the skills that the user saw in the import picker, so they no longer count as new. */
+	/** Saves the skills of the source at an import, so they no longer count as new. */
 	async saveSeenRefKeys(
 		sourceId: string,
 		refKeys: string[],
@@ -229,20 +229,33 @@ export class SkillSourceRepository {
 		});
 	}
 
-	/**
-	 * Deletes a source that no skill links to. It locks the row as an import does, so an import
-	 * cannot add a link between the count and the delete.
-	 */
-	async deleteIfEmpty(
-		id: string,
-		ctx: OperationContext,
-	): Promise<'deleted' | 'not_found' | 'has_skills'> {
-		const source = await this.lockForImport(id, ctx);
-		if (!source) return 'not_found';
-		const links = await this.links.managerFor(ctx).countBy(SkillSourceLink, { sourceId: id });
-		if (links > 0) return 'has_skills';
+	/** Deletes a source that a transaction locked. Its links go with it, and the skills stay. */
+	async deleteSource(id: string, ctx: OperationContext): Promise<void> {
 		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id });
-		return 'deleted';
+	}
+
+	/** The synced skills of one source. */
+	async findLinkedSkillIds(sourceId: string, ctx: OperationContext = {}): Promise<string[]> {
+		const links = await this.links.managerFor(ctx).find(SkillSourceLink, {
+			select: ['skillId'],
+			where: { sourceId },
+		});
+		return links.map((link) => link.skillId);
+	}
+
+	/** The synced skills of each source, by source id. A source without skills is absent. */
+	async findLinkedSkillIdsBySource(sourceIds: string[]): Promise<Map<string, string[]>> {
+		const bySource = new Map<string, string[]>();
+		for (const chunk of chunkIds(sourceIds)) {
+			const links = await this.links.managerFor({}).find(SkillSourceLink, {
+				select: ['skillId', 'sourceId'],
+				where: { sourceId: In(chunk) },
+			});
+			for (const { skillId, sourceId } of links) {
+				bySource.set(sourceId, [...(bySource.get(sourceId) ?? []), skillId]);
+			}
+		}
+		return bySource;
 	}
 
 	/** The source of a synced skill, in one query. Null for a skill without a source. */

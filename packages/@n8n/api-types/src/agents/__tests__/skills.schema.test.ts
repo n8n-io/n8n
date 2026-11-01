@@ -13,14 +13,15 @@ describe('ListSkillsQueryDto', () => {
 		expect(ListSkillsQueryDto.parse({})).toEqual({ skip: 0, take: undefined });
 	});
 
-	it('reads the folded sources as a list of ids', () => {
+	it('reads the opened and the pinned sources as lists of ids', () => {
 		const ids = ['01a1914f-7e04-70ac-840d-64eb6af0baf2', '01a19174-d817-75dd-a803-e011ae3f55c2'];
 
 		expect(
-			ListSkillsQueryDto.parse({ collapsedSourceIds: ids.join(',') }).collapsedSourceIds,
+			ListSkillsQueryDto.parse({ expandedSourceIds: ids.join(',') }).expandedSourceIds,
 		).toEqual(ids);
-		expect(ListSkillsQueryDto.parse({ collapsedSourceIds: '' }).collapsedSourceIds).toBeUndefined();
-		expect(ListSkillsQueryDto.safeParse({ collapsedSourceIds: 'not-a-uuid' }).success).toBe(false);
+		expect(ListSkillsQueryDto.parse({ expandedSourceIds: '' }).expandedSourceIds).toBeUndefined();
+		expect(ListSkillsQueryDto.safeParse({ expandedSourceIds: 'not-a-uuid' }).success).toBe(false);
+		expect(ListSkillsQueryDto.parse({ pinnedSourceIds: ids[0] }).pinnedSourceIds).toEqual([ids[0]]);
 	});
 
 	it('caps take at the page limit', () => {

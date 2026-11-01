@@ -40,6 +40,12 @@ withDefaults(defineProps<StatusDotProps>(), {
 	--status-dot--color: var(--color--danger);
 }
 
+// The brand colour, for a notice such as new content, which is not a state.
+.primary {
+	composes: dot;
+	--status-dot--color: var(--color--primary);
+}
+
 // Expanding and fading box-shadow ring, tinted with the dot's own color.
 .pulse {
 	animation: statusDotPulse var(--duration--slowest) var(--easing--ease-out) infinite;
