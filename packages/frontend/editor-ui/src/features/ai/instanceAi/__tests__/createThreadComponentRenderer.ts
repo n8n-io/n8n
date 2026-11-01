@@ -121,6 +121,7 @@ export const InstanceAiInputStub = defineComponent({
 	},
 	emits: [
 		'submit',
+		'stop',
 		'dismiss-context-chip',
 		'mention-reference-added',
 		'mention-reference-removed',
@@ -156,7 +157,15 @@ export const InstanceAiInputStub = defineComponent({
 				promptModified: message !== prefill.text.trim(),
 			};
 		};
-		expose({ focus: inputFocusSpy, setText, setPrefill, clearTextIfMatches, isDirty });
+		const sendStopButton = ref<HTMLElement>();
+		expose({
+			focus: inputFocusSpy,
+			setText,
+			setPrefill,
+			clearTextIfMatches,
+			isDirty,
+			getSendStopButtonElement: () => sendStopButton.value,
+		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
@@ -195,6 +204,15 @@ export const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-attachments' },
 					hasAttachments.value ? 'attached' : '',
+				),
+				h(
+					'button',
+					{
+						ref: sendStopButton,
+						'data-test-id': 'instance-ai-input-stop',
+						onClick: () => emit('stop'),
+					},
+					'Stop',
 				),
 				h(
 					'button',

@@ -853,6 +853,27 @@ describe('N8nChatInput', () => {
 			wrapper.unmount();
 		});
 
+		it('should expose the same element around the send and stop button while it switches', async () => {
+			const wrapper = mount(N8nChatInput, {
+				props: { modelValue: 'test', streaming: true },
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: { template: '<div><slot /></div>' },
+					},
+				},
+			});
+
+			const element = wrapper.vm.getSendStopButtonElement();
+			expect(element?.querySelector('[data-test-id="send-message-button"]')).toBeTruthy();
+
+			await wrapper.setProps({ streaming: false });
+
+			expect(wrapper.vm.getSendStopButtonElement()).toBe(element);
+
+			wrapper.unmount();
+		});
+
 		it('should focus input through ref access', () => {
 			const wrapper = renderComponent({
 				global: {

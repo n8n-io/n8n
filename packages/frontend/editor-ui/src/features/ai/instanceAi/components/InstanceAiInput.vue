@@ -277,6 +277,7 @@ defineExpose({
 	// Lets a host disable other controls (e.g. an agent picker) while a file
 	// attachment is still encoding, so they cannot change who a send targets.
 	isPreparingSubmission,
+	getSendStopButtonElement: () => chatInputRef.value?.getSendStopButtonElement(),
 });
 
 const isBusy = computed(
