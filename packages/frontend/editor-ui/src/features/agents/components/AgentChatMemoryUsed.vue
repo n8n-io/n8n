@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nHoverCard, N8nIcon, N8nText } from '@n8n/design-system';
 
 export interface DisplayMemory {
 	id: string;
@@ -37,14 +36,20 @@ function splitKeyMemory(text: string): string[] {
 </script>
 
 <template>
-	<HoverCardRoot
+	<N8nHoverCard
 		v-if="memories.length > 0"
 		v-model:open="isOpen"
 		:open-delay="400"
 		:close-delay="0"
+		side="bottom"
+		align="end"
+		:side-offset="8"
+		max-width="24rem"
+		max-height="280px"
+		enable-scrolling
 		@update:open="onOpenChange"
 	>
-		<HoverCardTrigger as-child>
+		<template #trigger>
 			<div :class="$style.trigger">
 				<N8nIcon icon="brain" size="small" />
 				<span>
@@ -56,119 +61,28 @@ function splitKeyMemory(text: string): string[] {
 					}}
 				</span>
 			</div>
-		</HoverCardTrigger>
-		<HoverCardPortal>
-			<HoverCardContent
-				side="bottom"
-				align="end"
-				:side-offset="8"
-				:class="[$style.popoverContent, $style.panel]"
-			>
-				<div v-for="memory in memories" :key="memory.id" :class="$style.memorySection">
-					<N8nText step="sm" bold :class="$style.label">
-						{{ i18n.baseText(keyMemoryLabelKey) }}
-					</N8nText>
-					<ul :class="$style.keyMemoryList">
-						<li
-							v-for="(sentence, sentenceIndex) in splitKeyMemory(memory.keyMemory)"
-							:key="`${memory.id}-${sentenceIndex}`"
-						>
-							<N8nText step="sm" tag="p" :class="$style.keyMemory">
-								{{ sentence }}
-							</N8nText>
-						</li>
-					</ul>
-				</div>
-			</HoverCardContent>
-		</HoverCardPortal>
-	</HoverCardRoot>
+		</template>
+		<template #content>
+			<div v-for="memory in memories" :key="memory.id" :class="$style.memorySection">
+				<N8nText step="sm" bold :class="$style.label">
+					{{ i18n.baseText(keyMemoryLabelKey) }}
+				</N8nText>
+				<ul :class="$style.keyMemoryList">
+					<li
+						v-for="(sentence, sentenceIndex) in splitKeyMemory(memory.keyMemory)"
+						:key="`${memory.id}-${sentenceIndex}`"
+					>
+						<N8nText step="sm" tag="p" :class="$style.keyMemory">
+							{{ sentence }}
+						</N8nText>
+					</li>
+				</ul>
+			</div>
+		</template>
+	</N8nHoverCard>
 </template>
 
 <style lang="scss" module>
-@use '../../../../../@n8n/design-system/src/css/mixins/motion';
-
-/** When https://github.com/n8n-io/n8n/pull/30611 is merged we can replace with proper N8nHoverCard component **/
-.popoverContent {
-	--popover--offset--slide-x: 0;
-	--popover--offset--slide-y: 0;
-	--popover--offset--origin-x: center;
-	--popover--offset--origin-y: center;
-	--animation--popover-in--translate-x: var(--popover--offset--slide-x);
-	--animation--popover-in--translate-y: var(--popover--offset--slide-y);
-
-	border-radius: var(--radius--xs);
-	background-color: var(--background--surface);
-	box-shadow:
-		var(--shadow--md),
-		inset var(--shadow--outline);
-	will-change: transform, opacity;
-	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
-
-	&[data-state='open'] {
-		@include motion.popover-in;
-	}
-
-	&[data-state='closed'] {
-		display: none;
-	}
-}
-
-.popoverContent[data-state='open'][data-side='top'] {
-	--popover--offset--slide-y: -2px;
-	--popover--offset--origin-y: bottom;
-}
-
-.popoverContent[data-state='open'][data-side='right'] {
-	--popover--offset--slide-x: 2px;
-	--popover--offset--origin-x: left;
-}
-
-.popoverContent[data-state='open'][data-side='bottom'] {
-	--popover--offset--slide-y: 2px;
-	--popover--offset--origin-y: top;
-}
-
-.popoverContent[data-state='open'][data-side='left'] {
-	--popover--offset--slide-x: -2px;
-	--popover--offset--origin-x: right;
-}
-
-.popoverContent[data-state='open'][data-side='top'][data-align='start'],
-.popoverContent[data-state='open'][data-side='bottom'][data-align='start'] {
-	--popover--offset--slide-x: -2px;
-	--popover--offset--origin-x: left;
-}
-
-.popoverContent[data-state='open'][data-side='top'][data-align='end'],
-.popoverContent[data-state='open'][data-side='bottom'][data-align='end'] {
-	--popover--offset--slide-x: 2px;
-	--popover--offset--origin-x: right;
-}
-
-.popoverContent[data-state='open'][data-side='left'][data-align='start'],
-.popoverContent[data-state='open'][data-side='right'][data-align='start'] {
-	--popover--offset--slide-y: -2px;
-	--popover--offset--origin-y: top;
-}
-
-.popoverContent[data-state='open'][data-side='left'][data-align='end'],
-.popoverContent[data-state='open'][data-side='right'][data-align='end'] {
-	--popover--offset--slide-y: 2px;
-	--popover--offset--origin-y: bottom;
-}
-
-.panel {
-	max-width: 24rem;
-	max-height: 280px;
-	overflow-y: auto;
-	scrollbar-width: none;
-	-ms-overflow-style: none;
-}
-
-.panel::-webkit-scrollbar {
-	display: none;
-}
-
 .trigger {
 	display: flex;
 	align-items: center;
