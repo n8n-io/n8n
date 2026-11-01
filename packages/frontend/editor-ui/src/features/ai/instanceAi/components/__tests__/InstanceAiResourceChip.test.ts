@@ -42,7 +42,13 @@ describe('InstanceAiResourceChip', () => {
 
 		await fireEvent.focus(getByTestId(TEST_ID));
 
-		expect(await findTooltip()).toHaveTextContent('Leads > Enrichment > Start Enrichment');
+		const tooltip = await findTooltip();
+		expect(tooltip).toHaveTextContent('LeadsEnrichmentStart Enrichment');
+		expect(
+			[...tooltip.querySelectorAll('[role="img"][aria-label]')].map((element) =>
+				element.getAttribute('aria-label')?.trim(),
+			),
+		).toEqual(['>', '>']);
 	});
 
 	it('forwards attributes and listeners to the chip root', async () => {
