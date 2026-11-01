@@ -14,6 +14,7 @@ const mockAgentInstances: Array<{
 	thinking: Mock;
 	mcpConnectionFailures: Mock;
 	modelFetch: Mock;
+	functionId: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -41,6 +42,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.thinking = vi.fn().mockReturnThis();
 		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		this.modelFetch = vi.fn().mockReturnThis();
+		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -81,7 +83,7 @@ vi.mock('../../tools', () => ({
 				'get_node_types',
 				'get_node_parameter_options',
 				'execute_node',
-				'workflow_builder_executions',
+				'run_workflow',
 				'workflow_builder_build_workflow',
 			];
 			if (context.evaluationConfigService) names.push('eval-config');
@@ -104,10 +106,7 @@ vi.mock('../../tools', () => ({
 					mockBuiltTool(`get_node_parameter_options-${context.runLabel ?? 'unknown'}`),
 				],
 				['execute_node', mockBuiltTool(`execute_node-${context.runLabel ?? 'unknown'}`)],
-				[
-					'workflow_builder_executions',
-					mockBuiltTool(`workflow_builder_executions-${context.runLabel ?? 'unknown'}`),
-				],
+				['run_workflow', mockBuiltTool(`run_workflow-${context.runLabel ?? 'unknown'}`)],
 				[
 					'workflow_builder_build_workflow',
 					mockBuiltTool(`workflow_builder_build_workflow-${context.runLabel ?? 'unknown'}`),
@@ -321,7 +320,7 @@ describe('createInstanceAgent', () => {
 			'get_node_types',
 			'get_node_parameter_options',
 			'execute_node',
-			'workflow_builder_executions',
+			'run_workflow',
 		]) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
@@ -421,6 +420,7 @@ describe('createInstanceAgent', () => {
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 			modelFetch,
+			requestLabels: true,
 		} as never);
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -431,7 +431,9 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('instance-ai.orchestrator');
 		expect(mockAgentInstances[1]?.modelFetch).not.toHaveBeenCalled();
+		expect(mockAgentInstances[1]?.functionId).not.toHaveBeenCalled();
 	});
 
 	it('attaches native telemetry from the trace context when present', async () => {

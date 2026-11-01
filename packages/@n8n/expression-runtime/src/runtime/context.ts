@@ -8,9 +8,11 @@ import {
 	createDeepLazyProxy,
 	isArrayMetadata,
 	isObjectMetadata,
+	readHostResult,
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
@@ -106,6 +108,10 @@ export function buildContext(
 	}
 	Settings.defaultZone = timezone ?? 'system';
 
+	// Check the error flag before decoding. Decoded data can hold the flag as user data.
+	const callHost = (message: unknown) =>
+		decodeHostValue(readHostResult(callbacks.callHost(message)));
+
 	const target: Record<string, unknown> = {};
 
 	// __sanitize must be on the context because PrototypeSanitizer generates:
@@ -191,9 +197,7 @@ export function buildContext(
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
 		const sendNodeMethod = (type: NodeRpcType) => {
 			return (branchIndex?: number, runIndex?: number) => {
-				const result = callbacks.callHost({ type, nodeName, branchIndex, runIndex });
-				throwIfErrorSentinel(result);
-				return result;
+				return callHost({ type, nodeName, branchIndex, runIndex });
 			};
 		};
 		// Paired-item cluster: `.pairedItem(idx?)`, `.itemMatching(idx)`,
@@ -206,14 +210,10 @@ export function buildContext(
 			type: 'getNodePairedItem' | 'getNodeItemMatching',
 			itemIndex?: number,
 		) => {
-			const result = callbacks.callHost({ type, nodeName, itemIndex });
-			throwIfErrorSentinel(result);
-			return result;
+			return callHost({ type, nodeName, itemIndex });
 		};
 		const sendGetNodeItem = () => {
-			const result = callbacks.callHost({ type: 'getNodeItem', nodeName });
-			throwIfErrorSentinel(result);
-			return result;
+			return callHost({ type: 'getNodeItem', nodeName });
 		};
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
@@ -254,9 +254,7 @@ export function buildContext(
 	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
 	const sendInputMethod = (type: InputRpcType) => {
 		return () => {
-			const result = callbacks.callHost({ type });
-			throwIfErrorSentinel(result);
-			return result;
+			return callHost({ type });
 		};
 	};
 	target.$input = new Proxy({} as Record<string, unknown>, {
@@ -275,9 +273,7 @@ export function buildContext(
 	// args, and the host's `WorkflowDataProxy.$items` applies its own
 	// defaults when fields are undefined.
 	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-		const result = callbacks.callHost({ type: 'getItems', nodeName, outputIndex, runIndex });
-		throwIfErrorSentinel(result);
-		return result;
+		return callHost({ type: 'getItems', nodeName, outputIndex, runIndex });
 	};
 
 	// $fromAI / $fromAi / $fromai — AI-builder placeholder accessor.
@@ -292,15 +288,13 @@ export function buildContext(
 		valueType?: string,
 		defaultValue?: unknown,
 	) => {
-		const result = callbacks.callHost({
+		return callHost({
 			type: 'fromAi',
 			name,
 			description,
 			valueType,
 			defaultValue,
 		});
-		throwIfErrorSentinel(result);
-		return result;
 	};
 	target.$fromAI = sendFromAi;
 	target.$fromAi = sendFromAi;
@@ -311,9 +305,7 @@ export function buildContext(
 	// Under the VM engine this re-enters the bridge on a fresh evaluation;
 	// the legacy engine handles it inline.
 	target.$evaluateExpression = (expression: string, itemIndex?: number) => {
-		const result = callbacks.callHost({ type: 'evaluateExpression', expression, itemIndex });
-		throwIfErrorSentinel(result);
-		return result;
+		return callHost({ type: 'evaluateExpression', expression, itemIndex });
 	};
 
 	// $getPairedItem — walks the paired-item ancestry chain back to the
@@ -326,14 +318,12 @@ export function buildContext(
 		incomingSourceData: unknown,
 		initialPairedItem: unknown,
 	) => {
-		const result = callbacks.callHost({
+		return callHost({
 			type: 'getPairedItem',
 			destinationNodeName,
 			incomingSourceData,
 			initialPairedItem,
 		});
-		throwIfErrorSentinel(result);
-		return result;
 	};
 
 	// -------------------------------------------------------------------------
@@ -379,8 +369,8 @@ export function buildContext(
 			return true;
 		}
 
-		// Primitive or null — store directly
-		target[key] = value;
+		// Decode after the metadata checks. User data can hold the same keys.
+		target[key] = decodeHostValue(value);
 		return true;
 	}
 

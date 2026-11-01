@@ -149,24 +149,23 @@ Suggested direction:
 2. Run Oxlint for `.ts`, `.tsx`, and the SFC script section.
 3. Do not rewrite 60 template rules as source-text checks.
 
-## Node package blockers
+## Node package migration
 
 The `n8n-nodes-base` plugin contributes 94 enforced rules:
 
 - 12 credential rules in `packages/@n8n/eslint-config/src/configs/nodes.ts`.
 - 82 node rules in the same config.
 
-The blocker is not known type awareness. The plugin needs a compatibility test through Oxlint's JavaScript plugin bridge. Its file-scoped rule tables also need an Oxlint translation.
+The plugin runs through Oxlint's JavaScript plugin bridge. Its file-scoped rule tables are in `@n8n/oxlint-config/nodes`. The filename rule stays in a residual ESLint pass because the bridge supplies different filename context.
 
 Use the rule tables in `packages/@n8n/eslint-config/src/configs/nodes.ts` as the canonical list. They change more often than this document and must not be duplicated here.
 
-Suggested spike:
+Validation covered:
 
-1. Load `eslint-plugin-n8n-nodes-base` through `jsPlugins` in an isolated node package.
-2. Run all 12 credential rules against representative valid and invalid files.
-3. Run the 82 node rules against representative valid and invalid files.
-4. Compare diagnostics, locations, options, and fixes with ESLint.
-5. Add the working file-scoped tables to `@n8n/oxlint-config/nodes`.
+1. Loading `eslint-plugin-n8n-nodes-base` through `jsPlugins`.
+2. Running all 12 credential rules and 82 node rules on `n8n-nodes-base`, then isolating the filename-rule divergence.
+3. Comparing the enabled rule set with the ESLint snapshot.
+4. Keeping a focused ESLint pass for divergent native rules, the filename rule, and package-specific AST selectors.
 
 ## Rules that are not blockers
 
@@ -186,7 +185,7 @@ The main exceptions are:
 2. Resolve decorator-safe `consistent-type-imports` behavior.
 3. Audit and reduce `naming-convention` package overrides.
 4. Re-test the two nursery rules.
-5. Run a JS-plugin bridge spike for `n8n-nodes-base`.
+5. Migrate the remaining package-specific AST selector restrictions.
 6. Keep a template-only ESLint pass for Vue until native template support exists.
 
 ## Validation commands

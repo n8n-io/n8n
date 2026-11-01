@@ -26,6 +26,7 @@ Displays floating content anchored to a trigger element. Popovers are used for d
 - `suppressAutoFocus?: boolean` - Whether to suppress auto-focus when opened. Default: `false`
 - `zIndex?: number` - z-index of popover content. Default: `999`
 - `reference?: Element` - Custom reference element for positioning.
+- `hideWhenDetached?: boolean` - Whether to hide the popover while its reference is hidden or fully outside the viewport. A scroll container that clips the reference does not count. Default: `false`
 
 **Events**
 

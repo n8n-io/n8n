@@ -48,6 +48,16 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 			help: 'Total time in seconds that the memory guard held new production executions, counted when each hold ends.',
 		});
 
+		const heldExecutions = new promClient.Counter({
+			name: `${prefix}memory_guard_held_executions_total`,
+			help: 'Total number of production executions that waited because the memory guard held new executions.',
+		});
+
+		const heldWaitSeconds = new promClient.Counter({
+			name: `${prefix}memory_guard_held_wait_seconds_total`,
+			help: 'Total time in seconds that held production executions waited, counted when each one starts or is cancelled.',
+		});
+
 		const stops = new promClient.Counter({
 			name: `${prefix}memory_guard_stops_total`,
 			help: 'Total number of executions that the memory guard stopped, by reason (threshold, critical, hold_limit) and whether the stop freed memory.',
@@ -83,6 +93,12 @@ export class PrometheusMemoryGuardMetricsService implements PrometheusMetricsCol
 		this.eventService.on('memory-guard-hold-ended', ({ heldMs }) => {
 			holding.set(0);
 			heldSeconds.inc(heldMs / 1000);
+		});
+
+		this.eventService.on('memory-guard-execution-held', () => heldExecutions.inc());
+
+		this.eventService.on('memory-guard-execution-released', ({ waitedMs }) => {
+			heldWaitSeconds.inc(waitedMs / 1000);
 		});
 
 		this.eventService.on('memory-guard-workflow-deactivated', () => deactivations.inc());

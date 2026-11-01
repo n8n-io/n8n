@@ -114,10 +114,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
 	...(await importOriginal<typeof typeAvailabilityPolicies>()),
-	useTypeAvailabilityPoliciesStore: () => ({
-		getCredentialTypeAvailability: (name: string) => {
+	useTypeAvailability: () => ({
+		nodeTypeRestriction: () => null,
+		credentialTypeRestriction: (name: string) => {
 			const scope = restrictedCredentialTypes.value[name];
-			return scope ? { name, available: false, scope } : { name, available: true };
+			return scope ? { name, available: false, scope } : null;
 		},
 	}),
 	ContactAdminModal: {

@@ -64,7 +64,7 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
 import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
-import { buildAgentPreviewHref } from '../utils/agentPreviewUrl';
+import { buildAgentTestHref } from '../utils/agentTestUrl';
 import {
 	getAgent,
 	createAgent,
@@ -110,7 +110,7 @@ import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
 } from '../composables/useProjectAgentsList';
-import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentTestHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentTestHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_MIN_PANEL_WIDTH,
@@ -163,9 +163,9 @@ import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
-import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
-import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
-import AgentPreviewDock from '../components/AgentPreviewDock.vue';
+import AgentTestHeader from '../components/AgentTestHeader.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
+import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -211,6 +211,8 @@ const props = withDefaults(
 		artifactPreviewSessionId?: string;
 		/** Controls the preview chat when the builder is inside Instance AI. */
 		artifactPreviewOpen?: boolean;
+		/** Render the test chat over the host Assistant column. */
+		artifactPreviewChatTarget?: HTMLElement | null;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 		/** True when no agent row exists behind `artifactAgentId` yet — the builder
@@ -234,6 +236,7 @@ const props = withDefaults(
 		artifactAgentId: undefined,
 		artifactPreviewSessionId: undefined,
 		artifactPreviewOpen: undefined,
+		artifactPreviewChatTarget: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
 		artifactPersistAgent: undefined,
@@ -244,7 +247,7 @@ const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
-	'assistant-handoff': [params: AgentPreviewHandoffParams];
+	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
 const route = useRoute();
@@ -434,7 +437,7 @@ if (!isArtifactMode.value) {
 		} else if (openParentAgentChatPreview) {
 			return openParentAgentChatPreview(targetAgentId, targetProjectId);
 		} else {
-			void router.push(buildAgentPreviewHref(targetProjectId, targetAgentId));
+			void router.push(buildAgentTestHref(targetProjectId, targetAgentId));
 		}
 		return true;
 	});
@@ -452,8 +455,8 @@ const isPreviewActive = computed(function isPreviewActive() {
 });
 
 // Embedded n8n Assistant panel (left dock, mirrors the preview dock on the right).
-// Default open for a pending agent so a new agent lands with the assistant
-// already showing; closed otherwise. Persisted per agent, like the preview dock.
+// Open editable unpublished agents with the assistant on each visit.
+// Other agents use their saved panel preference, like the preview dock.
 // null = no preference yet, so the default is derived instead of stored.
 const aiPanelOpenStorageKey = computed(function getAiPanelOpenStorageKey() {
 	return `N8N_AGENT_AI_PANEL_OPEN:${projectId.value}:${agentId.value}`;
@@ -463,6 +466,7 @@ const storedAiPanelOpen = useLocalStorage<boolean | null>(aiPanelOpenStorageKey,
 	writeDefaults: false,
 	flush: 'sync',
 });
+const aiPanelOpenForVisit = ref<boolean | null>(null);
 // The pending-agent default is decided once, when the agent opens. Persisting
 // the agent later (a real edit, or the assistant finishing a build) flips
 // `isRouteAgentPending` to false, which must not close the panel out from
@@ -474,6 +478,7 @@ const templateApplied = ref(false);
 watch([projectId, agentId], () => {
 	taskPreviewPrompt.value = undefined;
 	showConfiguration.value = false;
+	aiPanelOpenForVisit.value = null;
 });
 watch(agentId, () => {
 	// An in-place agentId change (e.g. "New agent" from the switcher) reuses this
@@ -487,8 +492,12 @@ watch(agentId, () => {
 	armStarterGate();
 });
 const isAiPanelOpen = computed({
-	get: () => storedAiPanelOpen.value ?? (openedForPendingAgent.value && instanceAiReady.value),
+	get: () =>
+		aiPanelOpenForVisit.value ??
+		storedAiPanelOpen.value ??
+		(openedForPendingAgent.value && instanceAiReady.value),
 	set: (value: boolean) => {
+		aiPanelOpenForVisit.value = null;
 		storedAiPanelOpen.value = value;
 	},
 });
@@ -862,7 +871,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 	const sessionTitle = session?.title?.trim() || currentSessionTitle.value || undefined;
 	const sessionNumber = session?.sessionNumber;
 
-	const params: AgentPreviewHandoffParams = {
+	const params: AgentTestHandoffParams = {
 		projectId: projectId.value,
 		agentId: agentId.value,
 		threadId,
@@ -1054,6 +1063,7 @@ const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
+		!agent.value?.activeVersionId &&
 		!isUnsaved.value &&
 		!props.artifactEditingLocked &&
 		!embeddedAiBuilding.value,
@@ -1085,9 +1095,8 @@ function onSetupTaskPublishAgent() {
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
-const previewChatPage =
-	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
-const previewDock = useTemplateRef<InstanceType<typeof AgentPreviewDock>>('previewDock');
+const previewChatPage = useTemplateRef<InstanceType<typeof AgentTestChatPage>>('previewChatPage');
+const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -1892,9 +1901,26 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<AutosaveResul
 	}
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	if (agent.value?.id !== snapshot.agentId) return undefined;
+	// A save makes a new version only when the content changed, so a new hash means the next
+	// version. A draft that follows the latest version runs it.
+	const versions = agent.value.skillVersions?.[snapshot.skillId];
+	const savedNewVersion =
+		!!versions && agent.value.skillHashes?.[snapshot.skillId] !== result.skillHash;
 	agent.value = {
 		...agent.value,
 		versionId: result.versionId,
+		...(versions && savedNewVersion
+			? {
+					skillVersions: {
+						...agent.value.skillVersions,
+						[snapshot.skillId]: {
+							...versions,
+							latest: versions.latest + 1,
+							draft: versions.pinned ? versions.draft : versions.latest + 1,
+						},
+					},
+				}
+			: {}),
 		skillHashes: {
 			...(agent.value.skillHashes ?? {}),
 			[snapshot.skillId]: result.skillHash,
@@ -2324,6 +2350,7 @@ const caps = useAgentCapabilitiesActions({
 	connectedTriggers,
 	ensureAgentPersisted,
 	flushConfigSave: flushConfigAutosave,
+	flushSkillSave: skillAutosave.flushAutosave,
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
@@ -3117,6 +3144,9 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			if (probedAgent) void adoptExistingPendingRow(probedAgent);
 		}
 		if (!isCurrentInitialization()) return;
+		if (!preserveState && canEditAgent.value && agent.value?.activeVersionId === null) {
+			aiPanelOpenForVisit.value = true;
+		}
 		// The tools picker and tool icons read the node types store, which stays
 		// empty when this page is the first one loaded. Not awaited: the page does
 		// not need it to render.
@@ -3461,7 +3491,7 @@ useKeybindings({
 		]"
 		data-testid="agent-builder-layout"
 	>
-		<AgentPreviewHeader
+		<AgentTestHeader
 			v-if="isStandalonePreview"
 			:agent-id="agentId"
 			:agent-name="agent?.name ?? agentName"
@@ -3577,7 +3607,8 @@ useKeybindings({
 			:class="[
 				$style.builder,
 				{
-					[$style.previewOpen]: isPreviewDockOpen && !inlineTestChat,
+					[$style.previewOpen]:
+						isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget,
 					[$style.inlineTestChat]: inlineTestChat,
 					[$style.chatFirst]: wideChat || inlineTestChat,
 					[$style.compactChatLayout]: compactChatLayout,
@@ -3660,7 +3691,7 @@ useKeybindings({
 				:style="{
 					left: showAiPanel ? `${renderedSidePanelWidths.ai}px` : undefined,
 					right:
-						isPreviewDockOpen && !inlineTestChat
+						isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget
 							? `${renderedSidePanelWidths.preview}px`
 							: undefined,
 				}"
@@ -3671,7 +3702,7 @@ useKeybindings({
 				<N8nIcon icon="spinner" spin />
 			</div>
 			<template v-else>
-				<AgentPreviewChatPage
+				<AgentTestChatPage
 					v-if="isStandalonePreview"
 					ref="previewChatPage"
 					layout="page"
@@ -3777,85 +3808,94 @@ useKeybindings({
 					@unpublished="onUnpublished"
 				/>
 
-				<N8nResizeWrapper
-					v-if="!isStandalonePreview"
-					:class="[
-						$style.previewResizeWrapper,
-						{
-							[$style.previewResizeOpen]: isPreviewDockOpen,
-						},
-					]"
-					:is-resizing-enabled="isPreviewDockOpen && !inlineTestChat"
-					v-show="!(compactChatLayout && showConfiguration)"
-					:width="renderedSidePanelWidths.preview"
-					:max-width="AGENT_MAX_PANEL_WIDTH"
-					:default-width="defaultPanelWidth"
-					:min-width="AGENT_MIN_PANEL_WIDTH"
-					:supported-directions="['left']"
-					:grid-size="8"
-					@resizestart="isPreviewDockResizing = true"
-					@resize="onPreviewDockResize"
-					@resizeend="isPreviewDockResizing = false"
+				<Teleport
+					:to="props.artifactPreviewChatTarget ?? 'body'"
+					:disabled="!props.artifactPreviewChatTarget"
 				>
-					<AgentPreviewDock
-						ref="previewDock"
-						:inline="inlineTestChat"
-						:closable="compactChatLayout"
-						:placeholder="
-							inlineTestChat
-								? locale.baseText('agents.builder.chatMode.testPlaceholder', {
-										interpolate: { agentName: localConfig?.name || agentName },
-									})
-								: undefined
+					<N8nResizeWrapper
+						v-if="!isStandalonePreview"
+						:class="[
+							$style.previewResizeWrapper,
+							{
+								[$style.previewResizeOpen]: isPreviewDockOpen,
+								[$style.previewOverlay]: !!props.artifactPreviewChatTarget,
+							},
+						]"
+						:is-resizing-enabled="
+							isPreviewDockOpen && !inlineTestChat && !props.artifactPreviewChatTarget
 						"
-						@message-sent="hasSentBuilderMessage = true"
-						:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
-						:session-title="currentSessionTitle"
-						:session-options="sessionMenu"
-						:has-session="currentSessionHasMessages"
-						:initialized="initialized && previewSessionReady"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:agent="agent"
-						:local-config="localConfig"
-						:connected-triggers="connectedTriggers"
-						:effective-session-id="effectiveSessionId"
-						:new-session="currentSessionIsEphemeral"
-						:initial-prompt="taskPreviewPrompt"
-						:can-delete-session="canDeletePreviewSession"
-						:is-deleting-session="isDeletingSession"
-						:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
-						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
-						:before-send="beforePreviewSend"
-						budget-cards
-						:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
-						@view-trace="viewPreviewTrace"
-						@new-session="startNewPreviewSession"
-						@delete-session="onDeletePreviewSession"
-						@session-select="onSessionPick"
-						@close="closeTestChat"
-						@continue-loaded="onContinueLoaded"
-						@session-created="markSessionCreated"
-						@send-to-assistant="onSendPreviewToAssistant"
-						@open-build="!isArtifactMode && setChatMode('build')"
-						@initial-consumed="taskPreviewPrompt = undefined"
+						v-show="!(compactChatLayout && showConfiguration)"
+						:width="renderedSidePanelWidths.preview"
+						:max-width="AGENT_MAX_PANEL_WIDTH"
+						:default-width="defaultPanelWidth"
+						:min-width="AGENT_MIN_PANEL_WIDTH"
+						:supported-directions="['left']"
+						:grid-size="8"
+						@resizestart="isPreviewDockResizing = true"
+						@resize="onPreviewDockResize"
+						@resizeend="isPreviewDockResizing = false"
 					>
-						<template v-if="inlineTestChat" #composer-footer>
-							<AgentBuilderChatDisclaimer />
-						</template>
-						<template v-if="inlineTestChat" #composer-start>
-							<AgentBuilderChatMode
-								:model-value="chatMode"
-								:disabled="chatModeBusy"
-								:test-disabled="!!testModeDisabledReason"
-								:test-disabled-reason="testModeDisabledReason"
-								:validation-issues="testValidationIssues"
-								:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
-								@update:model-value="setChatMode"
-							/>
-						</template>
-					</AgentPreviewDock>
-				</N8nResizeWrapper>
+						<AgentTestDock
+							ref="previewDock"
+							:inline="inlineTestChat"
+							:overlay="!!props.artifactPreviewChatTarget"
+							:closable="compactChatLayout"
+							:placeholder="
+								inlineTestChat
+									? locale.baseText('agents.builder.chatMode.testPlaceholder', {
+											interpolate: { agentName: localConfig?.name || agentName },
+										})
+									: undefined
+							"
+							@message-sent="hasSentBuilderMessage = true"
+							:is-open="isPreviewDockOpen && !(compactChatLayout && showConfiguration)"
+							:session-title="currentSessionTitle"
+							:session-options="sessionMenu"
+							:has-session="currentSessionHasMessages"
+							:initialized="initialized && previewSessionReady"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:agent="agent"
+							:local-config="localConfig"
+							:connected-triggers="connectedTriggers"
+							:effective-session-id="effectiveSessionId"
+							:new-session="currentSessionIsEphemeral"
+							:initial-prompt="taskPreviewPrompt"
+							:can-delete-session="canDeletePreviewSession"
+							:is-deleting-session="isDeletingSession"
+							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
+							:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+							:before-send="beforePreviewSend"
+							budget-cards
+							:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
+							@view-trace="viewPreviewTrace"
+							@new-session="startNewPreviewSession"
+							@delete-session="onDeletePreviewSession"
+							@session-select="onSessionPick"
+							@close="closeTestChat"
+							@continue-loaded="onContinueLoaded"
+							@session-created="markSessionCreated"
+							@send-to-assistant="onSendPreviewToAssistant"
+							@open-build="!isArtifactMode && setChatMode('build')"
+							@initial-consumed="taskPreviewPrompt = undefined"
+						>
+							<template v-if="inlineTestChat" #composer-footer>
+								<AgentBuilderChatDisclaimer />
+							</template>
+							<template v-if="inlineTestChat" #composer-start>
+								<AgentBuilderChatMode
+									:model-value="chatMode"
+									:disabled="chatModeBusy"
+									:test-disabled="!!testModeDisabledReason"
+									:test-disabled-reason="testModeDisabledReason"
+									:validation-issues="testValidationIssues"
+									:discovery="!hasSentBuilderMessage && isPreviewDockOpen && !showConfiguration"
+									@update:model-value="setChatMode"
+								/>
+							</template>
+						</AgentTestDock>
+					</N8nResizeWrapper>
+				</Teleport>
 			</template>
 		</div>
 	</div>
@@ -3979,6 +4019,11 @@ useKeybindings({
 			display: none;
 		}
 	}
+}
+
+.previewOverlay {
+	width: 100%;
+	z-index: 5;
 }
 
 .previewResizeOpen {

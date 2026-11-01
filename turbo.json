@@ -1,10 +1,15 @@
 {
 	"globalEnv": ["CI", "BUILD_WITH_COVERAGE"],
-	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	// VITEST_RETRY is not hashed, so a merge queue run can still use cached master test results.
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN", "VITEST_RETRY"],
 	"boundaries": {
 		// `~icons/*` is a vite virtual module injected by unplugin-icons (design-system
 		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
 		"implicitDependencies": ["~icons"]
+	},
+	"futureFlags": {
+		// `--affected` uses task `inputs`, so it selects a task that reads a file from another package.
+		"affectedUsingTaskInputs": true
 	},
 	"tasks": {
 		"clean": { "cache": false },
@@ -61,6 +66,14 @@
 		// against dist/methods/*.json, which only its own build emits.
 		"n8n-nodes-base#lint": {
 			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
+		},
+		// The @n8n/db lint configs read this manifest from the cli package.
+		"@n8n/db#lint": {
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json"
+			]
 		},
 		"lint:fix": {},
 		"lint:styles": {

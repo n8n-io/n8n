@@ -2,21 +2,26 @@ import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { ScimDeprovisioningService } from '../scim-deprovisioning.service';
+import { scimOptInGate } from '../scim-opt-in';
 import type { ScimSettingsService } from '../scim-settings.service';
 import type { ScimSsoService } from '../scim-sso.service';
 import { ScimTokenController } from '../scim-token.controller';
 import type { ScimTokenService } from '../scim-token.service';
 import { ScimTokenConflictError } from '../scim.errors';
 
+vi.mock('../scim-opt-in', () => ({ scimOptInGate: vi.fn() }));
+
 describe('ScimTokenController', () => {
 	let scimTokenService: Mocked<ScimTokenService>;
 	let scimSettingsService: Mocked<ScimSettingsService>;
 	let moduleRegistry: Mocked<ModuleRegistry>;
 	let scimSsoService: Mocked<ScimSsoService>;
+	let scimDeprovisioningService: Mocked<ScimDeprovisioningService>;
 	let controller: ScimTokenController;
 
 	const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-1' }) });
@@ -34,13 +39,35 @@ describe('ScimTokenController', () => {
 		scimSsoService = mock<ScimSsoService>();
 		scimSsoService.isSsoEnabled.mockReturnValue(true);
 		scimTokenService.getScimBaseUrl.mockReturnValue('https://n8n.example.com/scim/v2');
+		scimDeprovisioningService = mock<ScimDeprovisioningService>();
+		scimDeprovisioningService.getPolicy.mockResolvedValue({
+			onDelete: 'disable',
+			dataAction: 'transfer',
+			transferProjectId: null,
+		});
 		controller = new ScimTokenController(
 			mock<Logger>(),
 			scimTokenService,
 			scimSettingsService,
 			moduleRegistry,
 			scimSsoService,
+			scimDeprovisioningService,
 		);
+	});
+
+	describe('opt-in gate', () => {
+		it('runs the shared opt-in gate before every route', () => {
+			const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
+				ScimTokenController as never,
+			);
+			const [gateReq, gateRes] = [mock<Request>(), mock<Response>()];
+			const next: NextFunction = vi.fn();
+
+			controller.requireOptIn(gateReq, gateRes, next);
+
+			expect(metadata.middlewares).toEqual(['requireOptIn']);
+			expect(scimOptInGate).toHaveBeenCalledWith(gateReq, gateRes, next);
+		});
 	});
 
 	// Every one of these routes administers the credential an IdP uses to
@@ -65,8 +92,21 @@ describe('ScimTokenController', () => {
 				'deleteToken',
 				'generateToken',
 				'getConfig',
+				'getTransferTargets',
+				'setDeprovisioningPolicy',
 				'updateConfig',
 			]);
+		});
+	});
+
+	describe('GET /transfer-targets', () => {
+		it('returns the transfer targets for the query', async () => {
+			const response = { people: { total: 1, items: [] } };
+			scimDeprovisioningService.findTransferTargets.mockResolvedValue(response);
+			const query = { search: 'ada', type: 'people' as const, skip: 0, take: 50 };
+
+			await expect(controller.getTransferTargets(req, makeRes(), query)).resolves.toBe(response);
+			expect(scimDeprovisioningService.findTransferTargets).toHaveBeenCalledWith(query);
 		});
 	});
 
@@ -85,6 +125,9 @@ describe('ScimTokenController', () => {
 				hasToken: true,
 				tokenHint: 'ab12',
 				baseUrl: 'https://n8n.example.com/scim/v2',
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferProjectId: null,
 			});
 			expect(data).not.toHaveProperty('token');
 		});

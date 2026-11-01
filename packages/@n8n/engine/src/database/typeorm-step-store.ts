@@ -259,6 +259,14 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('running', id, error);
+	}
+
+	async failWaitingStep(id: string, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('waiting', id, error);
+	}
+
+	private async failStepFrom(from: StepStatus, id: string, error: StepError): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
 		// NO KEY UPDATE, not UPDATE, so plain FK checks don't queue behind it.
@@ -271,7 +279,7 @@ export class TypeOrmStepStore implements StepStore {
 			);
 			const result = await manager.update(
 				WorkflowStepExecution,
-				{ id, status: 'running' },
+				{ id, status: from },
 				{ error, status: 'failed' },
 			);
 			return result.affected === 1;
@@ -364,6 +372,14 @@ export class TypeOrmStepStore implements StepStore {
 		});
 	}
 
+	async loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]> {
+		if (nodeIds.length === 0) return [];
+		return await this.repo.find({
+			where: { executionId, nodeId: In(nodeIds) },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
+		});
+	}
+
 	async loadWaitingSteps(executionId: string): Promise<StepRecord[]> {
 		return await this.repo.find({ where: { executionId, status: 'waiting' } });
 	}
@@ -376,6 +392,13 @@ export class TypeOrmStepStore implements StepStore {
 
 	async hasFailedSteps(executionId: string): Promise<boolean> {
 		return await this.repo.exists({ where: { executionId, status: 'failed' } });
+	}
+
+	async loadFailedSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({
+			where: { executionId, status: 'failed' },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
+		});
 	}
 }
 

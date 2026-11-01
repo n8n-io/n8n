@@ -1,11 +1,11 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import {
@@ -21,7 +21,7 @@ const manyUnknownIds = () => Array.from({ length: 33_000 }, (_, i) => `skill_unk
 describe('AgentSkillRepository', () => {
 	let agentSkills: AgentSkillRepository;
 	let agents: AgentRepository;
-	let histories: AgentHistoryRepository;
+	let histories: Repository<AgentHistory>;
 	let project: Project;
 	let otherProject: Project;
 
@@ -30,7 +30,7 @@ describe('AgentSkillRepository', () => {
 		await testDb.init();
 		agentSkills = Container.get(AgentSkillRepository);
 		agents = Container.get(AgentRepository);
-		histories = Container.get(AgentHistoryRepository);
+		histories = Container.get(DataSource).getRepository(AgentHistory);
 		project = await createTeamProject('Team');
 		otherProject = await createTeamProject('Other team');
 	});
@@ -259,7 +259,12 @@ describe('AgentSkillRepository', () => {
 			const usage = await agentSkills.findUsage(id);
 
 			expect(usage.drafts).toEqual([
-				{ agentId: drafting.id, agentName: 'Drafting', projectId: project.id },
+				{
+					agentId: drafting.id,
+					agentName: 'Drafting',
+					projectId: project.id,
+					skillVersionId: null,
+				},
 			]);
 			expect(usage.pins).toHaveLength(2);
 			expect(usage.pins).toEqual(
@@ -296,10 +301,35 @@ describe('AgentSkillRepository', () => {
 			const usage = await agentSkills.findUsage(id, [project.id]);
 
 			expect(usage).toEqual({
-				drafts: [{ agentId: visible.id, agentName: 'Visible', projectId: project.id }],
+				drafts: [
+					{
+						agentId: visible.id,
+						agentName: 'Visible',
+						projectId: project.id,
+						skillVersionId: null,
+					},
+				],
 				pins: [],
 				hiddenAgents: 2,
 			});
+		});
+
+		it('keeps the pin of each draft ref', async () => {
+			const id = await createSkill();
+			const v1 = await latestVersionId(id);
+			const following = await createAgent('Following');
+			await agentSkills.replaceDependencies(following.id, [{ skillId: id }]);
+			const pinned = await createAgent('Pinned');
+			await agentSkills.replaceDependencies(pinned.id, [{ skillId: id, versionId: v1 }]);
+
+			const usage = await agentSkills.findUsage(id);
+
+			expect(usage.drafts).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ agentId: following.id, skillVersionId: null }),
+					expect.objectContaining({ agentId: pinned.id, skillVersionId: v1 }),
+				]),
+			);
 		});
 
 		it('is empty for a skill nobody uses', async () => {
@@ -380,17 +410,6 @@ describe('AgentSkillRepository', () => {
 	});
 
 	describe('findAgents', () => {
-		it('lists the agents of the given projects', async () => {
-			const support = await createAgent('Support');
-			const sales = await createAgent('Sales', { projectId: otherProject.id });
-
-			expect(await agentSkills.findAgentIdsInProjects([project.id])).toEqual([support.id]);
-			expect(
-				(await agentSkills.findAgentIdsInProjects([project.id, otherProject.id])).sort(),
-			).toEqual([support.id, sales.id].sort());
-			expect(await agentSkills.findAgentIdsInProjects([])).toEqual([]);
-		});
-
 		it('maps agent ids to their name and project, and skips unknown ids', async () => {
 			const support = await createAgent('Support');
 			const sales = await createAgent('Sales', { projectId: otherProject.id });

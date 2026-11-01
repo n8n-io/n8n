@@ -82,6 +82,7 @@ describe('execution start (integration)', () => {
 		const startExecution = new StartExecutionService(
 			new AllowAllAdmittance(),
 			executionStore,
+			stepStore,
 			orchestrationQueue,
 		);
 
@@ -151,6 +152,7 @@ describe('execution start (integration)', () => {
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

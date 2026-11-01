@@ -31,7 +31,11 @@ import {
 	AgentExecutionRepository,
 	type AgentExecutionUsageRow,
 } from '../repositories/agent-execution.repository';
-import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import {
+	AgentExecutionThreadRepository,
+	type AgentExecutionThreadKeyset,
+	type AgentExecutionThreadKeysetPage,
+} from '../repositories/agent-execution-thread.repository';
 import { AgentThreadGrantRepository } from '../repositories/agent-thread-grant.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
@@ -281,9 +285,23 @@ export class SystemAgentExecutionService {
 		return { provider, thread };
 	}
 
-	async listThreads(agentId: string, user: User, limit?: number) {
+	/**
+	 * One page of the user's own sessions with the agent, newest first. `search`
+	 * matches the title, and `before` is the last session of the previous page.
+	 */
+	async listThreads(
+		agentId: string,
+		user: User,
+		options: { limit: number; search?: string; before?: AgentExecutionThreadKeyset },
+	): Promise<AgentExecutionThreadKeysetPage> {
 		this.assertRegistered(agentId);
-		return await this.threadRepository.findOwnedByAgent(agentId, user.id, { limit });
+		return await this.threadRepository.findOwnedHistoryPage(
+			agentId,
+			user.id,
+			options.limit,
+			options.search,
+			options.before,
+		);
 	}
 
 	/** Load a thread the user owns. It checks ownership only, not the floor. */
@@ -1064,7 +1082,7 @@ export class SystemAgentExecutionService {
 		const stopTurn = () => controller.abort(providerSignal?.reason);
 		if (providerSignal?.aborted) stopTurn();
 		else providerSignal?.addEventListener('abort', stopTurn, { once: true });
-		try {
+		const consume = async () => {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
 				agentInstance: handle.agent,
@@ -1101,6 +1119,10 @@ export class SystemAgentExecutionService {
 				}
 				handle.onChunk?.(chunk);
 			}
+		};
+		try {
+			if (handle.withTurnContext) await handle.withTurnContext(consume);
+			else await consume();
 		} catch (caught) {
 			failure = caught;
 			const formatted = await formatError(caught);

@@ -700,6 +700,7 @@ async function handleSubmit(
 			if (nodeCount > 0) {
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 					node_count: nodeCount,
+					runtime: 'instance-ai',
 				});
 			}
 			// Clear the canvas selection only once the send succeeded — clearing it

@@ -6,6 +6,7 @@ export { AppsService } from './apps.service';
 export { AppVersionService } from './versions/app-version.service';
 export { AppBuildService } from './build/app-build.service';
 export { AppChangeService } from './versions/app-change.service';
+export { AppSourceArchiveService } from './versions/app-source-archive.service';
 export { AppSandboxSettings, type AppSandboxResolveOptions } from './build/app-sandbox-settings';
 export { AppVersionRepository } from './versions/app-version.repository';
 export { AppArtifactService } from './storage/app-artifact.service';

@@ -87,6 +87,18 @@ describe('MigrationFindingRepository', () => {
 			}
 		});
 
+		test('inserts a finding with the status it is given', async () => {
+			const workflow = await createWorkflow();
+			await findingRepository.insertMany(
+				[{ ...finding(workflow.id), status: 'fixed_unpublished' }],
+				ctx,
+			);
+
+			const [row] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+
+			expect(row.status).toBe('fixed_unpublished');
+		});
+
 		test('lists only findings for the requested target version', async () => {
 			const workflow = await createWorkflow();
 			await findingRepository.insertMany(
@@ -331,6 +343,32 @@ describe('MigrationFindingRepository', () => {
 			]);
 		});
 
+		test('counts a fixed_unpublished finding as unresolved', async () => {
+			const [fixedUnpublished, fixed] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await findingRepository.insertMany(
+				[
+					{ ...finding(fixedUnpublished.id, 'rule-a'), status: 'fixed_unpublished' },
+					finding(fixed.id, 'rule-a'),
+				],
+				ctx,
+			);
+			await setStatus(fixed.id, 'rule-a', 'fixed');
+
+			expect(await findingRepository.countUnresolvedByRule('v3', undefined, ctx)).toEqual([
+				{ ruleId: 'rule-a', count: 1 },
+			]);
+			expect(await findingRepository.countDistinctUnresolvedWorkflows('v3', undefined, ctx)).toBe(
+				1,
+			);
+			expect(
+				await findingRepository.listWorkflowIdsWithUnresolvedFindings(
+					'v3',
+					[fixedUnpublished.id, fixed.id],
+					ctx,
+				),
+			).toEqual([fixedUnpublished.id]);
+		});
+
 		test('returns an empty list when the version has no open findings', async () => {
 			const workflow = await createWorkflow();
 			await findingRepository.insertMany([finding(workflow.id, 'rule-a', 'v2')], ctx);
@@ -444,7 +482,7 @@ describe('MigrationFindingRepository', () => {
 	});
 
 	describe('listTriageableForRule', () => {
-		test('returns each open, notified and wont_fix finding of the rule with its status, workflow name, published state and last update', async () => {
+		test('returns each open, notified, fixed_unpublished and wont_fix finding of the rule with its status, workflow name, published state and last update', async () => {
 			const published = await createWorkflowWithHistory({ name: 'Published flow' });
 			await setActiveVersion(published.id, published.versionId);
 			const [dismissed, fixed, notified, fixedUnpublished, otherRule] = await Promise.all([
@@ -475,7 +513,10 @@ describe('MigrationFindingRepository', () => {
 			const listed = await findingRepository.listTriageableForRule('v3', 'rule-a', undefined, ctx);
 
 			expect(listed.map((f) => f.workflowId).sort()).toEqual(
-				[published.id, dismissed.id, notified.id].sort(),
+				[published.id, dismissed.id, notified.id, fixedUnpublished.id].sort(),
+			);
+			expect(listed.find((f) => f.workflowId === fixedUnpublished.id)?.status).toBe(
+				'fixed_unpublished',
 			);
 			for (const row of listed) {
 				expect(row.ruleId).toBe('rule-a');
@@ -581,6 +622,29 @@ describe('MigrationFindingRepository', () => {
 			expect(after.status).toBe('open');
 			expect(after.notifiedAt).toBeNull();
 		});
+
+		test.each(['wont_fix', 'open'] as const)(
+			'sets %s on a fixed_unpublished finding',
+			async (status) => {
+				const workflow = await createWorkflow();
+				await findingRepository.insertMany(
+					[{ ...finding(workflow.id, RULE_ID), status: 'fixed_unpublished' }],
+					ctx,
+				);
+
+				const updated = await findingRepository.setTriageStatus(
+					'v3',
+					RULE_ID,
+					workflow.id,
+					status,
+					ctx,
+				);
+
+				expect(updated).toBe(true);
+				const [after] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+				expect(after.status).toBe(status);
+			},
+		);
 
 		test('sets wont_fix on a notified finding and keeps notifiedAt', async () => {
 			const workflow = await createWorkflow();

@@ -29,25 +29,31 @@ export class AgentSkillUsage extends SkillUsage {
 		return await this.agentSkillRepository.findAgents(agentIds, ctx);
 	}
 
-	async findAgentIdsInProjects(projectIds: string[], ctx: OperationContext) {
-		return await this.agentSkillRepository.findAgentIdsInProjects(projectIds, ctx);
-	}
-
 	async findUsage(
 		skillId: string,
 		projectIds: string[] | 'all',
 		ctx: OperationContext,
 	): Promise<SkillUsedBy> {
 		const usage = await this.agentSkillRepository.findUsage(skillId, projectIds, ctx);
-		const numbers = await this.skillRuntime.findVersionNumbers(
-			usage.pins.flatMap((pin) => pin.skillVersionId ?? []),
-			ctx,
-		);
+		const [pinnedVersions, versionOf] = await Promise.all([
+			this.skillRuntime.findVersionRefs(
+				usage.pins.flatMap((pin) => pin.skillVersionId ?? []),
+				ctx,
+			),
+			this.skillRuntime.runtimeVersions(
+				usage.drafts.map((draft) => ({ id: skillId, versionId: draft.skillVersionId })),
+				ctx,
+			),
+		]);
 		return {
 			...usage,
+			drafts: usage.drafts.flatMap(({ skillVersionId, ...draft }) => {
+				const runtime = versionOf({ id: skillId, versionId: skillVersionId });
+				return runtime ? [{ ...draft, version: runtime.version, pinned: runtime.pinned }] : [];
+			}),
 			pins: usage.pins.map(({ skillVersionId, ...pin }) => ({
 				...pin,
-				version: skillVersionId ? (numbers.get(skillVersionId) ?? null) : null,
+				version: skillVersionId ? (pinnedVersions.get(skillVersionId)?.version ?? null) : null,
 			})),
 		};
 	}

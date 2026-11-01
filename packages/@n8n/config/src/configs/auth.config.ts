@@ -31,4 +31,21 @@ export class AuthConfig {
 	 */
 	@Env('N8N_OAUTH_BROWSER_BINDING')
 	oauthBrowserBinding: boolean = false;
+
+	/**
+	 * Whether n8n identifies itself to OAuth2 servers with a client ID metadata
+	 * document when a credential registers its client automatically. Turn this on
+	 * only if the OAuth2 servers can reach this instance over HTTPS. When the server
+	 * doesn't support metadata documents, n8n uses dynamic client registration.
+	 */
+	@Env('N8N_OAUTH_CIMD_ENABLED')
+	oauthCimdEnabled: boolean = false;
+
+	/**
+	 * HTTPS URL of the client ID metadata document that n8n sends as its client ID.
+	 * The document must list the OAuth2 callback URL of this instance. When unset,
+	 * n8n uses the document it serves at `/rest/oauth2-credential/client-metadata.json`.
+	 */
+	@Env('N8N_OAUTH_CLIENT_METADATA_URL')
+	oauthClientMetadataUrl: string = '';
 }

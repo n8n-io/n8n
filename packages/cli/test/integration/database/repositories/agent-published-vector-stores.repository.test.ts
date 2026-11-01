@@ -1,10 +1,12 @@
 import type { AgentJsonVectorStoreConfig, StoredAgentConfig } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 const pinecone: AgentJsonVectorStoreConfig = {
@@ -46,7 +48,7 @@ describe('AgentRepository.findPublishedVectorStoreProvidersPage', () => {
 	});
 
 	afterEach(async () => {
-		await agentHistoryRepo.delete({});
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
 		await agentRepo.delete({});
 	});
 
@@ -68,13 +70,10 @@ describe('AgentRepository.findPublishedVectorStoreProvidersPage', () => {
 
 	async function publish(agentId: string, publishedSchema: StoredAgentConfig) {
 		const versionId = uuid();
-		await agentHistoryRepo.saveVersion({
-			versionId,
-			agentId,
-			schema: publishedSchema,
-			tools: {},
-			publishedBy: 'test',
-		});
+		await agentHistoryRepo.saveVersion(
+			{ versionId, agentId, schema: publishedSchema, tools: {}, publishedBy: 'test' },
+			{},
+		);
 		await agentRepo.update({ id: agentId }, { activeVersionId: versionId });
 	}
 

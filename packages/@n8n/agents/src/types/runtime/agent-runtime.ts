@@ -48,12 +48,19 @@ export interface AgentRuntimeConfig {
 	 * HTTP_PROXY resolver.
 	 */
 	modelFetch?: FetchFn;
+	/**
+	 * Caller identity sent as the `x-n8n-function-id` header on this runtime's model
+	 * calls. Side calls add a suffix (`.memory-observer`, `.title`). Unset: no header.
+	 */
+	functionId?: string;
 	instructions: string;
 	skillSource?: RuntimeSkillSource;
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
 	workspaceFilesystem?: WorkspaceFilesystem;
+	/** Starts preparing the agent's workspace. Called for tools with `requiresWorkspace`. */
+	prewarmWorkspace?: () => void;
 	nativeToolDeferral?: NativeToolDeferralConfig;
 	toolSearch?: {
 		topK?: number;

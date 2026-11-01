@@ -84,6 +84,19 @@ describe('lifecycleEventSchema', () => {
 		).toBe(false);
 	});
 
+	it('treats the contents of an output slot as opaque', () => {
+		// Not JSON, so a schema that walked the slot would refuse it.
+		const outputs = [[{ json: { when: new Date(0), gap: undefined } }]];
+
+		const parsed = lifecycleEventSchema.safeParse({
+			type: 'step:completed',
+			...stepEvent,
+			outputs,
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
 	it('rejects a completed step without outputs', () => {
 		expect(lifecycleEventSchema.safeParse({ type: 'step:completed', ...stepEvent }).success).toBe(
 			false,

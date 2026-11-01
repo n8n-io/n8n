@@ -1,6 +1,6 @@
 import type { StepSlots } from '@n8n/engine';
 import type { INode, WebhookResponseMode } from 'n8n-workflow';
-import { WorkflowOperationError } from 'n8n-workflow';
+import { FORM_NODE_TYPE, WorkflowOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -117,5 +117,54 @@ describe('EngineV2Webhooks.toRun', () => {
 		expect(run.data.resultData.lastNodeExecuted).toBeUndefined();
 		expect(run.data.resultData.runData).toEqual({});
 		expect(run.data.resultData.error).toBeUndefined();
+	});
+});
+
+describe('EngineV2Webhooks.assertSupported on a resume', () => {
+	const EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+
+	const assertResume = (
+		responseMode: WebhookResponseMode,
+		available = true,
+		type = 'n8n-nodes-base.wait',
+	) => {
+		const proxy = mock<EngineDataPlaneProxyService>();
+		proxy.isAvailable.mockReturnValue(available);
+		new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy).assertSupported({
+			workflowStartNode: mock<INode>({ name: 'Wait', type, parameters: {} }),
+			responseMode,
+			executionId: EXECUTION_ID,
+		});
+	};
+
+	it('lets the waiting node answer on receipt', () => {
+		expect(() => assertResume('onReceived')).not.toThrow();
+	});
+
+	it('refuses lastNode, since the data plane answers the end of a run only to its start', () => {
+		expect(() => assertResume('lastNode')).toThrow(
+			'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+		);
+	});
+
+	it('skips the trigger checks, so a waiting Form node can resume', () => {
+		expect(() => assertResume('onReceived', true, FORM_NODE_TYPE)).not.toThrow();
+	});
+
+	it.each(['responseNode', 'formPage'] as const)(
+		'refuses %s, where a later node would answer the resume request',
+		(mode) => {
+			expect(() => assertResume(mode)).toThrow(
+				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			);
+		},
+	);
+
+	it('refuses a response mode that engine v2 does not support', () => {
+		expect(() => assertResume('hostedChat')).toThrow("'hostedChat' response mode");
+	});
+
+	it('still needs the engine module', () => {
+		expect(() => assertResume('onReceived', false)).toThrow('N8N_ENABLED_MODULES');
 	});
 });

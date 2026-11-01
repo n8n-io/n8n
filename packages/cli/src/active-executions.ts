@@ -27,6 +27,7 @@ import type PCancelable from 'p-cancelable';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IExecutingWorkflowData,
@@ -64,6 +65,7 @@ export class ActiveExecutions {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly unsavedManualExecutionService: UnsavedManualExecutionService,
 	) {}
 
 	has(executionId: string) {
@@ -116,6 +118,7 @@ export class ActiveExecutions {
 
 				executionId = await this.executionPersistence.create(fullExecutionData);
 				assert(executionId);
+				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
 
 				if (shouldReserveCapacity) {
 					await capacityReservation.reserve({ mode, executionId });
@@ -183,7 +186,9 @@ export class ActiveExecutions {
 			.finally(() => {
 				capacityReservation.release();
 				execution.postExecuteSettled = true;
-				if (execution.status === 'waiting' && !this.isDraining) {
+				// A worker never resumes in-process: a main or webhook process resumes it as a new job.
+				const mayResumeHere = !this.isDraining && !this.instanceSettings.isWorker;
+				if (execution.status === 'waiting' && mayResumeHere) {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
 				} else if (this.activeExecutions[executionId] === execution) {

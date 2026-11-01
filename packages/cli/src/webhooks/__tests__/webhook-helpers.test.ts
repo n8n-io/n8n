@@ -76,6 +76,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { type ResponseError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -2784,6 +2785,7 @@ describe('executeWebhook on engine v2', () => {
 		startNode = webhookNode(),
 		webhookResult = { workflowData: [[{ json: { body: 'hi' } }]] } as IWebhookResponseData,
 		executionId,
+		engineResume,
 		destinationNode,
 		responseHeaders,
 		response = mock<express.Response>({ headersSent: false, writableEnded: false }),
@@ -2792,6 +2794,7 @@ describe('executeWebhook on engine v2', () => {
 		startNode?: INode;
 		webhookResult?: IWebhookResponseData;
 		executionId?: string;
+		engineResume?: EngineV2ResumeRequest;
 		destinationNode?: IDestinationNode;
 		/** The response headers configured on the webhook node, as an expression. */
 		responseHeaders?: string;
@@ -2849,6 +2852,7 @@ describe('executeWebhook on engine v2', () => {
 			response,
 			responseCallback,
 			destinationNode,
+			{ engineResume },
 		);
 
 		return { response, responseCallback, returned };
@@ -2930,6 +2934,32 @@ describe('executeWebhook on engine v2', () => {
 			// `prepareExecutionData` only stores it on `executionData.startData`, where
 			// the dispatcher's guard cannot see it.
 			expect(workflowRunner.run.mock.calls[0][0].destinationNode).toEqual(destinationNode);
+		});
+
+		it('resumes under the id of the waiting execution', async () => {
+			const engineResume = { stepId: 'step-1', token: 't' };
+
+			await startWebhook({
+				startNode: webhookNode(WAIT_NODE_TYPE),
+				executionId: ENGINE_EXECUTION_ID,
+				engineResume,
+			});
+
+			expect(workflowRunner.run.mock.calls[0][0].engineV2ExecutionId).toBe(ENGINE_EXECUTION_ID);
+			expect(workflowRunner.run.mock.calls[0][3]).toEqual(
+				expect.objectContaining({ executionId: ENGINE_EXECUTION_ID, engineResume }),
+			);
+		});
+
+		it('reports a resume with a v1 execution id as a bug, before the node runs', async () => {
+			await startWebhook({ startNode: webhookNode(WAIT_NODE_TYPE), executionId: '42' });
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'An engine v2 resume needs a v2 execution id' }),
+				expect.anything(),
+			);
+			expect(webhookService.runWebhook).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('dispatches the run without a response expectation, because nobody listens', async () => {
@@ -3368,20 +3398,28 @@ describe('executeWebhook on engine v2', () => {
 				message: 'Engine v2 cannot run the "Webhook" trigger yet.',
 			},
 			{
-				name: 'a wait node',
-				options: { startNode: webhookNode(WAIT_NODE_TYPE) },
-				message: 'Engine v2 cannot run the "Webhook" trigger yet.',
-			},
-			{
 				name: 'an identity webhook',
 				options: { startNode: webhookNode(WEBHOOK_NODE_TYPE, { authentication: 'n8nOAuth2' }) },
 				message:
 					'Engine v2 cannot run the "Webhook" trigger yet, because it takes credentials from the request.',
 			},
 			{
-				name: 'a resumed execution',
-				options: { executionId: 'exec-1' },
-				message: 'Engine v2 cannot resume a waiting execution yet.',
+				name: 'a resume answered by a Respond to Webhook node',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'responseNode' },
+				message:
+					'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			},
+			{
+				name: 'a resume answered with the last node',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'lastNode' },
+				message:
+					'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+			},
+			{
+				name: 'a resume answered by the next form page',
+				options: { executionId: ENGINE_EXECUTION_ID, responseMode: 'formPage' },
+				message:
+					'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
 			},
 			{
 				name: 'a trigger that takes credentials from the request',

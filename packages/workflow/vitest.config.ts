@@ -10,6 +10,7 @@ const ENGINE_TESTS = [
 	'test/expression-array-proxy-semantics.test.ts',
 	'test/expression-compatibility.test.ts',
 	'test/expression-engine-start-failure.test.ts',
+	'test/expression-error-item-engine-parity.test.ts',
 	'test/expression-item-accessor-engine-parity.test.ts',
 	'test/expression-items-engine-parity.test.ts',
 	'test/expression-nested-data.test.ts',

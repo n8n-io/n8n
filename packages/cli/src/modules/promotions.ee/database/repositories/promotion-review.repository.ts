@@ -66,6 +66,23 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 	}
 
 	/**
+	 * Closes the open reviews of an environment inside the change that ends them. A terminal row
+	 * never changes. Returns how many reviews closed.
+	 */
+	async closeOpenByEnvironmentId(
+		environmentId: string,
+		at: Date,
+		ctx: OperationContext,
+	): Promise<number> {
+		const result = await this.managerFor(ctx).update(
+			PromotionReview,
+			{ environmentId, state: In(OPEN_STATES) },
+			{ state: 'closed', lastStateChangeAt: at },
+		);
+		return result.affected ?? 0;
+	}
+
+	/**
 	 * Claims the approval of an open review for one admin. A claim older than `staleBefore`
 	 * belongs to a request that stopped, so another admin can take it.
 	 */
