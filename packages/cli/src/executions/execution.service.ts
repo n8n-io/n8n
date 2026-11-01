@@ -533,16 +533,8 @@ export class ExecutionService {
 		return true;
 	}
 
-	/**
-	 * All executions still enqueued (`new`), plus the ids of those whose data could not be
-	 * read - those can never run, so the caller has to take them out of `new` itself.
-	 */
-	async findAllEnqueuedExecutions() {
-		return await this.executionPersistence.findMultipleExecutionsWithUnreadable({
-			select: ['id', 'mode'],
-			where: { status: 'new' },
-			order: { id: 'ASC' },
-		});
+	async findEnqueuedExecutionIds() {
+		return await this.executionRepository.findEnqueuedIds();
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
