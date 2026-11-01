@@ -112,6 +112,8 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
+			stepConcurrency: this.engineConfig.stepConcurrency,
+			orchestrationConcurrency: this.engineConfig.orchestrationConcurrency,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),

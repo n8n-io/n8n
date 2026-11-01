@@ -189,6 +189,17 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.engine.start).toHaveBeenCalled();
 		});
 
+		it('passes independent handler concurrency limits to the engine', async () => {
+			await newRuntime('postgres://engine', {
+				stepConcurrency: 5,
+				orchestrationConcurrency: 10,
+			}).init(responseSender());
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ stepConcurrency: 5, orchestrationConcurrency: 10 }),
+			);
+		});
+
 		it('injects a lifecycle event callback that reports to the control plane', async () => {
 			await newRuntime().init(responseSender());
 
