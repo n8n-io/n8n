@@ -110,6 +110,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['Tabs'],
+		allowedFolders: ['components/N8nTabsRoot'],
+		replacement: ['N8nTabsRoot', 'N8nTabsList', 'N8nTabsTrigger', 'N8nTabsContent'],
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['TagsInput'],
 		allowedFolders: ['v2/components/TagsInput'],
 		replacement: 'N8nTagsInput2',
