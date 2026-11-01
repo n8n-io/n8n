@@ -15,12 +15,18 @@
         "Id": {
             "type": "string"
         },
+        "LastModifiedDate": {
+            "type": "string"
+        },
         "Name": {
             "type": "string"
+        },
+        "Probability": {
+            "type": "integer"
         },
         "StageName": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }
