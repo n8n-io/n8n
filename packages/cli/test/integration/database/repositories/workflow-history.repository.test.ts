@@ -135,6 +135,36 @@ describe('WorkflowHistoryRepository', () => {
 				expect(history).toEqual([expect.objectContaining({ versionId: id2 })]);
 			}
 		});
+		it('should not prune an additive change when the engine changed', async () => {
+			const v1Engine = uuid();
+			const latest = uuid();
+
+			const workflow = await createWorkflow({ versionId: latest });
+			await createWorkflowHistory(
+				{ ...workflow, versionId: v1Engine, nodes: [{ ...testNode1, parameters: { a: 'a' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(2), settings: { engineType: 'v1' } },
+			);
+			await createWorkflowHistory(
+				{ ...workflow, versionId: latest, nodes: [{ ...testNode1, parameters: { a: 'ab' } }] },
+				undefined,
+				undefined,
+				{ createdAt: secondsAgo(1), settings: { engineType: 'v2' } },
+			);
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const aMinAgo = new Date(Date.now() - 60_000);
+			const nextMin = new Date(Date.now() + 60_000);
+
+			const { deleted } = await repository.pruneHistory(workflow.id, aMinAgo, nextMin, [
+				RULES.mergeAdditiveChanges,
+			]);
+
+			expect(deleted).toBe(0);
+			expect(await repository.count({ where: { workflowId: workflow.id } })).toBe(2);
+		});
+
 		it('should not prune non-additive version', async () => {
 			const id1 = uuid();
 			const id2 = uuid();

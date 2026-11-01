@@ -228,3 +228,5 @@ export const MANAGED_VERSION_KEY = 'n8n_managed_version';
 
 /** Version of a managed OAuth app when a credential or a config does not state one. */
 export const IMPLICIT_MANAGED_VERSION = 1;
+
+export const WORKFLOW_ENGINE_TYPES = ['v1', 'v2'] as const;
