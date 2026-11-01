@@ -77,6 +77,8 @@ export function rowSchedule(row: ScheduledJob): ScheduleDefinition {
 			return { kind: 'interval', intervalSeconds: row.intervalSeconds ?? 0 };
 		case 'one_off':
 			return { kind: 'one_off', fireAt: row.fireAt ?? new Date(0) };
+		case 'hold':
+			throw new UnexpectedError(`Scheduled job ${row.id} is a hold job and has no schedule`);
 		default: {
 			const exhaustive: never = row.kind;
 			throw new UnexpectedError(`Unexpected scheduled job kind: ${JSON.stringify(exhaustive)}`);

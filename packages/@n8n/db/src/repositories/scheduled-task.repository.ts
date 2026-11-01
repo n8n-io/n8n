@@ -14,6 +14,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	ScheduledTask,
+	ScheduledTaskMode,
 	ScheduledTaskStatus,
 	type TerminalTaskStatus,
 	TerminalTaskStatusList,
@@ -37,6 +38,11 @@ export interface ClaimDueTasksOptions {
 	leaseMs: number;
 	/** Cap on how many rows a single claim takes. */
 	batchSize: number;
+	/**
+	 * Also take held tasks whose lease expired after their holder reported ready,
+	 * without waiting for the reaper. A row's own `leaseSeconds` overrides `leaseMs`.
+	 */
+	takeExpiredHeld?: boolean;
 }
 
 /**
@@ -82,6 +88,8 @@ export interface NewOccurrence {
 	maxAttempts: number;
 	timeoutSeconds: number;
 	missedAfter?: Date | null;
+	mode?: ScheduledTaskMode;
+	leaseSeconds?: number | null;
 }
 
 /** A task that {@link ScheduledTaskRepository.retireMissedPending} set to `missed`. */
@@ -331,11 +339,29 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return this.isPostgres ? await this.claimWithPostgres(opts) : await this.claimWithSqlite(opts);
 	}
 
-	private claimCandidateSql(alias: string, taskTypesSql: string, dueBeforeSql: string): string {
-		return `${alias}"status" = '${ScheduledTaskStatus.Pending}'
+	private claimCandidateSql(
+		alias: string,
+		taskTypesSql: string,
+		dueBeforeSql: string,
+		takeExpiredHeld = false,
+	): string {
+		const pending = `${alias}"status" = '${ScheduledTaskStatus.Pending}'
 			AND ${alias}"taskType" ${taskTypesSql}
 			AND ${alias}"runAt" <= ${dueBeforeSql}
 			AND ${this.claimableSql(alias)}`;
+		if (!takeExpiredHeld) return pending;
+		return `((${pending}) OR (${this.expiredHeldSql(alias)} AND ${alias}"taskType" ${taskTypesSql}))`;
+	}
+
+	/**
+	 * A held task whose holder reported ready and then stopped renewing. Taking it
+	 * directly saves the wait for the next reaper pass, and costs no attempt.
+	 */
+	private expiredHeldSql(alias: string): string {
+		return `${alias}"status" = '${ScheduledTaskStatus.Running}'
+			AND ${alias}"mode" = '${ScheduledTaskMode.Hold}'
+			AND ${alias}"heldSince" IS NOT NULL
+			AND ${alias}"leaseExpiresAt" < ${dbNowLiteral(this.isPostgres)}`;
 	}
 
 	private limitedJobIdsSql(): string {
@@ -396,12 +422,18 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		// a job that another claim changed, and `claimed_jobs` changes each job it uses.
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
 		// ... RETURNING, so destructure the rows out of the tuple.
+		const leaseSql = opts.takeExpiredHeld
+			? 'now() + (COALESCE("leaseSeconds" * 1000, $2::int) || \' milliseconds\')::interval'
+			: "now() + ($2 || ' milliseconds')::interval";
+		const heldResetSql = opts.takeExpiredHeld
+			? ', "heldSince" = NULL, "startedAt" = NULL, "dispatchedAt" = NULL'
+			: '';
 		const [rows]: [ScheduledTask[], number] = await this.query(
 			`WITH candidates AS MATERIALIZED (
 			   SELECT t."id", t."jobId", j."concurrencyLimit"
 			     FROM ${this.tableName} t
 			     JOIN ${this.jobTableName} j ON j."id" = t."jobId"
-			    WHERE ${this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql)}
+			    WHERE ${this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql, opts.takeExpiredHeld)}
 			      AND ${this.withinConcurrencyLimitSql('t.')}
 			      AND (j."concurrencyLimit" IS NULL OR EXISTS (
 			        SELECT 1 FROM ${this.jobTableName} guard
@@ -421,8 +453,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			 )
 			 UPDATE ${this.tableName}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
-			       "leaseExpiresAt" = now() + ($2 || ' milliseconds')::interval,
-			       "leaseEpoch" = "leaseEpoch" + 1
+			       "leaseExpiresAt" = ${leaseSql},
+			       "leaseEpoch" = "leaseEpoch" + 1${heldResetSql}
 			 WHERE "id" IN (
 			   SELECT "id" FROM candidates
 			    WHERE "concurrencyLimit" IS NULL OR "jobId" IN (SELECT "id" FROM claimed_jobs))
@@ -448,7 +480,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return await this.manager.transaction(async (tx) => {
 			const candidates = await tx
 				.createQueryBuilder(ScheduledTask, 't')
-				.where(this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql), params)
+				.where(
+					this.claimCandidateSql('t.', taskTypesSql, dueBeforeSql, opts.takeExpiredHeld),
+					params,
+				)
 				.andWhere(this.withinConcurrencyLimitSql('t.'))
 				.orderBy('t.runAt', 'ASC')
 				.limit(opts.batchSize)
@@ -457,18 +492,37 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			if (candidates.length === 0) return [];
 
 			const ids = candidates.map((c) => c.id);
-			await tx
-				.createQueryBuilder()
-				.update(ScheduledTask)
-				.set({
-					status: ScheduledTaskStatus.Running,
-					claimedBy: opts.host,
-					leaseExpiresAt: () =>
-						`STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+${opts.leaseMs / 1000} seconds')`,
-					leaseEpoch: () => 'leaseEpoch + 1',
-				})
-				.where({ id: In(ids), status: ScheduledTaskStatus.Pending })
-				.execute();
+			if (opts.takeExpiredHeld) {
+				await tx
+					.createQueryBuilder()
+					.update(ScheduledTask)
+					.set({
+						status: ScheduledTaskStatus.Running,
+						claimedBy: opts.host,
+						leaseExpiresAt: () =>
+							`STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+' || COALESCE("leaseSeconds", ${opts.leaseMs / 1000}) || ' seconds')`,
+						leaseEpoch: () => 'leaseEpoch + 1',
+						heldSince: null,
+						startedAt: null,
+						dispatchedAt: null,
+					})
+					.where({ id: In(ids) })
+					.andWhere(`("status" = '${ScheduledTaskStatus.Pending}' OR (${this.expiredHeldSql('')}))`)
+					.execute();
+			} else {
+				await tx
+					.createQueryBuilder()
+					.update(ScheduledTask)
+					.set({
+						status: ScheduledTaskStatus.Running,
+						claimedBy: opts.host,
+						leaseExpiresAt: () =>
+							`STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+${opts.leaseMs / 1000} seconds')`,
+						leaseEpoch: () => 'leaseEpoch + 1',
+					})
+					.where({ id: In(ids), status: ScheduledTaskStatus.Pending })
+					.execute();
+			}
 
 			// `claimedBy`/`status` scope the re-read to rows this claim owns: defence
 			// in depth beyond the `BEGIN IMMEDIATE` serialisation above.
@@ -523,6 +577,38 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			leaseExpiresAt: () => dbNowPlusMsLiteral(this.isPostgres, expiresInMs),
 		});
 		return rowsAffected > 0;
+	}
+
+	/**
+	 * A holder reported its resource armed: stamp `heldSince` and reset `attempts`,
+	 * so later losses cost no attempt and earlier failed starts are forgiven.
+	 */
+	async markHeld(claim: HostedClaimedRef): Promise<number> {
+		return await this.runGuardedUpdate(claim, {
+			heldSince: () => dbNowLiteral(this.isPostgres),
+			attempts: 0,
+		});
+	}
+
+	/**
+	 * A holder let go of its task: back to `pending`, due again after `delayMs`,
+	 * with no attempt counted.
+	 */
+	async releaseHeld(
+		claim: HostedClaimedRef,
+		delayMs: number,
+		errorMessage: string | null,
+	): Promise<number> {
+		return await this.runGuardedUpdate(claim, {
+			status: ScheduledTaskStatus.Pending,
+			runAt: () => dbNowPlusMsLiteral(this.isPostgres, delayMs),
+			errorMessage,
+			claimedBy: null,
+			leaseExpiresAt: null,
+			startedAt: null,
+			dispatchedAt: null,
+			heldSince: null,
+		});
 	}
 
 	/**
@@ -602,6 +688,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			leaseExpiresAt: null,
 			startedAt: null,
 			dispatchedAt: null,
+			heldSince: null,
 		});
 	}
 
@@ -719,6 +806,31 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			},
 			'pre-dispatch',
 		);
+	}
+
+	/**
+	 * Reaper reclaim of a held task whose holder reported ready: back to `pending`,
+	 * due now, with no attempt counted and a bumped epoch. Fenced on `heldSince` still
+	 * being set, so a row that changed holder in between is a benign no-op.
+	 */
+	async reclaimExpiredHeld(ref: ClaimedRef): Promise<number> {
+		const result = await this.createQueryBuilder()
+			.update(ScheduledTask)
+			.set({
+				status: ScheduledTaskStatus.Pending,
+				runAt: () => dbNowLiteral(this.isPostgres),
+				leaseEpoch: () => 'leaseEpoch + 1',
+				claimedBy: null,
+				leaseExpiresAt: null,
+				startedAt: null,
+				dispatchedAt: null,
+				heldSince: null,
+			})
+			.where({ id: ref.id, status: ScheduledTaskStatus.Running, leaseEpoch: ref.claimedEpoch })
+			.andWhere(`${this.leaseExpiresAtColumn} < ${dbNowLiteral(this.isPostgres)}`)
+			.andWhere('"heldSince" IS NOT NULL')
+			.execute();
+		return result.affected ?? 0;
 	}
 
 	/**

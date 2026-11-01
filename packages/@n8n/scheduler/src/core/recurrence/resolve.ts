@@ -31,6 +31,8 @@ export function resolveSchedule(job: StoredSchedule, defaultTimezone: string): S
 			return resolveInterval(job);
 		case 'one_off':
 			return resolveOneOff(job);
+		case 'hold':
+			throw new CorruptStorageRowError(`scheduled_job ${job.id} is a hold job and has no schedule`);
 		default: {
 			const exhaustive: never = job.kind;
 			throw new CorruptStorageRowError(

@@ -4,7 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
+import type { HoldTaskHandler, RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
 import {
 	createScheduler,
 	pollLookaheadSeconds,
@@ -23,6 +23,8 @@ import { createSchedulerTracer } from './scheduler-tracer';
 import { reportSystemTaskOverlaps } from './system-tasks/system-task-overlap-reporter';
 import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
+
+const HELD_TASK_SHUTDOWN_GRACE_MS = 10_000;
 
 /**
  * The database-backed {@link Scheduler} and its process lifecycle (the run side).
@@ -75,6 +77,9 @@ export class DurableScheduler implements Scheduler {
 							config.jitterRatio,
 						),
 						batchSize: config.claimBatchSize,
+						hold: config.enabledForHeldTasks
+							? { shutdownGraceMs: HELD_TASK_SHUTDOWN_GRACE_MS }
+							: undefined,
 					},
 					reaper: { batchSize: config.reaperBatchSize },
 					retention: {
@@ -138,6 +143,11 @@ export class DurableScheduler implements Scheduler {
 			return;
 		}
 		this.scheduler.registerTaskHandler(taskType, handler);
+	}
+
+	/** Register the handler that keeps held tasks of `taskType`. Needs held tasks enabled. */
+	registerHoldTaskHandler(taskType: string, handler: HoldTaskHandler): void {
+		this.scheduler?.registerTaskHandler(taskType, handler);
 	}
 
 	start(): void {

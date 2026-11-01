@@ -526,6 +526,7 @@ describe('GlobalConfig', () => {
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,
 			enabledForAgentTasks: false,
+			enabledForHeldTasks: false,
 			ownerReconciliationEnabled: true,
 			ownerReconciliationIntervalSeconds: 900,
 			ownerReconciliationTimeoutSeconds: 300,
