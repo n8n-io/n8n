@@ -5,6 +5,7 @@ import type {
 	AgentIntegrationConfig,
 	AgentJsonConfig,
 	AgentSkill,
+	AgentSkillVersionInfo,
 	StoredAgentConfig,
 } from '@n8n/api-types';
 
@@ -13,6 +14,8 @@ export interface CreateAgentDraftOptions {
 	adoptOnCollision?: boolean;
 	schema?: AgentJsonConfig;
 	skills?: Record<string, AgentSkill>;
+	/** Custom tool bodies keyed by tool id, in the shape of the agent row's `tools` column. */
+	tools?: Record<string, unknown>;
 	/** Internal seeds omit this field to keep creation telemetry silent. */
 	createdBy?: AgentActor;
 }
@@ -57,4 +60,5 @@ export interface AgentDraftState extends AgentCreationState {
 	hasPublishHistory: boolean;
 	skillHashes: Record<string, string>;
 	outdatedSkillIds: string[];
+	skillVersions: Record<string, AgentSkillVersionInfo>;
 }

@@ -3,7 +3,7 @@ import type { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm'
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { DataTableDDLService } from '../data-table-ddl.service';
+import { DataTableDDLService } from '../persistence/data-table-ddl';
 import * as sqlUtils from '../utils/sql-utils';
 
 // Mock the sql-utils module

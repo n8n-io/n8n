@@ -30,7 +30,7 @@ const resource: ProtectedResource = {
 };
 
 const context: SecurityContext = {
-	subject: { id: 'user-1', type: 'human', email: 'alice@example.com' } as Principal,
+	subject: { id: 'user-1', type: 'person', email: 'alice@example.com' } as Principal,
 	authMethod: 'oauth-access-token',
 	subjectClaim: { sourceId: 'idp-1', issuer: 'https://idp.example', subject: 'idp-alice' },
 	tokenScopes: [],

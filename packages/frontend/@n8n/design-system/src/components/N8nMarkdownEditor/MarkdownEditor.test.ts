@@ -182,6 +182,7 @@ describe('components/N8nMarkdownEditor', () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {
 				modelValue,
+				placeholder: 'Write instructions...',
 				showToolbar: 'never',
 				onReady: (readyEditor: Editor) => {
 					editor = readyEditor;
@@ -449,9 +450,45 @@ describe('components/N8nMarkdownEditor', () => {
 
 		await waitFor(() =>
 			expect(
-				wrapper.container.querySelector('[data-placeholder="Write instructions..."]'),
-			).toBeTruthy(),
+				wrapper.container.querySelector(
+					'.is-editor-empty[data-placeholder="Write instructions..."]',
+				),
+			).toBeInTheDocument(),
 		);
+	});
+
+	it.each(['', 'Existing instructions'])(
+		'keeps empty paragraphs free of placeholders after pasting into %j',
+		async (initialContent) => {
+			const { wrapper, editor } = await renderEditor(initialContent);
+			const textbox = getEditorElement(wrapper.container)!;
+			const markdown = 'First paragraph\n\n<p></p>\n\nSecond paragraph';
+
+			await fireEvent.paste(textbox, {
+				clipboardData: {
+					getData: (type: string) => (type === 'text/plain' ? markdown : ''),
+				},
+			});
+
+			expect(textbox).toHaveTextContent('First paragraph');
+			expect(textbox).toHaveTextContent('Second paragraph');
+			expect(textbox.querySelectorAll('p')).toHaveLength(initialContent ? 4 : 3);
+			expect(textbox.querySelector('.is-editor-empty')).not.toBeInTheDocument();
+
+			editor.commands.setTextSelection(editor.state.doc.child(0).nodeSize + 1);
+			expect(editor.state.selection.$from.parent.content.size).toBe(0);
+			expect(textbox.querySelector('.is-editor-empty')).not.toBeInTheDocument();
+		},
+	);
+
+	it('shows the placeholder again after clearing the editor', async () => {
+		const { wrapper, editor } = await renderEditor('Instructions');
+
+		editor.commands.clearContent();
+
+		expect(
+			wrapper.container.querySelector('.is-editor-empty[data-placeholder="Write instructions..."]'),
+		).toBeInTheDocument();
 	});
 
 	it('disables the editor when disabled', async () => {

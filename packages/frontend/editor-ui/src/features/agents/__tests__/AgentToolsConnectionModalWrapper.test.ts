@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, onMounted, watchEffect } from 'vue';
+import { defineComponent, nextTick, onMounted, watchEffect } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { AI_GATEWAY_MANAGED_TAG, type McpRegistryServerResponse } from '@n8n/api-types';
@@ -452,6 +452,57 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(getByText('Suggest a tool')).toBeInTheDocument();
 		expect(modalAttrs.persistentScrollbar ?? modalAttrs['persistent-scrollbar']).toBe(true);
 		expect(modalAttrs.groupSearchResults ?? modalAttrs['group-search-results']).toBe(true);
+	});
+
+	it('shows the loading screen until the project credentials are fetched', async () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		let resolveFetch: (value: []) => void = () => {};
+		credentialsStore.fetchUsableCredentials = vi.fn().mockReturnValue(
+			new Promise((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		render();
+		await nextTick();
+
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({ projectId: PROJECT_ID });
+		expect(modalAttrs.loading).toBe(true);
+
+		resolveFetch([]);
+		await flushPromises();
+
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('stops loading when the project credentials fetch fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		mockedStore(useCredentialsStore).fetchUsableCredentials = vi
+			.fn()
+			.mockRejectedValue(new Error('Network error'));
+		render();
+
+		await flushPromises();
+
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('refreshes credentials already fetched for the project without the loading screen', () => {
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockReturnValue(new Promise(() => {}));
+		render();
+
+		expect(credentialsStore.hasUsableCredentialsForScope).toHaveBeenCalledWith({
+			projectId: PROJECT_ID,
+		});
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('does not wait for credentials in workflow mode', () => {
+		render([], vi.fn(), [], PROJECT_ID, 'workflows');
+
+		expect(modalAttrs.loading).toBe(false);
 	});
 
 	// DynamicModalLoader passes `open`/`active`/`mode`/`activeId` on top of the
@@ -1387,6 +1438,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			await flushPromises();
 
 			expect(fetchForProject).toHaveBeenCalledWith(PROJECT_ID);
+		});
+
+		it('refetches the policy on open, so a policy changed since the builder loaded still applies', async () => {
+			const reload = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'reload')
+				.mockResolvedValue(undefined);
+
+			render([], vi.fn(), [], PROJECT_ID);
+			await flushPromises();
+
+			expect(reload).toHaveBeenCalled();
 		});
 
 		it('flags a restricted tool so the modal can lock it and list it last', async () => {

@@ -3,7 +3,9 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import type { Project, User } from '@n8n/db';
 import {
 	CredentialsRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -14,10 +16,11 @@ import { mock } from 'vitest-mock-extended';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { createOwner } from '../../../../../test/integration/shared/db/users';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { FolderService } from '@/services/folder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
@@ -262,6 +265,19 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 		expect(stored?.shared.map((s) => s.projectId)).toEqual([project.id]);
 	});
 
+	it('persists seed node groups at the seeded id', async () => {
+		const nodeGroups = [{ id: 'group-1', name: 'Notify', nodeIds: ['wf-grouped-trigger'] }];
+		await service.restoreWorkflows(
+			[{ ...seed('wf-grouped', 'Grouped'), nodeGroups }],
+			project.id,
+			mock<User>(),
+		);
+
+		const stored = await workflowRepository.findOneByOrFail({ id: 'wf-grouped' });
+		expect(stored.nodeGroups).toEqual(nodeGroups);
+		expect(stored.active).toBe(false);
+	});
+
 	it('a refused seed fails the restore, names the workflow and leaves nothing behind', async () => {
 		denyWorkflowNamed = 'Blocked';
 
@@ -275,5 +291,53 @@ describe('EvalThreadRestoreService.restoreWorkflows (policy seal)', () => {
 		await expect(restore).rejects.toThrow('Seed workflow wf-seeded-blocked ("Blocked")');
 		await expect(restore).rejects.toMatchObject({ violations: [DENIAL] });
 		expect(await workflowRepository.findByIds(['wf-seeded-ok', 'wf-seeded-blocked'])).toEqual([]);
+	});
+});
+
+describe('EvalThreadRestoreService.restoreWorkflows (workflow history)', () => {
+	it('gives a restored draft the history row publishing looks its version up in', async () => {
+		const owner = await createOwner();
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const history = Container.get(WorkflowHistoryService);
+		const service = new EvalThreadRestoreService(
+			Container.get(WorkflowRepository),
+			Container.get(SharedWorkflowRepository),
+			Container.get(CredentialsRepository),
+			Container.get(WorkflowPublishedVersionRepository),
+			Container.get(DataTableService),
+			Container.get(PolicyEnforcementService),
+			history,
+			mock<WorkflowService>(),
+			mock<FolderService>(),
+			mock<LicenseState>(),
+		);
+		const node = {
+			id: 'node-1',
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		await service.restoreWorkflows(
+			[{ id: 'wfDraftSeed00001', name: 'Draft seed', nodes: [node], connections: {} }],
+			project.id,
+			mock<User>(),
+		);
+
+		const restored = await Container.get(WorkflowRepository).findOneByOrFail({
+			id: 'wfDraftSeed00001',
+		});
+		// The lookup `activateWorkflow` makes before publishing ("Version not found" without it).
+		const version = await history.getVersion(owner, restored.id, restored.versionId);
+		expect(version.nodes).toEqual([expect.objectContaining({ id: 'node-1' })]);
+
+		await service.deleteWorkflows([restored.id]);
+		expect(
+			await Container.get(WorkflowHistoryRepository).countBy({ workflowId: restored.id }),
+		).toBe(0);
 	});
 });

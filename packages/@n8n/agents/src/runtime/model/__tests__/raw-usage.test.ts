@@ -93,11 +93,12 @@ describe('createRawUsageReader', () => {
 		'anthropic/claude-sonnet-4-6',
 		'google-vertex-anthropic/claude-opus-4-8',
 		'google-vertex/claude-opus-5@default',
+		'azure-openai/anthropic/my-claude',
 	])('returns an Anthropic reader for %s', (modelId) => {
 		expect(createRawUsageReader(modelId)).toBeInstanceOf(AnthropicRawUsageReader);
 	});
 
-	it.each(['openai/gpt-4o-mini', 'google-vertex/gemini-3-flash-preview'])(
+	it.each(['openai/gpt-4o-mini', 'google-vertex/gemini-3-flash-preview', 'azure-openai/my-chat'])(
 		'returns undefined for %s without a raw-usage reader',
 		(modelId) => {
 			expect(createRawUsageReader(modelId)).toBeUndefined();

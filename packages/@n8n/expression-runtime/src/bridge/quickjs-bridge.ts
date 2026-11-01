@@ -4,17 +4,20 @@ import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
+	defineOwnValue,
 	isEscapedTransferValue,
-	isOpaqueTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
+import { HostDataResolver } from './host-data-resolver';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
 	isErrorSentinel,
@@ -117,6 +120,16 @@ function isNaNSentinel(value: unknown): value is { __isNaN: true } {
 	);
 }
 
+// The guest escapes a user object with this key. Only the sentinel has this key alone.
+function isUndefinedSentinel(value: unknown): value is { __isUndefined: true } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isUndefined === true &&
+		Object.keys(value).length === 1
+	);
+}
+
 function isErrorValueSentinel(value: unknown): value is {
 	__isErrorValue: true;
 	__name: string;
@@ -161,19 +174,17 @@ function isEscapedObject(
 /**
  * Give back the payload of an escape wrapper.
  *
- * A walked payload only had its own keys collide, so the walk goes on and
- * rebuilds the markers deeper in it. An opaque payload is a value the guest
- * could not walk, so `opaque` keeps every marker in it as data.
+ * The guest escapes every marker-shaped object inside an opaque payload, so the
+ * host walk can rebuild the markers in any payload.
  */
 function unescapeTransferValue(value: EscapedTransferValue): unknown {
 	const inner: unknown = value.__value;
-	const opaque = isOpaqueTransferValue(value);
 	if (typeof inner !== 'object' || inner === null) return inner;
-	if (isEscapedObject(inner)) return unwrapSentinels(inner, opaque);
-	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry, opaque));
+	if (isEscapedObject(inner)) return unwrapSentinels(inner);
+	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry));
 	const unescaped: Record<string, unknown> = {};
 	for (const [key, entry] of Object.entries(inner)) {
-		unescaped[key] = unwrapSentinels(entry, opaque);
+		defineOwnValue(unescaped, key, unwrapSentinels(entry));
 	}
 	return unescaped;
 }
@@ -181,13 +192,8 @@ function unescapeTransferValue(value: EscapedTransferValue): unknown {
 /**
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
- *
- * With `markersAsData` set, a transfer marker is left as the plain object it
- * is, for the contents of a payload the guest marked opaque. The guest escapes
- * most such objects itself, but one that also carries `__isError` leaves the
- * guest walk before the escape, so the host must not read it as a marker.
  */
-function unwrapSentinels(value: unknown, markersAsData = false): unknown {
+function unwrapSentinels(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
 	// Escaped user objects: keys collided with the sentinel markers, so the
@@ -197,16 +203,18 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key], markersAsData);
+			defineOwnValue(result, key, unwrapSentinels(inner[key]));
 		}
 		return result;
 	}
-	if (!markersAsData) {
-		if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
-		if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
+	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isErrorTransferSentinel(value)) {
+		return rebuildErrorValue(value, unwrapSentinels);
 	}
+	if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
+	if (isUndefinedSentinel(value)) return undefined;
 	if (isErrorValueSentinel(value)) {
 		const ErrorCtor =
 			(
@@ -222,29 +230,21 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v, markersAsData);
+				defineOwnValue(err, k, unwrapSentinels(v));
 			}
 		}
 		return err;
 	}
 	if (isMapSentinel(value)) {
-		return new Map(
-			value.__entries.map(([k, v]) => [
-				unwrapSentinels(k, markersAsData),
-				unwrapSentinels(v, markersAsData),
-			]),
-		);
+		return new Map(value.__entries.map(([k, v]) => [unwrapSentinels(k), unwrapSentinels(v)]));
 	}
 	if (isSetSentinel(value)) {
-		return new Set(value.__values.map((entry) => unwrapSentinels(entry, markersAsData)));
+		return new Set(value.__values.map((entry) => unwrapSentinels(entry)));
 	}
-	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry, markersAsData));
-	// Pass error sentinels through untouched — execute() detects them after
-	// unwrapping and reconstructs the Error on the host.
-	if (isErrorSentinel(value)) return value;
+	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry));
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key], markersAsData);
+		defineOwnValue(result, key, unwrapSentinels((value as Record<string, unknown>)[key]));
 	}
 	return result;
 }
@@ -253,10 +253,12 @@ function unwrapSentinels(value: unknown, markersAsData = false): unknown {
 const TRANSFER_MARKER_KEYS = new Set([
 	'__isDate',
 	'__isNaN',
+	'__isUndefined',
 	'__isErrorValue',
 	'__isMap',
 	'__isSet',
 	'__isEscaped',
+	'__isError',
 ]);
 
 /**
@@ -287,14 +289,12 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
 	}
 	if (Array.isArray(value)) return value.map(wrapSpecialValuesForGuest);
-	// Error sentinels are already in transfer shape — leave them intact.
-	if (isErrorSentinel(value)) return value;
 	const record = value as Record<string, unknown>;
 	const result: Record<string, unknown> = {};
 	let collides = false;
 	for (const key of Object.keys(record)) {
 		if (TRANSFER_MARKER_KEYS.has(key)) collides = true;
-		result[key] = wrapSpecialValuesForGuest(record[key]);
+		defineOwnValue(result, key, wrapSpecialValuesForGuest(record[key]));
 	}
 	return collides ? { __isEscaped: true, __value: result } : result;
 }
@@ -342,7 +342,8 @@ function hostValueToJson(value: unknown): string {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
-		return safeStringify(wrapSpecialValuesForGuest(value));
+		// JSON.stringify returns undefined for a symbol or a function.
+		return safeStringify(wrapSpecialValuesForGuest(value)) ?? 'undefined';
 	} catch {
 		return 'undefined';
 	}
@@ -531,6 +532,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	// has a single interrupt handler; the handler interrupts once the earliest
 	// deadline passes, so a nested call cannot extend the outer call's budget.
 	private deadlines: number[] = [];
+
+	/** Load and instantiate the shared WASM module, so a later initialize() does not wait for it. */
+	static async loadWasm(): Promise<void> {
+		await loadQuickJSWasm();
+	}
 
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
@@ -907,6 +913,12 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const wrapperCode = `
 (function() {
+	// Host data uses the parser from context setup.
+	var parseJSON = JSON.parse;
+	// Define own data keys so a JSON __proto__ key stays part of the data.
+	function defineOwnValue(target, key, value) {
+		Object.defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
+	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
 		var prepared = original(value);
@@ -938,7 +950,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			var errKeys = Object.keys(v);
 			for (var ei = 0; ei < errKeys.length; ei++) {
 				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
-					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]], true);
+					defineOwnValue(errExtra, errKeys[ei], wrapSpecialValues(v[errKeys[ei]], true));
 				}
 			}
 			return { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
@@ -946,23 +958,25 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (v instanceof Map) {
 			var entries = [];
 			v.forEach(function(val, key) {
-				entries.push([wrapSpecialValues(key, true), wrapSpecialValues(val, true)]);
+				entries.push([wrapChild(key, true), wrapChild(val, true)]);
 			});
 			return { __isMap: true, __entries: entries };
 		}
 		if (v instanceof Set) {
 			var values = [];
 			v.forEach(function(val) {
-				values.push(wrapSpecialValues(val, true));
+				values.push(wrapChild(val, true));
 			});
 			return { __isSet: true, __values: values };
 		}
-		if (Array.isArray(v)) return v.map(function(item) { return wrapSpecialValues(item, inCollection); });
-		// Error sentinels are already in transfer shape — leave them intact.
-		if (v.__isError) return v;
+		if (Array.isArray(v)) return v.map(function(item) { return wrapChild(item, inCollection); });
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
+			// The values inside an Error marker still need the wrapping above.
+			if (v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
+				return wrapErrorMarker(v);
+			}
 			if (typeof v['${TRANSFER_TYPE_KEY}'] === 'string') return v;
 			if (v['${TRANSFER_ESCAPED_KEY}'] === true) {
 				var payload = v.__value;
@@ -987,6 +1001,20 @@ export class QuickJsBridge implements RuntimeBridge {
 		return wrapOwnKeys(v, inCollection);
 	}
 
+	function wrapErrorMarker(marker) {
+		var result = {};
+		Object.keys(marker).forEach(function(key) {
+			var isData = key === '__props' || key === '__cause' || key === '__json';
+			defineOwnValue(result, key, isData ? wrapChild(marker[key], false) : marker[key]);
+		});
+		return result;
+	}
+
+	// vm.dump() drops an undefined object value and turns an undefined array item into null.
+	function wrapChild(v, inCollection) {
+		return v === undefined ? { __isUndefined: true } : wrapSpecialValues(v, inCollection);
+	}
+
 	function wrapOwnKeys(v, inCollection) {
 		var result = {};
 		var keys = Object.keys(v);
@@ -994,15 +1022,17 @@ export class QuickJsBridge implements RuntimeBridge {
 		for (var i = 0; i < keys.length; i++) {
 			var key = keys[i];
 			if (
-				key === '__isDate' || key === '__isNaN' || key === '__isErrorValue' ||
-				key === '__isMap' || key === '__isSet' || key === '__isEscaped'
+				key === '__isDate' || key === '__isNaN' || key === '__isUndefined' ||
+				key === '__isErrorValue' || key === '__isMap' || key === '__isSet' ||
+				key === '__isEscaped'
 			) {
 				collides = true;
 			}
-			// Inside a collection a transfer marker is user data, so escape the object
-			// and the host reads the keys as the plain data they are.
+			// Inside a collection a transfer marker or an error flag is user data, so
+			// escape the object and the host reads the keys as the plain data they are.
 			if (
 				inCollection && (
+					key === '__isError' ||
 					key === '${TRANSFER_TYPE_KEY}' ||
 					key === '${TRANSFER_ESCAPED_KEY}' ||
 					key === '${TRANSFER_OPAQUE_KEY}'
@@ -1010,7 +1040,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapSpecialValues(v[key], inCollection);
+			defineOwnValue(result, key, wrapChild(v[key], inCollection));
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of
@@ -1020,10 +1050,11 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	// Reverse direction: rebuild real instances from the sentinels the host's
 	// wrapSpecialValuesForGuest() produces for callback results.
-	globalThis.__unwrapFromHost = function unwrapFromHost(v) {
+	globalThis.__unwrapFromHost = function(json) {
+		return unwrapFromHost(parseJSON(json));
+	};
+	function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
-		// Error sentinels stay as-is — the in-context proxy detects and throws them.
-		if (v.__isError === true) return v;
 		if (v.__isDate === true) return new Date(v.__isoString);
 		if (v.__isNaN === true) return NaN;
 		if (v.__isMap === true) {
@@ -1042,15 +1073,15 @@ export class QuickJsBridge implements RuntimeBridge {
 			var inner = v.__value;
 			var out = {};
 			var ekeys = Object.keys(inner);
-			for (var e = 0; e < ekeys.length; e++) out[ekeys[e]] = unwrapFromHost(inner[ekeys[e]]);
+			for (var e = 0; e < ekeys.length; e++) defineOwnValue(out, ekeys[e], unwrapFromHost(inner[ekeys[e]]));
 			return out;
 		}
 		if (Array.isArray(v)) return v.map(unwrapFromHost);
 		var result = {};
 		var keys = Object.keys(v);
-		for (var n = 0; n < keys.length; n++) result[keys[n]] = unwrapFromHost(v[keys[n]]);
+		for (var n = 0; n < keys.length; n++) defineOwnValue(result, keys[n], unwrapFromHost(v[keys[n]]));
 		return result;
-	};
+	}
 })();
 `;
 
@@ -1126,7 +1157,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create per-execute callback function handles, closure-scoped to `data`.
+	 * Create per-execute callback function handles.
 	 *
 	 * The handles are passed as arguments into the per-call wrapper function
 	 * (see execute()) instead of being set as VM globals: `execute()` can
@@ -1138,44 +1169,63 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Callers must dispose the returned handles when the call completes.
 	 */
 	private createCallbackHandles(
-		data: WorkflowData,
+		resolver: HostDataResolver,
 	): Array<import('quickjs-emscripten').QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
+		const handles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
-		const getValueFn = vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			try {
-				const result = getValueAtPath(data, pathArr);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
+		try {
+			handles.push(
+				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					try {
+						const result = getValueAtPath(resolver, pathArr);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					const index = vm.dump(indexHandle) as number;
+					try {
+						const result = getArrayElement(resolver, pathArr, index);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__callHostImpl', (msgHandle) => {
+					const rawMsg = vm.dump(msgHandle);
+					try {
+						const result = escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+		} catch (error) {
+			// A live handle keeps the data. It also makes JS_FreeRuntime abort.
+			for (const handle of handles) {
+				try {
+					handle.dispose();
+				} catch {
+					// Throw the build error, not a dispose error.
+				}
 			}
-		});
+			throw error;
+		}
 
-		const getArrayFn = vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
-			const pathArr = vm.dump(pathHandle) as string[];
-			const index = vm.dump(indexHandle) as number;
-			try {
-				const result = getArrayElement(data, pathArr, index);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		const callHostFn = vm.newFunction('__callHostImpl', (msgHandle) => {
-			const rawMsg = vm.dump(msgHandle);
-			try {
-				const result = dispatchHostCall(rawMsg, data);
-				return this.hostValueToQuickJSHandle(result);
-			} catch (err) {
-				return this.hostValueToQuickJSHandle(serializeError(err));
-			}
-		});
-
-		return [getValueFn, getArrayFn, callHostFn];
+		return handles;
 	}
 
 	/**
@@ -1213,7 +1263,12 @@ export class QuickJsBridge implements RuntimeBridge {
 		const json = hostValueToJson(value);
 		if (json === 'undefined') return this.vm.undefined;
 
-		const result = this.vm.evalCode(`__unwrapFromHost(${json})`);
+		// JSON keys must keep their data meaning, including __proto__.
+		const unwrapFn = this.vm.getProp(this.vm.global, '__unwrapFromHost');
+		const jsonHandle = this.vm.newString(json);
+		const result = this.vm.callFunction(unwrapFn, this.vm.undefined, jsonHandle);
+		jsonHandle.dispose();
+		unwrapFn.dispose();
 		if (result.error) {
 			result.error.dispose();
 			return this.vm.undefined;
@@ -1248,7 +1303,11 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (timeout <= 0) throw this.timeoutError(true);
 		}
 
-		const callbackHandles = this.createCallbackHandles(data);
+		// QuickJS frees a host function only when the guest function is collected,
+		// and its cycle collector runs late. So the callbacks read the data from a
+		// resolver that `finally` disposes, else a finished call's data stays in memory.
+		const resolver = new HostDataResolver(data);
+		const callbackHandles = this.createCallbackHandles(resolver);
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1323,11 +1382,13 @@ export class QuickJsBridge implements RuntimeBridge {
 				throw new Error(`Expression evaluation failed: ${errStr}`);
 			}
 
-			const result = unwrapSentinels(outcome.dump);
-
-			if (isErrorSentinel(result)) {
-				throw reconstructError(result);
+			// Only a thrown error reaches the host as a bare sentinel. The guest walk
+			// escapes any user object with the same flag.
+			if (isErrorSentinel(outcome.dump)) {
+				throw reconstructError(outcome.dump);
 			}
+
+			const result = unwrapSentinels(outcome.dump);
 
 			this.logger.debug('[QuickJsBridge] Expression executed successfully');
 
@@ -1357,6 +1418,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
+			resolver.dispose();
 			this.deadlines.pop();
 			if (!this.broken) {
 				for (const handle of callbackHandles) {

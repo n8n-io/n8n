@@ -87,6 +87,33 @@ describe('dynamic-node-parameters', () => {
 		);
 	});
 
+	it('picks the visible property when several share a name', () => {
+		const imageModel: INodeProperties = {
+			displayName: 'Model',
+			name: 'modelId',
+			type: 'options',
+			default: '',
+			typeOptions: { loadOptionsMethod: 'imageModels' },
+			displayOptions: { show: { resource: ['image'] } },
+		};
+		const videoModel: INodeProperties = {
+			...imageModel,
+			typeOptions: { loadOptionsMethod: 'videoModels' },
+			displayOptions: { show: { resource: ['video'] } },
+		};
+		const properties = [imageModel, videoModel];
+
+		expect(findNodeParameterProperty(properties, 'modelId')).toBe(imageModel);
+		expect(
+			findNodeParameterProperty(
+				properties,
+				'modelId',
+				(p) => p.displayOptions?.show?.resource?.[0] === 'video',
+			),
+		).toBe(videoModel);
+		expect(findNodeParameterProperty(properties, 'modelId', () => false)).toBe(imageModel);
+	});
+
 	it('detects resource locator and load-options lookups', () => {
 		expect(getDynamicNodeParameterLookup(resourceLocator)).toEqual({
 			kind: 'resourceLocator',

@@ -15,6 +15,8 @@ import PromotionEnvironmentUpdate from '../commands/promotion-environment/update
 import PromotionProviderDelete from '../commands/promotion-provider/delete';
 import PromotionProviderGet from '../commands/promotion-provider/get';
 import PromotionProviderList from '../commands/promotion-provider/list';
+import PromotionProviderListBranches from '../commands/promotion-provider/list-branches';
+import PromotionProviderListRepositories from '../commands/promotion-provider/list-repositories';
 import PromotionProviderUpdate from '../commands/promotion-provider/update';
 
 type CommandClass = new (argv: string[], config: Config) => { run: () => Promise<void> };
@@ -59,6 +61,22 @@ const CASES: WiringCase[] = [
 		flags: { limit: 5 },
 		method: 'listPromotionProviders',
 		callArgs: [5],
+	},
+	{
+		title: 'promotion-provider list-repositories',
+		commandClass: PromotionProviderListRepositories,
+		args: { id: 'prov-1' },
+		flags: { search: 'flows', limit: 5 },
+		method: 'listPromotionProviderRepositories',
+		callArgs: ['prov-1', 'flows', 5],
+	},
+	{
+		title: 'promotion-provider list-branches',
+		commandClass: PromotionProviderListBranches,
+		args: { id: 'prov-1', repository: 'acme/flows' },
+		flags: { search: 'release', limit: 5 },
+		method: 'listPromotionProviderBranches',
+		callArgs: ['prov-1', 'acme/flows', 'release', 5],
 	},
 	{
 		title: 'promotion-provider update',

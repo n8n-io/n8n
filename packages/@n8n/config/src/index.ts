@@ -84,7 +84,7 @@ export {
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
-export type { EngineMode } from './configs/engine.config';
+export type { EngineDefaultType, EngineMode } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { MemoryGuardConfig } from './configs/memory-guard.config';
 export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
@@ -112,6 +112,7 @@ export { ActivityLogConfig } from './configs/activity-log.config';
 export { ChatTriggerConfig } from './configs/chat-trigger.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
+export { TracingSourcesConfig } from './configs/tracing-sources.config';
 export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';

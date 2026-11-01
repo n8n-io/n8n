@@ -89,6 +89,8 @@ export const SLACK_MESSAGING_EXPERIENCES = ['assistant', 'agent'] as const;
 export const AgentSlackSettingsSchema = z
 	.object({
 		messagingExperience: z.enum(SLACK_MESSAGING_EXPERIENCES),
+		/** Require a mention in shared conversations. Unset keeps automatic thread replies. */
+		onlyRespondWhenMentioned: z.boolean().optional(),
 		sessionIdleTimeoutMinutes,
 	})
 	.strict();

@@ -15,6 +15,7 @@ import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	stepKeyId,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -22,6 +23,11 @@ import {
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
+import {
+	collectSubExecutionResult,
+	resumeAwaitingParent,
+	terminalNodeIds,
+} from './sub-execution-resume';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -92,6 +98,7 @@ export class StepSettledHandler {
 	): Promise<void> {
 		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
+		await this.stepStore.cancelPendingSteps(execution.id);
 		if (finished) {
 			this.lifecycleEventPublisher.publish({
 				type: 'execution:failed',
@@ -100,9 +107,23 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
+					status: 'failed',
+					error: await this.failureOf(execution, step),
+				});
+			}
 		}
+	}
 
-		await this.stepStore.cancelPendingSteps(execution.id);
+	/** The error to report for a failed execution. */
+	private async failureOf(execution: ExecutionRecord, step: StepRecord): Promise<StepError> {
+		if (step.status === 'failed' && step.error) return step.error;
+		// If a different step failed, find it. Note: it's possible multiple steps
+		// may have failed - we choose any for now.
+		const failed = (await this.stepStore.loadFailedSteps(execution.id)).find((row) => row.error);
+		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -220,6 +241,25 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent(
+					{ executionStore, stepStore, stepQueue },
+					execution,
+					failed
+						? { status: 'failed', error: await this.failureOf(execution, step) }
+						: {
+								status: 'completed',
+								result: collectSubExecutionResult(
+									execution.graph,
+									await this.stepStore.loadStepsByNodeIds(
+										execution.id,
+										terminalNodeIds(execution.graph),
+									),
+								),
+							},
+				);
+			}
 		}
 	}
 

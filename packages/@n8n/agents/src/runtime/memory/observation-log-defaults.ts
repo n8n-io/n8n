@@ -10,11 +10,12 @@ import {
 } from './observation-log-reflector';
 import type { ModelConfig } from '../../types/sdk/agent';
 import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 // Batch messages to reduce the observer's fixed prompt overhead.
@@ -169,16 +170,18 @@ export function createObservationLogObserveFn(
 ): ObservationLogObserveFn {
 	return async (input) => {
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model, undefined, input.telemetry),
+			model: createModel(model, input.modelFetch, input.telemetry),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
 			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
+			...buildFunctionIdHeaders(input.functionId, 'memory-observer'),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
-		const modelId = getModelIdString(model);
+		// The host prices side calls by this id, so report the model a deployment serves.
+		const modelId = getCatalogModelId(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
 				task: 'observer',
@@ -337,15 +340,17 @@ export function createObservationLogReflectFn(
 			})),
 		);
 		const { text, usage, finalStep } = await loadAi().generateText({
-			model: createModel(model, undefined, input.telemetry),
+			model: createModel(model, input.modelFetch, input.telemetry),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
+			...buildFunctionIdHeaders(input.functionId, 'memory-reflector'),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
 		const tokenUsage = toTokenUsage(usage, finalStep.providerMetadata);
-		const modelId = getModelIdString(model);
+		// The host prices side calls by this id, so report the model a deployment serves.
+		const modelId = getCatalogModelId(model);
 		if (options.onUsage && tokenUsage) {
 			await options.onUsage({
 				task: 'reflector',

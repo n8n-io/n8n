@@ -51,6 +51,23 @@ describe('failedBuildsPerTurn (the deterministic check signal)', () => {
 		expect(failedBuildsPerTurn([turn([bw(), approval()])])).toEqual([0]);
 	});
 
+	it('counts failed MCP builds, so the check has data on the MCP path', () => {
+		const mcpCall = (toolName: string, error?: string): TranscriptStep => ({
+			kind: 'tool-call',
+			toolName,
+			...(error ? { error } : { result: { workflowId: 'wf' } }),
+		});
+		expect(
+			failedBuildsPerTurn([
+				turn([
+					mcpCall('create_workflow_from_code', 'Validation failed'),
+					mcpCall('create_workflow_from_code'),
+					mcpCall('update_workflow', 'Unknown node'),
+				]),
+			]),
+		).toEqual([2]);
+	});
+
 	it('counts per turn', () => {
 		expect(failedBuildsPerTurn([turn([bwFail(), bwFail()]), turn([bwFail()])])).toEqual([2, 1]);
 	});

@@ -1,0 +1,38 @@
+diff --git a/dist/generative-ai.d.ts b/dist/generative-ai.d.ts
+index c60cda15f27354022b081eafe65cbaae181fe98f..20613cdb520320792a72bd8b88ff4bfa18a4e627 100644
+--- a/dist/generative-ai.d.ts
++++ b/dist/generative-ai.d.ts
+@@ -1195,6 +1195,7 @@ export declare interface RequestOptions {
+      * Custom HTTP request headers.
+      */
+     customHeaders?: Headers | Record<string, string>;
++    fetch?: typeof fetch;
+ }
+ 
+ /**
+diff --git a/dist/index.js b/dist/index.js
+index 61b2c3916d97f9f3f1c8f2f6970790e2048c5219..b750e72f179ffb9473e925ec9febb1f5cc3a1974 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -389,7 +389,7 @@ async function makeModelRequest(model, task, apiKey, stream, body, requestOption
+ // Allows this to be stubbed for tests
+ fetchFn = fetch) {
+     const { url, fetchOptions } = await constructModelRequest(model, task, apiKey, stream, body, requestOptions);
+-    return makeRequest(url, fetchOptions, fetchFn);
++    return makeRequest(url, fetchOptions, requestOptions.fetch ?? fetchFn);
+ }
+ async function makeRequest(url, fetchOptions, fetchFn = fetch) {
+     let response;
+diff --git a/dist/index.mjs b/dist/index.mjs
+index a69a3b17ccb9a4351bdae232c6ecf586fbbdc020..10f9f73f50222ed67574d7e2c2cdc2c2605f2211 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -387,7 +387,7 @@ async function makeModelRequest(model, task, apiKey, stream, body, requestOption
+ // Allows this to be stubbed for tests
+ fetchFn = fetch) {
+     const { url, fetchOptions } = await constructModelRequest(model, task, apiKey, stream, body, requestOptions);
+-    return makeRequest(url, fetchOptions, fetchFn);
++    return makeRequest(url, fetchOptions, requestOptions.fetch ?? fetchFn);
+ }
+ async function makeRequest(url, fetchOptions, fetchFn = fetch) {
+     let response;

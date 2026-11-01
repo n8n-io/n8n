@@ -338,7 +338,7 @@ extends one of those layers):
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use the `design-system` skill in reviews
+- Always use the `n8n:ui-design` skill in reviews
 
 ### Verify changes
 
@@ -376,6 +376,7 @@ extends one of those layers):
 | Run backend with PostgreSQL, Redis, email, and proxy services | `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`, then `pnpm dev:be` |
 | Add editor hot reload | `pnpm dev:fe:editor` |
 | Start a Codespace backend and share its port | `pnpm dev:up` |
+| See the telemetry events of a local instance | `pnpm telemetry:sink`, then `pnpm dev:be:telemetry` |
 
 The root `pnpm dev` command does not start a server. See the
 [Playwright guide](packages/quality/testing/playwright/README.md) and the

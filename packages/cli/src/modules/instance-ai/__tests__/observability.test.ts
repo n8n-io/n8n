@@ -68,6 +68,7 @@ describe('runMetricsModelLabel', () => {
 	it("collapses user-configured endpoints and unknown configs to 'custom'", () => {
 		expect(
 			runMetricsModelLabel({
+				kind: 'endpoint',
 				id: 'custom/some-self-hosted-model',
 				url: 'https://llm.example.com/v1',
 			}),

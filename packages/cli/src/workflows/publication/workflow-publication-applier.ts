@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { isNodeIdTooLong } from '@n8n/constants';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
@@ -32,6 +33,7 @@ import type {
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import {
 	isTriggerLikeNodeType,
 	type WorkflowTriggerVersion,
@@ -154,6 +156,9 @@ export class WorkflowPublicationApplier {
 	): Promise<PublicationResult> {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
+
+		const oversized = this.rejectOversizedTriggerNodeIds(workflow, newVersion);
+		if (oversized !== null) return oversized;
 
 		const unrunnable = await this.handleUnrunnableVersion(
 			workflow,
@@ -703,6 +708,44 @@ export class WorkflowPublicationApplier {
 		});
 
 		return { type: 'skipped', reason: published.published ? 'node-ids-healed' : 'superseded' };
+	}
+
+	/**
+	 * Fails a version whose trigger node ids cannot be stored in status rows. This
+	 * runs before trigger changes, so the old version keeps running. Fitting ids
+	 * get failed rows to prevent reconciliation retries.
+	 */
+	private rejectOversizedTriggerNodeIds(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): PublicationResult | null {
+		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
+		const enabledTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const oversized = [...enabledTriggerNodes, ...unresolvable.map(({ node }) => node)].filter(
+			(node) => isNodeIdTooLong(node.id),
+		);
+		if (oversized.length === 0) return null;
+
+		this.logger.warn('Published version carries trigger node ids that are too long', {
+			workflowId: workflow.id,
+			versionId: newVersion.versionId,
+			nodeNames: oversized.map((node) => node.name),
+		});
+
+		const error = new TriggerNodeIdTooLongError(oversized);
+		const storable = enabledTriggerNodes.filter((node) => !isNodeIdTooLong(node.id));
+		return {
+			type: 'failed',
+			error,
+			triggerStatuses: this.buildTriggerStatuses(
+				storable,
+				this.workflowTriggerActivator.getTriggerKinds(storable),
+				{
+					activated: [],
+					failures: storable.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
+				},
+			),
+		};
 	}
 
 	private isTriggerLikeNode(node: INode): boolean {

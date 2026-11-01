@@ -151,6 +151,7 @@ export class SelfHealingCandidateService {
 			declaredOutputFixtures: candidate.declaredOutputFixtures,
 			outputSchemaLookup: context.outputSchemaLookup,
 			fallbackModelConfig: context.modelId,
+			modelFetch: context.modelFetch,
 			logger: this.logger,
 		});
 		abortSignal.throwIfAborted();

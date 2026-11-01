@@ -1,7 +1,12 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { JSONSchema7 } from 'json-schema';
 
-import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import {
+	executeTool,
+	isSuspendedToolResult,
+	resolveToolForCall,
+	type SuspendedToolResult,
+} from './tool-adapter';
 import {
 	guardToolErrorForModel,
 	guardToolMessageForModel,
@@ -95,7 +100,7 @@ export class ToolCallRunner {
 	 */
 	async processToolCall(params: ProcessToolCallParams): Promise<ToolCallOutcome> {
 		const { toolName, toolMap, list, toolCallId, resumeData } = params;
-		const builtTool = toolMap.get(toolName);
+		const builtTool = resolveToolForCall(toolMap, toolName, params.input);
 
 		if (!builtTool) {
 			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
@@ -105,7 +110,7 @@ export class ToolCallRunner {
 		// lifecycle end and skip re-execution.
 		const settledBlock = this.findSettledToolCall(list, toolCallId);
 		if (settledBlock) {
-			return this.completeSettledToolCall(params, settledBlock);
+			return await this.completeSettledToolCall(params, settledBlock);
 		}
 
 		if (isCancellation(resumeData) && !builtTool.handleCancellation) {
@@ -307,11 +312,11 @@ export class ToolCallRunner {
 			);
 	}
 
-	/** Emit ToolExecutionEnd for a block the AI SDK already settled; the result was written earlier. */
-	private completeSettledToolCall(
+	/** Emit ToolExecutionEnd and guard local errors for a block the AI SDK already settled. */
+	private async completeSettledToolCall(
 		params: ProcessToolCallParams,
 		settledBlock: SettledToolCall,
-	): ToolCallOutcome {
+	): Promise<ToolCallOutcome> {
 		const settledResult =
 			settledBlock.state === 'resolved' ? settledBlock.output : settledBlock.error;
 		this.eventBus.emit({
@@ -321,6 +326,14 @@ export class ToolCallRunner {
 			result: settledResult,
 			isError: settledBlock.state === 'rejected',
 		});
+		if (settledBlock.state === 'rejected' && !settledBlock.providerExecuted) {
+			const guardedError = await guardToolErrorForModel(
+				settledBlock.error,
+				this.deps.tokenCounter,
+				this.getResultStorage(params),
+			);
+			params.list.setToolCallError(params.toolCallId, guardedError);
+		}
 		return { outcome: 'noop' };
 	}
 
@@ -467,6 +480,13 @@ export class ToolCallRunner {
 		} catch (error) {
 			return await this.toolError(params, error, builtTool);
 		}
+		// Trace output is host-only, so a failing hook must not fail the tool call.
+		let traceOutput: unknown;
+		try {
+			traceOutput = builtTool.toTraceOutput?.(toolResult);
+		} catch {
+			traceOutput = undefined;
+		}
 		const storage = this.getResultStorage(params);
 		const guardedResult = await guardToolResultForModel(
 			modelResult,
@@ -509,6 +529,7 @@ export class ToolCallRunner {
 			modelOutput: guardedResult.wireOutput,
 			customMessage: guardedCustomMessage,
 			...(builtTool.mcpServerName !== undefined ? { mcpServerName: builtTool.mcpServerName } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 		};
 	}
 

@@ -2,6 +2,7 @@
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useI18n } from '@n8n/i18n';
+import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -32,6 +33,7 @@ const {
 }>();
 
 const style = useCssModule();
+const { isRestricted, restrictionScope } = useCanvasNode();
 const containerClass = computed(() => ({
 	[cls ?? '']: true,
 	[style.container]: true,
@@ -69,6 +71,16 @@ const isChatHubOpen = computed(() => chatHubPanelStore.isOpen);
 const isChatOpen = computed(() =>
 	isChatHubAvailable.value ? isChatHubOpen.value : logsStore.isOpen,
 );
+const restrictionTitle = computed(() =>
+	i18n.baseText(
+		restrictionScope.value === 'project'
+			? 'node.restricted.project.title'
+			: 'node.restricted.instance.title',
+	),
+);
+const executeDisabledReason = computed(() =>
+	isRestricted.value ? restrictionTitle.value : unusableCredentialReason.value,
+);
 const isExecuting = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 
@@ -99,7 +111,7 @@ async function handleClickExecute() {
 	<div :class="containerClass" @click.stop.prevent @mousedown.stop.prevent>
 		<div>
 			<div :class="$style.bolt">
-				<N8nIcon icon="bolt-filled" size="large" />
+				<N8nIcon icon="bolt-filled" size="large" :class="{ [$style.restricted]: isRestricted }" />
 			</div>
 
 			<template v-if="!readOnly">
@@ -114,6 +126,16 @@ async function handleClickExecute() {
 						:label="i18n.baseText('chat.hide')"
 						@click.capture="closeChat"
 					/>
+					<N8nTooltip v-else-if="isRestricted" :content="restrictionTitle">
+						<N8nButton
+							variant="solid"
+							icon="message-circle"
+							size="large"
+							disabled
+							:data-test-id="testId"
+							:label="i18n.baseText('chat.open')"
+						/>
+					</N8nTooltip>
 					<KeyboardShortcutTooltip
 						v-else
 						:label="i18n.baseText('chat.open')"
@@ -130,16 +152,12 @@ async function handleClickExecute() {
 						/>
 					</KeyboardShortcutTooltip>
 				</template>
-				<N8nTooltip
-					v-else
-					:disabled="!unusableCredentialReason"
-					:content="unusableCredentialReason"
-				>
+				<N8nTooltip v-else :disabled="!executeDisabledReason" :content="executeDisabledReason">
 					<N8nButton
 						variant="solid"
 						icon="flask-conical"
 						size="large"
-						:disabled="isExecuting || !!unusableCredentialReason"
+						:disabled="isExecuting || !!executeDisabledReason"
 						:data-test-id="testId"
 						:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
 						@click.capture="handleClickExecute"
@@ -197,6 +215,10 @@ async function handleClickExecute() {
 	&.isExperimentalNdvActive {
 		height: var(--spacing--2xl);
 	}
+}
+
+.restricted {
+	opacity: 0.5;
 }
 
 .bolt {

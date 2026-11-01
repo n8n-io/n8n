@@ -17,7 +17,6 @@ const config: StorybookConfig = {
 		'../../design-system/src/**/*.mdx',
 	],
 	addons: [
-		getAbsolutePath('@chromatic-com/storybook'),
 		getAbsolutePath('@storybook/addon-vitest'),
 		getAbsolutePath('@storybook/addon-a11y'),
 		{

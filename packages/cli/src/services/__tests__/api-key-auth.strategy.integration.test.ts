@@ -2,7 +2,14 @@ import { Logger } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
+import {
+	accountFullName,
+	ApiKey,
+	ApiKeyRepository,
+	GLOBAL_MEMBER_ROLE,
+	ServiceAccountRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
@@ -86,6 +93,20 @@ describe('ApiKeyAuthStrategy', () => {
 			expect(grant.scopes.length).toBeGreaterThan(1);
 			expect(grant.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
 			expect(grant.apiKeyId).toBe(apiKeyId);
+		});
+
+		it('loads the name of a service account with the subject', async () => {
+			const serviceAccount = await Container.get(ServiceAccountRepository).create({
+				name: 'Deploy bot',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+			const apiKey = await signAndStoreMcpApiKey(serviceAccount);
+
+			const grant = await strategy.buildTokenGrant(apiKey, { audience: 'mcp-server-api' });
+
+			if (!grant) throw new Error('expected grant');
+			expect(grant.subject.role.slug).toBe(GLOBAL_MEMBER_ROLE.slug);
+			expect(accountFullName(grant.subject)).toBe('Deploy bot');
 		});
 
 		it('accepts legacy (non-JWT) api keys by looking up the record directly', async () => {
@@ -206,21 +227,21 @@ describe('ApiKeyAuthStrategy', () => {
 	});
 
 	describe('authenticate (wrapper)', () => {
-		it('returns null when no x-n8n-api-key header is present', async () => {
-			expect(await strategy.authenticate(mockReqWithoutApiKey())).toBeNull();
+		it('abstains when no x-n8n-api-key header is present', async () => {
+			expect(await strategy.authenticate(mockReqWithoutApiKey())).toEqual({ outcome: 'abstained' });
 		});
 
-		it('returns true and populates req.user + req.tokenGrant on success', async () => {
+		it('authenticates and populates req.user + req.tokenGrant on success', async () => {
 			const owner = await createOwnerWithApiKey();
 			const [{ apiKey }] = owner.apiKeys;
 			const req = mockReqWith(apiKey);
 
-			expect(await strategy.authenticate(req)).toBe(true);
+			expect(await strategy.authenticate(req)).toEqual({ outcome: 'authenticated' });
 			expect(req.user.id).toBe(owner.id);
 			expect(req.tokenGrant?.subject.id).toBe(owner.id);
 		});
 
-		it('abstains (returns null) when N8N_PUBLIC_API_DISABLED is set, even with a valid API key', async () => {
+		it('abstains when N8N_PUBLIC_API_DISABLED is set, even with a valid API key', async () => {
 			const globalConfig = Container.get(GlobalConfig);
 			globalConfig.publicApi.disabled = true;
 
@@ -229,7 +250,7 @@ describe('ApiKeyAuthStrategy', () => {
 				const [{ apiKey }] = owner.apiKeys;
 				const req = mockReqWith(apiKey);
 
-				expect(await strategy.authenticate(req)).toBeNull();
+				expect(await strategy.authenticate(req)).toEqual({ outcome: 'abstained' });
 			} finally {
 				globalConfig.publicApi.disabled = false;
 			}

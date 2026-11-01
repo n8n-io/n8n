@@ -382,10 +382,14 @@ jobs:
     # `!cancelled()` for the same reason as commit-impact-map, or the refresh PR
     # opens and never merges.
     if: ${{ !cancelled() && needs.commit-impact-map.outputs.pull-request-number != '' }}
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     secrets: inherit
     with:
       pull-request-number: ${{ needs.commit-impact-map.outputs.pull-request-number }}
+      enable-automerge: true
 
   notify-on-failure:
     name: Notify Slack on failure

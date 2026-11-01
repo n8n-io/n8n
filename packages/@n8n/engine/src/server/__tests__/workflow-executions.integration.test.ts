@@ -19,9 +19,11 @@ import {
 	CancelExecutionService,
 	ExecutionQueryService,
 	StartExecutionService,
+	type NewExecutionRecord,
+	type ParentLink,
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
@@ -116,6 +118,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 				'status',
 				'mode',
 				'hostMode',
+				'parent',
 				'createdAt',
 				'updatedAt',
 				'finishedAt',
@@ -127,6 +130,26 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 			limit: 20,
 		});
 		expect(Object.keys(rows[0]).sort()).toEqual(Object.keys(result.items[0]).sort());
+	});
+
+	it('filters by parent execution id and reports the link on each item', async () => {
+		const parentId = await start(generateId());
+		const awaited = { executionId: parentId, stepId: generateId(), awaited: true };
+		const detached = { executionId: parentId, stepId: generateId(), awaited: false };
+		const awaitedId = await startSubExecution(awaited);
+		const detachedId = await startSubExecution(detached);
+
+		const response = await search({ workflowIds: 'all', parentExecutionId: parentId }).expect(200);
+
+		const result = response.body as SearchExecutionsResponse;
+		expect(result.items.map((item) => [item.id, item.parent])).toEqual([
+			[detachedId, detached],
+			[awaitedId, awaited],
+		]);
+	});
+
+	it('rejects a parent execution id that is not a uuid', async () => {
+		await search({ workflowIds: 'all', parentExecutionId: 'parent' }).expect(400);
 	});
 
 	it('allows all for the authenticated CP', async () => {
@@ -206,6 +229,29 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 	});
 });
 
+/** A sub-execution's record, for the store: the route drops `parent`. */
+function subExecutionRecord(id: string, parent: ParentLink): NewExecutionRecord {
+	return {
+		id,
+		workflowId: 'wf-sub',
+		status: 'queued',
+		mode: 'production',
+		graph: { ...sampleGraph, seeded: [] },
+		workflow: sampleWorkflow,
+		triggerOutputs: null,
+		callerContext: { hostMode: 'integrated' },
+		responseExpectation: { kind: 'none' },
+		parent,
+	};
+}
+
+/** Writes through the store, because the route drops `parent`. */
+async function startSubExecution(parent: ParentLink): Promise<string> {
+	const id = generateId();
+	await createStores(dataSource).executionStore.createExecution(subExecutionRecord(id, parent));
+	return id;
+}
+
 /** The caller always mints the id, so every valid body carries one. */
 const startBody = (overrides: Record<string, unknown> = {}) => ({
 	workflowId: 'wf-1',
@@ -219,6 +265,7 @@ const startBody = (overrides: Record<string, unknown> = {}) => ({
 let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
 let workQueue: WorkQueue<OrchestrationMessage>;
+let stepQueue: WorkQueue<StepMessage>;
 let lifecycleEventPublisher: LifecycleEventPublisher;
 let responseSender: ExecutionResponseSender;
 let url: string;
@@ -235,16 +282,23 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	stepQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 	lifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
 	responseSender = { send: vi.fn(), stop: vi.fn() };
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	({ url, stop } = await startEngineServer({
-		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
+		startExecution: new StartExecutionService(
+			new AllowAllAdmittance(),
+			executionStore,
+			stepStore,
+			workQueue,
+		),
 		cancelExecution: new CancelExecutionService(
 			executionStore,
 			stepStore,
 			lifecycleEventPublisher,
 			responseSender,
+			stepQueue,
 		),
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier: new SharedSecretIdentityVerifier(secret),
@@ -366,6 +420,17 @@ describe('POST /api/workflow-executions (integration)', () => {
 			expect((response.body as { error: string }).error).toBe('invalid_request');
 		},
 	);
+
+	it('ignores a parent link in the body, so a caller over HTTP cannot claim a parent', async () => {
+		const body = startBody({
+			parent: { executionId: generateId(), stepId: generateId(), awaited: true },
+		});
+
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+
+		const { executionStore } = createStores(dataSource);
+		expect((await executionStore.loadExecution(body.executionId)).parent).toBeNull();
+	});
 
 	it('rejects a body without a caller context with 400', async () => {
 		const response = await request(url)
@@ -581,6 +646,82 @@ describe('POST /api/workflow-executions (integration)', () => {
 	});
 });
 
+describe('POST /api/workflow-executions/search/latest (integration)', () => {
+	const findLatest = (body: object) =>
+		request(url).post('/api/workflow-executions/search/latest').set(authHeader()).send(body);
+	async function start(workflowId: string) {
+		const body = startBody({ workflowId });
+		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
+		return body.executionId;
+	}
+
+	it('requires authentication', async () => {
+		await request(url)
+			.post('/api/workflow-executions/search/latest')
+			.send({ workflowIds: 'all' })
+			.expect(401);
+	});
+
+	it.each([
+		{},
+		{ workflowIds: [] },
+		{ workflowIds: 'all', status: [] },
+		{ workflowIds: 'all', limit: 1 },
+		{ workflowIds: 'all', before: sampleCursor },
+		{ workflowIds: 'all', includeTotal: true },
+		{ workflowIds: 'all', unknown: true },
+	])('rejects an invalid body %#', async (body) => {
+		await findLatest(body).expect(400);
+	});
+
+	it('returns the newest matching execution with its steps', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+		const newest = await start(workflowId);
+		await start(generateId());
+
+		const response = await findLatest({ workflowIds: [workflowId], status: ['queued'] }).expect(
+			200,
+		);
+
+		expect(response.body).toMatchObject({
+			id: newest,
+			workflowId,
+			status: 'queued',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			steps: [],
+		});
+	});
+
+	it('returns the newest sub-execution of a parent execution', async () => {
+		const parentId = await start(generateId());
+		await startSubExecution({ executionId: parentId, stepId: generateId(), awaited: true });
+		const newest = await startSubExecution({
+			executionId: parentId,
+			stepId: generateId(),
+			awaited: false,
+		});
+		await start(generateId());
+
+		const response = await findLatest({ workflowIds: 'all', parentExecutionId: parentId }).expect(
+			200,
+		);
+
+		expect(response.body).toMatchObject({ id: newest });
+	});
+
+	it('returns 404 not_found when nothing matches', async () => {
+		const workflowId = generateId();
+		await start(workflowId);
+
+		const response = await findLatest({ workflowIds: [workflowId], status: ['completed'] });
+
+		expect(response.status).toBe(404);
+		expect((response.body as { error: string }).error).toBe('not_found');
+	});
+});
+
 describe('GET /api/workflow-executions/:id (integration)', () => {
 	async function createExecution(): Promise<string> {
 		const response = await request(url)
@@ -611,12 +752,25 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			hostMode: 'webhook',
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
+			parent: null,
 			finishedAt: null,
 		});
 		expect(response.body).not.toHaveProperty('steps');
 		const body = response.body as { createdAt: string; updatedAt: string };
 		expect(new Date(body.createdAt).toISOString()).toBe(body.createdAt);
 		expect(new Date(body.updatedAt).toISOString()).toBe(body.updatedAt);
+	});
+
+	it('reports the parent link of a sub-execution', async () => {
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		const subExecutionId = await startSubExecution(parent);
+
+		const response = await request(url)
+			.get(`/api/workflow-executions/${subExecutionId}`)
+			.set(authHeader());
+
+		expect(response.status).toBe(200);
+		expect(response.body).toMatchObject({ id: subExecutionId, parent });
 	});
 
 	it('returns 404 not_found for an unknown execution id', async () => {
@@ -771,7 +925,7 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 				nodeId: 'b',
 				iteration: 0,
 				status: 'waiting',
-				waitDeclaration: { acceptsResumeRequest: true },
+				waitDeclaration: { resumeBinding: 'execution' },
 			}),
 		);
 
@@ -804,6 +958,53 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 			status: 'cancelled',
 			lastStep: null,
 		});
+	});
+
+	it('resumes the parent step with a cancelled cause when a sub-execution is cancelled on its own', async () => {
+		const parentId = await start();
+		const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+		const subExecutionId = generateId();
+		const waiting = await stepRepo.save(
+			stepRepo.create({
+				executionId: parentId,
+				nodeId: 'call',
+				iteration: 0,
+				status: 'waiting',
+				waitDeclaration: { subExecutionId },
+			}),
+		);
+		await createStores(dataSource).executionStore.createExecution({
+			...subExecutionRecord(subExecutionId, {
+				executionId: parentId,
+				stepId: waiting.id,
+				awaited: true,
+			}),
+			status: 'running',
+		});
+
+		await cancel(subExecutionId).expect(200);
+
+		const step = await stepRepo.findOneOrFail({ where: { id: waiting.id } });
+		expect(step.status).toBe('queued');
+		expect(step.resumeCause).toEqual({
+			kind: 'subExecution',
+			executionId: subExecutionId,
+			status: 'cancelled',
+			error: {
+				name: 'ExecutionCancelledError',
+				message: `Execution ${subExecutionId} was cancelled`,
+			},
+		});
+		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:ready',
+			executionId: parentId,
+			stepId: waiting.id,
+		});
+		// The parent itself was not cancelled.
+		const parent = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: parentId } });
+		expect(parent.status).toBe('queued');
 	});
 
 	it('answers a repeated cancel the same way, announcing nothing more', async () => {

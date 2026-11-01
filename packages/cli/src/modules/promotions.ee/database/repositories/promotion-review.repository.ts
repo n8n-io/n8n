@@ -47,6 +47,15 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 		return await this.find({ where: { state: In(OPEN_STATES) }, relations: { environment: true } });
 	}
 
+	/** Reviews of one environment that still wait on the host. The promote gate reads these. */
+	async findOpenByEnvironmentId(environmentId: string): Promise<PromotionReview[]> {
+		return await this.find({
+			where: { environmentId, state: In(OPEN_STATES) },
+			relations: { environment: true },
+			order: { createdAt: 'DESC' },
+		});
+	}
+
 	/** Writes a host state only while the row is open, so a terminal row never changes. */
 	async recordHostState(id: string, state: PromotionReviewState, at: Date): Promise<boolean> {
 		const result = await this.update(
@@ -54,6 +63,23 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 			{ state, lastStateChangeAt: at },
 		);
 		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Closes the open reviews of an environment inside the change that ends them. A terminal row
+	 * never changes. Returns how many reviews closed.
+	 */
+	async closeOpenByEnvironmentId(
+		environmentId: string,
+		at: Date,
+		ctx: OperationContext,
+	): Promise<number> {
+		const result = await this.managerFor(ctx).update(
+			PromotionReview,
+			{ environmentId, state: In(OPEN_STATES) },
+			{ state: 'closed', lastStateChangeAt: at },
+		);
+		return result.affected ?? 0;
 	}
 
 	/**

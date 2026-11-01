@@ -1,0 +1,29 @@
+{
+	"pinByType": {
+		"hackerNews": [
+			{ "title": "Show HN: A tiny database", "url": "https://example.com/a", "objectID": "1" },
+			{ "title": "Rust 2.0 released", "url": "https://example.com/b", "objectID": "2" },
+			{ "title": "Why tabs beat spaces", "url": "https://example.com/c", "objectID": "3" },
+			{ "title": "A new CSS layout", "url": "https://example.com/d", "objectID": "4" },
+			{ "title": "Ask HN: Remote work", "url": "https://example.com/e", "objectID": "5" },
+			{ "title": "Sixth story", "url": "https://example.com/f", "objectID": "6" }
+		],
+		"httpRequest": [
+			{ "title": "Show HN: A tiny database", "url": "https://example.com/a", "id": 1 },
+			{ "title": "Rust 2.0 released", "url": "https://example.com/b", "id": 2 },
+			{ "title": "Why tabs beat spaces", "url": "https://example.com/c", "id": 3 },
+			{ "title": "A new CSS layout", "url": "https://example.com/d", "id": 4 },
+			{ "title": "Ask HN: Remote work", "url": "https://example.com/e", "id": 5 },
+			{ "title": "Sixth story", "url": "https://example.com/f", "id": 6 }
+		],
+		"rssFeedRead": [
+			{ "title": "Show HN: A tiny database", "link": "https://example.com/a" },
+			{ "title": "Rust 2.0 released", "link": "https://example.com/b" },
+			{ "title": "Why tabs beat spaces", "link": "https://example.com/c" },
+			{ "title": "A new CSS layout", "link": "https://example.com/d" },
+			{ "title": "Ask HN: Remote work", "link": "https://example.com/e" },
+			{ "title": "Sixth story", "link": "https://example.com/f" }
+		]
+	},
+	"scenarios": [{ "name": "The digest posts to Slack", "expect": { "reach": ["slack"] } }]
+}
