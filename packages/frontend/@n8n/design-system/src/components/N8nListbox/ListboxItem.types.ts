@@ -21,6 +21,6 @@ export type ListboxItemEmits = {
 };
 
 export type ListboxItemSlots = {
-	/** Row content.*/
+	/** Row content. The item has no padding. The highlight covers this content. */
 	default(): unknown;
 };
