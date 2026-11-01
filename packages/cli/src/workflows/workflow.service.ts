@@ -940,7 +940,6 @@ export class WorkflowService {
 					: undefined;
 			await this.workflowHistoryService.saveVersion(
 				user,
-				// `changes` can leave out settings. The merged workflow has the draft settings.
 				{ ...changes, settings: prepared.workflow.settings },
 				workflowId,
 				autosaved,
@@ -1664,7 +1663,6 @@ export class WorkflowService {
 			nodes: WorkflowEntity['nodes'];
 			connections: WorkflowEntity['connections'];
 			nodeGroups?: WorkflowEntity['nodeGroups'];
-			/** The settings of the version that is published, not the draft settings. */
 			settings?: WorkflowEntity['settings'] | null;
 		},
 		expectedActiveVersionId: string,
