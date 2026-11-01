@@ -8,12 +8,11 @@ describe('pickVersionedSettings', () => {
 	});
 
 	it.each([
-		['null settings', null],
 		['undefined settings', undefined],
 		['empty settings', {}],
 		['only live settings', { availableInMCP: true }],
-	])('returns null for %s', (_, settings) => {
-		expect(pickVersionedSettings(settings)).toBeNull();
+	])('returns an empty object for %s', (_, settings) => {
+		expect(pickVersionedSettings(settings)).toEqual({});
 	});
 });
 
@@ -32,10 +31,10 @@ describe('versionedSettingsEqual', () => {
 	});
 
 	it('treats an unset engine as different from a set one', () => {
-		expect(versionedSettingsEqual(null, { engineType: 'v1' })).toBe(false);
+		expect(versionedSettingsEqual({}, { engineType: 'v1' })).toBe(false);
 	});
 
-	it('treats null and empty settings as equal', () => {
-		expect(versionedSettingsEqual(null, {})).toBe(true);
+	it('treats missing and empty settings as equal', () => {
+		expect(versionedSettingsEqual(undefined, {})).toBe(true);
 	});
 });
