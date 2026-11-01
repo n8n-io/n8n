@@ -4,14 +4,15 @@ import type {
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetail,
 } from '@n8n/api-types';
-import { N8nIcon, N8nText } from '@n8n/design-system';
 import {
-	AccordionContent,
-	AccordionHeader,
-	AccordionItem,
-	AccordionRoot,
-	AccordionTrigger,
-} from 'reka-ui';
+	N8nAccordion,
+	N8nAccordionContent,
+	N8nAccordionHeader,
+	N8nAccordionItem,
+	N8nAccordionTrigger,
+	N8nIcon,
+	N8nText,
+} from '@n8n/design-system';
 
 import { getVersionLabel } from '@n8n/composables/useWorkflowVersionLabel';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
@@ -28,16 +29,16 @@ const expanded = defineModel<string | undefined>('expanded');
 
 <template>
 	<!-- Closed items unmount, so only the open workflow pays for its diff canvases. -->
-	<AccordionRoot v-model="expanded" type="single" collapsible unmount-on-hide :class="$style.list">
-		<AccordionItem
+	<N8nAccordion v-model="expanded" type="single" collapsible unmount-on-hide :class="$style.list">
+		<N8nAccordionItem
 			v-for="workflow in workflows"
 			:key="workflow.workflowId"
 			:value="workflow.workflowId"
 			:class="$style.item"
 			data-test-id="workflow-review-changes-item"
 		>
-			<AccordionHeader :class="$style.header">
-				<AccordionTrigger
+			<N8nAccordionHeader :class="$style.header">
+				<N8nAccordionTrigger
 					:class="$style.trigger"
 					data-test-id="workflow-review-changes-item-trigger"
 				>
@@ -54,13 +55,13 @@ const expanded = defineModel<string | undefined>('expanded');
 					>
 						{{ getVersionLabel({ workflowHistory: workflow.pinnedVersion }) }}
 					</N8nText>
-				</AccordionTrigger>
-			</AccordionHeader>
-			<AccordionContent :class="$style.content">
+				</N8nAccordionTrigger>
+			</N8nAccordionHeader>
+			<N8nAccordionContent :class="$style.content">
 				<WorkflowReviewChangesSection :workflow="workflow" :state="state" :decision="decision" />
-			</AccordionContent>
-		</AccordionItem>
-	</AccordionRoot>
+			</N8nAccordionContent>
+		</N8nAccordionItem>
+	</N8nAccordion>
 </template>
 
 <style module lang="scss">
