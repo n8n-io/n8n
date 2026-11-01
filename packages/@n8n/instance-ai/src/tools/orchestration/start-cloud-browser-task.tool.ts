@@ -79,7 +79,7 @@ export type StartCloudBrowserTask = (
 export function createStartCloudBrowserTaskTool(start: StartCloudBrowserTask) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK)
 		.description(
-			'Do a task on a website in a cloud browser. The task runs in the background with its own ' +
+			'Do a task on a website in a virtual browser. The task runs in the background with its own ' +
 				'browser, so you can keep talking to the user. Do not wait for it: you get the result ' +
 				'when it ends. Write a complete goal, because the browser agent cannot see this conversation.',
 		)

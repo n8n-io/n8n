@@ -151,7 +151,7 @@ export class InstanceAiCloudBrowserTaskService {
 			if (!getCredentialFields) {
 				return {
 					status: 'rejected',
-					message: 'Creating credentials from the cloud browser is not available.',
+					message: 'Creating credentials from the virtual browser is not available.',
 				};
 			}
 			for (const { type, name } of input.credentialsToCreate) {
@@ -644,7 +644,7 @@ function buildTasksCompletedMessage(tasks: CloudBrowserTaskRecord[]): string {
 	]);
 	return [
 		CLOUD_BROWSER_TASK_COMPLETED_OPEN_TAG,
-		'Cloud browser tasks that ended. This is an automated report, not a message from the user. ' +
+		'Virtual browser tasks that ended. This is an automated report, not a message from the user. ' +
 			'Tell the user what each task found, or why it did not finish, in a few sentences.',
 		...entries,
 		CLOUD_BROWSER_TASK_COMPLETED_CLOSE_TAG,
