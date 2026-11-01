@@ -344,12 +344,6 @@ const workflowActions: Array<ActionDropdownItem<string>> = [
 	{ id: 'delete', label: 'Delete', icon: 'trash-2', divided: true, variant: 'destructive' },
 ];
 
-const actionLabels: Record<string, string> = {
-	duplicate: 'Duplicate',
-	rename: 'Rename',
-	delete: 'Delete',
-};
-
 export const ActionsMenu: Story = {
 	name: 'Actions Menu',
 	render: () => ({
@@ -367,7 +361,8 @@ export const ActionsMenu: Story = {
 			);
 
 			function onAction(workflowName: string, actionId: string) {
-				lastAction.value = `${actionLabels[actionId] ?? actionId} · ${workflowName}`;
+				const label = workflowActions.find((action) => action.id === actionId)?.label ?? actionId;
+				lastAction.value = `${label} · ${workflowName}`;
 			}
 
 			return {
