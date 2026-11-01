@@ -306,6 +306,7 @@ async function loadCreators() {
 
 async function resetFilters() {
 	filters.value = { ...NO_FILTERS };
+	selectedAgent.value = null;
 	await resetPage();
 }
 

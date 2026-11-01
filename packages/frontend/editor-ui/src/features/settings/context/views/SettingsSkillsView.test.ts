@@ -427,6 +427,42 @@ describe('SettingsSkillsView', () => {
 		);
 	});
 
+	it('forgets the picked agent when the filters are reset', async () => {
+		const view = renderView();
+		await new Promise(process.nextTick);
+		await pickFilter(view, 'skills-filter-agent', 'Support bot');
+
+		await userEvent.click(
+			within(view.getByTestId('resources-list-filters-dropdown')).getByText('Reset all'),
+		);
+		await waitFor(() =>
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+				expect.not.objectContaining({ agentId: expect.anything() }),
+			),
+		);
+
+		skillsStore.fetchAgents.mockResolvedValue([{ id: 'agent-2', name: 'Sales bot' }]);
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		await userEvent.type(
+			within(view.getByTestId('skills-filter-agent')).getByRole('combobox'),
+			'sal',
+		);
+		await vi.runAllTimersAsync();
+		vi.useRealTimers();
+
+		const trigger = view
+			.getByTestId('skills-filter-agent')
+			.querySelector('.select-trigger[aria-describedby]');
+		const dropdown = document.getElementById(trigger?.getAttribute('aria-describedby') ?? '');
+		await waitFor(() =>
+			expect(
+				[...(dropdown?.querySelectorAll('.el-select-dropdown__item') ?? [])].map((item) =>
+					item.textContent?.trim(),
+				),
+			).toEqual(['Sales bot']),
+		);
+	});
+
 	it('still loads the list when the filter options fail to load', async () => {
 		skillsStore.fetchAgents.mockRejectedValue(new Error('offline'));
 		skillsStore.fetchCreators.mockRejectedValue(new Error('offline'));
