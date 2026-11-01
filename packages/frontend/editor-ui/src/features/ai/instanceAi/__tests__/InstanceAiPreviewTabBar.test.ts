@@ -3,7 +3,7 @@ import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
-import { TabsRoot } from 'reka-ui';
+import { N8nTabsRoot } from '@n8n/design-system';
 import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
@@ -66,9 +66,9 @@ const agentTabWithoutProject: ArtifactTab = {
 	icon: 'robot',
 };
 
-// TabsList/Trigger rely on reka-ui's Tabs context, so the harness wraps the
-// bar in a TabsRoot. We also forward `activeTabId` through to the component
-// so the scroll-into-view watcher is actually exercised.
+// TabsList/Trigger rely on the Tabs context, so the harness wraps the bar in
+// N8nTabsRoot. We also forward `activeTabId` through to the component so the
+// scroll-into-view watcher is actually exercised.
 const Wrapper = defineComponent({
 	props: {
 		tabs: { type: Array as () => ArtifactTab[], required: true },
@@ -81,7 +81,7 @@ const Wrapper = defineComponent({
 	emits: ['togglePreview', 'toggleExpanded', 'closeTab', 'openTab'],
 	setup(props, { emit }) {
 		return () =>
-			h(TabsRoot, { modelValue: props.activeTabId }, () =>
+			h(N8nTabsRoot, { modelValue: props.activeTabId }, () =>
 				h(InstanceAiPreviewTabBar, {
 					tabs: props.tabs,
 					activeTabId: props.activeTabId,
