@@ -78,7 +78,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_annotation_tags](execution_annotation_tags.md) | 2 |  | table |
 | [execution_annotations](execution_annotations.md) | 6 |  | table |
 | [execution_data](execution_data.md) | 4 |  | table |
-| [execution_entity](execution_entity.md) | 19 |  | table |
+| [execution_entity](execution_entity.md) | 20 |  | table |
 | [execution_ledger](execution_ledger.md) | 16 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
@@ -1223,6 +1223,7 @@ erDiagram
   INTEGER id
   bigint jsonSizeBytes
   varchar mode
+  SMALLINT resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
