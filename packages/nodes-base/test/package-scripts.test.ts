@@ -3,7 +3,13 @@ import { createRequire } from 'node:module';
 
 import { describe, expect, it, vi } from 'vitest';
 
-type RunCommand = (command: string, args: string[], options: { stdio: 'inherit' }) => unknown;
+type RunCommand = (
+	command: string,
+	args: string[],
+	options: { stdio: 'inherit'; shell: boolean },
+) => unknown;
+
+type RunPostBuild = (runCommand: RunCommand, platform?: NodeJS.Platform) => void;
 
 const require = createRequire(import.meta.url);
 const packageJson = JSON.parse(
@@ -17,7 +23,7 @@ describe('package scripts', () => {
 
 	it('rewrites path aliases before generating node metadata', () => {
 		const { runPostBuild } = require('../scripts/post-build.js') as {
-			runPostBuild: (runCommand: RunCommand) => void;
+			runPostBuild: RunPostBuild;
 		};
 		const runCommand = vi.fn<RunCommand>();
 
@@ -25,21 +31,38 @@ describe('package scripts', () => {
 
 		expect(runCommand).toHaveBeenNthCalledWith(1, 'pnpm', ['copy-nodes-json'], {
 			stdio: 'inherit',
+			shell: false,
 		});
 		expect(runCommand).toHaveBeenNthCalledWith(
 			2,
 			'pnpm',
 			['exec', 'tsc-alias', '-p', 'tsconfig.build.cjs.json'],
-			{ stdio: 'inherit' },
+			{ stdio: 'inherit', shell: false },
 		);
 		expect(runCommand).toHaveBeenNthCalledWith(3, 'pnpm', ['n8n-generate-metadata'], {
 			stdio: 'inherit',
+			shell: false,
+		});
+	});
+
+	it('uses the shell to launch the pnpm command shim on Windows', () => {
+		const { runPostBuild } = require('../scripts/post-build.js') as {
+			runPostBuild: RunPostBuild;
+		};
+		const runCommand = vi.fn<RunCommand>();
+
+		runPostBuild(runCommand, 'win32');
+
+		expect(runCommand).toHaveBeenCalledTimes(3);
+		expect(runCommand).toHaveBeenNthCalledWith(1, 'pnpm', ['copy-nodes-json'], {
+			stdio: 'inherit',
+			shell: true,
 		});
 	});
 
 	it('does not generate metadata when alias rewriting fails', () => {
 		const { runPostBuild } = require('../scripts/post-build.js') as {
-			runPostBuild: (runCommand: RunCommand) => void;
+			runPostBuild: RunPostBuild;
 		};
 		const error = new Error('alias rewriting failed');
 		const runCommand = vi.fn<RunCommand>().mockImplementationOnce(() => undefined);
