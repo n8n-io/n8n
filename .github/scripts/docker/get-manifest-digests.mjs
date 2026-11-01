@@ -8,6 +8,7 @@
  * Environment variables:
  *   N8N_TAG              - Full image reference for n8n image
  *   N8N_PC_TAG           - Full image reference for the pointer-compressed n8n image
+ *   N8N_DEBIAN_TAG       - Full image reference for the Debian (glibc) n8n image
  *   RUNNERS_TAG          - Full image reference for runners image
  *   DISTROLESS_TAG       - Full image reference for runners-distroless image
  *   GITHUB_OUTPUT        - Path to GitHub Actions output file (optional)
@@ -38,12 +39,14 @@ function setOutput(name, value) {
 
 const n8nTag = process.env.N8N_TAG || '';
 const n8nPcTag = process.env.N8N_PC_TAG || '';
+const n8nDebianTag = process.env.N8N_DEBIAN_TAG || '';
 const runnersTag = process.env.RUNNERS_TAG || '';
 const distrolessTag = process.env.DISTROLESS_TAG || '';
 
 const results = {
 	n8n: { digest: getDigest(n8nTag), image: getImageName(n8nTag) },
 	n8n_pc: { digest: getDigest(n8nPcTag), image: getImageName(n8nPcTag) },
+	n8n_debian: { digest: getDigest(n8nDebianTag), image: getImageName(n8nDebianTag) },
 	runners: { digest: getDigest(runnersTag), image: getImageName(runnersTag) },
 	runners_distroless: { digest: getDigest(distrolessTag), image: getImageName(distrolessTag) },
 };
@@ -52,6 +55,8 @@ setOutput('n8n_digest', results.n8n.digest);
 setOutput('n8n_image', results.n8n.image);
 setOutput('n8n_pc_digest', results.n8n_pc.digest);
 setOutput('n8n_pc_image', results.n8n_pc.image);
+setOutput('n8n_debian_digest', results.n8n_debian.digest);
+setOutput('n8n_debian_image', results.n8n_debian.image);
 setOutput('runners_digest', results.runners.digest);
 setOutput('runners_image', results.runners.image);
 setOutput('runners_distroless_digest', results.runners_distroless.digest);
@@ -60,11 +65,13 @@ setOutput('runners_distroless_image', results.runners_distroless.image);
 console.log('=== Manifest Digests ===');
 console.log(`n8n: ${results.n8n.digest || 'N/A'}`);
 console.log(`n8n-pc: ${results.n8n_pc.digest || 'N/A'}`);
+console.log(`n8n-debian: ${results.n8n_debian.digest || 'N/A'}`);
 console.log(`runners: ${results.runners.digest || 'N/A'}`);
 console.log(`runners-distroless: ${results.runners_distroless.digest || 'N/A'}`);
 console.log('');
 console.log('=== Image Names ===');
 console.log(`n8n: ${results.n8n.image || 'N/A'}`);
 console.log(`n8n-pc: ${results.n8n_pc.image || 'N/A'}`);
+console.log(`n8n-debian: ${results.n8n_debian.image || 'N/A'}`);
 console.log(`runners: ${results.runners.image || 'N/A'}`);
 console.log(`runners-distroless: ${results.runners_distroless.image || 'N/A'}`);
