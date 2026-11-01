@@ -99,6 +99,7 @@ const slots = useSlots();
 const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
+const sendStopButtonRef = ref<HTMLElement>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
 function hasCustomActions() {
@@ -303,6 +304,13 @@ function getInputElement(): HTMLTextAreaElement | undefined {
 	return textareaRef.value;
 }
 
+/**
+ * Returns the element around the send and stop button while the component is mounted.
+ */
+function getSendStopButtonElement(): HTMLElement | undefined {
+	return sendStopButtonRef.value;
+}
+
 // Each layout measures to a different height, so switching leaves a stale one.
 // Slot-driven switches aren't reactive, so re-check on render, not in a watcher.
 let renderedLayout = effectiveLayout();
@@ -326,6 +334,7 @@ onMounted(() => {
 defineExpose({
 	focusInput,
 	getInputElement,
+	getSendStopButtonElement,
 });
 </script>
 
@@ -399,7 +408,7 @@ defineExpose({
 						<div v-if="$slots['right-actions']" :class="$style.actionsContent" @click.stop>
 							<slot name="right-actions" />
 						</div>
-						<div :class="$style.actionsContent" @click.stop>
+						<div ref="sendStopButtonRef" :class="$style.actionsContent" @click.stop>
 							<N8nSendStopButton
 								:streaming="streaming"
 								:disabled="sendDisabled"
