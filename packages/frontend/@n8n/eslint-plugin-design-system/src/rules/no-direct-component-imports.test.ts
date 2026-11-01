@@ -61,6 +61,7 @@ const dialogBan = requireBan('reka-ui', 'Dialog');
 const dateRangeBan = requireBan('reka-ui', 'DateRangePicker');
 const toggleBan = requireBan('reka-ui', 'Toggle');
 const menuBan = requireBan('element-plus', 'ElMenu');
+const radioBan = requireBan('reka-ui', 'RadioGroup');
 
 const paginationWrapper =
 	'/repo/packages/frontend/@n8n/design-system/src/components/N8nPagination/reka-ui.ts';
@@ -305,10 +306,48 @@ ruleTester.run('no-direct-component-imports', NoDirectComponentImportsRule, {
 			code: "import Item from 'element-plus/es/components/menu-item';",
 			errors: [error('element-plus/es/components/menu-item', menuBan)],
 		},
+		{
+			name: 'reka radio context helper',
+			code: "import { injectRadioGroupRootContext, injectRadioGroupItemContext } from 'reka-ui';",
+			errors: [
+				error('injectRadioGroupRootContext', radioBan),
+				error('injectRadioGroupItemContext', radioBan),
+			],
+		},
+		{
+			name: 'reka radio primitives outside the wrapper',
+			code: "import { RadioGroupRoot, RadioGroupItem } from 'reka-ui';",
+			errors: [error('RadioGroupRoot', radioBan), error('RadioGroupItem', radioBan)],
+		},
+		{
+			name: 'element-plus radio stays a direct primitive import',
+			code: "import { ElRadio, ElRadioGroup } from 'element-plus';",
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElRadio', library: 'element-plus' },
+				},
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElRadioGroup', library: 'element-plus' },
+				},
+			],
+		},
+		{
+			name: 'deep element-plus radio path stays a direct primitive import',
+			code: "import Radio from 'element-plus/es/components/radio';",
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElRadio', library: 'element-plus' },
+				},
+			],
+		},
 	],
 });
 
 const menuWrapper = wrapperFile('components/N8nNavigationDropdown', 'NavigationDropdown.vue');
+const radioWrapper = wrapperFile('components/N8nRadioGroup', 'RadioGroup.vue');
 
 vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImportsRule, {
 	valid: [
@@ -321,6 +360,11 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			name: 'template tags in the allowed wrapper path',
 			filename: menuWrapper,
 			code: template('<el-menu><ElMenu /></el-menu>'),
+		},
+		{
+			name: 'reka radio imports in the allowed wrapper path',
+			filename: radioWrapper,
+			code: "<script>import { RadioGroupRoot, injectRadioGroupRootContext } from 'reka-ui';</script>",
 		},
 		{
 			name: 'named import in the allowed wrapper path',
@@ -346,6 +390,34 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			filename: 'Component.vue',
 			code: `<script>import { ElMenu } from 'element-plus';</script>${template('<el-menu />')}`,
 			errors: [error('ElMenu', menuBan), error('el-menu', menuBan)],
+		},
+		{
+			name: 'reka radio context helper in a vue file',
+			filename: 'Component.vue',
+			code: "<script>import { injectRadioGroupRootContext } from 'reka-ui';</script>",
+			errors: [error('injectRadioGroupRootContext', radioBan)],
+		},
+		{
+			name: 'kebab-case radio template tag',
+			filename: 'Component.vue',
+			code: template('<el-radio />'),
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElRadio', library: 'element-plus' },
+				},
+			],
+		},
+		{
+			name: 'PascalCase radio group template tag',
+			filename: 'Component.vue',
+			code: template('<ElRadioGroup />'),
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElRadioGroup', library: 'element-plus' },
+				},
+			],
 		},
 	],
 });

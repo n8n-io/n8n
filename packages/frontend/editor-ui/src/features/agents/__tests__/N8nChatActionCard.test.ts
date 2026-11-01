@@ -27,16 +27,6 @@ const input: N8nChatInteractionInput = {
 function mountCard(props = {}) {
 	return mount(N8nChatActionCard, {
 		props: { input, ...props },
-		global: {
-			stubs: {
-				ElRadio: {
-					template:
-						'<label v-bind="$attrs"><input type="radio" :disabled="disabled" @change="$emit(\'update:modelValue\', label)" /><slot/></label>',
-					props: ['modelValue', 'label', 'disabled'],
-					emits: ['update:modelValue'],
-				},
-			},
-		},
 	});
 }
 
@@ -212,9 +202,9 @@ describe('N8nChatActionCard', () => {
 		const wrapper = mountCard({ input: radio });
 		const radios = wrapper.findAll('[data-testid="n8n-chat-card-radio"]');
 		expect(radios).toHaveLength(2);
-		expect(radios[0].find('input[type="radio"]').exists()).toBe(true);
+		expect(radios[0].attributes('role')).toBe('radio');
 
-		await radios[1].find('input').trigger('change');
+		await radios[1].trigger('click');
 		expect(wrapper.emitted('submit')?.[0]).toEqual([
 			{ type: 'select', id: 'next_step', value: 'email' },
 		]);
@@ -240,7 +230,7 @@ describe('N8nChatActionCard', () => {
 			},
 		};
 		const wrapper = mountCard({ input: radio, disabled: true });
-		await wrapper.find('[data-testid="n8n-chat-card-radio"] input').trigger('change');
+		await wrapper.find('[data-testid="n8n-chat-card-radio"]').trigger('click');
 		expect(wrapper.emitted('submit')).toBeUndefined();
 	});
 });

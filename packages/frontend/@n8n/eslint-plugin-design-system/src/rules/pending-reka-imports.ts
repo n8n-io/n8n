@@ -29,7 +29,6 @@ export const pendingRekaExactNames = [
 	'DateValue',
 	'FlattenedItem',
 	'FocusOutsideEvent',
-	'injectRadioGroupRootContext',
 	'Label',
 	'PointerDownOutsideEvent',
 	'Primitive',
