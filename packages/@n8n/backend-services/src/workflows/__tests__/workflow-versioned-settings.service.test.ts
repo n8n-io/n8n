@@ -26,9 +26,7 @@ describe('WorkflowVersionedSettings', () => {
 		});
 
 		it('runs production on the default engine when the published version has none', () => {
-			expect(
-				service.forPublishedRun(draftSettings, { settings: null })?.engineType,
-			).toBeUndefined();
+			expect(service.forPublishedRun(draftSettings, { settings: {} })?.engineType).toBeUndefined();
 		});
 	});
 

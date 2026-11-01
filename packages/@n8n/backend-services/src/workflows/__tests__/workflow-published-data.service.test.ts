@@ -74,7 +74,7 @@ describe('WorkflowPublishedDataService', () => {
 			nodes: [],
 			connections: {},
 			nodeGroups: [],
-			versionSettings: null,
+			versionSettings: {},
 		};
 	}
 
@@ -158,7 +158,7 @@ describe('WorkflowPublishedDataService', () => {
 			enableEngineV2Module();
 			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue({
 				...record(),
-				versionSettings: null,
+				versionSettings: {},
 			});
 
 			const result = await service.getPublishedWorkflowDataForExecution('wf-1');

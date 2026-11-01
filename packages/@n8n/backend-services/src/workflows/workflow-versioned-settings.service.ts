@@ -23,7 +23,7 @@ export class WorkflowVersionedSettings {
 	 */
 	forPublishedRun(
 		workflowSettings: IWorkflowSettings | undefined,
-		publishedVersion: { settings?: IWorkflowSettings | null },
+		publishedVersion: { settings?: IWorkflowSettings },
 	): IWorkflowSettings | undefined {
 		if (!this.isEnabled()) return workflowSettings;
 

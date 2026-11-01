@@ -3830,7 +3830,7 @@ interface IWorkflowHistory {
 	nodeGroups: IWorkflowGroup[];
 	authors: string;
 	/** The version-scoped settings of this version, such as its engine. */
-	settings?: IWorkflowSettings | null;
+	settings?: IWorkflowSettings;
 	name: string | null;
 	description: string | null;
 	createdAt: Date;

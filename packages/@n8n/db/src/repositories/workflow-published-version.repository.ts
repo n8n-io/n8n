@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
-import type { IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowBase, VersionedWorkflowSettings } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
@@ -33,8 +33,8 @@ export type PublishedWorkflowDataForExecution = Pick<
  * apart from the workflow settings. `WorkflowPublishedDataService` merges them.
  */
 export type PublishedVersionForExecution = PublishedWorkflowDataForExecution & {
-	/** The version-scoped settings of the published version, or `null` when it has none. */
-	versionSettings: IWorkflowSettings | null;
+	/** The version-scoped settings of the published version. Empty when it has none. */
+	versionSettings: VersionedWorkflowSettings;
 };
 
 @Service()
@@ -152,8 +152,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			connections: publishedVersion.connections,
 			nodeGroups: publishedVersion.nodeGroups,
 			versionId: publishedVersion.versionId,
-			// `null`, not `undefined`, so the field survives the JSON round trip of the cache.
-			versionSettings: publishedVersion.settings ?? null,
+			versionSettings: publishedVersion.settings,
 		};
 	}
 }
