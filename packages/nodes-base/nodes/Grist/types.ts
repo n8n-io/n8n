@@ -7,8 +7,26 @@ export type GristCredentials = {
 	selfHostedUrl?: string;
 };
 
+export type GristColumn = {
+	id: string;
+	fields: {
+		label?: string;
+		type?: string;
+		isFormula?: boolean;
+		formula?: string;
+		// A JSON string. Choice and ChoiceList columns keep their `choices` here.
+		widgetOptions?: string;
+	};
+};
+
+export type GristTable = {
+	columns: Set<string>;
+	listColumns: Set<string>;
+	formulaColumns: Set<string>;
+};
+
 export type GristColumns = {
-	columns: Array<{ id: string }>;
+	columns: GristColumn[];
 };
 
 export type GristSortProperties = Array<{
