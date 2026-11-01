@@ -34,9 +34,15 @@
         "name": {
             "type": "string"
         },
+        "update_time": {
+            "type": "null"
+        },
+        "visible_to": {
+            "type": "integer"
+        },
         "website": {
             "type": "null"
         }
     },
-    "version": 2
+    "version": 3
 }

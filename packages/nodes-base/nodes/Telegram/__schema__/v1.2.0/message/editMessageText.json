@@ -30,6 +30,23 @@
                 "edit_date": {
                     "type": "integer"
                 },
+                "entities": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "length": {
+                                "type": "integer"
+                            },
+                            "offset": {
+                                "type": "integer"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "from": {
                     "type": "object",
                     "properties": {
@@ -56,5 +73,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

@@ -145,6 +145,9 @@
         "Qty_in_Stock": {
             "type": "integer"
         },
+        "Qty_Ordered": {
+            "type": "integer"
+        },
         "Tax": {
             "type": "array",
             "items": {
@@ -155,5 +158,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

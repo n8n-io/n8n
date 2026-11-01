@@ -1,0 +1,63 @@
+{
+    "type": "object",
+    "properties": {
+        "app_id": {
+            "type": "string"
+        },
+        "company_id": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "integer"
+        },
+        "custom_attributes": {
+            "type": "object",
+            "properties": {
+                "creation_source": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "last_request_at": {
+            "type": "integer"
+        },
+        "monthly_spend": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "segments": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "session_count": {
+            "type": "integer"
+        },
+        "tags": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "integer"
+        },
+        "user_count": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

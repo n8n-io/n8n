@@ -36,6 +36,9 @@
         "livemode": {
             "type": "boolean"
         },
+        "next_invoice_sequence": {
+            "type": "integer"
+        },
         "object": {
             "type": "string"
         },
@@ -52,5 +55,5 @@
             "type": "null"
         }
     },
-    "version": 2
+    "version": 3
 }

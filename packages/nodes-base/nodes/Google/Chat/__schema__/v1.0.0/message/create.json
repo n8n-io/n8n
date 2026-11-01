@@ -25,6 +25,9 @@
                 "displayName": {
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -79,5 +82,5 @@
             }
         }
     },
-    "version": 8
+    "version": 9
 }

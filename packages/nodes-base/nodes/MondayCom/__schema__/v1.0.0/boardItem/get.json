@@ -20,6 +20,9 @@
                             }
                         }
                     },
+                    "display_value": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -42,5 +45,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

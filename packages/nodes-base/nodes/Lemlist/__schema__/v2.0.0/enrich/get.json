@@ -159,25 +159,11 @@
                                         "properties": {
                                             "end": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "month": {
-                                                        "type": "integer"
-                                                    },
-                                                    "year": {
-                                                        "type": "integer"
-                                                    }
-                                                }
+                                                "properties": {}
                                             },
                                             "start": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "month": {
-                                                        "type": "integer"
-                                                    },
-                                                    "year": {
-                                                        "type": "integer"
-                                                    }
-                                                }
+                                                "properties": {}
                                             }
                                         }
                                     },
@@ -191,30 +177,7 @@
                                                 },
                                                 "date": {
                                                     "type": "object",
-                                                    "properties": {
-                                                        "end": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "month": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "year": {
-                                                                    "type": "integer"
-                                                                }
-                                                            }
-                                                        },
-                                                        "start": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "month": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "year": {
-                                                                    "type": "integer"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
+                                                    "properties": {}
                                                 },
                                                 "description": {
                                                     "type": "null"
@@ -274,5 +237,5 @@
             }
         }
     },
-    "version": 6
+    "version": 7
 }
