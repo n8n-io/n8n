@@ -37,7 +37,7 @@ Tab from a control inside an enabled item moves the highlight to the next enable
 
 **Item slots**
 
-- `default` Row content.
+- `default` Row content. The item has no padding. The highlight covers this content.
 
 **Container tokens**
 
