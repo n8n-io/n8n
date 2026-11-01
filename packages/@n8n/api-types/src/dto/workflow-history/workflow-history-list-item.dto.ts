@@ -4,7 +4,6 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
-// `satisfies` makes the compiler ask for a schema here when a setting becomes version-scoped.
 const versionedSettingsShape = {
 	engineType: z.enum(WORKFLOW_ENGINE_TYPES),
 } satisfies { [K in VersionedWorkflowSettingKey]: z.ZodType<VersionedWorkflowSettings[K]> };
