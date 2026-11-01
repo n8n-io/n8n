@@ -92,8 +92,8 @@ export function applyVersionedSettings(
 	settings: IWorkflowSettings | null | undefined,
 	versionSettings: IWorkflowSettings | null | undefined,
 ): IWorkflowSettings {
-	const versioned = pickVersionedSettings(versionSettings);
+	const versioned = pickVersionedSettings(versionSettings ?? undefined);
 	const result: IWorkflowSettings = { ...settings };
-	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) result[key] = versioned?.[key];
+	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) result[key] = versioned[key];
 	return result;
 }
