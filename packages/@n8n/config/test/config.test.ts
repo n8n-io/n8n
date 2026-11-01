@@ -630,6 +630,7 @@ describe('GlobalConfig', () => {
 		},
 		aiGateway: {
 			enabled: true,
+			baseUrl: '',
 		},
 		aiBuilder: {
 			apiKey: '',
