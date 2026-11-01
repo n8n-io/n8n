@@ -50,7 +50,7 @@ vi.mock('./otel.api', () => ({
 }));
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
-	enabled: false,
+	enabled: true,
 	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
@@ -113,6 +113,16 @@ describe('SettingsOpenTelemetryView', () => {
 		const { getByTestId, queryByTestId } = render();
 		expect(getByTestId('otel-loading')).toBeInTheDocument();
 		expect(queryByTestId('otel-exporter-endpoint')).not.toBeInTheDocument();
+	});
+
+	it('hides collector and tracing settings until OpenTelemetry is enabled', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+
+		const { getByTestId, queryByTestId } = render();
+
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
+		expect(queryByTestId('otel-exporter-endpoint')).not.toBeInTheDocument();
+		expect(queryByTestId('otel-sample-rate')).not.toBeInTheDocument();
 	});
 
 	it('renders all settings fields after fetch completes', async () => {
@@ -184,13 +194,15 @@ describe('SettingsOpenTelemetryView', () => {
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
 
-		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toHaveTextContent('Enabled'));
+		await waitFor(() =>
+			expect(getByTestId('otel-enabled-toggle')).toHaveAttribute('aria-checked', 'true'),
+		);
 		expect(getByText(/Tracing is on/)).toBeInTheDocument();
 		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 	});
 
 	it('disables the save bar while the status save is in flight', async () => {
-		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
 		updateOtelSettingsMock.mockReturnValue(new Promise(() => {}));
 
 		const { getByTestId } = render();
@@ -205,9 +217,9 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(updateOtelSettingsMock).toHaveBeenCalledTimes(1);
 	});
 
-	it('saves only the status when enabling and keeps pending form edits unsaved', async () => {
-		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
-		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
+	it('saves only the status when disabling and keeps pending form edits unsaved', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
+		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
 
 		const { getByTestId, store } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
@@ -220,9 +232,9 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => {
 			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ enabled: true, exporterEndpoint: 'http://localhost:4318' }),
+				expect.objectContaining({ enabled: false, exporterEndpoint: 'http://localhost:4318' }),
 			);
-			expect(store.savedSettings.enabled).toBe(true);
+			expect(store.savedSettings.enabled).toBe(false);
 		});
 		expect(store.settings.exporterEndpoint).toBe('http://localhost:4318x');
 		expect(getByTestId('settings-save-bar')).toBeInTheDocument();
@@ -324,12 +336,10 @@ describe('SettingsOpenTelemetryView', () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
 		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
 
-		const { getByTestId, getByText } = render();
+		const { getByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
-		await waitFor(() => expect(getByText('Disable')).toBeInTheDocument());
-		await userEvent.click(getByText('Disable'));
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith('Disabled otel via UI');
@@ -440,7 +450,7 @@ describe('SettingsOpenTelemetryView', () => {
 	it('sends correct payload when user fills in all fields and saves', async () => {
 		getOtelSettingsMock.mockResolvedValue(
 			makeSettings({
-				enabled: false,
+				enabled: true,
 				exporterEndpoint: '',
 				exporterServiceName: '',
 				exporterTracingPath: '',
