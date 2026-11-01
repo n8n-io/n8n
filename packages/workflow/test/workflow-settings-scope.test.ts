@@ -12,16 +12,16 @@ describe('WORKFLOW_SETTINGS_SCOPE', () => {
 
 describe('pickVersionedSettings', () => {
 	it('returns only the version-scoped settings', () => {
-		expect(
-			pickVersionedSettings({ engineType: 'v2', timezone: 'Europe/Berlin', callerPolicy: 'any' }),
-		).toEqual({ engineType: 'v2' });
+		expect(pickVersionedSettings({ engineType: 'v2', availableInMCP: true })).toEqual({
+			engineType: 'v2',
+		});
 	});
 
 	it.each([
 		['null settings', null],
 		['undefined settings', undefined],
 		['empty settings', {}],
-		['only live settings', { timezone: 'Europe/Berlin' }],
+		['only live settings', { availableInMCP: true }],
 	])('returns null for %s', (_, settings) => {
 		expect(pickVersionedSettings(settings)).toBeNull();
 	});
@@ -31,8 +31,8 @@ describe('versionedSettingsEqual', () => {
 	it('ignores live settings', () => {
 		expect(
 			versionedSettingsEqual(
-				{ engineType: 'v2', timezone: 'Europe/Berlin' },
-				{ engineType: 'v2', timezone: 'UTC' },
+				{ engineType: 'v2', availableInMCP: true },
+				{ engineType: 'v2', availableInMCP: false },
 			),
 		).toBe(true);
 	});
