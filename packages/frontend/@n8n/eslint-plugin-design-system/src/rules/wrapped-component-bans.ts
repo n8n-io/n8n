@@ -61,6 +61,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['DropdownMenu'],
+		allowedFolders: ['components/N8nDropdownMenu'],
+		replacement: 'N8nDropdownMenu',
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['Editable'],
 		allowedFolders: ['components/N8nInlineTextEdit'],
 		replacement: 'N8nInlineTextEdit',
