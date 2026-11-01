@@ -116,11 +116,7 @@ function isTabStop(element: HTMLElement) {
 		:model-value="rootModelValue"
 		@update:model-value="onModelUpdate"
 	>
-		<ListboxContent
-			:class="$style.content"
-			:aria-label="label"
-			@keydown="onKeydown"
-		>
+		<ListboxContent :class="$style.content" :aria-label="label" @keydown="onKeydown">
 			<slot />
 		</ListboxContent>
 	</ListboxRoot>
