@@ -82,6 +82,11 @@ import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCreden
 import TypeToConfirmDialog from './TypeToConfirmDialog.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import { useCredentialForm } from '../../composables/useCredentialForm';
+import {
+	RestrictedTypeCallout,
+	useCredentialTypeRestriction,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -836,6 +841,20 @@ function onDescriptionEdit(text: string) {
 	credentialDescription.value = text;
 	hasUnsavedChanges.value = true;
 }
+
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+
+watch(
+	() => homeProject.value?.id,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
+const { restriction: credentialTypeRestriction } = useCredentialTypeRestriction(
+	() => credentialTypeName.value,
+);
 
 function scrollToTop() {
 	setTimeout(() => {
@@ -1756,6 +1775,12 @@ const { width } = useElementSize(credNameRef);
 										</N8nButton>
 									</template>
 								</N8nCallout>
+								<RestrictedTypeCallout
+									v-if="credentialTypeRestriction"
+									surface="credential"
+									:type-name="credentialType.displayName"
+									:restriction="credentialTypeRestriction"
+								/>
 								<CredentialConfig
 									:credential-type="credentialType"
 									:credential-properties="credentialProperties"
