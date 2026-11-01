@@ -37,10 +37,10 @@ export class WorkflowHistory extends WithTimestamps {
 
 	/**
 	 * The version-scoped workflow settings of this version, such as the engine.
-	 * Null when the version has none, for example on versions saved before this column existed.
+	 * An empty object when the version has none, for example on versions saved before this column existed.
 	 */
-	@JsonColumn({ nullable: true })
-	settings: VersionedWorkflowSettings | null;
+	@JsonColumn({ default: '{}' })
+	settings: VersionedWorkflowSettings;
 
 	@ManyToOne('WorkflowEntity', {
 		onDelete: 'CASCADE',
