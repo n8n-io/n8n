@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
         "body": {
             "type": "object",
             "properties": {
@@ -45,9 +42,6 @@
                 "user": {
                     "type": "object",
                     "properties": {
-                        "@odata.type": {
-                            "type": "string"
-                        },
                         "displayName": {
                             "type": "string"
                         },
@@ -105,9 +99,6 @@
                             "user": {
                                 "type": "object",
                                 "properties": {
-                                    "@odata.type": {
-                                        "type": "string"
-                                    },
                                     "displayName": {
                                         "type": "string"
                                     },
@@ -146,8 +137,8 @@
             "type": "null"
         },
         "webUrl": {
-            "type": "null"
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }
