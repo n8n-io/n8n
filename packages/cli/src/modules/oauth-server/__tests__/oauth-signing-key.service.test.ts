@@ -240,6 +240,44 @@ describe('OAuthSigningKeyService', () => {
 		});
 	});
 
+	describe('unreadable keys', () => {
+		const UNREADABLE = 'unreadable';
+
+		/** Wrapped under another instance key: the cipher rejects it, as GCM does. */
+		const rejectUnreadable = (cipher: ReturnType<typeof createSigningKeyService>['cipher']) => {
+			cipher.decryptDEKWithInstanceKey.mockImplementation((value: string) => {
+				if (value === UNREADABLE)
+					throw new Error('Unsupported state or unable to authenticate data');
+				return value.slice('wrapped:'.length);
+			});
+		};
+
+		it('publishes the active key and logs when a retired key cannot be read', async () => {
+			const { service, keyStore, cipher, logger } = createSigningKeyService();
+			rejectUnreadable(cipher);
+			keyStore.rows.push(
+				makeKeyRow('retired', { status: 'inactive', updatedAt: new Date(), value: UNREADABLE }),
+			);
+			await service.initialize();
+
+			const kids = (await service.getPublicJwks()).map((k) => k.kid);
+			expect(kids).toEqual([keyStore.rows[1].id]);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('retired OAuth signing key'),
+				expect.objectContaining({ kid: 'retired' }),
+			);
+		});
+
+		it('fails when the active key cannot be read', async () => {
+			const { service, keyStore, cipher } = createSigningKeyService();
+			rejectUnreadable(cipher);
+			keyStore.rows.push(makeKeyRow('active', { value: UNREADABLE }));
+
+			await expect(service.initialize()).rejects.toThrow('Unsupported state');
+			await expect(service.getPublicJwks()).rejects.toThrow('Unsupported state');
+		});
+	});
+
 	describe('in-memory key list', () => {
 		const setUp = async () => {
 			vi.useFakeTimers({ toFake: ['Date'] });
@@ -250,7 +288,7 @@ describe('OAuthSigningKeyService', () => {
 				keyStore,
 				kid: keyStore.rows[0].id,
 				token: service.signAccessToken(claims(), AUDIENCE),
-				reads: keyStore.repository.findOAuthSigningKeys,
+				reads: keyStore.repository.findPublishableOAuthSigningKeys,
 			};
 		};
 
@@ -351,7 +389,7 @@ describe('OAuthSigningKeyService', () => {
 			await expect(verifyToken(service, token, newKey.id)).resolves.toMatchObject({
 				sub: 'user-1',
 			});
-			expect(keyStore.repository.findOAuthSigningKeys).toHaveBeenCalledTimes(2);
+			expect(keyStore.repository.findPublishableOAuthSigningKeys).toHaveBeenCalledTimes(2);
 		});
 
 		it('does not keep a read that started before a reload', async () => {
@@ -360,7 +398,7 @@ describe('OAuthSigningKeyService', () => {
 			await service.initialize();
 			const rowsBeforeInsert = [...keyStore.rows];
 			const staleRead = createDeferredPromise<DeploymentKey[]>();
-			keyStore.repository.findOAuthSigningKeys.mockReturnValueOnce(staleRead.promise);
+			keyStore.repository.findPublishableOAuthSigningKeys.mockReturnValueOnce(staleRead.promise);
 			const inFlight = service.getPublicJwks();
 
 			// Another process creates a key and broadcasts while the read is in flight.
@@ -373,13 +411,13 @@ describe('OAuthSigningKeyService', () => {
 			await expect(verifyToken(service, signWithRow(newKey), newKey.id)).resolves.toMatchObject({
 				sub: 'user-1',
 			});
-			expect(keyStore.repository.findOAuthSigningKeys).toHaveBeenCalledTimes(2);
+			expect(keyStore.repository.findPublishableOAuthSigningKeys).toHaveBeenCalledTimes(2);
 		});
 
 		it('keeps sharing the read that started after a reload', async () => {
 			const { service, keyStore } = createSigningKeyService();
 			await service.initialize();
-			const reads = keyStore.repository.findOAuthSigningKeys;
+			const reads = keyStore.repository.findPublishableOAuthSigningKeys;
 			const readBeforeReload = createDeferredPromise<DeploymentKey[]>();
 			const readAfterReload = createDeferredPromise<DeploymentKey[]>();
 			reads
