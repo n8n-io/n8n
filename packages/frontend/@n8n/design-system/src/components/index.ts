@@ -219,4 +219,6 @@ export type {
 } from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
+export { default as N8nFocusScope } from './N8nFocusScope';
+export type { FocusScopeEmits, FocusScopeProps } from './N8nFocusScope';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

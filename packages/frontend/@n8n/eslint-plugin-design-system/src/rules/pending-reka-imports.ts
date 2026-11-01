@@ -12,7 +12,6 @@ export const pendingRekaPrefixes = [
 	'Collapsible',
 	'ContextMenu',
 	'DropdownMenu',
-	'FocusScope',
 	'HoverCard',
 	'Tabs',
 	'VisuallyHidden',
