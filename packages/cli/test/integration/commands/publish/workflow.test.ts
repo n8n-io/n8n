@@ -222,7 +222,15 @@ test('publish:workflow rejects a webhook path that another published workflow ho
 describe('with the workflow publication service off in regular mode', () => {
 	let originalUseWorkflowPublicationService: boolean;
 
-	beforeAll(() => {
+	beforeAll(async () => {
+		// A publish with the flag on loads the outbox consumer through a dynamic
+		// import that nothing awaits. If that import ends after the flag is off,
+		// the next command start cannot build the consumer. Build it now.
+		const { WorkflowPublicationOutboxConsumer } = await import(
+			'@/workflows/publication/workflow-publication-outbox-consumer.js'
+		);
+		Container.get(WorkflowPublicationOutboxConsumer);
+
 		const { workflows } = Container.get(GlobalConfig);
 		originalUseWorkflowPublicationService = workflows.useWorkflowPublicationService;
 		workflows.useWorkflowPublicationService = false;
