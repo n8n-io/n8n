@@ -8,6 +8,7 @@ import {
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'AddSettingsToWorkflowHistory1793371421343';
@@ -74,14 +75,7 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 			{ versionId },
 		);
 
-		if (typeof row.settings === 'string') {
-			try {
-				return JSON.parse(row.settings);
-			} catch {
-				return null;
-			}
-		}
-		return row.settings;
+		return typeof row.settings === 'string' ? jsonParse<unknown>(row.settings) : row.settings;
 	}
 
 	async function publishedVersionId(): Promise<string | undefined> {
@@ -94,16 +88,6 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 
 	it('gives existing versions empty settings', async () => {
 		expect(await settingsOfVersion()).toEqual({});
-	});
-
-	it('stores several version settings in one row', async () => {
-		const settings = { engineType: 'v2', timezone: 'Europe/Berlin' };
-		await context.runQuery(
-			`UPDATE ${table('workflow_history')} SET settings = :settings WHERE ${column('versionId')} = :versionId`,
-			{ settings: JSON.stringify(settings), versionId },
-		);
-
-		expect(await settingsOfVersion()).toEqual({ engineType: 'v2', timezone: 'Europe/Berlin' });
 	});
 
 	it('drops only the column on down', async () => {

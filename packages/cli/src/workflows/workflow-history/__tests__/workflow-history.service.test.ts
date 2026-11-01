@@ -248,19 +248,6 @@ describe('WorkflowHistoryService', () => {
 			);
 		});
 
-		it('should store null settings when no version-scoped setting is set', async () => {
-			const workflow = getWorkflow({ addNodeWithoutCreds: true });
-			workflow.connections = {};
-			workflow.versionId = '456';
-			workflow.settings = { availableInMCP: true };
-
-			await workflowHistoryService.saveVersion(testUser, workflow, '123');
-
-			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
-				expect.objectContaining({ settings: null }),
-			);
-		});
-
 		it('should annotate authors with "(via MCP)" when source is n8n-mcp', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });

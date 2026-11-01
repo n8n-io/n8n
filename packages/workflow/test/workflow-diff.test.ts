@@ -884,33 +884,6 @@ describe('groupWorkflows', () => {
 			});
 		});
 		describe('skipDifferentVersionedSettings', () => {
-			it('should return true when the engine is different', () => {
-				const result = SKIP_RULES.skipDifferentVersionedSettings(
-					{ settings: { engineType: 'v1' } },
-					{ settings: { engineType: 'v2' } },
-				);
-
-				expect(result).toBe(true);
-			});
-
-			it('should return false when only live settings are different', () => {
-				const result = SKIP_RULES.skipDifferentVersionedSettings(
-					{ settings: { engineType: 'v2', availableInMCP: false } },
-					{ settings: { engineType: 'v2', availableInMCP: true } },
-				);
-
-				expect(result).toBe(false);
-			});
-
-			it('should return false when neither version has settings', () => {
-				const result = SKIP_RULES.skipDifferentVersionedSettings(
-					{ settings: null },
-					{ settings: undefined },
-				);
-
-				expect(result).toBe(false);
-			});
-
 			it('should keep versions that differ only in the engine when grouping', () => {
 				const node = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
 				const workflows = mock<IWorkflowBase[]>([

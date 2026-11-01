@@ -6,7 +6,7 @@ import type { IWorkflowSettings } from './interfaces';
  * - `version` saved with each workflow version, goes live on publish.
  * - `live` one value for the workflow, applies at once on save.
  */
-export type WorkflowSettingScope = 'version' | 'live';
+type WorkflowSettingScope = 'version' | 'live';
 
 type ScopeForEverySetting = Record<keyof Required<IWorkflowSettings>, WorkflowSettingScope>;
 
@@ -44,10 +44,11 @@ const isVersionedEntry = (
 	entry: [string, WorkflowSettingScope],
 ): entry is [VersionedWorkflowSettingKey, 'version'] => entry[1] === 'version';
 
-export const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] =
-	Object.entries(WORKFLOW_SETTINGS_SCOPE)
-		.filter(isVersionedEntry)
-		.map(([key]) => key);
+const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = Object.entries(
+	WORKFLOW_SETTINGS_SCOPE,
+)
+	.filter(isVersionedEntry)
+	.map(([key]) => key);
 
 export function pickVersionedSettings(
 	settings?: IWorkflowSettings | null,
