@@ -28,6 +28,20 @@ export class AnnotationTagService {
 		return await this.tagRepository.save(tag, { transaction: false });
 	}
 
+	async getPaginated({ offset, limit }: { offset: number; limit: number }): Promise<{
+		data: IAnnotationTagDb[];
+		count: number;
+	}> {
+		const [data, count] = await this.tagRepository.findAndCount({
+			skip: offset,
+			take: limit,
+			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+
+		return { data, count };
+	}
+
 	async delete(id: string) {
 		return await this.tagRepository.delete(id);
 	}
