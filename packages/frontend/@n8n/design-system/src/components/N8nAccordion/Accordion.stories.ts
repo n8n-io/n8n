@@ -9,9 +9,12 @@ import {
 	N8nAccordionTrigger,
 } from './index';
 
+/**
+ * AccordionRoot is a generic reka-ui component. Storybook Meta.component
+ * rejects that shape, so keep the story typed as a plain Meta.
+ */
 const meta: Meta = {
 	title: 'Core/Accordion',
-	component: N8nAccordion,
 	parameters: {
 		docs: {
 			description: {
