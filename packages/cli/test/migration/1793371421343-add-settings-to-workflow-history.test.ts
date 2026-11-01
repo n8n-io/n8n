@@ -92,8 +92,8 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 		return row?.publishedVersionId;
 	}
 
-	it('leaves existing versions null', async () => {
-		expect(await settingsOfVersion()).toBeNull();
+	it('gives existing versions empty settings', async () => {
+		expect(await settingsOfVersion()).toEqual({});
 	});
 
 	it('stores several version settings in one row', async () => {
