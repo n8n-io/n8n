@@ -201,8 +201,10 @@ const reset = (clearTableName = false) => {
 	creationMode.value = 'select';
 };
 
-function onSelectedOption(value: string) {
-	selectedOption.value = value;
+function onSelectedOption(value: string | undefined) {
+	if (value === 'scratch' || value === 'import') {
+		selectedOption.value = value;
+	}
 }
 
 const deriveNameFromFileName = (fileName: string): string => {

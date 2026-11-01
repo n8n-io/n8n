@@ -77,8 +77,8 @@ function submitButton(btn: CardButton) {
 	emit('submit', { type: 'button', value: btn.value });
 }
 
-function submitOption(component: SelectComponent, value: string) {
-	if (props.disabled) return;
+function submitOption(component: SelectComponent, value: string | undefined) {
+	if (props.disabled || value === undefined) return;
 	emit('submit', { type: 'select', ...(component.id && { id: component.id }), value });
 }
 

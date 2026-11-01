@@ -69,8 +69,10 @@ const onDelete = () => {
 	emit('confirmDelete', selectedProject.value?.id);
 };
 
-function onOperation(value: string) {
-	operation.value = value;
+function onOperation(value: string | undefined) {
+	if (value === 'transfer' || value === 'wipe') {
+		operation.value = value;
+	}
 }
 </script>
 <template>
