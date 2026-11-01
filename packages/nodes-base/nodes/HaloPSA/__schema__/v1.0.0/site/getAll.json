@@ -9,7 +9,10 @@
         },
         "name": {
             "type": "string"
+        },
+        "phonenumber": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }
