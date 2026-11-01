@@ -103,8 +103,15 @@ const SelectionHarness = defineComponent({
 
 const DisabledList = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
+	emits: ['update:modelValue'],
+	setup(_, { emit }) {
+		function onUpdate(next: string | undefined) {
+			emit('update:modelValue', next);
+		}
+		return { onUpdate };
+	},
 	template: `
-		<N8nListbox model-value="v1" label="Versions" disabled>
+		<N8nListbox model-value="v1" label="Versions" disabled @update:model-value="onUpdate">
 			<N8nListboxItem value="v2">v2</N8nListboxItem>
 			<N8nListboxItem value="v1">v1</N8nListboxItem>
 		</N8nListbox>
@@ -257,12 +264,11 @@ describe('N8nListbox', () => {
 	});
 
 	it('does not change the value when the list is disabled', async () => {
-		const { getByRole } = render(DisabledList);
+		const { getByRole, emitted } = render(DisabledList);
 
 		await userEvent.click(getByRole('option', { name: 'v2' }));
 
-		expect(getByRole('option', { name: 'v1' })).toHaveAttribute('aria-selected', 'true');
-		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('aria-selected', 'true');
+		expect(emitted('update:modelValue')).toBeUndefined();
 	});
 
 	it('keeps the value when the item select event is cancelled', async () => {
