@@ -222,6 +222,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "roleMappingRule:delete",
   "roleMappingRule:list",
   "otel:manage",
+  "workflowSettings:manage",
   "trustedSource:create",
   "trustedSource:read",
   "trustedSource:update",
