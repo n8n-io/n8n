@@ -234,7 +234,7 @@ describe('N8nDataTableServer', () => {
 	it('should pin the first column, and the selection column, when asked to', async () => {
 		const { container, rerender } = render(N8nDataTableServer, {
 			//@ts-expect-error testing-library errors due to header generics
-			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinFirstColumn: true },
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
 		});
 
 		const headerCells = container.querySelectorAll('thead tr th');
@@ -292,7 +292,7 @@ describe('N8nDataTableServer', () => {
 	it('should show the pinned edge only after the table has scrolled sideways', async () => {
 		const { container } = render(N8nDataTableServer, {
 			//@ts-expect-error testing-library errors due to header generics
-			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinFirstColumn: true },
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
 		});
 
 		const wrapper = container.querySelector('.n8n-data-table-server-wrapper')!;

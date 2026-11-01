@@ -86,12 +86,6 @@ const props = withDefaults(
 		showAll?: boolean;
 		rowProps?: { class?: VueClass } | ((row: T, index: number) => { class?: VueClass });
 		/**
-		 * Keep the first column in place while the table scrolls horizontally.
-		 * Same as `pinColumns` set to 1. The selection column stays with it when shown.
-		 * @default false
-		 */
-		pinFirstColumn?: boolean;
-		/**
 		 * How many leading columns stay in place while the table scrolls horizontally.
 		 * The selection column is pinned in front of these when it is shown.
 		 * @default 0
@@ -105,7 +99,6 @@ const props = withDefaults(
 		pagination: true,
 		showAll: false,
 		rowProps: undefined,
-		pinFirstColumn: false,
 		pinColumns: 0,
 	},
 );
@@ -253,10 +246,9 @@ const columnsDefinition = computed(() => {
 });
 
 const columnPinning = computed<ColumnPinningState>(() => {
-	const dataColumnCount = props.pinColumns > 0 ? props.pinColumns : props.pinFirstColumn ? 1 : 0;
-	if (dataColumnCount === 0) return { left: [], right: [] };
+	if (props.pinColumns <= 0) return { left: [], right: [] };
 
-	const pinnedCount = dataColumnCount + (props.showSelect ? 1 : 0);
+	const pinnedCount = props.pinColumns + (props.showSelect ? 1 : 0);
 	const left = columnsDefinition.value
 		.slice(0, pinnedCount)
 		.map((column) => column.id)

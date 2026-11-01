@@ -166,7 +166,7 @@ function wideTableStory(): StoryFn {
 }
 
 export const HorizontalScroll = wideTableStory();
-HorizontalScroll.args = { pinFirstColumn: false, showSelect: false };
+HorizontalScroll.args = { showSelect: false };
 HorizontalScroll.parameters = {
 	docs: {
 		description: {
