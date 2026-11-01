@@ -1,7 +1,11 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettings,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -128,6 +132,7 @@ export class ExecutionService {
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
 	) {}
 
 	/**
@@ -212,12 +217,9 @@ export class ExecutionService {
 		});
 		if (!canReadExecutions) return undefined;
 
-		// A workflow runs on one engine, and only that engine holds its executions.
-		const settings = await this.workflowRepository.findSettings(workflowId);
-		const execution =
-			settings?.engineType === 'v2'
-				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
-				: await this.lastSuccessfulV1Execution(workflowId);
+		const execution = this.workflowVersionedSettings.isEnabled()
+			? await this.lastSuccessfulExecutionOnEitherEngine(workflowId)
+			: await this.lastSuccessfulExecutionOnWorkflowEngine(workflowId);
 		if (!execution) return undefined;
 
 		await this.executionRedactionServiceProxy.processExecution(execution, {
@@ -225,6 +227,33 @@ export class ExecutionService {
 			redactExecutionData,
 		});
 		return execution;
+	}
+
+	/** A workflow runs on one engine, and only that engine holds its executions. */
+	private async lastSuccessfulExecutionOnWorkflowEngine(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
+		const settings = await this.workflowRepository.findSettings(workflowId);
+		return settings?.engineType === 'v2'
+			? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
+			: await this.lastSuccessfulV1Execution(workflowId);
+	}
+
+	/**
+	 * Manual runs use the draft engine and production runs use the published one,
+	 * so the latest success can be on either engine.
+	 */
+	private async lastSuccessfulExecutionOnEitherEngine(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
+		const [v1Execution, v2Execution] = await Promise.all([
+			this.lastSuccessfulV1Execution(workflowId),
+			this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId]),
+		]);
+		if (!v1Execution || !v2Execution) return v1Execution ?? v2Execution;
+
+		const startedAt = (execution: IExecutionResponse) => execution.startedAt?.getTime() ?? 0;
+		return startedAt(v2Execution) > startedAt(v1Execution) ? v2Execution : v1Execution;
 	}
 
 	private async lastSuccessfulV1Execution(

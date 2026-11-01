@@ -5313,6 +5313,28 @@ describe('POST /workflows/:workflowId/run', () => {
 			expect(executions.filter((e) => e.workflowId === dbWorkflow.id)).toHaveLength(0);
 		});
 
+		test('should run on the draft engine while the published version runs on v1', async () => {
+			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+				(name) => name === 'engine-v2',
+			);
+			const dbWorkflow = await createV2Workflow();
+			const publishedVersion = await createWorkflowHistoryItem(dbWorkflow.id, {
+				nodes: dbWorkflow.nodes,
+				connections: dbWorkflow.connections,
+				settings: { engineType: 'v1' },
+			});
+			await setActiveVersion(dbWorkflow.id, publishedVersion.versionId);
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${dbWorkflow.id}/run`)
+				.send({ triggerToStartFrom: { name: TRIGGER_NAME } });
+
+			expect(response.statusCode).toBe(200);
+			expect(startExecution).toHaveBeenCalledWith(
+				objectContaining({ workflowId: dbWorkflow.id, mode: 'manual' }),
+			);
+		});
+
 		test('should seed a pinned node and reuse the trigger run data for a partial execution', async () => {
 			const dbWorkflow = await createV2Workflow({ [SET_NAME]: [{ json: { pinned: true } }] });
 			const setNode = dbWorkflow.nodes.find((node) => node.name === SET_NAME);

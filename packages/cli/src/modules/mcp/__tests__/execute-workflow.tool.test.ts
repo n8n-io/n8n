@@ -1,4 +1,5 @@
 import type { Mock } from 'vitest';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import { User } from '@n8n/db';
@@ -565,6 +566,71 @@ describe('execute-workflow MCP tool', () => {
 						},
 					],
 				});
+			});
+		});
+
+		describe('engine of the run', () => {
+			const webhookNode = {
+				id: 'node-1',
+				name: 'WebhookNode',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				disabled: false,
+				parameters: {},
+			} as INode;
+
+			const runEngine = async (executionMode: 'production' | 'manual') => {
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					nodes: [webhookNode],
+					settings: { availableInMCP: true, engineType: 'v2' },
+					activeVersion: createWorkflowHistoryVersion({
+						workflowId: 'wf-1',
+						versionId: 'published',
+						nodes: [webhookNode],
+						settings: { engineType: 'v1' },
+					}),
+				});
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as Mock).mockResolvedValue('exec-123');
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					workflowRunner,
+					mcpService,
+					workflowsConfig,
+					workflowPublishedDataService,
+					'wf-1',
+					{ webhookData: { method: 'GET' } },
+					executionMode,
+					'WebhookNode',
+				);
+
+				const runCall = (workflowRunner.run as Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+				return runCall.workflowData.settings?.engineType;
+			};
+
+			test('runs production on the engine of the published version with the engine-v2 module', async () => {
+				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+					(name) => name === 'engine-v2',
+				);
+
+				expect(await runEngine('production')).toBe('v1');
+			});
+
+			test('runs a manual execution on the draft engine', async () => {
+				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+					(name) => name === 'engine-v2',
+				);
+
+				expect(await runEngine('manual')).toBe('v2');
+			});
+
+			test('runs production on the draft engine without the engine-v2 module, as before', async () => {
+				expect(await runEngine('production')).toBe('v2');
 			});
 		});
 

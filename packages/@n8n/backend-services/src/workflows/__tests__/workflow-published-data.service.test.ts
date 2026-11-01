@@ -1,30 +1,38 @@
-import type { Logger } from '@n8n/backend-common';
-import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type {
+	PublishedVersionForExecution,
+	WorkflowPublishedVersionRepository,
+	WorkflowPublishedVersion,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '../../services/cache/cache.service';
-import {
-	WorkflowPublishedDataService,
-	type PublishedWorkflowDataForExecution,
-} from '../workflow-published-data.service';
+import { WorkflowPublishedDataService } from '../workflow-published-data.service';
+import { WorkflowVersionedSettings } from '../workflow-versioned-settings.service';
 
 describe('WorkflowPublishedDataService', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const cacheService = mock<CacheService>();
+	const moduleRegistry = mock<ModuleRegistry>();
 	let service: WorkflowPublishedDataService;
 
 	const cacheKey = 'workflow-published-data:wf-1';
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(false);
 		service = new WorkflowPublishedDataService(
 			logger,
 			workflowPublishedVersionRepository,
 			cacheService,
+			new WorkflowVersionedSettings(moduleRegistry),
 		);
 	});
+
+	const enableEngineV2Module = () =>
+		moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
 
 	function makeRecord() {
 		const nodes = [
@@ -49,7 +57,7 @@ describe('WorkflowPublishedDataService', () => {
 		return { record, nodes, connections };
 	}
 
-	function makeCachedData(): PublishedWorkflowDataForExecution {
+	function makeCachedData(): PublishedVersionForExecution {
 		return {
 			id: 'wf-1',
 			name: 'Workflow Name',
@@ -66,7 +74,13 @@ describe('WorkflowPublishedDataService', () => {
 			nodes: [],
 			connections: {},
 			nodeGroups: [],
+			versionSettings: {},
 		};
+	}
+
+	/** The run data that the service returns for a record: the record without `versionSettings`. */
+	function toRunData({ versionSettings: _, ...data }: PublishedVersionForExecution) {
+		return data;
 	}
 
 	describe('getPublishedWorkflowData', () => {
@@ -114,10 +128,89 @@ describe('WorkflowPublishedDataService', () => {
 
 			const result = await service.getPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result).toBe(cachedData);
+			expect(result).toEqual(toRunData(cachedData));
 			expect(
 				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
 			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('settings of a production run', () => {
+		const record = (): PublishedVersionForExecution => ({
+			...makeCachedData(),
+			settings: { engineType: 'v2', timezone: 'Europe/Berlin' },
+			versionSettings: { engineType: 'v1' },
+		});
+
+		test('uses the engine of the published version with the engine-v2 module', async () => {
+			enableEngineV2Module();
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				record(),
+			);
+
+			const result = await service.getPublishedWorkflowDataForExecution('wf-1');
+
+			expect(result?.settings).toEqual({ engineType: 'v1', timezone: 'Europe/Berlin' });
+			expect(result).not.toHaveProperty('versionSettings');
+		});
+
+		test('runs on the default engine when the published version has no engine', async () => {
+			enableEngineV2Module();
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue({
+				...record(),
+				versionSettings: {},
+			});
+
+			const result = await service.getPublishedWorkflowDataForExecution('wf-1');
+
+			expect(result?.settings?.engineType).toBeUndefined();
+		});
+
+		test('uses the workflow settings without the engine-v2 module', async () => {
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				record(),
+			);
+
+			const result = await service.getPublishedWorkflowDataForExecution('wf-1');
+
+			expect(result?.settings).toEqual({ engineType: 'v2', timezone: 'Europe/Berlin' });
+		});
+
+		test('applies the published engine to a cached entry', async () => {
+			enableEngineV2Module();
+			cacheService.get.mockResolvedValue(record());
+
+			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
+
+			expect(result?.settings).toEqual({ engineType: 'v1', timezone: 'Europe/Berlin' });
+		});
+
+		test('reads from the database when a cached entry has no version settings', async () => {
+			enableEngineV2Module();
+			const { versionSettings: _, ...oldEntry } = record();
+			cacheService.get.mockResolvedValue(oldEntry);
+			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue(
+				record(),
+			);
+
+			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
+
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionForExecution,
+			).toHaveBeenCalledWith('wf-1');
+			expect(result?.settings).toEqual({ engineType: 'v1', timezone: 'Europe/Berlin' });
+		});
+
+		test('uses a cached entry without version settings when the engine-v2 module is off', async () => {
+			const { versionSettings: _, ...oldEntry } = record();
+			cacheService.get.mockResolvedValue(oldEntry);
+
+			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
+
+			expect(
+				workflowPublishedVersionRepository.getPublishedVersionForExecution,
+			).not.toHaveBeenCalled();
+			expect(result?.settings).toEqual({ engineType: 'v2', timezone: 'Europe/Berlin' });
 		});
 	});
 
@@ -128,7 +221,7 @@ describe('WorkflowPublishedDataService', () => {
 
 			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result).toBe(cached);
+			expect(result).toEqual(toRunData(cached));
 			expect(
 				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
 			).not.toHaveBeenCalled();
@@ -146,7 +239,7 @@ describe('WorkflowPublishedDataService', () => {
 
 			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result).toBe(cachedData);
+			expect(result).toEqual(toRunData(cachedData));
 			expect(cacheService.set).not.toHaveBeenCalled();
 			expect(
 				workflowPublishedVersionRepository.getPublishedVersionWithRelations,
@@ -162,7 +255,7 @@ describe('WorkflowPublishedDataService', () => {
 
 			const result = await service.getCachedPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result).toBe(cachedData);
+			expect(result).toEqual(toRunData(cachedData));
 			expect(result!.name).toBe('Workflow Name');
 			expect(logger.warn).toHaveBeenCalled();
 			expect(

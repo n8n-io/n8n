@@ -8,6 +8,7 @@ import {
 	UrlService,
 	RuntimeCredentialProxyService,
 	WorkflowPublishedDataService,
+	WorkflowVersionedSettings,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -232,6 +233,10 @@ export async function getPublishedWorkflowData(
 			versionId: publishedData.publishedVersion.versionId,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
+			settings: Container.get(WorkflowVersionedSettings).forPublishedRun(
+				publishedData.workflow.settings,
+				publishedData.publishedVersion,
+			),
 		};
 	}
 
@@ -253,6 +258,10 @@ export async function getPublishedWorkflowData(
 			versionId: workflowData.activeVersion.versionId,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
+			settings: Container.get(WorkflowVersionedSettings).forPublishedRun(
+				workflowData.settings,
+				workflowData.activeVersion,
+			),
 		};
 	}
 
