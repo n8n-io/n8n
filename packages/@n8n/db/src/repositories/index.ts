@@ -49,6 +49,8 @@ export {
 	ExecutionRepository,
 	type CrashedExecution,
 	type ExecutionDeletionCriteria,
+	type ResumableExecutionStatus,
+	type ResumeAttemptClaim,
 	type UpdateExecutionConditions,
 } from './execution.repository';
 export { FolderRepository } from './folder.repository';
