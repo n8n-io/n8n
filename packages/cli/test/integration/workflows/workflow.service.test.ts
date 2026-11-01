@@ -56,6 +56,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
+import { EngineCheckService } from '@/workflows/engine-check/engine-check.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -146,6 +147,7 @@ beforeAll(async () => {
 		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
 		mock(),
 		Container.get(WorkflowVersionedSettings), // workflowVersionedSettings
+		Container.get(EngineCheckService), // engineCheckService
 	);
 });
 
@@ -1957,5 +1959,100 @@ describe('version-scoped settings on save', () => {
 			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
 			expect(saved.settings?.engineType).toBe('v2');
 		});
+	});
+});
+
+describe('engine check on publish', () => {
+	const engineCheck = () => vi.spyOn(Container.get(EngineCheckService), 'check');
+
+	const createWorkflowWithV2Version = async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const v2Version = await createWorkflowHistoryItem(workflow.id, {
+			settings: { engineType: 'v2' },
+		});
+		return { owner, workflow, v2Version };
+	};
+
+	describe('with the engine-v2 module', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+				(name) => name === 'engine-v2',
+			);
+		});
+
+		test('checks the engine of the version once before it is published', async () => {
+			const check = engineCheck();
+			const { owner, workflow, v2Version } = await createWorkflowWithV2Version();
+
+			const updated = await workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: v2Version.versionId,
+			});
+
+			expect(check).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ versionId: v2Version.versionId }),
+				'v2',
+			);
+			expect(updated.activeVersionId).toBe(v2Version.versionId);
+		});
+
+		test('checks a version without an engine as v1', async () => {
+			const check = engineCheck();
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await workflowService.activateWorkflow(owner, workflow.id);
+
+			expect(check).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ versionId: workflow.versionId }),
+				'v1',
+			);
+		});
+
+		test('rejects a publish that fails the check and changes nothing', async () => {
+			engineCheck().mockResolvedValue({
+				ok: false,
+				reasons: [{ code: 'UNSUPPORTED_NODE', nodeName: 'Start', message: 'Not supported.' }],
+			});
+			const { owner, workflow, v2Version } = await createWorkflowWithV2Version();
+
+			await expect(
+				workflowService.activateWorkflow(owner, workflow.id, { versionId: v2Version.versionId }),
+			).rejects.toMatchObject({
+				httpStatusCode: 422,
+				meta: {
+					code: 'ENGINE_CHECK_FAILED',
+					engineType: 'v2',
+					versionId: v2Version.versionId,
+					reasons: [{ code: 'UNSUPPORTED_NODE', nodeName: 'Start', message: 'Not supported.' }],
+					validationError: true,
+				},
+			});
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.activeVersionId).toBeNull();
+			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+		});
+
+		test('does not check a republish of the version that is already published', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			const check = engineCheck();
+
+			await workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: workflow.activeVersionId!,
+			});
+
+			expect(check).not.toHaveBeenCalled();
+		});
+	});
+
+	test('does not check the engine without the engine-v2 module', async () => {
+		const check = engineCheck();
+		const { owner, workflow, v2Version } = await createWorkflowWithV2Version();
+
+		await workflowService.activateWorkflow(owner, workflow.id, { versionId: v2Version.versionId });
+
+		expect(check).not.toHaveBeenCalled();
 	});
 });
