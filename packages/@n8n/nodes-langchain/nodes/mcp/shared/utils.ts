@@ -244,6 +244,8 @@ export async function connectMcpClient({
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				fetch: authFetch,
+				// The auth fetch validates each hop and removes credentials across origins.
+				redirectPolicy: 'follow',
 				...(signal ? { requestInit: { signal } } : {}),
 			});
 			const originalClose = client.close.bind(client);
@@ -294,6 +296,7 @@ export async function connectMcpClient({
 
 	try {
 		const sseTransport = new SSEClientTransport(endpoint.result, {
+			redirectPolicy: 'follow',
 			eventSourceInit: {
 				fetch: async (url, init) =>
 					await authFetch(url, {

@@ -49,10 +49,10 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | Tool | Actions |
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
-| `data_tables` | 11 |
-| `workspace` | 8 |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
+| `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
 | `workflow_builder_executions` | 8 |
-| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential` | single-purpose |
+| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -61,7 +61,8 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
-| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `apps` | 6 |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -342,7 +343,7 @@ this tool with `filePath`.
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
-| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
+| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `move_workflow_to_folder`. Advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
 conversation is bound to, and nothing can redirect it. The field used to exist and
@@ -841,6 +842,19 @@ nodesWithAccess? }], notFound? }`. The description contains the full stored
 text, or `null` when unset. `notFound` lists the ids that did not resolve. The
 response never contains credential secret data.
 
+### `update_credential_description`
+
+Set or replace an existing credential description only when the user explicitly requests it.
+Describe its purpose and intended use from known context. Keep it concise and exclude secrets.
+Pass `credentialId` and `description`.
+The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
+Returns `{ success: true }`.
+
+The tool is available when credential descriptions are enabled. The user must have
+`credential:update` permission, and the credential must belong to the conversation's project.
+Managed credentials allow description updates. Description updates remain available on protected instances.
+The operation keeps credential secrets, names, and types unchanged.
+
 ### `delete_credential`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
@@ -1050,7 +1064,7 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
-## `workflow_builder_search_models`
+## `search_models`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The orchestrator always loads this tool.
@@ -1088,55 +1102,59 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data_tables` (11 actions)
+## Data table tools (11 tools)
 
-Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
-`updatedAt`) are reserved and auto-managed.
+Full CRUD suite for n8n data tables. Each operation is a separate tool. System
+columns (`id`, `createdAt`, `updatedAt`) are reserved and auto-managed. The
+read tools never suspend. The write tools ask for approval unless the
+permission allows them. Stored calls of the former `data_tables` tool still
+resolve to the matching tool.
 
 ### Table operations
 
-| Action | Description |
-|--------|-------------|
-| `list` | List data tables |
-| `create` | Create a data table with columns |
-| `delete` | Delete a data table after confirmation |
-| `schema` | Get the table columns |
+| Tool | Description |
+|------|-------------|
+| `list_data_tables` | List data tables |
+| `create_data_table` | Create a data table with columns |
+| `delete_data_table` | Delete a data table after confirmation |
+| `get_data_table_schema` | Get the table columns |
 
 ### Column operations
 
-| Action | Description |
-|--------|-------------|
-| `add-column` | Add a column to a table |
-| `delete-column` | Remove a column from a table |
-| `rename-column` | Rename a column |
+| Tool | Description |
+|------|-------------|
+| `add_data_table_column` | Add a column to a table |
+| `delete_data_table_column` | Remove a column from a table |
+| `rename_data_table_column` | Rename a column |
 
 ### Row operations
 
-| Action | Description |
-|--------|-------------|
-| `query` | Query rows with optional filters |
-| `insert-rows` | Insert one or more rows |
-| `update-rows` | Update rows matching a filter |
-| `delete-rows` | Delete rows matching a non-empty filter after confirmation |
+| Tool | Description |
+|------|-------------|
+| `query_data_table` | Query rows with optional filters |
+| `insert_data_table_rows` | Insert one or more rows |
+| `update_data_table_rows` | Update rows matching a filter |
+| `delete_data_table_rows` | Delete rows matching a non-empty filter after confirmation |
 
 ---
 
-## `workspace` (4 or 8 actions)
+## Workspace tools (4 or 8 tools)
 
-The registry always contains this tool. Without `workspaceService`, every call
-returns an unavailable error. Folder actions are present only when
+Each action of the former `workspace` tool is its own tool. The registry always
+contains the first four tools. Without `workspaceService`, every call returns an
+unavailable error. The folder tools are present only when
 `workspaceService.listFolders` is available.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
-| `tag-workflow` | Apply tags to a workflow |
-| `list-tags` | List available tags |
-| `cleanup-test-executions` | Remove test execution data |
-| `list-folders` | List folders (conditional) |
-| `create-folder` | Create a new folder (conditional) |
-| `delete-folder` | Delete a folder (conditional) |
-| `move-workflow-to-folder` | Move a workflow to a folder (conditional) |
+| `list_projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
+| `tag_workflow` | Apply tags to a workflow |
+| `list_tags` | List available tags |
+| `cleanup_test_executions` | Remove test execution data |
+| `list_folders` | List folders (conditional) |
+| `create_folder` | Create a new folder (conditional) |
+| `delete_folder` | Delete a folder (conditional) |
+| `move_workflow_to_folder` | Move a workflow to a folder (conditional) |
 
 ---
 
@@ -1238,19 +1256,20 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `workflow_builder_ask_user`
+## `ask_user`
 
 Suspend the run for one or more human decisions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `questions` | array | yes | Items with `id`, `question`, `type`, and optional `options` |
+| `questions` | array | yes | Items with `question`, `type`, and optional `id`, `options`, `required`, and `freeTextLabel` |
 | `introMessage` | string | no | Text shown above the first question |
 
-Question type is `single`, `multi`, or `text`. The UI adds its own free-text
-choice to select questions. The result is `{ answered: false }` when the user
-dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
-question text added to every answer.
+Question type is `single`, `multi`, or `text`. A question without an `id` gets
+the first free `q1`, `q2`, ... id. Duplicate ids are rejected. The UI adds its
+own free-text choice to select questions. The result is `{ answered: false }`
+when the user dismisses the request or skips every question. Otherwise it is
+`{ answered: true, answers }`, with the question text added to every answer.
 
 A skipped question grants no additional permission. Defaults apply only to
 unspecified details within the requested task. A skipped request to expand scope
@@ -1282,6 +1301,43 @@ those cases. The model relays a rejection in its own words and never says
 The system prompt carries the judgment of *when* to call it (see
 `getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
 carries *what* it does.
+
+---
+
+## `apps` *(conditional)*
+
+Build n8n Apps. Present only when the apps module is active, the run has a
+bound project and the sandbox is available. The adapter wires `appService`, and
+the turn setup removes it without a sandbox, so the tool, the `app-builder`
+skill and the `<app-targets>` block share one gate. Deferred: the skill lists
+the tool in `recommended_tools`.
+
+| Action | Scope | Description |
+|--------|-------|-------------|
+| `create` | `app:create` | Create an app in the bound project and open it. The first app of a thread uses the pending app id from thread metadata |
+| `list` | `app:list` | Apps of the bound project (at most 50), optionally filtered by name |
+| `get` | `app:read` | App state |
+| `open` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
+| `commit` | `app:update` | Save the folder as one version and wait for its build |
+| `discard` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
+
+The model edits the folder with the workspace tools and runs `npm ci` and
+`npm run build` there before it commits. The source moves in and out of the
+sandbox as one archive (`AppSourceArchiveService` in the apps module). The
+commit archive is read back as a file, not through command output.
+`apps/<appId>.base-version` holds the draft version the folder started from. A
+commit is based on that version, so a draft that changed since then fails the
+commit with a conflict and the folder stays. A commit leaves out
+`node_modules` and `dist`, and n8n builds the version again.
+
+`create` and every commit add the app to the thread metadata key
+`instanceAiAppTargets`. Reads and opens do not. A thread can build several
+apps. On each user turn the `<app-targets>` block names these apps. They also
+report the app as an `app` artifact through `onArtifactChanged`, so the thread
+shows the app's tab. The `create` and commit results include `app` (`id`,
+`name`, `projectId`) for the frontend.
+
+Errors return `{ error }`.
 
 ---
 
@@ -1480,7 +1536,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and workflow_builder_ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1502,14 +1558,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, workflow_builder_ask_user Q&A, and each turn's final
+user experienced it: their messages, ask_user Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); workflow_builder_ask_user rows stay visible for their Q&A. Rows only
+text are escaped); ask_user rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, workflow_builder_ask_user rows still awaiting an answer, unreadable content — are
+visible text, ask_user rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of

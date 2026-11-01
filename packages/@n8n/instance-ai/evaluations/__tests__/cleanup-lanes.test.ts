@@ -38,6 +38,33 @@ describe('cleanupLanes', () => {
 		expect(deleteUser.mock.calls.map(([id]) => id as string)).toEqual(['u1', 'u2', 'u3']);
 	});
 
+	it('deletes the team build projects a build cleanup left', async () => {
+		const listTeamProjects = vi.fn().mockResolvedValue([]);
+		const lane = {
+			...laneWithPool().lane,
+			client: { listTeamProjects } as unknown as N8nClient,
+			buildUserPool: undefined,
+			teamBuildProjects: true,
+		};
+
+		await cleanupLanes([lane], { workflows: false, buildUsers: true }, silentLogger);
+
+		expect(listTeamProjects).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the team build projects under --keep-workflows', async () => {
+		const listTeamProjects = vi.fn();
+		const lane = {
+			...laneWithPool().lane,
+			client: { listTeamProjects } as unknown as N8nClient,
+			teamBuildProjects: true,
+		};
+
+		await cleanupLanes([lane], { workflows: false, buildUsers: false }, silentLogger);
+
+		expect(listTeamProjects).not.toHaveBeenCalled();
+	});
+
 	it('keeps the build users, and the workflows in their projects, under --keep-workflows', async () => {
 		const { lane, buildUserPool, deleteUser } = laneWithPool();
 		await buildUserPool.claim();

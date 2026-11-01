@@ -5,28 +5,63 @@ import type { RouteLocationRaw } from 'vue-router';
 import {
 	type IconColor,
 	N8nIcon,
+	N8nButton,
+	N8nLink,
 	N8nScrollArea,
 	N8nText,
 	N8nVisuallyHidden,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type { AgentPlanItemStatus, AgentPlanView } from '../utils/agent-plan';
+import {
+	getAgentPlanTasks,
+	type AgentPlanItemStatus,
+	type AgentPlanView,
+} from '../utils/agent-plan';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import ChatCollapsibleContainer from '@/features/ai/shared/components/ChatCollapsibleContainer.vue';
 import { TIME } from '@/app/constants/durations';
 
-const props = defineProps<{ plan: AgentPlanView; traceRoute?: RouteLocationRaw }>();
-const i18n = useI18n();
-const expanded = ref(false);
+const props = defineProps<{
+	plan: AgentPlanView;
+	traceRoute?: RouteLocationRaw;
+	showStop?: boolean;
+	canStop?: boolean;
+	stopping?: boolean;
+	stopped?: boolean;
+	stoppedAt?: string;
+	stopFailed?: boolean;
+}>();
+
+const isStopped = computed(
+	() =>
+		props.stopped ||
+		(tasks.value.some((task) => task.status === 'paused') &&
+			tasks.value.every((task) => ['paused', 'done', 'failed', 'cancelled'].includes(task.status))),
+);
+
+const expanded = defineModel<boolean>('expanded', { default: false });
+
 watch(
 	() => props.plan.planId,
 	() => {
 		expanded.value = false;
 	},
 );
+
+const emit = defineEmits<{ stop: [event: MouseEvent] }>();
+const i18n = useI18n();
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
 const startTime = computed(() => Date.parse(props.plan.startedAt ?? ''));
+
+const tasks = computed(() => getAgentPlanTasks(props.plan));
+
+const isFinished = computed(
+	() =>
+		tasks.value.length > 0 &&
+		tasks.value.every((task) => ['done', 'failed', 'cancelled'].includes(task.status)),
+);
+
 const { pause, resume } = useIntervalFn(
 	() => {
 		now.value = Date.now();
@@ -34,10 +69,13 @@ const { pause, resume } = useIntervalFn(
 	TIME.SECOND,
 	{ immediate: false },
 );
+
 watch(
 	() =>
 		Number.isFinite(startTime.value) &&
 		!props.plan.closed &&
+		tasks.value.some((task) => task.status === 'in_progress') &&
+		!isStopped.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
 		if (active) {
@@ -47,49 +85,98 @@ watch(
 	},
 	{ immediate: true },
 );
-const elapsed = computed(() => {
-	const endTime = props.plan.closed ? Date.parse(props.plan.closedAt ?? '') : now.value;
-	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime)) return null;
-	return formatAgentElapsedTime(endTime - startTime.value);
+
+const endTime = computed(() => {
+	if (isFinished.value) {
+		return Date.parse(props.plan.finishedAt ?? props.plan.closedAt ?? '') || now.value;
+	}
+
+	if (props.plan.closed) return Date.parse(props.plan.closedAt ?? '');
+
+	if (isStopped.value) {
+		return Date.parse(props.plan.lastActivityAt ?? props.stoppedAt ?? '') || now.value;
+	}
+
+	if (tasks.value.some((task) => task.status === 'in_progress')) return now.value;
+
+	return Date.parse(props.plan.lastActivityAt ?? '') || now.value;
 });
-const label = computed(() =>
-	props.plan.closed
+
+const elapsed = computed(() => {
+	if (!Number.isFinite(startTime.value) || !Number.isFinite(endTime.value)) return null;
+
+	return formatAgentElapsedTime(endTime.value - startTime.value);
+});
+
+const label = computed(() => {
+	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
+
+	if (props.stopFailed) return i18n.baseText('agents.chat.tasks.stopFailedTitle');
+
+	if (isStopped.value) return i18n.baseText('agents.chat.tasks.stopped');
+
+	return props.plan.closed
 		? (props.plan.document.presentation?.detail ?? props.plan.document.title)
 		: (props.plan.document.presentation?.label ??
-			i18n.baseText('agents.chat.plan.title', {
-				interpolate: { title: props.plan.document.title },
-			})),
-);
+				i18n.baseText('agents.chat.plan.title', {
+					interpolate: { title: props.plan.document.title },
+				}));
+});
+
+const stopLabel = computed(() => {
+	if (props.stopping) return i18n.baseText('agents.chat.tasks.stopping');
+
+	if (props.stopFailed) return i18n.baseText('agents.chat.tasks.retry');
+
+	return i18n.baseText('agents.chat.tasks.stopAll');
+});
+
 const isRunning = computed(
 	() =>
 		!props.plan.closed &&
-		props.plan.document.items.some(
-			(item) =>
-				item.status === 'in_progress' ||
-				(item.kind === 'group' && item.tasks.some((task) => task.status === 'in_progress')),
-		),
+		!isFinished.value &&
+		!isStopped.value &&
+		props.plan.document.items
+			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
+			.some((item) => item.status === 'in_progress'),
 );
+
 const statusLabels: Record<AgentPlanItemStatus, BaseTextKey> = {
 	pending: 'agents.chat.plan.status.pending',
 	in_progress: 'agents.chat.plan.status.inProgress',
+	paused: 'agents.chat.tasks.stopped',
 	done: 'agents.chat.plan.status.done',
 	failed: 'agents.chat.plan.status.failed',
 	cancelled: 'agents.chat.plan.status.canceled',
 };
+
 const statusIcons = {
 	pending: 'circle',
 	in_progress: 'loader',
+	paused: 'circle-pause',
 	done: 'check',
 	failed: 'x',
 	cancelled: 'x',
 } as const;
+
 const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 	pending: 'text-light',
 	in_progress: 'text-light',
+	paused: 'text-light',
 	done: 'success',
 	failed: 'danger',
 	cancelled: 'text-xlight',
 } as const;
+
+const summary = computed(() => {
+	return i18n.baseText('agents.chat.plan.progress', {
+		adjustToNumber: tasks.value.length,
+		interpolate: {
+			done: tasks.value.filter((task) => task.status === 'done').length,
+			total: tasks.value.length,
+		},
+	});
+});
 </script>
 
 <template>
@@ -231,6 +318,35 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 					</ul>
 				</div>
 			</N8nScrollArea>
+			<div :class="$style.footer">
+				<N8nLink
+					v-if="traceRoute"
+					:to="traceRoute"
+					theme="text"
+					size="small"
+					underline
+					data-testid="agent-chat-plan-trace"
+				>
+					<span :class="$style.traceLabel">
+						<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+						{{ i18n.baseText('agents.chat.plan.viewTrace') }}
+					</span>
+				</N8nLink>
+				<N8nButton
+					v-if="showStop || canStop || stopping"
+					variant="ghost"
+					size="small"
+					:disabled="stopping || !canStop"
+					data-testid="agent-chat-plan-stop"
+					@click="emit('stop', $event)"
+				>
+					{{ stopLabel }}
+				</N8nButton>
+				<span :class="$style.summary" data-testid="agent-chat-plan-summary">{{ summary }}</span>
+			</div>
+			<p v-if="stopFailed" :class="$style.detail" role="status">
+				{{ i18n.baseText('agents.chat.backgroundTasks.stopError') }}
+			</p>
 		</ChatCollapsibleContainer>
 	</div>
 </template>
@@ -245,7 +361,25 @@ const statusIconColors: Record<AgentPlanItemStatus, IconColor> = {
 }
 
 .footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
+}
+
+.traceLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.summary {
+	flex: 0 0 auto;
+	margin-inline-start: auto;
+	font-size: var(--font-size--2xs);
+	font-variant-numeric: tabular-nums;
+	color: var(--text-color--subtle);
 }
 
 .timer {

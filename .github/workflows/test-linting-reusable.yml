@@ -13,10 +13,18 @@ on:
         required: false
         type: string
         default: 26.12.1
+      affectedBase:
+        description: Commit to compare against. When set, lint only the packages changed since this commit and the packages that depend on them.
+        required: false
+        type: string
+        default: ''
 
 env:
   # Each shard runs two workers with a 6 GB cap. This fits the runner's 15.2 GB.
   NODE_OPTIONS: --max-old-space-size=6144
+  # Read by `turbo --affected`. If the base is missing, turbo lints every package.
+  TURBO_SCM_BASE: ${{ inputs.affectedBase }}
+  TURBO_SCM_HEAD: HEAD
 
 jobs:
   lint:
@@ -27,20 +35,32 @@ jobs:
       matrix:
         include:
           - name: Backend
-            command: pnpm turbo run lint --concurrency=2 --cache=local:r,remote:r --filter=!./packages/frontend/** --filter=!./packages/modules/*/frontend --filter=!./packages/extensions/**
+            command: pnpm turbo run lint --concurrency=2 --filter=!./packages/frontend/** --filter=!./packages/modules/*/frontend --filter=!./packages/extensions/**
             run-global-checks: true
           - name: Frontend
-            command: pnpm turbo run lint lint:styles --concurrency=2 --cache=local:r,remote:r --filter=./packages/frontend/** --filter=./packages/modules/*/frontend --filter=./packages/extensions/**
+            command: pnpm turbo run lint lint:styles --concurrency=2 --filter=./packages/frontend/** --filter=./packages/modules/*/frontend --filter=./packages/extensions/**
             run-global-checks: false
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           ref: ${{ inputs.ref }}
 
+      # Turbo needs the history back to the base to find the merge base.
+      - name: Fetch history back to the affected base
+        if: inputs.affectedBase != ''
+        env:
+          BASE: ${{ inputs.affectedBase }}
+        run: |
+          for depth in 2 10 50 200; do
+            git merge-base --is-ancestor "$BASE" HEAD 2>/dev/null && exit 0
+            git fetch --no-tags --quiet --depth="$depth" origin "$(git rev-parse HEAD)" || break
+          done
+          git merge-base --is-ancestor "$BASE" HEAD || echo "::warning::Base $BASE is not reachable. Lint runs on all packages."
+
       - name: Build and Test
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ${{ matrix.command }}
+          build-command: ${{ matrix.command }}${{ inputs.affectedBase != '' && ' --affected' || '' }}
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Run global lint checks

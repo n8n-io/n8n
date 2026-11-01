@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
 import { SkillNameTakenError, type SkillService } from '@/modules/skills';
+import { SkillSyncedError } from '@/modules/skills/testing';
 
 describe('InstanceAiSkillsAdapterService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -93,6 +94,17 @@ describe('InstanceAiSkillsAdapterService', () => {
 		await expect(
 			service.update('skill_a', { baseSkillHash: 'hash-2', instructions: 'Be kinder.' }),
 		).rejects.toThrow('The skill changed since you read it');
+	});
+
+	it('tells the model that a synced skill is read-only', async () => {
+		skillService.update.mockRejectedValue(new SkillSyncedError('Brand voice', 'GitHub'));
+
+		await expect(
+			service.update('skill_a', { baseSkillHash: 'hash-2', instructions: 'Be kinder.' }),
+		).rejects.toThrow(
+			'The skill "Brand voice" is synced from GitHub, so it is read-only and nothing was saved. Do not retry. Tell the user to change it in GitHub.',
+		);
+		expect(skillService.get).not.toHaveBeenCalled();
 	});
 
 	it('passes another conflict on as it is', async () => {

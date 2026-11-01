@@ -1,12 +1,16 @@
+import { errorToSentinel } from './error-transfer';
 import { encodeLuxonValue } from './luxon-transfer';
-import type { SentinelEncoder } from './transfer';
+import type { ObjectWalk, SentinelEncoder } from './transfer';
 import {
+	defineOwnValue,
+	encodeOnce,
 	isPlainObject,
 	isStructuredCloneBuiltin,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_FRAMING_KEYS,
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_VALUE_KEY,
+	newObjectWalk,
 } from './transfer';
 
 /**
@@ -37,17 +41,42 @@ function encode(value: object): object | undefined {
  * Note: JS Date objects survive structured clone with prototype intact
  * (Date is a standard structured-cloneable type) and are not converted.
  *
- * This walk does not record the objects it has seen, because expression results
- * are not expected to refer to themselves. The host walk does record them.
+ * Outside an Error, this walk does not record the objects it has seen, because
+ * expression results are not expected to refer to themselves. Inside an Error
+ * it records them: an Error can hold itself, and a host Error can share objects.
  */
 export function __prepareForTransfer(value: unknown): unknown {
-	if (value === null || value === undefined) return value;
-	if (typeof value !== 'object') return value;
+	return prepareValue(value, undefined);
+}
 
+function prepareValue(value: unknown, walk: ObjectWalk | undefined): unknown {
+	// An unsupported child must not prevent its Error from crossing the boundary.
+	if (
+		walk !== undefined &&
+		(typeof value === 'function' || typeof value === 'symbol' || value instanceof Promise)
+	) {
+		return undefined;
+	}
+	if (value === null || typeof value !== 'object') {
+		return value;
+	}
+	const errorWalk = walk ?? (value instanceof Error ? newObjectWalk() : undefined);
+	if (errorWalk !== undefined) {
+		return encodeOnce(value, errorWalk, (object) => prepareObject(object, errorWalk));
+	}
+	return prepareObject(value, undefined);
+}
+
+function prepareObject(value: object, walk: ObjectWalk | undefined): unknown {
+	const prepareChild = (child: unknown) => prepareValue(child, walk);
 	const sentinel = encode(value);
 	if (sentinel !== undefined) return sentinel;
 
-	if (Array.isArray(value)) return value.map(__prepareForTransfer);
+	if (value instanceof Error) {
+		return errorToSentinel(value, prepareChild);
+	}
+
+	if (Array.isArray(value)) return value.map(prepareChild);
 
 	if (!isPlainObject(value)) {
 		if (isStructuredCloneBuiltin(value)) return value;
@@ -65,7 +94,7 @@ export function __prepareForTransfer(value: unknown): unknown {
 	let collides = false;
 	for (const key of Object.keys(value)) {
 		if (TRANSFER_FRAMING_KEYS.includes(key)) collides = true;
-		result[key] = __prepareForTransfer(value[key]);
+		defineOwnValue(result, key, prepareChild(value[key]));
 	}
 	// User data can hold the same keys as our framing. Escape such an object, so
 	// the host reads the object itself as data but still walks what is inside it.

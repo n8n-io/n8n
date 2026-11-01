@@ -40,7 +40,7 @@ export { default as N8nTree2 } from './v2/components/Tree/Tree.vue';
 export type * from './v2/components/Tree/Tree.types';
 export { default as N8nCombobox2 } from './v2/components/Combobox/Combobox.vue';
 export { default as N8nCombobox2Item } from './v2/components/Combobox/ComboboxItem.vue';
-export type { ComboboxItemProps } from 'reka-ui';
+export type { ComboboxItemProps } from './v2/components/Combobox/reka-ui';
 export type {
 	ComboboxEmits,
 	ComboboxGroupItem,

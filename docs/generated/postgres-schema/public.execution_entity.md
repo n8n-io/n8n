@@ -12,6 +12,7 @@
 | id | integer | nextval('execution_entity_id_seq'::regclass) | false | [public.chat_hub_messages](public.chat_hub_messages.md) [public.execution_annotations](public.execution_annotations.md) [public.execution_data](public.execution_data.md) [public.execution_metadata](public.execution_metadata.md) [public.test_case_execution](public.test_case_execution.md) |  |  |
 | jsonSizeBytes | bigint | 0 | false |  |  | Byte size of the JSON execution data bundle (run data, workflow snapshot, version id); excludes binary data. 0 means unknown. |
 | mode | varchar |  | false |  |  |  |
+| resumeAttempts | smallint | 0 | false |  |  | Resume attempts since the execution last entered waiting or new. Reset to 0 once the execution runs. |
 | retryOf | varchar |  | true |  |  |  |
 | retrySuccessId | varchar |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -35,6 +36,7 @@
 | execution_entity_id_not_null | n | NOT NULL id |
 | execution_entity_jsonSizeBytes_not_null | n | NOT NULL "jsonSizeBytes" |
 | execution_entity_mode_not_null | n | NOT NULL mode |
+| execution_entity_resumeAttempts_not_null | n | NOT NULL "resumeAttempts" |
 | execution_entity_status_not_null | n | NOT NULL status |
 | execution_entity_storedAt_not_null | n | NOT NULL "storedAt" |
 | execution_entity_usedPrivateCredentials_not_null | n | NOT NULL "usedPrivateCredentials" |
@@ -48,6 +50,7 @@
 | ---- | ---------- |
 | IDX_execution_entity_deduplicationKey | CREATE UNIQUE INDEX "IDX_execution_entity_deduplicationKey" ON public.execution_entity USING btree ("deduplicationKey") WHERE ("deduplicationKey" IS NOT NULL) |
 | IDX_execution_entity_deletedAt | CREATE INDEX "IDX_execution_entity_deletedAt" ON public.execution_entity USING btree ("deletedAt") |
+| IDX_execution_entity_workflowId | CREATE INDEX "IDX_execution_entity_workflowId" ON public.execution_entity USING btree ("workflowId") |
 | IDX_execution_entity_workflowId_status_id | CREATE INDEX "IDX_execution_entity_workflowId_status_id" ON public.execution_entity USING btree ("workflowId", status, id) WHERE ("deletedAt" IS NULL) |
 | idx_execution_entity_stopped_at_status_deleted_at | CREATE INDEX idx_execution_entity_stopped_at_status_deleted_at ON public.execution_entity USING btree ("stoppedAt", status, "deletedAt") WHERE (("stoppedAt" IS NOT NULL) AND ("deletedAt" IS NULL)) |
 | idx_execution_entity_wait_till_status_deleted_at | CREATE INDEX idx_execution_entity_wait_till_status_deleted_at ON public.execution_entity USING btree ("waitTill", status, "deletedAt") WHERE (("waitTill" IS NOT NULL) AND ("deletedAt" IS NULL)) |
@@ -75,6 +78,7 @@ erDiagram
   integer id
   bigint jsonSizeBytes
   varchar mode
+  smallint resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt

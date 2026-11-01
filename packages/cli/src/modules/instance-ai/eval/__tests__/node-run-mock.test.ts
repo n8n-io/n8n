@@ -187,6 +187,73 @@ describe('createNodeRunMockHandler', () => {
 		expect(output).toEqual([[{ json: {}, pairedItem: { item: 1 } }]]);
 	});
 
+	it('shows parameters that are the same for every item once, so more items fit', async () => {
+		const newsletter: INode = {
+			...sendEmail,
+			parameters: { ...sendEmail.parameters, html: `<p>${'trends '.repeat(500)}</p>` },
+		};
+		const recipients = Array.from({ length: 20 }, (_, i) => ({
+			json: { email: `user${i}@example.com` },
+		}));
+		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
+		submitQueue.push({ items: [{ inputIndex: 19, json: {} }] });
+
+		await handler(contextFor(newsletter, recipients));
+
+		const prompt = promptCapture.prompts[0];
+		expect(prompt).toContain('user19@example.com');
+		expect(prompt).not.toContain('fit in this message');
+		expect(prompt.split('<p>trends').length - 1).toBe(1);
+	});
+
+	it.each([
+		[1.2, { chatInput: 'Ship it', sessionId: 's1' }],
+		[1.1, { data: { chatInput: 'Ship it', sessionId: 's1' } }],
+	])(
+		'gives a Chat node v%s its reply layout and passes the reply through as submitted',
+		async (typeVersion, reply) => {
+			const chat: INode = {
+				id: '2',
+				name: 'Ask In Chat',
+				type: '@n8n/n8n-nodes-langchain.chat',
+				typeVersion,
+				position: [0, 0],
+				parameters: { operation: 'sendAndWait', message: 'Ship it?', responseType: 'freeText' },
+			};
+			const handler = createNodeRunMockHandler({ nodeNames: new Set(['Ask In Chat']) });
+			submitQueue.push({ items: [{ inputIndex: 0, json: reply }] });
+
+			const output = await handler(contextFor(chat, [{ json: {} }]));
+
+			const { instructions } = vi.mocked(createEvalAgent).mock.calls[0][1];
+			expect(instructions).toMatch(/n8n-nodes-langchain\.chat[\s\S]*1\.2 or later[\s\S]*chatInput/);
+			expect(promptCapture.prompts[0]).toContain(
+				`@n8n/n8n-nodes-langchain.chat, version ${typeVersion}`,
+			);
+			expect(output).toEqual([[{ json: reply, pairedItem: { item: 0 } }]]);
+		},
+	);
+
+	it('shows a varying parameter whose name is an inherited object key', async () => {
+		const node: INode = {
+			...sendEmail,
+			parameters: { constructor: '={{ $json.email }}', subject: 'Hello' },
+		};
+		const context = {
+			getNode: () => node,
+			getInputData: () => twoRecipients,
+			getNodeParameter: (name: string, itemIndex: number) =>
+				name === 'constructor' ? twoRecipients[itemIndex].json.email : node.parameters[name],
+		} as unknown as IExecuteFunctions;
+		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
+		submitQueue.push({ items: [{ inputIndex: 0, json: {} }] });
+
+		await handler(context);
+
+		expect(promptCapture.prompts[0]).toContain('"constructor":"ana@example.com"');
+		expect(promptCapture.prompts[0]).toContain('"constructor":"ben@example.com"');
+	});
+
 	it('ends the model loop once the output is accepted, but not after a rejection', async () => {
 		const handler = createNodeRunMockHandler({ nodeNames: new Set(['Send Email']) });
 		submitQueue.push({ items: [{ inputIndex: 0, json: {} }] });

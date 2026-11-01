@@ -31,6 +31,7 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'search_tools',
 	'load_tool',
 	'load_skill',
+	'apps',
 	'workspace_append_file',
 	'workspace_copy_file',
 	'workspace_delete_file',
@@ -42,9 +43,11 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'workspace_mkdir',
 	'workspace_move_file',
 	'workspace_read_file',
+	'workspace_read_files',
 	'workspace_read_tool_result',
 	'workspace_rmdir',
 	'workspace_str_replace_file',
+	'workspace_edit_files',
 	'workspace_write_file',
 ];
 

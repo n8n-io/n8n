@@ -94,6 +94,8 @@ export interface AgentsChatHostEventItems {
 	start: AgentsChatHostEventItem[];
 	/** `end` events, then `transient` events. */
 	end: AgentsChatHostEventItem[];
+	/** `thinking` events, when the message has a thinking block. */
+	thinking: AgentsChatHostEventItem[];
 }
 
 /** A host component that renders the result of one finished tool call. */
@@ -199,25 +201,33 @@ export function appendHostEventSources(
 
 /**
  * Sorts host events into the slots of an assistant message, in arrival order.
- * `transient` events are kept only when `showTransient` is true. Unhandled
- * events are dropped.
+ * `transient` events are kept only when `options.showTransient` is true.
+ * `thinking` events go to `start` when the message has no thinking block, so
+ * they still show. Unhandled events are dropped.
  */
 export function getHostEventItems(
 	sources: readonly AgentsChatHostEventSource[],
 	extensions: readonly AgentsChatInteractionExtension[],
-	showTransient: boolean,
+	options: { showTransient: boolean; hasThinkingBlock: boolean },
 ): AgentsChatHostEventItems {
 	const items: Record<AgentsChatHostEventPlacement, AgentsChatHostEventItem[]> = {
 		start: [],
 		end: [],
 		transient: [],
+		thinking: [],
 	};
 	for (const source of sources) {
 		const renderer = findHostEventRenderer(source.event, extensions);
-		if (renderer) items[renderer.placement].push({ ...source, ...renderer });
+		if (!renderer) continue;
+		const placement =
+			renderer.placement === HOST_EVENT_PLACEMENT.THINKING && !options.hasThinkingBlock
+				? HOST_EVENT_PLACEMENT.START
+				: renderer.placement;
+		items[placement].push({ ...source, ...renderer, placement });
 	}
 	return {
 		start: items.start,
-		end: showTransient ? [...items.end, ...items.transient] : items.end,
+		end: options.showTransient ? [...items.end, ...items.transient] : items.end,
+		thinking: items.thinking,
 	};
 }

@@ -16,10 +16,13 @@ function slackCredentialId(node: INode): string | null {
  * The nodes among `nodes` whose Slack API credential has no signature secret.
  * Nodes without a Slack credential, or whose credential no longer exists, are
  * not returned. A decryption error is left to the caller.
+ * Each credential is read and decrypted once per scan: `secretMissing` keeps the result.
+ * A credential that fails to decrypt is read again for each workflow, so each one reports the error.
  */
 export async function findSlackNodesWithoutSignatureSecret(
 	credentialsRepository: CredentialsRepository,
 	nodes: INode[],
+	secretMissing: Map<string, boolean>,
 ): Promise<INode[]> {
 	const slackNodes = nodes.flatMap((node) => {
 		const credentialId = slackCredentialId(node);
@@ -27,22 +30,30 @@ export async function findSlackNodesWithoutSignatureSecret(
 	});
 	if (slackNodes.length === 0) return [];
 
-	const ids = [...new Set(slackNodes.map(({ credentialId }) => credentialId))];
-	const withoutSecret = new Set<string>();
-	for (const credential of await credentialsRepository.getManyByIds(ids)) {
-		// A stale reference can point at a credential of another type; that is not a missing secret.
-		if (credential.type !== SLACK_CREDENTIAL_TYPE) continue;
-		const { signatureSecret } = await new Credentials(
-			{ id: credential.id, name: credential.name },
-			credential.type,
-			credential.data,
-		).getData();
-		if (typeof signatureSecret !== 'string' || signatureSecret === '') {
-			withoutSecret.add(credential.id);
+	const unchecked = [...new Set(slackNodes.map(({ credentialId }) => credentialId))].filter(
+		(id) => !secretMissing.has(id),
+	);
+	if (unchecked.length > 0) {
+		for (const credential of await credentialsRepository.getManyByIds(unchecked)) {
+			// A stale reference can point at a credential of another type; that is not a missing secret.
+			if (credential.type !== SLACK_CREDENTIAL_TYPE) continue;
+			const { signatureSecret } = await new Credentials(
+				{ id: credential.id, name: credential.name },
+				credential.type,
+				credential.data,
+			).getData();
+			secretMissing.set(
+				credential.id,
+				typeof signatureSecret !== 'string' || signatureSecret === '',
+			);
+		}
+		// Deleted credentials and credentials of another type.
+		for (const id of unchecked) {
+			if (!secretMissing.has(id)) secretMissing.set(id, false);
 		}
 	}
 
 	return slackNodes
-		.filter(({ credentialId }) => withoutSecret.has(credentialId))
+		.filter(({ credentialId }) => secretMissing.get(credentialId) === true)
 		.map(({ node }) => node);
 }

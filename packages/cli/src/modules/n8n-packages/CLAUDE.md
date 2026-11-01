@@ -51,9 +51,10 @@ flowchart LR
   `applyPackagePlan` expose the two steps to promotions, which previews an Apply with the
   same plan that the Apply writes.
 - `mode: 'check'` makes the policy gates call `evaluate*`, so a preview writes no audit event.
-  A policy check that cannot run becomes the issue `policy-check-failed`. The refusals that an
-  import reports as an error (project permission, a column id of another data table) become
-  issues too. `mode: 'enforce'` keeps the import's errors as they are.
+  A policy check that cannot run becomes the issue `policy-check-failed`. A column id of another
+  data table becomes an issue too. `mode: 'enforce'` keeps the import's errors as they are.
+- A refused project (project permission, an id of a personal project) is an issue in both
+  modes, so Apply returns it as a blocker. `import` throws the same error for it as before.
 - A new gate returns issues. Throw only for API-key scopes and malformed packages. Two older
   checks still throw in both modes: the folder license and `assertCanPublish`.
 

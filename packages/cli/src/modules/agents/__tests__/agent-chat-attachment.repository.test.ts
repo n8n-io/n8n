@@ -1,4 +1,6 @@
+import { TransactionRunner } from '@n8n/db';
 import { LessThan } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
@@ -13,22 +15,26 @@ describe('AgentChatAttachmentRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentChatAttachmentRepository(mockDataSource as never);
+		repository = new AgentChatAttachmentRepository(
+			mockDataSource as never,
+			mock<TransactionRunner>(),
+		);
 	});
 
 	describe('findFromSourceCreatedBefore', () => {
 		it('finds the oldest attachments from the source before the cutoff, up to the limit', async () => {
 			const attachments = [new AgentChatAttachment()];
-			const find = vi.spyOn(repository, 'find').mockResolvedValue(attachments);
+			const find = entityManager.find.mockResolvedValue(attachments);
 			const before = new Date('2026-06-01T00:00:00.000Z');
 
 			const result = await repository.findFromSourceCreatedBefore(
 				{ agentId: 'agent-1', source: 'whatsapp' },
 				before,
 				50,
+				{},
 			);
 
-			expect(find).toHaveBeenCalledWith({
+			expect(find).toHaveBeenCalledWith(AgentChatAttachment, {
 				where: { agentId: 'agent-1', source: 'whatsapp', createdAt: LessThan(before) },
 				order: { createdAt: 'ASC' },
 				take: 50,

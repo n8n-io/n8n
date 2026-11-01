@@ -1,4 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { isRecord } from '@n8n/utils/is-record';
+import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
 import type { JSONValue } from '../utils/json';
 
@@ -284,8 +286,68 @@ export function stripHydratedFileData<T extends AgentMessage>(message: T): T {
 			const { data: _data, ...rest } = block;
 			return rest;
 		}
+		if (
+			block.type === 'tool-call' &&
+			block.state === 'resolved' &&
+			toolOutputFileParts(block.output).some((part) => part.data !== undefined)
+		) {
+			changed = true;
+			return { ...block, output: stripToolOutputFileData(block.output) };
+		}
 		return block;
 	});
 
 	return changed ? { ...message, content } : message;
+}
+
+export type ContentFileWithRef = ContentFile & { fileRef: ContentFileRef };
+
+export function isFileRefPart(part: unknown): part is ContentFileWithRef {
+	return (
+		isRecord(part) &&
+		part.type === 'file' &&
+		isRecord(part.fileRef) &&
+		typeof part.fileRef.id === 'string'
+	);
+}
+
+/**
+ * Return the file parts with a `fileRef` in a tool output of type 'content'.
+ * The parts are the same objects as in the output, so the runtime can set
+ * `data` on them in place.
+ */
+export function toolOutputFileParts(output: unknown): ContentFileWithRef[] {
+	if (!isRecord(output) || output.type !== 'content' || !Array.isArray(output.value)) return [];
+	return output.value.filter(isFileRefPart);
+}
+
+function stripToolOutputFileData(output: JSONValue): JSONValue {
+	if (!isRecord(output) || !Array.isArray(output.value)) return output;
+	const value: unknown[] = output.value.map((part: unknown) => {
+		if (!isFileRefPart(part)) return part;
+		const { data: _data, ...rest } = part;
+		return rest;
+	});
+	return toJsonValue({ ...output, value });
+}
+
+const TEXT_MEDIA_TYPES = new Set([
+	'application/json',
+	'application/xml',
+	'application/yaml',
+	'application/x-yaml',
+	'application/javascript',
+	'application/sql',
+]);
+
+/** Whether the model gets a file of this media type as UTF-8 text. */
+export function isTextMediaType(mediaType: string | undefined): boolean {
+	if (!mediaType) return false;
+	const type = mediaType.split(';')[0].trim().toLowerCase();
+	return (
+		type.startsWith('text/') ||
+		type.endsWith('+json') ||
+		type.endsWith('+xml') ||
+		TEXT_MEDIA_TYPES.has(type)
+	);
 }

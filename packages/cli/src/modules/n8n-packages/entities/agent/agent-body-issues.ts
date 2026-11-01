@@ -3,7 +3,7 @@ import { findMissingAgentDefinitionBodies } from '@/modules/agents/utils/agent-d
 import type { AgentImportIssue, PreparedAgent } from './agent-import.types';
 
 export function agentBodyIssues(
-	agent: Pick<PreparedAgent, 'sourceAgentId' | 'config' | 'skills' | 'tools' | 'tasks'>,
+	agent: Pick<PreparedAgent, 'sourceAgentId' | 'config' | 'tools' | 'tasks'>,
 ): Array<Extract<AgentImportIssue, { type: 'agent-invalid' }>> {
 	return findMissingAgentDefinitionBodies({
 		...agent,

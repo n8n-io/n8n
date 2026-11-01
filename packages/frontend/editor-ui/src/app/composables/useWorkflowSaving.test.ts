@@ -1,5 +1,5 @@
 import { computed, defineComponent, h, nextTick, provide } from 'vue';
-import { mount } from '@vue/test-utils';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
@@ -143,11 +143,16 @@ describe('useWorkflowSaving', () => {
 	let backendConnectionStore: ReturnType<typeof useBackendConnectionStore>;
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 		mockRoute.params = {};
 	});
 
+	enableAutoUnmount(afterEach);
+
 	beforeEach(() => {
+		// A real autosave timer can restore an earlier test's active Pinia when it fires.
+		vi.useFakeTimers();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		workflowsStore = mockedStore(useWorkflowsStore);

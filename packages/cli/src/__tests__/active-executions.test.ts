@@ -28,6 +28,7 @@ import { captor, mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import { ProductionHold } from '@/memory-guard/production-hold';
@@ -43,6 +44,8 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 const logger = mock<Logger>();
 const executionRepository = mock<ExecutionRepository>();
 const executionPersistence = mock<ExecutionPersistence>();
+const instanceSettings = mock<InstanceSettings>({ isWorker: false });
+const unsavedManualExecutionService = mock<UnsavedManualExecutionService>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -91,7 +94,8 @@ describe('ActiveExecutions', () => {
 			concurrencyControl,
 			mock(),
 			executionsConfig,
-			mock(),
+			instanceSettings,
+			unsavedManualExecutionService,
 		);
 
 		executionRepository.cancelManyRunning.mockResolvedValue();
@@ -158,7 +162,11 @@ describe('ActiveExecutions', () => {
 
 			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 				FAKE_SECOND_EXECUTION_ID,
-				expect.objectContaining({ id: FAKE_SECOND_EXECUTION_ID, status: 'running' }),
+				expect.objectContaining({
+					id: FAKE_SECOND_EXECUTION_ID,
+					status: 'running',
+					resumeAttempts: 0,
+				}),
 				{ requireStatus: expectedStatus },
 			);
 		},
@@ -199,6 +207,24 @@ describe('ActiveExecutions', () => {
 				deduplicationKey: 'wf-1:node-1:1700000000000',
 			}),
 		);
+	});
+
+	test('Should record the starter of a new execution', async () => {
+		await activeExecutions.add(executionData);
+
+		expect(unsavedManualExecutionService.recordStarter).toHaveBeenCalledWith(
+			FAKE_EXECUTION_ID,
+			executionData,
+		);
+	});
+
+	test('Should not record a starter when an execution resumes', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
+
+		expect(unsavedManualExecutionService.recordStarter).not.toHaveBeenCalled();
 	});
 
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
@@ -280,7 +306,7 @@ describe('ActiveExecutions', () => {
 					deployment: { type: 'default' },
 				}),
 				mock<License>(),
-				new ProductionHold(),
+				new ProductionHold(mock<EventService>()),
 			);
 			return service;
 		};
@@ -306,7 +332,8 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
-				mock(),
+				instanceSettings,
+				unsavedManualExecutionService,
 			);
 
 			let resolvedId: string | undefined;
@@ -335,7 +362,8 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
-				mock(),
+				instanceSettings,
+				unsavedManualExecutionService,
 			);
 
 			await evalActiveExecutions.add(evalExecutionData);
@@ -423,6 +451,149 @@ describe('ActiveExecutions', () => {
 	});
 
 	describe('finalizeExecution', () => {
+		describe('waiting execution cleanup', () => {
+			const queueConfig = mock<ExecutionsConfig>({ mode: 'queue' });
+			const regularConfig = mock<ExecutionsConfig>({ mode: 'regular' });
+			const workerSettings = mock<InstanceSettings>({ isWorker: true });
+			const eventService = mock<EventService>();
+			const integratedExecutionData: IWorkflowExecutionDataProcess = {
+				...executionData,
+				executionMode: 'integrated',
+			};
+			const waitingRunData: IRun = {
+				...fullRunData,
+				mode: 'integrated',
+				status: 'waiting',
+				finished: false,
+				waitTill: new Date('2030-01-01T00:00:00.000Z'),
+			};
+
+			beforeEach(() => {
+				activeExecutions = new ActiveExecutions(
+					logger,
+					executionRepository,
+					executionPersistence,
+					concurrencyControl,
+					eventService,
+					queueConfig,
+					workerSettings,
+					unsavedManualExecutionService,
+				);
+			});
+
+			test.each(['integrated', 'webhook'] as const)(
+				'removes a waiting %s execution on a worker and still delivers its result',
+				async (mode) => {
+					const executionId = await activeExecutions.add({ ...executionData, executionMode: mode });
+					const result = activeExecutions.getPostExecutePromise(executionId);
+					activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+					activeExecutions.setResponseMode(executionId, 'lastNode');
+					activeExecutions.setStatus(executionId, 'waiting');
+
+					activeExecutions.finalizeExecution(executionId, { ...waitingRunData, mode });
+
+					await expect(result).resolves.toMatchObject({ status: 'waiting', mode });
+					await new Promise(setImmediate);
+					expect(activeExecutions.has(executionId)).toBe(false);
+					expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+					expect(activeExecutions.getResponseMode(executionId)).toBeUndefined();
+					expect(concurrencyControl.release).toHaveBeenCalledExactlyOnceWith({ mode });
+				},
+			);
+
+			test.each([
+				{ name: 'a main in queue mode', config: queueConfig, withResponse: false },
+				{
+					name: 'a main in queue mode with a response promise',
+					config: queueConfig,
+					withResponse: true,
+				},
+				{ name: 'a main in regular mode', config: regularConfig, withResponse: false },
+			] as const)(
+				'keeps a waiting execution on $name so a resume can reuse it',
+				async ({ config, withResponse }) => {
+					activeExecutions = new ActiveExecutions(
+						logger,
+						executionRepository,
+						executionPersistence,
+						concurrencyControl,
+						eventService,
+						config,
+						instanceSettings,
+						unsavedManualExecutionService,
+					);
+					const executionId = await activeExecutions.add(integratedExecutionData);
+					const waitingExecution = activeExecutions.getExecutionOrFail(executionId);
+					activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+					activeExecutions.setResponseMode(executionId, 'lastNode');
+					if (withResponse) activeExecutions.attachResponsePromise(executionId, responsePromise);
+					activeExecutions.setStatus(executionId, 'waiting');
+
+					activeExecutions.finalizeExecution(executionId, waitingRunData);
+					await new Promise(setImmediate);
+
+					expect(activeExecutions.getExecutionOrFail(executionId)).toBe(waitingExecution);
+					expect(activeExecutions.getStatus(executionId)).toBe('waiting');
+					expect(waitingExecution.workflowExecution).toBeUndefined();
+					expect(activeExecutions.getResponseMode(executionId)).toBe('lastNode');
+
+					await activeExecutions.add(integratedExecutionData, {
+						executionId,
+						expectedStatus: 'waiting',
+					});
+					const resumedExecution = activeExecutions.getExecutionOrFail(executionId);
+					expect(resumedExecution.startedAt).toBe(waitingExecution.startedAt);
+					expect(resumedExecution.responsePromise).toBe(withResponse ? responsePromise : undefined);
+				},
+			);
+
+			test.each(['waiting', 'success'] as const)(
+				'preserves a replacement when the old %s execution settles',
+				async (status) => {
+					const executionId = await activeExecutions.add(integratedExecutionData);
+					const originalExecution = activeExecutions.getExecutionOrFail(executionId);
+					activeExecutions.setStatus(executionId, status);
+
+					await activeExecutions.add(integratedExecutionData, {
+						executionId,
+						expectedStatus: 'waiting',
+					});
+					const resumedExecution = activeExecutions.getExecutionOrFail(executionId);
+					activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+					activeExecutions.setResponseMode(executionId, 'responseNode');
+					const onResumedCompletion = vi.fn();
+					const resumedResult = activeExecutions.getPostExecutePromise(executionId);
+					void resumedResult.then(onResumedCompletion);
+
+					// Settle the old promise after the resumed execution owns the entry.
+					originalExecution.postExecutePromise.resolve({ ...waitingRunData, status });
+					await new Promise(setImmediate);
+
+					expect(activeExecutions.getExecutionOrFail(executionId)).toBe(resumedExecution);
+					expect(resumedExecution.workflowExecution).toBe(workflowExecution);
+					expect(activeExecutions.getStatus(executionId)).toBe('running');
+					expect(activeExecutions.getResponseMode(executionId)).toBe('responseNode');
+					expect(onResumedCompletion).not.toHaveBeenCalled();
+					expect(concurrencyControl.release).toHaveBeenCalledExactlyOnceWith({
+						mode: 'integrated',
+					});
+
+					const completedRunData: IRun = {
+						...waitingRunData,
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+					};
+					activeExecutions.setStatus(executionId, 'success');
+					activeExecutions.finalizeExecution(executionId, completedRunData);
+					await expect(resumedResult).resolves.toBe(completedRunData);
+					await new Promise(setImmediate);
+					expect(activeExecutions.has(executionId)).toBe(false);
+					expect(activeExecutions.getResponseMode(executionId)).toBeUndefined();
+				},
+			);
+		});
+
 		test('old promise cleanup leaves a replacement entry intact', async () => {
 			const executionId = await activeExecutions.add(executionData);
 			const oldEntry = activeExecutions.getExecutionOrFail(executionId);
@@ -491,7 +662,8 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
-				mock(),
+				instanceSettings,
+				unsavedManualExecutionService,
 			);
 
 			executionData.httpResponse = mock<Response>();
@@ -951,6 +1123,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				queueExecutionsConfig,
 				instanceSettings,
+				unsavedManualExecutionService,
 			);
 		};
 
