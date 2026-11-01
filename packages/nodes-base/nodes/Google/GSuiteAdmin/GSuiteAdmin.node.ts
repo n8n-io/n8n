@@ -112,7 +112,7 @@ export class GSuiteAdmin implements INodeType {
 					'GET',
 					'/directory/v1/customer/my_customer/orgunits',
 					{},
-					{ orgUnitPath: '/', type: 'all' },
+					{ type: 'all' },
 				)) as {
 					// the key is omitted entirely when the customer has no organizational units
 					organizationUnits?: Array<{
