@@ -17,7 +17,7 @@ export const workflowHistoryListItemSchema = z.object({
 	createdAt: z.date(),
 	updatedAt: z.date(),
 	autosaved: z.boolean(),
-	settings: z.object(versionedSettingsShape).partial().nullable(),
+	settings: z.object(versionedSettingsShape).partial(),
 });
 
 export class WorkflowHistoryListItemDto extends Z.class(workflowHistoryListItemSchema.shape) {}

@@ -83,7 +83,7 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: null,
+			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 
@@ -133,7 +133,7 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: null,
+			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 
@@ -165,7 +165,7 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: null,
+			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 
@@ -250,7 +250,7 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: null,
+			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 
