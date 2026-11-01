@@ -50,12 +50,8 @@ export const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingK
 		.filter(isVersionedEntry)
 		.map(([key]) => key);
 
-/**
- * Returns the version-scoped settings that have a value, or `null` when there
- * are none. A workflow history row stores this value.
- */
 export function pickVersionedSettings(
-	settings: IWorkflowSettings | null | undefined,
+	settings?: IWorkflowSettings | null,
 ): VersionedWorkflowSettings | null {
 	if (!settings) return null;
 
@@ -71,13 +67,9 @@ export function pickVersionedSettings(
 	return hasValue ? result : null;
 }
 
-/**
- * Compares only the version-scoped settings. A missing value is not filled with
- * a default, so two versions with different values never compare as equal.
- */
 export function versionedSettingsEqual(
-	a: IWorkflowSettings | null | undefined,
-	b: IWorkflowSettings | null | undefined,
+	settingsA?: IWorkflowSettings | null,
+	settingsB?: IWorkflowSettings | null,
 ): boolean {
-	return isEqual(pickVersionedSettings(a), pickVersionedSettings(b));
+	return isEqual(pickVersionedSettings(settingsA), pickVersionedSettings(settingsB));
 }
