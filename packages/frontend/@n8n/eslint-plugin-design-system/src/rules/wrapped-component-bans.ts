@@ -141,16 +141,6 @@ export const wrappedComponentBans = [
 		allowedFolders: ['components/N8nNavigationDropdown'],
 		replacement: 'N8nNavigationDropdown',
 	},
-	{
-		// N8nScrollArea wraps Reka UI ScrollArea. ElScrollbar has no remaining
-		// callers, so no design-system folder may import it.
-		library: 'element-plus',
-		names: ['ElScrollbar'],
-		componentPaths: ['scrollbar'],
-		templateNames: ['el-scrollbar', 'ElScrollbar'],
-		allowedFolders: [],
-		replacement: 'N8nScrollArea',
-	},
 ] as const satisfies readonly WrappedComponentBan[];
 
 export function formatWrappedComponentReplacement(replacement: string | readonly string[]): string {
