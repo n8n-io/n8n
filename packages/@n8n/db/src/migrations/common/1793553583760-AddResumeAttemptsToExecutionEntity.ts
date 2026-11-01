@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddResumeAttemptsToExecutionEntity1793282162307 implements ReversibleMigration {
+export class AddResumeAttemptsToExecutionEntity1793553583760 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres }: MigrationContext) {
 		const tableName = escape.tableName('execution_entity');
 		const resumeAttempts = escape.columnName('resumeAttempts');
