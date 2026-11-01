@@ -67,6 +67,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['FocusScope'],
+		allowedFolders: ['components/N8nFocusScope'],
+		replacement: 'N8nFocusScope',
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['NumberField'],
 		allowedFolders: ['components/N8nInputNumber'],
 		replacement: 'N8nInputNumber',
