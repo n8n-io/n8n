@@ -16,6 +16,9 @@
                 "duration": {
                     "type": "string"
                 },
+                "hasCustomThumbnail": {
+                    "type": "boolean"
+                },
                 "licensedContent": {
                     "type": "boolean"
                 },
@@ -348,6 +351,9 @@
                 "publicStatsViewable": {
                     "type": "boolean"
                 },
+                "selfDeclaredMadeForKids": {
+                    "type": "boolean"
+                },
                 "uploadStatus": {
                     "type": "string"
                 }
@@ -365,5 +371,5 @@
             }
         }
     },
-    "version": 7
+    "version": 8
 }
