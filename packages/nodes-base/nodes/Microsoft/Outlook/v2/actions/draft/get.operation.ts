@@ -7,7 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { draftRLC } from '../../descriptions';
+import { draftRLC, immutableIdsOption } from '../../descriptions';
 import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
 import { downloadAttachments, microsoftApiRequest } from '../../transport';
 
@@ -53,6 +53,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
+			immutableIdsOption,
 			{
 				displayName: 'Attachments Prefix',
 				name: 'attachmentsPrefix',

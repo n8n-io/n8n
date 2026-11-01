@@ -2,7 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { calendarRLC, eventRLC } from '../../descriptions';
+import { calendarRLC, eventRLC, immutableIdsCollection } from '../../descriptions';
 import { decodeOutlookId, eventfields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
@@ -42,6 +42,7 @@ export const properties: INodeProperties[] = [
 		options: eventfields,
 		default: [],
 	},
+	immutableIdsCollection,
 ];
 
 const displayOptions = {

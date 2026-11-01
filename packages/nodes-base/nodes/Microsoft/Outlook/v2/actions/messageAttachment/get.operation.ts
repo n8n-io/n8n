@@ -2,7 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { attachmentRLC, messageRLC } from '../../descriptions';
+import { attachmentRLC, messageRLC, immutableIdsOption } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 
 export const properties: INodeProperties[] = [
@@ -15,6 +15,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		default: {},
 		options: [
+			immutableIdsOption,
 			{
 				displayName: 'Fields',
 				name: 'fields',
