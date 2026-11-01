@@ -67,11 +67,10 @@ export async function getPollResponse(
 				'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 		}
 
-		// A scheduled poll reads receivedDateTime to place its cursor.
+		// A scheduled poll reads receivedDateTime to place its cursor, a manual run to find
+		// the newest message across folders.
 		const addReceivedDateTime =
-			!!qs.$select &&
-			this.getMode() !== 'manual' &&
-			!String(qs.$select).split(',').includes('receivedDateTime');
+			!!qs.$select && !String(qs.$select).split(',').includes('receivedDateTime');
 		if (addReceivedDateTime) {
 			qs.$select = `${qs.$select},receivedDateTime`;
 		}
@@ -87,6 +86,8 @@ export async function getPollResponse(
 		if (filterString) {
 			qs.$filter = filterString;
 		}
+
+		const receivedAt = (message: IDataObject) => Date.parse(message.receivedDateTime as string);
 
 		if (this.getMode() !== 'manual') {
 			// Oldest first, so a capped poll can resume where it stopped. Graph needs the
@@ -104,7 +105,6 @@ export async function getPollResponse(
 			const results = await Promise.all(
 				endpoints.map(async (endpoint) => await getMessagesOldestFirst.call(this, endpoint, qs)),
 			);
-			const receivedAt = (message: IDataObject) => Date.parse(message.receivedDateTime as string);
 			const lastAt = (result: { messages: IDataObject[] }) =>
 				result.messages.length > 0 ? receivedAt(result.messages[result.messages.length - 1]) : NaN;
 			responseData = results.flatMap((result) => result.messages);
@@ -145,10 +145,6 @@ export async function getPollResponse(
 				cursor = new Date(limit).toISOString();
 			}
 			responseData.sort((a, b) => receivedAt(a) - receivedAt(b));
-
-			if (addReceivedDateTime && output === 'fields') {
-				responseData = responseData.map(({ receivedDateTime, ...message }) => message);
-			}
 		} else {
 			qs.$top = 1;
 			// Graph does not guarantee any ordering without $orderby, so request the
@@ -170,7 +166,15 @@ export async function getPollResponse(
 						await microsoftApiRequest.call(this, 'GET', endpoint, 0, undefined, { ...qs }),
 				),
 			);
-			responseData = results.flatMap((result) => (result.value as IDataObject[]) ?? []).slice(0, 1);
+			// Each folder returns its own newest message, so pick the newest of those.
+			responseData = results
+				.flatMap((result) => (result.value as IDataObject[]) ?? [])
+				.sort((a, b) => receivedAt(b) - receivedAt(a))
+				.slice(0, 1);
+		}
+
+		if (addReceivedDateTime && output === 'fields') {
+			responseData = responseData.map(({ receivedDateTime, ...message }) => message);
 		}
 
 		if (output === 'simple') {
