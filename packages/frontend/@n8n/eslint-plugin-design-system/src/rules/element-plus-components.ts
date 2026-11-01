@@ -131,7 +131,6 @@ export const allowedElementPlusComponents = [
 	'ElRadio',
 	'ElRadioGroup',
 	'ElRow',
-	'ElScrollbar',
 	'ElSelect',
 	'ElSkeleton',
 	'ElSkeletonItem',
