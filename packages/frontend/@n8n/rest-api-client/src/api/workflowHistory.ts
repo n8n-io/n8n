@@ -12,8 +12,8 @@ export type WorkflowHistory = {
 	workflowPublishHistory: WorkflowPublishHistory[];
 	name: string | null;
 	description: string | null;
-	/** Version-scoped settings, such as the engine. Null on versions without them. */
-	settings?: VersionedWorkflowSettings | null;
+	/** Version-scoped settings, such as the engine. Empty on versions without them. */
+	settings?: VersionedWorkflowSettings;
 };
 
 export type WorkflowVersionData = Pick<WorkflowHistory, 'versionId' | 'name' | 'description'>;

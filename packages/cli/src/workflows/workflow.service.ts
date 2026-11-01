@@ -1602,7 +1602,7 @@ export class WorkflowService {
 			nodes: WorkflowEntity['nodes'];
 			connections: WorkflowEntity['connections'];
 			nodeGroups?: WorkflowEntity['nodeGroups'];
-			settings?: WorkflowEntity['settings'] | null;
+			settings?: WorkflowHistory['settings'];
 		},
 		expectedActiveVersionId: string,
 	): Promise<{ published: true; versionId: string } | { published: false; reason: 'superseded' }> {

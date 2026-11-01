@@ -30,7 +30,7 @@ type WorkflowHistoryVersionInput = {
 		connections: IWorkflowBase['connections'];
 		nodeGroups?: IWorkflowBase['nodeGroups'];
 		/** The row stores only the version-scoped settings. */
-		settings?: IWorkflowSettings | null;
+		settings?: IWorkflowSettings;
 	};
 	workflowId: string;
 	autosaved?: boolean;
