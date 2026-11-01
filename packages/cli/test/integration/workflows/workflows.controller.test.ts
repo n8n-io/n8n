@@ -425,7 +425,7 @@ describe('POST /workflows', () => {
 				},
 			],
 			connections: {},
-			settings: { engineType: 'v2', timezone: 'America/New_York' },
+			settings: { engineType: 'v2', availableInMCP: true },
 		};
 
 		const response = await authOwnerAgent.post('/workflows').send(payload);
