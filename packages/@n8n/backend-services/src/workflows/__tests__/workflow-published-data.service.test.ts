@@ -74,7 +74,7 @@ describe('WorkflowPublishedDataService', () => {
 			nodes: [],
 			connections: {},
 			nodeGroups: [],
-			versionSettings: null,
+			versionSettings: {},
 		};
 	}
 
@@ -154,16 +154,16 @@ describe('WorkflowPublishedDataService', () => {
 			expect(result).not.toHaveProperty('versionSettings');
 		});
 
-		test('runs on the default engine when the published version has no engine', async () => {
+		test('keeps the workflow engine when the published version stores no settings', async () => {
 			enableEngineV2Module();
 			workflowPublishedVersionRepository.getPublishedVersionForExecution.mockResolvedValue({
 				...record(),
-				versionSettings: null,
+				versionSettings: {},
 			});
 
 			const result = await service.getPublishedWorkflowDataForExecution('wf-1');
 
-			expect(result?.settings?.engineType).toBeUndefined();
+			expect(result?.settings?.engineType).toBe('v2');
 		});
 
 		test('uses the workflow settings without the engine-v2 module', async () => {
