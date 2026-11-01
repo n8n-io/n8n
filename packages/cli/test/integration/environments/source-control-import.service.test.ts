@@ -2076,7 +2076,9 @@ describe('SourceControlImportService', () => {
 			it('should store the engine of a new workflow on import', async () => {
 				const importingUser = await getGlobalOwner();
 
-				const workflow = makeWorkflowImport({ settings: { engineType: 'v2', timezone: 'UTC' } });
+				const workflow = makeWorkflowImport({
+					settings: { engineType: 'v2', availableInMCP: true },
+				});
 				const file = putWorkflowFile(workflow.id, workflow);
 
 				await service.importWorkflowFromWorkFolder(

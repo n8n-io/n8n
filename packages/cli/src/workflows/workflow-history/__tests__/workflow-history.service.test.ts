@@ -239,7 +239,7 @@ describe('WorkflowHistoryService', () => {
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			workflow.connections = {};
 			workflow.versionId = '456';
-			workflow.settings = { engineType: 'v2', timezone: 'Europe/Berlin', callerPolicy: 'any' };
+			workflow.settings = { engineType: 'v2', availableInMCP: true };
 
 			await workflowHistoryService.saveVersion(testUser, workflow, '123');
 
@@ -252,7 +252,7 @@ describe('WorkflowHistoryService', () => {
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			workflow.connections = {};
 			workflow.versionId = '456';
-			workflow.settings = { timezone: 'Europe/Berlin' };
+			workflow.settings = { availableInMCP: true };
 
 			await workflowHistoryService.saveVersion(testUser, workflow, '123');
 

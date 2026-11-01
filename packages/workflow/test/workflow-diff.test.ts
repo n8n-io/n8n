@@ -895,8 +895,8 @@ describe('groupWorkflows', () => {
 
 			it('should return false when only live settings are different', () => {
 				const result = SKIP_RULES.skipDifferentVersionedSettings(
-					{ settings: { engineType: 'v2', timezone: 'UTC' } },
-					{ settings: { engineType: 'v2', timezone: 'Europe/Berlin' } },
+					{ settings: { engineType: 'v2', availableInMCP: false } },
+					{ settings: { engineType: 'v2', availableInMCP: true } },
 				);
 
 				expect(result).toBe(false);

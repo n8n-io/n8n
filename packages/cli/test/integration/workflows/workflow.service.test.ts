@@ -1734,7 +1734,7 @@ describe('version-scoped settings in workflow history', () => {
 			Object.assign(workflowRepository.create(), {
 				nodes: changedNodes(),
 				connections: {},
-				settings: { engineType: 'v2', timezone: 'Europe/Berlin' },
+				settings: { engineType: 'v2', availableInMCP: true },
 			}),
 			workflow.id,
 			{ forceSave: true },
