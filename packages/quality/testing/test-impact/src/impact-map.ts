@@ -301,15 +301,50 @@ const parentDir = (p: string): string => {
 };
 
 /**
+ * The spec id of the code that ran while the server started. Every spec depends
+ * on it, so selection reads it as every spec in the map. It is never a spec to run.
+ */
+export const BOOT_SPEC = '<boot>';
+
+function specsInMap(map: ImpactMap): Set<string> {
+	const all = new Set<string>();
+	for (const file of Object.keys(map)) {
+		for (const line of Object.keys(map[file])) for (const s of map[file][line]) all.add(s);
+	}
+	all.delete(BOOT_SPEC);
+	return all;
+}
+
+/**
+ * The specs for a change outside every function of a file: the specs that ran
+ * one of its functions during their own test. Code that ran at boot is left out,
+ * because a module that fails to load fails every spec, so any of them detects
+ * it. If only boot ran the file, every spec is selected.
+ */
+function moduleLevelSpecs(fileMap: Record<string, string[]>): string[] {
+	const own = new Set<string>();
+	let boot = false;
+	for (const line of Object.keys(fileMap)) {
+		for (const s of fileMap[line]) {
+			if (s === BOOT_SPEC) boot = true;
+			else own.add(s);
+		}
+	}
+	return own.size || !boot ? [...own] : [BOOT_SPEC];
+}
+
+/**
  * Index every ancestor directory of every mapped file to the union of specs
  * under it. Lets an unmapped (new/never-covered) file fall back to the specs
- * that exercise its directory, instead of forcing the whole suite.
+ * that exercise its directory, instead of forcing the whole suite. Boot code is
+ * left out: it would make every new backend file select every spec.
  */
 function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
 	const dirSpecs = new Map<string, Set<string>>();
 	for (const file of Object.keys(map)) {
 		const fileSpecs = new Set<string>();
 		for (const line of Object.keys(map[file])) for (const s of map[file][line]) fileSpecs.add(s);
+		fileSpecs.delete(BOOT_SPEC);
 		for (let dir = parentDir(file); dir !== ''; dir = parentDir(dir)) {
 			let set = dirSpecs.get(dir);
 			if (!set) dirSpecs.set(dir, (set = new Set()));
@@ -357,6 +392,10 @@ function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
  * specs verifies nothing (theater) and only slows the loop. The change is still
  * covered by its unit tests + the always-on sanity spec; the gap is surfaced.
  * Reserve `'broad'` for genuine fail-open (an unusable map) — the caller decides.
+ *
+ * BOOT ({@link BOOT_SPEC}): a function that ran at boot selects every spec. A
+ * scoped change outside every function selects only the specs that ran the
+ * file's functions in their own tests (see {@link moduleLevelSpecs}).
  */
 export function resolveImpact(
 	changed: ChangedFile[],
@@ -369,6 +408,14 @@ export function resolveImpact(
 	const uncovered: string[] = [];
 	const declare = opts.onUncovered === 'declare';
 	const dirIndex = opts.siblingFallback && !declare ? buildDirIndex(map) : undefined;
+	let everySpec: Set<string> | undefined;
+	/** Add specs. {@link BOOT_SPEC} stands for every spec in the map. */
+	const addSpecs = (list: Iterable<string>) => {
+		for (const s of list) {
+			if (s !== BOOT_SPEC) specs.add(s);
+			else for (const e of (everySpec ??= specsInMap(map))) specs.add(e);
+		}
+	};
 
 	for (const { file, lines, scope } of changed) {
 		const fileMap = map[file];
@@ -397,14 +444,20 @@ export function resolveImpact(
 			.map(Number)
 			.sort((a, b) => a - b);
 		const addFile = () => {
-			for (const fnLine of fnStarts) for (const s of fileMap[String(fnLine)]) specs.add(s);
+			for (const fnLine of fnStarts) addSpecs(fileMap[String(fnLine)]);
 		};
 		if (scope) {
 			const scoped = resolveSpans(fileMap, scope.ranges, scope.spans);
-			if (scoped === null) addFile();
-			else for (const s of scoped) specs.add(s);
+			if (scoped === null) {
+				addFile();
+				continue;
+			}
+			const fileSpecs = scoped.moduleLevel
+				? [...scoped.specs, ...moduleLevelSpecs(fileMap)]
+				: scoped.specs;
+			addSpecs(fileSpecs);
 			// Only functions that no spec ran changed: no E2E checks this change.
-			if (declare && scoped?.length === 0) uncovered.push(file);
+			if (declare && fileSpecs.length === 0) uncovered.push(file);
 			continue;
 		}
 		if (!lines || lines.length === 0) {
@@ -427,7 +480,7 @@ export function resolveImpact(
 				addFile();
 				break;
 			}
-			for (const s of fileMap[String(owner)]) specs.add(s);
+			addSpecs(fileMap[String(owner)]);
 		}
 	}
 

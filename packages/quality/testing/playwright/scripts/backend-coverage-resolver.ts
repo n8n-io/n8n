@@ -57,22 +57,6 @@ export function listJsonFiles(dir: string): string[] {
 	return out;
 }
 
-/**
- * The raw files to credit to one spec folder: its own `raw-*` files plus the
- * boot raw of each container it ran in (one `.boot-<file>` marker for each).
- */
-export function specBackendRawPaths(
-	dir: string,
-	rawFiles: string[],
-	bootDir: string,
-	bootMarkerPrefix: string,
-): string[] {
-	const boots = readdirSync(dir)
-		.filter((f) => f.startsWith(bootMarkerPrefix))
-		.map((f) => join(bootDir, f.slice(bootMarkerPrefix.length)));
-	return [...rawFiles.map((f) => join(dir, f)), ...boots];
-}
-
 interface V8Function {
 	functionName: string;
 	isBlockCoverage: boolean;

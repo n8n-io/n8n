@@ -4,21 +4,21 @@
  *
  * Reads the per-spec backend raw V8 the coverage fixture wrote under
  * BACKEND_BY_SPEC_DIR (one `{result}` per test, tagged with a `.spec` marker),
- * plus the boot raw of each container the spec ran in (`.boot-*` markers),
  * resolves each entry's dist URL to the checkout's `packages/<x>/src/*.ts` (the
  * same resolution the shard emitter uses), and emits one lcov per spec tagged
  * with the spec id in `TN:`. These join the frontend per-spec lcovs in
  * `coverage/by-spec/` so the impact map attributes backend source files to the
- * specs that exercise them.
+ * specs that exercise them. The boot coverage of each n8n process is emitted as
+ * the spec `BOOT_SPEC`.
  *
  * Thin wrapper over the generic @n8n/test-impact build kernel; the n8n-specific
  * dist→source resolution is injected via `feedRaws`. Best-effort: a spec with no
  * resolvable backend coverage is skipped (fail-open).
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { emitPerSpecLcovs } from '@n8n/test-impact';
+import { BOOT_SPEC, emitPerSpecLcovs } from '@n8n/test-impact';
 import type { CoverageReport } from 'monocart-coverage-reports';
 
 import {
@@ -29,14 +29,8 @@ import {
 	formatBackendStats,
 	listJsonFiles,
 	resolveBackendEntries,
-	specBackendRawPaths,
 } from './backend-coverage-resolver';
-import {
-	BACKEND_BOOT_DIR,
-	BACKEND_BY_SPEC_DIR,
-	BOOT_MARKER_PREFIX,
-	coverageOptions,
-} from '../coverage-options';
+import { BACKEND_BOOT_DIR, BACKEND_BY_SPEC_DIR, coverageOptions } from '../coverage-options';
 
 const OUT_DIR = join(coverageOptions.outputDir ?? './coverage', 'by-spec');
 
@@ -48,6 +42,7 @@ async function main() {
 	const windowsDir = process.env.N8N_COVERAGE_DIR;
 	const rootsDir = windowsDir && existsSync(windowsDir) ? windowsDir : BACKEND_BY_SPEC_DIR;
 	const roots = collectRootRanges(existsSync(rootsDir) ? listJsonFiles(rootsDir) : []);
+	if (existsSync(BACKEND_BOOT_DIR)) writeFileSync(join(BACKEND_BOOT_DIR, '.spec'), BOOT_SPEC);
 
 	const emit = await emitPerSpecLcovs({
 		bySpecDir: BACKEND_BY_SPEC_DIR,
@@ -56,10 +51,10 @@ async function main() {
 		suffix: '-backend',
 		feedRaws: async (report: CoverageReport, rawFiles, dir) => {
 			let added = 0;
-			for (const file of specBackendRawPaths(dir, rawFiles, BACKEND_BOOT_DIR, BOOT_MARKER_PREFIX)) {
+			for (const rf of rawFiles) {
 				let parsed: { result?: Array<{ url: string }> };
 				try {
-					parsed = JSON.parse(readFileSync(file, 'utf8'));
+					parsed = JSON.parse(readFileSync(join(dir, rf), 'utf8'));
 				} catch {
 					continue;
 				}
