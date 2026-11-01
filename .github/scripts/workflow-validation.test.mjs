@@ -137,6 +137,24 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('workflow event tests in PR CI', () => {
+	const workflow = workflowFile('ci-pull-requests.yml');
+	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
+	const filters = parseFilters(filterStep.with.filters);
+
+	for (const name of [
+		'ci-pr-quality.yml',
+		'ci-owners-assign-reviewers.yml',
+		'util-codespace-preview.yml',
+	]) {
+		it(`runs the contract tests when only ${name} changes`, () => {
+			const patterns = filters.get('workflow-scripts');
+			assert.ok(patterns, 'PR CI has no workflow scripts path filter');
+			assert.equal(evaluateFilter([`.github/workflows/${name}`], patterns), true);
+		});
+	}
+});
+
 describe('release SBOM validation in PR CI', () => {
 	const workflow = workflowFile('ci-pull-requests.yml');
 	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
