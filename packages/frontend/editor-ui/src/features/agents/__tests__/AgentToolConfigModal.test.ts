@@ -199,9 +199,6 @@ function renderModal({
 			stubs: {
 				AgentModal: AgentModalTestStub,
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
-				FocusScope: {
-					template: '<div data-test-id="nested-credential-focus-scope"><slot /></div>',
-				},
 				AgentToolConfigNodeContent: createToolSettingsStub(valid),
 				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
 				N8nSwitch2: {
