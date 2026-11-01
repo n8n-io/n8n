@@ -9,3 +9,6 @@ export const CREDENTIALS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/credentials/res
 
 /** Where the data plane sends one data table operation of a step it runs. */
 export const DATA_TABLES_CALL_PATH = `${CONTROL_PLANE_PREFIX}/data-tables/call`;
+
+/** Where the data plane asks for the graph of a sub-workflow a step calls. */
+export const SUB_WORKFLOWS_RESOLVE_PATH = `${CONTROL_PLANE_PREFIX}/sub-workflows/resolve`;
