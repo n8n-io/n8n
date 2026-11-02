@@ -136,11 +136,11 @@ export const fetchMissingPromotionProjects = async (
 	context: PublicApiContext,
 	environmentId: string,
 ): Promise<PromotionMissingProjectListPublicDto> =>
-	await request({
-		method: 'GET',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${encodeURIComponent(environmentId)}/missing-projects`,
-	});
+	await makePublicApiRequest(
+		context,
+		'GET',
+		`${promotionsApiRoot}/environments/${encodeURIComponent(environmentId)}/missing-projects`,
+	);
 
 export const createPromotionEnvironment = async (
 	context: PublicApiContext,
