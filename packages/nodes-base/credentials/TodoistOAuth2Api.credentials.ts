@@ -9,9 +9,15 @@ export class TodoistOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'todoist';
 
-	dynamicClientRegistration = { serverUrl: 'https://todoist.com' };
+	dynamicClientRegistration = true;
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'hidden',
+			default: 'https://todoist.com',
+		},
 		{
 			displayName: 'Grant Type',
 			name: 'grantType',

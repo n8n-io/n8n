@@ -431,13 +431,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// The properties defined on the parent credentials take precedence
 		NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
 
-		const { dynamicClientRegistration } = credentialTypeData;
-		if (!dynamicClientRegistration) return combineProperties;
-		return combineProperties.map((property) =>
-			property.name === 'serverUrl'
-				? { ...property, default: dynamicClientRegistration.serverUrl }
-				: property,
-		);
+		return combineProperties;
 	}
 
 	private resolveCredentialExpressions(

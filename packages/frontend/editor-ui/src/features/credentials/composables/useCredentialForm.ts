@@ -271,7 +271,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 		const properties = type.properties.filter((propertyData: INodeProperties) => {
 			if (!displayCredentialParameter(propertyData)) return false;
-			if (isAutomaticOAuthType.value && propertyData.name === 'serverUrl') return false;
 			return useCustomOAuth.value || !type.__overwrittenProperties?.includes(propertyData.name);
 		});
 

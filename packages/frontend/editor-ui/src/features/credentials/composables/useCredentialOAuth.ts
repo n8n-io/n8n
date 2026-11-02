@@ -124,7 +124,7 @@ export function useCredentialOAuth() {
 		}
 
 		const overwrittenProperties = hasAutomaticOAuthApp(credentialType)
-			? ['clientId', 'clientSecret', 'serverUrl']
+			? ['clientId', 'clientSecret']
 			: (credentialType.__overwrittenProperties ?? []);
 		const nonOverwrittenConfigurableProperties = getManuallyConfigurableProperties(
 			credentialType,
