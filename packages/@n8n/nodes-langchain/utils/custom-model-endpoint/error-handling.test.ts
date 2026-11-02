@@ -137,6 +137,41 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		expect(await response.text()).not.toContain(KEY);
 	});
 
+	it.each([
+		['one that straddles two chunks', ['data: Rejected sk-live-', '9f2a71c4ab\n\n']],
+		['one that arrives whole', ['data: Rejected sk-live-9f2a71c4ab\n\n']],
+	])('redacts a secret a 200 stream carries, %s', async (_name, chunks) => {
+		const encoder = new TextEncoder();
+		const body = new ReadableStream<Uint8Array>({
+			start(controller) {
+				chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)));
+				controller.close();
+			},
+		});
+		const streaming = (async () =>
+			new Response(body, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' },
+			})) as typeof fetch;
+
+		const response = await wrapCustomModelEndpointErrorFetch(streaming, { secrets: [KEY] })(
+			BASE_URL,
+		);
+		const text = await response.text();
+
+		expect(text).not.toContain(KEY);
+		expect(text).toContain('[redacted]');
+	});
+
+	it('leaves a successful non-stream response as the object it was given', async () => {
+		const ok = new Response('{"choices":[]}', { status: 200 });
+		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
+			secrets: [KEY],
+		});
+
+		expect(await wrapped(BASE_URL)).toBe(ok);
+	});
+
 	it('keeps the fields beside the message when it redacts in place', async () => {
 		const body = JSON.stringify({ error: { message: `Rejected ${KEY}`, type: 'auth_error' } });
 		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {

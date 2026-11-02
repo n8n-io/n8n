@@ -30,7 +30,18 @@ export function endpointSecrets(endpoint: EndpointCredential): string[] {
 }
 
 function redact(text: string, secrets: string[]): string {
-	return secrets.reduce((redacted, secret) => redacted.split(secret).join(REDACTED), text);
+	return bothForms(secrets).reduce(
+		(redacted, secret) => redacted.split(secret).join(REDACTED),
+		text,
+	);
+}
+
+/** The raw secret, and the way it looks once something has serialised it into JSON. */
+function bothForms(secrets: string[]): string[] {
+	return secrets.flatMap((secret) => {
+		const escaped = JSON.stringify(secret).slice(1, -1);
+		return escaped === secret ? [secret] : [secret, escaped];
+	});
 }
 
 function redactValues(value: unknown, secrets: string[]): unknown {
@@ -104,13 +115,49 @@ function messageFromBody(text: string): string | undefined {
 	);
 }
 
+function isEventStream(response: Response): boolean {
+	return (response.headers.get('content-type') ?? '').includes('text/event-stream');
+}
+
+/**
+ * Redacts a stream as it passes, because a gateway can answer 200 and put the
+ * failure in the stream. A secret can straddle two chunks, so the tail of each
+ * chunk is held back until the next one can be matched against it.
+ */
+function redactingStream(secrets: string[]): TransformStream<Uint8Array, Uint8Array> {
+	const decoder = new TextDecoder();
+	const encoder = new TextEncoder();
+	const straddle = Math.max(0, ...secrets.map((secret) => secret.length)) - 1;
+	let held = '';
+
+	return new TransformStream({
+		transform(chunk, controller) {
+			const text = redact(held + decoder.decode(chunk, { stream: true }), secrets);
+			const emit = Math.max(0, text.length - straddle);
+			held = text.slice(emit);
+			if (emit > 0) controller.enqueue(encoder.encode(text.slice(0, emit)));
+		},
+		flush(controller) {
+			if (held) controller.enqueue(encoder.encode(redact(held, secrets)));
+		},
+	});
+}
+
 export function wrapCustomModelEndpointErrorFetch(
 	baseFetch: typeof fetch,
 	options: { secrets: string[] },
 ): typeof fetch {
 	return async (input, init) => {
 		const response = await baseFetch(input, init);
-		if (response.ok) return response;
+		if (response.ok) {
+			if (!response.body || !options.secrets.length || !isEventStream(response)) return response;
+
+			return new Response(response.body.pipeThrough(redactingStream(options.secrets)), {
+				status: response.status,
+				statusText: response.statusText,
+				headers: response.headers,
+			});
+		}
 
 		const text = (await response.text()).trim();
 		const message = messageFromBody(text);
