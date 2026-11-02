@@ -25,6 +25,13 @@ import type { WhatsAppRawMessage } from '@chat-adapter/whatsapp';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
+	integrationMemoryResourceId,
+	integrationTypeFromMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
+} from '../../../utils/agent-memory-scope';
+import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentIntegrationRemovalContext,
@@ -111,6 +118,12 @@ type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
  * rejects the send, so we fail fast and point the agent to `send_template`.
  * @see https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
  */
+/** `+44 7397-567320` and `447397567320` name the same WhatsApp number. */
+const RECIPIENT_REFUSAL =
+	'This conversation can message only the customer who started it. To message another number, use a scheduled task.';
+
+const digitsOnly = (phone: string) => phone.replace(/\D/g, '');
+
 const WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const WINDOW_CLOSED_MESSAGE =
@@ -266,6 +279,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 
 	readonly actionToolGuidance = [
 		'For scheduled tasks without an inbound conversation, use send_dm with the known WhatsApp user ID (the customer phone number, WhatsApp "wa_id" format). This fails outside the 24-hour customer service window.',
+		'In a conversation that a customer started, send_dm and send_template can reach only that customer. Scheduled tasks can reach any number.',
 		'When a send fails with an error that says the 24-hour window has closed, call list_templates, choose the template that best fits what you wanted to say, and send it with send_template. Use only facts you know as placeholder values. If no template fits, do not send one. For any other send error, do not send a template.',
 		'A template does not open the 24-hour window. Free-form messages to the customer still fail until the customer replies. Send a template only when its content is the message you want the customer to receive. Never send one as a placeholder or to try to open the window.',
 		'WhatsApp has no group conversations — every thread is a 1:1 DM.',
@@ -306,6 +320,36 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			input,
 		);
 		return { ok: true, ...result };
+	}
+
+	/**
+	 * A customer chat can message only that customer. A scheduled task or an n8n
+	 * user chat can message any number. An unknown origin gets no send.
+	 */
+	checkActionRecipient(params: {
+		action: string;
+		input: Record<string, unknown>;
+		resourceId?: string;
+	}): string | undefined {
+		if (params.action !== 'send_dm' && params.action !== 'send_template') return undefined;
+
+		const { resourceId } = params;
+		if (resourceId === undefined) return RECIPIENT_REFUSAL;
+
+		if (integrationTypeFromMemoryResourceId(resourceId) === this.type) {
+			const { userId } = params.input;
+			const customer = resourceId.slice(integrationMemoryResourceId(this.type, '').length);
+			const sameCustomer =
+				typeof userId === 'string' && digitsOnly(customer) === digitsOnly(userId);
+			return sameCustomer ? undefined : RECIPIENT_REFUSAL;
+		}
+
+		const startedByBusinessOrUser =
+			resourceId.startsWith('task:') ||
+			userIdFromDraftChatMemoryResourceId(resourceId) !== undefined ||
+			userIdFromProductionChatMemoryResourceId(resourceId) !== undefined ||
+			userIdFromSystemChatMemoryResourceId(resourceId) !== undefined;
+		return startedByBusinessOrUser ? undefined : RECIPIENT_REFUSAL;
 	}
 
 	async executeAction(params: PlatformActionParams): Promise<IntegrationActionResult | undefined> {

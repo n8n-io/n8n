@@ -293,6 +293,7 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		resourceId: persistence?.resourceId,
 		...(projectId && persistence
 			? { fileScope: { projectId, threadId: persistence.threadId } }
 			: {}),

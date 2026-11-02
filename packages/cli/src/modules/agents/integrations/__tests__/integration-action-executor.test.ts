@@ -70,6 +70,11 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentOutboundFiles } from '../agent-outbound-files.service';
+import {
+	integrationMemoryResourceId,
+	taskRunMemoryResourceId,
+} from '../../utils/agent-memory-scope';
+import { createWhatsAppIntegration } from './helpers/whatsapp/replay-test-context';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -374,6 +379,64 @@ describe('ChatIntegrationActionExecutor', () => {
 				target: { type: 'dm', userId: '447700900123', threadId: 'whatsapp:111:447700900123' },
 				messageId: 'wamid.1',
 			},
+		});
+	});
+
+	describe('WhatsApp recipient check', () => {
+		const setup = () => {
+			const adapter = { openDM: vi.fn().mockResolvedValue('whatsapp:111:447700900123') };
+			const thread = {
+				id: 'whatsapp:111:447700900123',
+				post: vi.fn().mockResolvedValue({ id: 'w1' }),
+			};
+			const chat = mock<ChatInstance>();
+			chat.getAdapter.mockReturnValue(adapter);
+			chat.thread.mockReturnValue(thread as never);
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+			const registry = buildRegistry();
+			registry.register(createWhatsAppIntegration());
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				registry,
+				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
+			);
+			const descriptor = getIntegrationToolConnectionDescriptors(
+				[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
+				'agent-1',
+			)[0];
+			return { adapter, executor, descriptor };
+		};
+
+		it('refuses a send to another number from a customer chat', async () => {
+			const { adapter, executor, descriptor } = setup();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'send_dm',
+				input: { userId: '447700900123', message: { text: 'Hello' } },
+				awaitResponse: false,
+				resourceId: integrationMemoryResourceId('whatsapp', '447397567320'),
+			});
+
+			expect(result).toMatchObject({ ok: false, error: { code: 'ACTION_DECLINED' } });
+			expect(adapter.openDM).not.toHaveBeenCalled();
+		});
+
+		it('sends to any number from a scheduled task', async () => {
+			const { adapter, executor, descriptor } = setup();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'send_dm',
+				input: { userId: '447700900123', message: { text: 'Hello' } },
+				awaitResponse: false,
+				resourceId: taskRunMemoryResourceId('task-1'),
+			});
+
+			expect(result).toMatchObject({ ok: true });
+			expect(adapter.openDM).toHaveBeenCalledWith('447700900123');
 		});
 	});
 

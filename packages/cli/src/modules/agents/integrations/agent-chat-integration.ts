@@ -589,6 +589,16 @@ export abstract class AgentChatIntegration {
 	}
 
 	/**
+	 * Refuses a send to a recipient that the run may not message. Return the
+	 * reason in words the agent can act on, or undefined to allow the send.
+	 */
+	checkActionRecipient?(params: {
+		action: IntegrationAction;
+		input: Record<string, unknown>;
+		resourceId?: string;
+	}): string | undefined;
+
+	/**
 	 * Explains a failed send in words the agent can act on, for errors where the
 	 * platform message alone gives the model nothing to do next. Return
 	 * undefined to keep the default error.

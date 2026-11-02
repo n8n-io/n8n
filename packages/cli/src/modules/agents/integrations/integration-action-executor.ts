@@ -102,6 +102,13 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 
 		const integrationDef = this.integrationRegistry.get(params.descriptor.integration.type);
+		const refusal = integrationDef?.checkActionRecipient?.({
+			action: params.action,
+			input: params.input,
+			resourceId: params.resourceId,
+		});
+		if (refusal) return integrationError(INTEGRATION_ERROR_CODES.ACTION_DECLINED, refusal);
+
 		const files = await this.checkFiles(params);
 		if (!Array.isArray(files)) return files;
 

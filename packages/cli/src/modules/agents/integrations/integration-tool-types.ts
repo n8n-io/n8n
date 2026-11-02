@@ -204,6 +204,8 @@ export interface IntegrationActionParams {
 	runId?: string;
 	toolCallId?: string;
 	currentMessageContext?: IntegrationMessageContext;
+	/** Memory scope of the run. It shows what started the run. */
+	resourceId?: string;
 	/** Read scope for `input.fileIds`. Undefined when the run has no thread. */
 	fileScope?: { projectId: string; threadId: string };
 }
