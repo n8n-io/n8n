@@ -308,6 +308,109 @@ describe('AssistantAgentProvider', () => {
 			expect(handle.input).toBe('Build a digest');
 		});
 
+		describe('attached agent', () => {
+			function agentTurn(
+				agent: Record<string, unknown>,
+				metadata: Record<string, unknown> | undefined = undefined,
+			) {
+				const memory = mock<SystemAgentStartTurn['memory']>();
+				memory.getThread.mockResolvedValue(
+					metadata
+						? ({ id: 'thread-1', metadata } as Awaited<ReturnType<typeof memory.getThread>>)
+						: null,
+				);
+				const base = startTurn();
+				return startTurn({
+					memory,
+					options: {
+						...base.options,
+						request: { attachments: [{ type: 'agent', projectId: 'project-1', ...agent }] },
+					},
+				});
+			}
+
+			it('binds a saved agent to a new thread', async () => {
+				const { provider } = setup();
+				const turn = agentTurn({ id: 'agent-1', name: 'Triage' });
+
+				await provider.prepareTurn(turn);
+
+				expect(turn.memory.saveThread).toHaveBeenCalledWith({
+					id: 'thread-1',
+					resourceId: 'system-chat:user-1',
+					metadata: {
+						instanceAiAgentBuilderTarget: {
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							name: 'Triage',
+						},
+						instanceAiAgentBuilderTargets: {},
+					},
+				});
+			});
+
+			it('marks a pending agent, so the build reuses its id', async () => {
+				const { provider } = setup();
+				const turn = agentTurn({ id: 'agent-new', pending: true }, { emoji: '🤖' });
+
+				await provider.prepareTurn(turn);
+
+				expect(turn.memory.saveThread).toHaveBeenCalledWith(
+					expect.objectContaining({
+						metadata: {
+							emoji: '🤖',
+							instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
+						},
+					}),
+				);
+			});
+
+			it('binds the pending agent once the editor saved it', async () => {
+				const { provider } = setup();
+				const turn = agentTurn(
+					{ id: 'agent-new' },
+					{ instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' } },
+				);
+
+				await provider.prepareTurn(turn);
+
+				expect(turn.memory.saveThread).toHaveBeenCalledWith(
+					expect.objectContaining({
+						metadata: {
+							instanceAiAgentBuilderTarget: { agentId: 'agent-new', projectId: 'project-1' },
+							instanceAiAgentBuilderTargets: {},
+						},
+					}),
+				);
+			});
+
+			it.each([
+				[
+					'the thread already targets an agent',
+					{ id: 'agent-2' },
+					{ instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				[
+					'the thread already has another pending agent',
+					{ id: 'agent-2' },
+					{ instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				[
+					'the pending agent is still unsaved',
+					{ id: 'agent-1', pending: true },
+					{ instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				['the agent is in another project', { id: 'agent-2', projectId: 'project-2' }, undefined],
+			])('keeps the thread metadata when %s', async (_case, agent, metadata) => {
+				const { provider } = setup();
+				const turn = agentTurn(agent, metadata);
+
+				await provider.prepareTurn(turn);
+
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
+		});
+
 		it('records the accepted input once, on the first chunk', async () => {
 			const { provider, turnInput, input } = setup();
 
@@ -786,6 +889,117 @@ describe('AssistantAgentProvider', () => {
 				);
 				expect(trace.tracePromptBuild).not.toHaveBeenCalled();
 				expect(trace.startOrchestratorRun).toHaveBeenCalled();
+			});
+
+			describe('attached agent snapshot', () => {
+				const agentAttachment = {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'project-1',
+					name: 'Triage',
+				} as const;
+				const config = { name: 'Triage', instructions: 'Sort the tickets' };
+
+				function snapshotSetup() {
+					const setupResult = setup();
+					const { tracer, agentFactory, environment, agent } = setupResult;
+					const { trace, context } = traceMock();
+					tracer.startForTurn.mockResolvedValue(trace);
+					const orchestratorRun = { id: 'orchestrator-run' };
+					const snapshotRun = { id: 'snapshot-run' };
+					Object.assign(context, {
+						actorRun: { id: 'root-run' },
+						startChildRun: vi.fn(async () => snapshotRun),
+						finishRun: vi.fn(async () => {}),
+					});
+					trace.startOrchestratorRun.mockImplementation(async () => {
+						context.actorRun = orchestratorRun as typeof context.actorRun;
+					});
+					// Like the real factory, which gives the turn's trace to the domain tools.
+					agentFactory.createAgent.mockImplementation(async (env, _runtime, params) => {
+						env.orchestrationContext.tracing = params.tracing;
+						return agent as unknown as Awaited<ReturnType<AssistantAgentFactory['createAgent']>>;
+					});
+					const readAgentArtifact = vi.fn(async () => ({
+						config,
+						skills: {},
+						configHash: 'hash-1',
+					}));
+					environment.orchestrationContext.domainContext = {
+						builderDelegate: { readAgentArtifact },
+					} as unknown as AssistantTurnEnvironment['orchestrationContext']['domainContext'];
+					return { ...setupResult, context, orchestratorRun, snapshotRun, readAgentArtifact };
+				}
+
+				it('records the attached agent under the orchestrator span', async () => {
+					const { provider, context, orchestratorRun, snapshotRun, readAgentArtifact } =
+						snapshotSetup();
+					const base = startTurn();
+
+					await provider.prepareTurn(
+						startTurn({
+							options: {
+								...base.options,
+								request: {
+									attachments: [agentAttachment, { type: 'workflow', id: 'wf-1', name: 'Digest' }],
+								},
+							},
+						}),
+					);
+
+					expect(readAgentArtifact).toHaveBeenCalledTimes(1);
+					expect(readAgentArtifact).toHaveBeenCalledWith('agent-1');
+					expect(context.startChildRun).toHaveBeenCalledWith(
+						orchestratorRun,
+						expect.objectContaining({
+							name: 'agent-snapshot',
+							metadata: expect.objectContaining({
+								agent_id: 'agent-1',
+								snapshot_reason: 'attached',
+							}),
+						}),
+					);
+					expect(context.finishRun).toHaveBeenCalledWith(snapshotRun, {
+						outputs: {
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							configHash: 'hash-1',
+							reason: 'attached',
+							config,
+							skills: {},
+						},
+						rawOutputs: true,
+					});
+				});
+
+				it('does not record the attached agent again when a turn resumes', async () => {
+					const { provider, readAgentArtifact } = snapshotSetup();
+					const start = startTurn();
+
+					await provider.prepareTurn({
+						type: 'resume',
+						user,
+						thread,
+						resourceId: start.resourceId,
+						abortSignal: start.abortSignal,
+						emitHostEvent: start.emitHostEvent,
+						memory: start.memory,
+						checkpointStore: start.checkpointStore,
+						sessionGrants: start.sessionGrants,
+						runId: 'agent-run-1',
+						toolCallId: 'tool-call-1',
+						checkpointHostMetadata: {
+							assistantTurn: {
+								runId: 'run-1',
+								messageGroupId: 'mg-1',
+								request: { attachments: [agentAttachment] },
+							},
+						},
+						resumeData: { approved: true },
+					});
+
+					expect(readAgentArtifact).not.toHaveBeenCalled();
+				});
 			});
 		});
 

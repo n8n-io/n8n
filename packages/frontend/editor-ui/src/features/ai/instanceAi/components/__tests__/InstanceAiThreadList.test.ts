@@ -245,7 +245,7 @@ describe('InstanceAiThreadList', () => {
 
 	it('scopes the rows to threads the filter accepts', async () => {
 		const { getAllByTestId } = await renderList({
-			props: { filter: (t: InstanceAiThreadSummary) => t.metadata?.agentId === 'agent-1' },
+			props: { filter: (t) => t.metadata?.agentId === 'agent-1' },
 		});
 
 		const rows = getAllByTestId('instance-ai-thread-item');
@@ -423,6 +423,56 @@ describe('InstanceAiThreadList', () => {
 			finishDeletes[1](true);
 			await flushPromises();
 
+			expect(routerPush).not.toHaveBeenCalled();
+		});
+
+		it('shows the threads of the scope to a host that scopes the list, and opens them in place', async () => {
+			mockedStore(useAssistantAgentThreadsStore).openedThreads = [
+				{ ...agentRuntimeThread, metadata: { agentId: 'agent-1' } },
+				{ ...agentRuntimeThread, id: 'aa2', title: 'Other chat', metadata: { agentId: 'agent-2' } },
+			];
+
+			const { emitted, findAllByTestId, findByText } = await renderList({
+				props: { navigate: false, filter: (t) => t.metadata?.agentId === 'agent-1' },
+			});
+
+			const agentRows = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRows).toHaveLength(1);
+			await userEvent.click(await findByText('Agent runtime chat'));
+
+			await vi.waitFor(() => expect(emitted('select')).toEqual([['aa1']]));
+			expect(routerPush).not.toHaveBeenCalled();
+		});
+
+		it('applies the search to the threads of the scope', async () => {
+			mockedStore(useAssistantAgentThreadsStore).openedThreads = [
+				agentRuntimeThread,
+				{ ...agentRuntimeThread, id: 'aa2', title: 'Invoice follow-up' },
+				{ ...agentRuntimeThread, id: 'aa3', title: null },
+			];
+			mockedStore(useInstanceAiStore).threadHistory.search = ' INVOICE ';
+
+			const { findAllByTestId } = await renderList({
+				props: { navigate: false, filter: () => true },
+			});
+
+			const agentRows = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRows).toHaveLength(1);
+			expect(agentRows[0]).toHaveTextContent('Invoice follow-up');
+		});
+
+		it('tells a host that scopes the list when it deletes the open thread', async () => {
+			const agentStore = mockedStore(useAssistantAgentThreadsStore);
+			agentStore.openedThreads = [agentRuntimeThread];
+			agentStore.deleteThread.mockResolvedValue(true);
+
+			const { emitted, findAllByTestId } = await renderList({
+				props: { navigate: false, filter: () => true, activeThreadId: 'aa1' },
+			});
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+
+			await vi.waitFor(() => expect(emitted('deleted')).toEqual([[true]]));
 			expect(routerPush).not.toHaveBeenCalled();
 		});
 

@@ -34,8 +34,9 @@ import {
 const props = withDefaults(
 	defineProps<{
 		maxHeight?: string;
-		/** Scope the history shown — applied to `history.threads` before grouping. */
-		filter?: (thread: InstanceAiThreadSummary) => boolean;
+		/** Scope the history shown — applied to `history.threads` before grouping, and to the
+		 * Assistant agent threads in the store. */
+		filter?: (thread: InstanceAiThreadSummary | SystemAgentThreadSummary) => boolean;
 		/** False → selecting a row emits `select` without routing, "View all" is hidden,
 		 * and deleting the active thread emits `deleted(true)` instead of navigating. Use this for an
 		 * embedding host that has no thread route of its own. */
@@ -174,9 +175,24 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 	// `useMergedChatHistory` already folds the sources together, gated by the options above.
 	if (usesMergedHistory.value) return mergedItems.value;
 	// Scope the server-paged history to the embedding host's subject, such as one agent.
-	return history.value.threads
-		.filter((thread) => (props.filter ? props.filter(thread) : true))
-		.map((thread) => ({ kind: 'assistant' as const, thread }));
+	const filter = props.filter;
+	if (!filter) {
+		return history.value.threads.map((thread) => ({ kind: 'assistant' as const, thread }));
+	}
+	// The host loads the Assistant agent threads of its subject into the store, so the
+	// search runs here, while the server searches the Assistant history.
+	const searchTerm = history.value.search.trim().toLowerCase();
+	const agentThreads = instanceAiSettingsStore.isAssistantAgentEnabled
+		? assistantAgentThreadsStore.knownThreads.filter(
+				(thread) => filter(thread) && (thread.title ?? '').toLowerCase().includes(searchTerm),
+			)
+		: [];
+	return [
+		...history.value.threads
+			.filter(filter)
+			.map((thread) => ({ kind: 'assistant' as const, thread })),
+		...agentThreads.map((thread) => ({ kind: 'assistant-agent' as const, thread })),
+	].sort((a, b) => Date.parse(b.thread.updatedAt) - Date.parse(a.thread.updatedAt));
 });
 
 // The recent-only list never pages; "View all" opens the full list.
@@ -363,14 +379,22 @@ function handleMenuSelect(itemId: string) {
 	const item = itemsById.value.get(itemId);
 	if (!item || item.kind === 'assistant') return;
 	restoreTriggerFocus = true;
+	// An embedding host opens its Assistant agent threads in place.
+	if (item.kind === 'assistant-agent' && !props.navigate) {
+		emit('select', item.thread.id);
+		return;
+	}
 	void router.push(chatItemRoute(item));
 }
 
 async function handleDeleteAssistantAgentThread(thread: SystemAgentThreadSummary) {
 	const deleted = await assistantAgentThreadsStore.deleteThread(thread);
 	// Read the open thread after the request: the user can open another one meanwhile.
-	if (deleted && thread.id === activeThreadId.value) {
+	if (!deleted || thread.id !== activeThreadId.value) return;
+	if (props.navigate) {
 		void router.push({ name: INSTANCE_AI_VIEW });
+	} else {
+		emit('deleted', true);
 	}
 }
 
