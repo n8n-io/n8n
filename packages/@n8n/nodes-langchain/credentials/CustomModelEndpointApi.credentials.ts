@@ -239,7 +239,7 @@ export class CustomModelEndpointApi implements ICredentialType {
 		const { sessionToken } = credentials;
 		requestOptions.headers =
 			endpoint.login.type === 'oauth2' && typeof sessionToken === 'string'
-				? { ...headers, Authorization: `Bearer ${sessionToken}` }
+				? { ...headers, authorization: `Bearer ${sessionToken}` }
 				: headers;
 
 		return requestOptions;
