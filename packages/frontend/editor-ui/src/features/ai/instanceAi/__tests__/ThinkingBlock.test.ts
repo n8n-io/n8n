@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import ThinkingBlock from '../components/ThinkingBlock.vue';
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -285,6 +287,31 @@ describe('ThinkingBlock', () => {
 
 		expect(getByTestId('thinking-block-subline')).toBeInTheDocument();
 		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Thinking');
+	});
+
+	it('rotates the node types the agent read on the subline while it writes the source', () => {
+		mockedStore(useNodeTypesStore).getNodeType = vi.fn((name: string) =>
+			name === 'n8n-nodes-base.gmail' ? { displayName: 'Gmail' } : null,
+		) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
+		const read = makeToolCall({
+			toolCallId: 'tc-read',
+			toolName: 'get_node_types',
+			args: { nodeTypes: ['n8n-nodes-base.gmail'] },
+		});
+		const write = makeToolCall({
+			toolCallId: 'tc-write',
+			toolName: 'workspace_write_file',
+			isLoading: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [read, write] }),
+				entries: [toolEntry('tc-read'), toolEntry('tc-write')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Configuring Gmail nodes');
 	});
 
 	it('should show "Thinking" on the subline when no tool call is the tail', () => {

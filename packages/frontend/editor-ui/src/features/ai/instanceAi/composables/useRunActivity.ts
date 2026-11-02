@@ -139,11 +139,11 @@ function waitingLabelKey(confirmation: InstanceAiConfirmation): BaseTextKey {
 }
 
 /**
- * What the agent does now: the active sub-agent, the running tool, or the step
- * that follows the last finished tool. The chat status bar and the draft canvas
- * both show it, so they always read the same.
+ * The label of a running tool call. A long source write names one of the node
+ * types the agent read, a different one every few seconds, so the label keeps
+ * moving. Every place that shows a running call uses it, so they agree.
  */
-export function useRunActivity() {
+export function useActiveToolLabel() {
 	const i18n = useI18n();
 	const { getToolLabel } = useToolLabel();
 
@@ -156,15 +156,7 @@ export function useRunActivity() {
 		);
 	}
 
-	/**
-	 * A long call names one of the node types the agent read, a different one
-	 * every few seconds. Close enough for a loading state, and it keeps moving.
-	 */
-	function runningToolLabel(
-		toolCall: InstanceAiToolCallState,
-		tree: InstanceAiAgentNode,
-		now: number,
-	): string {
+	return (toolCall: InstanceAiToolCallState, tree: InstanceAiAgentNode, now: number): string => {
 		const toolName = resolveBuilderToolName(toolCall.toolName, toolCall.args.action);
 		const key = Object.hasOwn(NODE_TYPE_ROTATION_KEYS, toolName)
 			? NODE_TYPE_ROTATION_KEYS[toolName]
@@ -174,7 +166,17 @@ export function useRunActivity() {
 			return i18n.baseText(key, { interpolate: { name: rotate(names, now) } });
 		}
 		return getToolLabel(toolCall.toolName, toolCall.args);
-	}
+	};
+}
+
+/**
+ * What the agent does now: the active sub-agent, the running tool, or the step
+ * that follows the last finished tool. The chat status bar and the draft canvas
+ * both show it, so they always read the same.
+ */
+export function useRunActivity() {
+	const i18n = useI18n();
+	const runningToolLabel = useActiveToolLabel();
 
 	/** One of the nodes being fixed, a different one every few seconds. */
 	function fixingLabel(nodeNames: string[], now: number): string | undefined {

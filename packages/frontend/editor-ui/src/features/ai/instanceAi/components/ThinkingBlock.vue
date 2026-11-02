@@ -6,8 +6,12 @@ import type {
 } from '@n8n/api-types';
 import { N8nAiActivityStep } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useNow } from '@vueuse/core';
 import { computed } from 'vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
+
+import { useActiveToolLabel } from '../composables/useRunActivity';
+import { useSteadyValue } from '../composables/useSteadyValue';
 
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { useInstanceContextLabel } from '../instanceContextLabels';
@@ -36,7 +40,17 @@ function skillUpdateLabel(entry: Extract<InstanceAiTimelineEntry, { type: 'skill
 }
 
 const { getToolLabel } = useToolLabel();
+const activeToolLabel = useActiveToolLabel();
+// A running source write rotates its label, so the label reads the clock.
+const now = useNow({ interval: 1000 });
 const { getInstanceContextLabel } = useInstanceContextLabel();
+
+/** A running call gets the same label as the status bar; a finished one its own. */
+function toolCallLabel(toolCall: InstanceAiToolCallState): string {
+	return toolCall.isLoading && props.agentNode.status === 'active'
+		? activeToolLabel(toolCall, props.agentNode, now.value.getTime())
+		: getToolLabel(toolCall.toolName, toolCall.args);
+}
 
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -60,13 +74,16 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 /** Reuse the context row label while it is the latest active entry. */
 const activityLabel = computed<string | undefined>(() => {
 	const toolCall = tailToolCall.value;
-	if (toolCall) return getToolLabel(toolCall.toolName, toolCall.args);
+	if (toolCall) return toolCallLabel(toolCall);
 
 	if (!props.active || props.awaitingInput) return undefined;
 	const last = props.entries[props.entries.length - 1];
 	if (last?.type === 'skill-update') return skillUpdateLabel(last);
 	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
 });
+
+// Held steady like the status bar, so short steps do not flash.
+const steadyActivityLabel = useSteadyValue(() => activityLabel.value, { key: (label) => label });
 
 const segments = computed(() => {
 	return props.entries.filter(
@@ -101,7 +118,7 @@ const durationSec = computed<number | undefined>(() => {
 		:segments="segments"
 		:active="props.active"
 		:awaiting-input="props.awaitingInput"
-		:activity-label="activityLabel"
+		:activity-label="steadyActivityLabel"
 		:duration-sec="durationSec"
 		test-id="instance-ai-thinking-block"
 	>
@@ -146,7 +163,7 @@ const durationSec = computed<number | undefined>(() => {
 
 			<N8nAiActivityStep
 				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"
-				:label="getToolLabel(toolCallFor(entry)!.toolName, toolCallFor(entry)!.args)"
+				:label="toolCallLabel(toolCallFor(entry)!)"
 				:loading="props.agentNode.status === 'active' && toolCallFor(entry)!.isLoading"
 				:error="toolCallFor(entry)!.error"
 			>
