@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import { TransactionRunner, type Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { WorkflowLoopStorage, WorkflowTaskCoordinator } from '@n8n/instance-ai';
 
@@ -31,6 +31,7 @@ describe('Instance AI thread verification transitions', () => {
 			Container.get(InstanceAiObservationCursorRepository),
 			Container.get(InstanceAiObservationLockRepository),
 			Container.get(Logger),
+			Container.get(TransactionRunner),
 		);
 	}
 

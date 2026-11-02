@@ -19,11 +19,12 @@ import {
 	type ObservationLogTaskKind,
 	type ObservationLogTaskLockHandle,
 } from '@n8n/agents';
-import { Equal, In, IsNull, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
+import type { TransactionRunner } from '@n8n/db';
+import { Equal, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import { InstanceAiObservationLock } from '../entities/instance-ai-observation-lock.entity';
-import { InstanceAiObservation } from '../entities/instance-ai-observation.entity';
+import type { InstanceAiObservation } from '../entities/instance-ai-observation.entity';
 import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
 import type { InstanceAiObservationCursorRepository } from '../repositories/instance-ai-observation-cursor.repository';
 import type { InstanceAiObservationLockRepository } from '../repositories/instance-ai-observation-lock.repository';
@@ -52,12 +53,13 @@ export class TypeORMObservationLogStore
 		private readonly observationLockRepo: InstanceAiObservationLockRepository,
 		private readonly messageRepo: InstanceAiMessageRepository,
 		private readonly toAgentMessage: (entity: InstanceAiMessage) => AgentDbMessage | undefined,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	async commitObservationLogBatch(
 		batch: ObservationLogBatch,
 	): Promise<ObservationLogBatchCommitResult> {
-		return await this.observationRepo.commitObservationLogBatch(batch);
+		return await this.observationRepo.commitObservationLogBatch(batch, {});
 	}
 
 	async appendObservationLogEntries(
@@ -65,21 +67,19 @@ export class TypeORMObservationLogStore
 	): Promise<ObservationLogEntry[]> {
 		if (rows.length === 0) return [];
 
-		const entities = await Promise.all(
-			rows.map(async (row) =>
-				this.observationRepo.create({
-					observationScopeId: row.observationScopeId,
-					marker: row.marker,
-					text: row.text,
-					parentId: row.parentId ?? null,
-					tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
-					...activeLifecycleState(),
-					createdAt: row.createdAt,
-				}),
-			),
+		const entries = await Promise.all(
+			rows.map(async (row) => ({
+				observationScopeId: row.observationScopeId,
+				marker: row.marker,
+				text: row.text,
+				parentId: row.parentId ?? null,
+				tokenCount: row.tokenCount ?? (await estimateObservationTokens(row.text)),
+				...activeLifecycleState(),
+				createdAt: row.createdAt,
+			})),
 		);
 
-		const saved = await this.observationRepo.save(entities);
+		const saved = await this.observationRepo.appendLogEntries(entries, {});
 
 		return saved.map((entity) => toObservationLogEntry(entity));
 	}
@@ -91,20 +91,7 @@ export class TypeORMObservationLogStore
 	}
 
 	async getObservationLog(opts: ObservationLogReadOptions): Promise<ObservationLogEntry[]> {
-		const baseWhere: FindOptionsWhere<InstanceAiObservation> = {
-			observationScopeId: opts.observationScopeId,
-			...(opts.status !== undefined && { status: opts.status }),
-			...(opts.parentId !== undefined && { parentId: opts.parentId ?? IsNull() }),
-		};
-
-		const entities = await this.observationRepo.find({
-			where: [baseWhere],
-			order: {
-				createdAt: opts.order === 'desc' ? 'DESC' : 'ASC',
-				id: opts.order === 'desc' ? 'DESC' : 'ASC',
-			},
-			...(opts.limit !== undefined && { take: opts.limit }),
-		});
+		const entities = await this.observationRepo.findLogEntries(opts, {});
 		return entities.map((entity) => toObservationLogEntry(entity));
 	}
 
@@ -142,29 +129,28 @@ export class TypeORMObservationLogStore
 	async dropObservationLogEntries(ids: string[]): Promise<void> {
 		if (ids.length === 0) return;
 
-		await this.observationRepo.update({ id: In(ids) }, droppedLifecycleState());
+		await this.observationRepo.updateLifecycleForEntries(ids, droppedLifecycleState(), {});
 	}
 
 	async supersedeObservationLogEntries(ids: string[], supersededBy: string): Promise<void> {
 		if (ids.length === 0) return;
 
-		await this.observationRepo.update({ id: In(ids) }, supersededLifecycleState(supersededBy));
+		await this.observationRepo.updateLifecycleForEntries(
+			ids,
+			supersededLifecycleState(supersededBy),
+			{},
+		);
 	}
 
 	async applyObservationLogReflection(
 		scope: ObservationLogScope,
 		reflection: ObservationLogReflection,
 	): Promise<ObservationLogReflectionResult> {
-		return await this.observationRepo.manager.transaction(async (trx) => {
-			const repo = trx.getRepository(InstanceAiObservation);
-
-			const activeEntries = await repo.find({
-				where: {
-					observationScopeId: scope.observationScopeId,
-					status: 'active',
-				},
-				order: { createdAt: 'ASC', id: 'ASC' },
-			});
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const activeEntries = await this.observationRepo.findActiveForThread(
+				scope.observationScopeId,
+				ctx,
+			);
 
 			const normalized = normalizeObservationLogReflection(
 				activeEntries.map((entry) => toObservationLogEntry(entry)),
@@ -172,42 +158,39 @@ export class TypeORMObservationLogStore
 			);
 
 			const inserted = normalized.merge.length
-				? await repo.save(
+				? await this.observationRepo.appendLogEntries(
 						await Promise.all(
-							normalized.merge.map(async (entry) =>
-								repo.create({
-									observationScopeId: scope.observationScopeId,
-									marker: entry.marker,
-									text: entry.text,
-									parentId: entry.parentId ?? null,
-									tokenCount: entry.tokenCount ?? (await estimateObservationTokens(entry.text)),
-									...activeLifecycleState(),
-									createdAt: entry.createdAt,
-								}),
-							),
+							normalized.merge.map(async (entry) => ({
+								observationScopeId: scope.observationScopeId,
+								marker: entry.marker,
+								text: entry.text,
+								parentId: entry.parentId ?? null,
+								tokenCount: entry.tokenCount ?? (await estimateObservationTokens(entry.text)),
+								...activeLifecycleState(),
+								createdAt: entry.createdAt,
+							})),
 						),
+						ctx,
 					)
 				: [];
 
 			if (normalized.drop.length > 0) {
-				await repo.update(
-					{
-						observationScopeId: scope.observationScopeId,
-						id: In(normalized.drop),
-					},
+				await this.observationRepo.updateLifecycleForScopeEntries(
+					scope.observationScopeId,
+					normalized.drop,
 					droppedLifecycleState(),
+					ctx,
 				);
 			}
 
 			for (const [index, merge] of normalized.merge.entries()) {
 				const replacement = inserted[index];
 				if (replacement && merge.supersedes.length > 0) {
-					await repo.update(
-						{
-							observationScopeId: scope.observationScopeId,
-							id: In(merge.supersedes),
-						},
+					await this.observationRepo.updateLifecycleForScopeEntries(
+						scope.observationScopeId,
+						merge.supersedes,
 						supersededLifecycleState(replacement.id),
+						ctx,
 					);
 				}
 			}

@@ -22,6 +22,7 @@ import {
 	type RuntimeSkillStateStore,
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import {
@@ -235,6 +236,7 @@ export class TypeORMAgentMemory
 		observationCursorRepo: InstanceAiObservationCursorRepository,
 		observationLockRepo: InstanceAiObservationLockRepository,
 		logger: Logger,
+		transactionRunner: TransactionRunner,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.observationLog = new TypeORMObservationLogStore(
@@ -243,6 +245,7 @@ export class TypeORMAgentMemory
 			observationLockRepo,
 			this.messageRepo,
 			(entity) => this.toAgentMessage(entity),
+			transactionRunner,
 		);
 	}
 

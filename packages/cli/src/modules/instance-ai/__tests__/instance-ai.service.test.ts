@@ -6462,7 +6462,7 @@ describe('getThreadMemory', () => {
 			observations: [{ marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 }],
 			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
 		});
-		expect(service.observationRepo.findActiveForThread).toHaveBeenCalledWith('thread-1');
+		expect(service.observationRepo.findActiveForThread).toHaveBeenCalledWith('thread-1', {});
 		expect(service.observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1');
 	});
 
