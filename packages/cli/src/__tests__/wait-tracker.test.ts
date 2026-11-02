@@ -25,11 +25,7 @@ import { mock, captor } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-<<<<<<< HEAD
-=======
-import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumeAttemptService } from '@/executions/resume-attempt.service';
->>>>>>> c08ba2dd (fix(core): Limit resume attempts for waiting and queued executions (#42135))
 import { NodeTypes } from '@/node-types';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
