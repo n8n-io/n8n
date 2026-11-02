@@ -126,6 +126,8 @@ export class LmChatCustomEndpoint implements INodeType {
 				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'options',
+				// The credentials are gated on this, and a credential is attached before a run
+				noDataExpression: true,
 				options: [
 					{ name: 'Custom Model Endpoint', value: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
 					{ name: 'OpenAI', value: OPENAI_CREDENTIAL },
