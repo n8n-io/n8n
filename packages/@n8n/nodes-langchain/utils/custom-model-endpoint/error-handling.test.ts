@@ -113,6 +113,30 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		expect(await response.text()).not.toContain(KEY);
 	});
 
+	it.each([
+		['a quote', 'sk-live-a"b-9f2a71c4'],
+		['a backslash', 'sk-live-a\\b-9f2a71c4'],
+		['a newline', 'sk-live-a\nb-9f2a71c4'],
+	])('redacts a secret that JSON escapes, here %s', async (_name, secret) => {
+		const body = JSON.stringify({ error: { message: `Rejected ${secret}` } });
+		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
+			secrets: [secret],
+		})(BASE_URL);
+		const text = await response.text();
+
+		expect(text).not.toContain(JSON.stringify(secret).slice(1, -1));
+		expect(JSON.parse(text)).toEqual({ error: { message: 'Rejected [redacted]' } });
+	});
+
+	it('redacts a secret nested anywhere in a pass-through body', async () => {
+		const body = JSON.stringify({ error: { message: 'Denied', meta: { sent: [KEY] } } });
+		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
+			secrets: [KEY],
+		})(BASE_URL);
+
+		expect(await response.text()).not.toContain(KEY);
+	});
+
 	it('keeps the fields beside the message when it redacts in place', async () => {
 		const body = JSON.stringify({ error: { message: `Rejected ${KEY}`, type: 'auth_error' } });
 		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {

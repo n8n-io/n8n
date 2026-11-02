@@ -33,6 +33,17 @@ function redact(text: string, secrets: string[]): string {
 	return secrets.reduce((redacted, secret) => redacted.split(secret).join(REDACTED), text);
 }
 
+function redactValues(value: unknown, secrets: string[]): unknown {
+	if (typeof value === 'string') return redact(value, secrets);
+	if (Array.isArray(value)) return value.map((entry) => redactValues(entry, secrets));
+	if (isRecord(value)) {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, entry]) => [key, redactValues(entry, secrets)]),
+		);
+	}
+	return value;
+}
+
 function truncate(text: string): string {
 	return text.length > MAX_MESSAGE_LENGTH ? `${text.slice(0, MAX_MESSAGE_LENGTH)}…` : text;
 }
@@ -51,6 +62,27 @@ function parseJson(text: string): unknown {
 
 function isAlreadyClientShaped(body: Record<string, unknown>): boolean {
 	return isRecord(body.error) && typeof body.error.message === 'string';
+}
+
+/**
+ * A secret reaches a JSON body escaped, so `"sk-a\"b"` never matches the raw
+ * value. Redacting the parsed values and serialising again catches it, and
+ * keeps the result parseable where truncating the text would not.
+ */
+function redactSerialised(text: string, secrets: string[]): string {
+	const parsed = parseJson(text);
+	if (parsed === UNPARSED) return redact(text, secrets);
+
+	const redacted = redactValues(parsed, secrets);
+	if (!isRecord(redacted) || !isRecord(redacted.error)) return JSON.stringify(redacted);
+
+	const { message } = redacted.error;
+	if (typeof message !== 'string') return JSON.stringify(redacted);
+
+	return JSON.stringify({
+		...redacted,
+		error: { ...redacted.error, message: truncate(message) },
+	});
 }
 
 function messageFromHtml(text: string): string | undefined {
@@ -87,10 +119,9 @@ export function wrapCustomModelEndpointErrorFetch(
 		headers.delete('content-length');
 		if (message !== undefined) headers.set('content-type', 'application/json');
 
-		// Truncating the untouched branch would leave its JSON unparseable
 		const body =
 			message === undefined
-				? redact(text, options.secrets)
+				? redactSerialised(text, options.secrets)
 				: asClientError(truncate(redact(message, options.secrets)));
 
 		return new Response(body, {
