@@ -109,4 +109,11 @@ describe('EngineSubWorkflowClient', () => {
 
 		await expect(client.resolve(request, signal)).rejects.toThrow(OperationalError);
 	});
+
+	it('rejects a 200 body whose graph edges lack a slot index', async () => {
+		const edges = [{ from: 't', to: 's' }];
+		respondWith(200, { ...resolved, graph: { ...resolved.graph, edges } });
+
+		await expect(client.resolve(request, signal)).rejects.toThrow(/malformed/);
+	});
 });

@@ -63,10 +63,22 @@ export interface ResolveSubWorkflowResponse {
 	returnLastRunOnly: boolean;
 }
 
+// The engine defaults a missing edge index to 0 when it parses a start request.
+// This guard returns the body unparsed, so the indices must be present.
+const slotIndexSchema = z.number().int().nonnegative();
+const graphSchema = workflowGraphSchema.extend({
+	edges: z.array(
+		workflowGraphSchema.shape.edges.element.extend({
+			outputIndex: slotIndexSchema,
+			inputIndex: slotIndexSchema,
+		}),
+	),
+});
+
 /** The response as the engine's start route would accept it. */
 const resolveSubWorkflowResponseSchema = z.object({
 	workflowId: z.string().min(1),
-	graph: workflowGraphSchema,
+	graph: graphSchema,
 	workflow: jsonObjectSchema,
 	triggerOutputs: triggerOutputsSchema.nullable(),
 	returnLastRunOnly: z.boolean(),
