@@ -11,10 +11,6 @@ export default {
 	// No `progress` reporter: these runs are non-interactive, nobody watches the stream.
 	reporters: ['clear-text', 'json'],
 	coverageAnalysis: 'perTest',
-	// Cache mutant results so the property-testing edit/re-run loop only re-tests
-	// mutants whose covering tests changed. Keep the cache under the gitignored reports/mutation/.
-	incremental: true,
-	incrementalFile: 'reports/mutation/stryker-incremental.json',
 	// Skip module-level (static) mutants — each forces a full re-instrument.
 	ignoreStatic: true,
 	// Default empty — the `mutate` npm script always passes --mutate <file>.
@@ -28,6 +24,7 @@ export default {
 	// locally if you hit OOM during the initial dry run via
 	// `STRYKER_CONCURRENCY=1`.
 	concurrency: Number(process.env.STRYKER_CONCURRENCY ?? 4),
-	tempDirName: '.stryker-tmp',
+	// See stryker.default.mjs: keeps the --inPlace backup out of vitest's test glob.
+	tempDirName: 'node_modules/.stryker-tmp',
 	cleanTempDir: true,
 };

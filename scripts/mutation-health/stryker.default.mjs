@@ -32,6 +32,9 @@ export default {
 	jsonReporter: { fileName: 'reports/mutation/raw.json' },
 	timeoutMS: 60_000,
 	concurrency: Number(process.env.STRYKER_CONCURRENCY ?? 4),
-	tempDirName: '.stryker-tmp',
+	// `--inPlace` keeps a backup of the package in the temp dir. Vitest 5 only
+	// excludes node_modules and .git by default, so a temp dir in the package
+	// root puts the backed-up test files in the test run.
+	tempDirName: 'node_modules/.stryker-tmp',
 	cleanTempDir: true,
 };
