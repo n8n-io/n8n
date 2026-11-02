@@ -62,6 +62,8 @@ export function sortManifest(manifest: PackageManifest): PackageManifest {
 	const { requirements } = manifest;
 	return {
 		...manifest,
+		agents: sorted(manifest.agents, byId),
+		skills: sorted(manifest.skills, byId),
 		projects: sorted(manifest.projects, byId),
 		folders: sorted(manifest.folders, byDepthThenId),
 		workflows: sorted(manifest.workflows, byId),

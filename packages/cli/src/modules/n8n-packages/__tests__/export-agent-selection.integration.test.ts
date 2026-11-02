@@ -166,7 +166,7 @@ it.each(['loose', 'project'] as const)(
 			},
 			new CapturingWriter(),
 		);
-		expect(manifest.agents?.map(({ id }) => id)).toEqual([parent.id, child.id]);
+		expect(manifest.agents?.map(({ id }) => id)).toEqual([parent.id, child.id].sort());
 		expect(counts).toMatchObject({ agents: 2, workflows: 3 });
 		expect(manifest.workflows?.map(({ id }) => id).sort()).toEqual(
 			['loose', 'nested', parent.id].sort(),
@@ -379,7 +379,7 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 		}
 		const { manifest } = await run;
 		expect(manifest.agents?.map(({ id }) => id)).toEqual(
-			policy === 'include-in-package' ? [parent.id, child.id] : [parent.id],
+			policy === 'include-in-package' ? [parent.id, child.id].sort() : [parent.id],
 		);
 		expect(manifest.workflows?.map(({ id }) => id) ?? []).toEqual(
 			policy === 'include-in-package' ? [workflow.id, nested.id].sort() : [],

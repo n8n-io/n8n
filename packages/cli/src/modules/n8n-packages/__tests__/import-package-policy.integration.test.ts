@@ -372,10 +372,14 @@ describe('contentImport on a git pull', () => {
 		);
 
 		// The check broke in both projects, and the plan reports it once.
-		expect(plan.issues).toEqual([
-			expect.objectContaining({ type: 'policy-violation', name: 'Denied Workflow' }),
-			{ type: 'policy-check-failed', point: 'contentImport' },
-		]);
+		// The issues follow the order of the workflows in the manifest, which is by id.
+		expect(plan.issues).toHaveLength(2);
+		expect(plan.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'policy-violation', name: 'Denied Workflow' }),
+				{ type: 'policy-check-failed', point: 'contentImport' },
+			]),
+		);
 		expect(emit).not.toHaveBeenCalledWith('policy-decision-blocked', expect.anything());
 		await expect(Container.get(WorkflowHistoryRepository).count()).resolves.toBe(0);
 

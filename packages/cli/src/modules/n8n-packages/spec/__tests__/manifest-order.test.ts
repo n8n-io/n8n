@@ -7,6 +7,8 @@ const manifest: PackageManifest = {
 	packageFormatVersion: '1',
 	sourceN8nVersion: '1.0.0',
 	sourceId: 'source',
+	agents: [entry('a2'), entry('a1')],
+	skills: [entry('s2'), entry('s1')],
 	projects: [entry('p2', 'projects/b-p2'), entry('p1', 'projects/a-p1')],
 	workflows: [
 		{ ...entry('w3'), isArchived: false },
@@ -48,6 +50,8 @@ describe('sortManifest', () => {
 	it('orders the entry lists by id', () => {
 		const sorted = sortManifest(manifest);
 
+		expect(ids(sorted.agents)).toEqual(['a1', 'a2']);
+		expect(ids(sorted.skills)).toEqual(['s1', 's2']);
 		expect(ids(sorted.projects)).toEqual(['p1', 'p2']);
 		expect(ids(sorted.workflows)).toEqual(['w1', 'w2', 'w3']);
 		expect(ids(sorted.credentials)).toEqual(['c1', 'c2']);
@@ -98,19 +102,18 @@ describe('sortManifest', () => {
 		expect(JSON.stringify(sortManifest(reversed))).toBe(JSON.stringify(sortManifest(manifest)));
 	});
 
-	it('does not change the input, and leaves out lists that the manifest does not have', () => {
+	it('does not change the input', () => {
 		const before = JSON.stringify(manifest);
 
-		const sorted = sortManifest({
-			packageFormatVersion: '1',
-			sourceN8nVersion: '1',
-			sourceId: 's',
-		});
+		sortManifest(manifest);
 
 		expect(JSON.stringify(manifest)).toBe(before);
-		expect(JSON.stringify(sorted)).toBe(
-			JSON.stringify({ packageFormatVersion: '1', sourceN8nVersion: '1', sourceId: 's' }),
-		);
+	});
+
+	it('leaves out lists that the manifest does not have', () => {
+		const minimal = { packageFormatVersion: '1', sourceN8nVersion: '1', sourceId: 's' } as const;
+
+		expect(JSON.stringify(sortManifest(minimal))).toBe(JSON.stringify(minimal));
 	});
 
 	it('compares ids by code point, not by locale', () => {

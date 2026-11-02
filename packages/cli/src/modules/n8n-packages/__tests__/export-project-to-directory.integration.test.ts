@@ -69,26 +69,40 @@ describe('exportPackageToDirectory', () => {
 	});
 
 	it('writes multiple projects into one combined package', async () => {
-		const alpha = await createTeamProject('Alpha Project', owner);
-		const beta = await createTeamProject('Beta Project', owner);
-		await createWorkflow({ name: 'Alpha Workflow', nodes: [], connections: {} }, alpha);
-		await createWorkflow({ name: 'Beta Workflow', nodes: [], connections: {} }, beta);
+		const projects = [
+			await createTeamProject('Alpha Project', owner),
+			await createTeamProject('Beta Project', owner),
+		];
+		// The ids are random. The manifest lists them in id order, so the test needs a creation
+		// order that differs from it. Another project changes the order with each try.
+		while (
+			[...projects].sort((a, b) => (a.id < b.id ? -1 : 1)).every((p, i) => p === projects[i])
+		) {
+			projects.push(await createTeamProject(`Extra Project ${projects.length}`, owner));
+		}
+		for (const project of projects) {
+			await createWorkflow(
+				{ name: `${project.name} Workflow`, nodes: [], connections: {} },
+				project,
+			);
+		}
 
 		const result = await service.exportPackageToDirectory(
-			{ user: owner, projectIds: [alpha.id, beta.id] },
+			{ user: owner, projectIds: projects.map(({ id }) => id) },
 			{ targetDir },
 		);
 
 		const manifest = await readJson('manifest.json');
-		// The manifest lists the entries by id.
-		expect(manifest.projects).toEqual(
-			[
-				{ id: alpha.id, name: 'Alpha Project', target: `projects/alpha-project-${alpha.id}` },
-				{ id: beta.id, name: 'Beta Project', target: `projects/beta-project-${beta.id}` },
-			].sort((a, b) => (a.id < b.id ? -1 : 1)),
+		expect(manifest.projects.map(({ id }: { id: string }) => id)).toEqual(
+			projects.map(({ id }) => id).sort(),
 		);
+		expect(manifest.projects).toContainEqual({
+			id: projects[0].id,
+			name: 'Alpha Project',
+			target: `projects/alpha-project-${projects[0].id}`,
+		});
 		expect(await readdir(targetDir)).toEqual(expect.arrayContaining(['manifest.json', 'projects']));
-		expect(result.counts.workflows).toBe(2);
+		expect(result.counts.workflows).toBe(projects.length);
 	});
 
 	it('does not emit the user package-export event', async () => {
