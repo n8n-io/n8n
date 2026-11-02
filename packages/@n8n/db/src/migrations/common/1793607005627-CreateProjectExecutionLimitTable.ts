@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const TABLE = 'project_execution_limit';
 
-export class CreateProjectExecutionLimitTable1793271136710 implements ReversibleMigration {
+export class CreateProjectExecutionLimitTable1793607005627 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
 		await createTable(TABLE)
 			.withColumns(column('projectId').varchar(36).primary, column('maxExecutions').int.notNull)
