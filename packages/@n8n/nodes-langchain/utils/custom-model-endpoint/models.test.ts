@@ -1,10 +1,18 @@
-import type { INode, NodeEgressFilter } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode, NodeEgressFilter } from 'n8n-workflow';
 
 import { createCustomModelEndpointAuthFetch } from './auth-fetch';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
 import { wrapCustomModelEndpointErrorFetch } from './error-handling';
-import { listGatewayModels } from './models';
+import { listGatewayModels, searchModels } from './models';
 import type { EndpointCredential, LoginMethod } from './types';
+
+// searchModels builds the real dispatcher-backed transport, which a unit test
+// does not stand up. Only that one hop is replaced.
+const stubbed = vi.hoisted(() => ({ baseFetch: undefined as unknown as typeof fetch }));
+vi.mock('./auth-fetch', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./auth-fetch')>()),
+	createEndpointBaseFetch: () => stubbed.baseFetch,
+}));
 
 const BASE_URL = 'https://gateway.example.com/v1';
 
@@ -124,5 +132,57 @@ describe('listGatewayModels', () => {
 			'x-api-key': 'secret-9f2a71c4',
 			'x-gateway-team': 'platform',
 		});
+	});
+});
+
+describe('searchModels', () => {
+	const node = {
+		id: '1',
+		name: 'n',
+		type: 't',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+		credentials: { customModelEndpointApi: { id: '1', name: 'c' } },
+	} as unknown as INode;
+
+	const searching = (body: string, status = 200) => {
+		const { fetchImpl } = answering(body, status);
+		stubbed.baseFetch = fetchImpl;
+		return {
+			getNode: () => node,
+			getCredentials: async () => ({ url: BASE_URL, authentication: 'none' }),
+			helpers: {
+				getSecureEgressFilter: () => ({ validateUrl: async () => ({ ok: true }) }),
+			},
+		} as unknown as ILoadOptionsFunctions;
+	};
+
+	it('offers every model the gateway lists', async () => {
+		const result = await searchModels.call(searching(openAiStyle));
+
+		expect(result.results).toEqual([
+			{ name: 'gpt-4o', value: 'gpt-4o' },
+			{ name: 'claude-sonnet', value: 'claude-sonnet' },
+		]);
+	});
+
+	it.each([
+		['matches regardless of case', 'CLAUDE', ['claude-sonnet']],
+		['matches on a fragment', 'sonnet', ['claude-sonnet']],
+		['keeps everything when the filter is empty', '', ['gpt-4o', 'claude-sonnet']],
+		['keeps nothing when nothing matches', 'mistral', []],
+	])('filters the list and %s', async (_name, filter, expected) => {
+		const result = await searchModels.call(searching(openAiStyle), filter);
+
+		expect(result.results.map((entry) => entry.value)).toEqual(expected);
+	});
+
+	it.each([
+		['the gateway publishes no list', '', 404, 'does not publish a model list'],
+		['the gateway refuses', '{"error":{"message":"nope"}}', 403, 'could not list its models'],
+		['the answer is not JSON', '<html></html>', 200, 'not JSON'],
+	])('raises against the node when %s', async (_name, body, status, expected) => {
+		await expect(searchModels.call(searching(body, status))).rejects.toThrow(expected);
 	});
 });
