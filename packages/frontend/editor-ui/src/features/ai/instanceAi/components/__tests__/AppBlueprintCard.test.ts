@@ -20,6 +20,9 @@ describe('AppBlueprintCard', () => {
 		const name = getByTestId('instance-ai-app-blueprint-name');
 		await userEvent.clear(name);
 		await userEvent.type(name, 'Project planner');
+		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
+		await userEvent.clear(namespace);
+		await userEvent.type(namespace, 'project-planner');
 
 		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
 
@@ -27,7 +30,7 @@ describe('AppBlueprintCard', () => {
 			{
 				kind: 'appBlueprint',
 				approved: true,
-				blueprint: { ...blueprint, name: 'Project planner' },
+				blueprint: { ...blueprint, name: 'Project planner', namespace: 'project-planner' },
 			},
 		]);
 	});
