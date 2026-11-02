@@ -1,9 +1,8 @@
 import type { ToolApprovalContext } from '@n8n/agents';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError } from '@n8n/errors';
-
-import { Telemetry } from '@/telemetry';
 
 import type { StartExecutionParams } from './agent-execution.service';
 import { buildApprovalArgs } from './execution-recorder';
@@ -14,7 +13,7 @@ import type { ToolRegistry } from './tool-registry';
 export class AgentToolApprovalService {
 	constructor(
 		private readonly grants: AgentThreadGrantRepository,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async createContext(

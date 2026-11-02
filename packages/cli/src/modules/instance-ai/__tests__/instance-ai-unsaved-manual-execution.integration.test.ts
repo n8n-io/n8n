@@ -1,5 +1,9 @@
 import { LicenseState } from '@n8n/backend-common';
-import { CacheService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import {
+	CacheService,
+	ExecutionRedactionServiceProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
@@ -22,7 +26,6 @@ import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-man
 import { License } from '@/license';
 import { ExecutionRedactionService } from '@/modules/redaction/executions/execution-redaction.service';
 import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 import { createExecution } from '@test-integration/db/executions';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -38,7 +41,7 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
  */
 describe('Instance AI unsaved manual executions (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
-	mockInstance(Telemetry);
+	mockInstance(TelemetryProxy);
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 
 	const OUTPUT = { channelId: 'C07SW3BQX8R', ts: '1789047591.742709' };

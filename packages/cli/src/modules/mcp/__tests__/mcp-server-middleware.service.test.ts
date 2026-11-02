@@ -9,8 +9,7 @@ import jwt from 'jsonwebtoken';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { JwtService, TelemetryProxy } from '@n8n/backend-services';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
@@ -64,7 +63,7 @@ let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
 let mcpProtectedResource: Mocked<McpProtectedResource>;
 let admission: Mocked<ResourceAdmission>;
 let userRepository: Mocked<UserRepository>;
-let telemetry: Mocked<Telemetry>;
+let telemetry: Mocked<TelemetryProxy>;
 let logger: Mocked<Logger>;
 let service: McpServerMiddlewareService;
 
@@ -76,7 +75,7 @@ describe('McpServerMiddlewareService', () => {
 		}) as Mocked<McpProtectedResource>;
 		admission = mock<ResourceAdmission>();
 		userRepository = mock<UserRepository>();
-		telemetry = mockInstance(Telemetry);
+		telemetry = mockInstance(TelemetryProxy);
 		logger = mock<Logger>();
 
 		service = new McpServerMiddlewareService(

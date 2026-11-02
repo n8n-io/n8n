@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import {
 	getConnectionTypes,
 	NodeConnectionTypes,
@@ -6,7 +7,6 @@ import {
 } from 'n8n-workflow';
 
 import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -159,7 +159,7 @@ export function buildInvalidAiToolSourceErrorResponse<T extends Record<string, u
 	nodeTypes: NodeTypes,
 	buildOutput: (errorMessage: string) => T,
 	telemetryPayload: UserCalledMCPToolEventPayload,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): {
 	content: Array<{ type: 'text'; text: string }>;
 	structuredContent: T;

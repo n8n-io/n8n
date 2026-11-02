@@ -1,9 +1,9 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ITagWithCountDb } from '@n8n/db';
 import { User } from '@n8n/db';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 
 import { createListTagsTool, listTags } from '../tools/list-tags.tool';
 
@@ -38,7 +38,7 @@ describe('list-tags MCP tool', () => {
 						totalCount: opts.totalCount ?? tagsOrError.length,
 					});
 		const tagService = mockInstance(TagService, { listWithUsageCount });
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		return { tagService, telemetry };
 	};
 

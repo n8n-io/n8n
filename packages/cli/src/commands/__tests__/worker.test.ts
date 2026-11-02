@@ -1,6 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
-import { type EventService, JwtService, RedisClientService } from '@n8n/backend-services';
+import {
+	type EventService,
+	JwtService,
+	RedisClientService,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
@@ -12,6 +17,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -37,6 +43,7 @@ import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { Telemetry } from '@/telemetry';
 
 import { Worker } from '../worker';
 
@@ -75,6 +82,7 @@ mockInstance(MessageEventBus);
 mockInstance(PostHogClient);
 mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
+const telemetry = mockInstance(Telemetry);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(DeprecationService);
@@ -205,6 +213,20 @@ describe('Worker', () => {
 	describe('init', () => {
 		afterEach(() => {
 			vi.unstubAllEnvs();
+		});
+
+		it('should register telemetry on the telemetry proxy before the modules initialize', async () => {
+			const telemetryProxy = mockInstance(TelemetryProxy);
+			const worker = createWorkerForInit();
+
+			await worker.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const initModules = worker.moduleRegistry.initModules as Mock;
+			expect(telemetryProxy.registerProvider).toHaveBeenCalledWith(telemetry);
+			expect(telemetryProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
+			);
 		});
 
 		it.each([

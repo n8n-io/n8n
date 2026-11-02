@@ -1,16 +1,15 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import { WhatsAppSetupTelemetryService } from '../../whatsapp/whatsapp-setup-telemetry.service';
 
 describe('WhatsAppSetupTelemetryService', () => {
-	let telemetry: ReturnType<typeof mock<Telemetry>>;
+	let telemetry: ReturnType<typeof mock<TelemetryProxy>>;
 	let service: WhatsAppSetupTelemetryService;
 
 	beforeEach(() => {
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 		service = new WhatsAppSetupTelemetryService(telemetry);
 	});
 

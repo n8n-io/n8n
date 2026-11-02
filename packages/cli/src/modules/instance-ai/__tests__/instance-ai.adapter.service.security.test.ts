@@ -36,6 +36,7 @@ import {
 	type RoleService,
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
+	type TelemetryProxy,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { CredentialsRepository, GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
@@ -79,7 +80,6 @@ import type { PolicyEnforcementService } from '@/policy/policy-enforcement.servi
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
 vi.mock('@/permissions.ee/check-access');
@@ -135,7 +135,7 @@ const license = mock<License>();
 const executionPersistence = mock<ExecutionPersistence>();
 const eventService = mock<EventService>();
 const roleService = mock<RoleService>();
-const telemetry = mock<Telemetry>();
+const telemetry = mock<TelemetryProxy>();
 const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
 const nodeResourceExplorerService = new NodeResourceExplorerService(

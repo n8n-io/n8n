@@ -1,4 +1,5 @@
 import { packagePolicyRestrictionsSchema, type PackagePolicyRestrictions } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
@@ -6,7 +7,6 @@ import z from 'zod';
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import type { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 
 import { INSTALL_COMMUNITY_NODE_TOOL, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -95,7 +95,7 @@ export const createInstallCommunityNodeTool = (
 	communityNodeTypesService: CommunityNodeTypesService,
 	communityPackagesLifecycleService: CommunityPackagesLifecycleService,
 	nodeTypes: NodeTypes,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: INSTALL_COMMUNITY_NODE_TOOL.toolName,
 	config: {

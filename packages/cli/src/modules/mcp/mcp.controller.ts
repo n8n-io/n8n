@@ -1,12 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { createIpRateLimit, Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
-
-import { Telemetry } from '@/telemetry';
 
 import { McpProtectedResource } from './mcp-protected-resource';
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
@@ -39,7 +38,7 @@ export class McpController {
 	constructor(
 		private readonly errorReporter: ErrorReporter,
 		private readonly mcpService: McpService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly logger: Logger,
 		private readonly mcpProtectedResource: McpProtectedResource,
 	) {}

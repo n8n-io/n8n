@@ -1,10 +1,10 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { toEngineConnections, toGroupValidationNodes } from '@n8n/workflow-sdk';
 import { validateWorkflowGroups } from 'n8n-workflow';
 import z from 'zod';
 
 import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 import { makeGetNodeTypeForGrouping } from '@/workflow-helpers';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -54,7 +54,7 @@ const outputSchema = {
  */
 export const createValidateWorkflowCodeTool = (
 	user: User,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	nodeTypes: NodeTypes,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,

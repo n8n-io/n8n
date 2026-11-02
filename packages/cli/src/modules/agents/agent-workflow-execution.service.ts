@@ -26,12 +26,12 @@ import type {
 import { OperationalError, UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { AgentRunTelemetryType } from '@/interfaces';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
-import { Telemetry } from '@/telemetry';
 
 import type { StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
+import type { AgentRunTelemetryType } from './agent-telemetry.types';
+import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
@@ -180,7 +180,7 @@ export class AgentWorkflowExecutionService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly turnExecutionService: AgentTurnExecutionService,
-		private readonly telemetry: Telemetry,
+		private readonly agentUsageTelemetry: AgentUsageTelemetryService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly agentRunTracingService: AgentRunTracingService,
@@ -463,7 +463,7 @@ export class AgentWorkflowExecutionService {
 						...encodeIntegrationMessageContext(messageContext),
 					},
 				},
-				executionCounter: createAgentExecutionCounter(this.telemetry, {
+				executionCounter: createAgentExecutionCounter(this.agentUsageTelemetry, {
 					agentId: telemetryAgentId,
 					userId: telemetryUserId,
 					runType,
@@ -985,7 +985,7 @@ export class AgentWorkflowExecutionService {
 		const { telemetryUserId, threadId } = params;
 		// Inline runs have no stored session, so report completion here.
 		try {
-			this.telemetry.trackAgentTurnFinished({
+			this.agentUsageTelemetry.trackAgentTurnFinished({
 				agent_id: syntheticAgentId,
 				user_id: telemetryUserId,
 				thread_id: threadId,

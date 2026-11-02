@@ -4,8 +4,7 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import type { FolderFinderService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { FolderFinderService, TelemetryProxy } from '@n8n/backend-services';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -65,7 +64,7 @@ export const createMoveWorkflowsToFolderTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
 	folderFinderService: FolderFinderService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'move_workflows_to_folder',
 	config: {

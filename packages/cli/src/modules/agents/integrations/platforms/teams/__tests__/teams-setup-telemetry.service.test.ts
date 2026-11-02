@@ -1,7 +1,6 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import { TeamsSetupTelemetryService, withTeamsFailure } from '../teams-setup-telemetry.service';
 
@@ -13,14 +12,14 @@ const report = {
 };
 
 describe('TeamsSetupTelemetryService', () => {
-	let telemetry: ReturnType<typeof mock<Telemetry>>;
+	let telemetry: ReturnType<typeof mock<TelemetryProxy>>;
 	let service: TeamsSetupTelemetryService;
 
 	/** The properties the one event was tracked with. */
 	const tracked = () => telemetry.track.mock.calls[0][1] as Record<string, unknown>;
 
 	beforeEach(() => {
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 		service = new TeamsSetupTelemetryService(telemetry);
 	});
 

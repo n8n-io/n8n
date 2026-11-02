@@ -1,3 +1,4 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	isAbortError,
@@ -57,7 +58,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiService } from '@/services/ai.service';
 import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from '../agent-config.service';
@@ -517,7 +517,7 @@ export class AgentsBuilderToolsService {
 		private readonly outboundHttp: OutboundHttp,
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}

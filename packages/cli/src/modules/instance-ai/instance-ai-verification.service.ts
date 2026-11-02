@@ -8,6 +8,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -16,7 +17,6 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
-import { Telemetry } from '@/telemetry';
 import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -109,7 +109,7 @@ export class InstanceAiVerificationService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly modelService: InstanceAiModelService,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async verifyModel(

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -6,8 +7,6 @@ import type { Request } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
-
-import { Telemetry } from '@/telemetry';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
@@ -95,7 +94,7 @@ describe('McpController', () => {
 	let controller: McpControllerType;
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
-	const telemetry = { track: vi.fn() } as unknown as Telemetry;
+	const telemetry = { track: vi.fn() } as unknown as TelemetryProxy;
 	const mcpService = {
 		getServer: vi.fn(),
 		resolveFeatureFlags: vi.fn(),
@@ -125,7 +124,7 @@ describe('McpController', () => {
 
 		Container.set(Logger, logger);
 		Container.set(ErrorReporter, errorReporter);
-		Container.set(Telemetry, telemetry);
+		Container.set(TelemetryProxy, telemetry);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
 		Container.set(McpProtectedResource, mcpProtectedResource);

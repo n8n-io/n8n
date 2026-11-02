@@ -2,7 +2,12 @@ import type { AgentDefinitionService } from '@/modules/agents/agent-definition.s
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig, AgentPublishHistoryItemDto } from '@n8n/api-types';
-import { type EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
+import {
+	type EventService,
+	ProjectScopeService,
+	UrlService,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
 import { User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
@@ -70,7 +75,6 @@ import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { Telemetry } from '@/telemetry';
 
 import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -141,7 +145,7 @@ const agentEntity = (overrides: Record<string, unknown> = {}): ProjectAgent =>
 describe('McpAgentToolsService', () => {
 	// One fake skill refs seam for the MCP service and the services it writes through.
 	const agentSkillRefs = createAgentSkillRefsService();
-	const telemetry = mockInstance(Telemetry);
+	const telemetry = mockInstance(TelemetryProxy);
 	const credentialsService = mockInstance(CredentialsService);
 	const agentsService = mockInstance(AgentsService);
 	const agentConfigService = mockInstance(AgentConfigService);
@@ -235,7 +239,7 @@ describe('McpAgentToolsService', () => {
 	const useRealCustomToolPersistence = (agent: ProjectAgent) => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
-		const lifecycleTelemetry = mock<Telemetry>();
+		const lifecycleTelemetry = mock<TelemetryProxy>();
 		const modificationTelemetry = new AgentModificationTelemetryService(
 			lifecycleTelemetry,
 			mock<InstanceSettings>(),

@@ -1,9 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-
-import { Telemetry } from '@/telemetry';
 
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
@@ -62,7 +61,7 @@ export type SkillTelemetryRef = SkillTelemetryTarget | string;
 @Service()
 export class SkillsTelemetry {
 	constructor(
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly skillRepository: SkillRepository,
 		private readonly logger: Logger,
 	) {}

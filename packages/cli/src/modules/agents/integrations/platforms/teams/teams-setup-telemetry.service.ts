@@ -1,8 +1,7 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError } from '@n8n/errors';
-
-import { Telemetry } from '@/telemetry';
 
 type Step = 'create_app' | 'create_bot' | 'install';
 
@@ -60,7 +59,7 @@ export function withTeamsFailure<E extends Error>(error: E, reason: TeamsSetupFa
  */
 @Service()
 export class TeamsSetupTelemetryService {
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(private readonly telemetry: TelemetryProxy) {}
 
 	succeeded(report: TeamsSetupStepReport): void {
 		this.track(report, 'succeeded');

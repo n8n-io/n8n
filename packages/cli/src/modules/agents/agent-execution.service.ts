@@ -16,10 +16,13 @@ import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type {
+	AgentRunTelemetryType,
+	IAgentConfigurationTelemetryProperties,
+} from './agent-telemetry.types';
+import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
@@ -192,7 +195,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
-		private readonly telemetry: Telemetry,
+		private readonly agentUsageTelemetry: AgentUsageTelemetryService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
@@ -1360,7 +1363,7 @@ export class AgentExecutionService {
 		if (!params.telemetry) return;
 		const { agentId, threadId, record } = params;
 		try {
-			this.telemetry.trackAgentTurnFinished({
+			this.agentUsageTelemetry.trackAgentTurnFinished({
 				agent_id: agentId,
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
