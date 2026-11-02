@@ -5,7 +5,7 @@ describe('resolvePublicApiClient', () => {
 		['editor_ui', 'editor-ui'],
 		['other', 'other'],
 	])(
-		'returns the %s telemetry value for the $s marker value',
+		'returns the %s telemetry value for the %s marker value',
 		(expectedTelemetryValue, received) => {
 			expect(resolvePublicApiClient(received)).toBe(expectedTelemetryValue);
 		},
