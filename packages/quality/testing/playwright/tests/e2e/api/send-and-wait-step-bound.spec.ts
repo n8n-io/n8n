@@ -192,5 +192,18 @@ test.describe(
 			expect(await request(api, approvePath)).toBe(200);
 			expect(await approvedAfterResume(api, executionId)).toBe(true);
 		});
+
+		test('should hold a link that arrives before Slack confirms the message, then resume @engine:v2-only', async ({
+			api,
+			services,
+		}) => {
+			// Passes only while DEFAULT_RESUME_HOLD in @n8n/engine (about 1 s) outlasts this delay.
+			const { executionId } = await start(api, services.proxy, { slackDelayMs: 600 });
+			const { approvePath } = await readButtons(services.proxy);
+			expect((await api.workflows.getExecution(executionId)).status).toBe('running');
+
+			expect(await request(api, approvePath)).toBe(200);
+			expect(await approvedAfterResume(api, executionId)).toBe(true);
+		});
 	},
 );
