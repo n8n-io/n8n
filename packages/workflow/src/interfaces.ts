@@ -462,6 +462,8 @@ export interface ICredentialType {
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
 	__showManagedOAuthScopes?: boolean;
+	/** Lets n8n register the OAuth2 client at `serverUrl`, so users need no app of their own. */
+	dynamicClientRegistration?: { serverUrl: string };
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,

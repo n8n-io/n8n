@@ -46,7 +46,7 @@ import {
 	parseTemplatedAuthField,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '../templatedAuth.utils';
-import { hasManagedOAuthApp } from '../credentials.utils';
+import { hasAutomaticOAuthApp, hasManagedOAuthApp } from '../credentials.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -210,6 +210,10 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
 	);
 
+	const isAutomaticOAuthType = computed(() =>
+		hasAutomaticOAuthApp(credentialType.value ?? undefined),
+	);
+
 	const isOAuthConnected = computed(() => {
 		if (!isOAuthType.value) return false;
 		if (isResolvable.value) return connectedByMe.value;
@@ -242,6 +246,24 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		{ immediate: true },
 	);
 
+	// Automatic types store the selected mode for the backend.
+	watch(
+		() => [
+			isAutomaticOAuthType.value,
+			useCustomOAuth.value,
+			credentialData.value.useDynamicClientRegistration,
+		],
+		() => {
+			if (!isAutomaticOAuthType.value) return;
+			const useDynamicClientRegistration = !useCustomOAuth.value;
+			if (credentialData.value.useDynamicClientRegistration === useDynamicClientRegistration) {
+				return;
+			}
+			credentialData.value = { ...credentialData.value, useDynamicClientRegistration };
+		},
+		{ immediate: true },
+	);
+
 	// --- properties --------------------------------------------------------
 	const credentialProperties = computed(() => {
 		const type = credentialType.value;
@@ -249,6 +271,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 
 		const properties = type.properties.filter((propertyData: INodeProperties) => {
 			if (!displayCredentialParameter(propertyData)) return false;
+			if (isAutomaticOAuthType.value && propertyData.name === 'serverUrl') return false;
 			return useCustomOAuth.value || !type.__overwrittenProperties?.includes(propertyData.name);
 		});
 
@@ -401,7 +424,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	}
 
 	function hasManagedOAuthCredentials(credType: string): boolean {
-		return hasManagedOAuthApp(credentialsStore.getCredentialTypeByName(credType));
+		const type = credentialsStore.getCredentialTypeByName(credType);
+		return hasManagedOAuthApp(type) || hasAutomaticOAuthApp(type);
 	}
 
 	function usesExternalSecrets(data: Record<string, unknown>): boolean {
@@ -502,6 +526,10 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			typeof loaded.connectedAccountIdentifier === 'string'
 				? loaded.connectedAccountIdentifier
 				: undefined;
+		// Same tick as the data, so the sync watcher sees the right mode.
+		if (isAutomaticOAuthType.value) {
+			useCustomOAuth.value = credentialData.value.useDynamicClientRegistration !== true;
+		}
 	}
 
 	// An existing credential whose managed clientId/secret were overridden was

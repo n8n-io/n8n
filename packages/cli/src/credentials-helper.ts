@@ -431,7 +431,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// The properties defined on the parent credentials take precedence
 		NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
 
-		return combineProperties;
+		const { dynamicClientRegistration } = credentialTypeData;
+		if (!dynamicClientRegistration) return combineProperties;
+		return combineProperties.map((property) =>
+			property.name === 'serverUrl'
+				? { ...property, default: dynamicClientRegistration.serverUrl }
+				: property,
+		);
 	}
 
 	private resolveCredentialExpressions(
@@ -757,11 +763,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		managedVersion?: number,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
+		const { dynamicClientRegistration } = this.credentialTypes.getByName(type);
 
 		// The credential type owns hidden OAuth endpoint/flow fields. Drop stored values so
 		// applyOverwrite (admin overwrite) and getNodeParameters (type default) fill them.
+		// Registration types let the user choose, so keep the stored choice.
 		const storedData = { ...decryptedDataOriginal };
 		for (const field of OAUTH_PINNED_FIELDS) {
+			if (dynamicClientRegistration && field === 'useDynamicClientRegistration') continue;
 			if (credentialsProperties.some((p) => p.name === field && p.type === 'hidden')) {
 				delete storedData[field];
 			}

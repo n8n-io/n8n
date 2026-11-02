@@ -196,9 +196,11 @@ watch(
 			const data = credential?.data;
 			if (data && typeof data === 'object') {
 				// Stored client fields identify a custom app even when managed OAuth is available.
-				const customClient = Boolean(
-					(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
-				);
+				const customClient =
+					!data.useDynamicClientRegistration &&
+					Boolean(
+						(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
+					);
 				oauthMode.value = customClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
 			}
 		} catch {
