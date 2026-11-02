@@ -19,7 +19,8 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * `targetLabel` slots hold the panel labels.
  * `code-diff` renders a line diff of two texts in the editor theme.
  * `promotion-changes` lists what a promotion review changes. It loads the changes itself, so
- * the module needs no knowledge of the promotion types.
+ * the module needs no knowledge of the promotion types. The promotions module provides it, and
+ * the shell registers it for the inbox module.
  * `project-header` is the overview/project page header with the project tabs, which a
  * resource list page renders above its list.
  * `insights-summary` is the weekly insights summary of the overview pages. It loads the summary

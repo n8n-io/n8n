@@ -10,12 +10,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 
-import { PromotionsModule } from '../module.descriptor';
+import { PromotionsModule } from './promotions.module';
 import {
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_SETTINGS_SCOPES,
 	PROMOTIONS_SETTINGS_VIEW,
-} from '../promotions.constants';
+} from './promotions.constants';
 
 const stub = { render: () => null };
 
