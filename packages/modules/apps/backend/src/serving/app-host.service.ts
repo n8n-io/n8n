@@ -59,7 +59,7 @@ export class AppHostService {
 			).toLowerCase();
 			if (!DNS_LABEL_PATTERN.test(instanceName) || instanceName.includes('--')) {
 				throw new BadRequestError(
-					'Apps require a valid Cloud instance name. Set DEPLOYMENT_NAME or configure a valid instance base URL.',
+					'Apps require a valid Cloud instance name. Set DEPLOYMENT_NAME to a valid name, or leave it unset and use an instance base URL with a valid first hostname label.',
 				);
 			}
 			this.hostSuffix = `--${instanceName}`;

@@ -226,7 +226,7 @@ describe('AppHostService', () => {
 			'rejects an instance name that cannot form an app host: %s',
 			(name) => {
 				expect(() => setup({ ...cloud, deploymentName: name })).toThrow(
-					'Set DEPLOYMENT_NAME or configure a valid instance base URL',
+					'Set DEPLOYMENT_NAME to a valid name, or leave it unset and use an instance base URL with a valid first hostname label.',
 				);
 			},
 		);
