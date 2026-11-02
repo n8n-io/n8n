@@ -110,6 +110,7 @@ target "runners" {
   inherits   = ["_app"]
   dockerfile = "docker/images/runners/Dockerfile"
   tags       = tags(RUNNERS_TAGS, "${RUNNERS_IMAGE_BASE_NAME}:${IMAGE_TAG}")
+  args       = { NODE_IMAGE = BUILDER_IMAGE }
 }
 
 target "runners-distroless" {

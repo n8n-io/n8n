@@ -32,7 +32,7 @@ import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@n8n/errors';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
 import { FolderService } from '@/services/folder.service';

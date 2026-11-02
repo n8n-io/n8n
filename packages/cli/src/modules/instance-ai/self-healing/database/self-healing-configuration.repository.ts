@@ -3,6 +3,7 @@ import {
 	BaseRepository,
 	isUniqueConstraintError,
 	parseDbTime,
+	Person,
 	Project,
 	ProjectRelation,
 	SharedWorkflow,
@@ -93,9 +94,9 @@ function projectMemberCondition<T extends ObjectLiteral>(
 }
 
 /**
- * Keep only rows where the user is a current member of the configuration's project and
- * a reviewer, either listed or included with all project members. Workflow access is
- * checked separately.
+ * Keep only rows where the user is a person, a current member of the configuration's
+ * project and a reviewer, either listed or included with all project members. Only a
+ * person can review a fix. Workflow access is checked separately.
  */
 export function whereReviewer<T extends ObjectLiteral>(
 	query: SelectQueryBuilder<T>,
@@ -103,6 +104,13 @@ export function whereReviewer<T extends ObjectLiteral>(
 	userIdExpression: string,
 	projectIdExpression = `${configurationAlias}.projectId`,
 ) {
+	// A query on `Person` filters on `kind`. The filter value is a parameter of the subquery.
+	const person = query
+		.createQueryBuilder()
+		.select('1')
+		.from(Person, 'reviewerPerson')
+		.where(`reviewerPerson.id = ${userIdExpression}`);
+	query.setParameters(person.getParameters());
 	const member = projectMemberCondition(query, projectIdExpression, userIdExpression);
 	const explicit = query
 		.subQuery()
@@ -112,7 +120,7 @@ export function whereReviewer<T extends ObjectLiteral>(
 		.andWhere(`explicitReviewer.userId = ${userIdExpression}`)
 		.getQuery();
 	return query.andWhere(
-		`(${member} AND (${configurationAlias}.includeAllProjectMembers = :includeAllProjectMembers OR EXISTS ${explicit}))`,
+		`(EXISTS (${person.getQuery()}) AND ${member} AND (${configurationAlias}.includeAllProjectMembers = :includeAllProjectMembers OR EXISTS ${explicit}))`,
 		{ includeAllProjectMembers: true },
 	);
 }
@@ -252,8 +260,9 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	) {
 		if (userIds?.length === 0) return [];
 
+		// Reviewers are chosen by name and review in their inbox, so they are people.
 		const query = this.manager
-			.createQueryBuilder(User, 'user')
+			.createQueryBuilder(Person, 'user')
 			.leftJoin(
 				ProjectRelation,
 				'projectMember',
@@ -279,7 +288,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 
 	private reviewerMembers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
 		const query = this.managerFor(ctx)
-			.createQueryBuilder(User, 'user')
+			.createQueryBuilder(Person, 'user')
 			.innerJoin(SelfHealingConfiguration, 'configuration', 'configuration.id = :configurationId', {
 				configurationId: configuration.id,
 			})

@@ -1049,9 +1049,41 @@ describe('InstanceContextService', () => {
 			expect(entries.map((e) => e.id)).toEqual([2]);
 		});
 
+		/** The scoped query returns team projects only, so the personal project is added back. */
+		it('reads runs from the personal project for a global reader without global execution:read', async () => {
+			const service = serviceWith();
+			projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+				scopes.includes('execution:read') ? ['team-a'] : [],
+			);
+			projectRepository.getPersonalProjectForUser.mockResolvedValue(
+				mock<Project>({ id: PERSONAL_PROJECT_ID }),
+			);
+
+			await service.buildBlock({
+				enabled: true,
+				user: GLOBAL_READER,
+				scope: unbound(false),
+				cursor: null,
+				now: NOW,
+			});
+
+			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(
+				GLOBAL_READER,
+				['execution:read'],
+				undefined,
+			);
+			expect(executionRepository.summariseRunsForProjects).toHaveBeenCalledWith(
+				expect.objectContaining({ projectIds: ['team-a', PERSONAL_PROJECT_ID] }),
+			);
+		});
+
 		describe('the opening block', () => {
 			it('filters the aggregate legs inside the query, not after it', async () => {
 				const service = serviceWith();
+				// The caller holds `execution:read` on the project, so the run leg is read.
+				projectService.getProjectIdsWithScope.mockImplementation(async (_user, scopes) =>
+					scopes.includes('execution:read') ? [PROJECT_ID] : [],
+				);
 				workflowRepository.findRecentForProjects.mockResolvedValue({
 					total: 1,
 					workflows: [{ id: 'wf-1', name: 'Lead enrichment', active: false }],
@@ -1072,7 +1104,7 @@ describe('InstanceContextService', () => {
 					{ mcpVisibleOnly: true },
 				);
 				expect(executionRepository.summariseRunsForProjects).toHaveBeenCalledWith(
-					expect.objectContaining({ mcpVisibleOnly: true }),
+					expect.objectContaining({ projectIds: [PROJECT_ID], mcpVisibleOnly: true }),
 				);
 			});
 

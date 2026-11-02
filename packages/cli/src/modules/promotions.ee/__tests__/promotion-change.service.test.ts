@@ -13,6 +13,11 @@ import { PACKAGE_SUBFOLDER } from '../constants';
 import { PromotionChangeService } from '../promotion-change.service';
 import { buildPreview, scopeManifestToProject, type PreviewSide } from '../promotion-preview';
 
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+
 const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
 
 // The global entry comes last on purpose: a name-keyed map would keep it for every project.

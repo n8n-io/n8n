@@ -340,6 +340,25 @@ describe('N8nMemory', () => {
 		});
 	});
 
+	describe('getThreadsMetadata', () => {
+		it('reads the metadata of the threads in one query, and leaves out empty or unreadable metadata', async () => {
+			threadRepository.findMetadataByIds.mockResolvedValue([
+				{ id: 'thread-1', metadata: JSON.stringify({ emoji: '🤖' }) },
+				{ id: 'thread-2', metadata: null },
+				{ id: 'thread-3', metadata: '{not json' },
+			]);
+
+			const metadata = await memoryService.getThreadsMetadata(['thread-1', 'thread-2', 'thread-3']);
+
+			expect(threadRepository.findMetadataByIds).toHaveBeenCalledWith([
+				'thread-1',
+				'thread-2',
+				'thread-3',
+			]);
+			expect(metadata).toEqual(new Map([['thread-1', { emoji: '🤖' }]]));
+		});
+	});
+
 	describe('patchThread', () => {
 		let writes: number;
 
@@ -1370,6 +1389,7 @@ describe('N8nMemory', () => {
 				'agent-1',
 				'thread:thread-1',
 				100,
+				{},
 			);
 		});
 
@@ -1495,6 +1515,7 @@ describe('N8nMemory', () => {
 					'agent-1',
 					'slack:T1:channel:C1',
 					100,
+					{},
 				);
 			});
 
@@ -1602,10 +1623,11 @@ describe('N8nMemory', () => {
 
 			const sources = await memory.getEntrySourcesWithMessageContext(['memory-1']);
 
-			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith('agent-1', [
-				'candidate-1',
-				'candidate-2',
-			]);
+			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith(
+				'agent-1',
+				['candidate-1', 'candidate-2'],
+				{},
+			);
 			expect(sources[0]).toMatchObject({
 				id: 'source-quoted',
 				author: { id: 'U1', name: 'Alice' },

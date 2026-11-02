@@ -195,27 +195,27 @@ async function bakeVariable(name) {
  * plan, so this list repeats the targets and their pins.
  */
 async function buildWithPodman(platform) {
-	const nodeVersion = ['NODE_VERSION', await bakeVariable('NODE_VERSION')];
+	const builderImage = await bakeVariable('BUILDER_IMAGE');
 	const podmanTargets = [
 		{
 			dockerfile: 'docker/images/n8n/Dockerfile',
 			tag: `${imageBaseName}:${imageTag}`,
 			args: [
-				['BUILDER_IMAGE', await bakeVariable('BUILDER_IMAGE')],
+				['BUILDER_IMAGE', builderImage],
 				['RUNTIME_IMAGE', await bakeVariable('RUNTIME_IMAGE')],
 			],
 		},
 		{
 			dockerfile: 'docker/images/runners/Dockerfile',
 			tag: `${runnersImageBaseName}:${imageTag}`,
-			args: [nodeVersion],
+			args: [['NODE_IMAGE', builderImage]],
 		},
 	];
 	if (withDistroless) {
 		podmanTargets.push({
 			dockerfile: 'docker/images/runners/Dockerfile.distroless',
 			tag: `${runnersImageBaseName}:${imageTag}-distroless`,
-			args: [nodeVersion],
+			args: [['NODE_VERSION', await bakeVariable('NODE_VERSION')]],
 		});
 	}
 

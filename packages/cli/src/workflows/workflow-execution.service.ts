@@ -1,3 +1,4 @@
+import type { ManualRunResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	EventService,
@@ -354,7 +355,7 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 		n8nAuthCookie?: string,
-	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+	): Promise<ManualRunResponse> {
 		this.assertManualExecutionAllowed();
 
 		// Check whether this workflow is active.
@@ -402,9 +403,8 @@ export class WorkflowExecutionService {
 		if (isFullExecutionFromKnownTrigger(payload)) {
 			// We must always register the webhook - even when the Chat Trigger has
 			// pinned data – because the chat SDK will POST the message to it.
-			if (
-				(payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) &&
-				(await this.testWebhooks.needsWebhook({
+			if (payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) {
+				const { nodeNames, formTestUrls } = await this.testWebhooks.registerWebhooks({
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
@@ -417,9 +417,11 @@ export class WorkflowExecutionService {
 					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
 					n8nAuthCookie,
-				}))
-			) {
-				return { waitingForWebhook: true };
+				});
+
+				if (nodeNames.length > 0) {
+					return { waitingForWebhook: true, formTestUrls };
+				}
 			}
 
 			data = {
@@ -442,9 +444,8 @@ export class WorkflowExecutionService {
 				workflowData.pinData ?? {},
 			);
 
-			if (
-				pinnedTrigger === undefined &&
-				(await this.testWebhooks.needsWebhook({
+			if (pinnedTrigger === undefined) {
+				const { nodeNames, formTestUrls } = await this.testWebhooks.registerWebhooks({
 					userId: user.id,
 					workflowEntity: workflowData,
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
@@ -455,9 +456,11 @@ export class WorkflowExecutionService {
 					destinationNode: payload.destinationNode,
 					workflowIsActive,
 					n8nAuthCookie,
-				}))
-			) {
-				return { waitingForWebhook: true };
+				});
+
+				if (nodeNames.length > 0) {
+					return { waitingForWebhook: true, formTestUrls };
+				}
 			}
 
 			data = {
@@ -779,7 +782,7 @@ export class WorkflowExecutionService {
 	 * Select the pinned trigger node to use as starter for a manual execution.
 	 *
 	 * Finds all pinned trigger nodes in the workflow, then returns the first pinned trigger
-	 * that is a parent of the destination node. Webhook triggers are prioritized over other
+	 * that is the destination node or one of its parents. Webhook triggers are prioritized over other
 	 * trigger types in the sorting order.
 	 *
 	 * @param workflow The workflow containing the nodes and connections
@@ -796,16 +799,17 @@ export class WorkflowExecutionService {
 
 		if (allPinnedTriggers.length === 0) return undefined;
 
-		const destinationParents = new Set(
-			new Workflow({
+		const destinationAndParents = new Set([
+			destinationNode,
+			...new Workflow({
 				nodes: workflow.nodes,
 				connections: workflow.connections,
 				active: workflow.activeVersionId !== null,
 				nodeTypes: this.nodeTypes,
 			}).getParentNodes(destinationNode),
-		);
+		]);
 
-		const trigger = allPinnedTriggers.find((a) => destinationParents.has(a.name));
+		const trigger = allPinnedTriggers.find((a) => destinationAndParents.has(a.name));
 
 		return trigger;
 	}

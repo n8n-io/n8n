@@ -26,6 +26,7 @@ import {
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
+	CredentialsFinderService,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -53,7 +54,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -137,6 +138,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
+			mockInstance(CredentialsFinderService),
 			activeExecutions,
 			mockInstance(GlobalConfig, {
 				endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
@@ -195,6 +197,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
 				mockInstance(CredentialsService),
+				mockInstance(CredentialsFinderService),
 				activeExecutions,
 				mockInstance(GlobalConfig, {
 					endpoints: { webhook: '/webhook', webhookTest: '/webhook-test' },
@@ -402,6 +405,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
 				mockInstance(CredentialsService),
+				mockInstance(CredentialsFinderService),
 				activeExecutions,
 				mockInstance(GlobalConfig, {
 					endpoints: {
@@ -1480,6 +1484,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
 				mockInstance(CredentialsService),
+				mockInstance(CredentialsFinderService),
 				activeExecutions,
 				mockInstance(GlobalConfig, {
 					endpoints: {
@@ -1540,6 +1545,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowService),
 				mockInstance(UrlService),
 				mockInstance(CredentialsService),
+				mockInstance(CredentialsFinderService),
 				activeExecutions,
 				mockInstance(GlobalConfig, {
 					endpoints: {
@@ -1620,6 +1626,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowService),
 					urlService,
 					mockInstance(CredentialsService),
+					mockInstance(CredentialsFinderService),
 					activeExecutions,
 					mockInstance(GlobalConfig, {
 						endpoints: {
