@@ -47,11 +47,6 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 
 const field = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
 
-/**
- * CLI exit codes. A scan that ran and found problems is kept apart from one
- * that could not finish, so callers never report a scanner-side error (network,
- * registry, ESLint crash) as a verdict on the package.
- */
 export const EXIT_CODES = {
 	/** The package passed all checks. */
 	SCAN_SUCCEEDED: 0,
