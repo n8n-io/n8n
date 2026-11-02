@@ -122,7 +122,7 @@ interface TurnSession {
 	/** The session that the turn runs in. A task-session binding can redirect it. */
 	memory: { threadId: InternalThread; resourceId: string };
 	sessionMode: AgentSessionMode;
-	/** Task messages to this recipient, for a new session split from a shared task. */
+	/** Task messages this recipient has not answered yet. The turn carries them, then they clear. */
 	priorOutboundMessages?: string[];
 }
 
@@ -1003,7 +1003,7 @@ export class AgentChatBridge {
 		);
 		// A task that messaged several recipients keeps one memory for all of them.
 		// A reply then runs in its own session, so it cannot see what the task sent
-		// to the others. Only the message sent to this recipient is carried over.
+		// to the others. Only the messages sent to this recipient are carried over.
 		if (replyScope && !replyScope.sharedWithOtherRecipients) {
 			return {
 				activeThreadId,
@@ -1012,6 +1012,7 @@ export class AgentChatBridge {
 					resourceId: replyScope.binding.resourceId,
 				},
 				sessionMode: 'existing',
+				priorOutboundMessages: replyScope.outboundMessages,
 			};
 		}
 		const sessionMode = (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new';
@@ -1020,8 +1021,7 @@ export class AgentChatBridge {
 				activeThreadId,
 				memory: { threadId: activeThreadId, resourceId },
 				sessionMode,
-				// Later replies already have this in the session history.
-				priorOutboundMessages: sessionMode === 'new' ? replyScope.outboundMessages : [],
+				priorOutboundMessages: replyScope.outboundMessages,
 			};
 		}
 		return {
@@ -1131,6 +1131,12 @@ export class AgentChatBridge {
 				},
 			});
 			accepted = result.status === 'accepted';
+			if (accepted && session.priorOutboundMessages?.length) {
+				await this.messageContextBridge.consumeOutboundMessages(
+					this.baseThreadId(thread),
+					session.priorOutboundMessages.length,
+				);
+			}
 			if (result.status === 'accepted' && integrationOrigin) {
 				this.recordOriginNames(
 					{ thread, message, subject },

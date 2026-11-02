@@ -219,35 +219,45 @@ describe('IntegrationMessageContextService', () => {
 		expect(saves.find((c) => (c[0] as { id: string }).id === 'task-2')).toBeUndefined();
 	});
 
-	it('records the derived id on the origin thread so completion can unbind by id', async () => {
+	it('records the derived id and its recipient on the origin thread', async () => {
 		const { service, threadRepository } = setup({ task: {} });
 
-		await service.bindSession('agent-1:slack:D123:1001', {
-			threadId: 'task',
-			resourceId: 'task:task-1',
-		});
+		await service.bindSession(
+			'agent-1:slack:D123:1001',
+			{ threadId: 'task', resourceId: 'task:task-1' },
+			{ recipientId: 'user:U1' },
+		);
 
 		const saves = (threadRepository.save as unknown as ReturnType<typeof vi.fn>).mock.calls;
 		const originSave = saves.find((c) => (c[0] as { id: string }).id === 'task');
 		expect(originSave).toBeDefined();
-		expect(JSON.parse((originSave![0] as { metadata: string }).metadata).boundThreads).toEqual([
-			'agent-1:slack:D123:1001',
-		]);
+		expect(JSON.parse((originSave![0] as { metadata: string }).metadata).boundThreads).toEqual({
+			'agent-1:slack:D123:1001': 'user:U1',
+		});
 	});
 
 	it('reports the stored task messages and whether other recipients share the task', async () => {
 		const { service } = setup({ task: {} });
 		const origin = { threadId: 'task', resourceId: 'task:task-1' };
 
-		await service.bindSession('agent-1:slack:D1:1', origin, 'Hi Alice');
+		await service.bindSession('agent-1:slack:D1:1', origin, {
+			recipientId: 'user:alice',
+			outboundText: 'Hi Alice',
+		});
 		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toEqual({
 			binding: origin,
 			sharedWithOtherRecipients: false,
 			outboundMessages: ['Hi Alice'],
 		});
 
-		await service.bindSession('agent-1:slack:D2:2', origin, 'Hi Bob');
-		await service.bindSession('agent-1:slack:D1:1', origin, 'Second note');
+		await service.bindSession('agent-1:slack:D2:2', origin, {
+			recipientId: 'user:bob',
+			outboundText: 'Hi Bob',
+		});
+		await service.bindSession('agent-1:slack:D1:1', origin, {
+			recipientId: 'user:alice',
+			outboundText: 'Second note',
+		});
 		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toEqual({
 			binding: origin,
 			sharedWithOtherRecipients: true,
@@ -258,14 +268,52 @@ describe('IntegrationMessageContextService', () => {
 		});
 	});
 
+	it('does not count several threads of one recipient as other recipients', async () => {
+		const { service } = setup({ task: {} });
+		const origin = { threadId: 'task', resourceId: 'task:task-1' };
+
+		await service.bindSession('agent-1:slack:D1:1', origin, { recipientId: 'user:alice' });
+		await service.bindSession('agent-1:slack:D1:2', origin, { recipientId: 'user:alice' });
+
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toMatchObject({
+			sharedWithOtherRecipients: false,
+		});
+	});
+
+	it('keeps a thread with a plain bound-thread list apart from the others', async () => {
+		const { service } = setup({
+			task: { boundThreads: ['agent-1:slack:D1:1', 'agent-1:slack:D2:2'] },
+			'agent-1:slack:D1:1': { continueAs: { threadId: 'task', resourceId: 'task:task-1' } },
+		});
+
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toMatchObject({
+			sharedWithOtherRecipients: true,
+		});
+	});
+
+	it('records the text of a second task that messages the same recipient', async () => {
+		const { service } = setup({ task: {}, 'task-2': {} });
+		const first = { threadId: 'task', resourceId: 'task:task-1' };
+		const second = { threadId: 'task-2', resourceId: 'task:task-2' };
+
+		await service.bindSession('agent-1:slack:D1:1', first, { outboundText: 'From task 1' });
+		await service.bindSession('agent-1:slack:D1:1', second, { outboundText: 'From task 2' });
+
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toEqual({
+			binding: first,
+			sharedWithOtherRecipients: false,
+			outboundMessages: ['From task 1', 'From task 2'],
+		});
+	});
+
 	it('keeps only the latest 5 task messages and truncates long ones', async () => {
 		const { service } = setup({ task: {} });
 		const origin = { threadId: 'task', resourceId: 'task:task-1' };
 
 		for (let i = 1; i <= 7; i++) {
-			await service.bindSession('agent-1:slack:D1:1', origin, `message ${i}`);
+			await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: `message ${i}` });
 		}
-		await service.bindSession('agent-1:slack:D1:1', origin, 'x'.repeat(2500));
+		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'x'.repeat(2500) });
 
 		const scope = await service.resolveSessionReplyScope('agent-1:slack:D1:1');
 		expect(scope?.outboundMessages).toEqual([
@@ -275,6 +323,41 @@ describe('IntegrationMessageContextService', () => {
 			'message 7',
 			'x'.repeat(2000),
 		]);
+	});
+
+	it('consumes only the task messages a turn carried', async () => {
+		const { service } = setup({ task: {} });
+		const origin = { threadId: 'task', resourceId: 'task:task-1' };
+		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'one' });
+		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'two' });
+
+		await service.consumeOutboundMessages('agent-1:slack:D1:1', 1);
+		// A message sent after the turn read the list stays for the next reply.
+		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'three' });
+
+		const scope = await service.resolveSessionReplyScope('agent-1:slack:D1:1');
+		expect(scope?.outboundMessages).toEqual(['two', 'three']);
+	});
+
+	it('unbindSession clears the binding, the task messages and the origin entry', async () => {
+		const { service } = setup({ task: {} });
+		const origin = { threadId: 'task', resourceId: 'task:task-1' };
+		await service.bindSession('agent-1:slack:D1:1', origin, {
+			recipientId: 'user:alice',
+			outboundText: 'Hi Alice',
+		});
+		await service.bindSession('agent-1:slack:D2:2', origin, { recipientId: 'user:bob' });
+
+		await service.unbindSession('agent-1:slack:D1:1');
+
+		await expect(service.resolveSession('agent-1:slack:D1:1')).resolves.toBeNull();
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D2:2')).resolves.toMatchObject({
+			sharedWithOtherRecipients: false,
+		});
+		await service.bindSession('agent-1:slack:D1:1', origin, { recipientId: 'user:alice' });
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toMatchObject({
+			outboundMessages: [],
+		});
 	});
 
 	it('clearSessionBindings unbinds each derived thread and clears the list', async () => {
@@ -295,7 +378,7 @@ describe('IntegrationMessageContextService', () => {
 		const saves = (threadRepository.save as unknown as ReturnType<typeof vi.fn>).mock.calls;
 		const originSave = saves.find((c) => (c[0] as { id: string }).id === 'task');
 		expect(originSave).toBeDefined();
-		expect(JSON.parse((originSave![0] as { metadata: string }).metadata).boundThreads).toEqual([]);
+		expect(JSON.parse((originSave![0] as { metadata: string }).metadata).boundThreads).toEqual({});
 		// Both derived threads lost their continueAs key.
 		const d1Save = saves.find((c) => (c[0] as { id: string }).id === 'agent-1:slack:D123:1001');
 		expect(d1Save).toBeDefined();

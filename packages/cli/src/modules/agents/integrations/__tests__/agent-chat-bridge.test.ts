@@ -3261,7 +3261,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(call.modelMessage).toContain('Alice, your order ships Friday');
 		});
 
-		it('does not repeat the sent-message note once the split session exists', async () => {
+		it('carries the task message into an existing session and clears it afterwards', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread('slack:D123:1001');
 			const messageContextStore = mock<IntegrationMessageContextService>();
@@ -3297,7 +3297,53 @@ describe('AgentChatBridge — consumeStream', () => {
 				modelMessage: string;
 			};
 			expect(call.memory.threadId.id).not.toBe('task-1-uuid');
-			expect(call.modelMessage).not.toContain('Alice, your order ships Friday');
+			expect(call.modelMessage).toContain('Alice, your order ships Friday');
+			expect(messageContextStore.consumeOutboundMessages).toHaveBeenCalledWith(
+				'agent-1:slack:D123:1001',
+				1,
+			);
+		});
+
+		it('carries the task message into the bound task session too', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('slack:D123:1001');
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSessionReplyScope.mockResolvedValue(
+				scopeFor(
+					{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+					{ sharedWithOtherRecipients: false, outboundMessages: ['From another task'] },
+				),
+			);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+				messageContextStore,
+			);
+
+			await handlers.subscribed!(thread, {
+				id: '1004',
+				text: 'Thanks!',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			const call = agentExecutor.executeForChatPublished.mock.calls[0][0] as unknown as {
+				memory: { threadId: { id: string } };
+				modelMessage: string;
+			};
+			expect(call.memory.threadId.id).toBe('task-1-uuid');
+			expect(call.modelMessage).toContain('From another task');
+			expect(messageContextStore.consumeOutboundMessages).toHaveBeenCalledWith(
+				'agent-1:slack:D123:1001',
+				1,
+			);
 		});
 
 		it('runs a normal session when the binding lookup fails', async () => {

@@ -46,6 +46,7 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 	private readonly contexts = new Map<string, IntegrationMessageContext>();
 	private readonly bindings = new Map<string, { threadId: string; resourceId: string }>();
 	private readonly outbound = new Map<string, string[]>();
+	private readonly recipients = new Map<string, string>();
 	private readonly sentMessages = new Map<string, { threadId: string; resourceId: string }>();
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
@@ -65,15 +66,18 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 	async bindSession(
 		derivedThreadId: string,
 		origin: { threadId: string; resourceId: string },
-		outboundText?: string,
+		options: { recipientId?: string; outboundText?: string } = {},
 	): Promise<void> {
 		if (derivedThreadId === origin.threadId) return;
 		// First write wins: a later bind keeps the binding and only records text.
-		if (!this.bindings.has(derivedThreadId)) this.bindings.set(derivedThreadId, origin);
-		if (outboundText) {
+		if (!this.bindings.has(derivedThreadId)) {
+			this.bindings.set(derivedThreadId, origin);
+			this.recipients.set(derivedThreadId, options.recipientId ?? derivedThreadId);
+		}
+		if (options.outboundText) {
 			this.outbound.set(derivedThreadId, [
 				...(this.outbound.get(derivedThreadId) ?? []),
-				outboundText,
+				options.outboundText,
 			]);
 		}
 		await Promise.resolve();
@@ -88,8 +92,10 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 	async resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null> {
 		const binding = await this.resolveSession(derivedThreadId);
 		if (!binding) return null;
+		const recipient = this.recipients.get(derivedThreadId);
 		const sharedWithOtherRecipients = [...this.bindings.entries()].some(
-			([id, origin]) => id !== derivedThreadId && origin.threadId === binding.threadId,
+			([id, origin]) =>
+				origin.threadId === binding.threadId && this.recipients.get(id) !== recipient,
 		);
 		return {
 			binding,
@@ -114,8 +120,15 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		return await Promise.resolve(this.sentMessages.get(`${derivedThreadId}|${messageId}`) ?? null);
 	}
 
+	async consumeOutboundMessages(derivedThreadId: string, count: number): Promise<void> {
+		this.outbound.set(derivedThreadId, (this.outbound.get(derivedThreadId) ?? []).slice(count));
+		await Promise.resolve();
+	}
+
 	async unbindSession(derivedThreadId: string): Promise<void> {
 		this.bindings.delete(derivedThreadId);
+		this.recipients.delete(derivedThreadId);
+		this.outbound.delete(derivedThreadId);
 		await Promise.resolve();
 	}
 

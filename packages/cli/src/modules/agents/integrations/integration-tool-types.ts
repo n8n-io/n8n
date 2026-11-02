@@ -166,14 +166,19 @@ export interface IntegrationMessageContextStore {
 		resourceId: string,
 		context: IntegrationMessageContext,
 	): Promise<void>;
-	/** `outboundText` is the message the task sent to this recipient. */
+	/**
+	 * `recipientId` names the person or channel, so many threads of one recipient
+	 * count once. `outboundText` is the message the task sent to this recipient.
+	 */
 	bindSession(
 		derivedThreadId: string,
 		origin: SessionBinding,
-		outboundText?: string,
+		options?: { recipientId?: string; outboundText?: string },
 	): Promise<void>;
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
 	resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null>;
+	/** Removes the first `count` task messages, once a turn has carried them. */
+	consumeOutboundMessages(derivedThreadId: string, count: number): Promise<void>;
 	unbindSession(derivedThreadId: string): Promise<void>;
 	clearSessionBindings(originThreadId: string): Promise<void>;
 	/** Remembers which session sent a message, so a later delivery failure reaches that session. */

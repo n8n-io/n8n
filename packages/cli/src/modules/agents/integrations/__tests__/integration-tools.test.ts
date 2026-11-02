@@ -1446,7 +1446,7 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:slack:D2:2.2',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				'hi',
+				{ recipientId: 'user:U2', outboundText: 'hi' },
 			);
 		});
 
@@ -1481,7 +1481,7 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:slack:D2:2.2',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				'Order 42\nShips Friday',
+				{ recipientId: 'user:U2', outboundText: 'Order 42\nShips Friday' },
 			);
 		});
 
@@ -1523,7 +1523,10 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:slack:D2:2.2',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				'Order #42 ships Friday\nItem: Desk\nReschedule\n- Monday',
+				{
+					recipientId: 'user:U2',
+					outboundText: 'Order #42 ships Friday\nItem: Desk\nReschedule\n- Monday',
+				},
 			);
 		});
 
@@ -1553,7 +1556,7 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:slack:C1:1.1',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				'hi',
+				{ recipientId: 'channel:slack:C1', outboundText: 'hi' },
 			);
 		});
 
@@ -1593,6 +1596,7 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:whatsapp:111:447700900123',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				expect.objectContaining({ recipientId: 'user:447700900123' }),
 			);
 		});
 

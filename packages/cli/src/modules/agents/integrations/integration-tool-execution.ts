@@ -323,7 +323,10 @@ export async function executeActionToolOperation(params: {
 			await messageContextStore.bindSession(
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
-				getOutboundText(message),
+				{
+					recipientId: getRecipientId(messageContext.target),
+					outboundText: getOutboundText(message),
+				},
 			);
 		}
 		// A delivery failure arrives later and names only the message. This lets
@@ -386,6 +389,13 @@ function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
 		query === 'get_current_user' ||
 		query === 'get_current_channel_info'
 	);
+}
+
+/** The person or channel a message went to, whatever thread it started. */
+function getRecipientId(target: IntegrationMessageTarget): string | undefined {
+	if (target.type === 'channel') return `channel:${target.channelId}`;
+	if (target.userId) return `user:${target.userId}`;
+	return target.type === 'thread' && target.channelId ? `channel:${target.channelId}` : undefined;
 }
 
 /**
