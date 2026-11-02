@@ -102,6 +102,8 @@ onBeforeUnmount(() => {
 const ICONS: Record<PromotionDirection, IconName> = { apply: 'arrow-down', promote: 'arrow-up' };
 
 // The tooltip trigger is the span or link itself (`as-child`), so keyboard focus opens it.
+// The tooltip keeps the element it first saw as its anchor. The key mounts a new tooltip when
+// the badge swaps between a blocked span, a plain span and a link, so the anchor stays in the DOM.
 // A blocked badge only informs. Its span takes the focus and the hover, because a disabled
 // button does neither, and the tooltip gives the reason.
 const badges = computed(() => {
@@ -118,6 +120,11 @@ const badges = computed(() => {
 			loading: changes.loading.value,
 			failed: changes.failed.value,
 			blocked: !!changes.blocker.value,
+			anchor: changes.blocker.value
+				? 'blocked'
+				: changes.loading.value || (!changes.failed.value && changes.changeCount.value === 0)
+					? 'static'
+					: 'link',
 			changeCount: changes.changeCount.value,
 			disabled:
 				changes.loading.value ||
@@ -149,7 +156,7 @@ const badges = computed(() => {
 	<div v-if="badges.length > 0" :class="$style.badges" data-test-id="promotion-preview-badges">
 		<N8nTooltip
 			v-for="badge in badges"
-			:key="badge.direction"
+			:key="`${badge.direction}-${badge.anchor}`"
 			:content="badge.label"
 			:disabled="badge.loading"
 			as-child
