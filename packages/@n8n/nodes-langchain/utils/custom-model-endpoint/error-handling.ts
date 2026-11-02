@@ -30,10 +30,11 @@ export function endpointSecrets(endpoint: EndpointCredential): string[] {
 }
 
 function redact(text: string, secrets: string[]): string {
-	return bothForms(secrets).reduce(
-		(redacted, secret) => redacted.split(secret).join(REDACTED),
-		text,
-	);
+	return replaceAll(text, bothForms(secrets));
+}
+
+function replaceAll(text: string, forms: string[]): string {
+	return forms.reduce((redacted, form) => redacted.split(form).join(REDACTED), text);
 }
 
 /** The raw secret, and the way it looks once something has serialised it into JSON. */
@@ -49,7 +50,10 @@ function redactValues(value: unknown, secrets: string[]): unknown {
 	if (Array.isArray(value)) return value.map((entry) => redactValues(entry, secrets));
 	if (isRecord(value)) {
 		return Object.fromEntries(
-			Object.entries(value).map(([key, entry]) => [key, redactValues(entry, secrets)]),
+			Object.entries(value).map(([key, entry]) => [
+				redact(key, secrets),
+				redactValues(entry, secrets),
+			]),
 		);
 	}
 	return value;
@@ -115,30 +119,27 @@ function messageFromBody(text: string): string | undefined {
 	);
 }
 
-function isEventStream(response: Response): boolean {
-	return (response.headers.get('content-type') ?? '').includes('text/event-stream');
-}
-
 /**
- * Redacts a stream as it passes, because a gateway can answer 200 and put the
+ * Redacts a body as it passes, because a gateway can answer 200 and put the
  * failure in the stream. A secret can straddle two chunks, so the tail of each
  * chunk is held back until the next one can be matched against it.
  */
 function redactingStream(secrets: string[]): TransformStream<Uint8Array, Uint8Array> {
 	const decoder = new TextDecoder();
 	const encoder = new TextEncoder();
-	const straddle = Math.max(0, ...secrets.map((secret) => secret.length)) - 1;
+	const forms = bothForms(secrets);
+	const straddle = Math.max(0, ...forms.map((form) => form.length)) - 1;
 	let held = '';
 
 	return new TransformStream({
 		transform(chunk, controller) {
-			const text = redact(held + decoder.decode(chunk, { stream: true }), secrets);
+			const text = replaceAll(held + decoder.decode(chunk, { stream: true }), forms);
 			const emit = Math.max(0, text.length - straddle);
 			held = text.slice(emit);
 			if (emit > 0) controller.enqueue(encoder.encode(text.slice(0, emit)));
 		},
 		flush(controller) {
-			if (held) controller.enqueue(encoder.encode(redact(held, secrets)));
+			if (held) controller.enqueue(encoder.encode(replaceAll(held, forms)));
 		},
 	});
 }
@@ -150,7 +151,7 @@ export function wrapCustomModelEndpointErrorFetch(
 	return async (input, init) => {
 		const response = await baseFetch(input, init);
 		if (response.ok) {
-			if (!response.body || !options.secrets.length || !isEventStream(response)) return response;
+			if (!response.body || !options.secrets.length) return response;
 
 			return new Response(response.body.pipeThrough(redactingStream(options.secrets)), {
 				status: response.status,

@@ -163,13 +163,25 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		expect(text).toContain('[redacted]');
 	});
 
-	it('leaves a successful non-stream response as the object it was given', async () => {
+	it('hands back the very same response when there is nothing to hide', async () => {
 		const ok = new Response('{"choices":[]}', { status: 200 });
+		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
+			secrets: [],
+		});
+
+		expect(await wrapped(BASE_URL)).toBe(ok);
+	});
+
+	it('redacts a 200 body whatever the gateway called its content type', async () => {
+		const ok = new Response(`{"choices":[{"text":"Rejected ${KEY}"}]}`, {
+			status: 200,
+			headers: { 'content-type': 'application/json' },
+		});
 		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
 			secrets: [KEY],
 		});
 
-		expect(await wrapped(BASE_URL)).toBe(ok);
+		expect(await (await wrapped(BASE_URL)).text()).not.toContain(KEY);
 	});
 
 	it('keeps the fields beside the message when it redacts in place', async () => {
