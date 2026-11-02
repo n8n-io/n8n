@@ -8,6 +8,7 @@ import type {
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	EventService,
+	ProjectScopeService,
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	WorkflowMutationHooksProxy,
@@ -88,6 +89,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
@@ -204,6 +206,8 @@ export class WorkflowService {
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
 
 	/**
@@ -323,11 +327,15 @@ export class WorkflowService {
 
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
+			// `null` means global access, so the folder half stays unrestricted.
+			const folderProjectIds = await this.projectScopeService.getProjectIds(user, ['folder:list']);
+
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,
 					sharingOptions,
 					listOptions,
+					folderProjectIds ?? undefined,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -1560,6 +1568,8 @@ export class WorkflowService {
 		}
 
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
+
+		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
 	}
 
 	/**

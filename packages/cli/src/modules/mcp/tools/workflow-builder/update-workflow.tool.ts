@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';

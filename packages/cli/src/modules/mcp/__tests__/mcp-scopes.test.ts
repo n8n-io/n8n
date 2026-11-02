@@ -11,6 +11,7 @@ import {
 	ExecutionRedactionServiceProxy,
 	WorkflowPublishedDataService,
 	AiPreferenceService,
+	CredentialsFinderService,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -45,7 +46,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { SkillService, SkillsGate } from '@/modules/skills';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
 	EMPTY_INSTANCE_CONTEXT_TEXT,
@@ -201,6 +202,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowService),
 			mockInstance(UrlService),
 			mockInstance(CredentialsService),
+			mockInstance(CredentialsFinderService),
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
 				endpoints: {

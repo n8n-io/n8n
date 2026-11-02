@@ -40,8 +40,7 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
-import { ConflictError } from '@n8n/errors';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';

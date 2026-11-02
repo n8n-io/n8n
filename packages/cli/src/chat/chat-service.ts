@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+<<<<<<< HEAD
 import {
 	jsonParse,
 	UnexpectedError,
@@ -12,6 +13,10 @@ import {
 	type ChatNodeMessageRegular,
 	type ChatNodeMessageWithButtons,
 } from 'n8n-workflow';
+=======
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+>>>>>>> 1063a6e034b1b1f0a82ce3c0407c65559c53fcbb
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 

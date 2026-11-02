@@ -3,7 +3,8 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import convict from 'convict';
 import { readFileSync } from 'fs';
-import { setGlobalState, UserError } from 'n8n-workflow';
+import { setGlobalState } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { inE2ETests } from '@/constants';
 

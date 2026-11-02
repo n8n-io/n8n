@@ -30,6 +30,7 @@ The CLI rejects the old workflow-specific flag names, including their camelCase 
 Selection imports accept `--conflict-policy` and `--id-policy`.
 There are no compatibility aliases or per-kind policy overrides.
 
+<<<<<<< HEAD
 # 3.0.0
 
 ### What changed?
@@ -95,6 +96,15 @@ The `$evaluateExpression()` helper was removed from the Code node. A Code node t
 ### When is action necessary?
 
 If your Code nodes call `$evaluateExpression()`. Evaluate the expression in a node field instead, for example in an Edit Fields (Set) node before the Code node, and read the result from the input item. Code nodes on a secure-mode task runner, the default since 2.0, already failed on this call.
+=======
+Package imports now check the `workflow:activate` and `workflow:deactivate` API key scopes.
+An import that publishes or republishes a workflow requires `workflow:activate`.
+This includes a republish under the default `preserve-published-state` policy.
+It also includes the fixed `match-source` policy of selection imports.
+An import that unpublishes a workflow requires `workflow:deactivate`.
+An import that archives a published workflow requires only `workflow:delete`.
+If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
+>>>>>>> 1063a6e034b1b1f0a82ce3c0407c65559c53fcbb
 
 # 2.0.0
 

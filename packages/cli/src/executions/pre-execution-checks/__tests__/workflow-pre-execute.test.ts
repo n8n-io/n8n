@@ -1,5 +1,5 @@
 import type { IConnections, IWorkflowBase, Workflow } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowPreExecute } from '../workflow-pre-execute';
