@@ -3,6 +3,7 @@ import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
+import { setN8nVersion } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
@@ -12,7 +13,6 @@ import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { N8N_VERSION } from '@/constants';
 import { PostHogClient } from '@/posthog';
 
 vi.mock('posthog-node');
@@ -37,6 +37,7 @@ describe('PostHog', () => {
 
 	beforeAll(() => {
 		globalConfig.diagnostics.posthogConfig = { apiKey, apiHost };
+		setN8nVersion('1.2.3');
 	});
 
 	beforeEach(() => {
@@ -293,7 +294,7 @@ describe('PostHog', () => {
 				personProperties: {
 					created_at_timestamp: createdAt.getTime().toString(),
 					instance_id: instanceId,
-					version_cli: N8N_VERSION,
+					version_cli: '1.2.3',
 				},
 				groups: { company: instanceId },
 			});

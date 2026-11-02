@@ -2,7 +2,7 @@ import { createScopedWorkspace } from '@n8n/agents';
 import type { Workspace } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
@@ -31,7 +31,6 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { N8N_VERSION } from '@/constants';
 import { ForbiddenError } from '@n8n/errors';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
@@ -176,7 +175,7 @@ export class AssistantTurnEnvironmentFactory {
 		});
 		const featureHeaders = buildProxyHeaders({
 			feature: 'instance-ai',
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 		});
 
 		return {

@@ -5,7 +5,7 @@ import {
 	type SelfHealingResultUsage,
 	type WorkflowSuggestionBaseline,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -35,7 +35,7 @@ import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail'
 import { nanoid } from 'nanoid';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
@@ -224,7 +224,7 @@ export class SelfHealingAgentService {
 					self_healing_project_id: baseline.projectId,
 				},
 				proxyConfig: proxy.tracingProxyConfig,
-				n8nVersion: N8N_VERSION,
+				n8nVersion: getN8nVersion(),
 				workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			});
 			if (tracing) {

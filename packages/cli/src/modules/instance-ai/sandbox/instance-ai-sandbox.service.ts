@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
+import { getN8nVersion } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -23,7 +24,6 @@ import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION } from '@/constants';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
@@ -254,7 +254,7 @@ export class InstanceAiSandboxService {
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
 				snapshot: sandboxSnapshot || undefined,
-				n8nVersion: N8N_VERSION || undefined,
+				n8nVersion: getN8nVersion() || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
 				ephemeral: sandboxEphemeral,

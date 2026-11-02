@@ -8,7 +8,7 @@ import type {
 	BreakingChangeWorkflowOwner,
 	BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflowRepository,
 	UserRepository,
@@ -38,7 +38,6 @@ import {
 	type IBreakingChangeWorkflowRule,
 	type WorkflowLevelRule,
 } from '../types';
-import { N8N_VERSION } from '../../../constants';
 
 type LightWorkflowResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
@@ -137,7 +136,7 @@ export class MigrationFindingQueryService {
 			report: {
 				generatedAt: sync?.syncedAt,
 				targetVersion,
-				currentVersion: N8N_VERSION,
+				currentVersion: getN8nVersion(),
 				instanceResults,
 				workflowResults,
 			},
