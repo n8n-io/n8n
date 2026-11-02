@@ -653,6 +653,21 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					inputType: 'app-blueprint',
+					appBlueprint: {
+						name: 'Planner',
+						namespace: 'planner',
+						visibility: 'project',
+						description: 'Plan weekly tasks.',
+						theme: 'both',
+					},
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -673,9 +688,10 @@ describe('isDisplayableConfirmationRequest', () => {
 			questions: true,
 			'resource-decision': true,
 			continue: true,
+			'app-blueprint': true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(5);
+		expect(Object.keys(handled)).toHaveLength(6);
 	});
 });
 
