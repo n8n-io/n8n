@@ -45,6 +45,10 @@ export function useExecutionRedaction() {
 		() => redactionInfo.value?.reason === 'sub_workflow_redaction_policy',
 	);
 
+	const isCredentialInaccessible = computed(
+		() => redactionInfo.value?.reason === 'credential_inaccessible',
+	);
+
 	/** The name a node of the execution stored for the credential. */
 	function credentialName(credentialId: string): string {
 		const nodes = workflowExecutionStateStore.value.activeExecution?.workflowData?.nodes ?? [];
@@ -188,6 +192,7 @@ export function useExecutionRedaction() {
 		canReveal,
 		isDynamicCredentials,
 		isSubWorkflowRedaction,
+		isCredentialInaccessible,
 		revealData,
 		credentialToShare,
 		openCredentialSharing,
