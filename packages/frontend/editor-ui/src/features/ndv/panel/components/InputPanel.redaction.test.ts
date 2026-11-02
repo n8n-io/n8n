@@ -102,7 +102,6 @@ describe('InputPanel redaction cause', () => {
 		await vi.dynamicImportSettled();
 	});
 
-	// IAM-1832: The credential cause must stay visible without permission to share it.
 	it('shows the credential cause without a share link when the viewer cannot share it', () => {
 		const { getByTestId, queryByTestId } = renderRedactedExecution('credential_inaccessible');
 
