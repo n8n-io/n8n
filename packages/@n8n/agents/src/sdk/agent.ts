@@ -1131,7 +1131,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			const dynamicIds = new Set(this.skillSource.dynamicCatalog?.skillIds);
 			instructions = appendSkillCatalogToInstructions(instructions, {
 				...this.skillSource.registry,
-				skills: this.skillSource.registry.skills.filter((skill) => !dynamicIds.has(skill.id)),
+				skills: this.skillSource.registry.skills.filter(
+					(skill) =>
+						!dynamicIds.has(skill.id) &&
+						(!skill.parents || skill.parents.some((parentId) => !dynamicIds.has(parentId))),
+				),
 			});
 		}
 		if (this.workspaceInstance) {

@@ -99,6 +99,88 @@ describe('dynamic skill catalogues', () => {
 		expect(list.messages().some(isRuntimeSkillCatalog)).toBe(false);
 	});
 
+	it.each([false, true])(
+		'keeps hidden reference loading guidance with dynamic skills (with built-ins: %s)',
+		async (includeBuiltIn) => {
+			const reference = {
+				id: 'review-rules',
+				name: 'Review rules',
+				description: 'Load before checking an invoice.',
+				instructions: 'Check the invoice total.',
+				parents: [custom.id],
+				reference: { owner: custom.id, path: 'references/review-rules.md' },
+			};
+			const skills = createRuntimeSkillSource([
+				...(includeBuiltIn ? [builtIn] : []),
+				custom,
+				reference,
+			]);
+			skills.dynamicCatalog = { skillIds: [custom.id] };
+			const runtime = await config(skills);
+			const result = await prompt(runtime, input());
+			const reminder = JSON.stringify(result.messages);
+
+			expect(reminder).toContain('Load a reference with');
+			expect(reminder).not.toContain(reference.name);
+			expect(reminder).not.toContain(reference.description);
+			expect(reminder).not.toContain(reference.instructions);
+			const baseline = await config(createRuntimeSkillSource(includeBuiltIn ? [builtIn] : []));
+			expect(runtime.instructions).toBe(baseline.instructions);
+			expect(result.system).toEqual((await prompt(baseline, input())).system);
+			await expect(skills.loadSkill(reference.id)).resolves.toMatchObject({
+				instructions: reference.instructions,
+			});
+		},
+	);
+
+	it.each([builtIn.id, custom.id])(
+		'keeps shared reference guidance in both catalogues when %s owns the reference',
+		async (ownerId) => {
+			const skills = createRuntimeSkillSource([
+				...[builtIn, custom].map((skill) =>
+					skill.id === ownerId ? skill : { ...skill, sharedReferences: ['shared-rules'] },
+				),
+				{
+					id: 'shared-rules',
+					name: 'Shared rules',
+					description: 'Load before reviewing totals.',
+					instructions: 'Check totals.',
+					parents: [ownerId],
+					reference: { owner: ownerId, path: 'references/shared-rules.md' },
+				},
+			]);
+			skills.dynamicCatalog = { skillIds: [custom.id] };
+			const runtime = await config(skills);
+			const result = await prompt(runtime, input());
+
+			expect(runtime.instructions).toContain('Load a reference with');
+			expect(JSON.stringify(result.messages)).toContain('Load a reference with');
+			expect(runtime.instructions).not.toContain('Shared rules');
+			expect(JSON.stringify(result.messages)).not.toContain('Shared rules');
+		},
+	);
+
+	it('does not copy static-only reference guidance into the dynamic catalogue', async () => {
+		const skills = createRuntimeSkillSource([
+			builtIn,
+			custom,
+			{
+				id: 'notes-rules',
+				name: 'Notes rules',
+				description: 'Load when summarizing notes.',
+				instructions: 'Keep decisions.',
+				parents: [builtIn.id],
+				reference: { owner: builtIn.id, path: 'references/notes-rules.md' },
+			},
+		]);
+		skills.dynamicCatalog = { skillIds: [custom.id] };
+		const runtime = await config(skills);
+		const result = await prompt(runtime, input());
+
+		expect(runtime.instructions).toContain('Load a reference with');
+		expect(JSON.stringify(result.messages)).not.toContain('Load a reference with');
+	});
+
 	it.each([
 		'anthropic/claude-opus-4-8',
 		'openai/gpt-4.1',

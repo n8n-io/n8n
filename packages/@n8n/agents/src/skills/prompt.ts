@@ -5,7 +5,10 @@ export function renderDynamicSkillCatalog(source: RuntimeSkillSource | undefined
 	const catalog = source
 		? renderSkillCatalogPrompt({
 				...source.registry,
-				skills: source.registry.skills.filter((skill) => dynamicIds.has(skill.id)),
+				skills: source.registry.skills.filter(
+					(skill) =>
+						dynamicIds.has(skill.id) || skill.parents?.some((parentId) => dynamicIds.has(parentId)),
+				),
 			})
 		: '';
 	return [
