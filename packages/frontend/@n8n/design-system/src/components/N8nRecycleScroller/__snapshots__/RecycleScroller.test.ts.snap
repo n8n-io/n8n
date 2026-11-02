@@ -8,6 +8,7 @@ exports[`components > N8nRecycleScroller > should render correctly 1`] = `
       <div class="recycle-scroller-item"></div>
       <div class="recycle-scroller-item"></div>
     </div>
+    <!--v-if-->
   </div>
 </div>"
 `;

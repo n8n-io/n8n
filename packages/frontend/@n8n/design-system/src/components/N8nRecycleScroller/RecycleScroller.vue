@@ -1,4 +1,5 @@
 <script lang="ts" setup generic="Key extends string, Item extends ItemWithKey<Key>">
+import { useResizeObserver } from '@vueuse/core';
 import type { ComponentPublicInstance } from 'vue';
 import { computed, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
 
@@ -9,6 +10,11 @@ const props = withDefaults(defineProps<RecycleScrollerProps<Key, Item>>(), {
 	offset: 2,
 });
 
+const emit = defineEmits<{
+	/** The list scrolled or a row changed height. The value is the scroll offset in pixels. */
+	scroll: [scrollTop: number];
+}>();
+
 const wrapperRef = ref<HTMLElement | null>(null);
 const scrollerRef = ref<HTMLElement | null>(null);
 const itemsRef = ref<HTMLElement | null>(null);
@@ -17,6 +23,25 @@ const itemRefs = ref<Record<string, Element | ComponentPublicInstance | null>>({
 const scrollTop = ref(0);
 const wrapperHeight = ref(0);
 const windowHeight = ref(0);
+const footerRef = ref<HTMLElement | null>(null);
+const footerHeight = ref(0);
+
+// The footer stays mounted after the last row. A virtual row would leave the
+// DOM before a caller could watch the end of the list.
+function measureFooter() {
+	footerHeight.value = footerRef.value?.offsetHeight ?? 0;
+}
+
+useResizeObserver(footerRef, measureFooter);
+
+watch(footerRef, (element) => {
+	if (!element) {
+		footerHeight.value = 0;
+		return;
+	}
+
+	void nextTick(measureFooter);
+});
 
 /** Cache */
 
@@ -87,7 +112,7 @@ watch(
 
 /** Computed sizes and styles */
 
-const scrollerHeight = computed(() => {
+const contentHeight = computed(() => {
 	const lastItem = props.items[props.items.length - 1];
 	const lastItemPosition = lastItem ? itemPositionCache.value[lastItem[props.itemKey]] : 0;
 	const lastItemSize = lastItem
@@ -97,8 +122,14 @@ const scrollerHeight = computed(() => {
 	return lastItemPosition + lastItemSize;
 });
 
+const scrollerHeight = computed(() => contentHeight.value + footerHeight.value);
+
 const scrollerStyles = computed(() => ({
 	height: `${scrollerHeight.value}px`,
+}));
+
+const footerStyles = computed(() => ({
+	transform: `translateY(${contentHeight.value}px)`,
 }));
 
 const itemsStyles = computed(() => {
@@ -120,6 +151,8 @@ onMounted(() => {
 		wrapperRef.value.addEventListener('scroll', onScroll);
 		updateItemSizeCache(visibleItems.value);
 	}
+
+	void nextTick(measureFooter);
 
 	window.addEventListener('resize', onWindowResize);
 	onWindowResize();
@@ -154,13 +187,26 @@ function onUpdateItemSize(item: { [key: string]: string }) {
 		const previousSize = itemSizeCache.value[itemId] ?? props.itemSize;
 		const size = itemRef ? itemRef.offsetHeight : props.itemSize;
 		const difference = size - previousSize;
+		// This row's start does not depend on its own height.
+		const position = itemPositionCache.value[itemId];
+		// Only a row that ends above the viewport shifts the rows in view.
+		// Add that difference to scrollTop so those rows stay put.
+		// A row inside the viewport, or below it, must leave scrollTop unchanged.
+		const aboveViewport =
+			position !== undefined &&
+			position < scrollTop.value &&
+			position + previousSize <= scrollTop.value;
 
 		itemSizeCache.value[itemId] = size;
 
-		if (wrapperRef.value && scrollTop.value) {
+		if (wrapperRef.value && aboveViewport && difference !== 0) {
 			wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
 			scrollTop.value = wrapperRef.value.scrollTop;
 		}
+
+		// Row positions change with the measured height. Publish the offset
+		// even when the scroll position stays put.
+		emit('scroll', scrollTop.value);
 	});
 }
 
@@ -181,6 +227,18 @@ function onScroll() {
 	}
 
 	scrollTop.value = wrapperRef.value.scrollTop;
+	emit('scroll', scrollTop.value);
+}
+
+/** Distance from the top of the list to this row, in pixels. */
+function getItemOffset(key: Item[Key]): number | undefined {
+	return itemPositionCache.value[key];
+}
+
+/** Measured row height, in pixels. An unmeasured row uses `itemSize`. */
+function getItemSize(key: Item[Key]): number | undefined {
+	if (itemPositionCache.value[key] === undefined) return undefined;
+	return itemSizeCache.value[key] ?? props.itemSize;
 }
 
 function scrollTo(position: number, behavior: ScrollBehavior = 'auto') {
@@ -190,6 +248,7 @@ function scrollTo(position: number, behavior: ScrollBehavior = 'auto') {
 
 	wrapperRef.value.scrollTo({ top: position, behavior });
 	scrollTop.value = wrapperRef.value.scrollTop;
+	emit('scroll', scrollTop.value);
 }
 
 function scrollToKey(key: Item[Key], behavior: ScrollBehavior = 'auto') {
@@ -201,7 +260,7 @@ function scrollToKey(key: Item[Key], behavior: ScrollBehavior = 'auto') {
 	scrollTo(position, behavior);
 }
 
-defineExpose({ scrollToKey, scrollTo, scrollTop });
+defineExpose({ scrollToKey, scrollTo, scrollTop, getItemOffset, getItemSize });
 </script>
 
 <template>
@@ -216,6 +275,14 @@ defineExpose({ scrollToKey, scrollTo, scrollTop });
 				>
 					<slot :item="item" :update-item-size="onUpdateItemSize" />
 				</div>
+			</div>
+			<div
+				v-if="$slots.footer"
+				ref="footerRef"
+				class="recycle-scroller-footer"
+				:style="footerStyles"
+			>
+				<slot name="footer" />
 			</div>
 		</div>
 	</div>
@@ -243,6 +310,13 @@ defineExpose({ scrollToKey, scrollTo, scrollTop });
 .recycle-scroller-item {
 	display: flex;
 	position: relative;
+	width: 100%;
+}
+
+.recycle-scroller-footer {
+	position: absolute;
+	top: 0;
+	left: 0;
 	width: 100%;
 }
 </style>
