@@ -13,7 +13,14 @@ export {
 
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
 export { chunkIds } from './utils/chunk-ids';
-export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
+export {
+	dbNowLiteral,
+	dbNowPlusMsLiteral,
+	parseDbTime,
+	toDbTimestamp,
+	toSqliteTimestamp,
+} from './utils/dialect-time';
+export { toDialectQuery } from './utils/dialect-sql';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
 export { generateHostInstanceId } from './utils/generators';
 export { isEntityNotFoundError } from './utils/is-entity-not-found-error';
@@ -54,6 +61,8 @@ export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
+
+export * from './execution-ledger';
 
 export { TransactionRunner } from './services/transaction';
 export type {
