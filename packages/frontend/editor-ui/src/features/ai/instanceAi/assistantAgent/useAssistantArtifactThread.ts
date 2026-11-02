@@ -44,14 +44,11 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 
 	const archivedWorkflowIds = computed(() => findArchivedAssistantWorkflowIds(options.messages()));
 
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
-		() => messages.value,
-		(id) => workflowsListStore.getWorkflowById(id)?.name,
-		() => archivedWorkflowIds.value,
-		undefined,
-		undefined,
-		() => options.pendingWorkflowAttachment,
-	);
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(() => messages.value, {
+		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
+		archivedWorkflowIds: () => archivedWorkflowIds.value,
+		pendingWorkflowAttachment: () => options.pendingWorkflowAttachment,
+	});
 
 	const thread: ArtifactThread = reactive({
 		id: options.threadId,

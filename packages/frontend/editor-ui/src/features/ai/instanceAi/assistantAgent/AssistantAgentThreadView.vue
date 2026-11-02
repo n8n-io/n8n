@@ -51,6 +51,7 @@ import {
 	getPendingComposerDraft,
 	getPendingHandoffContext,
 	getPendingWorkflowAttachment,
+	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -70,6 +71,7 @@ import {
 	clearAssistantAgentLaunch,
 	consumePendingAssistantAgentMessage,
 	getAssistantAgentLaunch,
+	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
@@ -109,16 +111,24 @@ let pendingHandoffContext: InstanceAiHandoffContext | undefined = handoff.contex
 // The lists show a thread opened by URL even when it is older than the recent page.
 if (!isNewThread) void threadsStore.loadThread(props.threadId);
 
+/** The first message to send, from the empty view or from a hand-off. */
+function firstMessageOf(
+	fromEmptyView: PendingAssistantAgentMessage | undefined,
+	fromHandoff: PendingFirstMessage | null,
+): { text: string; files: File[]; references: InstanceAiAttachment[] } | undefined {
+	if (fromEmptyView) return fromEmptyView;
+	if (fromHandoff) {
+		return { text: fromHandoff.message, files: [], references: fromHandoff.attachments ?? [] };
+	}
+	return undefined;
+}
+
 function readPendingHandoff() {
 	// The empty view keeps its message in memory, because it can carry files. A
 	// hand-off stores its message in localStorage, so a new tab can read it.
 	const fromEmptyView = consumePendingAssistantAgentMessage(props.threadId);
 	const fromHandoff = consumePendingFirstMessage(props.threadId);
-	const firstMessage = fromEmptyView
-		? { text: fromEmptyView.text, files: fromEmptyView.files, references: fromEmptyView.references }
-		: fromHandoff
-			? { text: fromHandoff.message, files: [], references: fromHandoff.attachments ?? [] }
-			: undefined;
+	const firstMessage = firstMessageOf(fromEmptyView, fromHandoff);
 	const workflow = getPendingWorkflowAttachment(props.threadId);
 	const draft = getPendingComposerDraft(props.threadId);
 	const nodes = consumePendingDraftAttachment(props.threadId);
