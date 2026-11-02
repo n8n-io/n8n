@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/integrations/integration-helpers.ts
+  s_be7f812aa784b6::t_bafb8830ea0532 49-50
+  s_be7f812aa784b6::t_745e74d5403352 43-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7afb82033e3af2d668c74c313d9b4788a9b61d89",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
