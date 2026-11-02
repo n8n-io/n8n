@@ -296,10 +296,11 @@ describe('apps tool', () => {
 			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: PENDING_ID, projectId: 'project-1' },
 		});
 		appService.findApp.mockRejectedValue(new Error('Database unavailable'));
+		const blueprint = { ...BLUEPRINT, additionalInstructions: 'Use compact cards.' };
 
-		const result = await approveCreate(tool);
+		const result = await approveCreate(tool, blueprint);
 
-		expect(result).toEqual({ error: 'Database unavailable' });
+		expect(result).toEqual({ approved: true, blueprint, error: 'Database unavailable' });
 		expect(appService.createApp).not.toHaveBeenCalled();
 	});
 

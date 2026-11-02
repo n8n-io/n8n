@@ -231,11 +231,19 @@ export function createAppsTool(context: InstanceAiContext) {
 						};
 					}
 					const blueprint = resumeData.blueprint;
-					return {
-						approved: true,
-						blueprint,
-						...(await createApp(context, apps, blueprint)),
-					};
+					try {
+						return {
+							approved: true,
+							blueprint,
+							...(await createApp(context, apps, blueprint)),
+						};
+					} catch (error) {
+						return {
+							approved: true,
+							blueprint,
+							error: error instanceof Error ? error.message : String(error),
+						};
+					}
 				}
 				return await handle(context, workspace, apps, input);
 			} catch (error) {
