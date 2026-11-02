@@ -10,6 +10,7 @@ import { OperationalError, UserError } from '@n8n/errors';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentRepository } from './repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentFileGrantRepository } from './repositories/agent-file-grant.repository';
@@ -17,6 +18,9 @@ import {
 	draftChatMemoryResourceId,
 	isIntegrationMemoryResourceId,
 	isTaskRunMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import { threadBelongsTo } from './utils/agent-thread-access';
 
@@ -74,6 +78,7 @@ export class AgentChatAttachmentService {
 		private readonly repository: AgentChatAttachmentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly grantRepository: AgentFileGrantRepository,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
@@ -93,35 +98,46 @@ export class AgentChatAttachmentService {
 			params.data,
 			binaryData,
 		);
-		if (!stored.id) {
+		const binaryDataId = stored.id;
+		if (!binaryDataId) {
 			throw new OperationalError(
 				'Agent chat attachments require a persisted binary data storage mode',
 			);
 		}
 
 		try {
-			return await this.repository.saveInboundAttachment(
-				{
-					id: attachmentId,
-					agentId,
-					projectId: params.projectId,
-					threadId: root.id,
-					createdByThreadId: params.threadId,
-					resourceId: params.resourceId ?? null,
-					binaryDataId: stored.id,
-					fileName: params.fileName,
-					mimeType: params.mimeType,
-					fileSizeBytes: params.data.byteLength,
-					source: params.source,
-				},
-				{},
-			);
+			return await this.projectDeletion.withWritableProject(params.projectId, async (ctx) => {
+				const resourceId = params.resourceId ?? '';
+				const ownerId =
+					userIdFromDraftChatMemoryResourceId(resourceId) ??
+					userIdFromProductionChatMemoryResourceId(resourceId) ??
+					userIdFromSystemChatMemoryResourceId(resourceId);
+				if (ownerId) {
+					await this.threadRepository.assertOwnerActive({ accessScope: 'user', ownerId }, ctx);
+				}
+				return await this.repository.saveInboundAttachment(
+					{
+						id: attachmentId,
+						agentId,
+						projectId: params.projectId,
+						threadId: root.id,
+						createdByThreadId: params.threadId,
+						resourceId: params.resourceId ?? null,
+						binaryDataId,
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+						source: params.source,
+					},
+					ctx,
+				);
+			});
 		} catch (error) {
 			await this.binaryDataService
-				.deleteManyByBinaryDataId([stored.id])
+				.deleteManyByBinaryDataId([binaryDataId])
 				.catch((cleanupError: unknown) =>
 					this.logger.warn('Failed to delete agent chat attachment bytes', {
-						binaryDataId: stored.id,
+						binaryDataId,
 						error: cleanupError,
 					}),
 				);
@@ -328,6 +344,25 @@ export class AgentChatAttachmentService {
 	/** Called before the agent row is removed, so bytes don't outlive the cascading rows. */
 	async deleteByAgent(agentId: string): Promise<void> {
 		await this.deleteAttachments(await this.repository.findByAgent(agentId, {}), { agentId });
+	}
+
+	async deleteByProject(projectId: string): Promise<void> {
+		while (true) {
+			const batch = await this.repository.findProjectDeletionBatch(
+				projectId,
+				RETENTION_BATCH_SIZE,
+				{},
+			);
+			if (batch.length === 0) return;
+			await this.binaryDataService.deleteManyByBinaryDataId(
+				batch.map((attachment) => attachment.binaryDataId),
+			);
+			await this.repository.deleteByIds(
+				batch.map((attachment) => attachment.id),
+				{},
+			);
+			if (batch.length < RETENTION_BATCH_SIZE) return;
+		}
 	}
 
 	/**

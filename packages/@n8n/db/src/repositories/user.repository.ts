@@ -12,7 +12,7 @@ import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, AuthIdentity, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EligibleAccountsQuery = {
@@ -70,6 +70,17 @@ const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
 export class UserRepository extends BaseRepository<User> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(User, dataSource.manager, transactionRunner);
+	}
+
+	async deleteAccount(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		await manager.delete(AuthIdentity, { userId });
+		await manager.delete(Project, { id: personalProjectId });
+		await manager.delete(User, { id: userId });
 	}
 
 	async findManyByIds(

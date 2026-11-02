@@ -21,7 +21,12 @@ const pngBinary = {
 };
 
 describe('AgentFileBridge', () => {
-	const scope = { agentId: 'agent-1', projectId: 'project-1', threadId: 'thread-1' };
+	const scope = {
+		agentId: 'agent-1',
+		projectId: 'project-1',
+		threadId: 'thread-1',
+		resourceId: 'draft-chat:user-1',
+	};
 	const logger = mock<Logger>();
 	const binaryDataService = mock<BinaryDataService>();
 	const attachmentService = mock<AgentChatAttachmentService>();
