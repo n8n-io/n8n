@@ -583,6 +583,11 @@ export abstract class BaseCommand<F = never> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
 	}
 
+	/** One-off commands that run workflows init only the modules they need. */
+	async initExecutionLedger() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['execution-ledger']);
+	}
+
 	async cleanupTestRunner() {
 		await Container.get(TestRunCleanupService).cleanupIncompleteRuns();
 	}

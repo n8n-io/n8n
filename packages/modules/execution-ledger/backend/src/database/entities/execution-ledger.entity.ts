@@ -5,7 +5,12 @@ import type {
 	ExecutionLedgerOrigin,
 	ExecutionLedgerOutcome,
 } from '@n8n/db';
-import { DateTimeColumn, dbType, idStringifier } from '@n8n/db';
+import {
+	DateTimeColumn,
+	dbType,
+	EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH,
+	idStringifier,
+} from '@n8n/db';
 import { BaseEntity, Column, Entity, Generated, PrimaryColumn } from '@n8n/typeorm';
 
 /** One start or end of a run. Fold steps read rows as `ExecutionLedgerRow`, never as this class. */
@@ -24,7 +29,7 @@ export class ExecutionLedgerEntity extends BaseEntity {
 	@Column({ type: 'varchar', length: 16 })
 	entityType: ExecutionLedgerEntityType;
 
-	@Column({ type: 'varchar', length: 128 })
+	@Column({ type: 'varchar', length: EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH })
 	entityName: string;
 
 	@Column({ type: 'varchar', length: 36 })
