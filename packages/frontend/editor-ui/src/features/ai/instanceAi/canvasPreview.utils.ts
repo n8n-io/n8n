@@ -3,6 +3,8 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	getDataTableCallAction,
+	getExecutionCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -311,8 +313,7 @@ export function isAgentEditingWorkflow(
 		const args = tc.args as { workflowId?: string; action?: string } | undefined;
 		if (args?.workflowId !== workflowId) continue;
 		if (WORKFLOW_LOCKING_TOOLS.has(tc.toolName)) return true;
-		if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && args.action === 'run')
-			return true;
+		if (getExecutionCallAction(tc.toolName, args.action) === 'run') return true;
 		if (isWorkflowMutatingCall(tc)) return true;
 	}
 
@@ -447,8 +448,7 @@ export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string |
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
 		if (
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
-			args?.action === 'delete' &&
+			getDataTableCallAction(tc.toolName, args?.action) === 'delete' &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -470,9 +470,8 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
-		const action = typeof args?.action === 'string' ? args.action : '';
+		const action = getDataTableCallAction(tc.toolName, args?.action) ?? '';
 		if (
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
 			DATA_TABLE_PREVIEW_ACTIONS.has(action) &&
 			!tc.isLoading &&
 			tc.result &&
@@ -521,10 +520,7 @@ export interface SkillArtifact {
 	name?: string;
 }
 
-export interface SkillArtifactResult extends SkillArtifact {
-	/** Unique per operation — changes even when the same skill is saved again. */
-	toolCallId: string;
-}
+export type SkillArtifactResult = ToolArtifactResult<SkillArtifact>;
 
 /**
  * The skill that a finished `skills` call created or saved. Only a successful
@@ -555,23 +551,74 @@ export function getSkillArtifactFromToolCall(
 	return { skillId, ...(name ? { name } : {}) };
 }
 
+export type ToolArtifactResult<T> = T & {
+	/** Unique per operation — changes even when the same artifact is saved again. */
+	toolCallId: string;
+};
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the latest
- * skill that the assistant created or saved with the `skills` tool.
+ * artifact that `extract` finds in a tool call.
  */
-export function getLatestSkillArtifactResult(
+function getLatestToolArtifactResult<T extends object>(
 	node: InstanceAiAgentNode,
-): SkillArtifactResult | undefined {
+	extract: (tc: InstanceAiToolCallState) => T | undefined,
+): ToolArtifactResult<T> | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestSkillArtifactResult(node.children[i]);
+		const childResult = getLatestToolArtifactResult(node.children[i], extract);
 		if (childResult) return childResult;
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
-		const skill = getSkillArtifactFromToolCall(tc);
-		if (skill) return { ...skill, toolCallId: tc.toolCallId };
+		const artifact = extract(tc);
+		if (artifact) return { ...artifact, toolCallId: tc.toolCallId };
 	}
 	return undefined;
+}
+
+/** The latest skill that the assistant created or saved with the `skills` tool. */
+export function getLatestSkillArtifactResult(
+	node: InstanceAiAgentNode,
+): SkillArtifactResult | undefined {
+	return getLatestToolArtifactResult(node, getSkillArtifactFromToolCall);
+}
+
+/** The app detail page of one app. */
+export function appHref(projectId: string, appId: string): string {
+	return `/projects/${projectId}/apps/${appId}`;
+}
+
+/** Name of the n8n Assistant tool that builds n8n Apps. */
+export const APPS_TOOL_NAME = 'apps';
+
+/** `get` and `open` only read the app. */
+const APP_WRITE_ACTIONS = new Set(['create', 'commit']);
+
+export interface AppArtifact {
+	appId: string;
+	name: string;
+	projectId: string;
+}
+
+/** The app that a finished `apps` call created or committed. */
+export function getAppArtifactFromToolCall(tc: InstanceAiToolCallState): AppArtifact | undefined {
+	if (tc.toolName !== APPS_TOOL_NAME || tc.isLoading) return undefined;
+	const action = tc.args?.action;
+	if (typeof action !== 'string' || !APP_WRITE_ACTIONS.has(action)) return undefined;
+	const result = unwrapUntrustedToolResult(tc.result);
+	if (!isRecord(result) || !isRecord(result.app)) return undefined;
+	const { id, name, projectId } = result.app;
+	if (typeof id !== 'string' || typeof name !== 'string' || typeof projectId !== 'string') {
+		return undefined;
+	}
+	return { appId: id, name, projectId };
+}
+
+/** The latest app that the assistant created or committed with the `apps` tool. */
+export function getLatestAppArtifactResult(
+	node: InstanceAiAgentNode,
+): ToolArtifactResult<AppArtifact> | undefined {
+	return getLatestToolArtifactResult(node, getAppArtifactFromToolCall);
 }
 
 function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {
@@ -737,8 +784,7 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 	// are more recent (the orchestrator delegates to children) and should win.
 	for (const tc of node.toolCalls) {
 		const tcArgs = tc.args as Record<string, unknown> | undefined;
-		const isExecutionRun =
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && tcArgs?.action === 'run';
+		const isExecutionRun = getExecutionCallAction(tc.toolName, tcArgs?.action) === 'run';
 		const isVerificationRun = tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW;
 		if ((!isExecutionRun && !isVerificationRun) || tc.isLoading) continue;
 		const result = tc.result;

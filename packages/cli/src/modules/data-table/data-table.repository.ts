@@ -16,7 +16,7 @@ import {
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableDDLService } from './data-table-ddl.service';
+import { DataTableDDLService } from './persistence/data-table-ddl';
 import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -33,6 +33,32 @@ export class DataTableRepository extends Repository<DataTable> {
 		private readonly logger: Logger,
 	) {
 		super(DataTable, dataSource.manager);
+	}
+
+	async findWithColumnsByIds(ids: string[]): Promise<DataTable[]> {
+		if (ids.length === 0) return [];
+		return await this.find({ where: { id: In(ids) }, relations: { columns: true } });
+	}
+
+	async findNamesInProject(
+		projectId: string,
+		names: string[],
+	): Promise<Pick<DataTable, 'id' | 'name'>[]> {
+		if (names.length === 0) return [];
+		return await this.find({ select: ['id', 'name'], where: { projectId, name: In(names) } });
+	}
+
+	async findWithProjectsByIds(ids: string[], projectIds?: string[]): Promise<DataTable[]> {
+		if (ids.length === 0 || projectIds?.length === 0) return [];
+		return await this.find({
+			where: { id: In(ids), ...(projectIds ? { projectId: In(projectIds) } : {}) },
+			relations: { columns: true, project: true },
+		});
+	}
+
+	async findProjectIdForScope(dataTableId: string): Promise<string | null> {
+		const table = await this.findOne({ where: { id: dataTableId }, select: ['projectId'] });
+		return table?.projectId ?? null;
 	}
 
 	/**

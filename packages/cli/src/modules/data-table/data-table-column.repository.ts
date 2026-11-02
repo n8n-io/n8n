@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableDDLService } from './data-table-ddl.service';
+import { DataTableDDLService } from './persistence/data-table-ddl';
 import { DataTable } from './data-table.entity';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
@@ -61,6 +61,14 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 			}
 			throw new DataTableColumnNameConflictError(columnName, dataTable.name);
 		}
+	}
+
+	/**
+	 * Context-based form of {@link getColumns}. The manager form below is legacy and
+	 * goes away as its callers migrate to `OperationContext`.
+	 */
+	async getColumnsInContext(dataTableId: string, ctx: OperationContext) {
+		return await this.getColumns(dataTableId, this.managerFor(ctx));
 	}
 
 	async getColumns(dataTableId: string, trx?: EntityManager) {

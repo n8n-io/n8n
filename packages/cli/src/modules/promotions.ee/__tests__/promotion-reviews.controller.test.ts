@@ -4,6 +4,11 @@ import { Container } from '@n8n/di';
 
 import { PromotionReviewsController } from '../promotion-reviews.controller';
 
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+
 const { routes } = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 	PromotionReviewsController as Controller,
 );

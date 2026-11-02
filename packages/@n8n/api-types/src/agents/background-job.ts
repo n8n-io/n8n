@@ -1,6 +1,6 @@
 import type { AgentPlanTaskRef } from './task-cancellation';
 
-import type { AgentBuilderOpenSuspension } from './types';
+import type { AgentBuilderOpenSuspension, AgentToolOutputFile } from './types';
 
 export interface AgentBackgroundJobDto {
 	planTask?: AgentPlanTaskRef;
@@ -17,12 +17,18 @@ export interface AgentBackgroundJobDto {
 	startedAt: string;
 	/** ISO timestamp when the background job reached a terminal status. */
 	settledAt?: string;
+	/** Files that the job returned. The session log shows them as thumbnails. */
+	files?: AgentToolOutputFile[];
 }
 
 export interface AgentBackgroundJobSignal {
+	/** No background results or unfinished plan tasks remain when this turn starts. */
+	isFinal?: boolean;
 	tasks: Array<
 		Pick<AgentBackgroundJobDto, 'id' | 'title' | 'kind'> & {
 			status: Exclude<AgentBackgroundJobDto['status'], 'running' | 'suspended' | 'paused'>;
+			/** Files that the job returned. The chat shows them as thumbnails. */
+			files?: AgentToolOutputFile[];
 		}
 	>;
 }

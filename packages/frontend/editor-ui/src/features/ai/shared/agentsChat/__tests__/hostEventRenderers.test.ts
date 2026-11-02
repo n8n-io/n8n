@@ -98,25 +98,48 @@ describe('getHostEventItems', () => {
 		hostEvent('other.event', 'other-1'),
 		hostEvent(TEST_HOST_EVENT.START, 'start-2'),
 		hostEvent(TEST_HOST_EVENT.END, 'end-2'),
+		hostEvent(TEST_HOST_EVENT.THINKING, 'thinking-1'),
 	);
 
 	it('sorts events by placement in arrival order, with transient events last, and drops unknown events', () => {
-		const items = getHostEventItems(events, testHostEventExtensions, true);
+		const items = getHostEventItems(events, testHostEventExtensions, {
+			showTransient: true,
+			hasThinkingBlock: true,
+		});
 
 		expect(ids(items.start)).toEqual(['start-1', 'start-2']);
 		expect(ids(items.end)).toEqual(['end-1', 'end-2', 'transient-1']);
+		expect(ids(items.thinking)).toEqual(['thinking-1']);
 		expect(items.start[0]).toMatchObject({ message, component: TestHostEvent, placement: 'start' });
 	});
 
+	it('shows thinking events at the start when the message has no thinking block', () => {
+		const items = getHostEventItems(events, testHostEventExtensions, {
+			showTransient: true,
+			hasThinkingBlock: false,
+		});
+
+		expect(ids(items.start)).toEqual(['start-1', 'start-2', 'thinking-1']);
+		expect(items.thinking).toEqual([]);
+		expect(items.start[2]).toMatchObject({ placement: 'start' });
+	});
+
 	it('drops transient events when showTransient is false', () => {
-		const items = getHostEventItems(events, testHostEventExtensions, false);
+		const items = getHostEventItems(events, testHostEventExtensions, {
+			showTransient: false,
+			hasThinkingBlock: true,
+		});
 
 		expect(ids(items.start)).toEqual(['start-1', 'start-2']);
 		expect(ids(items.end)).toEqual(['end-1', 'end-2']);
 	});
 
 	it('returns no items without extensions', () => {
-		expect(getHostEventItems(events, [], true)).toEqual({ start: [], end: [] });
+		expect(getHostEventItems(events, [], { showTransient: true, hasThinkingBlock: true })).toEqual({
+			start: [],
+			end: [],
+			thinking: [],
+		});
 	});
 });
 

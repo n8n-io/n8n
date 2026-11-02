@@ -8,10 +8,14 @@ import {
 
 /**
  * What an action token authorizes. Scoped, so a leaked token buys only one of
- * the things the data plane can already do: report lifecycle events, or read a
- * credential for a step it runs.
+ * the things the data plane can already do: report lifecycle events, read a
+ * credential for a step it runs, or use a data table for one.
  */
-export const ACTION_SCOPES = ['lifecycle-events:write', 'credentials:read'] as const;
+export const ACTION_SCOPES = [
+	'lifecycle-events:write',
+	'credentials:read',
+	'data-tables:use',
+] as const;
 
 export type ActionScope = (typeof ACTION_SCOPES)[number];
 

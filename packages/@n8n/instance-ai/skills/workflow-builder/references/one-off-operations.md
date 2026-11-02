@@ -14,7 +14,11 @@ recommended_tools:
   - get_node_types
   - workflow_builder_build_workflow
   - setup_workflow
-  - workflow_builder_executions
+  - list_executions
+  - get_execution
+  - run_workflow
+  - run_workflow_step
+  - get_execution_node_output
   - ask_user
   - workflow_builder_verify_built_workflow
 ---
@@ -82,7 +86,7 @@ accessible there, fall back to the one-off workflow flow below.
 Call it with the same shape as a workflow-sdk node — `{ type, version,
 config: { parameters, credentials } }` plus `input` items. Read
 `get_node_types` first, as you would before configuring any
-node. Approval works exactly like `workflow_builder_executions(action="run")` — the same
+node. Approval works exactly like `run_workflow` — the same
 run-approval card, admin policy, and session grants — and for a one-off that
 prompt is the consent gate. The returned output items are
 real, so the read-back rule below is satisfied by reading what came back —
@@ -109,12 +113,12 @@ cannot write to external services directly) — the intent changes the
 2. **Setup** is unchanged: if the build outcome requires credential or value
    setup, route it through `setup_workflow` as usual. A one-off
    still needs real credentials before it can run live.
-3. **Run live** with `workflow_builder_executions(action="run")`. The run-approval card is the
+3. **Run live** with `run_workflow`. The run-approval card is the
    user's consent gate — for a one-off, the live run IS what the user asked
    for, so the usual "reserve live runs for explicit user requests" rule is
    satisfied by the request itself. Do not run before setup is complete.
 4. **Read back before reporting.** After the run, inspect the actual output of
-   the effect nodes with `workflow_builder_executions(action="get-node-output")` — the run
+   the effect nodes with `get_execution_node_output` — the run
    result data is truncated and not enough for quantitative claims. Check that
    each write/effect node's input was the intended data (the rows you meant to
    write), not an upstream node's API response. Report only numbers, columns,
