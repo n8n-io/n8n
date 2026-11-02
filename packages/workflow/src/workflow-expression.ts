@@ -18,7 +18,7 @@ import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
 
 // These nodes return vm2 proxies that the vm engine reads differently from native evaluation.
-const VM2_SANDBOX_NODE_TYPES = new Set([
+const DEPRECATED_VM2_SANDBOX_NODE_TYPES = new Set([
 	FUNCTION_NODE_TYPE,
 	FUNCTION_ITEM_NODE_TYPE,
 	CODE_LANGCHAIN_NODE_TYPE,
