@@ -46,6 +46,7 @@
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/test-utils": "catalog:frontend",
     "eslint": "catalog:",
     "stylelint": "catalog:",
     "typescript": "catalog:",
