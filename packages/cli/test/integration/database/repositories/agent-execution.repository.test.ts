@@ -1,3 +1,4 @@
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import type {
 	AgentSessionOrigin,
 	AgentSessionQueryFilters,
@@ -217,6 +218,7 @@ describe('AgentExecutionRepository', () => {
 			queueRepository,
 			messageRepository,
 			systemAgents,
+			Container.get(AgentProjectDeletionRepository),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(

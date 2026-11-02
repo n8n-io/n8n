@@ -21,6 +21,7 @@ import { ConflictError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
@@ -205,6 +206,7 @@ export class AgentExecutionService {
 		private readonly queueRepository: AgentMessageQueueRepository,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async startExecutionRecording(
@@ -224,6 +226,19 @@ export class AgentExecutionService {
 	}
 
 	async reserveExecution(
+		params: StartExecutionParams,
+		startedAt: Date,
+		ctx: OperationContext,
+		lockedQueueThread?: AgentExecutionThread,
+	): Promise<AgentExecutionReservation> {
+		return await this.projectDeletion.withWritableProject(
+			params.projectId,
+			async (ctx) => await this.reserveWritableExecution(params, startedAt, ctx, lockedQueueThread),
+			ctx,
+		);
+	}
+
+	private async reserveWritableExecution(
 		params: StartExecutionParams,
 		startedAt: Date,
 		ctx: OperationContext,
@@ -489,7 +504,7 @@ export class AgentExecutionService {
 			const currentLocation = await this.agentExecutionRepository.findTimelineStorageLocation(
 				ref.executionId,
 			);
-			if (currentLocation === 'db')
+			if (currentLocation === 'db' || currentLocation === null)
 				await this.agentExecutionLogStore.delete([{ ...ref, storedAt }]);
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -1237,7 +1252,9 @@ export class AgentExecutionService {
 		try {
 			await this.agentExecutionLogStore.write(logRef, { timeline: record.timeline }, storedAt);
 			blobWritten = true;
-			await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt);
+			await this.projectDeletion.withWritableProject(params.projectId, async (ctx) => {
+				await this.agentExecutionRepository.moveTimelineToBlob(executionId, storedAt, ctx);
+			});
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (blobWritten) await this.deleteUnreferencedTimelineBlob(logRef, storedAt);

@@ -126,6 +126,10 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return first?.parentExecutionId ? { parentExecutionId: first.parentExecutionId } : null;
 	}
 
+	async hasRunningForProject(projectId: string): Promise<boolean> {
+		return await this.exists({ where: { status: 'running', thread: { projectId } } });
+	}
+
 	async findRunning(): Promise<RunningAgentExecution[]> {
 		return await this.find({
 			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
@@ -258,8 +262,13 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async moveTimelineToBlob(
 		executionId: string,
 		storedAt: Exclude<AgentExecution['storedAt'], 'db'>,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		await this.update({ id: executionId, storedAt: 'db' }, { storedAt, timeline: null });
+		await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, storedAt: 'db' },
+			{ storedAt, timeline: null },
+		);
 	}
 
 	async findTimelineStorageLocation(

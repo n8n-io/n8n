@@ -3,12 +3,18 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentChatAttachmentRepository } from '../repositories/agent-chat-attachment.repository';
 import type { AgentFileGrantRepository } from '../repositories/agent-file-grant.repository';
+
+const projectDeletion = mock<AgentProjectDeletionRepository>();
+projectDeletion.withWritableProject.mockImplementation(
+	async (_projectId, write, ctx = {}) => await write(ctx),
+);
 
 describe('AgentChatAttachmentService', () => {
 	let binaryDataService = mock<BinaryDataService>();
@@ -46,7 +52,73 @@ describe('AgentChatAttachmentService', () => {
 			repository,
 			threadRepository,
 			grantRepository,
+			projectDeletion,
 		);
+	});
+
+	describe('deleteByProject', () => {
+		it('deletes bounded batches of bytes before their rows', async () => {
+			const batch = Array.from({ length: 500 }, (_, id) =>
+				mock<AgentChatAttachment>({ id: `att-${id}`, binaryDataId: `binary-${id}` }),
+			);
+			repository.findProjectDeletionBatch.mockResolvedValueOnce(batch).mockResolvedValueOnce([]);
+			await service.deleteByProject('project-1');
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledTimes(2);
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledWith('project-1', 500, {});
+			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(
+				batch.map((item) => item.binaryDataId),
+			);
+			expect(repository.deleteByIds).toHaveBeenCalledWith(
+				batch.map((item) => item.id),
+				{},
+			);
+			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.deleteByIds.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the batch rows when storage deletion fails', async () => {
+			repository.findProjectDeletionBatch.mockResolvedValue([
+				mock<AgentChatAttachment>({ id: 'att-1', binaryDataId: 'binary-1' }),
+			]);
+			binaryDataService.deleteManyByBinaryDataId.mockRejectedValue(
+				new Error('storage unavailable'),
+			);
+			await expect(service.deleteByProject('project-1')).rejects.toThrow('storage unavailable');
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
+			expect(repository.findProjectDeletionBatch).toHaveBeenCalledOnce();
+		});
+
+		it('does not access storage for an empty project', async () => {
+			repository.findProjectDeletionBatch.mockResolvedValue([]);
+			await service.deleteByProject('project-1');
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
+		});
+	});
+
+	it('removes new upload bytes when project deletion rejects the metadata write', async () => {
+		binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		binaryDataService.store.mockResolvedValue({
+			id: 'filesystem-v2:x',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
+		});
+		projectDeletion.withWritableProject.mockRejectedValueOnce(
+			new Error('project is being deleted'),
+		);
+		await expect(
+			service.storeInbound({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'thread-1',
+				source: 'chat',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+				data: Buffer.from('test'),
+			}),
+		).rejects.toThrow('project is being deleted');
+		expect(repository.saveInboundAttachment).not.toHaveBeenCalled();
+		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);
 	});
 
 	it('checks attachment access through the session and falls back to its persisted resource', async () => {

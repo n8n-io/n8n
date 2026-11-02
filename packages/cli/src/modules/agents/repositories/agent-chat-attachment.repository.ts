@@ -32,8 +32,16 @@ export class AgentChatAttachmentRepository {
 		this.table = new AgentChatAttachmentTable(dataSource, transactionRunner);
 	}
 
-	async findByProject(projectId: string, ctx: OperationContext): Promise<AgentChatAttachment[]> {
-		return await this.table.managerFor(ctx).findBy(AgentChatAttachment, { projectId });
+	async findProjectDeletionBatch(
+		projectId: string,
+		limit: number,
+		ctx: OperationContext,
+	): Promise<AgentChatAttachment[]> {
+		return await this.table.managerFor(ctx).find(AgentChatAttachment, {
+			where: { projectId },
+			order: { id: 'ASC' },
+			take: limit,
+		});
 	}
 
 	async saveInboundAttachment(

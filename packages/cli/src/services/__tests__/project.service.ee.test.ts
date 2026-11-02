@@ -1,3 +1,6 @@
+import type { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
+import type { AgentSessionStopService } from '@/modules/agents/agent-session-stop.service';
+import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { type EventService, type RoleService } from '@n8n/backend-services';
@@ -1000,6 +1003,9 @@ describe('ProjectService', () => {
 						agentChatAttachmentService,
 						agentTestChatService,
 						logger,
+						mock<AgentProjectDeletionRepository>(),
+						mock<AgentSessionStopService>(),
+						mock<AgentExecutionRepository>(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
@@ -1016,9 +1022,8 @@ describe('ProjectService', () => {
 			await projectService.deleteProject(user, project.id);
 
 			expect(agentRepository.findByProjectId).toHaveBeenCalledWith(project.id);
-			expect(agentChatAttachmentService.deleteByAgent).toHaveBeenCalledWith('agent-1');
-			expect(agentChatAttachmentService.deleteByAgent).toHaveBeenCalledWith('agent-2');
-			expect(agentChatAttachmentService.deleteByAgent.mock.invocationCallOrder[1]).toBeLessThan(
+			expect(agentChatAttachmentService.deleteByProject).toHaveBeenCalledWith(project.id);
+			expect(agentChatAttachmentService.deleteByProject.mock.invocationCallOrder[0]).toBeLessThan(
 				projectRepository.remove.mock.invocationCallOrder[0],
 			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
@@ -1208,6 +1213,9 @@ describe('ProjectService', () => {
 						agentChatAttachmentService,
 						agentTestChatService,
 						logger,
+						mock<AgentProjectDeletionRepository>(),
+						mock<AgentSessionStopService>(),
+						mock<AgentExecutionRepository>(),
 					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
@@ -1218,7 +1226,6 @@ describe('ProjectService', () => {
 			projectRelationRepository.findBy.mockResolvedValueOnce([]);
 			agentRepository.findByProjectId.mockResolvedValueOnce([{ id: 'agent-1' }] as never);
 			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
-			agentChatAttachmentService.deleteByAgent.mockRejectedValueOnce(new Error('storage down'));
 
 			await expect(projectService.deleteProject(user, project.id)).resolves.toBeUndefined();
 

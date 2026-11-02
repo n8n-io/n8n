@@ -18,7 +18,7 @@ import {
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UserError, OperationalError } from 'n8n-workflow';
 
 import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
@@ -93,8 +93,11 @@ interface AgentSessionDeletionRefs {
 
 @Service()
 export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutionThread> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(AgentExecutionThread, dataSource.manager, transactionRunner);
+	constructor(
+		dataSource: DataSource,
+		private readonly txRunner: TransactionRunner,
+	) {
+		super(AgentExecutionThread, dataSource.manager, txRunner);
 	}
 
 	/** Keep project-agent sessions readable after their user is removed. */
@@ -110,7 +113,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 	async deleteCheckpointsForThreads(threadIds: string[]): Promise<void> {
 		if (threadIds.length === 0) return;
-		await this.manager.delete(AgentCheckpoint, { threadId: In(threadIds) });
+		for (const threadId of threadIds) {
+			await this.txRunner.run({}, async (ctx) => {
+				if (!(await this.lockById(threadId, ctx))) return;
+				const manager = this.managerFor(ctx);
+				if (await manager.existsBy(AgentExecution, { threadId, status: 'running' }))
+					throw new OperationalError('Stop the Agent session before deleting its checkpoints');
+				await manager.delete(AgentCheckpoint, { threadId });
+			});
+		}
 	}
 
 	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
