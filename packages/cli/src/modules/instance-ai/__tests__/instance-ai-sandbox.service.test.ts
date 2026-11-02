@@ -3,7 +3,7 @@ import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandb
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 vi.mock('@n8n/instance-ai', () => ({
 	createSandbox: vi.fn(),

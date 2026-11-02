@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import {
 	buildNodePreviews,
 	checkToolSimulationSupport,
@@ -17,7 +17,7 @@ import {
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import isEqual from 'lodash/isEqual';
-import { calculateWorkflowChecksum, STICKY_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
+import { calculateWorkflowChecksum, STICKY_NODE_TYPE } from 'n8n-workflow';
 
 import { License } from '@/license';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

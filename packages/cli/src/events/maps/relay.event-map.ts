@@ -1,4 +1,4 @@
-import type { DataTableEventMap } from '@/modules/data-table/data-table-events';
+import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -51,6 +51,7 @@ import type {
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
+import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import type { AiEventMap } from './ai.event-map';
 import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
@@ -78,6 +79,7 @@ export type CrashDetector =
 	| 'queue-recovery'
 	| 'startup-recovery'
 	| 'start-failure'
+	| 'resume-limit'
 	| 'workflow-deactivation';
 
 export type ProjectSummary = {
@@ -491,6 +493,7 @@ export type RelayEventMap = DataTableEventMap & {
 		method: string;
 		apiVersion: string;
 		userAgent?: string;
+		client: PublicApiClient;
 	};
 
 	// #endregion

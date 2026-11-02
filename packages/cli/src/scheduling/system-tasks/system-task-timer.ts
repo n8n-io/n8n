@@ -2,7 +2,7 @@ import { Time } from '@n8n/constants';
 import type { Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, computeNextRunAt } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * Node fires a timeout longer than this straight away (the delay is a signed

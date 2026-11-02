@@ -394,12 +394,9 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../composables/agentTelemetry.utils', () => ({
 	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
-		instructions: '',
-		tools: [],
 		skills: [],
 		triggers: [],
 		memory: null,
-		model: null,
 		config_version: 'test-version',
 	}),
 }));
@@ -510,10 +507,13 @@ describe('AgentChatPanel', () => {
 			expect(trackSubmittedMessageMock).toHaveBeenCalledWith({
 				agentId: 'a1',
 				status: 'draft',
-				agentConfig: expect.objectContaining({
-					instructions: 'Help.',
+				agentConfig: {
+					skills: [],
+					tasks: [],
+					triggers: [],
+					memory: null,
 					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
-				}),
+				},
 			});
 		} finally {
 			vi.unstubAllGlobals();
@@ -2128,14 +2128,18 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it('keeps plan stopping available only in Preview', async () => {
+		it('keeps plan stopping available in Preview and n8n Chat, not in the system chat', async () => {
 			messagesMock.value = [publishPlan(planView())];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(true);
 
-			backgroundJobsMock.value = [{ ...job, status: 'paused', pauseRequested: true }];
 			await wrapper.setProps({ channel: 'n8n-chat' });
+
+			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(true);
+
+			backgroundJobsMock.value = [{ ...job, status: 'paused', pauseRequested: true }];
+			await wrapper.setProps({ channel: 'system' });
 
 			expect(wrapper.getComponent(AgentChatPlan).props('stopped')).toBe(false);
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(false);
@@ -2852,32 +2856,26 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it.each([false, true])(
-			'keeps n8n Chat background controls without a trace link, plan=%s',
-			async (hasPlan) => {
-				if (hasPlan) messagesMock.value = [publishPlan(planView())];
+		it('keeps n8n Chat background controls without a trace link and stops through Stop all tasks', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({
+				backgroundJobsActive: true,
+				continueSessionId: 't1',
+				channel: 'n8n-chat',
+			});
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			await panel.get('button').trigger('click');
 
-				backgroundJobsMock.value = [job];
-				const wrapper = mountPanel({
-					backgroundJobsActive: true,
-					continueSessionId: 't1',
-					channel: 'n8n-chat',
-				});
-				const panel = wrapper.get('[data-testid="agent-background-jobs"]');
-				await panel.get('button').trigger('click');
+			// `/sessions/<threadId>` is the builder's session view, which needs
+			// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
 
-				// `/sessions/<threadId>` is the builder's session view, which needs
-				// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
-				expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
+			await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
 
-				await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
+			expect(stopPlanMock).toHaveBeenCalledOnce();
 
-				expect(stopAllMock).toHaveBeenCalledOnce();
-				expect(stopPlanMock).not.toHaveBeenCalled();
-
-				wrapper.unmount();
-			},
-		);
+			wrapper.unmount();
+		});
 
 		it.each([
 			['completed', 'Completed', 'circle-check'],
@@ -3330,14 +3328,10 @@ describe('AgentChatPanel', () => {
 		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
 		await wrapper.setProps({ continueSessionId: 'session-2' });
 		fingerprint.resolve({
-			instructions: '',
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();
@@ -3362,14 +3356,10 @@ describe('AgentChatPanel', () => {
 
 		busy.value = true;
 		fingerprint.resolve({
-			instructions: '',
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();
@@ -4304,16 +4294,24 @@ describe('AgentChatPanel', () => {
 				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
 			});
 
-			it('renders the inline-offers slot between the transcript and the composer', () => {
+			it('renders the inline-offers slot at the end of the transcript', () => {
 				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
 				const wrapper = mountPanel({}, undefined, {
 					'inline-offers': '<div data-testid="host-offer" />',
 				});
 
-				const html = wrapper.html();
+				expect(
+					wrapper.find('[data-testid="message-list-stub"] [data-testid="host-offer"]').exists(),
+				).toBe(true);
+			});
+
+			it('shows the inline-offers slot instead of the empty state', () => {
+				const wrapper = mountPanel({}, undefined, {
+					'inline-offers': '<div data-testid="host-offer" />',
+				});
+
 				expect(wrapper.find('[data-testid="host-offer"]').exists()).toBe(true);
-				expect(html.indexOf('message-list-stub')).toBeLessThan(html.indexOf('host-offer'));
-				expect(html.indexOf('host-offer')).toBeLessThan(html.indexOf('data-testid="chat-input"'));
+				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
 			});
 
 			it('renders the above-input slot before the composer', () => {
