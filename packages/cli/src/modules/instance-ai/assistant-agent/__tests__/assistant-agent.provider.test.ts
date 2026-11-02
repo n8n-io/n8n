@@ -278,6 +278,22 @@ describe('AssistantAgentProvider', () => {
 			});
 		});
 
+		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {
+			const { provider, turnInput } = setup();
+			const element = { type: 'element', appId: 'app-1', tagName: 'button', text: 'Save' };
+			const turn = startTurn({
+				options: { ...startTurn().options, request: { attachments: [element] } },
+			});
+
+			await provider.prepareTurn(turn);
+
+			expect(turnInput.buildInput).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.objectContaining({ contextAttachments: [element] }),
+			);
+		});
+
 		it('gives the file tools the content of the turn files, and keeps the input as text', async () => {
 			const { provider, turnInput } = setup();
 			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };

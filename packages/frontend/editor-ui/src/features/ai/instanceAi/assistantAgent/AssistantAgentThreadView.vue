@@ -21,7 +21,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
 import { TabsRoot } from 'reka-ui';
-import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
@@ -80,6 +80,7 @@ import {
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
+import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -388,6 +389,11 @@ watch(
 	([current, pending]) => {
 		if (!current || pending.length === 0) return;
 		for (const attachment of instanceAiStore.consumePendingAttachments()) {
+			if (attachment.type === 'element') {
+				const { chip, clientContextPatch } = toElementComposerAttachment(attachment);
+				current.addComposerAttachment(chip, clientContextPatch);
+				continue;
+			}
 			if (attachment.type !== 'nodes') continue;
 			const { chip, clientContextPatch } = toNodesComposerAttachment(
 				attachment,
@@ -398,6 +404,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(
+	() => stagedElementAppId(panel.value?.composerAttachments ?? []),
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 // The canvas asks for the composer after it stages nodes: show the chat and focus its input.
 watch(

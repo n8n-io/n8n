@@ -1,6 +1,7 @@
 import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type AssistantThreadTabsState,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -982,6 +983,83 @@ describe('AssistantAgentThreadView', () => {
 			);
 		});
 	});
+	describe('picked app element', () => {
+		const element = (overrides: Partial<InstanceAiElementAttachment> = {}) =>
+			({
+				type: 'element',
+				appId: 'app-1',
+				tagName: 'button',
+				text: 'Save',
+				...overrides,
+			}) satisfies InstanceAiElementAttachment;
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+		});
+
+		async function renderThread() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			return result;
+		}
+
+		it('moves the element that the preview adds to the chat into one composer chip', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+
+			store.stageElement(element());
+			await flushPromises();
+
+			expect(store.pendingComposerAttachments).toEqual([]);
+			expect(composerAttachments.value).toEqual([
+				{
+					chip: { id: 'element:app-1', label: 'button: "Save"', icon: 'mouse-pointer' },
+					clientContextPatch: { attachments: [element()] },
+				},
+			]);
+		});
+
+		it('replaces the earlier element of the app when another one is picked', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+			store.stageElement(element());
+			await flushPromises();
+
+			store.stageElement(element({ tagName: 'h1', text: 'Title' }));
+			await flushPromises();
+
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual(['h1: "Title"']);
+		});
+
+		it('keeps the element next to staged canvas nodes', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+
+			store.stageNodeSets('wf-1', [nodeSet('Webhook')]);
+			store.stageElement(element());
+			await flushPromises();
+
+			expect(composerAttachments.value.map(({ chip }) => chip.id)).toEqual([
+				'nodes:wf-1',
+				'element:app-1',
+			]);
+		});
+
+		it('tells the store which app has an element in the composer, until the chip is gone', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+			expect(store.hasComposerElementFor('app-1')).toBe(false);
+
+			store.stageElement(element());
+			await flushPromises();
+			expect(store.hasComposerElementFor('app-1')).toBe(true);
+
+			composerAttachments.value = [];
+			await flushPromises();
+			expect(store.hasComposerElementFor('app-1')).toBe(false);
+		});
+	});
+
 	describe('hand-offs from other pages', () => {
 		const credentialContext = {
 			source: 'credential-modal' as const,

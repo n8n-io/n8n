@@ -1,73 +1,77 @@
 import { APP_INSPECTOR_MESSAGE_SOURCE } from '@n8n/api-types';
 
-export function runInspector(editorOrigin: string, messageSource: string) {
-	const INTERACTIVE = 'button, a, input, select, textarea, summary, [role="button"], [onclick]';
-	const CAPTURED_POINTER_EVENTS = ['mousedown', 'mouseup', 'pointerdown', 'pointerup'] as const;
+const INSPECTOR_SOURCE = String.raw`function (editorOrigin, messageSource) {
+	var INTERACTIVE = 'button, a, input, select, textarea, summary, [role="button"], [onclick]';
+	var CAPTURED_POINTER_EVENTS = ['mousedown', 'mouseup', 'pointerdown', 'pointerup'];
+	var active = false;
+	var hovered = null;
+	var selected = null;
+	var selectedObserver = null;
 
-	type Box = { box: HTMLElement; label: HTMLElement };
+	var host = document.createElement('div');
+	host.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:2147483647;contain:layout style;';
+	var shadow = host.attachShadow({ mode: 'open' });
+	var style = document.createElement('style');
+	style.textContent = [
+		'.box { position: fixed; display: none; box-sizing: border-box; border: 2px solid #ff6d5a; border-radius: 3px; }',
+		'.box.hover { background: rgba(255, 109, 90, 0.12); }',
+		'.label { position: absolute; left: -2px; max-width: 260px; padding: 2px 6px; overflow: hidden; border-radius: 3px;',
+		'background: #ff6d5a; color: #fff; font: 600 11px/16px system-ui, sans-serif; white-space: nowrap; text-overflow: ellipsis; }',
+	].join('\n');
+	shadow.append(style);
 
-	let active = false;
-	let hovered: Element | null = null;
-	let selected: Element | null = null;
-	let selectedObserver: ResizeObserver | undefined;
-
-	const host = document.createElement('div');
-	host.style.cssText =
-		'position:fixed;inset:0;pointer-events:none;z-index:2147483647;contain:layout style;';
-	const shadow = host.attachShadow({ mode: 'open' });
-	const style = document.createElement('style');
-	style.textContent = `
-		.box { position: fixed; display: none; box-sizing: border-box; border: 2px solid #ff6d5a; border-radius: 3px; }
-		.box.hover { background: rgba(255, 109, 90, 0.12); }
-		.label { position: absolute; left: -2px; max-width: 260px; padding: 2px 6px; overflow: hidden; border-radius: 3px;
-			background: #ff6d5a; color: #fff; font: 600 11px/16px system-ui, sans-serif; white-space: nowrap; text-overflow: ellipsis; }
-	`;
-	const createBox = (kind: 'hover' | 'selected'): Box => {
-		const box = document.createElement('div');
-		box.className = `box ${kind}`;
-		const label = document.createElement('div');
+	function createBox(kind) {
+		var box = document.createElement('div');
+		box.className = 'box ' + kind;
+		var label = document.createElement('div');
 		label.className = 'label';
 		box.append(label);
 		shadow.append(box);
-		return { box, label };
-	};
-	shadow.append(style);
-	const hoverBox = createBox('hover');
-	const selectedBox = createBox('selected');
+		return { box: box, label: label };
+	}
+
+	var hoverBox = createBox('hover');
+	var selectedBox = createBox('selected');
 	document.documentElement.append(host);
 
-	const shortText = (element: Element, max: number) =>
-		(element.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+	function shortText(element, max) {
+		return (element.textContent || '').replace(/\s+/g, ' ').trim().slice(0, max);
+	}
 
-	const place = ({ box, label }: Box, element: Element | null) => {
-		if (!element?.isConnected) {
-			box.style.display = 'none';
+	function place(target, element) {
+		if (!element || !element.isConnected) {
+			target.box.style.display = 'none';
 			return;
 		}
-		const rect = element.getBoundingClientRect();
+		var rect = element.getBoundingClientRect();
 		if (rect.width === 0 && rect.height === 0) {
-			box.style.display = 'none';
+			target.box.style.display = 'none';
 			return;
 		}
-		const text = shortText(element, 24);
-		label.textContent = `<${element.tagName.toLowerCase()}>${text ? ` ${text}` : ''}`;
-		label.style.top = rect.top < 24 ? `${rect.height + 2}px` : '-20px';
-		box.style.cssText = `display:block;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;`;
-	};
+		var text = shortText(element, 24);
+		target.label.textContent = '<' + element.tagName.toLowerCase() + '>' + (text ? ' ' + text : '');
+		target.label.style.top = rect.top < 24 ? rect.height + 2 + 'px' : '-20px';
+		target.box.style.cssText =
+			'display:block;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;';
+	}
 
-	const refresh = () => {
+	function refresh() {
 		place(hoverBox, active ? hovered : null);
 		place(selectedBox, selected);
-	};
+	}
 
-	const area = (rect: DOMRect) => rect.width * rect.height;
+	function area(rect) {
+		return rect.width * rect.height;
+	}
 
-	const findInertAt = (x: number, y: number) => {
-		let best: Element | null = null;
-		let bestArea = Infinity;
-		for (const candidate of document.querySelectorAll(INTERACTIVE)) {
+	function findInertAt(x, y) {
+		var best = null;
+		var bestArea = Infinity;
+		var candidates = document.querySelectorAll(INTERACTIVE);
+		for (var i = 0; i < candidates.length; i++) {
+			var candidate = candidates[i];
 			if (getComputedStyle(candidate).pointerEvents !== 'none') continue;
-			const rect = candidate.getBoundingClientRect();
+			var rect = candidate.getBoundingClientRect();
 			if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) continue;
 			if (area(rect) > 0 && area(rect) < bestArea) {
 				best = candidate;
@@ -75,63 +79,85 @@ export function runInspector(editorOrigin: string, messageSource: string) {
 			}
 		}
 		return best;
-	};
+	}
 
-	const resolveAt = (x: number, y: number) => {
-		const hit = document.elementFromPoint(x, y);
+	function resolveAt(x, y) {
+		var hit = document.elementFromPoint(x, y);
 		if (!hit || hit === host) return null;
-		const inert = findInertAt(x, y);
+		var inert = findInertAt(x, y);
 		if (inert && hit.contains(inert)) return inert;
-		return hit.closest(INTERACTIVE) ?? hit;
-	};
+		return hit.closest(INTERACTIVE) || hit;
+	}
 
-	const post = (message: Record<string, unknown>) =>
-		window.parent.postMessage({ source: messageSource, ...message }, editorOrigin);
+	function post(message) {
+		var payload = { source: messageSource };
+		for (var key in message) payload[key] = message[key];
+		window.parent.postMessage(payload, editorOrigin);
+	}
 
-	const selectorOf = (element: Element) => {
-		const testId = element.getAttribute('data-testid');
-		if (testId) return `[data-testid="${CSS.escape(testId)}"]`;
-		if (element.id) return `#${CSS.escape(element.id)}`;
-		const classes = [...element.classList].slice(0, 3);
-		return classes.length > 0 ? `.${classes.map((name) => CSS.escape(name)).join('.')}` : undefined;
-	};
+	function identifies(selector, element) {
+		try {
+			var found = document.querySelectorAll(selector);
+			return found.length === 1 && found[0] === element;
+		} catch (error) {
+			return false;
+		}
+	}
 
-	const describeElement = (element: Element) => ({
-		tagName: element.tagName.toLowerCase(),
-		text: shortText(element, 200) || undefined,
-		selector: selectorOf(element),
-		route: location.pathname + (location.hash.startsWith('#/') ? location.hash : ''),
-	});
+	function selectorOf(element) {
+		var candidates = [];
+		var testId = element.getAttribute('data-testid');
+		if (testId) candidates.push('[data-testid="' + CSS.escape(testId) + '"]');
+		if (element.id) candidates.push('#' + CSS.escape(element.id));
+		var classes = Array.prototype.slice.call(element.classList, 0, 3);
+		if (classes.length > 0) {
+			candidates.push('.' + classes.map(function (name) { return CSS.escape(name); }).join('.'));
+		}
+		for (var i = 0; i < candidates.length; i++) {
+			if (candidates[i].length <= 500 && identifies(candidates[i], element)) return candidates[i];
+		}
+		return undefined;
+	}
 
-	const swallow = (event: Event) => {
+	function describeElement(element) {
+		var hash = location.hash.indexOf('#/') === 0 ? location.hash : '';
+		return {
+			tagName: element.tagName.toLowerCase().slice(0, 50),
+			text: shortText(element, 200) || undefined,
+			selector: selectorOf(element),
+			route: (location.pathname + hash).slice(0, 500),
+		};
+	}
+
+	function swallow(event) {
 		event.preventDefault();
 		event.stopPropagation();
 		event.stopImmediatePropagation();
-	};
+	}
 
-	const onMouseMove = (event: MouseEvent) => {
+	function onMouseMove(event) {
 		hovered = resolveAt(event.clientX, event.clientY);
 		refresh();
-	};
+	}
 
-	const pick = (element: Element | null) => {
+	function pick(element) {
 		if (!element) return;
 		selected = element;
-		selectedObserver?.disconnect();
+		if (selectedObserver) selectedObserver.disconnect();
 		if (typeof ResizeObserver !== 'undefined') {
 			selectedObserver = new ResizeObserver(refresh);
 			selectedObserver.observe(element);
 		}
 		post({ type: 'inspect:selected', element: describeElement(element) });
 		disable();
-	};
+	}
 
-	const onClick = (event: MouseEvent) => {
+	function onClick(event) {
 		swallow(event);
 		pick(resolveAt(event.clientX, event.clientY));
-	};
+	}
 
-	const onKeyDown = (event: KeyboardEvent) => {
+	function onKeyDown(event) {
 		if (event.key === 'Escape') {
 			swallow(event);
 			disable();
@@ -140,7 +166,7 @@ export function runInspector(editorOrigin: string, messageSource: string) {
 			swallow(event);
 			pick(hovered);
 		}
-	};
+	}
 
 	function enable() {
 		if (active) return;
@@ -149,7 +175,9 @@ export function runInspector(editorOrigin: string, messageSource: string) {
 		document.addEventListener('mousemove', onMouseMove, true);
 		document.addEventListener('click', onClick, true);
 		document.addEventListener('keydown', onKeyDown, true);
-		for (const type of CAPTURED_POINTER_EVENTS) document.addEventListener(type, swallow, true);
+		CAPTURED_POINTER_EVENTS.forEach(function (type) {
+			document.addEventListener(type, swallow, true);
+		});
 	}
 
 	function disable() {
@@ -160,35 +188,35 @@ export function runInspector(editorOrigin: string, messageSource: string) {
 		document.removeEventListener('mousemove', onMouseMove, true);
 		document.removeEventListener('click', onClick, true);
 		document.removeEventListener('keydown', onKeyDown, true);
-		for (const type of CAPTURED_POINTER_EVENTS) document.removeEventListener(type, swallow, true);
+		CAPTURED_POINTER_EVENTS.forEach(function (type) {
+			document.removeEventListener(type, swallow, true);
+		});
 		refresh();
 	}
 
 	function clear() {
 		selected = null;
-		selectedObserver?.disconnect();
+		if (selectedObserver) selectedObserver.disconnect();
 		refresh();
 	}
 
 	window.addEventListener('scroll', refresh, true);
 	window.addEventListener('resize', refresh);
-	window.addEventListener('message', (event) => {
+	window.addEventListener('message', function (event) {
 		if (event.origin !== editorOrigin || event.source !== window.parent) return;
-		const data: unknown = event.data;
-		if (typeof data !== 'object' || data === null) return;
-		const message = data as { source?: unknown; type?: unknown };
-		if (message.source !== messageSource) return;
-		if (message.type === 'inspect:enable') enable();
-		else if (message.type === 'inspect:disable') disable();
-		else if (message.type === 'inspect:clear') clear();
+		var data = event.data;
+		if (typeof data !== 'object' || data === null || data.source !== messageSource) return;
+		if (data.type === 'inspect:enable') enable();
+		else if (data.type === 'inspect:disable') disable();
+		else if (data.type === 'inspect:clear') clear();
 	});
-}
+}`;
 
 export function buildInspectorScript(editorOrigin: string): string {
 	const args = [editorOrigin, APP_INSPECTOR_MESSAGE_SOURCE]
 		.map((value) => JSON.stringify(value).replace(/</g, '\\u003c'))
 		.join(',');
-	return `(${runInspector.toString()})(${args});`;
+	return `(${INSPECTOR_SOURCE})(${args});`;
 }
 
 export function injectInspectorScript(html: string, editorOrigin: string): string {

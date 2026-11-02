@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 
-import { APP_INSPECTOR_MESSAGE_SOURCE } from '@n8n/api-types';
+import { APP_INSPECTOR_MESSAGE_SOURCE, appInspectorEventSchema } from '@n8n/api-types';
 import { buildInspectorScript, injectInspectorScript } from '../inspector-script';
 
 const EDITOR_ORIGIN = 'https://n8n.example.net';
@@ -128,6 +128,87 @@ describe('inspector script', () => {
 		expect(posted[0].element?.selector).toBe('[data-testid="a\\"b"]');
 	});
 
+	describe('picking a control inside a container', () => {
+		const body = (style: string) => `<div id="wrap"><button ${style}>Save</button></div>`;
+
+		async function pickThroughContainer(buttonStyle: string) {
+			const { window, posted, place, send, hover, flush } = setup(body(buttonStyle));
+			const wrap = window.document.querySelector('#wrap')!;
+			place(wrap, { left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200 });
+			window.document.elementFromPoint = () => wrap;
+
+			send('inspect:enable');
+			hover();
+			window.document.dispatchEvent(
+				new window.MouseEvent('click', {
+					bubbles: true,
+					cancelable: true,
+					clientX: 50,
+					clientY: 70,
+				}),
+			);
+			await flush();
+			return posted[0].element?.tagName;
+		}
+
+		it('picks a control with pointer-events: none that the browser hit test skips', async () => {
+			expect(await pickThroughContainer('style="pointer-events: none"')).toBe('button');
+		});
+
+		it('picks the hit element when the control receives pointer events', async () => {
+			expect(await pickThroughContainer('')).toBe('div');
+		});
+	});
+
+	describe('selector hint', () => {
+		async function pickFirstButton(body: string) {
+			const { window, posted, send, hover, flush } = setup(body);
+			send('inspect:enable');
+			hover();
+			window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+			await flush();
+			return posted[0];
+		}
+
+		it('uses a class selector when the class identifies the element', async () => {
+			const message = await pickFirstButton('<button class="action">One</button>');
+
+			expect(message.element?.selector).toBe('.action');
+		});
+
+		it('leaves out a selector that matches more than the picked element', async () => {
+			const message = await pickFirstButton(
+				'<button class="action">One</button><button class="action">Two</button>',
+			);
+
+			expect(message.element?.selector).toBeUndefined();
+		});
+
+		it('falls back to the id when the test id is shared', async () => {
+			const message = await pickFirstButton(
+				'<button data-testid="row" id="first">One</button><button data-testid="row">Two</button>',
+			);
+
+			expect(message.element?.selector).toBe('#first');
+		});
+	});
+
+	it('bounds the picked element so that the editor accepts it', async () => {
+		const { window, posted, send, hover, flush } = setup(
+			`<button id="${'a'.repeat(600)}">Save</button>`,
+		);
+		window.history.pushState({}, '', `/${'b'.repeat(600)}`);
+
+		send('inspect:enable');
+		hover();
+		window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+		await flush();
+
+		expect(posted[0].element?.selector).toBeUndefined();
+		expect(posted[0].element?.route).toHaveLength(500);
+		expect(appInspectorEventSchema.safeParse(posted[0]).success).toBe(true);
+	});
+
 	it('lets the app handle clicks again after a pick', () => {
 		const { window, button, send, hover } = setup();
 		const appClick = vi.fn();
@@ -143,7 +224,7 @@ describe('inspector script', () => {
 		expect(appClick).toHaveBeenCalledTimes(1);
 	});
 
-	it('picks the highlighted element with Enter, for controls that get no pointer events', async () => {
+	it('picks the highlighted element with Enter', async () => {
 		const { window, posted, send, hover, flush } = setup();
 
 		send('inspect:enable');
