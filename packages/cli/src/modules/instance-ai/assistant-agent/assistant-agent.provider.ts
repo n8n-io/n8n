@@ -284,7 +284,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
-			// input keeps only the text. The file content is for the file tools.
+			// input keeps only the text. parse-file reads the files by id when it needs them.
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
 			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode, trace),
 			runOptions: {

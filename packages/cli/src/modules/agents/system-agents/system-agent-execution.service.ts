@@ -912,7 +912,7 @@ export class SystemAgentExecutionService {
 		ref: StoredAttachmentRef,
 	): Promise<Buffer | undefined> {
 		if (!attachments.some((attachment) => attachment.id === ref.id)) return undefined;
-		return (await this.readThreadFile(thread, resourceId, ref.id))?.content;
+		return await (await this.readThreadFile(thread, resourceId, ref.id))?.readContent();
 	}
 
 	private async readThreadFile(
@@ -926,14 +926,21 @@ export class SystemAgentExecutionService {
 			source: SYSTEM_CHAT_SOURCE,
 		});
 		if (attachment?.threadId !== thread.id) return undefined;
-		try {
-			const content = await streamToBuffer(await this.attachmentService.getStream(attachment));
-			return { fileName: attachment.fileName, mimeType: attachment.mimeType, content };
-		} catch (error) {
-			// Storage can prune the bytes while the attachment row stays.
-			if (error instanceof FileNotFoundError) return undefined;
-			throw error;
-		}
+		// The bytes load only on request, so a caller can check the size first.
+		return {
+			fileName: attachment.fileName,
+			mimeType: attachment.mimeType,
+			sizeBytes: attachment.fileSizeBytes,
+			readContent: async () => {
+				try {
+					return await streamToBuffer(await this.attachmentService.getStream(attachment));
+				} catch (error) {
+					// Storage can prune the bytes while the attachment row stays.
+					if (error instanceof FileNotFoundError) return undefined;
+					throw error;
+				}
+			},
+		};
 	}
 
 	/**

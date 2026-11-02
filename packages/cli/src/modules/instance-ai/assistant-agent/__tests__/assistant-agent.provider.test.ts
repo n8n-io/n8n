@@ -282,7 +282,12 @@ describe('AssistantAgentProvider', () => {
 		it('gives parse-file the stored files of the thread, and keeps the input as text', async () => {
 			const { provider, turnInput, environment } = setup();
 			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
-			const stored = { fileName: 'notes.csv', mimeType: 'text/csv', content: Buffer.from('a,b') };
+			const stored = {
+				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
+			};
 			const turn = startTurn({
 				attachments: [ref],
 				readFile: vi.fn(async (fileId: string) => (fileId === 'att-1' ? stored : undefined)),
@@ -322,7 +327,12 @@ describe('AssistantAgentProvider', () => {
 		it('gives parse-file the stored files on a resumed turn', async () => {
 			const { provider, environment } = setup();
 			const start = startTurn();
-			const stored = { fileName: 'notes.csv', mimeType: 'text/csv', content: Buffer.from('a,b') };
+			const stored = {
+				fileName: 'notes.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				readContent: vi.fn(async () => Buffer.from('a,b')),
+			};
 			const turn: SystemAgentResumeTurn<AssistantSandboxLease> = {
 				type: 'resume',
 				user,

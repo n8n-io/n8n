@@ -1690,11 +1690,13 @@ export interface InstanceAiAgentContextReader {
 export interface InstanceAiStoredFile {
 	fileName: string;
 	mimeType: string;
-	content: Buffer;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
 }
 
 export interface InstanceAiStoredFileReader {
-	/** Gives `undefined` when the thread has no such file or its bytes are gone. */
+	/** Gives `undefined` when the thread has no such file. */
 	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
 }
 

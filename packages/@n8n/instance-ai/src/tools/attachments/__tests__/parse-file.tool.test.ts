@@ -271,6 +271,20 @@ describe('createParseFileTool', () => {
 });
 
 describe('createParseStoredFileTool', () => {
+	function storedFile(
+		fileName: string,
+		mimeType: string,
+		content: Buffer | undefined,
+		sizeBytes?: number,
+	) {
+		return {
+			fileName,
+			mimeType,
+			sizeBytes: sizeBytes ?? content?.length ?? 0,
+			readContent: vi.fn(async () => await Promise.resolve(content)),
+		};
+	}
+
 	function readerFor(files: Record<string, InstanceAiStoredFile>) {
 		return { read: vi.fn(async (fileId: string) => await Promise.resolve(files[fileId])) };
 	}
@@ -283,13 +297,9 @@ describe('createParseStoredFileTool', () => {
 		expect(parseStoredFileInputSchema.safeParse({ fileId: '  ' }).success).toBe(false);
 	});
 
-	it('parses a stored CSV file by its id', async () => {
+	it('parses a stored CSV file by its id and names the file by id', async () => {
 		const reader = readerFor({
-			'file-1': {
-				fileName: 'people.csv',
-				mimeType: 'text/csv',
-				content: Buffer.from('name,age\nAlice,30\nBob,25'),
-			},
+			'file-1': storedFile('people.csv', 'text/csv', Buffer.from('name,age\nAlice,30\nBob,25')),
 		});
 		const tool = createParseStoredFileTool(reader);
 
@@ -297,6 +307,7 @@ describe('createParseStoredFileTool', () => {
 
 		expect(reader.read).toHaveBeenCalledWith('file-1');
 		expect(result.error).toBeUndefined();
+		expect(result.fileId).toBe('file-1');
 		expect(result.format).toBe('csv');
 		expect(result.fileName).toBe('people.csv');
 		expect(result.totalRows).toBe(2);
@@ -305,11 +316,7 @@ describe('createParseStoredFileTool', () => {
 	it('extracts text from a stored Markdown file', async () => {
 		const tool = createParseStoredFileTool(
 			readerFor({
-				'file-1': {
-					fileName: 'notes.md',
-					mimeType: 'text/markdown',
-					content: Buffer.from('# Title\n\nBody'),
-				},
+				'file-1': storedFile('notes.md', 'text/markdown', Buffer.from('# Title\n\nBody')),
 			}),
 		);
 
@@ -319,28 +326,33 @@ describe('createParseStoredFileTool', () => {
 		expect(result.content).toBe('# Title\n\nBody');
 	});
 
-	it('returns an error when the thread has no such file', async () => {
+	it('returns an error that names the file when the thread has no such file', async () => {
 		const tool = createParseStoredFileTool(readerFor({}));
 
 		const result = await executeTool(tool, { fileId: 'missing', ...defaults }, {} as never);
 
 		expect(result.error).toBe('File "missing" not found in this conversation');
+		expect(result.fileId).toBe('missing');
 	});
 
-	it('returns an error for a file over the size limit', async () => {
+	it('returns an error when storage no longer has the bytes', async () => {
 		const tool = createParseStoredFileTool(
-			readerFor({
-				'file-1': {
-					fileName: 'big.csv',
-					mimeType: 'text/csv',
-					content: Buffer.alloc(10 * 1024 * 1024 + 1),
-				},
-			}),
+			readerFor({ 'file-1': storedFile('gone.csv', 'text/csv', undefined, 10) }),
 		);
+
+		const result = await executeTool(tool, { fileId: 'file-1', ...defaults }, {} as never);
+
+		expect(result.error).toBe('File "file-1" is no longer available');
+	});
+
+	it('rejects a file over the size limit without loading its bytes', async () => {
+		const big = storedFile('big.csv', 'text/csv', Buffer.from('a,b'), 10 * 1024 * 1024 + 1);
+		const tool = createParseStoredFileTool(readerFor({ 'file-1': big }));
 
 		const result = await executeTool(tool, { fileId: 'file-1', ...defaults }, {} as never);
 
 		expect(result.error).toBeDefined();
 		expect(result.rows).toEqual([]);
+		expect(big.readContent).not.toHaveBeenCalled();
 	});
 });

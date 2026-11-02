@@ -788,16 +788,16 @@ describe('SystemAgentExecutionService', () => {
 					threadId: 'thread-1',
 					fileName: 'earlier.csv',
 					mimeType: 'text/csv',
+					fileSizeBytes: 3,
 				} as never);
 				attachmentService.getStream.mockResolvedValue(Readable.from([Buffer.from('a,b')]));
 
 				const file = await turn.readFile('att-earlier');
 
-				expect(file).toEqual({
-					fileName: 'earlier.csv',
-					mimeType: 'text/csv',
-					content: Buffer.from('a,b'),
-				});
+				expect(file).toMatchObject({ fileName: 'earlier.csv', mimeType: 'text/csv', sizeBytes: 3 });
+				// The bytes load only on request, so a caller can check the size first.
+				expect(attachmentService.getStream).not.toHaveBeenCalled();
+				await expect(file?.readContent()).resolves.toEqual(Buffer.from('a,b'));
 				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-earlier', {
 					agentId: AGENT_ID,
 					resourceId: 'system-chat:user-1',
@@ -814,6 +814,22 @@ describe('SystemAgentExecutionService', () => {
 
 				await expect(turn.readFile('att-1')).resolves.toBeUndefined();
 				expect(attachmentService.getStream).not.toHaveBeenCalled();
+			});
+
+			it('gives no content for a stored file whose bytes are gone', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-1',
+					fileName: 'gone.csv',
+					mimeType: 'text/csv',
+					fileSizeBytes: 3,
+				} as never);
+				attachmentService.getStream.mockRejectedValue(new FileNotFoundError('file-1'));
+
+				const file = await turn.readFile('att-1');
+
+				await expect(file?.readContent()).resolves.toBeUndefined();
 			});
 		});
 

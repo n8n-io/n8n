@@ -69,17 +69,19 @@ interface SystemAgentTurnBase<TLease> {
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
 	/**
-	 * Read a stored attachment of this thread by id, from any message. Gives
-	 * `undefined` for a file of another thread or a file whose bytes are gone.
+	 * Find a stored file of this thread by id, from any message or tool result.
+	 * Gives `undefined` for a file of another thread.
 	 */
 	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
 }
 
-/** A stored attachment of a system-agent thread. */
+/** A stored file of a system-agent thread. */
 export interface SystemAgentFile {
 	fileName: string;
 	mimeType: string;
-	content: Buffer;
+	sizeBytes: number;
+	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
+	readContent(): Promise<Buffer | undefined>;
 }
 
 export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {

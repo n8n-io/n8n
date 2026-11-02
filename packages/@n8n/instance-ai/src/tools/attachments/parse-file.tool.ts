@@ -104,6 +104,8 @@ const columnMetaSchema = z.object({
 
 export const parseFileOutputSchema = z.object({
 	attachmentIndex: z.number(),
+	/** Set by the stored-file version, which has no attachment index. */
+	fileId: z.string().optional(),
 	fileName: z.string(),
 	mimeType: z.string(),
 	format: z.enum(parseFileOutputFormats),
@@ -333,19 +335,30 @@ export function createParseStoredFileTool(reader: InstanceAiStoredFileReader) {
 		.input(parseStoredFileInputSchema)
 		.output(parseFileOutputSchema)
 		.handler(async ({ fileId, ...options }: z.infer<typeof parseStoredFileInputSchema>) => {
+			// The output names the file by id, so results for two files stay apart.
+			const fail = (error: string, attachment?: AttachmentInfo) => ({
+				...errorOutput(0, options, error, attachment),
+				fileId,
+			});
+
 			const file = await reader.read(fileId);
-			if (!file) {
-				return errorOutput(0, options, `File "${fileId}" not found in this conversation`);
+			if (!file) return fail(`File "${fileId}" not found in this conversation`);
+			// Check the stored size before loading the bytes.
+			if (file.sizeBytes > MAX_DECODED_SIZE_BYTES) {
+				return fail(formatSizeLimitMessage(file.sizeBytes));
 			}
-			if (file.content.length > MAX_DECODED_SIZE_BYTES) {
-				return errorOutput(0, options, formatSizeLimitMessage(file.content.length));
+			const content = await file.readContent();
+			if (!content) return fail(`File "${fileId}" is no longer available`);
+			if (content.length > MAX_DECODED_SIZE_BYTES) {
+				return fail(formatSizeLimitMessage(content.length));
 			}
+
 			const attachment: AttachmentInfo = {
-				data: file.content.toString('base64'),
+				data: content.toString('base64'),
 				mimeType: file.mimeType,
 				fileName: file.fileName,
 			};
-			return await parseAttachment(attachment, 0, options);
+			return { ...(await parseAttachment(attachment, 0, options)), fileId };
 		})
 		.build();
 }
