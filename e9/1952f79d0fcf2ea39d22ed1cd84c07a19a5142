@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/app/stores/executionData.store.test.ts
+  s_45aef5820f3574::t_8a2c85cf086e74 326-421
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_45aef5820f3574::t_273c52698cebc5 45-47
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.test.ts
+  s_45aef5820f3574::t_be3f95a1932b06 3-5,14,28-29,41-42,55,67,78,86,97,103,111-112,117,122-123,134-135,150-151,165,168,180,192-193,220-222,229,235,237-238,241-242,246-247,251,254,256-257
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.test.ts
+  s_45aef5820f3574::t_2bebb1c581242c 1390,1457,1467,1500-1501,1510-1512,1536,1539-1540,1551,1553-1554,1556,1558-1559,1569,1572-1593
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useTrimmedRunDataFill.test.ts
+  s_45aef5820f3574::t_ab7dc7d0a1e200 1-241
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteBefore.test.ts
+  s_45aef5820f3574::t_2bebb1c581242c 43,48
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_45aef5820f3574::t_9d38a093311778 171
+packages/frontend/editor-ui/src/app/stores/executionData.store.ts
+  s_45aef5820f3574::t_fed22a56ed74b8 13,644-675,827
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.test.ts
+  s_45aef5820f3574::t_7497e367ef4d40 14
+  s_45aef5820f3574::t_ebe27dbcd7b2aa 30,1629,1640-1742,1885-1887,1908-1913,1959-1963,1982,1984-1985,1987,1993-1998,2004-2006
+packages/frontend/editor-ui/src/app/composables/useExecutingNode.ts
+  s_45aef5820f3574::t_2d5d2ce44e9589 100
+  s_45aef5820f3574::t_9d38a093311778 1-2,99,101-102,107,117-123
+  s_45aef5820f3574::t_a9bba1effa59af 124-125
+packages/frontend/editor-ui/src/features/ndv/runData/composables/useTrimmedRunDataFill.ts
+  s_45aef5820f3574::t_df394009a325a1 1-90,94-100
+  s_45aef5820f3574::t_7497e367ef4d40 91-93
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.test.ts
+  s_45aef5820f3574::t_11aee0db1396ce 7,1121-1133
+  s_45aef5820f3574::t_202b84a09f5593 1134
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/nodeExecuteBefore.ts
+  s_45aef5820f3574::t_9d38a093311778 25
+packages/frontend/editor-ui/src/features/execution/executions/executions.utils.ts
+  s_45aef5820f3574::t_f1b7955fadeff0 7,274-281
+  s_45aef5820f3574::t_e827066c9a7ede 282-283
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_45aef5820f3574::t_41f2a0040c77f7 85-86,484-495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e91952f79d0fcf2ea39d22ed1cd84c07a19a5142",
+  "prompts": {},
+  "sessions": {
+    "s_45aef5820f3574": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d6f157c-93a5-4aec-ad84-ede30ca964ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

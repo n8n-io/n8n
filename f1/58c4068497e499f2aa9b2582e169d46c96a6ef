@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  s_be7f812aa784b6::t_9567a276b34856 148-149,164-166
+  s_be7f812aa784b6::t_86b0eeddd25d09 117,120,122
+  s_be7f812aa784b6::t_8a9b0d99516dd5 133-135,138,144-145
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 424,446-447,426-427
+  s_be7f812aa784b6::t_80dfcf2c39dd0c 254,276,301,369,428,432,435,437
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 336,342,349
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_be7f812aa784b6::t_0c6ff9a208e965 1850-1859,1908-1910,1937-1944,1948-1951,1958-1960,1963,1969-1971,1974,1981-1983,1993-1995,1860-1862,1864,1867-1869,1872-1877,1879-1881,1913-1916,1920-1925,1932-1934,1972,1975-1976,1980,1989
+  s_be7f812aa784b6::t_4c61021f64a964 1374,1474,1500,1525
+packages/cli/src/modules/agents/integrations/__tests__/agent-outbound-files.service.test.ts
+  s_be7f812aa784b6::t_10ce5f312a449d 98-99,102,104-105,107-109,114,118-120,124,126,135-136,139,141,143-145,153-154
+  ai_agent 101,110,113,115,122,127,138,146-147
+  s_be7f812aa784b6::t_a8bda00e4d3efb 116
+  s_be7f812aa784b6::t_8a9b0d99516dd5 131
+  s_be7f812aa784b6::t_030f9be0f81641 149,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f158c4068497e499f2aa9b2582e169d46c96a6ef",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

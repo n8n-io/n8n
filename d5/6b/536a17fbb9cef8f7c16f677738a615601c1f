@@ -1,0 +1,60 @@
+packages/modules/apps/frontend/src/components/AppPreview.vue
+  s_b6d332c56aa1c5::t_f5bdd891030279 117
+  s_b6d332c56aa1c5::t_f95e6f02241cff 115-116
+  s_b6d332c56aa1c5::t_718b6893440d0d 118-119
+  s_b6d332c56aa1c5::t_8337a18b4e0ea6 2,20-21,49,56-57,61-62,73-74,88,91-93,95-100,102,104-105,108,111,135-136,158
+packages/modules/apps/frontend/src/components/AppPublishButton.vue
+  s_b6d332c56aa1c5::t_cd8dced70f6219 1-151,153-159
+  s_b6d332c56aa1c5::t_52397c42b34a3a 152
+packages/modules/apps/frontend/src/composables/useAppVersions.test.ts
+  s_b6d332c56aa1c5::t_e75773ea7b9157 1-125
+packages/modules/apps/frontend/src/components/AppPublishButton.test.ts
+  s_b6d332c56aa1c5::t_eb1ddc4e33af41 1-55,57-200
+  s_b6d332c56aa1c5::t_1685c5090c8c39 56
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_b6d332c56aa1c5::t_a18e034667667a 31,41,43-46,63-70
+  s_b6d332c56aa1c5::t_8a62004e499a74 53-55
+  s_b6d332c56aa1c5::t_2d99156f512e1f 28-30
+  s_b6d332c56aa1c5::t_675bd097c00781 62
+  s_b6d332c56aa1c5::t_277ee53bbfd885 71-72
+  s_b6d332c56aa1c5::t_b5c2d4662e1d6f 13,82-83,98-103
+packages/modules/apps/frontend/src/apps.api.test.ts
+  s_b6d332c56aa1c5::t_4248970e158242 10-11,68,81-91
+packages/modules/apps/frontend/src/apps.api.ts
+  s_b6d332c56aa1c5::t_64d504b38a324d 77-99
+packages/modules/apps/frontend/src/components/AppHeader.test.ts
+  s_b6d332c56aa1c5::t_b096b17cc284ae 1,31-41,45,67-72,117,119-121,123
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_b6d332c56aa1c5::t_543a3fe583a3f1 1,5-6,8,29-45,47-48,51-54,57-61,64-69,71-74,173-214
+packages/modules/apps/frontend/src/composables/useAppVersions.ts
+  s_b6d332c56aa1c5::t_4bb0fe5baef8b2 1-100
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b6d332c56aa1c5::t_5cdf7f4c288dc3 341-352
+packages/modules/apps/frontend/src/apps.permissions.ts
+  s_b6d332c56aa1c5::t_e4d83d00aff42d 11
+packages/modules/apps/frontend/src/components/AppHeader.vue
+  s_b6d332c56aa1c5::t_b2a1cac9562f9d 2,24,35-39,41,166-171
+packages/modules/apps/frontend/src/components/AppPreview.test.ts
+  s_b6d332c56aa1c5::t_20049d8aad79b2 5,8,41-49,51-52,144,146,153,162,164,171,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d56b536a17fbb9cef8f7c16f677738a615601c1f",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
