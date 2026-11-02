@@ -203,7 +203,7 @@ const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 		draft: { type: Object, required: true },
 		building: Boolean,
 		statusText: String,
-		searchPanel: Object,
+		waiting: Boolean,
 	},
 	setup: (props) => () =>
 		h('div', {
@@ -211,9 +211,7 @@ const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 			'data-file-path': (props.draft as { filePath: string }).filePath,
 			'data-building': String(props.building),
 			'data-status-text': props.statusText ?? '',
-			'data-search-queries': (
-				props.searchPanel as { queries?: string[] } | undefined
-			)?.queries?.join(','),
+			'data-waiting': String(props.waiting),
 		}),
 });
 
@@ -2739,9 +2737,40 @@ describe('InstanceAiThreadView', () => {
 
 			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
 			expect(preview).toHaveAttribute('data-file-path', 'staging:run-1');
-			expect(preview).toHaveAttribute('data-status-text', 'Searching for gmail, slack');
-			expect(preview).toHaveAttribute('data-search-queries', 'gmail,slack');
+			// The status holds each text for at least 1.5 seconds, so the new step shows after that.
+			await vi.waitFor(
+				() => expect(preview).toHaveAttribute('data-status-text', 'Searching for gmail, slack'),
+				{ timeout: 3000 },
+			);
+			expect(preview).toHaveAttribute('data-waiting', 'false');
 			expect(trackCanvasRendered).toHaveBeenCalledWith('staging');
+		});
+
+		it('shows on the staging canvas that the run waits on the user', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			stageNewWorkflow();
+			const run = thread.messages[1];
+			run.agentTree!.toolCalls.push({
+				toolCallId: 'tc-ask',
+				toolName: 'ask_user',
+				args: {},
+				isLoading: true,
+				confirmation: {
+					requestId: 'req-1',
+					severity: 'info',
+					message: 'Which sheet?',
+					inputType: 'questions',
+				},
+				confirmationStatus: 'pending',
+			});
+			thread.messages = [...thread.messages];
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await vi.waitFor(() => expect(preview).toHaveAttribute('data-waiting', 'true'));
+			expect(preview).toHaveAttribute('data-status-text', 'Waiting on your answer');
 		});
 
 		it('shows no staging canvas in the control arm', async () => {

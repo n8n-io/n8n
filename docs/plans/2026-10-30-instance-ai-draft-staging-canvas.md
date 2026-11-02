@@ -97,30 +97,17 @@ export interface WorkflowStaging {
 	nodes: WorkflowStagingNode[];
 }
 
-export type WorkflowBuildStep =
-	| { kind: 'preparing' }
-	| { kind: 'searching'; queries: string[] }
-	| { kind: 'referencing'; skill: string; filePath?: string }
-	| { kind: 'reading'; nodeTypes: string[] }
-	| { kind: 'writing' }
-	| { kind: 'building' }
-	| { kind: 'fixing' };
-
 /** Undefined when the run is not staging a new workflow. */
 export function getWorkflowStaging(
 	tree: InstanceAiAgentNode,
 	options: { hasNodeType: (nodeType: string) => boolean },
 ): WorkflowStaging | undefined;
-
-/** The current step of a run, for the badge of the staging and draft canvas. */
-export function getWorkflowBuildStep(tree: InstanceAiAgentNode): WorkflowBuildStep;
 ```
 
 `useWorkflowStaging` (`composables/useWorkflowStaging.ts`) applies the rules
 of the turn: the experiment arm, the running message, the attachments of the
 user message, and the first draft of the run. It returns the staging canvas as
-a `WorkflowDraft` (`stagingDraft`) and the current step (`buildStep`). The
-`fixing` step gets its issue count from the draft on screen.
+a `WorkflowDraft` (`stagingDraft`).
 
 Rules:
 
@@ -160,30 +147,59 @@ call before opening the tab.
 
 ### Status line
 
-`getWorkflowBuildStep` uses the newest call of the run that is still loading.
-When no call is loading, it uses the newest completed call.
+The draft canvas shows the same text as the chat status bar, so the two never
+disagree. `useRunActivity` (moved out of `InstanceAiStatusBar.vue`) finds the
+active sub-agent or the running tool. Both the status bar and the canvas use
+it. The text comes from `useToolLabel`, as in the rest of the chat.
 
-| Newest call | Step | Text (i18n) |
-|---|---|---|
-| `search_nodes` | `searching` | "Searching for {list}" |
-| `load_skill`, another skill | `referencing` | "Referencing {skill}" |
-| `load_skill` with a file path | `referencing` | "Referencing {file}" |
-| `get_node_types` | `reading` | "Reading {list}" |
-| `workspace_write_file`, `workspace_str_replace_file` | `writing` | "Writing the workflow" |
-| `workflow_builder_build_workflow`, loading | `building` | "Building" |
-| `workflow_builder_build_workflow`, blocked | `fixing` | "Fixing {count} issues" |
-| Other | `preparing` | "Preparing" |
+- **Detail:** `useToolLabel` now names what a node lookup looks up:
+  - `search_nodes`: "Searching for gmail, slack"
+  - `get_node_types`: "Reading Slack, Gmail", with the display names from the
+    node types store
 
-- `{list}` uses the first 3 items and "and {count} more". The search queries
-  use the text the agent sent (`query` and `queries`). The node types use the
-  display name from the node types store.
-- `{skill}` humanizes the skill name, for example `data-table-manager` →
-  "data table manager". `{file}` reuses `humanizeFileLabel` from
-  `toolLabels.ts`. Export it from there. Do not copy it.
-- The badge keeps the spinner while the agent works. It shows "Draft · not
-  saved" when the agent stops, as now.
-- The real draft canvas uses the same status line. So "Fixing 2 issues" shows
-  while the agent fixes a blocked build.
+  A list shows 3 items and "and {count} more". Without arguments, the labels
+  stay "Searching nodes" and "Reading node schema". Skill loads already had
+  details ("Opening skill: data-table-manager", "Reading ai agents").
+- **Workflow source:** labels name the workflow, never the file: "Writing
+  daily invoice processing", "Editing …", "Building …". Other files keep
+  "Writing file".
+- **Live progress:** while the agent streams workflow source
+  (`workspace_write_file`, `workspace_str_replace_file`, or a build with
+  `sourceCode`), the backend reads the streamed arguments
+  (`ToolInputProgressTracker`). It publishes the node names written so far as
+  an ephemeral `tool-input-progress` event, at most once every 2 seconds for
+  each call. The run reducer keeps them on the tool call (`inputProgress`)
+  until the full `tool-call` arrives. The frontend picks the verb on a timer.
+  Accuracy is not important in a loading state:
+  - a new newest node → "Adding Read Invoices"
+  - the same newest node 2 s later → "Configuring Read Invoices"
+  - an edit (`workspace_str_replace_file`) → "Updating Read Invoices"
+- **Between calls:** the step after the last finished call, not "Thinking":
+  - after a node search: "Choosing nodes"
+  - after a schema read or a skill load: "Planning the workflow"
+  - after a write or a saved build: "Reviewing the workflow"
+  - after a build blocked by validation: "Fixing Set Fields", rotating every
+    3 s through the nodes that the build errors name ("Fixing the workflow" if
+    they name none)
+  - after a failed test: "Fixing HTTP Request", rotating through the nodes
+    that failed
+  - otherwise: "Thinking"
+- **Waiting on the user:** a pending question, approval or credential request
+  in the run gives "Waiting on your answer", "Waiting on your approval",
+  "Waiting on your choice", "Waiting for you to continue" or "Waiting on
+  credentials". On the canvas, the status turns transparent red, stops the
+  shimmer, and shows a left arrow that points to the chat.
+- **No flashing:** `useSteadyRunActivity` holds the status steady for both
+  the chat status bar and the canvas. A new status shows once it has held for
+  400 ms, and a shown status stays for at least 1.5 s. Statuses in between are
+  skipped. A change never waits longer than 3 s. A waiting status, and the
+  status after it, show at once. The text changes in place, with no
+  crossfade.
+- **Look:** while the agent works, the status is in the middle of the canvas,
+  over the nodes. It uses a larger font, a semi-transparent blurred
+  background, and the chat's shimmer. When the agent stops, it goes, and the
+  small "Draft · not saved" badge shows at the top. So the status never covers
+  a finished workflow.
 
 ### Staging tab and canvas
 
@@ -220,26 +236,6 @@ When no call is loading, it uses the newest completed call.
     room for a wide configurable node and a label with a two-line subtitle.
 - The staging canvas fits the view after each new node. The draft canvas
   already does this when nodes are added.
-
-### Node search panel
-
-While the agent searches for nodes and reads their schemas, a read-only panel
-that looks like the node selector slides in on the right of the draft canvas.
-
-- **Data:** `getNodeSearchPanel(tree)` reads the newest `search_nodes` call of
-  the run: its queries, whether it still runs, and the node types in
-  `result.results`. A result type is `picked` when a later `get_node_types`
-  call requests it. The panel shows only while the step is `searching` or
-  `reading`.
-- **Component:** `InstanceAiNodeSearchPanel.vue`. A search box types the
-  queries in (`useTypewriter`). It has no input, so it never takes the focus.
-  Loading rows show while the search runs. Each result is an
-  `N8nNodeCreatorNode` with a `NodeIcon`, as in the node selector. A picked row
-  is active and has a check icon. It shows at most 8 rows, and they join one at
-  a time.
-- **Why not the real node selector:** it adds nodes to the injected workflow
-  (here the draft), its store is global, it takes the keyboard focus, and its
-  client-side search can disagree with the agent's backend search.
 
 ### Entrance animation
 
@@ -295,7 +291,7 @@ model. So the build tool also sends them as an ephemeral event.
   canvas then shows the issue icon, the red border, and the message in the
   tooltip. It uses the existing `validationErrorsByNodeId` path, so no canvas
   change is necessary. Issues with no node name, or with a name that is not on
-  the canvas, only count toward "Fixing {count} issues".
+  the canvas, mark no node.
 
 ### Verification errors
 
@@ -328,8 +324,7 @@ Follow TDD for each task. Run only the changed test files.
 1. **Staging state** (`instanceAi.workflowStaging.ts`):
    `getWorkflowStaging`: start rule, nodes from loading, done and failed
    calls, dedupe, unknown types skipped, each edit rule, the end at the first
-   draft. `getWorkflowBuildStep`: each row of the status table, newest loading
-   call first.
+   draft.
 2. **Placeholders** (`toStagingWorkflowNodes`, in the same file or in
    `instanceAi.workflowDraftCanvas.ts`): grid positions, names with suffixes,
    versions, discriminator parameters.
@@ -338,12 +333,11 @@ Follow TDD for each task. Run only the changed test files.
 4. **Staging tab** (`useCanvasPreview`): opens when staging starts, respects
    the user's pick, moves to the draft tab, closes when staging ends, never
    stored.
-5. **Draft preview** (`InstanceAiWorkflowDraftPreview.vue`): accepts a step,
-   renders the status line, staggers new nodes, has the entrance class. Wire
-   the step through `InstanceAiThreadView.vue`.
-6. **i18n**: "New workflow", "Preparing", "Searching for {list}",
-   "Referencing {name}", "Reading {list}", "Writing the workflow",
-   "Building", "Fixing {count} issues", "{items} and {count} more".
+5. **Draft preview** (`InstanceAiWorkflowDraftPreview.vue`): renders the
+   status text, staggers new nodes, has the entrance class. The thread view
+   passes the run activity text (`useRunActivity`).
+6. **i18n**: "New workflow", "Searching for {list}", "Reading {list}",
+   "{items} and {count} more".
 7. **Issue event** (`@n8n/api-types`): schema, ephemeral type, schema tests.
 8. **Publisher** (`workflow-draft-publisher.ts`): `publishIssues` uses the last
    revision, publishes nothing with no revision, caps sizes, never throws.
@@ -411,6 +405,9 @@ Manual verification in a running instance is still open. See
 
 ## Out of scope
 
+- A read-only node search panel on the draft canvas. It was built and then
+  removed: the agent usually reads the node schemas right after the search, so
+  the panel closed soon after the query finished typing.
 - A progressive preview while the agent streams the source file.
 - Connections between placeholders, or a guess at the final layout.
 - A placeholder that moves to the matching real node.

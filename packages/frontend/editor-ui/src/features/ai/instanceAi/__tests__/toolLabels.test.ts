@@ -2,9 +2,19 @@ import { describe, test, expect, vi } from 'vitest';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) =>
+			({
+				'n8n-nodes-base.slack': { displayName: 'Slack' },
+				'n8n-nodes-base.gmail': { displayName: 'Gmail' },
+			})[name] ?? null,
+	}),
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string) => {
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
 			const translations: Record<string, string> = {
 				'instanceAi.tools.ask_user': 'Asking user',
 				'instanceAi.tools.agent_builder_ask_questions': 'Asking questions',
@@ -16,6 +26,19 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.agent-context.config': 'Reading agent config',
 				'instanceAi.tools.agent-context.sessions': 'Checking agent sessions',
 				'instanceAi.tools.get_node_types': 'Reading node schema',
+				'instanceAi.tools.get_node_types.detail': 'Reading {list}',
+				'instanceAi.tools.search_nodes': 'Searching nodes',
+				'instanceAi.tools.search_nodes.detail': 'Searching for {list}',
+				'instanceAi.tools.list.more': '{items} and {count} more',
+				'instanceAi.tools.workspace_write_file': 'Writing file',
+				'instanceAi.tools.workspace_str_replace_file': 'Editing file',
+				'instanceAi.tools.workflow_builder_build_workflow': 'Generating workflow',
+				'instanceAi.tools.workflowSource.writing': 'Writing {name}',
+				'instanceAi.tools.workflowSource.editing': 'Editing {name}',
+				'instanceAi.tools.workflowSource.building': 'Building {name}',
+				'instanceAi.tools.workflowSource.adding': 'Adding {name}',
+				'instanceAi.tools.workflowSource.configuring': 'Configuring {name}',
+				'instanceAi.tools.workflowSource.updating': 'Updating {name}',
 				'instanceAi.tools.agent_builder_get_node_types': 'Reading node schema',
 				'instanceAi.tools.list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.setup_credentials': 'Setting up credentials',
@@ -57,7 +80,11 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.stepTimeline.showBrief': 'Show brief',
 				'instanceAi.stepTimeline.hideBrief': 'Hide brief',
 			};
-			return translations[key] ?? key;
+			const text = translations[key] ?? key;
+			return Object.entries(options?.interpolate ?? {}).reduce(
+				(result, [name, value]) => result.replace(`{${name}}`, value),
+				text,
+			);
 		},
 	}),
 }));
@@ -356,5 +383,71 @@ describe('useToolLabel', () => {
 	test('getHideLabel treats removed plan tool as an ordinary unknown tool', () => {
 		const { getHideLabel } = useToolLabel();
 		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBe('Hide data');
+	});
+});
+
+describe('detailed node lookup labels', () => {
+	const { getToolLabel } = useToolLabel();
+
+	test('lists the node search queries', () => {
+		expect(getToolLabel('search_nodes', { queries: ['gmail', 'slack'], query: 'gmail' })).toBe(
+			'Searching for gmail, slack',
+		);
+	});
+
+	test('shortens a long list of queries', () => {
+		expect(getToolLabel('search_nodes', { queries: ['a', 'b', 'c', 'd', 'e'] })).toBe(
+			'Searching for a, b, c and 2 more',
+		);
+	});
+
+	test('lists the node types by their display names', () => {
+		expect(
+			getToolLabel('get_node_types', {
+				nodeTypes: ['n8n-nodes-base.slack', { nodeType: 'n8n-nodes-base.gmail' }, 'acme.thing'],
+			}),
+		).toBe('Reading Slack, Gmail, acme.thing');
+	});
+
+	test('keeps the short labels without arguments', () => {
+		expect(getToolLabel('search_nodes')).toBe('Searching nodes');
+		expect(getToolLabel('search_nodes', { categories: ['ai'] })).toBe('Searching nodes');
+		expect(getToolLabel('get_node_types')).toBe('Reading node schema');
+	});
+});
+
+describe('workflow source labels', () => {
+	const { getToolLabel } = useToolLabel();
+	const path = 'src/workflows/daily-invoice_processing.workflow.ts';
+
+	test('names the workflow, never the file', () => {
+		expect(getToolLabel('workspace_write_file', { path })).toBe('Writing daily invoice processing');
+		expect(getToolLabel('workspace_str_replace_file', { path })).toBe(
+			'Editing daily invoice processing',
+		);
+		expect(getToolLabel('workflow_builder_build_workflow', { filePath: path })).toBe(
+			'Building daily invoice processing',
+		);
+	});
+
+	test('adds, then configures, the node the agent writes while the source streams', () => {
+		const progress = { nodeNames: ['Every Morning', 'Read Invoices'] };
+
+		expect(getToolLabel('workspace_write_file', {}, progress)).toBe('Adding Read Invoices');
+		expect(
+			getToolLabel('workflow_builder_build_workflow', {}, progress, { configuring: true }),
+		).toBe('Configuring Read Invoices');
+	});
+
+	test('says the agent updates a node while an edit streams', () => {
+		expect(getToolLabel('workspace_str_replace_file', { path }, { nodeNames: ['Gmail'] })).toBe(
+			'Updating Gmail',
+		);
+	});
+
+	test('keeps the short labels for other files', () => {
+		expect(getToolLabel('workspace_write_file', { path: 'notes/plan.md' })).toBe('Writing file');
+		expect(getToolLabel('workspace_write_file')).toBe('Writing file');
+		expect(getToolLabel('workflow_builder_build_workflow')).toBe('Generating workflow');
 	});
 });

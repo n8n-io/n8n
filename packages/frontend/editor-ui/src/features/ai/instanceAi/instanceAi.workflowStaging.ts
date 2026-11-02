@@ -31,20 +31,9 @@ export interface WorkflowStagingNode {
 	mode?: string;
 }
 
-/** What the agent does now, for the status line of the draft canvas. */
-export type WorkflowBuildStep =
-	| { kind: 'preparing' }
-	| { kind: 'searching'; queries: string[] }
-	| { kind: 'referencing'; skill: string; filePath?: string }
-	| { kind: 'reading'; nodeTypes: string[] }
-	| { kind: 'writing' }
-	| { kind: 'building' }
-	| { kind: 'fixing' };
-
 const STAGING_FILE_PREFIX = 'staging:';
 const WORKFLOW_BUILDER_SKILL = 'workflow-builder';
 const LOAD_SKILL_TOOL = 'load_skill';
-const WRITE_TOOLS = new Set(['workspace_write_file', 'workspace_str_replace_file']);
 const EDIT_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW,
 	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE,
@@ -147,94 +136,6 @@ export function getWorkflowStaging(
 		if (!nodes.has(node.id) && options.hasNodeType(node.nodeType)) nodes.set(node.id, node);
 	}
 	return { runId: tree.runId ?? tree.agentId, nodes: [...nodes.values()] };
-}
-
-function searchQueries(args: Record<string, unknown>): string[] {
-	const queries = Array.isArray(args.queries)
-		? args.queries.filter((query): query is string => typeof query === 'string')
-		: [];
-	const query = stringArg(args, 'query');
-	return [...new Set([...queries, ...(query ? [query] : [])])];
-}
-
-function isFailedBuild(result: unknown): boolean {
-	return isRecord(result) && result.success === false;
-}
-
-function toBuildStep(toolCall: InstanceAiToolCallState): WorkflowBuildStep | undefined {
-	const name = toolName(toolCall);
-	const { args } = toolCall;
-	if (name === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES) {
-		return { kind: 'searching', queries: searchQueries(args) };
-	}
-	if (name === LOAD_SKILL_TOOL) {
-		const skill = skillName(args);
-		if (!skill) return undefined;
-		const filePath = stringArg(args, 'filePath');
-		return { kind: 'referencing', skill, ...(filePath ? { filePath } : {}) };
-	}
-	if (name === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) {
-		return { kind: 'reading', nodeTypes: requestedNodes(toolCall).map((node) => node.nodeType) };
-	}
-	if (WRITE_TOOLS.has(name)) return { kind: 'writing' };
-	if (name === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW) {
-		if (toolCall.isLoading) return { kind: 'building' };
-		return isFailedBuild(toolCall.result) ? { kind: 'fixing' } : undefined;
-	}
-	return undefined;
-}
-
-/** The step of the newest running call, else of the newest completed call. */
-export function getWorkflowBuildStep(tree: InstanceAiAgentNode): WorkflowBuildStep {
-	const toolCalls = collectToolCalls(tree);
-	const running = toolCalls.filter((toolCall) => toolCall.isLoading);
-	const newest = running.length > 0 ? running.at(-1) : toolCalls.at(-1);
-	return (newest && toBuildStep(newest)) ?? { kind: 'preparing' };
-}
-
-/** The agent's newest node search, for the search panel of the draft canvas. */
-export interface NodeSearchPanel {
-	/** The tool call id of the search. */
-	id: string;
-	queries: string[];
-	searching: boolean;
-	/** The node types the search found, in result order. */
-	results: string[];
-	/** The result types the agent read after the search. */
-	picked: string[];
-}
-
-function searchResultTypes(result: unknown): string[] {
-	if (!isRecord(result) || !Array.isArray(result.results)) return [];
-	const types = result.results.flatMap((item: unknown) =>
-		isRecord(item) && typeof item.name === 'string' ? [item.name] : [],
-	);
-	return [...new Set(types)];
-}
-
-/** Undefined when the agent has not searched, or has moved on from searching and reading. */
-export function getNodeSearchPanel(tree: InstanceAiAgentNode): NodeSearchPanel | undefined {
-	const step = getWorkflowBuildStep(tree);
-	if (step.kind !== 'searching' && step.kind !== 'reading') return undefined;
-	const toolCalls = collectToolCalls(tree);
-	const index = toolCalls.findLastIndex(
-		(toolCall) => toolName(toolCall) === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
-	);
-	if (index === -1) return undefined;
-	const search = toolCalls[index];
-	const results = searchResultTypes(search.result);
-	const read = new Set(
-		toolCalls
-			.slice(index + 1)
-			.flatMap((toolCall) => requestedNodes(toolCall).map((n) => n.nodeType)),
-	);
-	return {
-		id: search.toolCallId,
-		queries: searchQueries(search.args),
-		searching: search.isLoading,
-		results,
-		picked: results.filter((nodeType) => read.has(nodeType)),
-	};
 }
 
 type StagingDraftNode = WorkflowDraft['workflow']['nodes'][number];

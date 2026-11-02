@@ -322,6 +322,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'tool-input-progress': {
+			// What a streaming call has written so far. `tool-call` replaces it with the args.
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc?.isLoading) tc.inputProgress = { nodeNames: event.payload.nodeNames };
+			break;
+		}
+
 		case 'text-block': {
 			// Coalesced segment from the durable log (replay path). When the last
 			// timeline entry is this segment's streamed deltas (mid-block reconnect:
@@ -397,6 +405,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const announced = state.toolCallsById[event.payload.toolCallId];
 			if (announced) {
 				announced.args = call.args;
+				delete announced.inputProgress;
 				announced.toolName = resolveBuilderToolName(call.toolName, call.args.action);
 				announced.renderHint = getRenderHint(call.toolName);
 				break;

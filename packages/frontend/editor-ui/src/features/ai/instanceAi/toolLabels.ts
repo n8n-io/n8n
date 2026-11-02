@@ -16,6 +16,8 @@ import {
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	formatToolNameForDisplay,
 	stripBuilderToolPrefix,
@@ -155,6 +157,46 @@ const DATA_TABLE_LABEL_TOOL_NAME = 'data_tables';
 const EXECUTION_LABEL_TOOL_NAME = 'workflow_builder_executions';
 /** Workspace tools reuse the per-action labels of the former workspace tool. */
 const WORKSPACE_LABEL_TOOL_NAME = 'workspace';
+const LABEL_LIST_LIMIT = 3;
+const WORKFLOW_SOURCE_EXTENSION = /\.workflow\.(ts|json)$/;
+
+type SourceAction = 'writing' | 'editing' | 'building';
+
+/** Tools that write workflow source, and what each does to it. */
+const WORKFLOW_SOURCE_ACTIONS: Readonly<Record<string, SourceAction>> = {
+	workspace_write_file: 'writing',
+	workspace_str_replace_file: 'editing',
+	[WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW]: 'building',
+};
+
+const WORKFLOW_SOURCE_LABEL_KEYS: Record<SourceAction, BaseTextKey> = {
+	writing: 'instanceAi.tools.workflowSource.writing',
+	editing: 'instanceAi.tools.workflowSource.editing',
+	building: 'instanceAi.tools.workflowSource.building',
+};
+
+/** The workflow a source file holds, in words. The user never sees the file name. */
+function workflowSourceName(args: Record<string, unknown> | undefined): string | undefined {
+	const path = args?.path ?? args?.filePath;
+	if (typeof path !== 'string' || !WORKFLOW_SOURCE_EXTENSION.test(path)) return undefined;
+	return humanizeFileLabel(getBasename(path).replace(WORKFLOW_SOURCE_EXTENSION, '')) || undefined;
+}
+
+function searchQueries(args: Record<string, unknown> | undefined): string[] {
+	const queries = Array.isArray(args?.queries) ? args.queries : [];
+	const query = args?.query;
+	return [...queries, ...(query !== undefined ? [query] : [])].filter(
+		(item): item is string => typeof item === 'string' && item.length > 0,
+	);
+}
+
+function requestedNodeTypes(args: Record<string, unknown> | undefined): string[] {
+	const nodeTypes = Array.isArray(args?.nodeTypes) ? args.nodeTypes : [];
+	return nodeTypes.flatMap((request: unknown) => {
+		if (typeof request === 'string') return [request];
+		return isRecord(request) && typeof request.nodeType === 'string' ? [request.nodeType] : [];
+	});
+}
 
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
@@ -214,8 +256,90 @@ export function getToolIcon(rawToolName: string): IconName {
 export function useToolLabel() {
 	const i18n = useI18n();
 
-	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
+	function formatList(items: string[]): string {
+		const unique = [...new Set(items)];
+		const shown = unique.slice(0, LABEL_LIST_LIMIT).join(', ');
+		if (unique.length <= LABEL_LIST_LIMIT) return shown;
+		return i18n.baseText('instanceAi.tools.list.more', {
+			interpolate: { items: shown, count: String(unique.length - LABEL_LIST_LIMIT) },
+		});
+	}
+
+	/** Node search and schema reads name what they look up. Undefined without details. */
+	function getNodeLookupLabel(
+		toolName: string,
+		args: Record<string, unknown> | undefined,
+	): string | undefined {
+		if (toolName === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES) {
+			const queries = searchQueries(args);
+			if (queries.length === 0) return undefined;
+			return i18n.baseText('instanceAi.tools.search_nodes.detail', {
+				interpolate: { list: formatList(queries) },
+			});
+		}
+		if (toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) {
+			const nodeTypes = requestedNodeTypes(args);
+			if (nodeTypes.length === 0) return undefined;
+			const nodeTypesStore = useNodeTypesStore();
+			const names = nodeTypes.map(
+				(nodeType) => nodeTypesStore.getNodeType(nodeType)?.displayName ?? nodeType,
+			);
+			return i18n.baseText('instanceAi.tools.get_node_types.detail', {
+				interpolate: { list: formatList(names) },
+			});
+		}
+		return undefined;
+	}
+
+	/** The node the agent is on while the source streams. Close enough for a loading state. */
+	function getSourceProgressLabel(
+		action: SourceAction,
+		nodeName: string,
+		configuring: boolean,
+	): string {
+		const key: BaseTextKey =
+			action === 'editing'
+				? 'instanceAi.tools.workflowSource.updating'
+				: configuring
+					? 'instanceAi.tools.workflowSource.configuring'
+					: 'instanceAi.tools.workflowSource.adding';
+		return i18n.baseText(key, { interpolate: { name: nodeName } });
+	}
+
+	/** Workflow source writes say what happens to the node being written, else name the workflow. */
+	function getWorkflowSourceLabel(
+		toolName: string,
+		args: Record<string, unknown> | undefined,
+		progress: InstanceAiToolCallState['inputProgress'],
+		configuring: boolean,
+	): string | undefined {
+		const action = Object.hasOwn(WORKFLOW_SOURCE_ACTIONS, toolName)
+			? WORKFLOW_SOURCE_ACTIONS[toolName]
+			: undefined;
+		if (!action) return undefined;
+		const newestNode = progress?.nodeNames.at(-1);
+		if (newestNode) return getSourceProgressLabel(action, newestNode, configuring);
+		const name = workflowSourceName(args);
+		return name
+			? i18n.baseText(WORKFLOW_SOURCE_LABEL_KEYS[action], { interpolate: { name } })
+			: undefined;
+	}
+
+	function getToolLabel(
+		rawToolName: string,
+		args?: Record<string, unknown>,
+		progress?: InstanceAiToolCallState['inputProgress'],
+		/** The newest streamed node has been written for a while, so it is being configured. */
+		options: { configuring?: boolean } = {},
+	): string {
 		const toolName = resolveBuilderToolName(rawToolName, args?.action);
+		const sourceLabel = getWorkflowSourceLabel(
+			toolName,
+			args,
+			progress,
+			options.configuring ?? false,
+		);
+		if (sourceLabel) return sourceLabel;
 		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
 			const operationKey = getBuildAgentOperationKey(args?.operation);
 			if (operationKey) return i18n.baseText(operationKey);
@@ -225,6 +349,8 @@ export function useToolLabel() {
 			const lookupLabel = i18n.baseText(lookupKey);
 			if (lookupLabel !== lookupKey) return lookupLabel;
 		}
+		const nodeLookupLabel = getNodeLookupLabel(toolName, args);
+		if (nodeLookupLabel) return nodeLookupLabel;
 		if (toolName === 'load_skill') {
 			const name = typeof args?.name === 'string' ? args.name : undefined;
 			const filePath = typeof args?.filePath === 'string' ? args.filePath : undefined;

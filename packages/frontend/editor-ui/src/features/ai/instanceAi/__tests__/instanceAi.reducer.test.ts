@@ -453,6 +453,27 @@ describe('instanceAi.reducer', () => {
 	// Tool execution
 	// -----------------------------------------------------------------------
 	describe('tool execution', () => {
+		test('tool-input-progress shows what a streaming call has written so far', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', toolName: 'workspace_write_file' },
+			});
+
+			handleEvent(state, {
+				type: 'tool-input-progress',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: { toolCallId: 'tc-1', nodeNames: ['Read Invoices'] },
+			});
+
+			expect(state.messages[0].agentTree!.toolCalls[0].inputProgress).toEqual({
+				nodeNames: ['Read Invoices'],
+			});
+		});
+
 		test('tool-call adds entry with isLoading=true and correct renderHint', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(

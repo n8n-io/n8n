@@ -67,7 +67,7 @@ import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/e
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowStaging } from './composables/useWorkflowStaging';
-import { useWorkflowBuildStepLabel } from './composables/useWorkflowBuildStepLabel';
+import { formatRunActivity, useSteadyRunActivity } from './composables/useRunActivity';
 import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
@@ -301,16 +301,11 @@ watch(
 	{ immediate: true },
 );
 
-const buildStepLabel = useWorkflowBuildStepLabel();
-/** What the agent does now, on the badge of the draft canvas. */
-const draftStatusText = computed(() => {
-	const step = workflowStaging.buildStep.value;
-	if (!step) return undefined;
-	return buildStepLabel(step, {
-		nodeTypeName: (nodeType) => describeStagingNodeType(nodeType)?.displayName,
-		issueCount: preview.activeWorkflowDraft.value?.issues?.length ?? 0,
-	});
-});
+/** What the agent does now, on the draft canvas. The same text as the chat status bar. */
+const draftRunActivity = useSteadyRunActivity(() => thread.messages);
+const draftStatusText = computed(() =>
+	draftRunActivity.value ? formatRunActivity(draftRunActivity.value) : undefined,
+);
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
 const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
@@ -1089,7 +1084,7 @@ function handleNewThreadClick() {
 								:draft="preview.activeWorkflowDraft.value"
 								:building="isAgentWorking"
 								:status-text="draftStatusText"
-								:search-panel="workflowStaging.searchPanel.value"
+								:waiting="draftRunActivity?.waiting === true"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

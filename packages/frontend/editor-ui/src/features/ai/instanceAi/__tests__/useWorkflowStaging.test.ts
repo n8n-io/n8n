@@ -165,39 +165,4 @@ describe('useWorkflowStaging', () => {
 
 		expect(stagingDraft.value).toBeUndefined();
 	});
-
-	it('reports the step of the running agent', () => {
-		const { buildStep } = setup([
-			userMessage(),
-			assistantMessage([loadBuilder, call('search_nodes', { queries: ['slack'] })]),
-		]);
-
-		expect(buildStep.value).toEqual({ kind: 'searching', queries: ['slack'] });
-	});
-
-	it('reports the search panel of the running agent', () => {
-		const { searchPanel } = setup([
-			userMessage(),
-			assistantMessage([loadBuilder, call('search_nodes', { queries: ['slack'] })]),
-		]);
-
-		expect(searchPanel.value).toMatchObject({ queries: ['slack'] });
-	});
-
-	it('reports no search panel when the experiment is off or the run ended', () => {
-		const searching = [loadBuilder, call('search_nodes', { queries: ['slack'] })];
-
-		expect(
-			setup([userMessage(), assistantMessage(searching)], { enabled: false }).searchPanel.value,
-		).toBeUndefined();
-		expect(
-			setup([userMessage(), assistantMessage(searching, false)]).searchPanel.value,
-		).toBeUndefined();
-	});
-
-	it('reports no step once the run ends', () => {
-		const { buildStep } = setup([userMessage(), assistantMessage([loadBuilder], false)]);
-
-		expect(buildStep.value).toBeUndefined();
-	});
 });

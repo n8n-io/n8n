@@ -4,8 +4,6 @@ import { computed } from 'vue';
 
 import type { WorkflowDraft, WorkflowDraftsByFilePath } from '../instanceAi.workflowDrafts';
 import {
-	getNodeSearchPanel,
-	getWorkflowBuildStep,
 	getWorkflowStaging,
 	stagingFilePath,
 	toStagingWorkflowNodes,
@@ -27,7 +25,7 @@ function findRunningTurn(messages: InstanceAiMessage[]) {
 
 /**
  * The canvas of a new workflow from the moment the agent loads the workflow
- * builder skill until the first draft of the run, and the step the agent is on.
+ * builder skill until the first draft of the run.
  */
 export function useWorkflowStaging(options: {
 	messages: () => InstanceAiMessage[];
@@ -60,15 +58,5 @@ export function useWorkflowStaging(options: {
 		};
 	});
 
-	const buildStep = computed(() => {
-		const turn = runningTurn.value;
-		return turn ? getWorkflowBuildStep(turn.tree) : undefined;
-	});
-
-	const searchPanel = computed(() => {
-		const turn = runningTurn.value;
-		return options.enabled() && turn ? getNodeSearchPanel(turn.tree) : undefined;
-	});
-
-	return { stagingDraft, buildStep, searchPanel };
+	return { stagingDraft };
 }
