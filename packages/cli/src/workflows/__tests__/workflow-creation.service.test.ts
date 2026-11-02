@@ -762,7 +762,7 @@ describe('WorkflowCreationService', () => {
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			userHasScopesMock.mockResolvedValue(false);
-			const { transactionManager } = setupTransactionMocks();
+			const { transaction } = setupTransactionMocks();
 
 			const user = mock<User>();
 			const newWorkflow = new WorkflowEntity();
@@ -783,7 +783,7 @@ describe('WorkflowCreationService', () => {
 				['workflow:enableRedaction'],
 				false,
 				{ projectId: 'project-1' },
-				transactionManager,
+				expect.objectContaining({ trx: transaction }),
 			);
 
 			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
@@ -798,7 +798,7 @@ describe('WorkflowCreationService', () => {
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			userHasScopesMock.mockResolvedValue(true);
-			const { transactionManager } = setupTransactionMocks();
+			const { transaction } = setupTransactionMocks();
 
 			const user = mock<User>();
 			const newWorkflow = new WorkflowEntity();
@@ -819,7 +819,7 @@ describe('WorkflowCreationService', () => {
 				['workflow:enableRedaction'],
 				false,
 				{ projectId: 'project-1' },
-				transactionManager,
+				expect.objectContaining({ trx: transaction }),
 			);
 
 			const savedEntity = workflowRepositoryMock.createContent.mock.calls[0][0];
@@ -865,7 +865,7 @@ describe('WorkflowCreationService', () => {
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			licenseStateMock.isDataRedactionLicensed.mockReturnValue(true);
 			userHasScopesMock.mockResolvedValue(false);
-			const { transactionManager } = setupTransactionMocks({
+			const { transaction } = setupTransactionMocks({
 				personalProjectId: 'personal-project-789',
 			});
 
@@ -891,7 +891,7 @@ describe('WorkflowCreationService', () => {
 				['workflow:enableRedaction'],
 				false,
 				{ projectId: 'personal-project-789' },
-				transactionManager,
+				expect.objectContaining({ trx: transaction }),
 			);
 		});
 

@@ -57,6 +57,7 @@ export { FolderRepository } from './folder.repository';
 export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
+export { ScopeAccessRepository } from './scope-access.repository';
 export {
 	IdempotencyKeyRepository,
 	type IdempotencyKeyForClaim,
