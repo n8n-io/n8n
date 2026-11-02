@@ -28,9 +28,15 @@ describe('trustedSourceFacetsOf', () => {
 		});
 	});
 
-	it('reads every explicit choice of an admin config', () => {
+	it.each([1, 2] as const)('reads every explicit choice of an admin config v%s', (version) => {
+		const identity = {
+			linkByEmail: 'any',
+			roleMapping: { mode: 'continuous', fallbackInstanceRole: 'global:member' },
+		} satisfies TrustedSourceConfigInput['identity'];
 		const config = parse({
-			version: 1,
+			...(version === 1
+				? { version, identity: { ...identity, provision: { human: 'jit' } } }
+				: { version, identity: { ...identity, provision: { person: 'jit' } } }),
 			authentication: {
 				type: 'oauth2',
 				discovery: { mode: 'manual', jwksUri: 'https://idp.example.com/jwks' },
@@ -41,11 +47,6 @@ describe('trustedSourceFacetsOf', () => {
 				'instance-mcp': {},
 				trigger: { audiences: ['hooks'] },
 				apps: {},
-			},
-			identity: {
-				linkByEmail: 'any',
-				provision: { human: 'jit' },
-				roleMapping: { mode: 'continuous', fallbackInstanceRole: 'global:member' },
 			},
 		});
 

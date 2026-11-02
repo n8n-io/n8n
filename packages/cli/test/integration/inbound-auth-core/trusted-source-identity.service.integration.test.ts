@@ -48,16 +48,20 @@ let seeded = 0;
 async function seedSource(
 	identity: Partial<TrustedSourceIdentity> = {},
 	managedBy: ManagedBy = 'admin',
+	version: 1 | 2 = 2,
 ): Promise<TrustedSource> {
 	seeded += 1;
 	const config = trustedSourceConfigSchemaFor(managedBy).parse({
-		version: 1,
+		version,
 		authentication: {
 			type: 'oauth2',
 			...(managedBy === 'system' && { keys: { kind: 'local-keystore' } }),
 		},
 		surfaces: { 'instance-mcp': {} },
-		identity,
+		identity:
+			version === 1
+				? { ...identity, provision: { human: identity.provision?.person ?? 'off' } }
+				: identity,
 	});
 	const row = await rows.save(
 		rows.create({
@@ -68,7 +72,7 @@ async function seedSource(
 			status: 'healthy',
 			lastError: null,
 			lastCheckedAt: new Date(),
-			configVersion: 1,
+			configVersion: version,
 			config: await cipher.encryptV2(config),
 			metadata: null,
 			discoveryClaimToken: null,
@@ -521,49 +525,55 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			projectRoleRules: [],
 			fallbackInstanceRole: 'global:member',
 		};
-		const jit: Partial<TrustedSourceIdentity> = { provision: { human: 'jit' }, roleMapping };
+		const jit: Partial<TrustedSourceIdentity> = { provision: { person: 'jit' }, roleMapping };
 
-		it('creates the user with a personal project and the jit binding, then emits the provisioned event', async () => {
-			const source = await seedSource(jit);
+		it.each([1, 2] as const)(
+			'creates a user with a personal project and a jit binding from config v%s',
+			async (version) => {
+				const source = await seedSource(jit, 'admin', version);
+				expect(source.config.version).toBe(2);
+				expect(source.config.identity.provision).toEqual({ person: 'jit' });
 
-			const context = expectOk(
-				await service.identify(
-					verified(source, {
-						sub: 'bob',
-						email: 'New.User@Example.com',
-						email_verified: true,
-						name: 'Ada King Lovelace',
-					}),
-				),
-			);
+				const context = expectOk(
+					await service.identify(
+						verified(source, {
+							sub: 'bob',
+							email: 'New.User@Example.com',
+							email_verified: true,
+							name: 'Ada King Lovelace',
+						}),
+					),
+				);
 
-			const user = await users.findOneOrFail({
-				where: { email: 'new.user@example.com' },
-				relations: ['role'],
-			});
-			expect(user).toMatchObject({
-				firstName: 'Ada',
-				lastName: 'King Lovelace',
-				password: '!trusted-source-no-password',
-			});
-			expect(user.role.slug).toBe('global:member');
-			expect(
-				await Container.get(ProjectRepository).getPersonalProjectForUser(user.id),
-			).not.toBeNull();
-			expect(await readBinding(source, 'bob')).toMatchObject({
-				provenance: 'jit',
-				status: 'active',
-				userId: user.id,
-			});
-			expect(context.subject.id).toBe(user.id);
-			expect(emit).toHaveBeenCalledWith('trusted-source-user-provisioned', {
-				userId: user.id,
-				sourceId: source.id,
-				issuer: source.issuer,
-				subject: 'bob',
-				role: 'global:member',
-			});
-		});
+				const user = await users.findOneOrFail({
+					where: { email: 'new.user@example.com' },
+					relations: ['role'],
+				});
+				expect(user).toMatchObject({
+					kind: 'person',
+					firstName: 'Ada',
+					lastName: 'King Lovelace',
+					password: '!trusted-source-no-password',
+				});
+				expect(user.role.slug).toBe('global:member');
+				expect(
+					await Container.get(ProjectRepository).getPersonalProjectForUser(user.id),
+				).not.toBeNull();
+				expect(await readBinding(source, 'bob')).toMatchObject({
+					provenance: 'jit',
+					status: 'active',
+					userId: user.id,
+				});
+				expect(context.subject.id).toBe(user.id);
+				expect(emit).toHaveBeenCalledWith('trusted-source-user-provisioned', {
+					userId: user.id,
+					sourceId: source.id,
+					issuer: source.issuer,
+					subject: 'bob',
+					role: 'global:member',
+				});
+			},
+		);
 
 		it('cuts the first name to 32 characters', async () => {
 			const source = await seedSource(jit);
@@ -682,7 +692,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 		const jitSource = async (roleMapping: TrustedSourceIdentity['roleMapping']) =>
 			await seedSource({
 				linkByEmail: 'verified-only',
-				provision: { human: 'jit' },
+				provision: { person: 'jit' },
 				roleMapping,
 			});
 		const claims = (sub: string, email: string, groups: string[]) => ({
