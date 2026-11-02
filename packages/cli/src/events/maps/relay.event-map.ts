@@ -581,6 +581,17 @@ export type RelayEventMap = DataTableEventMap & {
 		outcome: CredentialAuthProbeOutcome;
 	};
 
+	'oauth-client-registered': {
+		userId?: string;
+		credentialId: string;
+		credentialType: string;
+		method?: 'cimd' | 'dcr' | 'none_available';
+		success: boolean;
+		cimdEnabled: boolean;
+		serverSupportsCimd?: boolean;
+		serverSupportsDcr?: boolean;
+	};
+
 	'oauth-callback-binding-rejected': {
 		reason: 'cookie-missing' | 'hash-mismatch';
 		credentialId?: string;

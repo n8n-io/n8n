@@ -291,6 +291,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
 			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-probed': (event) => this.credentialsProbed(event),
+			'oauth-client-registered': (event) => this.oauthClientRegistered(event),
 			'private-credential-created': (event) => this.privateCredentialCreated(event),
 			'private-credential-toggled-to-private': (event) =>
 				this.privateCredentialToggledToPrivate(event),
@@ -1175,6 +1176,19 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			credential_id: credentialId,
 			outcome,
+		});
+	}
+
+	private oauthClientRegistered(event: RelayEventMap['oauth-client-registered']) {
+		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_REGISTERED_OAUTH_CLIENT, {
+			user_id: event.userId,
+			credential_id: event.credentialId,
+			credential_type: event.credentialType,
+			method: event.method,
+			success: event.success,
+			cimd_enabled: event.cimdEnabled,
+			server_supports_cimd: event.serverSupportsCimd,
+			server_supports_dcr: event.serverSupportsDcr,
 		});
 	}
 
