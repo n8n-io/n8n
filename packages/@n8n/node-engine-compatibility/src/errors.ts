@@ -87,10 +87,7 @@ export class EngineRequestNotSupportedError extends UserError {
 	}
 }
 
-/**
- * A wait that engine v2 cannot end yet. Engine v2 has no sub-workflow steps
- * and cannot route a reply to a message that a node sent.
- */
+/** A wait that engine v2 cannot end yet. */
 export class UnsupportedWaitError extends UserError {
 	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
 		super(
@@ -101,7 +98,6 @@ export class UnsupportedWaitError extends UserError {
 	}
 }
 
-/** The host mints step-bound resume requests only when it holds a resume secret. */
 export class MissingResumeSecretError extends UserError {
 	constructor(nodeName: string) {
 		super(

@@ -118,17 +118,16 @@ export interface V1StepExecutorDeps {
 	/**
 	 * Mints the token of a resume URL that a node builds with
 	 * `getSignedResumeUrl`. `binding` is the path and query of the URL without
-	 * the token. Without it, `getSignedResumeUrl` fails the step.
+	 * the token. Without it, `getSignedResumeUrl` throws.
 	 */
 	stepBoundResumeToken?: (context: { stepId: string; binding: string }) => string;
 	/**
 	 * Mints the reference that `getApprovalCallbackReference` returns for an
-	 * approval button. Without it, `getApprovalCallbackReference` fails the step.
+	 * approval button. Without it, `getApprovalCallbackReference` throws.
 	 */
 	approvalCallback?: (context: { stepId: string; decision: 'a' | 'd' }) => string;
 }
 
-/** The minters a node's context uses to sign the resume requests of its step. */
 export type StepResumeMinters = Pick<
 	V1StepExecutorDeps,
 	'stepBoundResumeToken' | 'approvalCallback'

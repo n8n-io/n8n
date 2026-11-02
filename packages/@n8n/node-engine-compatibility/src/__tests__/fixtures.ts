@@ -403,11 +403,7 @@ class RunsSubWorkflowPerItem implements INodeType {
 	}
 }
 
-/**
- * Builds a reply link or the approve and decline button references, as a
- * send-and-wait node does, and returns them. Puts the execution to wait when
- * `waitTill` is set.
- */
+/** Builds a reply link or approval button references, as a send-and-wait node does. */
 class AsksForReply implements INodeType {
 	description = {
 		displayName: 'Asks For Reply',

@@ -48,7 +48,7 @@ import {
 } from './v1-adapters';
 
 /**
- * Turns what the node recorded in `putExecutionToWait` into a wait declaration.
+ * Turns what the node recorded into a wait declaration.
  * v1 resumes a timed wait by marking the node disabled before it re-enters it,
  * and a disabled node does not run: it passes its first input through. So the
  * step emits that input at the deadline, not what the node returned before it

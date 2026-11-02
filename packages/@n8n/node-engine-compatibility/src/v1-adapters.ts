@@ -295,9 +295,8 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 	acceptsResumeRequest = true;
 
 	/**
-	 * A node that builds a resume URL or an approval button for its step waits
-	 * for that reply, so its wait is step bound. Every other wait is execution
-	 * bound.
+	 * Becomes `step` when the node builds a resume URL or an approval reference
+	 * for its step. Only a step-bound wait accepts that reply.
 	 */
 	resumeBinding: 'execution' | 'step' = 'execution';
 
@@ -336,7 +335,7 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 		return await Promise.resolve();
 	}
 
-	/** The path names the step, and the token binds the path and the query. */
+	/** The path names the step, not the execution. */
 	getSignedResumeUrl(parameters: Record<string, string> = {}): string {
 		const mint = this.step.stepBoundResumeToken;
 		if (!mint) throw new MissingResumeSecretError(this.node.name);

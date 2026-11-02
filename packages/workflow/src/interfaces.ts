@@ -1430,8 +1430,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date, options?: { acceptsResumeRequest?: boolean }): Promise<void>;
 		/**
 		 * Builds the signed reference that an approval button carries, for example
-		 * Telegram's `callback_data` (64 bytes at most). The reference ends this
-		 * node's wait with the decision. The node never reads the secret that signs it.
+		 * Telegram's `callback_data` (64 bytes at most). The reference carries the
+		 * decision. The node never reads the secret that signs it.
 		 */
 		getApprovalCallbackReference(decision: 'approve' | 'decline'): string;
 		sendMessageToUI(message: any): void;
