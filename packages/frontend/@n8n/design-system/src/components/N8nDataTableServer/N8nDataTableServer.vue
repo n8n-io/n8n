@@ -609,6 +609,7 @@ const table = useVueTable({
 
 	th {
 		position: relative;
+		isolation: isolate;
 		color: var(--color--text);
 		font-weight: var(--font-weight--medium);
 		font-size: 12px;
@@ -800,7 +801,7 @@ th.loading-row {
 	cursor: col-resize;
 	user-select: none;
 	touch-action: none;
-	right: -2px;
+	right: 0;
 	display: none;
 	z-index: 1;
 	&:hover {
@@ -814,13 +815,6 @@ th.loading-row {
 
 th:hover:not(:last-child) > .resizer {
 	display: block;
-}
-
-// The handle extends past the cell edge. A later pinned header covers that
-// part, so the handle looks thinner than on an unpinned column.
-th:hover:has(.resizer),
-th:has(.resizer.is-resizing) {
-	z-index: 2;
 }
 
 .cell-content {
