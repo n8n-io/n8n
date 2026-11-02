@@ -69,7 +69,7 @@ interface IApiInvocationsBufferEntry {
 	first: Date;
 	endpoints: Record<string, number>;
 	user_agents: Record<string, number>;
-	consumed_by: Record<PublicApiClient, number>;
+	clients: Record<PublicApiClient, number>;
 }
 
 interface IApiInvocationsBuffer {
@@ -283,7 +283,7 @@ export class Telemetry {
 					first: entry.first,
 					endpoints: JSON.stringify(entry.endpoints),
 					user_agents: JSON.stringify(entry.user_agents),
-					consumed_by: JSON.stringify(entry.consumed_by),
+					clients: JSON.stringify(entry.clients),
 				});
 			}
 		}
@@ -557,10 +557,10 @@ export class Telemetry {
 			first: new Date(),
 			endpoints: {},
 			user_agents: {},
-			consumed_by: { editor_ui: 0, other: 0 },
+			clients: { editor_ui: 0, other: 0 },
 		});
 		entry.total_calls++;
-		entry.consumed_by[client]++;
+		entry.clients[client]++;
 
 		const endpointKey = `${method} ${path}`;
 		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
