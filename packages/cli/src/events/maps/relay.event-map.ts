@@ -54,6 +54,7 @@ import type { UserLike } from '@/types/user-like.types';
 import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import type { AiEventMap } from './ai.event-map';
+import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
 
 export type WorkflowActionSource =
 	| 'ui'
@@ -78,6 +79,7 @@ export type CrashDetector =
 	| 'queue-recovery'
 	| 'startup-recovery'
 	| 'start-failure'
+	| 'resume-limit'
 	| 'workflow-deactivation';
 
 export type ProjectSummary = {
@@ -1060,12 +1062,14 @@ export type RelayEventMap = DataTableEventMap & {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-updated': {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-deleted': {
@@ -1073,6 +1077,12 @@ export type RelayEventMap = DataTableEventMap & {
 		sourceId: string;
 		issuer: string;
 	};
+
+	'trusted-source-healthy': {
+		sourceId: string;
+	};
+
+	'trusted-source-first-authenticated': { sourceId: string; surface: SurfaceId };
 
 	// #endregion
 
@@ -1171,6 +1181,21 @@ export type RelayEventMap = DataTableEventMap & {
 
 	'memory-guard-hold-ended': {
 		heldMs: number;
+		/** Executions still waiting when the hold ended. */
+		heldExecutions: number;
+		longestWaitMs: number;
+	};
+
+	/** A production execution starts to wait because of a hold. */
+	'memory-guard-execution-held': {
+		executionId: string;
+	};
+
+	/** A held execution starts, or is cancelled while it waits. */
+	'memory-guard-execution-released': {
+		executionId: string;
+		waitedMs: number;
+		started: boolean;
 	};
 
 	/** Crashed sessions so far, by the strongest guard action before each crash. */

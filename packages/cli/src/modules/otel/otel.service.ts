@@ -3,7 +3,6 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 import { raceAbort } from '@n8n/utils/race-abort';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
 	BasicTracerProvider,
@@ -31,6 +30,7 @@ import { N8N_VERSION } from '@/constants';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
+	OUTBOUND_HEADERS_PROPAGATOR,
 	TRACING_OFF,
 	type ShutdownErrors,
 	type TracingPipeline,
@@ -211,9 +211,7 @@ export class OtelService {
 			sampler: new ParentBasedSampler({
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
-			propagator: settings.injectOutbound
-				? new W3CTraceContextPropagator()
-				: TRACING_OFF.propagator,
+			propagator: settings.injectOutbound ? OUTBOUND_HEADERS_PROPAGATOR : TRACING_OFF.propagator,
 		};
 	}
 

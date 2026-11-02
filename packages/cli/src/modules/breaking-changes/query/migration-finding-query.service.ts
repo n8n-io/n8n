@@ -31,6 +31,7 @@ import { groupNodesByType } from '../group-nodes-by-type';
 import { toWorkflowOwner } from '../owners/workflow-owner';
 import { summarizeExecutionStatistics } from '../summarize-execution-statistics';
 import {
+	createWorkflowScanContext,
 	isInstanceRule,
 	isWorkflowLevelRule,
 	type IBreakingChangeBatchWorkflowRule,
@@ -283,9 +284,14 @@ export class MigrationFindingQueryService {
 		workflows: WorkflowEntity[],
 	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
 		const issuesByWorkflow = new Map<string, BreakingChangeWorkflowIssue[]>();
+		const context = createWorkflowScanContext();
 		for (const workflow of workflows) {
 			try {
-				const result = await rule.detectWorkflow(workflow, groupNodesByType(workflow.nodes));
+				const result = await rule.detectWorkflow(
+					workflow,
+					groupNodesByType(workflow.nodes),
+					context,
+				);
 				issuesByWorkflow.set(workflow.id, result.issues);
 			} catch (error) {
 				this.logger.warn('Breaking change rule failed for workflow, listing it without issues', {

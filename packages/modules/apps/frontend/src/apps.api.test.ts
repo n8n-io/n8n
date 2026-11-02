@@ -9,6 +9,7 @@ import {
 	listAppVersions,
 	publishApp,
 	unpublishApp,
+	updateApp,
 } from './apps.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -44,6 +45,17 @@ describe('apps.api', () => {
 			context,
 			'GET',
 			'/projects/project-1/apps/app-1',
+		);
+	});
+
+	it('updates an app in its project', async () => {
+		await updateApp(context, 'project-1', 'app-1', { name: 'Sales' });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'PATCH',
+			'/projects/project-1/apps/app-1',
+			{ name: 'Sales' },
 		);
 	});
 

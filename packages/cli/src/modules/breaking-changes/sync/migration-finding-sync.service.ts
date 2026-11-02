@@ -14,8 +14,14 @@ import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
-import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
-import { MigrationOwnerSuggestionService } from '../owners/migration-owner-suggestion.service';
+import {
+	MigrationWorkflowOwnerRepository,
+	type OwnerSuggestion,
+} from '../database/repositories/migration-workflow-owner.repository';
+import {
+	MigrationOwnerSuggestionService,
+	type EligibleUsers,
+} from '../owners/migration-owner-suggestion.service';
 import { diffMigrationFindings, type MigrationFindingHit } from './migration-finding-diff';
 
 /**
@@ -129,6 +135,8 @@ export class MigrationFindingSyncService {
 		let afterId: string | undefined;
 		let workflowIds: string[];
 		let failedBatches = 0;
+		// The users are loaded on the first batch with a finding and kept for the rest of the sync.
+		const owners: { users?: EligibleUsers } = {};
 		do {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			try {
@@ -137,7 +145,7 @@ export class MigrationFindingSyncService {
 					publishedHitsByWorkflow,
 					unknownByWorkflow,
 				});
-				await this.refreshSuggestedOwners(targetVersion, workflowIds);
+				await this.refreshSuggestedOwners(targetVersion, workflowIds, owners);
 			} catch (error) {
 				// One bad batch must not lose the rest. The sync record stays cleared
 				// below, so the next read syncs and visits this batch again.
@@ -232,6 +240,7 @@ export class MigrationFindingSyncService {
 	private async refreshSuggestedOwners(
 		targetVersion: BreakingChangeVersion,
 		workflowIds: string[],
+		owners: { users?: EligibleUsers } = {},
 	): Promise<void> {
 		try {
 			const affectedIds = await this.findingRepository.listWorkflowIdsWithUnresolvedFindings(
@@ -239,8 +248,11 @@ export class MigrationFindingSyncService {
 				workflowIds,
 				{},
 			);
-			const suggestions =
-				affectedIds.length > 0 ? await this.ownerSuggestionService.suggestOwners(affectedIds) : [];
+			let suggestions: OwnerSuggestion[] = [];
+			if (affectedIds.length > 0) {
+				owners.users ??= await this.ownerSuggestionService.loadEligibleUsers();
+				suggestions = await this.ownerSuggestionService.suggestOwners(affectedIds, owners.users);
+			}
 			await this.ownerRepository.replaceSuggestions(workflowIds, suggestions, {});
 		} catch (error) {
 			this.logger.warn('Refreshing the suggested owners failed, the findings are unaffected', {

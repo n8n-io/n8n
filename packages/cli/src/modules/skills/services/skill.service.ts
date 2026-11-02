@@ -25,6 +25,7 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
@@ -158,22 +159,16 @@ export class SkillService {
 		if (query.projectId && projectIds !== null && !projectIds.includes(query.projectId)) {
 			return { count: 0, data: [] };
 		}
-		const [usedBy, attachableTo, visibility, projectAgentIds] = await Promise.all([
+		const [usedBySkillIds, attachableToProjectId] = await Promise.all([
 			this.usedByFilter(user, query.agentId),
 			this.attachTarget(query.attachableTo),
-			this.visibilityOf(projectIds),
-			query.projectId ? this.skillUsage.findAgentIdsInProjects([query.projectId]) : undefined,
 		]);
-		if (usedBy === null) return { count: 0, data: [] };
-		const project =
-			query.projectId && projectAgentIds
-				? { id: query.projectId, agentIds: projectAgentIds }
-				: undefined;
-		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+		if (usedBySkillIds === null) return { count: 0, data: [] };
+		const { skills, count } = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
 			scope: query.scope,
-			project,
-			attachableTo,
-			usedBy,
+			projectId: query.projectId || undefined,
+			attachableToProjectId,
+			usedBySkillIds,
 			createdById: query.createdById,
 			search: query.search,
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
@@ -186,9 +181,7 @@ export class SkillService {
 	/** The users who created a skill that the user may see, for the creator filter. */
 	async listCreators(user: User): Promise<SkillUserDto[]> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
-		const creatorIds = await this.skillRepository.findVisibleCreatorIds(
-			await this.visibilityOf(projectIds),
-		);
+		const creatorIds = await this.skillRepository.findVisibleCreatorIds(visibilityOf(projectIds));
 		return [...(await this.findCreators(creatorIds)).values()];
 	}
 
@@ -208,10 +201,11 @@ export class SkillService {
 		take: number,
 	): Promise<{ count: number; skills: McpSkillContent[] }> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
-		const page = await this.skillRepository.findVisiblePage(
-			{ projectIds: projectIds ?? 'all', agentIds: [] },
-			{ skip, take, availableToMCP: true },
-		);
+		const page = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
+			skip,
+			take,
+			availableToMCP: true,
+		});
 		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
 		return {
 			count: page.count,
@@ -227,13 +221,25 @@ export class SkillService {
 		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
 		if (
 			!row ||
-			row.skill.agentId !== null ||
 			!row.skill.availableToMCP ||
 			!(await this.skillAccess.canAccess(user, row.skill, 'read'))
 		) {
 			return null;
 		}
-		return toMcpSkillContent(row);
+		const content = toMcpSkillContent(row);
+		// The origin is only for telemetry: a failed lookup must not break the read.
+		const synced = await this.sourceRepository.findSyncedFrom(skillId).catch((error: unknown) => {
+			this.logger.warn('Could not find the source of a synced skill', {
+				skillId,
+				error: ensureError(error).message,
+			});
+			return null;
+		});
+		if (!synced) return content;
+		return {
+			...content,
+			origin: { provider: synced.type, access: synced.credentialId ? 'credential' : 'public' },
+		};
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {
@@ -308,9 +314,7 @@ export class SkillService {
 		const target = scope
 			? await this.skillAccess.resolveCreateTarget(user, { scope, projectId })
 			: undefined;
-		const moves =
-			target !== undefined &&
-			(target.projectId !== skill.projectId || target.agentId !== skill.agentId);
+		const moves = target !== undefined && target.projectId !== skill.projectId;
 
 		const checkedSource = moves ? await this.skillAccess.assertCanMove(user, skillId) : undefined;
 
@@ -405,9 +409,8 @@ export class SkillService {
 
 	/**
 	 * Creates a skill with its v1. Returns the new id. `checkNameTaken` is for a name that a
-	 * user or the builder chose. A copy of an agent skill for a new agent keeps the name of
-	 * the skill it copies, so it skips the check. `frontmatter` holds the SKILL.md keys
-	 * other than name and description, stored as given.
+	 * user or the builder chose. A caller that took a name from `freeNames` skips the check.
+	 * `frontmatter` holds the SKILL.md keys other than name and description, stored as given.
 	 */
 	async createTrusted(
 		input: {
@@ -545,10 +548,7 @@ export class SkillService {
 			if (checkedSource) {
 				const [locked] = await this.skillRepository.findByIds([skillId], txCtx);
 				if (!locked) throw new NotFoundError('Skill not found');
-				if (
-					locked.projectId !== checkedSource.projectId ||
-					locked.agentId !== checkedSource.agentId
-				) {
+				if (locked.projectId !== checkedSource.projectId) {
 					throw new ConflictError(
 						'The skill was moved somewhere else. Reload to see where it is now.',
 					);
@@ -583,12 +583,7 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
-			const skill = await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
-			if (available && skill.agentId !== null) {
-				throw new UserError(
-					"The n8n Assistant can't use skills scoped to an agent. Move the skill to a project or the instance first.",
-				);
-			}
+			await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
 			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
 		});
 	}
@@ -600,12 +595,7 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
-			const skill = await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
-			if (available && skill.agentId !== null) {
-				throw new UserError(
-					"MCP clients can't get skills scoped to an agent. Move the skill to a project or the instance first.",
-				);
-			}
+			await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
 			await this.skillRepository.updateAvailableToMCP(skillId, available, txCtx);
 		});
 	}
@@ -618,7 +608,7 @@ export class SkillService {
 		await this.skillRepository.lockForEdit([skillId], ctx);
 		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
 		if (!skill) throw new NotFoundError('Skill not found');
-		if (skill.projectId !== checkedTarget.projectId || skill.agentId !== checkedTarget.agentId) {
+		if (skill.projectId !== checkedTarget.projectId) {
 			throw new ConflictError('The skill scope changed. Reload the skill and try again.');
 		}
 		return skill;
@@ -655,16 +645,36 @@ export class SkillService {
 
 	/** A free name in the scope of `target`. The rule is `nextFreeName`. */
 	private async freeName(requested: string, target: SkillTarget, ctx: OperationContext = {}) {
-		const names = await this.skillRepository.findLatestNamesInTarget(
-			{ projectId: target.projectId, agentId: target.agentId },
+		const [name] = await this.freeNames([requested], target, ctx);
+		return name;
+	}
+
+	/**
+	 * `freeName` for many names, in one query. Each name counts as taken for the next ones,
+	 * and so does each name in `alsoTaken`.
+	 */
+	async freeNames(
+		requested: string[],
+		target: SkillTarget,
+		ctx: OperationContext = {},
+		alsoTaken: string[] = [],
+	): Promise<string[]> {
+		if (requested.length === 0) return [];
+		const inTarget = await this.skillRepository.findLatestNamesInTarget(
+			{ projectId: target.projectId },
 			ctx,
 		);
-		return nextFreeName(requested, new Set(names.map(({ name }) => skillNameKey(name))));
+		const taken = new Set([...inTarget.map(({ name }) => name), ...alsoTaken].map(skillNameKey));
+		return requested.map((name) => {
+			const free = nextFreeName(name, taken);
+			taken.add(skillNameKey(free));
+			return free;
+		});
 	}
 
 	/**
 	 * Refuses a name that is hard to tell apart from another skill's name in the same
-	 * scope: one agent, one project or the instance, by the same rule as inside one agent.
+	 * scope: one project or the instance, by the same rule as inside one agent.
 	 */
 	private async assertNameFree(
 		name: string,
@@ -706,8 +716,9 @@ export class SkillService {
 		exceptSkillId: string | undefined,
 		ctx: OperationContext = {},
 	): Promise<boolean> {
+		// Callers may pass a whole skill, so only its target goes to the query.
 		const names = await this.skillRepository.findLatestNamesInTarget(
-			{ projectId: target.projectId, agentId: target.agentId },
+			{ projectId: target.projectId },
 			ctx,
 		);
 		return isNameTaken(name, names, exceptSkillId);
@@ -720,7 +731,7 @@ export class SkillService {
 		agentProjectIds: VisibleProjects,
 		ctx: OperationContext,
 	): Promise<void> {
-		if (agentIds.length === 0 || (target.projectId === null && target.agentId === null)) return;
+		if (agentIds.length === 0 || target.projectId === null) return;
 		const agents = await this.skillUsage.findAgents(agentIds, ctx);
 		const losing = findLosingAgents(agentIds, target, agents);
 		if (losing.length > 0) {
@@ -780,14 +791,13 @@ export class SkillService {
 	}
 
 	/**
-	 * The agent filter: the skills the agent uses and its own agent skills. Null when the
-	 * agent does not exist or the user may not read it, so the list is empty and shows
-	 * nothing about that agent.
+	 * The agent filter: the skills the agent uses. Null when the agent does not exist or the
+	 * user may not read it, so the list is empty and shows nothing about that agent.
 	 */
 	private async usedByFilter(
 		user: User,
 		agentId: string | undefined,
-	): Promise<{ agentId: string; skillIds: string[] } | undefined | null> {
+	): Promise<string[] | undefined | null> {
 		if (agentId === undefined) return undefined;
 		const [agents, readable] = await Promise.all([
 			this.skillUsage.findAgents([agentId]),
@@ -796,52 +806,35 @@ export class SkillService {
 		const agent = agents.get(agentId);
 		if (!agent) return null;
 		if (readable !== null && !readable.includes(agent.projectId)) return null;
-		return { agentId, skillIds: await this.skillUsage.findSkillIdsUsedByAgent(agentId) };
+		return await this.skillUsage.findSkillIdsUsedByAgent(agentId);
 	}
 
-	/**
-	 * The skills a user may list, from the projects where they hold `projectSkill:list`
-	 * (null for all). An agent skill has no projectId: it belongs to the project of its agent.
-	 */
-	private async visibilityOf(projectIds: string[] | null): Promise<SkillVisibility> {
-		if (projectIds === null) return { projectIds: 'all', agentIds: 'all' };
-		return { projectIds, agentIds: await this.skillUsage.findAgentIdsInProjects(projectIds) };
-	}
-
-	/** The agent of an `attachableTo` filter with its project. An unknown agent can attach nothing. */
-	private async attachTarget(
-		agentId: string | undefined,
-	): Promise<{ agentId: string; projectId: string } | undefined> {
+	/** The project of an `attachableTo` agent. An unknown agent can attach nothing. */
+	private async attachTarget(agentId: string | undefined): Promise<string | undefined> {
 		if (agentId === undefined) return undefined;
 		const agent = (await this.skillUsage.findAgents([agentId])).get(agentId);
 		if (!agent) throw new NotFoundError('Agent not found');
-		return { agentId, projectId: agent.projectId };
+		return agent.projectId;
 	}
 
 	private async toListItems(user: User, skills: Skill[]): Promise<SkillListItem[]> {
 		const ids = skills.map((skill) => skill.id);
-		// An agent skill has no projectId: resolve its project through its agent.
-		const agents = await this.skillUsage.findAgents(
-			skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : [])),
-		);
-		const projectOf = (skill: Skill) =>
-			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
 		const [latest, usage, projects, creators, canEdit, canDelete, synced, skillSyncOn] =
 			await Promise.all([
 				this.skillRepository.findLatestSummaries(ids),
 				this.skillUsage.countUsingAgents(ids),
-				this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
+				this.skillRepository.findProjects(skills.flatMap((skill) => skill.projectId ?? [])),
 				this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
 				this.skillAccess.accessCheck(user, 'update'),
 				this.skillAccess.accessCheck(user, 'delete'),
-				this.sourceRepository.findLinkedSkillIds(ids),
+				this.sourceRepository.findSyncStates(ids),
 				this.skillSyncFlagGate.isEnabled(user),
 			]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
 			const summary = latest.get(skill.id);
 			if (!summary) continue;
-			const projectId = projectOf(skill);
+			const { projectId } = skill;
 			items.push({
 				id: skill.id,
 				name: summary.name,
@@ -850,8 +843,6 @@ export class SkillService {
 				projectId,
 				projectName: projectId ? (projects.get(projectId)?.name ?? null) : null,
 				projectType: projectId ? (projects.get(projectId)?.type ?? null) : null,
-				agentId: skill.agentId,
-				agentName: skill.agentId ? (agents.get(skill.agentId)?.name ?? null) : null,
 				source: skill.source,
 				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
@@ -859,11 +850,14 @@ export class SkillService {
 				availableToAssistant: skill.availableToAssistant,
 				availableToMCP: skill.availableToMCP,
 				// The source holds the content of a synced skill, so n8n cannot edit it.
-				canEdit: canEdit(skill, projectId) && !synced.has(skill.id),
-				canDelete: canDelete(skill, projectId),
+				canEdit: canEdit(skill) && !synced.has(skill.id),
+				canDelete: canDelete(skill),
 				// Stop syncing needs the update permission of the scope that the skill shares with its source.
 				// The route answers 404 while the Skill Sync flag is off for the user.
-				canStopSyncing: skillSyncOn && synced.has(skill.id) && canEdit(skill, projectId),
+				canStopSyncing: skillSyncOn && synced.has(skill.id) && canEdit(skill),
+				syncState: synced.get(skill.id) ?? null,
+				// Check now needs the same permission as stop syncing.
+				canCheckForUpdates: skillSyncOn && synced.has(skill.id) && canEdit(skill),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});
@@ -893,4 +887,12 @@ export class SkillService {
 /** How a message names the source of a synced skill, such as GitHub. */
 function sourceLabelOf(source: SkillSource): string {
 	return syncedSourceLabel(source) ?? 'its source';
+}
+
+/**
+ * The skills a user may list, from the projects where they hold `projectSkill:list`
+ * (null for all).
+ */
+function visibilityOf(projectIds: string[] | null): SkillVisibility {
+	return { projectIds: projectIds ?? 'all' };
 }

@@ -3304,6 +3304,29 @@ describe('AgentBuilderView — configuration validation', () => {
 		},
 	);
 
+	it.each([false, true])(
+		'hides setup tasks for a published agent with artifact mode %s',
+		async (artifactMode) => {
+			getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1', versionId: 'v2' }));
+			const wrapper = await renderView({
+				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			});
+
+			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+		},
+	);
+
+	it('hides setup tasks when the agent is published', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		expect(header.props('tasks')).toBeDefined();
+
+		header.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
+		await flushPromises();
+
+		expect(header.props('tasks')).toBeUndefined();
+	});
+
 	it('hides setup tasks while the embedded assistant builds the agent', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });

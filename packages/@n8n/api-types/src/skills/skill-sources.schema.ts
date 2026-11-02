@@ -158,6 +158,27 @@ export type SkillSourceConnectResponse = {
 	failed: Array<{ key: string; name: string | null; reason: SkillSourceReason }>;
 };
 
+/**
+ * The sync state of one synced skill. `update_available` and `update_blocked` mean that the
+ * source has new content that waits for review, and that the security check blocked it.
+ */
+export type SkillSyncState =
+	| 'up_to_date'
+	| 'update_available'
+	| 'update_blocked'
+	| 'source_unavailable';
+
+/** The answer of Check now. */
+export type SkillSourceCheckResponse = {
+	/** The source, such as `owner/repository`. */
+	label: string;
+	/** Skills of the source with an update that waits for review, after the check. */
+	updatesFound: number;
+	/** True when the source was checked less than a minute ago, so n8n did not check it again. */
+	throttled: boolean;
+	lastCheckedAt: string | null;
+};
+
 /** Where a synced skill comes from, for the "Synced from" banner. */
 export type SkillSyncedFrom = {
 	sourceId: string;

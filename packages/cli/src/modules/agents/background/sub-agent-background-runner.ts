@@ -1,5 +1,5 @@
 import { createChildSubAgentTaskPath } from '@n8n/agents';
-import type { SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
+import type { AgentPlanTaskRef, SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -18,6 +18,7 @@ import type {
 	ExpectedBackgroundJobState,
 } from '../repositories/agent-background-job.repository';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentWorkspaceService } from '../agent-workspace.service';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { IntegrationMessageContext } from '../integrations/integration-tool-types';
@@ -40,12 +41,18 @@ export type BackgroundSubAgentRunContext = Pick<
 >;
 
 export interface BackgroundSpawnRequest {
+	sourceExecutionId?: string;
+	planTask?: AgentPlanTaskRef;
+	validatePlanTask?: boolean;
+	inheritedPlanTask?: boolean;
 	subAgentId: string;
 	source: SubAgentSource;
 	taskName: string;
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	/** Files of the parent that the child can read. The runner grants them before the child runs. */
+	fileIds?: string[];
 	/** Self-delegation only: model tier override applied by the runner. */
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
@@ -73,6 +80,7 @@ export class SubAgentBackgroundRunner {
 		private readonly logger: Logger,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly workspaceService: AgentWorkspaceService,
+		private readonly attachmentService: AgentChatAttachmentService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -87,6 +95,14 @@ export class SubAgentBackgroundRunner {
 		// Throws on an unusable task name — before the job row exists, so a bad
 		// name cannot leave a phantom `running` row holding a thread slot.
 		const taskPath = createChildSubAgentTaskPath(request.taskName, this.dispatchCounter++);
+		// The run grants the files later. Check them here so that a bad fileId fails the tool call.
+		for (const fileId of request.fileIds ?? []) {
+			const file = await this.attachmentService.getReadable(fileId, {
+				projectId: context.projectId,
+				threadId: request.parentThreadId,
+			});
+			if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
+		}
 
 		const jobId = uuid();
 		const childThreadId = uuid();
@@ -95,12 +111,17 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			sourceExecutionId: request.sourceExecutionId,
+			planTask: request.planTask,
+			validatePlanTask: request.validatePlanTask,
+			inheritedPlanTask: request.inheritedPlanTask,
 			parentResourceId: request.parentResourceId,
 			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
 		});
+
 		if (receipt.status !== 'started') return receipt;
 
 		// The job runs on its own abort scope: the parent's signal dies with the
@@ -116,6 +137,7 @@ export class SubAgentBackgroundRunner {
 				abortController.signal.throwIfAborted();
 			}
 			expected.timeoutAt = job?.timeoutAt;
+
 			return await this.runner.run(
 				{
 					goal: request.goal,
@@ -124,6 +146,7 @@ export class SubAgentBackgroundRunner {
 					...(request.expectedOutput !== undefined
 						? { expectedOutput: request.expectedOutput }
 						: {}),
+					...(request.fileIds !== undefined ? { fileIds: request.fileIds } : {}),
 					parentThreadId: request.parentThreadId,
 					...(request.parentExecutionId !== undefined
 						? { parentExecutionId: request.parentExecutionId }
@@ -143,6 +166,7 @@ export class SubAgentBackgroundRunner {
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
 					backgroundJobId: jobId,
+					planTask: request.planTask,
 					shouldPause: async () => await this.jobService.shouldPause(jobId),
 					parentMessageContext: request.parentMessageContext,
 					// The parent thread is the root session: the child debits it, not
@@ -212,6 +236,10 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
 						shouldPause: async () => await this.jobService.shouldPause(job.id),
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
@@ -242,7 +270,9 @@ export class SubAgentBackgroundRunner {
 						},
 					},
 				);
+
 				if (!admitted) throw new UserError('This background approval could not be resumed');
+
 				return result;
 			},
 			() => claimed,
@@ -318,6 +348,10 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
 						runtimeSnapshot: metadata.runtimeSnapshot,
@@ -425,6 +459,11 @@ export class SubAgentBackgroundRunner {
 }
 
 function settlementFor(result: SubAgentRunResult): AgentBackgroundJobSettlement {
+	// The parent can read these files even when the child failed, so list them for every status.
+	return { ...outcomeFor(result), ...(result.files?.length ? { files: result.files } : {}) };
+}
+
+function outcomeFor(result: SubAgentRunResult): AgentBackgroundJobSettlement {
 	const output = formatSubAgentToolOutput(result);
 	if (output.status === 'completed') {
 		return { status: 'completed', result: output.answer };
