@@ -16,7 +16,7 @@ import InstanceAiCloudBrowsersCard from './InstanceAiCloudBrowsersCard.vue';
 import { useArtifactThread } from '../artifactThread';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
-import { skillsHubHref } from '../canvasPreview.utils';
+import { appHref, skillsHubHref } from '../canvasPreview.utils';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -59,6 +59,7 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	undefined,
 );
 const openSkillPreview = inject<((id: string) => void) | undefined>('openSkillPreview', undefined);
+const openAppPreview = inject<((id: string) => void) | undefined>('openAppPreview', undefined);
 const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
 	undefined,
@@ -97,6 +98,10 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		// navigate the chat tab away even when the skill tab is already active.
 		e.preventDefault();
 		openSkillPreview(artifact.id);
+	} else if (artifact.type === 'app' && artifact.id) {
+		if (!openAppPreview) return;
+		e.preventDefault();
+		openAppPreview(artifact.id);
 	}
 }
 
@@ -126,7 +131,8 @@ const artifacts = computed((): ResourceEntry[] => {
 			entry.type === 'workflow' ||
 			entry.type === 'data-table' ||
 			entry.type === 'agent' ||
-			entry.type === 'skill'
+			entry.type === 'skill' ||
+			entry.type === 'app'
 		) {
 			result.push(entry);
 		}
@@ -139,6 +145,7 @@ const artifactIconMap: Record<string, IconName> = {
 	'data-table': 'table',
 	agent: 'robot',
 	skill: 'book-open',
+	app: 'layout-template',
 };
 
 function artifactHref(artifact: ResourceEntry) {
@@ -155,6 +162,9 @@ function artifactHref(artifact: ResourceEntry) {
 			: '/home/agents';
 	}
 	if (artifact.type === 'skill') return skillsHubHref(artifact.id);
+	if (artifact.type === 'app' && artifact.projectId) {
+		return appHref(artifact.projectId, artifact.id);
+	}
 	return '#';
 }
 

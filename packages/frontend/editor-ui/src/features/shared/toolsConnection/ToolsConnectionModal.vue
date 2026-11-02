@@ -317,7 +317,6 @@ const CATEGORY_I18N: Record<ToolCategoryKey, BaseTextKey> = {
 	workflows: 'tools.connection.categories.workflows',
 	agents: 'tools.connection.categories.agents',
 	project: 'tools.connection.categories.project',
-	'this-agent': 'tools.connection.categories.thisAgent',
 	global: 'tools.connection.categories.global',
 	data: 'tools.connection.categories.data',
 };

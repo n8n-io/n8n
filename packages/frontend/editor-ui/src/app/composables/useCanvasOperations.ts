@@ -199,7 +199,6 @@ type AddNodesBaseOptions = {
 	trackHistory?: boolean;
 	keepPristine?: boolean;
 	telemetry?: boolean;
-	forcePosition?: boolean;
 	viewport?: ViewportBoundaries;
 };
 
@@ -724,7 +723,6 @@ export function useCanvasOperations() {
 				},
 				anchorNodeType,
 				{
-					forcePosition: true,
 					isAutoAdd: true,
 					openNDV: false,
 					trackHistory,
@@ -1607,7 +1605,7 @@ export function useCanvasOperations() {
 	function resolveNodeData(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
-		options: { viewport?: ViewportBoundaries; forcePosition?: boolean } = {},
+		options: { viewport?: ViewportBoundaries } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name =
@@ -1617,12 +1615,9 @@ export function useCanvasOperations() {
 			(nodeTypeDescription.defaults.name as string);
 		const type = node.type ?? nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
-		const position =
-			options.forcePosition && node.position
-				? node.position
-				: resolveNodePosition(node as INodeUi, nodeTypeDescription, {
-						viewport: options.viewport,
-					});
+		const position = resolveNodePosition(node as INodeUi, nodeTypeDescription, {
+			viewport: options.viewport,
+		});
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 

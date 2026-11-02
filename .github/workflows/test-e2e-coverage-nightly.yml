@@ -89,17 +89,12 @@ jobs:
           - name: Unit Coverage (backend + nodes)
             artifact: unit-coverage
             test-command: pnpm test:ci:backend:unit
-            artifact-path: packages/**/coverage/lcov.info
           - name: Unit Coverage (frontend)
             artifact: frontend-coverage
             test-command: pnpm test:ci:frontend
-            artifact-path: packages/**/coverage/lcov.info
           - name: Unit Coverage (CLI integration + Postgres)
             artifact: integration-coverage
             test-command: pnpm test:postgres:integration:tc
-            # Glob (not the single file) so the artifact keeps its packages/<pkg>/
-            # path, which aggregate-coverage.mjs uses to qualify SF: keys.
-            artifact-path: packages/**/coverage/lcov.info
             working-directory: packages/cli
             pre-pull-containers: true
     env:
@@ -120,12 +115,26 @@ jobs:
         working-directory: ${{ matrix.working-directory || github.workspace }}
         run: ${{ matrix.test-command }}
 
+      # A `packages/**` artifact glob follows the pnpm workspace symlinks in each
+      # node_modules and runs for hours. Copy the files with `find` instead. The
+      # artifact keeps the <pkg>/coverage/lcov.info layout that
+      # aggregate-coverage.mjs uses to qualify SF: keys.
+      - name: Collect coverage files
+        if: always()
+        run: |
+          find packages -path '*/node_modules' -prune -o -path '*/coverage/lcov.info' -print |
+            while read -r file; do
+              dest="$RUNNER_TEMP/coverage-upload/${file#packages/}"
+              mkdir -p "$(dirname "$dest")"
+              cp "$file" "$dest"
+            done
+
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact-path }}
+          path: ${{ runner.temp }}/coverage-upload/
           retention-days: 3
 
   # Both Python packages in one job — they're fast and share the uv install

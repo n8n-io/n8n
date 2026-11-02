@@ -82,6 +82,15 @@ describe('PersonRepository', () => {
 			});
 		});
 
+		it('finds people by ids in id order', async () => {
+			await repository.findManyByIds(['id-2', 'id-1']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(Person, {
+				where: { id: In(['id-2', 'id-1']) },
+				order: { id: 'ASC' },
+			});
+		});
+
 		it('counts people with MFA enabled', async () => {
 			entityManager.count.mockResolvedValueOnce(3);
 

@@ -72,7 +72,7 @@ import {
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { applySelectionRequest, ApplyPreviewService } from './apply-preview.service';
 import { GitCommitPackageReader } from './git-commit-package-reader';
-import { exportInstancePackage } from './instance-package';
+import { exportInstancePackage, instancePromotionExportRequest } from './instance-package';
 import { compare } from './package-references';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -263,20 +263,11 @@ export class PromotionsService {
 		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-				{
+				instancePromotionExportRequest({
 					user: actor,
 					projectIds,
-					includeAgents: false,
-					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
-					includeTags: true,
-					// Archived workflows travel too, so the target archives them instead of removing them.
-					includeArchivedWorkflows: true,
-					// personal projects are excluded, so a team workflow calling a personal
-					// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-					dependencyPolicy: ExportDependencyPolicy.Fail,
-					versionPolicy: ExportVersionPolicy.Latest,
-				},
+				}),
 				{ targetDir: stagingFolder },
 			);
 

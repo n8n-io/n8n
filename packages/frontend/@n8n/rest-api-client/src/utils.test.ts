@@ -1,3 +1,5 @@
+import { BaseError } from 'n8n-workflow';
+
 import {
 	MfaRequiredError,
 	ResponseError,
@@ -404,5 +406,51 @@ describe('streamRequest', () => {
 
 		expect(onDoneMock).toHaveBeenCalledTimes(1);
 		expect(onErrorMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('ResponseError', () => {
+	it('is a BaseError with the response fields', () => {
+		const error = new ResponseError('Not found', {
+			errorCode: 4040,
+			httpStatusCode: 404,
+			stack: 'server stack',
+			meta: { url: 'https://example.com' },
+			hint: 'Check the ID',
+		});
+
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toBeInstanceOf(BaseError);
+		expect(error.name).toBe('ResponseError');
+		expect(error.message).toBe('Not found');
+		expect(error.errorCode).toBe(4040);
+		expect(error.httpStatusCode).toBe(404);
+		expect(error.serverStackTrace).toBe('server stack');
+		expect(error.stack).not.toBe('server stack');
+		expect(error.meta).toEqual({ url: 'https://example.com' });
+		expect(error.hint).toBe('Check the ID');
+		expect(error.level).toBe('error');
+		expect(error.description).toBeUndefined();
+	});
+
+	it('leaves the optional fields undefined when they are not given', () => {
+		const error = new ResponseError('Failed');
+
+		expect(error.errorCode).toBeUndefined();
+		expect(error.httpStatusCode).toBeUndefined();
+		expect(error.serverStackTrace).toBeUndefined();
+		expect(error.meta).toBeUndefined();
+		expect(error.hint).toBeUndefined();
+	});
+
+	it('keeps its name when the class name is changed by minification', () => {
+		const originalName = Object.getOwnPropertyDescriptor(ResponseError, 'name');
+		Object.defineProperty(ResponseError, 'name', { value: 'e', configurable: true });
+
+		try {
+			expect(new ResponseError('Failed').name).toBe('ResponseError');
+		} finally {
+			if (originalName) Object.defineProperty(ResponseError, 'name', originalName);
+		}
 	});
 });

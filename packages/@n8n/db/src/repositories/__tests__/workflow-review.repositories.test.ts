@@ -1,5 +1,6 @@
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import type { DataSource, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,7 +9,7 @@ import { WorkflowReviewRequestAuthor } from '../../entities/workflow-review-requ
 import { WorkflowReviewRequestReviewer } from '../../entities/workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from '../../entities/workflow-review-request-workflow.ee';
 import { WorkflowReviewRequest } from '../../entities/workflow-review-request.ee';
-import { TypeOrmTransaction } from '../../services/typeorm-transaction';
+import { TypeOrmTransaction, TypeOrmTransactionRunner } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import {
 	WorkflowReviewInboxRepository,
@@ -96,7 +97,7 @@ describe('workflow review repositories', () => {
 		queryBuilder.getMany.mockResolvedValue([]);
 		queryBuilder.getRawMany.mockResolvedValue([]);
 
-		vi.spyOn(inboxRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+		(entityManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
 	});
 
 	describe('WorkflowReviewRequestRepository.createRequest', () => {
@@ -481,14 +482,20 @@ describe('workflow review repositories', () => {
 			const rows = [mock<WorkflowReviewRequest>({ id: 'req-1' })];
 			queryBuilder.getMany.mockResolvedValueOnce(rows);
 
-			const result = await inboxRepository.findRequests({
-				visibility: allVisibility,
-				state: 'open',
-				limit: 15,
-			});
+			const result = await inboxRepository.findRequests(
+				{
+					visibility: allVisibility,
+					state: 'open',
+					limit: 15,
+				},
+				{},
+			);
 
 			expect(result).toBe(rows);
-			expect(inboxRepository.createQueryBuilder).toHaveBeenCalledWith('review');
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(
+				WorkflowReviewRequest,
+				'review',
+			);
 			expect(queryBuilder.andWhere).not.toHaveBeenCalledWith(
 				expect.stringContaining('review.projectId'),
 				expect.anything(),
@@ -505,13 +512,16 @@ describe('workflow review repositories', () => {
 			const rows = [mock<WorkflowReviewRequest>({ id: 'req-1' })];
 			queryBuilder.getMany.mockResolvedValueOnce(rows);
 
-			const result = await inboxRepository.findRequests({
-				visibility: involvedVisibility({
-					adminProjectIds: ['admin-proj'],
-					readableProjectIds: ['read-1', 'read-2'],
-				}),
-				limit: 15,
-			});
+			const result = await inboxRepository.findRequests(
+				{
+					visibility: involvedVisibility({
+						adminProjectIds: ['admin-proj'],
+						readableProjectIds: ['read-1', 'read-2'],
+					}),
+					limit: 15,
+				},
+				{},
+			);
 
 			expect(result).toBe(rows);
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
@@ -526,10 +536,13 @@ describe('workflow review repositories', () => {
 		});
 
 		it('resolves workflow readability through shared_workflow, not the stored project', async () => {
-			await inboxRepository.findRequests({
-				visibility: involvedVisibility({ readableProjectIds: ['read-1'] }),
-				limit: 15,
-			});
+			await inboxRepository.findRequests(
+				{
+					visibility: involvedVisibility({ readableProjectIds: ['read-1'] }),
+					limit: 15,
+				},
+				{},
+			);
 
 			const sharedSubQuery = subQueryBuilders.find((builder) =>
 				builder.from.mock.calls.some(([entity]) => entity === SharedWorkflow),
@@ -549,10 +562,13 @@ describe('workflow review repositories', () => {
 		});
 
 		it('drops the readability conjunct entirely when the caller is unrestricted', async () => {
-			await inboxRepository.findRequests({
-				visibility: involvedVisibility({ readableProjectIds: null }),
-				limit: 15,
-			});
+			await inboxRepository.findRequests(
+				{
+					visibility: involvedVisibility({ readableProjectIds: null }),
+					limit: 15,
+				},
+				{},
+			);
 
 			expect(
 				subQueryBuilders.some((builder) =>
@@ -565,7 +581,7 @@ describe('workflow review repositories', () => {
 		});
 
 		it('correlates both involvement subqueries through their entities, never literal table names', async () => {
-			await inboxRepository.findRequests({ visibility: involvedVisibility(), limit: 15 });
+			await inboxRepository.findRequests({ visibility: involvedVisibility(), limit: 15 }, {});
 
 			const [authorSubQuery, reviewerSubQuery] = subQueryBuilders;
 			expect(authorSubQuery.from).toHaveBeenCalledWith(
@@ -587,37 +603,48 @@ describe('workflow review repositories', () => {
 		});
 
 		it('returns nothing when no project is readable, admin projects included', async () => {
-			await inboxRepository.findRequests({
-				visibility: involvedVisibility({ adminProjectIds: ['admin-proj'], readableProjectIds: [] }),
-				limit: 15,
-			});
+			await inboxRepository.findRequests(
+				{
+					visibility: involvedVisibility({
+						adminProjectIds: ['admin-proj'],
+						readableProjectIds: [],
+					}),
+					limit: 15,
+				},
+				{},
+			);
 
 			// An admin who can read no workflow sees no reviews either.
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('1 = 0');
 		});
 
 		it('matches nothing when the caller administers no project and can read none', async () => {
-			const result = await inboxRepository.findRequests({
-				visibility: involvedVisibility({ adminProjectIds: [], readableProjectIds: [] }),
-				limit: 15,
-			});
+			const result = await inboxRepository.findRequests(
+				{
+					visibility: involvedVisibility({ adminProjectIds: [], readableProjectIds: [] }),
+					limit: 15,
+				},
+				{},
+			);
 
 			expect(result).toEqual([]);
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('1 = 0');
 		});
 
 		it('applies the keyset boundary carried in the cursor without an anchor lookup', async () => {
-			const findOneSpy = vi.spyOn(inboxRepository, 'findOne');
 			queryBuilder.getMany.mockResolvedValueOnce([]);
 			const updatedAt = new Date('2024-01-02T00:00:00.000Z');
 
-			await inboxRepository.findRequests({
-				visibility: involvedVisibility(),
-				limit: 10,
-				boundary: { mode: 'afterItem', updatedAt, id: 'req-cursor' },
-			});
+			await inboxRepository.findRequests(
+				{
+					visibility: involvedVisibility(),
+					limit: 10,
+					boundary: { mode: 'afterItem', updatedAt, id: 'req-cursor' },
+				},
+				{},
+			);
 
-			expect(findOneSpy).not.toHaveBeenCalled();
+			expect(entityManager.findOne).not.toHaveBeenCalled();
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				'(review.updatedAt < :updatedAt OR (review.updatedAt = :updatedAt AND review.id > :id))',
 				{ updatedAt, id: 'req-cursor' },
@@ -629,11 +656,14 @@ describe('workflow review repositories', () => {
 			{ mode: 'beforeOrAtTime', operator: '<=' },
 		] as const)('applies the $mode boundary from another source', async ({ mode, operator }) => {
 			const updatedAt = new Date('2026-10-07T00:00:00.000Z');
-			await inboxRepository.findRequests({
-				visibility: allVisibility,
-				limit: 10,
-				boundary: { mode, updatedAt },
-			});
+			await inboxRepository.findRequests(
+				{
+					visibility: allVisibility,
+					limit: 10,
+					boundary: { mode, updatedAt },
+				},
+				{},
+			);
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 				`review.updatedAt ${operator} :updatedAt`,
 				{ updatedAt },
@@ -641,20 +671,26 @@ describe('workflow review repositories', () => {
 		});
 		describe('category filter', () => {
 			it('leaves the query untouched when no category is requested', async () => {
-				await inboxRepository.findRequests({
-					visibility: allVisibility,
-					limit: 15,
-				});
+				await inboxRepository.findRequests(
+					{
+						visibility: allVisibility,
+						limit: 15,
+					},
+					{},
+				);
 
 				expect(queryBuilder.subQuery).not.toHaveBeenCalled();
 			});
 
 			it('correlates both junction subqueries through their entities, never literal table names', async () => {
-				await inboxRepository.findRequests({
-					visibility: allVisibility,
-					category: { userId: 'user-1', category: 'authored' },
-					limit: 15,
-				});
+				await inboxRepository.findRequests(
+					{
+						visibility: allVisibility,
+						category: { userId: 'user-1', category: 'authored' },
+						limit: 15,
+					},
+					{},
+				);
 
 				const [authorSubQuery, reviewerSubQuery] = subQueryBuilders;
 				expect(authorSubQuery.select).toHaveBeenCalledWith('1');
@@ -672,11 +708,14 @@ describe('workflow review repositories', () => {
 			// The requester always has an author row, so neither predicate needs
 			// the nullable `createdById`.
 			it('matches a non-reviewing author for the authored section', async () => {
-				await inboxRepository.findRequests({
-					visibility: allVisibility,
-					category: { userId: 'user-1', category: 'authored' },
-					limit: 15,
-				});
+				await inboxRepository.findRequests(
+					{
+						visibility: allVisibility,
+						category: { userId: 'user-1', category: 'authored' },
+						limit: 15,
+					},
+					{},
+				);
 
 				expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 					`(EXISTS ${AUTHOR_SUBQUERY_SQL} AND NOT EXISTS ${REVIEWER_SUBQUERY_SQL})`,
@@ -685,11 +724,14 @@ describe('workflow review repositories', () => {
 			});
 
 			it('matches assigned reviewers first for the waiting section', async () => {
-				await inboxRepository.findRequests({
-					visibility: allVisibility,
-					category: { userId: 'user-1', category: 'waiting' },
-					limit: 15,
-				});
+				await inboxRepository.findRequests(
+					{
+						visibility: allVisibility,
+						category: { userId: 'user-1', category: 'waiting' },
+						limit: 15,
+					},
+					{},
+				);
 
 				expect(queryBuilder.andWhere).toHaveBeenCalledWith(
 					`(EXISTS ${REVIEWER_SUBQUERY_SQL} OR NOT EXISTS ${AUTHOR_SUBQUERY_SQL})`,
@@ -698,11 +740,14 @@ describe('workflow review repositories', () => {
 			});
 
 			it('narrows the visibility predicate instead of replacing it', async () => {
-				await inboxRepository.findRequests({
-					visibility: involvedVisibility(),
-					category: { userId: 'user-1', category: 'waiting' },
-					limit: 15,
-				});
+				await inboxRepository.findRequests(
+					{
+						visibility: involvedVisibility(),
+						category: { userId: 'user-1', category: 'waiting' },
+						limit: 15,
+					},
+					{},
+				);
 
 				// Visibility renders first; the category filter may only narrow what it allowed.
 				const visibilityCall = queryBuilder.andWhere.mock.calls[0];
@@ -714,13 +759,16 @@ describe('workflow review repositories', () => {
 			it('applies the category filter before the limit and the cursor boundary', async () => {
 				const updatedAt = new Date('2024-01-02T00:00:00.000Z');
 
-				await inboxRepository.findRequests({
-					visibility: allVisibility,
-					category: { userId: 'user-1', category: 'authored' },
-					state: 'open',
-					limit: 15,
-					boundary: { mode: 'afterItem', updatedAt, id: 'req-cursor' },
-				});
+				await inboxRepository.findRequests(
+					{
+						visibility: allVisibility,
+						category: { userId: 'user-1', category: 'authored' },
+						state: 'open',
+						limit: 15,
+						boundary: { mode: 'afterItem', updatedAt, id: 'req-cursor' },
+					},
+					{},
+				);
 
 				const categoryCall = queryBuilder.andWhere.mock.invocationCallOrder[0];
 				const cursorCall = queryBuilder.andWhere.mock.invocationCallOrder.at(-1);
@@ -737,10 +785,14 @@ describe('workflow review repositories', () => {
 
 			const result = await inboxRepository.countRequestsByState(
 				involvedVisibility({ readableProjectIds: ['proj-1', 'proj-2'] }),
+				{},
 			);
 
 			expect(result).toEqual({ open: 2, closed: 0 });
-			expect(inboxRepository.createQueryBuilder).toHaveBeenCalledWith('review');
+			expect(entityManager.createQueryBuilder).toHaveBeenCalledWith(
+				WorkflowReviewRequest,
+				'review',
+			);
 			expect(queryBuilder.select).toHaveBeenCalledWith('review.state', 'state');
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith('COUNT(*)', 'count');
 			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
@@ -760,7 +812,7 @@ describe('workflow review repositories', () => {
 				{ state: 'closed', count: '12' },
 			]);
 
-			const result = await inboxRepository.countRequestsByState(allVisibility);
+			const result = await inboxRepository.countRequestsByState(allVisibility, {});
 
 			expect(result).toEqual({ open: 3, closed: 12 });
 			expect(queryBuilder.andWhere).not.toHaveBeenCalled();
@@ -772,10 +824,40 @@ describe('workflow review repositories', () => {
 
 			const result = await inboxRepository.countRequestsByState(
 				involvedVisibility({ adminProjectIds: [], readableProjectIds: [] }),
+				{},
 			);
 
 			expect(result).toEqual({ open: 0, closed: 0 });
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('1 = 0');
 		});
 	});
+
+	it.each(['findRequests', 'countRequestsByState'] as const)(
+		'%s reads through the active transaction manager',
+		async (method) => {
+			const transactionManager = mock<EntityManager>();
+			(transactionManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
+			const dataSource = mock<DataSource>();
+			(dataSource.transaction as Mock).mockImplementation(
+				async (fn: (manager: EntityManager) => Promise<unknown>) => await fn(transactionManager),
+			);
+			const runner = new TypeOrmTransactionRunner(dataSource, mock<Logger>());
+			const rows = [mock<WorkflowReviewRequest>({ id: 'req-1' })];
+			queryBuilder.getMany.mockResolvedValueOnce(rows);
+			queryBuilder.getRawMany.mockResolvedValueOnce([{ state: 'open', count: '1' }]);
+
+			const result = await runner.run({}, async (ctx) => {
+				return method === 'findRequests'
+					? await inboxRepository.findRequests({ visibility: allVisibility, limit: 15 }, ctx)
+					: await inboxRepository.countRequestsByState(allVisibility, ctx);
+			});
+
+			expect(result).toEqual(method === 'findRequests' ? rows : { open: 1, closed: 0 });
+			expect(transactionManager.createQueryBuilder).toHaveBeenCalledWith(
+				WorkflowReviewRequest,
+				'review',
+			);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		},
+	);
 });

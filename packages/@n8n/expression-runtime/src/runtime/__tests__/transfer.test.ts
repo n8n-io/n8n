@@ -125,7 +125,7 @@ describe('transfer framing', () => {
 			expect(unwrap(value)).toBe(value);
 		});
 
-		it('should hand every marker to the decoder, wherever it sits', () => {
+		it('should decode a shared marker once, wherever it sits', () => {
 			const decode = vi.fn(decodeToTag);
 			const marker = { [TRANSFER_TYPE_KEY]: 'DateTime' };
 
@@ -136,11 +136,15 @@ describe('transfer framing', () => {
 
 			expect(result.top).toBe('decoded:DateTime');
 			expect((result.deep as { list: unknown[] }).list[0]).toBe('decoded:DateTime');
-			// The walk records the objects it rebuilds, but not the markers it
-			// decodes. The guest builds a marker for each place a value appears, so
-			// the same marker object twice is a shape the guest never sends.
-			expect(decode).toHaveBeenCalledTimes(2);
-			expect(decode).toHaveBeenCalledWith(marker);
+			expect(decode).toHaveBeenCalledTimes(1);
+		});
+
+		it('should reuse a decoded marker even when its result is undefined', () => {
+			const marker = { [TRANSFER_TYPE_KEY]: 'Empty' };
+			const decode = vi.fn(() => undefined);
+
+			expect(unwrap([marker, marker], decode)).toEqual([undefined, undefined]);
+			expect(decode).toHaveBeenCalledTimes(1);
 		});
 
 		it('should give back what the decoder returns for a type it does not own', () => {
@@ -213,6 +217,17 @@ describe('transfer framing', () => {
 
 			expect(result.date).toBe(date);
 			expect(result.map).toBe(map);
+		});
+
+		it('should keep a __proto__ key as an own key', () => {
+			const body = JSON.parse('{"__proto__":{"a":1}}') as Record<string, unknown>;
+
+			const result = unwrap({ marker: { [TRANSFER_TYPE_KEY]: 'tag' }, body }) as {
+				body: Record<string, unknown>;
+			};
+
+			expect(Object.keys(result.body)).toEqual(['__proto__']);
+			expect(result.body.a).toBeUndefined();
 		});
 	});
 
@@ -297,5 +312,37 @@ describe('the round trip through both walks', () => {
 		const value: TransferSentinel = { [TRANSFER_TYPE_KEY]: 'DateTime' };
 
 		expect(roundTrip(value, decodeToSelf)).toEqual(value);
+	});
+});
+
+describe('__prepareForTransfer', () => {
+	it('prepares a shared object once', () => {
+		const shared = { a: 1 };
+
+		const prepared = __prepareForTransfer(
+			Object.assign(new Error('x'), { left: shared, right: shared }),
+		) as { __props: { left: unknown; right: unknown } };
+
+		expect(prepared.__props.left).toBe(prepared.__props.right);
+	});
+
+	it('does not record the objects of a result without an Error', () => {
+		const shared = { a: 1 };
+
+		const prepared = __prepareForTransfer({ left: shared, right: shared }) as {
+			left: unknown;
+			right: unknown;
+		};
+
+		expect(prepared.left).not.toBe(prepared.right);
+	});
+
+	it('gives undefined for a reference back to an Error the walk is inside', () => {
+		const error = new Error('loop') as Error & { self?: unknown };
+		error.self = error;
+
+		const prepared = __prepareForTransfer(error) as { __props: unknown };
+
+		expect(prepared.__props).toStrictEqual({ self: undefined });
 	});
 });

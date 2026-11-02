@@ -11,8 +11,8 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadTabsResponse,
-	InstanceAiThreadTabsState,
+	AssistantThreadTabsResponse,
+	AssistantThreadTabsState,
 } from '@n8n/api-types';
 
 export async function fetchThreads(
@@ -62,15 +62,15 @@ export async function updateThreadMetadata(
 export async function fetchThreadTabs(
 	context: IRestApiContext,
 	threadId: string,
-): Promise<InstanceAiThreadTabsResponse> {
+): Promise<AssistantThreadTabsResponse> {
 	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/tabs`);
 }
 
 export async function saveThreadTabs(
 	context: IRestApiContext,
 	threadId: string,
-	state: InstanceAiThreadTabsState,
-): Promise<InstanceAiThreadTabsResponse> {
+	state: AssistantThreadTabsState,
+): Promise<AssistantThreadTabsResponse> {
 	return await makeRestApiRequest(context, 'PUT', `/instance-ai/threads/${threadId}/tabs`, state);
 }
 

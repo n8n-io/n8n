@@ -6,6 +6,14 @@ import { concurrencyLimitSchema } from '../schemas';
 @Config
 export class InstanceAiConfig {
 	/**
+	 * Whether the n8n Assistant is on when no admin has turned it on or off in Settings > Assistant.
+	 * When unset, it's off on the Enterprise plan and on for all other plans. A choice saved in
+	 * Settings > Assistant overrides this variable.
+	 */
+	@Env('N8N_INSTANCE_AI_ENABLED')
+	enabled?: boolean;
+
+	/**
 	 * Enable workflow suggestions, self-healing investigations, and result review.
 	 */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
@@ -26,6 +34,17 @@ export class InstanceAiConfig {
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
 	modelUrl: string = '';
+
+	/**
+	 * Add `x-n8n-*` request labels to the Assistant's model calls. When on, a directly
+	 * configured model provider gets `x-n8n-feature`, `x-n8n-version`, `x-n8n-run-id`,
+	 * `x-n8n-thread-id` and `x-n8n-function-id` (which part of the Assistant made the call),
+	 * and n8n's AI service also gets `x-n8n-function-id`. When off, a direct provider gets
+	 * no `x-n8n-*` headers, and n8n's AI service gets only the feature, version, run and
+	 * thread headers it always gets.
+	 */
+	@Env('N8N_INSTANCE_AI_MODEL_REQUEST_LABELS')
+	modelRequestLabels: boolean = false;
 
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')

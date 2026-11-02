@@ -71,6 +71,31 @@ describe('restoreRecordedRuns', () => {
 		);
 	});
 
+	it('warns when the recorded run has nodes the seed workflow does not', async () => {
+		const client = mock<N8nClient>();
+		client.restoreExecution.mockResolvedValue({ executionId: 'restored-1' });
+		const logger = mock<EvalLogger>();
+		const recorded = {
+			...envelope,
+			execution: {
+				...envelope.execution,
+				workflowData: { nodes: [{ name: 'Fetch' }, { name: 'Old node' }] },
+			},
+		};
+
+		await restoreRecordedRuns({
+			client,
+			threadId: 'thread-1',
+			recordedRuns: [{ workflow: SEED_ID, envelope: recorded }],
+			seedWorkflows: seeded,
+			seedNodeNames: new Map([[SEED_ID, new Set(['Fetch'])]]),
+			logger,
+		});
+
+		expect(client.restoreExecution).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Old node'));
+	});
+
 	it('throws when the seed did not create the named workflow', async () => {
 		const client = mock<N8nClient>();
 
