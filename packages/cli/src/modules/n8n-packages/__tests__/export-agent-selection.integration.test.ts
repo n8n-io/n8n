@@ -183,7 +183,7 @@ it.each(['loose', 'project'] as const)(
 			],
 		});
 		expect((manifest.projects ?? []).map(({ id }) => id)).toEqual(
-			placement === 'project' ? [project.id, otherProject.id] : [],
+			placement === 'project' ? [project.id, otherProject.id].sort() : [],
 		);
 		expect(
 			findProjects.mock.calls.flatMap(([, ids]) => ids).filter((id) => id === project.id),
@@ -382,14 +382,16 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 			policy === 'include-in-package' ? [parent.id, child.id] : [parent.id],
 		);
 		expect(manifest.workflows?.map(({ id }) => id) ?? []).toEqual(
-			policy === 'include-in-package' ? [workflow.id, nested.id] : [],
+			policy === 'include-in-package' ? [workflow.id, nested.id].sort() : [],
 		);
-		expect(manifest.requirements?.workflows).toEqual([
-			{ id: workflow.id, name: workflow.name, usedBy: [{ kind: 'agent', id: parent.id }] },
-			...(policy === 'include-in-package'
-				? [{ id: nested.id, name: nested.name, usedBy: [{ kind: 'workflow', id: workflow.id }] }]
-				: []),
-		]);
+		expect(manifest.requirements?.workflows).toEqual(
+			[
+				{ id: workflow.id, name: workflow.name, usedBy: [{ kind: 'agent', id: parent.id }] },
+				...(policy === 'include-in-package'
+					? [{ id: nested.id, name: nested.name, usedBy: [{ kind: 'workflow', id: workflow.id }] }]
+					: []),
+			].sort((a, b) => (a.id < b.id ? -1 : 1)),
+		);
 	},
 );
 

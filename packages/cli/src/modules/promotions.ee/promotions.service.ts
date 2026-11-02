@@ -65,6 +65,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
 import { projectHolding } from './branch-placement';
 import { crossProjectMoves, describePromotedMoves } from './cross-project-moves';
+import { dropNodeTypeRequirements } from './import-manifest-bridge';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
 import {
 	buildInstancePromotionCommitMessage,
@@ -279,6 +280,8 @@ export class PromotionsService {
 				}),
 				{ targetDir: stagingFolder },
 			);
+
+			await dropNodeTypeRequirements(stagingFolder);
 
 			// Replace the managed package only after the new one is complete.
 			await rm(packageFolder, { recursive: true, force: true });

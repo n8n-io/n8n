@@ -256,7 +256,7 @@ describe('workflow package export', () => {
 						usedBy: [
 							{ kind: 'workflow', id: wfA.id },
 							{ kind: 'workflow', id: wfB.id },
-						],
+						].sort((a, b) => (a.id < b.id ? -1 : 1)),
 					},
 					{
 						type: 'n8n-nodes-base.set',
@@ -527,10 +527,7 @@ describe('workflow package export', () => {
 					{
 						type: 'n8n-nodes-base.executeWorkflow',
 						typeVersion: 1,
-						usedBy: [
-							{ kind: 'workflow', id: parentA.id },
-							{ kind: 'workflow', id: parentB.id },
-						],
+						usedBy: expectedUsedBy,
 					},
 				],
 			});
@@ -600,18 +597,20 @@ describe('workflow package export', () => {
 					usedBy: [{ kind: 'workflow', id: workflowC.id }],
 				},
 			]);
-			expect(manifest.requirements?.workflows).toEqual([
-				{
-					id: workflowB.id,
-					name: workflowB.name,
-					usedBy: [{ kind: 'workflow', id: workflowA.id }],
-				},
-				{
-					id: workflowC.id,
-					name: workflowC.name,
-					usedBy: [{ kind: 'workflow', id: workflowB.id }],
-				},
-			]);
+			expect(manifest.requirements?.workflows).toEqual(
+				[
+					{
+						id: workflowB.id,
+						name: workflowB.name,
+						usedBy: [{ kind: 'workflow', id: workflowA.id }],
+					},
+					{
+						id: workflowC.id,
+						name: workflowC.name,
+						usedBy: [{ kind: 'workflow', id: workflowB.id }],
+					},
+				].sort((a, b) => (a.id < b.id ? -1 : 1)),
+			);
 		});
 
 		it('emits all exported workflow IDs when static sub-workflows are auto-included', async () => {
@@ -713,18 +712,20 @@ describe('workflow package export', () => {
 			expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual(
 				[workflowA.id, workflowB.id].sort(),
 			);
-			expect(manifest.requirements?.workflows).toEqual([
-				{
-					id: workflowB.id,
-					name: workflowB.name,
-					usedBy: [{ kind: 'workflow', id: workflowA.id }],
-				},
-				{
-					id: workflowA.id,
-					name: workflowA.name,
-					usedBy: [{ kind: 'workflow', id: workflowB.id }],
-				},
-			]);
+			expect(manifest.requirements?.workflows).toEqual(
+				[
+					{
+						id: workflowB.id,
+						name: workflowB.name,
+						usedBy: [{ kind: 'workflow', id: workflowA.id }],
+					},
+					{
+						id: workflowA.id,
+						name: workflowA.name,
+						usedBy: [{ kind: 'workflow', id: workflowB.id }],
+					},
+				].sort((a, b) => (a.id < b.id ? -1 : 1)),
+			);
 		});
 	});
 
@@ -1081,7 +1082,7 @@ describe('workflow package export', () => {
 			expect(manifest.workflows).toHaveLength(2);
 			expect(
 				manifest.workflows!.map(({ target }) => nodeNames(workflowJson(entries, target))),
-			).toEqual([['published-v1'], ['draft-v2']]);
+			).toEqual(expect.arrayContaining([['published-v1'], ['draft-v2']]));
 		});
 
 		it('leaves unpublished workflows out of the package under ignore-unpublished', async () => {

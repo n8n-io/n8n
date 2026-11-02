@@ -80,10 +80,13 @@ describe('exportPackageToDirectory', () => {
 		);
 
 		const manifest = await readJson('manifest.json');
-		expect(manifest.projects).toEqual([
-			{ id: alpha.id, name: 'Alpha Project', target: `projects/alpha-project-${alpha.id}` },
-			{ id: beta.id, name: 'Beta Project', target: `projects/beta-project-${beta.id}` },
-		]);
+		// The manifest lists the entries by id.
+		expect(manifest.projects).toEqual(
+			[
+				{ id: alpha.id, name: 'Alpha Project', target: `projects/alpha-project-${alpha.id}` },
+				{ id: beta.id, name: 'Beta Project', target: `projects/beta-project-${beta.id}` },
+			].sort((a, b) => (a.id < b.id ? -1 : 1)),
+		);
 		expect(await readdir(targetDir)).toEqual(expect.arrayContaining(['manifest.json', 'projects']));
 		expect(result.counts.workflows).toBe(2);
 	});

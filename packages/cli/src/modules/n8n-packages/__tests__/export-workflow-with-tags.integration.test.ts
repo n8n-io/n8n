@@ -63,7 +63,7 @@ describe('workflow package export — with tags', () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const workflow = await createWorkflow({ name: 'Tagged workflow' }, project);
-		// Created in reverse of sorted order so the exact-order assertions pin the sort.
+		// Created in reverse of name order so the exact-order assertion on `tagIds` pins the sort by name.
 		const beta = await createTag({ name: 'beta' }, workflow);
 		const alpha = await createTag({ name: 'alpha' }, workflow);
 
@@ -72,14 +72,20 @@ describe('workflow package export — with tags', () => {
 			const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 			const { manifest, entries } = await readExport(stream);
 
-			expect(manifest.tags).toEqual([
-				{ id: alpha.id, name: 'alpha', target: `tags/alpha-${alpha.id}` },
-				{ id: beta.id, name: 'beta', target: `tags/beta-${beta.id}` },
-			]);
-			expect(manifest.requirements!.tags).toEqual([
-				{ id: alpha.id, name: 'alpha', usedBy: [{ kind: 'workflow', id: workflow.id }] },
-				{ id: beta.id, name: 'beta', usedBy: [{ kind: 'workflow', id: workflow.id }] },
-			]);
+			// The manifest lists its entries by id. The tag ids in the workflow file stay in name order.
+			const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : 1);
+			expect(manifest.tags).toEqual(
+				[
+					{ id: alpha.id, name: 'alpha', target: `tags/alpha-${alpha.id}` },
+					{ id: beta.id, name: 'beta', target: `tags/beta-${beta.id}` },
+				].sort(byId),
+			);
+			expect(manifest.requirements!.tags).toEqual(
+				[
+					{ id: alpha.id, name: 'alpha', usedBy: [{ kind: 'workflow', id: workflow.id }] },
+					{ id: beta.id, name: 'beta', usedBy: [{ kind: 'workflow', id: workflow.id }] },
+				].sort(byId),
+			);
 
 			const serialized = workflowJson(entries, manifest.workflows![0].target);
 			expect(serialized.tagIds).toEqual([alpha.id, beta.id]);
@@ -123,7 +129,7 @@ describe('workflow package export — with tags', () => {
 				usedBy: [
 					{ kind: 'workflow', id: wfA.id },
 					{ kind: 'workflow', id: wfB.id },
-				],
+				].sort((a, b) => (a.id < b.id ? -1 : 1)),
 			},
 		]);
 

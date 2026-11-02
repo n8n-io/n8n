@@ -6,6 +6,7 @@ import { N8N_VERSION } from '@/constants';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import { sortManifest } from '@/modules/n8n-packages/spec/manifest-order';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
 import type {
 	PackageRequirementConsumer,
@@ -118,7 +119,7 @@ export async function writeImportManifest(options: {
 		...(variables.length > 0 ? { variables } : {}),
 		...requirementsBlock(leftover, staging, remainingWorkflowIds, selectedSet),
 	} satisfies PackageManifest;
-	const manifest = packageManifestSchema.parse(written);
+	const manifest = sortManifest(packageManifestSchema.parse(written));
 
 	await fs.writeFile(path.join(exportFolder, MANIFEST_FILE), JSON.stringify(manifest, null, '\t'));
 }
@@ -283,13 +284,9 @@ function requirementsBlock(
 			selectedWorkflowIds,
 			(row) => row.id,
 		),
-		nodeTypes: mergeRequirementRows(
-			leftover?.requirements?.nodeTypes,
-			staging.requirements?.nodeTypes,
-			remainingWorkflowIds,
-			selectedWorkflowIds,
-			(row) => `${row.type}@${row.typeVersion}`,
-		),
+		// The branch does not hold the node types. Import derives them from the workflows, and each
+		// workflow would add itself to a row that many merge requests change.
+		nodeTypes: undefined,
 	});
 	return requirements ? { requirements } : {};
 }
@@ -355,4 +352,20 @@ function compactRequirements(input: {
 		...(nodeTypes?.length ? { nodeTypes } : {}),
 	};
 	return Object.keys(requirements).length > 0 ? requirements : undefined;
+}
+
+/**
+ * Removes the node type requirements from the manifest in a folder. Import derives them from the
+ * workflows and ignores this block. A row lists every workflow that uses the node type, so two
+ * merge requests that add a workflow with the same node type conflict on it.
+ */
+export async function dropNodeTypeRequirements(packageFolder: string): Promise<void> {
+	const manifestPath = path.join(packageFolder, MANIFEST_FILE);
+	const manifest = jsonParse<{ requirements?: Record<string, unknown> }>(
+		await fs.readFile(manifestPath, 'utf-8'),
+	);
+	if (!manifest.requirements || !('nodeTypes' in manifest.requirements)) return;
+	delete manifest.requirements.nodeTypes;
+	if (Object.keys(manifest.requirements).length === 0) delete manifest.requirements;
+	await fs.writeFile(manifestPath, JSON.stringify(manifest, null, '\t'));
 }

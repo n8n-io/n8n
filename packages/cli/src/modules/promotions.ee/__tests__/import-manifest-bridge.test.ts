@@ -5,7 +5,11 @@ import path from 'node:path';
 import { N8N_VERSION } from '@/constants';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { readLeftoverManifest, writeImportManifest } from '../import-manifest-bridge';
+import {
+	dropNodeTypeRequirements,
+	readLeftoverManifest,
+	writeImportManifest,
+} from '../import-manifest-bridge';
 
 describe('import-manifest-bridge', () => {
 	let exportFolder: string;
@@ -148,6 +152,91 @@ describe('import-manifest-bridge', () => {
 		expect(written.variables).toEqual([
 			{ id: 'v-old', name: 'API_KEY', target: 'projects/alpha/variables/api-key' },
 		]);
+	});
+
+	it('writes no node type requirements, because import derives them', async () => {
+		const nodeTypes = [
+			{
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				usedBy: [{ kind: 'workflow', id: 'w1' }],
+			},
+		];
+		await writeTree({
+			'manifest.json': leftoverManifest({
+				workflows: [{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' }],
+				requirements: { nodeTypes },
+			}),
+			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({ id: 'w1', name: 'W1' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+				requirements: { nodeTypes },
+			}),
+			sourceId: 'inst-1',
+		});
+
+		const written = JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8'));
+		expect(written.requirements?.nodeTypes).toBeUndefined();
+	});
+
+	describe('dropNodeTypeRequirements', () => {
+		const manifestWith = (requirements: Record<string, unknown> | undefined) =>
+			JSON.stringify(
+				{
+					packageFormatVersion: '1',
+					sourceN8nVersion: '1.0.0',
+					sourceId: 'inst-1',
+					...(requirements ? { requirements } : {}),
+					workflows: [{ id: 'w1', name: 'W1', target: 'workflows/w1' }],
+				},
+				null,
+				'\t',
+			);
+		const readManifest = async () =>
+			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8'));
+		const nodeTypes = [
+			{ type: 'n8n-nodes-base.set', typeVersion: 3, usedBy: [{ kind: 'workflow', id: 'w1' }] },
+		];
+
+		it('removes the node types and keeps the other requirements and the key order', async () => {
+			const tags = [{ id: 't1', name: 'prod', usedBy: [{ kind: 'workflow', id: 'w1' }] }];
+			await writeTree({ 'manifest.json': manifestWith({ tags, nodeTypes }) });
+
+			await dropNodeTypeRequirements(exportFolder);
+
+			const manifest = await readManifest();
+			expect(manifest.requirements).toEqual({ tags });
+			expect(Object.keys(manifest)).toEqual([
+				'packageFormatVersion',
+				'sourceN8nVersion',
+				'sourceId',
+				'requirements',
+				'workflows',
+			]);
+		});
+
+		it('removes an empty requirements block', async () => {
+			await writeTree({ 'manifest.json': manifestWith({ nodeTypes }) });
+
+			await dropNodeTypeRequirements(exportFolder);
+
+			expect((await readManifest()).requirements).toBeUndefined();
+		});
+
+		it('leaves a manifest without node types as it is', async () => {
+			const before = manifestWith(undefined);
+			await writeTree({ 'manifest.json': before });
+
+			await dropNodeTypeRequirements(exportFolder);
+
+			expect(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')).toBe(before);
+		});
 	});
 
 	it('writes no exportedAt, even when the leftover manifest has one', async () => {

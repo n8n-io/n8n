@@ -82,6 +82,7 @@ import {
 	type ManifestEntry,
 	type PackageManifest,
 } from './spec/manifest.schema';
+import { sortManifest } from './spec/manifest-order';
 import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
@@ -412,7 +413,7 @@ export class N8nPackagesService {
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		} satisfies PackageManifest;
-		const manifest = packageManifestSchema.parse(written);
+		const manifest = sortManifest(packageManifestSchema.parse(written));
 
 		await writer.writeFile('manifest.json', formatEntityFile(manifest));
 
