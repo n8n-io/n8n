@@ -7,6 +7,7 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { readCustomModelEndpointCredential } from '../utils/custom-model-endpoint/credential-data';
 import { buildRequestHeaders, toHeaderRecord } from '../utils/custom-model-endpoint/headers';
@@ -220,14 +221,23 @@ export class CustomModelEndpointApi implements ICredentialType {
 		if (login.type !== 'oauth2') return {};
 
 		const { method, headers, body, redirect } = clientCredentialsTokenRequest(login);
-		const response: unknown = await this.helpers.httpRequest({
-			method,
-			url: login.tokenUrl,
-			headers,
-			body,
-			// Following one would re-POST the secret to wherever it pointed
-			disableFollowRedirect: redirect === 'manual',
-		});
+
+		let response: unknown;
+		try {
+			response = await this.helpers.httpRequest({
+				method,
+				url: login.tokenUrl,
+				headers,
+				body,
+				// Following one would re-POST the secret to wherever it pointed
+				disableFollowRedirect: redirect === 'manual',
+			});
+		} catch {
+			// The raw failure carries the request that caused it, secret and all
+			throw new UserError('Could not sign in to the gateway', {
+				description: 'Check the token URL, client ID, client secret and scope on the credential.',
+			});
+		}
 
 		return { sessionToken: accessTokenIn(response) };
 	}

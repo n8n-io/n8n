@@ -10,8 +10,6 @@ const ASSUMED_LIFETIME_SECONDS = 3600;
 export interface AccessTokenSource {
 	getToken: () => Promise<string>;
 	forgetToken: () => void;
-	/** The token in hand, so a gateway that echoes it back can be redacted. */
-	currentToken: () => string | undefined;
 }
 
 interface CachedToken {
@@ -113,7 +111,8 @@ export function createClientCredentialsTokenSource(
 				description: 'Check the token URL, client ID, client secret and scope on the credential.',
 			});
 		}
-		return readToken(text);
+		const token = readToken(text);
+		return token;
 	};
 
 	return {
@@ -132,7 +131,5 @@ export function createClientCredentialsTokenSource(
 		forgetToken: () => {
 			cached = undefined;
 		},
-
-		currentToken: () => cached?.accessToken,
 	};
 }

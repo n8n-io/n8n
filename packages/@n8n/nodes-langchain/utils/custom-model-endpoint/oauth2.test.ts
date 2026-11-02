@@ -139,7 +139,6 @@ describe('createClientCredentialsTokenSource', () => {
 			'did not answer with JSON',
 		);
 	});
-
 	it('fails when the answer carries no access token', async () => {
 		const { fetchImpl } = granting({ token_type: 'Bearer' });
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
@@ -151,16 +150,5 @@ describe('createClientCredentialsTokenSource', () => {
 		await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
 
 		expect(redirectOf(calls)).toBe('manual');
-	});
-
-	it('reports the token it holds, so a gateway echoing it can be redacted', async () => {
-		const { fetchImpl } = granting(GRANT);
-		const source = createClientCredentialsTokenSource(login(), fetchImpl);
-
-		expect(source.currentToken()).toBeUndefined();
-		await source.getToken();
-		expect(source.currentToken()).toBe('tok-abc');
-		source.forgetToken();
-		expect(source.currentToken()).toBeUndefined();
 	});
 });
