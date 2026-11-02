@@ -24,6 +24,7 @@ import {
 	UnsupportedStepTypeError,
 	VmExpressionEngineRequiredError,
 } from '../errors';
+import type { V1StepExecutorDeps } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import {
@@ -609,6 +610,90 @@ describe('V1StepExecutor', () => {
 				'Node "Subject" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.',
 			);
 		});
+	});
+
+	describe('a node that asks for a reply', () => {
+		const input = items({});
+
+		// A step id that differs from the node id, so a URL that names the step shows it.
+		const replyStep = (graph: WorkflowGraph) => {
+			const request = stepRequest(graph, 'n', input);
+			return { ...request, context: { ...request.context, stepId: 'step-1' } };
+		};
+
+		const replyExecutor = (
+			graph: WorkflowGraph,
+			minters: Pick<V1StepExecutorDeps, 'stepBoundResumeToken' | 'approvalCallback'>,
+		) =>
+			new V1StepExecutor({
+				nodeTypes: testNodeTypes,
+				additionalDataFactory: testAdditionalDataFactory,
+				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+				...minters,
+			});
+
+		it('builds a reply link that names the step and carries the token the host mints', async () => {
+			const graph = graphWith('test.asksForReply', { reply: 'link' });
+			const stepBoundResumeToken = vi.fn(() => 'minted');
+
+			const result = await replyExecutor(graph, { stepBoundResumeToken }).execute(replyStep(graph));
+
+			expect(stepBoundResumeToken).toHaveBeenCalledExactlyOnceWith({
+				stepId: 'step-1',
+				binding: '/webhook-waiting/step-1/n?approved=true',
+			});
+			expect(result.outputs).toEqual([
+				[
+					{
+						json: {
+							reference:
+								'http://localhost:5678/webhook-waiting/step-1/n?approved=true&signature=minted',
+						},
+					},
+				],
+			]);
+		});
+
+		it('builds a button reference with the callback the host mints for the step', async () => {
+			const graph = graphWith('test.asksForReply', { reply: 'button' });
+			const approvalCallback = vi.fn(() => 'minted');
+
+			const result = await replyExecutor(graph, { approvalCallback }).execute(replyStep(graph));
+
+			expect(approvalCallback).toHaveBeenCalledExactlyOnceWith({ stepId: 'step-1', decision: 'a' });
+			expect(result.outputs).toEqual([[{ json: { reference: 'minted' } }]]);
+		});
+
+		it.each([
+			['link', 'no deadline', WAIT_INDEFINITELY.toISOString()],
+			['link', 'a deadline', '2026-10-01T12:00:00.000Z'],
+			['button', 'no deadline', WAIT_INDEFINITELY.toISOString()],
+			['button', 'a deadline', '2026-10-01T12:00:00.000Z'],
+		])('declares a step-bound wait after it builds a %s, with %s', async (reply, _, waitTill) => {
+			const graph = graphWith('test.asksForReply', { reply, waitTill });
+			const executor = replyExecutor(graph, {
+				stepBoundResumeToken: () => 'minted',
+				approvalCallback: () => 'minted',
+			});
+
+			const result = await executor.execute(replyStep(graph));
+
+			expect(result.wait).toMatchObject({ resumeBinding: 'step' });
+		});
+
+		it.each(['link', 'button'])(
+			'fails the step when the host mints nothing for a %s',
+			async (reply) => {
+				const graph = graphWith('test.asksForReply', { reply });
+
+				const execution = replyExecutor(graph, {}).execute(replyStep(graph));
+
+				await expect(execution).rejects.toThrow(
+					'Node "Subject" needs a signed resume request, but engine v2 has no resume secret to sign it',
+				);
+				await expect(execution).rejects.toBeInstanceOf(UserError);
+			},
+		);
 	});
 
 	it('honors onError=continueRegularOutput as passthrough', async () => {

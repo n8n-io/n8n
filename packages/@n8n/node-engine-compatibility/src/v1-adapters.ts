@@ -5,7 +5,13 @@
 
 import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
 import type { GraphNode, StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
+import {
+	buildResumeUrlSuffix,
+	ExecuteContext,
+	prepareUrlForSigning,
+	UnrecognizedNodeTypeError,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	IConnections,
 	IExecuteData,
@@ -30,11 +36,13 @@ import {
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
+import { MissingResumeSecretError } from './errors';
 import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
 import type {
 	AdditionalDataContext,
 	CreateExecuteContextParams,
+	StepResumeMinters,
 	V1Execution,
 	V1NodeStepConfig,
 } from './types';
@@ -274,6 +282,20 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 	/** Only an explicit `false` makes a wait deadline-only. This matches core. */
 	acceptsResumeRequest = true;
 
+	/**
+	 * A node that builds a resume URL or an approval button for its step waits
+	 * for that reply, so its wait is step bound. Every other wait is execution
+	 * bound.
+	 */
+	resumeBinding: 'execution' | 'step' = 'execution';
+
+	constructor(
+		private readonly step: { id: string } & StepResumeMinters,
+		...args: ConstructorParameters<typeof ExecuteContext>
+	) {
+		super(...args);
+	}
+
 	async putExecutionToWait(
 		waitTill: Date,
 		options?: { acceptsResumeRequest?: boolean },
@@ -281,6 +303,32 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 		this.acceptsResumeRequest = options?.acceptsResumeRequest ?? true;
 		this.runExecutionData.waitTill = waitTill;
 		return await Promise.resolve();
+	}
+
+	/** The path names the step, and the token binds the path and the query. */
+	getSignedResumeUrl(parameters: Record<string, string> = {}): string {
+		const mint = this.step.stepBoundResumeToken;
+		if (!mint) throw new MissingResumeSecretError(this.node.name);
+
+		const url = new URL(
+			`${this.additionalData.webhookWaitingBaseUrl}${buildResumeUrlSuffix(this.step.id, this.node.id)}`,
+		);
+		for (const [key, value] of Object.entries(parameters)) {
+			url.searchParams.set(key, value);
+		}
+		const token = mint({ stepId: this.step.id, binding: prepareUrlForSigning(url) });
+		url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+
+		this.resumeBinding = 'step';
+		return url.toString();
+	}
+
+	getApprovalCallbackReference(decision: 'a' | 'd'): string {
+		const mint = this.step.approvalCallback;
+		if (!mint) throw new MissingResumeSecretError(this.node.name);
+
+		this.resumeBinding = 'step';
+		return mint({ stepId: this.step.id, decision });
 	}
 }
 
@@ -293,6 +341,7 @@ export function toV1ExecuteContext({
 	stepContext,
 	itemsByConnection,
 	resumeToken,
+	resumeMinters,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
@@ -321,6 +370,7 @@ export function toV1ExecuteContext({
 	const mode = toV1ExecuteMode(stepContext);
 
 	return new DurableWaitExecuteContext(
+		{ id: stepContext.stepId, ...resumeMinters },
 		workflow,
 		node,
 		additionalData,
