@@ -136,7 +136,7 @@ export class AiPreferenceService {
 	/** Preferences that apply to the user inside the given projects. */
 	async getApplicable(
 		user: User,
-		projects: AiPreferenceProjectRef[],
+		projects: Array<Required<AiPreferenceProjectRef>>,
 	): Promise<ApplicableAiPreferences> {
 		const readable = await this.projectAccess(user).allowed('read');
 		const applicable = projects.filter((project) => readable === 'all' || readable.has(project.id));
