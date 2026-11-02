@@ -164,6 +164,14 @@ describe('CustomModelEndpointApi Credential', () => {
 		});
 	});
 
+	it('declares the expirable slot the engine needs before it will run preAuthentication', () => {
+		const slot = credential.properties.find(
+			(property) => property.type === 'hidden' && property.typeOptions?.expirable === true,
+		);
+
+		expect(slot?.name).toBe('sessionToken');
+	});
+
 	describe('preAuthentication', () => {
 		const minting = (response: unknown) => {
 			const httpRequest = vi.fn(async () => response);

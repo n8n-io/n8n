@@ -29,6 +29,14 @@ export class CustomModelEndpointApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			// The engine only runs preAuthentication for a credential that declares one of these
+			displayName: 'Session Token',
+			name: 'sessionToken',
+			type: 'hidden',
+			typeOptions: { expirable: true },
+			default: '',
+		},
+		{
 			displayName: 'Base URL',
 			name: 'url',
 			type: 'string',
@@ -199,9 +207,6 @@ export class CustomModelEndpointApi implements ICredentialType {
 			],
 		},
 	];
-
-	/** An expired token looks like a 401, and the only way back is to mint another one. */
-	preAuthenticationRetryStatusCode = 401;
 
 	/**
 	 * The node transport mints its token in memory, but this path is the generic one the

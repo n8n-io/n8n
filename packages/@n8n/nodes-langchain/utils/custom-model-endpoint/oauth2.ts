@@ -74,7 +74,14 @@ export function accessTokenIn(parsed: unknown): string {
 }
 
 function readToken(text: string): CachedToken {
-	const parsed: unknown = JSON.parse(text);
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(text);
+	} catch {
+		throw new UserError('The login server did not answer with JSON', {
+			description: 'Check that the token URL points at the token endpoint of the login server.',
+		});
+	}
 	const accessToken = accessTokenIn(parsed);
 
 	const lifetime = isRecord(parsed)

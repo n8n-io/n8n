@@ -131,6 +131,15 @@ describe('createClientCredentialsTokenSource', () => {
 		});
 	});
 
+	it('says so plainly when the login server answers 200 with something other than JSON', async () => {
+		const notJson = (async () =>
+			new Response('<html>Service Unavailable</html>', { status: 200 })) as typeof fetch;
+
+		await expect(createClientCredentialsTokenSource(login(), notJson).getToken()).rejects.toThrow(
+			'did not answer with JSON',
+		);
+	});
+
 	it('fails when the answer carries no access token', async () => {
 		const { fetchImpl } = granting({ token_type: 'Bearer' });
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
