@@ -21,12 +21,9 @@ import type { DataTableColumnType } from 'n8n-workflow';
 
 /** Lazy, so the data-table module loads only when it is active. */
 async function dataTableModule() {
-	const [{ DataTableService }, { DataTableNotFoundError }, { DataTableValidationError }] =
-		await Promise.all([
-			import('@/modules/data-table/data-table.service.js'),
-			import('@/modules/data-table/errors/data-table-not-found.error.js'),
-			import('@/modules/data-table/errors/data-table-validation.error.js'),
-		]);
+	const { DataTableService, DataTableNotFoundError, DataTableValidationError } = await import(
+		'@n8n/backend-module-data-table'
+	);
 	return {
 		service: Container.get(DataTableService),
 		DataTableNotFoundError,

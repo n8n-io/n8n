@@ -1,18 +1,17 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext } from '@n8n/backend-module-apps';
+import {
+	type DataTable,
+	DataTableNotFoundError,
+	DataTableService,
+	DataTableValidationError,
+} from '@n8n/backend-module-data-table';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
-
 import { AppDataTableAdapter } from '../app-data-table.adapter';
-
-vi.mock('@/modules/data-table/data-table.service', () => ({ DataTableService: class {} }));
 
 const ctx: AppCallContext = {
 	appId: 'app-1',
