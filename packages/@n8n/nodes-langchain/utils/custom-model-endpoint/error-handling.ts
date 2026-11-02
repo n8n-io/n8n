@@ -7,6 +7,11 @@ const SHORTEST_PLAUSIBLE_CREDENTIAL = 8;
 const REDACTED = '[redacted]';
 const UNPARSED = Symbol('unparsed');
 
+/** Matches how URLSearchParams writes it, which is not what encodeURIComponent does. */
+function formEncoded(value: string): string {
+	return new URLSearchParams({ value }).toString().slice('value='.length);
+}
+
 /** Only values long enough to be a credential: redacting "k" would eat every "key". */
 function plausible(secrets: string[]): string[] {
 	return secrets.filter((secret) => secret.length >= SHORTEST_PLAUSIBLE_CREDENTIAL);
@@ -30,7 +35,8 @@ function rawLoginSecrets(login: LoginMethod): string[] {
 		case 'oauth2':
 			return [
 				login.clientSecret,
-				encodeURIComponent(login.clientSecret),
+				// The three ways it can appear: raw, as a form body, and as the Basic blob
+				formEncoded(login.clientSecret),
 				Buffer.from(`${login.clientId}:${login.clientSecret}`).toString('base64'),
 			];
 		case 'none':
@@ -64,7 +70,7 @@ function redactValues(value: unknown, secrets: string[]): unknown {
 	if (isRecord(value)) {
 		return Object.fromEntries(
 			Object.entries(value).map(([key, entry]) => [
-				redact(key, secrets),
+				redactSecrets(key, secrets),
 				redactValues(entry, secrets),
 			]),
 		);

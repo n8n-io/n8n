@@ -219,12 +219,14 @@ export class CustomModelEndpointApi implements ICredentialType {
 		const { login } = readCustomModelEndpointCredential(credentials);
 		if (login.type !== 'oauth2') return {};
 
-		const { headers, body } = clientCredentialsTokenRequest(login);
+		const { method, headers, body, redirect } = clientCredentialsTokenRequest(login);
 		const response: unknown = await this.helpers.httpRequest({
-			method: 'POST',
+			method,
 			url: login.tokenUrl,
 			headers,
 			body,
+			// Following one would re-POST the secret to wherever it pointed
+			disableFollowRedirect: redirect === 'manual',
 		});
 
 		return { sessionToken: accessTokenIn(response) };
