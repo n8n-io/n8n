@@ -1071,7 +1071,10 @@ export class DataTableService {
 		return csvRows.join('\n');
 	}
 
-	private formatValueForCsv(value: unknown, columnType: DataTableColumnType): string {
+	private formatValueForCsv(
+		value: DataTableColumnJsType | undefined,
+		columnType: DataTableColumnType,
+	): string {
 		if (value === null || value === undefined) {
 			return '';
 		}

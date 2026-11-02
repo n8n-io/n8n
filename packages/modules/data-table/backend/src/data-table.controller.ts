@@ -26,7 +26,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
-import { NextFunction, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { DataTableRowReturn } from 'n8n-workflow';
 
 import {

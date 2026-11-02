@@ -27,6 +27,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 		mock<GlobalConfig>({
 			host,
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName: host.split('.')[0] }),
 		}),
 		mock<UrlService>({
 			getInstanceBaseUrl: () => 'https://n8n.example.net',

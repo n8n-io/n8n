@@ -16,7 +16,9 @@ describe('DataTableCsvImportService', () => {
 	let mockLogger: Mocked<Logger>;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], {
+			'data-table': async () => await import('../data-table.module.js'),
+		});
 	});
 
 	beforeEach(() => {

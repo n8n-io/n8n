@@ -5,10 +5,12 @@ import { Container } from '@n8n/di';
 
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
-import { mockDataTableSizeValidator } from './test-helpers';
+import { mockDataTableSizeValidator } from '../testing';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], {
+		'data-table': async () => await import('../data-table.module.js'),
+	});
 	await testDb.init();
 	mockDataTableSizeValidator();
 });

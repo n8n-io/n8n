@@ -11,7 +11,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { buildDateAnchors, literalParameter, readDataTableLocator } from '@n8n/workflow-sdk';
 import { type DataTableRows, type INode, jsonParse, OperationalError } from 'n8n-workflow';
 
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableService } from '@n8n/backend-module-data-table';
 
 export const DATA_TABLE_NODE_TYPES = new Set([
 	'n8n-nodes-base.dataTable',

@@ -30,6 +30,7 @@ function setup(deploymentType = 'default') {
 		mock<GlobalConfig>({
 			host: 'foo.app.n8n.cloud',
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName: 'foo' }),
 		}),
 		mock<UrlService>({
 			getInstanceBaseUrl: () => 'https://foo.app.n8n.cloud',

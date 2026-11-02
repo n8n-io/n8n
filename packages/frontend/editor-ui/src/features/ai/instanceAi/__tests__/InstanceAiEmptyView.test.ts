@@ -1629,6 +1629,19 @@ describe('InstanceAiEmptyView', () => {
 					isAssistantThread: () => false,
 				}),
 			).toEqual({ kind: 'assistant-agent', projectId: PERSONAL_PROJECT_ID });
+			expect(localStorage.setItem).toHaveBeenCalledWith(
+				'n8n-assistant-agent-launch:thread-placeholder',
+				JSON.stringify({ projectId: PERSONAL_PROJECT_ID }),
+			);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({
+					thread_id: 'thread-placeholder',
+					source: 'assistant_page',
+					origin: 'internal',
+					runtime: 'agents',
+				}),
+			);
 
 			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
 			expect(pendingMessage?.text).toBe('hello');
@@ -1644,6 +1657,9 @@ describe('InstanceAiEmptyView', () => {
 			await flushPromises();
 
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
+			expect(localStorage.removeItem).toHaveBeenCalledWith(
+				'n8n-assistant-agent-launch:thread-placeholder',
+			);
 			expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
 		});
 

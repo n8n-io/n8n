@@ -21,11 +21,14 @@ import { createOwner, createMember, createAdmin } from '@test-integration/db/use
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
-import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableRowsRepository } from '../data-table-rows.repository';
-import type { DataTable } from '../data-table.entity';
-import { DataTableRepository } from '../data-table.repository';
-import { mockDataTableSizeValidator } from './test-helpers';
+import {
+	DataTableColumnRepository,
+	DataTableRowsRepository,
+	type DataTable,
+	DataTableRepository,
+} from '@n8n/backend-module-data-table';
+
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
 
 let owner: User;
 let member: User;

@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createUser } from '@test-integration/db/users';
+import { createUser } from './fixtures/users';
 
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
 import { DataTableRepository } from '../data-table.repository';
@@ -11,7 +11,9 @@ import { DataTableService } from '../data-table.service';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], {
+		'data-table': async () => await import('../data-table.module.js'),
+	});
 	await testDb.init();
 });
 

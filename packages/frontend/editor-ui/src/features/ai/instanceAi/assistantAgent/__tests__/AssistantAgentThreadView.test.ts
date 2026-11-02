@@ -22,7 +22,19 @@ import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
-import { stashPendingAssistantAgentMessage } from '../assistantAgentThreads';
+import {
+	getPendingComposerDraft,
+	getPendingWorkflowAttachment,
+	stashPendingDraftAttachment,
+	stashPendingComposerDraft,
+	stashPendingFirstMessage,
+	stashPendingWorkflowAttachment,
+} from '../../composables/useInstanceAiHandoff';
+import {
+	getAssistantAgentLaunch,
+	stashAssistantAgentLaunch,
+	stashPendingAssistantAgentMessage,
+} from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
@@ -36,6 +48,7 @@ const {
 	appPreviewProps,
 	routerPush,
 	focusInput,
+	setDraft,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	panelSlots: { current: [] as string[] },
@@ -46,6 +59,7 @@ const {
 	appPreviewProps: { current: undefined as Record<string, unknown> | undefined },
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
+	setDraft: vi.fn(),
 }));
 
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
@@ -99,6 +113,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			expose({
 				sendMessageFromOutside,
 				focusInput,
+				setDraft,
 				addComposerAttachment,
 				removeComposerAttachment,
 				composerAttachments,
@@ -283,6 +298,8 @@ describe('AssistantAgentThreadView', () => {
 		appPreviewProps.current = undefined;
 		routerPush.mockReset();
 		focusInput.mockReset();
+		setDraft.mockReset();
+		localStorage.clear();
 		composerAttachments.value = [];
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
@@ -963,6 +980,153 @@ describe('AssistantAgentThreadView', () => {
 				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES,
 				{ node_count: 2, runtime: 'agents' },
 			);
+		});
+	});
+	describe('hand-offs from other pages', () => {
+		const credentialContext = {
+			source: 'credential-modal' as const,
+			credential: { credentialType: 'slackApi', displayName: 'Slack API' },
+		};
+
+		beforeEach(() => {
+			// The store moves the staged nodes for real.
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'website-template',
+				origin: 'external',
+				templateId: '42',
+			});
+		});
+
+		async function renderNewThread() {
+			const result = renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			return result;
+		}
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens a launched thread as a new session that the server does not know yet', async () => {
+			await renderNewThread();
+
+			expect(panelProps.current['new-session']).toBe(true);
+			expect(useAssistantAgentThreadsStore().loadThread).not.toHaveBeenCalled();
+			expect(fetchTabs).not.toHaveBeenCalled();
+		});
+
+		it('sends the opening message with its references and context until it is accepted', async () => {
+			const reference = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+			stashPendingFirstMessage('thread-new', {
+				message: 'Where do I find the Slack token?',
+				attachments: [reference],
+				context: credentialContext,
+				authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			});
+
+			await renderNewThread();
+
+			expect(sendMessageFromOutside).toHaveBeenCalledWith('Where do I find the Slack token?', []);
+			expect(clientContext()).toMatchObject({
+				attachments: [reference],
+				context: credentialContext,
+			});
+
+			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+			onMessageAccepted({ clientContext: clientContext() });
+			expect(clientContext()).not.toHaveProperty('attachments');
+			expect(clientContext()).not.toHaveProperty('context');
+		});
+
+		it('opens the handed-off workflow and sends it with the first message', async () => {
+			stashPendingWorkflowAttachment('thread-new', {
+				type: 'workflow',
+				id: 'wf-7',
+				name: 'Handed off',
+			});
+
+			const { getByTestId } = await renderNewThread();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-7' });
+			expect(clientContext()).toMatchObject({
+				attachments: [{ type: 'workflow', id: 'wf-7', name: 'Handed off' }],
+			});
+		});
+
+		it('puts a handed-off draft into the composer without sending it', async () => {
+			stashPendingComposerDraft('thread-new', {
+				text: 'Suggest my preferences',
+				prefillType: 'preferences_suggestion',
+			});
+
+			await renderNewThread();
+
+			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+		});
+
+		it('adds handed-off canvas nodes to the composer', async () => {
+			stashPendingDraftAttachment('thread-new', [nodeSet('Webhook')], 'wf-1');
+
+			await renderNewThread();
+
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
+				},
+			]);
+		});
+
+		it('sends a handed-off opening message once', async () => {
+			stashPendingFirstMessage('thread-new', {
+				message: 'Adjust template 42',
+				authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
+			});
+			const { unmount } = await renderNewThread();
+			expect(sendMessageFromOutside).toHaveBeenCalledWith('Adjust template 42', []);
+			unmount();
+			sendMessageFromOutside.mockReset();
+
+			await renderNewThread();
+
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+		});
+
+		it('keeps a handed-off workflow and draft until the server accepts the first message', async () => {
+			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
+			stashPendingComposerDraft('thread-new', {
+				text: 'Suggest my preferences',
+				prefillType: 'preferences_suggestion',
+			});
+			const { unmount } = await renderNewThread();
+			unmount();
+			setDraft.mockReset();
+
+			await renderNewThread();
+			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
+			expect(clientContext()).toMatchObject({ attachments: [{ type: 'workflow', id: 'wf-7' }] });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
+			expect(getPendingComposerDraft('thread-new')).toBeNull();
+		});
+
+		it('drops the launch marker once the server accepts the first message', async () => {
+			await renderNewThread();
+			expect(getAssistantAgentLaunch('thread-new')).toEqual({ projectId: 'project-1' });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+
+			expect(getAssistantAgentLaunch('thread-new')).toBeUndefined();
 		});
 	});
 });
