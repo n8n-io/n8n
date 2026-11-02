@@ -1,4 +1,3 @@
-import { aiClientFetch } from '@n8n/ai-utilities';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	NodeOperationError,
@@ -7,7 +6,7 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
-import { createCustomModelEndpointAuthFetch } from './auth-fetch';
+import { createCustomModelEndpointAuthFetch, createEndpointBaseFetch } from './auth-fetch';
 import { readCustomModelEndpointCredential } from './credential-data';
 import { clientErrorMessage } from './error-handling';
 import type { EndpointCredential } from './types';
@@ -74,10 +73,11 @@ export async function searchModels(
 	const credential = await this.getCredentials(CUSTOM_MODEL_ENDPOINT_CREDENTIAL);
 	const endpoint = readCustomModelEndpointCredential(credential);
 
+	const egressFilter = this.helpers.getSecureEgressFilter();
 	const transport = createCustomModelEndpointAuthFetch(this, credential, {
 		endpoint,
-		egressFilter: this.helpers.getSecureEgressFilter(),
-		baseFetch: aiClientFetch,
+		egressFilter,
+		baseFetch: createEndpointBaseFetch(egressFilter),
 	});
 
 	try {
