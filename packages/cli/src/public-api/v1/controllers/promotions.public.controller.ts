@@ -401,7 +401,7 @@ export class PromotionsPublicController {
 	@GlobalScope('promotions:connect')
 	@ApiSummary("Remove an environment's local checkout")
 	@ApiDescription(
-		'Removes the local checkout and keeps the environment, its credentials, and the trusted SSH host keys.',
+		'Removes the local checkout on every main instance and keeps the environment, its credentials, and the trusted SSH host keys.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionCheckoutPublicDto)

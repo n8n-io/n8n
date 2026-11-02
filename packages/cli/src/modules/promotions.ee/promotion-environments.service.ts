@@ -16,6 +16,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ProjectRepository, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isDeepStrictEqual } from 'node:util';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -36,6 +37,7 @@ import {
 	storePromotionRemote,
 	type PromotionStoredEnvironmentRemote,
 } from './git-hosts/git-host-remote';
+import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
@@ -77,6 +79,7 @@ export class PromotionEnvironmentsService {
 		private readonly providersService: PromotionProvidersService,
 		private readonly gitService: PromotionsGitService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
+		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
 		private readonly reviewRepository: PromotionReviewRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
@@ -193,6 +196,12 @@ export class PromotionEnvironmentsService {
 			return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), ctx);
 		});
 		this.logClosedReviews(id, closed, 'environment_target_changed');
+		// Compare values: a request can send the current remote again.
+		const changesCheckout =
+			(changesRemote && !isDeepStrictEqual(remote, current.remote)) ||
+			provider.id !== current.providerId ||
+			(settings !== undefined && this.changesCheckoutBranch(current, settings));
+		if (changesCheckout) await this.checkoutCleanup.resetCheckoutAfterSettingsChange(id);
 		const changedFields = [
 			...(input.name !== undefined ? ['name' as const] : []),
 			...(input.remote !== undefined ? ['remote' as const] : []),
@@ -237,7 +246,7 @@ export class PromotionEnvironmentsService {
 				environmentScope: scope,
 			});
 		}
-		await this.purgeCache(environmentId);
+		await this.checkoutCleanup.removeDeletedEnvironment(environmentId);
 	}
 
 	async listProjects(id: string): Promise<PromotionEnvironmentProjectListPublicDto> {
@@ -345,6 +354,16 @@ export class PromotionEnvironmentsService {
 		return { hasCheckout, matchesEnvironment };
 	}
 
+	/** Settings this version cannot read count as a change, because no checkout can match them. */
+	private changesCheckoutBranch(
+		current: PromotionEnvironment,
+		settings: PromotionEnvironmentSettings,
+	): boolean {
+		const before = resolveStoredConfig(current);
+		const after = resolveStoredConfig({ direction: current.direction, settings });
+		return !before || !after || checkoutBranchName(before) !== checkoutBranchName(after);
+	}
+
 	private async checkSettings(
 		direction: PromotionDirection,
 		settings: PromotionEnvironmentSettings,
@@ -394,20 +413,5 @@ export class PromotionEnvironmentsService {
 			count,
 			reason,
 		});
-	}
-
-	/**
-	 * The environment is already gone, and no operation can use a cache without
-	 * resolving a live environment, so a failed cleanup only leaves disk in use.
-	 */
-	private async purgeCache(environmentId: string) {
-		try {
-			await this.workingDirectory.purge(environmentId);
-		} catch (error) {
-			this.logger.warn('Failed to remove the local promotion checkout', {
-				environmentId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 }

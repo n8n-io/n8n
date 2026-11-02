@@ -25,14 +25,17 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionRun } from '../database/entities/promotion-run.entity';
+import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import type { PromotionReviewsService } from '../promotion-reviews.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
@@ -97,6 +100,7 @@ describe('PromotionsService', () => {
 	});
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
+	const publisher = mock<Publisher>();
 
 	let n8nFolder: string;
 	let workingDirectory: PromotionWorkingDirectoryService;
@@ -145,6 +149,7 @@ describe('PromotionsService', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
+		publisher.publishCommand.mockResolvedValue();
 		folderService.getFoldersByIds.mockResolvedValue([]);
 		// Projects p1 and p2 exist on this instance.
 		projectRepository.findTypesByIds.mockImplementation(async (ids) =>
@@ -173,6 +178,13 @@ describe('PromotionsService', () => {
 			resolver,
 			providersService,
 			workingDirectory,
+			new PromotionCheckoutCleanupService(
+				workingDirectory,
+				mock<PromotionEnvironmentRepository>(),
+				logger,
+				publisher,
+				mock<InstanceSettings>({ isMultiMain: true }),
+			),
 			new WorkingCopyUpdater(
 				mock<InstanceSettings>({ n8nFolder, instanceId: 'inst-test' }),
 				logger,
@@ -292,6 +304,30 @@ describe('PromotionsService', () => {
 				'github.com ssh-ed25519 AAAA',
 			);
 			expect(result.hasCheckout).toBe(false);
+		});
+
+		it('asks the other mains to remove their checkouts', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+
+			await service.disconnect(ENVIRONMENT_ID);
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'promotion-checkout-cleanup',
+				payload: { environmentIds: [ENVIRONMENT_ID], reason: 'disconnected' },
+			});
+		});
+
+		it('logs a warning and does not fail when the checkout removal fails', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			vi.spyOn(workingDirectory, 'resetCheckout').mockRejectedValueOnce(new Error('EBUSY'));
+
+			const result = await service.disconnect(ENVIRONMENT_ID);
+
+			expect(result.hasCheckout).toBe(false);
+			expect(logger.warn).toHaveBeenCalledWith('Failed to reset the local promotion checkout', {
+				environmentId: ENVIRONMENT_ID,
+				error: 'EBUSY',
+			});
 		});
 	});
 
