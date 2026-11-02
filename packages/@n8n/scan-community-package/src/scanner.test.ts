@@ -413,6 +413,7 @@ describe('analyzePackage', () => {
 
 		expect(result.passed).toBe(false);
 		expect(result.details).toContain('no-console');
+		expect(result.check).toBe('eslint');
 		expect(result.findings).toContainEqual({
 			file: path.join('nodes', 'Foo', 'Foo.node.ts'),
 			line: 1,
@@ -473,6 +474,7 @@ describe('buildReport', () => {
 			package: 'n8n-nodes-foo',
 			version: '1.0.0',
 			status: 'passed',
+			check: null,
 			message: null,
 			findings: [],
 		});
@@ -480,10 +482,11 @@ describe('buildReport', () => {
 			buildReport('n8n-nodes-foo', {
 				version: '1.0.0',
 				passed: false,
+				check: 'eslint',
 				message: 'ESLint violations found',
 				findings: [finding],
 			}),
-		).toMatchObject({ status: 'failed', findings: [finding] });
+		).toMatchObject({ status: 'failed', check: 'eslint', findings: [finding] });
 		expect(
 			buildReport('n8n-nodes-foo', {
 				version: null,
