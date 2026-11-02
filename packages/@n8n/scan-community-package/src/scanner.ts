@@ -48,6 +48,20 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 const field = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
 
 /**
+ * CLI exit codes. A scan that ran and found problems is kept apart from one
+ * that could not finish, so callers never report a scanner-side error (network,
+ * registry, ESLint crash) as a verdict on the package.
+ */
+export const EXIT_CODES = { PASSED: 0, ERROR: 1, FAILED: 2 } as const;
+
+export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES];
+
+export const getExitCode = (result: AnalysisResult): ExitCode => {
+	if (result.passed) return EXIT_CODES.PASSED;
+	return result.error === undefined ? EXIT_CODES.FAILED : EXIT_CODES.ERROR;
+};
+
+/**
  * Checks if the given childPath is contained within the parentPath. Resolves
  * the paths before comparing them, so that relative paths are also supported.
  */
@@ -213,6 +227,16 @@ export const parseSourceRepo = (
 // A source fetch failure fails the scan outright, so bound the requests —
 // a stalled connection must not hang the gate.
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
+
+/**
+ * A 4xx means the attested repository or commit is not publicly reachable,
+ * which the package author has to fix. Anything else (timeouts, 5xx, a broken
+ * archive) is a scanner-side error and says nothing about the package.
+ */
+export const isSourceUnavailable = (error: unknown): boolean => {
+	const status = field(field(error, 'response'), 'status');
+	return typeof status === 'number' && status >= 400 && status < 500;
+};
 
 const fetchSourceInfo = async (packageName: string, version: string) => {
 	const { data } = await axios.get<{ attestations?: Attestation[] }>(
@@ -463,6 +487,16 @@ export const analyzePackageByName = async (
 				: 'unsupported or unlocatable source repository';
 			stdout.write(`❌ Could not fetch source for ${label} \n`);
 
+			if (sourceError && !isSourceUnavailable(sourceError)) {
+				return {
+					packageName,
+					version: exactVersion,
+					passed: false,
+					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
+					error: sourceError,
+				};
+			}
+
 			return {
 				packageName,
 				version: exactVersion,
@@ -494,7 +528,10 @@ export const analyzePackageByName = async (
 		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 		const failures = [sourceResult, distResult].filter((r) => !r.passed);
-		const [firstFailure] = failures;
+		// An errored leg makes the whole scan inconclusive, so its message wins
+		// over a violation found by the other leg.
+		const errored = failures.find((r) => r.error !== undefined);
+		const firstFailure = errored ?? failures[0];
 		const analysisResult: AnalysisResult = firstFailure
 			? {
 					passed: false,
@@ -504,13 +541,14 @@ export const analyzePackageByName = async (
 							.map((r) => r.details)
 							.filter(Boolean)
 							.join('\n') || undefined,
+					error: errored?.error,
 				}
 			: { passed: true };
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(`✅ Analyzed ${label} \n`);
+		stdout.write(errored ? `❌ Could not analyze ${label} \n` : `✅ Analyzed ${label} \n`);
 
 		return {
 			packageName,
@@ -524,6 +562,7 @@ export const analyzePackageByName = async (
 			version,
 			passed: false,
 			message: `Analysis failed: ${errorMessage(error)}`,
+			error,
 		};
 	}
 };
