@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
  * Keep each import in a thunk so an ineligible module is not imported.
  */
 export const packagedModules: PackagedModules = {
+	'data-table': async () => await import('@n8n/backend-module-data-table/module'),
 	insights: async () => await import('@n8n/backend-module-insights/module'),
 	'quick-connect': async () => await import('@n8n/backend-module-quick-connect/module'),
 	'workflow-builder': async () => await import('@n8n/backend-module-workflow-builder/module'),
@@ -15,4 +16,5 @@ export const packagedModules: PackagedModules = {
 		Container.set(AppSandboxSettings, { resolve: resolveAppSandboxConfig });
 		return await import('@n8n/backend-module-apps/module');
 	},
+	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
 };

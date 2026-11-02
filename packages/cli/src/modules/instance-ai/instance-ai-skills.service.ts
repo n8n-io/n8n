@@ -28,6 +28,7 @@ export const SKILLS = {
 	agentBuilder: 'agent-builder',
 	intentRecognition: 'intent-recognition',
 	suggestAutomations: 'suggest-automations',
+	appBuilder: 'app-builder',
 } as const;
 
 export type SkillId = (typeof SKILLS)[keyof typeof SKILLS];
@@ -41,6 +42,7 @@ export interface InstanceAiSkillScope {
 	 * agents. This needs the Agents module and the Settings > Agents switch.
 	 */
 	agentBuildingEnabled: boolean;
+	appBuildingEnabled: boolean;
 }
 
 export interface InstanceAiRunSkills extends HubRunSkills {
@@ -67,6 +69,10 @@ const SKILL_GATES: ReadonlyArray<{
 	{
 		skills: [SKILLS.agentBuilder, SKILLS.intentRecognition],
 		isOpen: ({ agentBuildingEnabled }) => agentBuildingEnabled,
+	},
+	{
+		skills: [SKILLS.appBuilder],
+		isOpen: ({ appBuildingEnabled }) => appBuildingEnabled,
 	},
 ];
 

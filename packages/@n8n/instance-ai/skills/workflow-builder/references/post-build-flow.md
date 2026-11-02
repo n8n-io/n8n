@@ -14,7 +14,13 @@ recommended_tools:
   - validate_workflow
   - publish_workflow
   - workflow_builder_build_workflow
-  - workflow_builder_executions
+  - list_executions
+  - get_execution
+  - run_workflow
+  - run_workflow_step
+  - debug_execution
+  - get_execution_node_output
+  - get_resolved_node_parameters
 ---
 
 # Post-Build Flow
@@ -67,11 +73,11 @@ setup returns `announced: true`, or the current user input contains
   setup cannot be confirmed, report what is missing and end the turn.
   If required items remain open for this
   workflow, report them and end the turn without a live run. Otherwise,
-  use `workflow_builder_executions(action="run")` with suitable trigger input. The user has
+  use `run_workflow` with suitable trigger input. The user has
   already requested this test; do not ask whether they want it. The execution
   tool still enforces its approval policy. Do not publish the workflow to test it.
 - Read the execution output and summarize what ran and what it returned. For
-  failures, inspect `workflow_builder_executions(action="debug")`. Fix the same workflow when
+  failures, inspect `debug_execution`. Fix the same workflow when
   possible. Use the current saved source so panel edits are preserved. Report
   unresolved setup or failures in chat. Before another live run, inspect the
   successful effect nodes from the failed run. Follow
@@ -170,7 +176,7 @@ re-offering, the user already asked.
 
 ## Publishing and testing
 
-**Publishing is never required for testing.** Both `workflow_builder_executions(action="run")` and
+**Publishing is never required for testing.** Both `run_workflow` and
 `workflow_builder_verify_built_workflow` inject `inputData` as the trigger's output — the
 workflow does not need to be active. Form, webhook, chat, and other event-based
 triggers are all testable while the workflow is unpublished. Never publish a
@@ -192,10 +198,10 @@ started as evidence, or repair a workflow that is already published, load the
 `publishing` reference and follow it.
 
 For post-build verification of workflows produced by `workflow_builder_build_workflow`, **always verify with
-`workflow_builder_verify_built_workflow`, never with raw `workflow_builder_executions(action="run")`.** It reuses
+`workflow_builder_verify_built_workflow`, never with raw `run_workflow`.** It reuses
 the build outcome simulation plan, mocked credentials, and temporary pin data, so
 destructive nodes are pinned and it is safe to call repeatedly. A raw
-`workflow_builder_executions(action="run")` runs the workflow live with no pin data, and on a
+`run_workflow` runs the workflow live with no pin data, and on a
 workflow you just verified it surfaces a redundant run-approval prompt to the
 user right after verification already executed the workflow. For follow-up
 requests like "verify again", call `workflow_builder_verify_built_workflow` with `workflowId` even
@@ -203,7 +209,7 @@ if the original `workItemId` is not in context. For alternate deterministic
 scenarios, pass `fixtureOverrides` keyed by simulated node name instead of trying
 to force data through the trigger.
 
-**`workflow_builder_executions(action="run-step")` is a debugging tool, not a verification
+**`run_workflow_step` is a debugging tool, not a verification
 tool.** It runs one node and tells you what that node returns. It says nothing
 about the rest of the chain, so it never settles a verification obligation and
 never turns "partial coverage" into "verified". Use it to inspect one node —
@@ -213,7 +219,7 @@ less: the result names the nodes whose output it invented in
 `mockedNodeNames`, and you must repeat that limitation in what you tell the
 user.
 
-**Reserve `workflow_builder_executions(action="run")` for runs the user explicitly asked for**
+**Reserve `run_workflow` for runs the user explicitly asked for**
 (e.g. "run it now", "execute it against my real data"). Never call it on your own
 to re-test, expand coverage, or "prove the full chain" of a workflow you just
 built or verified: re-run `workflow_builder_verify_built_workflow` instead — with
@@ -250,7 +256,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
 - Report each trigger and whether its branch ran. Use the combined `claim` to
   describe the result (see "Claiming success").
 - When the user asked for a live run, pass `triggerNodeName` to
-  `workflow_builder_executions(action="run")` the same way — one run per trigger — and report
+  `run_workflow` the same way — one run per trigger — and report
   each branch's result.
 
 ## After workflow_builder_build_workflow succeeds
@@ -302,7 +308,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      remove once the run is done (see "Cleaning up after a live test").
    - If you cannot seed the data source, report honestly: name which nodes
      were verified and which were not, and tell the user the unreached part
-     needs a manual test. Do not start a live `workflow_builder_executions(action="run")`
+     needs a manual test. Do not start a live `run_workflow`
      yourself to reach those nodes; offer the user a test instead. Never claim
      end-to-end verification when `nodesNotReached` is non-empty — except for
      nodes another trigger's pass already reached, since per-trigger coverage
@@ -323,7 +329,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries),
      for a `$json.query.*` expression) or a wrong expression. Fix the input
      shape or the expression, re-run, and never report that field as working
      while a warning stands. Each warning carries the execution ID that was
-     checked. Use that ID with `workflow_builder_executions(action="get-resolved-node-parameters")`
+     checked. Use that ID with `get_resolved_node_parameters`
      to inspect the same input.
    - Read `skippedParameterChecks`. These nodes have unchecked dynamic fields.
      The list shows at most 20 checks. `skippedParameterCheckCount` includes
@@ -378,7 +384,7 @@ temporary pin data, or another mocked input, ask whether the user wants a live
 test without mocks. Ask only about the live test. Do not run it automatically.
 An explicit test request in the current user input, including
 `<workflow-test-request>`, already answers
-this question. Run the requested test through `workflow_builder_executions(action="run")`.
+this question. Run the requested test through `run_workflow`.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
@@ -386,7 +392,7 @@ If `credentialResolutionNote` says Gateway credits are depleted, that
 note wins over this live-test offer: do not offer a live test. Tell the user
 they must top up Gateway credits or add their own key on the node first.
 
-If the user agrees, use the explicit live execution path (`workflow_builder_executions(action="run")`
+If the user agrees, use the explicit live execution path (`run_workflow`
 for a direct live run) and report the result separately from the earlier mocked
 verification. If the live test fails, treat the workflow as unresolved and do
 not offer publishing. If the user declines or defers, state what remains
@@ -469,7 +475,7 @@ what stays unconfigured and what that means when the workflow runs.
 
 Without a claim, do not tell the user a workflow is "fixed", "verified",
 "tested", "working", or has "no errors" unless you have a passing
-`workflow_builder_executions(action="run")` or an inspected user-run execution that exercised the
+`run_workflow` or an inspected user-run execution that exercised the
 path being claimed. Do not call a workflow "ready to use" or "ready to publish"
 unless a passing execution met the publish-readiness requirement above. A
 successful `workflow_builder_build_workflow`/save, a static `validate_workflow`, or
@@ -478,12 +484,12 @@ generated document, or Code-node output), read the real output before calling it
 complete; do not infer correctness from the fact that a node ran. The same
 applies to rows or records written to an external system: never make quantitative
 claims ("22 rows written", "columns matched") that you did not read back from
-the effect node's actual output (`workflow_builder_executions(action="get-node-output")`) or from
+the effect node's actual output (`get_execution_node_output`) or from
 the target system itself — a successful run status does not prove the _right
 data_ was written, only that nodes ran. Output of a simulated or pinned node is
 fixture data: never quote it as what the workflow produced, and never cite it as
 proof that an expression resolved — use `resolvedParameterWarnings` or
-`workflow_builder_executions(action="get-resolved-node-parameters")` for that. If you could not run the
+`get_resolved_node_parameters` for that. If you could not run the
 failing path or inspect the artifact, say so plainly — "I couldn't verify X
 because Y" — and name what is unconfirmed. An honest "could not verify" beats an
 unverified success claim.
@@ -515,7 +521,7 @@ pattern:
     published. `{webhookId}` is the node's unique webhook ID; read it from the
     workflow JSON, never guess. End users can open this URL in a browser.
   The `/chat` suffix is unique to Chat Trigger — do NOT append it to Form
-  Trigger or Webhook URLs. (Your own testing via `workflow_builder_executions(action="run")` and
+  Trigger or Webhook URLs. (Your own testing via `run_workflow` and
   `workflow_builder_verify_built_workflow` works regardless of `public` or publish state.)
 
 **These URLs are for sharing with the user only.** Do NOT hardcode them into

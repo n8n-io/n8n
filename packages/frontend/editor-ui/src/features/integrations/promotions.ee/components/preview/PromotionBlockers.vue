@@ -321,13 +321,13 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								</N8nText>
 							</td>
 							<td aria-live="polite">
-								<span :class="[$style.status, $style[row.status.tone]]">
+								<N8nText size="medium" :class="[$style.status, $style[row.status.tone]]">
 									<N8nIcon
 										:icon="row.status.tone === 'success' ? 'circle-check' : 'circle-alert'"
 										size="small"
 									/>
 									{{ row.status.label }}
-								</span>
+								</N8nText>
 							</td>
 							<td :class="$style.action">
 								<N8nButton
@@ -548,7 +548,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		background-color: var(--background--subtle);
 		color: var(--text-color--subtle);
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	td {
@@ -593,7 +593,6 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 }
 

@@ -3,11 +3,12 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
 
-import { executeTool } from '../../__tests__/tool-test-utils';
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
 import {
 	createDeleteCredentialTool,
+	createUpdateCredentialDescriptionTool,
 	createListCredentialsTool,
 	createSearchCredentialTypesTool,
 	createSetupCredentialsTool,
@@ -42,6 +43,7 @@ function createMockContext(
 			list: vi.fn().mockResolvedValue([]),
 			get: vi.fn().mockResolvedValue({}),
 			delete: vi.fn().mockResolvedValue(undefined),
+			updateDescription: vi.fn().mockResolvedValue(undefined),
 			test: vi.fn().mockResolvedValue({ success: true }),
 			searchCredentialTypes: vi.fn().mockResolvedValue([]),
 			getDocumentationUrl: vi.fn().mockResolvedValue(null),
@@ -2326,5 +2328,55 @@ describe('credential tools', () => {
 				message: 'Credential test failed',
 			});
 		});
+	});
+});
+
+describe('update credential description tool', () => {
+	it('advertises an explicit description and rejects missing or null input', () => {
+		const tool = createUpdateCredentialDescriptionTool(createMockContext());
+		expect(inputJsonSchema(tool).required).toContain('description');
+		expect(parseToolInput(tool, { credentialId: 'cred-1' }).success).toBe(false);
+		expect(parseToolInput(tool, { credentialId: 'cred-1', description: null }).success).toBe(false);
+	});
+
+	it.each(['  Reporting  ', '', '  '])(
+		'updates or clears the description: %s',
+		async (description) => {
+			const context = createMockContext();
+			const tool = createUpdateCredentialDescriptionTool(context);
+			const parsed = parseToolInput(tool, { credentialId: 'cred-1', description });
+			if (!parsed.success) throw parsed.error;
+			expect(await executeTool(tool, parsed.data, noSuspendCtx())).toEqual({ success: true });
+			expect(context.credentialService.updateDescription).toHaveBeenCalledWith(
+				'cred-1',
+				description?.trim() || null,
+			);
+		},
+	);
+
+	it('rejects an oversized description before calling the service', async () => {
+		const context = createMockContext();
+		await expect(
+			executeTool(
+				createUpdateCredentialDescriptionTool(context),
+				{ credentialId: 'cred-1', description: 'x'.repeat(513) },
+				noSuspendCtx(),
+			),
+		).rejects.toThrow();
+		expect(context.credentialService.updateDescription).not.toHaveBeenCalled();
+	});
+
+	it('propagates a rejected write', async () => {
+		const context = createMockContext();
+		vi.mocked(context.credentialService.updateDescription).mockRejectedValue(
+			new Error('No access'),
+		);
+		await expect(
+			executeTool(
+				createUpdateCredentialDescriptionTool(context),
+				{ credentialId: 'cred-1', description: 'Reporting' },
+				noSuspendCtx(),
+			),
+		).rejects.toThrow('No access');
 	});
 });

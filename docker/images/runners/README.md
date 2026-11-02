@@ -49,11 +49,10 @@ pnpm run build:n8n
 
 ### 2) Build the task runners image
 
+The Node pins live in `docker/docker-bake.hcl`, so build through bake:
+
 ```
-docker buildx build \
-  -f docker/images/runners/Dockerfile \
-  -t n8nio/runners \
-  .
+docker buildx bake -f docker/docker-bake.hcl runners --set runners.tags=n8nio/runners --load
 ```
 
 ### 3) Start n8n on your host machine with Task Broker enabled

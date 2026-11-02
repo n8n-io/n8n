@@ -5,6 +5,8 @@ import { z } from 'zod';
 
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
+import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
+import { appNameSchema, appNamespaceSchema, appVisibilitySchema } from './app.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -26,13 +28,13 @@ import { Z } from '../zod-class';
 // ---------------------------------------------------------------------------
 
 /**
- * Sentinel value returned by `GET /instance-ai/credits` when the AI service
+ * Sentinel value returned by `GET /assistant/credits` when the AI service
  * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
  */
 export const UNLIMITED_CREDITS = -1;
 
 /**
- * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * The instance's n8n Assistant credit standing, as reported by `GET /assistant/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
  * `creditsQuota` is {@link UNLIMITED_CREDITS} when the AI service proxy is disabled.
@@ -837,8 +839,25 @@ export const confirmationInputTypeSchema = z.enum([
 	'questions',
 	'resource-decision',
 	'continue',
+	'app-blueprint',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
+
+export const appBlueprintSchema = z.object({
+	name: appNameSchema,
+	namespace: appNamespaceSchema,
+	visibility: appVisibilitySchema,
+	description: z.string().trim().min(1).max(500),
+	theme: z.enum(['light', 'dark', 'both']),
+	additionalInstructions: z.string().trim().min(1).max(2000).optional(),
+});
+export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
+
+export const appBlueprintResumeSchema = z.object({
+	approved: z.boolean(),
+	blueprint: appBlueprintSchema,
+});
+export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
 export const instanceAiTargetApprovalSchema = z.object({
 	toolName: z.string(),
@@ -923,7 +942,8 @@ export const confirmationRequestPayloadSchema = z.object({
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, ' +
 				'resource-decision shows 5-option gateway permission dialog, ' +
-				'continue shows a single primary button (used by pause-for-user)',
+				'continue shows a single primary button (used by pause-for-user), ' +
+				'app-blueprint shows the editable app proposal card',
 		),
 	questions: z
 		.array(instanceAiQuestionSchema)
@@ -972,6 +992,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders the "waiting for a test request" card with the armed test URLs',
 		),
+	appBlueprint: appBlueprintSchema
+		.optional()
+		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -1000,6 +1023,7 @@ export function isDisplayableConfirmationRequest(
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
 	if (payload.testListener) return true;
+	if (payload.appBlueprint) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1011,6 +1035,8 @@ export function isDisplayableConfirmationRequest(
 			return hasItems(payload.questions);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
+		case 'app-blueprint':
+			return payload.appBlueprint !== undefined;
 		default:
 			return assertNever(inputType);
 	}
@@ -1145,6 +1171,18 @@ export const ASSISTANT_WORKFLOWS_ARCHIVED_EVENT = 'workflows-archived';
 export const workflowsArchivedPayloadSchema = z.object({
 	workflowIds: z.array(z.string()),
 });
+
+/** Host event of an Assistant agent turn with the LangSmith ids of the turn's trace. */
+export const ASSISTANT_TRACE_EVENT = 'assistant-trace';
+
+export const assistantTracePayloadSchema = z.object({
+	/** OTel trace id of the turn's root span. */
+	traceId: z.string().optional(),
+	langsmithTraceId: z.string(),
+	langsmithRunId: z.string(),
+});
+
+export type AssistantTracePayload = z.infer<typeof assistantTracePayloadSchema>;
 
 /**
  * One entry of the setup panel checklist. Service-keyed (one row per
@@ -1506,6 +1544,15 @@ export const instanceAiAgentAttachmentSchema = z.object({
 });
 export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
 
+export const INSTANCE_AI_APP_TARGETS_METADATA_KEY = 'instanceAiAppTargets';
+export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingAppTarget';
+
+export const instanceAiAppTargetSchema = z.object({
+	appId: z.string().uuid(),
+	projectId: z.string().min(1),
+});
+export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1624,7 +1671,7 @@ export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSc
  * agent resolves contents with its tools. Cap matches the send-message field.
  */
 export const instanceAiThreadArtifactSchema = z.object({
-	type: z.enum(['workflow', 'agent', 'data-table', 'skill']),
+	type: assistantArtifactTypeSchema,
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
 	projectId: z.string().min(1).max(64).optional(),
@@ -1644,51 +1691,6 @@ export const instanceAiThreadArtifactsContextSchema = z.object({
 export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
-
-/** Identifies a resource that a thread tab shows. */
-export const instanceAiThreadTabRefSchema = instanceAiThreadArtifactSchema.pick({
-	type: true,
-	id: true,
-});
-export type InstanceAiThreadTabRef = z.infer<typeof instanceAiThreadTabRefSchema>;
-
-/** One open tab. The name lets the tab render before the resource details load. */
-export const instanceAiThreadTabSchema = instanceAiThreadTabRefSchema.extend({
-	name: z.string().max(255),
-	projectId: z.string().min(1).max(64).optional(),
-});
-export type InstanceAiThreadTab = z.infer<typeof instanceAiThreadTabSchema>;
-
-/**
- * The tabs a user has open in a thread. `tabs` is in display order.
- * `closedTabs` holds the artifacts the user closed, so they do not reopen when
- * the thread loads again.
- */
-/** Most open tabs a stored thread tabs state holds. */
-export const MAX_INSTANCE_AI_THREAD_OPEN_TABS = 100;
-/** Most closed artifacts a stored thread tabs state remembers. */
-export const MAX_INSTANCE_AI_THREAD_CLOSED_TABS = 500;
-
-export const instanceAiThreadTabsStateSchema = z.object({
-	tabs: z.array(instanceAiThreadTabSchema).max(MAX_INSTANCE_AI_THREAD_OPEN_TABS),
-	closedTabs: z.array(instanceAiThreadTabRefSchema).max(MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
-	activeTab: instanceAiThreadTabRefSchema.nullable(),
-	/**
-	 * Whether the preview panel is open. Without it, the active tab does not
-	 * tell if the user can see that tab. Optional, so a state saved before this
-	 * field existed stays valid.
-	 */
-	previewOpen: z.boolean().optional(),
-});
-export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
-
-export interface InstanceAiThreadTabsResponse {
-	/**
-	 * `null` when no tabs are stored for this thread yet. The server stores them
-	 * when the agent changes an artifact, and the client when the user changes a tab.
-	 */
-	state: InstanceAiThreadTabsState | null;
-}
 
 /**
  * Build style for a run. `progressive` makes the agent build a minimal working

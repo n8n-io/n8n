@@ -1,3 +1,4 @@
+import type { SkillScanFinding, SkillScanResult } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import type { SkillParseError } from '../errors/skill-parse.error';
@@ -11,14 +12,9 @@ import {
 	findSuspiciousPhrases,
 	listFidelityWarnings,
 	listSkippedFiles,
-	type SkillScanFinding,
 	type SkillScanInput,
 } from '../utils/skill-security-rules';
 import type { FetchedSkill } from '../sources/skill-source-client';
-
-export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
-
-export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFinding[] };
 
 const RULES = [
 	checkShape,

@@ -3,6 +3,7 @@ import type { Repository } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { eligibleAccountsWhere, type EligibleAccountsQuery } from './user.repository';
 import { Person } from '../entities';
 import type { IPersonalizationSurveyAnswers } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -74,6 +75,18 @@ export class PersonRepository {
 		});
 	}
 
+	/**
+	 * Enabled people whose global or project role is in the given slug sets, such
+	 * as the people who can review a workflow. Loads `role` and `authIdentities`
+	 * because `isPending` needs both.
+	 */
+	async findEligibleByProjectOrGlobalRoles(query: EligibleAccountsQuery): Promise<Person[]> {
+		const where = eligibleAccountsWhere(query);
+		if (!where) return [];
+
+		return await this.table.find({ where, relations: { role: true, authIdentities: true } });
+	}
+
 	async countWithMfaEnabled(): Promise<number> {
 		return await this.table.count({ where: { mfaEnabled: true } });
 	}
@@ -124,6 +137,10 @@ export class PersonRepository {
 			}
 			return 'changed';
 		});
+	}
+
+	async findManyByIds(ids: string[]): Promise<Person[]> {
+		return await this.table.find({ where: { id: In(ids) }, order: { id: 'ASC' } });
 	}
 
 	/**

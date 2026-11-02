@@ -86,7 +86,7 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
-		prefixes: ['RadioGroup'],
+		prefixes: ['RadioGroup', 'injectRadioGroup'],
 		allowedFolders: ['components/N8nRadioGroup', 'components/N8nSegmentControl'],
 		replacement: ['N8nRadioGroup', 'N8nSegmentControl'],
 	},

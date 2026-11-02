@@ -2,9 +2,11 @@ import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/a
 import { Logger } from '@n8n/backend-common';
 import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowEntity } from '@n8n/db';
 import {
+	accountFullName,
 	CredentialsRepository,
 	Folder,
 	FolderRepository,
+	PersonRepository,
 	Project,
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -42,13 +44,17 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
+import {
+	DataTableColumn,
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableSizeValidator,
+	DataTable,
+	DataTableRepository,
+	isValidColumnName,
+	isValidDataTableId,
+} from '@n8n/backend-module-data-table';
+
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -167,6 +173,7 @@ export class SourceControlImportService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
@@ -1774,11 +1781,9 @@ export class SourceControlImportService {
 			return ownedBy.teamId;
 		}
 		if (ownedBy?.type === 'personal' && ownedBy.personalEmail) {
-			const user = await this.userRepository.findOne({
-				where: { email: ownedBy.personalEmail },
-			});
-			if (user) {
-				return (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+			const person = await this.personRepository.findByEmail(ownedBy.personalEmail);
+			if (person) {
+				return (await this.projectRepository.getPersonalProjectForUserOrFail(person.id)).id;
 			}
 			this.logger.debug(
 				`User ${ownedBy.personalEmail} not found locally. Using pulling user's personal project as fallback.`,
@@ -2258,13 +2263,15 @@ export class SourceControlImportService {
 
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
-			const user = await this.userRepository.findOne({ where: { email } });
+			// A lookup with no email matches any person. The caller falls back to the puller.
+			if (!email) return null;
+			const person = await this.personRepository.findByEmail(email);
 
-			if (!user) {
+			if (!person) {
 				return null;
 			}
 
-			return await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			return await this.projectRepository.getPersonalProjectForUserOrFail(person.id);
 		} else if (owner.type === 'team') {
 			return await this.projectRepository.findOne({
 				where: { id: owner.teamId },
@@ -2327,7 +2334,7 @@ export class SourceControlImportService {
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
-		const authors = user ? `import by ${user.firstName} ${user.lastName}` : 'import';
+		const authors = user ? `import by ${accountFullName(user)}` : 'import';
 
 		const existingVersion = await this.workflowHistoryService.findVersion(id, versionId);
 

@@ -19,7 +19,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { DataTableRepository } from '@n8n/backend-module-data-table';
 
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,

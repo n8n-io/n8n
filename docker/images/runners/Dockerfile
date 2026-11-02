@@ -1,14 +1,17 @@
 # check=skip=InvalidDefaultArgInFrom
-# docker/docker-bake.hcl sets this. Build with `pnpm build:docker` or
-# `docker buildx bake`, not plain `docker build`.
-ARG NODE_VERSION
 ARG PNPM_VERSION=12.4.2
-ARG PYTHON_VERSION=3.13
+
+# docker/docker-bake.hcl sets NODE_IMAGE to the BUILDER_IMAGE of the n8n image.
+# Build with `pnpm build:docker` or `docker buildx bake`, not plain `docker build`.
+ARG NODE_IMAGE
+# Each digest pins the multi-arch index of its tag. Change the tag and the digest together.
+ARG PYTHON_IMAGE=python:3.13.18-alpine3.24@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+ARG ALPINE_IMAGE=alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine3.24 AS javascript-runner-builder
+FROM ${NODE_IMAGE} AS javascript-runner-builder
 COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
@@ -40,13 +43,13 @@ RUN node -e "const pkg = require('./package.json'); \
 # policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
 # Install moment (special case for backwards compatibility)
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --save-prod --no-lockfile --config.minimum-release-age=0
+    pnpm add moment@2.31.0 --save-prod --no-lockfile --config.minimum-release-age=0
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
 # Produces a relocatable venv tied to the python version used
 # ==============================================================================
-FROM python:${PYTHON_VERSION}-alpine AS python-runner-builder
+FROM ${PYTHON_IMAGE} AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
 
@@ -92,9 +95,9 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22 AS launcher-downloader
+FROM ${ALPINE_IMAGE} AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.5.1
+ARG LAUNCHER_VERSION=1.6.0
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -114,14 +117,14 @@ RUN set -e; \
 # ==============================================================================
 # STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
-FROM node:${NODE_VERSION}-alpine3.24 AS node-alpine
+FROM ${NODE_IMAGE} AS node-alpine
 ARG PNPM_VERSION
 RUN npm i -g "pnpm@${PNPM_VERSION}"
 
 # ==============================================================================
 # STAGE 5: Runtime
 # ==============================================================================
-FROM python:${PYTHON_VERSION}-alpine AS runtime
+FROM ${PYTHON_IMAGE} AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 
@@ -143,7 +146,7 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libatomic libc6-compat && 
     apk del apk-tools
 
 # Bring pnpm over, to make the image easier to extend. pnpm 12 installs a
-# standalone native executable, so the runtime does not need npm or Corepack.
+# standalone native executable, so the runtime does not need npm.
 COPY --from=node-alpine /usr/local/lib/node_modules/pnpm/pnpm /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \

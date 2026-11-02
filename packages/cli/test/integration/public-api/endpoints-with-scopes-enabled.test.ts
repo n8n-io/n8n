@@ -6,6 +6,7 @@ import {
 	randomName,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { EngineConfig } from '@n8n/config';
 import type { TagEntity, Variables } from '@n8n/db';
 import {
 	ApiKeyRepository,
@@ -1416,6 +1417,7 @@ describe('Public API endpoints with API key scopes', () => {
 		describe('workflows', () => {
 			describe('POST /workflows', () => {
 				test('should create workflow when API key has "workflow:create" scope', async () => {
+					Container.get(EngineConfig).defaultType = 'v1';
 					const member = await createMemberWithApiKey({ scopes: ['workflow:create'] });
 					const memberPersonalProject = await Container.get(
 						ProjectRepository,
