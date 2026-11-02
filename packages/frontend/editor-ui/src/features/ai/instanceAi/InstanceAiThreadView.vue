@@ -769,26 +769,29 @@ function handleNewThreadClick() {
 								store.debugMode = showDebugPanel;
 							"
 						/>
-						<N8nTooltip
-							:content="artifactsPanelToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="showArtifactsPanelToggle"
-									icon="list"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-panel-toggle"
-									:aria-label="artifactsPanelToggleLabel"
-									:aria-pressed="showArtifactsPanel"
-									:disabled="!canShowArtifactsPanel"
-									@click="toggleArtifactsPanel"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<span v-if="showArtifactsPanelToggle">
+								<N8nTooltip
+									as-child
+									:content="artifactsPanelToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="list"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-panel-toggle"
+										:aria-label="artifactsPanelToggleLabel"
+										:aria-pressed="showArtifactsPanel"
+										:disabled="!canShowArtifactsPanel"
+										focusable-when-disabled
+										@click="toggleArtifactsPanel"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
 						<InstanceAiResourcePicker
 							v-if="showOpenResourcePicker && thread.projectId"
@@ -816,27 +819,29 @@ function handleNewThreadClick() {
 								</N8nTooltip>
 							</template>
 						</InstanceAiResourcePicker>
-						<N8nTooltip
-							v-else
-							:content="artifactsPreviewToggleLabel"
-							placement="bottom"
-							:show-after="TOOLTIP_DELAY_MS"
-						>
-							<Transition name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
-								<N8nIconButton
-									v-if="!preview.isPreviewVisible.value"
-									icon="panel-right"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									data-test-id="instance-ai-artifacts-preview-toggle"
-									:aria-label="artifactsPreviewToggleLabel"
-									:aria-pressed="preview.isPreviewVisible.value"
-									:disabled="!hasPreviewTabs"
-									@click="toggleArtifactsPreview"
-								/>
-							</Transition>
-						</N8nTooltip>
+						<Transition v-else name="preview-toggle-opacity" :css="isPreviewPanelTransitionEnabled">
+							<span v-if="!preview.isPreviewVisible.value">
+								<N8nTooltip
+									as-child
+									:content="artifactsPreviewToggleLabel"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+								>
+									<N8nIconButton
+										icon="panel-right"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-artifacts-preview-toggle"
+										:aria-label="artifactsPreviewToggleLabel"
+										:aria-pressed="preview.isPreviewVisible.value"
+										:disabled="!hasPreviewTabs"
+										focusable-when-disabled
+										@click="toggleArtifactsPreview"
+									/>
+								</N8nTooltip>
+							</span>
+						</Transition>
 					</template>
 				</InstanceAiViewHeader>
 			</div>

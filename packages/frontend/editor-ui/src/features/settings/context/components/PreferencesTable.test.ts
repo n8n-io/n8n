@@ -1,5 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getTooltip, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -187,6 +187,31 @@ describe('PreferencesTable', () => {
 		const toggle = getByTestId('preference-actions');
 		expect(toggle.querySelector('[data-icon="ellipsis-12"]')).not.toBeNull();
 		expect(toggle.querySelector('[data-icon="ellipsis-vertical-12"]')).toBeNull();
+	});
+
+	it('explains read-only actions on focus and blocks activation', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = render([preference({ scopes: READ_ONLY })]);
+
+		const toggle = within(getByTestId('preference-actions')).getByRole('button');
+		toggle.focus();
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent(
+				'You do not have permission to change this preference',
+			),
+		);
+		expect(toggle).toHaveAccessibleDescription(
+			'You do not have permission to change this preference',
+		);
+		await user.keyboard('{Escape}');
+		expect(toggle).toHaveFocus();
+		await user.keyboard('{Enter}');
+		await waitFor(() => expect(menuItem('edit')).toHaveAttribute('data-disabled'));
+		expect(menuItem('delete')).toHaveAttribute('data-disabled');
+		await user.click(menuItem('edit')!);
+		await user.click(menuItem('delete')!);
+		expect(emitted('edit')).toBeUndefined();
+		expect(emitted('delete')).toBeUndefined();
 	});
 
 	it('enables both actions when the row carries write scopes', async () => {

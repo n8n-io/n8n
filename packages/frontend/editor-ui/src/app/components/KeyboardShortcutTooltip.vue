@@ -5,6 +5,8 @@ import type { N8nTooltipProps } from '@n8n/design-system';
 import { N8nKeyboardShortcut, N8nTooltip } from '@n8n/design-system';
 interface Props {
 	label: string;
+	/** Put the tooltip trigger on the slotted control. */
+	asChild?: boolean;
 	shortcut?: KeyboardShortcut;
 	placement?: N8nTooltipProps['placement'];
 	disabled?: boolean;
@@ -13,7 +15,7 @@ withDefaults(defineProps<Props>(), { placement: 'top', shortcut: undefined });
 </script>
 
 <template>
-	<N8nTooltip :placement="placement" :show-after="500" :disabled>
+	<N8nTooltip :placement="placement" :show-after="500" :disabled :as-child="asChild">
 		<template #content>
 			<div :class="$style.shortcut">
 				<div :class="$style.label">{{ label }}</div>

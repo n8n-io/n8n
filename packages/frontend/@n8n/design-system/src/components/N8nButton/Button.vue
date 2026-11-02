@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 	size: 'medium',
 	loading: false,
 	disabled: false,
+	focusableWhenDisabled: false,
 });
 
 // Map legacy size values to current ones
@@ -44,6 +45,13 @@ const buttonType = computed(() => {
 });
 
 const isDisabled = computed(() => props.disabled || props.loading);
+const isFocusableDisabled = computed(
+	() =>
+		componentTag.value === 'button' &&
+		props.disabled &&
+		props.focusableWhenDisabled &&
+		!props.loading,
+);
 
 const classes = computed(() =>
 	cn(
@@ -76,16 +84,44 @@ const handleClick = (event: MouseEvent) => {
 		event.preventDefault();
 	}
 };
+
+const blockDisabledActivation = (event: Event) => {
+	if (!isFocusableDisabled.value) return;
+
+	// aria-disabled does not block handlers or the native form action.
+	event.preventDefault();
+	event.stopImmediatePropagation();
+};
+
+const blockDisabledKeyActivation = (event: KeyboardEvent) => {
+	if (event.key === 'Enter' || event.key === ' ') {
+		blockDisabledActivation(event);
+	}
+};
+
+// Capture guards run before consumer handlers and handlers on slot content.
+const disabledActivationListeners = computed(() =>
+	isFocusableDisabled.value
+		? {
+				clickCapture: blockDisabledActivation,
+				keydownCapture: blockDisabledKeyActivation,
+				keyupCapture: blockDisabledKeyActivation,
+			}
+		: {},
+);
 </script>
 
 <template>
 	<component
 		:is="componentTag"
+		v-on="disabledActivationListeners"
 		v-bind="attrs"
 		:type="buttonType"
 		:href="href"
 		:rel="href ? 'nofollow noopener noreferrer' : undefined"
-		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
+		:disabled="
+			componentTag === 'button' ? (isDisabled && !isFocusableDisabled) || undefined : undefined
+		"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
 		:tabindex="componentTag === 'a' && isDisabled ? -1 : attrs.tabindex"

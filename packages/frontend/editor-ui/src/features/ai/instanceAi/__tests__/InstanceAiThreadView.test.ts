@@ -597,14 +597,20 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('shows no resource picker until the stored tabs load', async () => {
+		const user = userEvent.setup();
 		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
 		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
 		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
-		expect(
-			toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false'),
-		).toBeDisabled();
+		const toggle = toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false')!;
+		expect(toggle).toHaveAttribute('aria-disabled', 'true');
+		expect(toggle).not.toBeDisabled();
+		toggle.focus();
+		expect(toggle).toHaveFocus();
+		await user.keyboard('{Enter} ');
+		await user.click(toggle);
+		expect(toggle).toHaveAttribute('aria-pressed', 'false');
 	});
 
 	it('shows the preview toggle, not the picker, while tabs are open', async () => {

@@ -143,6 +143,7 @@ async function onClick() {
 
 <template>
 	<N8nTooltip
+		:as-child="!!disabledHint || (!disabled && !isExecuting)"
 		:placement="tooltipPlacement ?? 'right'"
 		:disabled="!tooltipText && !slots.persistentTooltipContent"
 		:visible="slots.persistentTooltipContent ? true : undefined"
@@ -156,6 +157,8 @@ async function onClick() {
 			v-bind="$attrs"
 			:loading="isExecuting && showLoadingSpinner"
 			:disabled="disabled || !!disabledHint || (isExecuting && !showLoadingSpinner)"
+			:focusable-when-disabled="!!disabledHint"
+			:aria-label="$attrs['aria-label'] ?? (buttonLabel || nodeButtonLabel)"
 			:label="buttonLabel"
 			:variant="variant"
 			:size="size"

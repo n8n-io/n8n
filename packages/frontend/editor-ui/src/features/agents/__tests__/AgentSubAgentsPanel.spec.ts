@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
+import type * as DesignSystem from '@n8n/design-system';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
@@ -139,11 +140,8 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	},
 }));
 
-vi.mock('@n8n/design-system', () => ({
-	N8nIconButton: {
-		template: '<button :disabled="disabled" v-bind="$attrs"><slot /></button>',
-		props: ['disabled', 'ariaLabel', 'icon', 'variant', 'size', 'iconSize'],
-	},
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nIconButton: (await importOriginal<typeof DesignSystem>()).N8nIconButton,
 	N8nInputNumber: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision'],
 		emits: ['update:modelValue'],
@@ -670,8 +668,10 @@ describe('AgentSubAgentsPanel', () => {
 
 		const clearButton = wrapper.find('[data-testid="agent-sub-agents-difficulty-low-clear"]');
 		expect(clearButton.exists()).toBe(true);
-		expect(clearButton.attributes('disabled')).toBeDefined();
+		expect(clearButton.attributes('aria-disabled')).toBe('true');
+		expect(clearButton.attributes('disabled')).toBeUndefined();
 		expect(wrapper.findComponent({ name: 'AgentModelSelector' }).props('disabled')).toBe(true);
+		await clearButton.trigger('click');
 
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'openai',

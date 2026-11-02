@@ -2,7 +2,7 @@
 import type { WorkflowReviewRequestForWorkflow } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nPopover, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import { getVersionLabel } from '@/features/workflows/workflowHistory/utils';
 
@@ -50,6 +50,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const isOpen = ref(false);
+const submitChangesHintId = useId();
 
 const pinnedVersionLabel = computed(() => {
 	const review = props.review;
@@ -196,6 +197,7 @@ const onSubmitChanges = () => {
 					</N8nButton>
 					<N8nTooltip
 						v-if="status.action === 'submit-changes'"
+						as-child
 						:disabled="!submitChangesHint"
 						:show-after="300"
 					>
@@ -209,6 +211,8 @@ const onSubmitChanges = () => {
 						<N8nButton
 							size="small"
 							:disabled="!isSubmitChangesEnabled"
+							:focusable-when-disabled="!!submitChangesHint"
+							:aria-describedby="submitChangesHint ? submitChangesHintId : undefined"
 							data-test-id="workflow-review-submit-changes-button"
 							@click="onSubmitChanges"
 						>
@@ -216,6 +220,14 @@ const onSubmitChanges = () => {
 						</N8nButton>
 					</N8nTooltip>
 				</div>
+				<N8nText
+					v-if="status.action === 'submit-changes' && submitChangesHint"
+					:id="submitChangesHintId"
+					tag="p"
+					size="small"
+					:class="$style.submitChangesHint"
+					>{{ submitChangesHint }}</N8nText
+				>
 			</div>
 		</template>
 	</N8nPopover>
