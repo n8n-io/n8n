@@ -29,7 +29,6 @@ import {
 	type AssignableGlobalRole,
 } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { OwnershipService } from './ownership.service';
@@ -37,7 +36,13 @@ import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';

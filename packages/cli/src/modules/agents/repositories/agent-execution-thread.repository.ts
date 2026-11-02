@@ -18,7 +18,8 @@ import {
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse, UserError, OperationalError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError, OperationalError } from '@n8n/errors';
 
 import { AgentProjectDeletionRepository } from './agent-project-deletion.repository';
 import { AgentUserDeletionRepository } from './agent-user-deletion.repository';

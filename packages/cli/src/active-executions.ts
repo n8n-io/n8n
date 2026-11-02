@@ -16,11 +16,8 @@ import type {
 	StructuredChunk,
 	WebhookResponseMode,
 } from 'n8n-workflow';
-import {
-	ExecutionCancelledError,
-	OperationalError,
-	SystemShutdownExecutionCancelledError,
-} from 'n8n-workflow';
+import { ExecutionCancelledError, SystemShutdownExecutionCancelledError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';

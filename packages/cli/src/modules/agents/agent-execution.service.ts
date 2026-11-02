@@ -15,9 +15,8 @@ import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import groupBy from 'lodash/groupBy';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 

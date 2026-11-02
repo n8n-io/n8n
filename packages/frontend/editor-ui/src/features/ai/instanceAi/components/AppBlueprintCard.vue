@@ -23,7 +23,7 @@ const visibility = ref(props.blueprint.visibility);
 const theme = ref(props.blueprint.theme);
 const additionalInstructions = ref(props.blueprint.additionalInstructions ?? '');
 
-const visibilityOptions = ['project', 'instance', 'public'] as const;
+const visibilityOptions = ['project', 'instance'] as const;
 const themeOptions = computed(() =>
 	(['light', 'dark', 'both'] as const).map((value) => ({
 		value,

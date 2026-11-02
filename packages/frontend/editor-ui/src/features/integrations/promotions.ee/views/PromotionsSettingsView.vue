@@ -8,6 +8,7 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
 	N8nLoading2,
 	N8nPreviewBadge,
@@ -22,6 +23,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { I18nT } from 'vue-i18n';
@@ -37,7 +39,7 @@ import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
 	ENVIRONMENTS_DOCS_URL,
-	ENVIRONMENTS_SETUP_DOCS_URL,
+	ENVIRONMENTS_PLAN_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
 } from '../promotions.constants';
@@ -54,6 +56,7 @@ const toast = useToast();
 const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canConnect, connect } = usePromotionCheckout();
@@ -164,10 +167,15 @@ async function remove(environment: PromotionEnvironment) {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
-			:docs-url="ENVIRONMENTS_SETUP_DOCS_URL"
+			:docs-url="ENVIRONMENTS_PLAN_DOCS_URL"
 		>
 			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
+				<N8nPreviewBadge size="xsmall" data-test-id="promotions-preview-badge" />
+				<N8nEnterpriseReadinessBadge
+					v-if="settingsStore.isEnterprisePlan"
+					size="xsmall"
+					data-test-id="promotions-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 

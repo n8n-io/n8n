@@ -146,6 +146,7 @@ beforeAll(async () => {
 		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
 		mock(),
 		Container.get(ProjectScopeService), // projectScopeService
+		mock(),
 	);
 });
 

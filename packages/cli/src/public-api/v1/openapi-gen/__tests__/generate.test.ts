@@ -3,7 +3,7 @@ import { Z } from '@n8n/api-types';
 import { ApiResponse, ControllerRegistryMetadata, Get, Patch } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { parse } from 'yaml';
 import { z } from 'zod';
 
