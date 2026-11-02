@@ -36,6 +36,7 @@ import {
 	type RoleService,
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
+	userHasScopes,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { CredentialsRepository, GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
@@ -82,7 +83,10 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowTemplatesService } from '../workflow-templates.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@/utils/ai-proxy-fetch', () => ({
 	createAiProxyFetch: vi.fn(() => vi.fn()),
 	createWebSearchFetch: vi.fn(() => vi.fn()),
@@ -94,7 +98,6 @@ vi.mock('node:fs/promises', () => ({
 	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';

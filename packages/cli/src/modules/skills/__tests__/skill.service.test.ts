@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import {
 	createSkillServices,
@@ -19,7 +19,10 @@ import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	hasGlobalScope: vi.fn(),

@@ -10,11 +10,14 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { type DataTableColumn, type DataTableService } from '@n8n/backend-module-data-table';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { EvaluationDatasetService } from '../evaluation-dataset.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 
 describe('EvaluationDatasetService', () => {

@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentTestRunService } from '@/modules/agents/agent-test-run.service';
 import { AgentWorkflowToolResumeService } from '@/modules/agents/agent-workflow-tool-resume.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { createMember } from '../shared/db/users';
 

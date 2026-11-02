@@ -9,7 +9,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -27,7 +27,10 @@ import {
 	createAgentSkillRefsService,
 } from './test-utils/stored-agent-config';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';

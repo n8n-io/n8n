@@ -9,7 +9,7 @@ import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError, ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
@@ -21,7 +21,10 @@ import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
 
 /**

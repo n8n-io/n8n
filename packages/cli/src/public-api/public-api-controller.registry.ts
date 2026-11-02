@@ -1,5 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, userHasScopes } from '@n8n/backend-services';
 import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
@@ -30,7 +30,6 @@ import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
 import { sendBinaryResponse } from '@/public-api/media-types/binary-response';
 import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {

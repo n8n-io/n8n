@@ -21,7 +21,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter } from 'n8n-core';
 
 import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 

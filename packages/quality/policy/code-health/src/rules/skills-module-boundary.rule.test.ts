@@ -111,7 +111,6 @@ import { SkillService } from '../../skills';`,
 			`
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '../../../telemetry';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { Skill } from '../database/entities/skill.entity';
 import { SkillService } from '@/modules/skills/services/skill.service';
 import { Service } from '@n8n/di';`,

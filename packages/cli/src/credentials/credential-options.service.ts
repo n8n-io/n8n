@@ -1,5 +1,5 @@
 import type { CredentialOptionsRequestDto } from '@n8n/api-types';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, userHasScopes } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
@@ -11,7 +11,6 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { getBase } from '@/workflow-execute-additional-data';
 
 import { CredentialsService } from './credentials.service';

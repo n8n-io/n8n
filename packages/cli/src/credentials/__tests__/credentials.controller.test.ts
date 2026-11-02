@@ -1,7 +1,18 @@
+import { userHasScopes } from '@n8n/backend-services';
 import type { Response } from 'express';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { PostHogClient } from '@/posthog';
 import type { MockInstance } from 'vitest';
+
+vi.mock('@n8n/backend-services', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/backend-services')>();
+	return { ...actual, userHasScopes: vi.fn(actual.userHasScopes) };
+});
+
+beforeEach(() => {
+	vi.mocked(userHasScopes).mockReset();
+});
+
 vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
 }));
@@ -21,7 +32,6 @@ import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
@@ -936,7 +946,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when editing external secret expression without permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -969,7 +979,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },

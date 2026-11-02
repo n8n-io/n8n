@@ -91,7 +91,8 @@ import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 // Draft runs check `agent:read`; these tests run as a user who holds it.
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn(async () => true),
 }));
 

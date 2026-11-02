@@ -14,7 +14,7 @@ import type {
 import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import {

@@ -29,7 +29,7 @@ import { AgentsSettingsService } from '@/modules/agents/agents-settings.service'
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@n8n/backend-module-data-table';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { generateFixSuggestion } from './agent-eval-fix-suggestion';
 import { judgeAgentAnswer } from './agent-eval-judge';

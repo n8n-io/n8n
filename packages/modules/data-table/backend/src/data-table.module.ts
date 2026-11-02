@@ -1,4 +1,7 @@
-import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
+import {
+	OwnershipTransferHandlerRegistry,
+	ScopedResourceResolverRegistry,
+} from '@n8n/backend-services';
 import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -31,6 +34,11 @@ export class DataTableModule implements ModuleInterface {
 			deleteAll: async (projectId) => {
 				await Container.get(DataTableService).deleteDataTableByProjectId(projectId);
 			},
+		});
+
+		Container.get(ScopedResourceResolverRegistry).register('dataTable', {
+			findProjectId: async (id) =>
+				await Container.get(DataTableRepository).findProjectIdForScope(id),
 		});
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');

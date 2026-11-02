@@ -11,7 +11,7 @@ import isEqual from 'lodash/isEqual';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 

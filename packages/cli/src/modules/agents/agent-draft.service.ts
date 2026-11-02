@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import type {

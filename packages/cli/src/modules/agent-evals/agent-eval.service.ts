@@ -31,7 +31,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { BadRequestError, ForbiddenError, NotFoundError, OperationalError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';

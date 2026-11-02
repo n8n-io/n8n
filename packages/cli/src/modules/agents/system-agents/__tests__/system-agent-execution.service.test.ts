@@ -9,7 +9,7 @@ import { FileNotFoundError } from 'n8n-core';
 import { Readable } from 'node:stream';
 import { UserError } from 'n8n-workflow';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -48,7 +48,10 @@ import type {
 	SystemAgentWorkspaceSource,
 } from '../system-agent.types';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 
 const AGENT_ID = 'test-assistant';
 const user = mock<User>({ id: 'user-1' });

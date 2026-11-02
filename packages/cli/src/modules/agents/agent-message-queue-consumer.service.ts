@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatExecutionService } from './agent-chat-execution.service';

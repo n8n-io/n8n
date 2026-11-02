@@ -26,7 +26,7 @@ import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { AccessService } from '@/services/access.service';
 
 const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;

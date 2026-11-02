@@ -8,7 +8,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
@@ -35,7 +35,8 @@ import {
 	WAKE_RESULT_TEXT_MAX_CHARS,
 } from '../background-job-messages';
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
 

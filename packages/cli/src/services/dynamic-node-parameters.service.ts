@@ -28,10 +28,9 @@ import {
 	findDisplayedProperty,
 } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, userHasScopes } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { withExpressionIsolate } from '@/utils';
 
 import { WorkflowLoaderService } from './workflow-loader.service';

@@ -6,12 +6,13 @@ import { mock } from 'vitest-mock-extended';
 
 import { AgentContextService } from '@/modules/agents/agent-context.service';
 import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import type { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn(),
 }));
 

@@ -1,7 +1,7 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { EventService, ExecutionRedactionServiceProxy, userHasScopes } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -50,7 +50,6 @@ import { BadRequestError, ConflictError, InternalServerError, NotFoundError } fr
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';

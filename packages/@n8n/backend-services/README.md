@@ -31,6 +31,9 @@ and infrastructure services that need the persistence layer or that only
 - `UrlService`: instance and webhook URLs.
 - `CacheService`: application cache access.
 - `RedisClientService`: shared Redis connections and support code.
+- `userHasScopes`: the scope checks behind `@GlobalScope` and `@ProjectScope`.
+- `ScopedResourceResolverRegistry`: lets a module tell the scope checks which
+  project owns one of its resources.
 
 The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
 and the scope checks here, one area at a time.

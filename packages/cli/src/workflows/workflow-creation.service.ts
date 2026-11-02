@@ -1,8 +1,8 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService, CredentialsFinderService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService, userHasScopes } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { EntityManager, User, Project, Folder } from '@n8n/db';
+import type { EntityManager, OperationContext, User, Project, Folder } from '@n8n/db';
 import {
 	ProjectRepository,
 	SharedWorkflow,
@@ -26,7 +26,6 @@ import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
 import { NodeTypes } from '@/node-types';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -346,7 +345,7 @@ export class WorkflowCreationService {
 					newWorkflow,
 					user,
 					effectiveProjectId,
-					transactionManager,
+					ctx,
 					floor,
 				);
 
@@ -463,7 +462,7 @@ export class WorkflowCreationService {
 		newWorkflow: WorkflowEntity,
 		user: User,
 		effectiveProjectId: string,
-		transactionManager: EntityManager,
+		ctx: OperationContext,
 		floor: RedactionFloor,
 	): Promise<void> {
 		// No license — the field is meaningless, drop any incoming value.
@@ -483,7 +482,7 @@ export class WorkflowCreationService {
 			['workflow:enableRedaction'],
 			false,
 			{ projectId: effectiveProjectId },
-			transactionManager,
+			ctx,
 		);
 
 		// User can't update the policy, drop any incoming value.

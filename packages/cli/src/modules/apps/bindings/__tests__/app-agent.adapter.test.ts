@@ -8,11 +8,14 @@ import { mock } from 'vitest-mock-extended';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { AppAgentAdapter } from '../app-agent.adapter';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@/modules/agents/agents.service', () => ({ AgentsService: class {} }));
 vi.mock('@/modules/agents/agent-execution-orchestrator.service', () => ({
 	AgentExecutionOrchestratorService: class {},

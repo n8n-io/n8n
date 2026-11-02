@@ -6,6 +6,7 @@ import {
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
+	userHasScopes,
 } from '@n8n/backend-services';
 import type {
 	CredentialsRepository,
@@ -64,12 +65,20 @@ import {
 	DCR_MANAGED_CREDENTIAL_FIELDS,
 	type DcrManagedCredentialField,
 } from '@/oauth/dcr-managed-fields';
-import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import { mockExistingCredential } from './credentials.test-data';
+
+vi.mock('@n8n/backend-services', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/backend-services')>();
+	return { ...actual, userHasScopes: vi.fn(actual.userHasScopes) };
+});
+
+beforeEach(() => {
+	vi.mocked(userHasScopes).mockReset();
+});
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 const ownerActor: PolicyActor = { kind: 'user', user: ownerUser };
@@ -4340,7 +4349,7 @@ describe('CredentialsService', () => {
 			} as any);
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
 		it('should allow owner to create global credential', async () => {
@@ -4535,7 +4544,7 @@ describe('CredentialsService', () => {
 
 		describe('external secrets', () => {
 			it('should prevent use of external secret expression when required permission is missing', async () => {
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.mocked(userHasScopes).mockResolvedValue(false);
 				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 				const payload = {
 					name: 'Test Credential',
@@ -4848,7 +4857,7 @@ describe('CredentialsService', () => {
 		describe('external secrets', () => {
 			beforeEach(() => {
 				vi.spyOn(service, 'decrypt').mockResolvedValue({});
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				vi.mocked(userHasScopes).mockResolvedValue(true);
 			});
 
 			it('should list all unavailable external secret providers in error message', async () => {
@@ -4975,7 +4984,7 @@ describe('CredentialsService', () => {
 			beforeEach(() => {
 				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as never);
-				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				vi.mocked(userHasScopes).mockResolvedValue(true);
 			});
 
 			it('keeps incoming data as-is when dataMerge is replace', async () => {

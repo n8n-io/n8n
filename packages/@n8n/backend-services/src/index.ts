@@ -33,6 +33,8 @@ export {
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
+export { userHasScopes } from './permissions.ee/check-access';
+export { ScopedResourceResolverRegistry } from './permissions.ee/scoped-resource-resolver.registry';
 export {
 	FavoriteResourceResolverRegistry,
 	type FavoriteResourceMeta,
