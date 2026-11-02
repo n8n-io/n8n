@@ -8,9 +8,20 @@ function exampleVerdicts(prompt: string): string[] {
 }
 
 describe.each([
-	{ name: 'expectations judge', prompt: BUILD_EXPECTATIONS_VERIFY_PROMPT, reasonKey: '"reason"' },
-	{ name: 'checklist judge', prompt: MOCK_EXECUTION_VERIFY_PROMPT, reasonKey: '"reasoning"' },
-])('$name prompt', ({ prompt, reasonKey }) => {
+	{
+		name: 'expectations judge',
+		prompt: BUILD_EXPECTATIONS_VERIFY_PROMPT,
+		reasonKey: '"reason"',
+		// The third shows a verdict for a user turn that never came.
+		exampleCount: 3,
+	},
+	{
+		name: 'checklist judge',
+		prompt: MOCK_EXECUTION_VERIFY_PROMPT,
+		reasonKey: '"reasoning"',
+		exampleCount: 2,
+	},
+])('$name prompt', ({ prompt, reasonKey, exampleCount }) => {
 	it('tells the judge to reason before it decides', () => {
 		expect(REASONING_FIRST_RULE).toBe('Write your reasoning FIRST, then decide pass or fail.');
 		expect(prompt).toContain(REASONING_FIRST_RULE);
@@ -18,7 +29,7 @@ describe.each([
 
 	it('shows the reason before the verdict in every example', () => {
 		const examples = exampleVerdicts(prompt);
-		expect(examples).toHaveLength(2);
+		expect(examples).toHaveLength(exampleCount);
 		for (const example of examples) {
 			const reasonAt = example.indexOf(reasonKey);
 			expect(reasonAt).toBeGreaterThanOrEqual(0);

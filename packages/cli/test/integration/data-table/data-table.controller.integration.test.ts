@@ -805,7 +805,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		});
 		expect(dataTableColumnInDb).toBeNull();
 
-		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {}, [])).rejects.toThrow(
+		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {}, [], {})).rejects.toThrow(
 			QueryFailedError,
 		);
 	});
@@ -2055,6 +2055,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2100,6 +2101,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2142,6 +2144,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2203,6 +2206,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2242,6 +2246,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(0);
 	});
@@ -2642,6 +2647,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 	});
@@ -2682,6 +2688,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 	});
@@ -2734,6 +2741,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
@@ -2783,6 +2791,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
@@ -2831,6 +2840,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data.map((r) => r.first)).toEqual(['test value 1']);
@@ -2878,6 +2888,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
@@ -3111,6 +3122,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
@@ -3147,6 +3159,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
@@ -3180,6 +3193,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
@@ -3214,6 +3228,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(0);
 	});
@@ -4784,7 +4799,12 @@ describe('Source Control read-only mode', () => {
 
 	describe('row endpoints should still work', () => {
 		const getRows = async () =>
-			await dataTableRowsRepository.getManyAndCount(testDataTable.id, {}, testDataTable.columns);
+			await dataTableRowsRepository.getManyAndCount(
+				testDataTable.id,
+				{},
+				testDataTable.columns,
+				{},
+			);
 
 		test('POST /projects/:projectId/data-tables/:dataTableId/insert should succeed', async () => {
 			await authOwnerAgent

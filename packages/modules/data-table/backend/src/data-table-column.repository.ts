@@ -63,6 +63,14 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		}
 	}
 
+	/**
+	 * Context-based form of {@link getColumns}. The manager form below is legacy and
+	 * goes away as its callers migrate to `OperationContext`.
+	 */
+	async getColumnsInContext(dataTableId: string, ctx: OperationContext) {
+		return await this.getColumns(dataTableId, this.managerFor(ctx));
+	}
+
 	async getColumns(dataTableId: string, trx?: EntityManager) {
 		const em = trx ?? this.manager;
 		const columns = await em

@@ -209,6 +209,7 @@ describe('AgentMemoryTraceService', () => {
 				'agent-1',
 				'current-thread',
 				toolCallIds,
+				{},
 			);
 			expect(result.flags).toEqual({
 				pending: {

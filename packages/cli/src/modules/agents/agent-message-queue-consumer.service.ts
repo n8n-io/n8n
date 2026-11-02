@@ -187,10 +187,11 @@ export class AgentMessageQueueConsumer {
 				const user = await this.getThreadOwner(thread, surface);
 				sender.send({
 					type: 'execution-started',
+					...(payload.kind !== 'integration' && payload.stopReportId ? { stopReport: true } : {}),
 					executionId: admission.executionId,
 					sessionId: thread.id,
 					inputMessageIds: admission.inputMessageIds,
-					message: payload.message,
+					...(payload.kind !== 'integration' && payload.hidden ? {} : { message: payload.message }),
 				});
 				signal.throwIfAborted();
 
@@ -303,6 +304,8 @@ export class AgentMessageQueueConsumer {
 			projectId: thread.projectId,
 			user,
 			message: payload.message,
+			pauseReport: Boolean(payload.stopReportId),
+			hideUserMessageFromTranscript: payload.hidden,
 			attachments: payload.attachments,
 			sessionId: thread.id,
 			sessionMode: 'existing',

@@ -3,11 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import {
-	ExecutionNotFoundError,
-	type ExecutionRecord,
-	type ExecutionStore,
-} from '../execution-store';
+import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus, StepStatus, WorkflowDocument } from '../execution.types';
 import { StartExecutionService, type InvalidParentLinkReason } from '../start-execution.service';
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
@@ -32,6 +28,7 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
@@ -46,12 +43,10 @@ function makeStepStore(loadStep = vi.fn()): StepStore {
 	return { loadStep } as unknown as StepStore;
 }
 
-/** A parent execution and a step of it, in the state that starts a sub-execution. */
 function parentRows(executionStatus: ExecutionStatus, stepStatus: StepStatus) {
-	const execution = { id: 'exec-parent', status: executionStatus } as ExecutionRecord;
 	const step = { id: 'step-1', executionId: 'exec-parent', status: stepStatus } as StepRecord;
 	return {
-		store: makeStore({ loadExecution: vi.fn().mockResolvedValue(execution) }),
+		store: makeStore({ loadExecutionStatus: vi.fn().mockResolvedValue(executionStatus) }),
 		stepStore: makeStepStore(vi.fn().mockResolvedValue(step)),
 	};
 }
@@ -107,16 +102,27 @@ describe('StartExecutionService', () => {
 		};
 
 		it.each([
-			{ name: 'a waiting step that awaits it', awaited: true, stepStatus: 'waiting' as const },
-			{ name: 'a running step that does not', awaited: false, stepStatus: 'running' as const },
-		])('stores the link to $name', async ({ awaited, stepStatus }) => {
-			const { store, stepStore } = parentRows('running', stepStatus);
+			{
+				name: 'a waiting step that awaits it',
+				awaited: true,
+				executionStatus: 'waiting' as const,
+				stepStatus: 'waiting' as const,
+			},
+			{
+				name: 'a running step that does not',
+				awaited: false,
+				executionStatus: 'running' as const,
+				stepStatus: 'running' as const,
+			},
+		])('stores the link to $name', async ({ awaited, executionStatus, stepStatus }) => {
+			const { store, stepStore } = parentRows(executionStatus, stepStatus);
 			const service = new StartExecutionService(admittance, store, stepStore, makeQueue());
 			const parent = { executionId: 'exec-parent', stepId: 'step-1', awaited };
 
 			await service.start({ ...base, parent });
 
-			expect(store.loadExecution).toHaveBeenCalledWith('exec-parent');
+			expect(store.loadExecutionStatus).toHaveBeenCalledWith('exec-parent');
+			expect(store.loadExecution).not.toHaveBeenCalled();
 			expect(stepStore.loadStep).toHaveBeenCalledWith('step-1');
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent }));
 		});
@@ -126,13 +132,13 @@ describe('StartExecutionService', () => {
 				name: 'the parent execution has ended',
 				executionStatus: 'completed',
 				stepStatus: 'waiting',
-				reason: 'execution-ended',
+				reason: 'execution-not-live',
 			},
 			{
 				name: 'the parent execution has not started',
 				executionStatus: 'queued',
 				stepStatus: 'waiting',
-				reason: 'execution-ended',
+				reason: 'execution-not-live',
 			},
 			{
 				name: 'an awaiting step is not waiting',
@@ -183,7 +189,9 @@ describe('StartExecutionService', () => {
 					...base,
 					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
 				}),
-			).rejects.toMatchObject({ reason: 'step-of-another-execution' });
+			).rejects.toThrow(
+				'Invalid parent link (step-of-another-execution): step step-1 belongs to execution exec-other, not exec-parent',
+			);
 		});
 
 		it.each([
@@ -196,7 +204,7 @@ describe('StartExecutionService', () => {
 		])('rejects the link when the $name does not exist', async ({ error, reason }) => {
 			const { store, stepStore } = parentRows('running', 'waiting');
 			if (error instanceof ExecutionNotFoundError) {
-				vi.mocked(store.loadExecution).mockRejectedValue(error);
+				vi.mocked(store.loadExecutionStatus).mockRejectedValue(error);
 			} else {
 				vi.mocked(stepStore.loadStep).mockRejectedValue(error);
 			}
@@ -210,24 +218,20 @@ describe('StartExecutionService', () => {
 			).rejects.toMatchObject({ name: 'InvalidParentLinkError', reason });
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
-	});
 
-	it('records no parent for a top-level execution', async () => {
-		const admittance: AdmittanceService = {
-			evaluate: vi.fn().mockResolvedValue({ accept: true }),
-		};
-		const store = makeStore();
-		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+		it('rethrows a lookup failure that is not a missing row', async () => {
+			const failure = new Error('connection lost');
+			const { store, stepStore } = parentRows('running', 'waiting');
+			vi.mocked(stepStore.loadStep).mockRejectedValue(failure);
+			const service = new StartExecutionService(admittance, store, stepStore, makeQueue());
 
-		await service.start({
-			workflowId: 'wf-1',
-			graph: sampleGraph,
-			workflow: sampleWorkflow,
-			executionId: 'exec-id-1',
-			callerContext: { hostMode: 'trigger' },
+			await expect(
+				service.start({
+					...base,
+					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
+				}),
+			).rejects.toBe(failure);
 		});
-
-		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent: null }));
 	});
 
 	it('stores the caller context as given', async () => {

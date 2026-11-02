@@ -1,54 +1,48 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator, Tracer } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
-import { hrTimeToMilliseconds } from '@opentelemetry/core';
+import { hrTimeToMilliseconds, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { StartWorkflowParams } from '../execution-level-tracer.types';
-import type { OtelSettingsService } from '../otel-settings.service';
-import {
-	type CustomAttributePrefixes,
-	type OtelConfig,
-	OtelCustomAttributesConfig,
-} from '../otel.config';
+import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from '../otel.config';
+import type { TracingContext } from '../tracing-context';
 import { OtelTestProvider } from './support/otel-test-provider';
+
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
 	let tracer: ExecutionLevelTracer;
 	const logger = mock<Logger>();
 
-	const makeOtelSettingsService = (overrides: Partial<OtelConfig> = {}): OtelSettingsService => {
-		const _settings = { injectOutbound: true, ...overrides } as OtelConfig;
-		return {
-			getSettings: () => ({ ..._settings, envManagedFields: [] }),
-		} as unknown as OtelSettingsService;
-	};
-
-	const makeTracer = ({
-		settings,
-		prefixes,
-	}: {
-		settings?: Partial<OtelConfig>;
-		prefixes?: CustomAttributePrefixes;
-	} = {}) => {
+	const makeTracer = ({ prefixes }: { prefixes?: CustomAttributePrefixes } = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
-		return new ExecutionLevelTracer(
-			makeOtelSettingsService(settings),
-			logger,
-			customAttributesConfig,
-		);
+		return new ExecutionLevelTracer(logger, customAttributesConfig);
+	};
+
+	const withGlobalPropagator = (propagator: TextMapPropagator, run: () => void) => {
+		propagation.disable();
+		propagation.setGlobalPropagator(propagator);
+		try {
+			run();
+		} finally {
+			propagation.disable();
+			propagation.setGlobalPropagator(new W3CTraceContextPropagator());
+		}
 	};
 
 	beforeAll(() => {
 		otel = OtelTestProvider.create({ withContextManager: true });
+		propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 	});
 
 	afterAll(async () => {
+		propagation.disable();
 		await otel.shutdown();
 	});
 
@@ -953,42 +947,52 @@ describe('ExecutionLevelTracer', () => {
 		});
 
 		it('should not throw when injection fails, so telemetry never stops the request', () => {
-			const failingSettings = {
-				getSettings: () => {
-					throw new Error('settings unavailable');
+			const failingPropagator: TextMapPropagator = {
+				inject: () => {
+					throw new Error('propagator unavailable');
 				},
-			} as unknown as OtelSettingsService;
-			const failingTracer = new ExecutionLevelTracer(
-				failingSettings,
-				logger,
-				new OtelCustomAttributesConfig(),
-			);
+				extract: (ctx) => ctx,
+				fields: () => [],
+			};
+			tracer.startWorkflow({
+				executionId: 'exec-fail',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
 
 			const headers: Record<string, string> = {};
-			expect(() => failingTracer.injectTraceHeaders('exec-fail', 'HTTP', headers)).not.toThrow();
+			withGlobalPropagator(failingPropagator, () => {
+				expect(() => tracer.injectTraceHeaders('exec-fail', 'HTTP', headers)).not.toThrow();
+			});
 
 			expect(headers).toEqual({});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to inject trace headers',
 				expect.objectContaining({ executionId: 'exec-fail' }),
 			);
+			tracer.endWorkflow({
+				executionId: 'exec-fail',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
 		});
 
-		it('should no-op when injectOutbound is false', () => {
-			const noInjectTracer = makeTracer({ settings: { injectOutbound: false } });
-
-			noInjectTracer.startWorkflow({
+		it('should write no headers while the global propagator is empty', () => {
+			tracer.startWorkflow({
 				executionId: 'exec-12',
 				tracingContext: inboundTracingContext,
 				workflow: defaultWorkflow,
 			});
 
 			const headers: Record<string, string> = {};
-			noInjectTracer.injectTraceHeaders('exec-12', undefined, headers);
+			withGlobalPropagator(TRACING_OFF.propagator, () => {
+				tracer.injectTraceHeaders('exec-12', undefined, headers);
+			});
 
-			expect(headers.traceparent).toBeUndefined();
+			expect(headers).toEqual({});
 
-			noInjectTracer.endWorkflow({
+			tracer.endWorkflow({
 				executionId: 'exec-12',
 				status: 'success',
 				mode: 'manual',
@@ -1041,20 +1045,20 @@ describe('ExecutionLevelTracer', () => {
 			expect(workflowSpan.spanContext().traceId).not.toBe(foreignSpan.spanContext().traceId);
 		});
 
-		it('should emit W3C trace context while another library owns the global propagator', () => {
+		it('should save W3C trace context and send the global propagator headers when another library owns it', () => {
 			const foreignPropagator: TextMapPropagator = {
 				inject: (_ctx, carrier, setter) => setter.set(carrier, 'sentry-trace', 'foreign'),
 				extract: (ctx) => ctx,
 				fields: () => ['sentry-trace'],
 			};
-			propagation.setGlobalPropagator(foreignPropagator);
+			const headers: Record<string, string> = {};
+			let persisted: TracingContext | undefined;
 
-			try {
-				const persisted = tracer.startWorkflow({
+			withGlobalPropagator(foreignPropagator, () => {
+				persisted = tracer.startWorkflow({
 					executionId: 'exec-w3c',
 					workflow: defaultWorkflow,
 				});
-				const headers: Record<string, string> = {};
 				tracer.injectTraceHeaders('exec-w3c', undefined, headers);
 				tracer.endWorkflow({
 					executionId: 'exec-w3c',
@@ -1062,13 +1066,10 @@ describe('ExecutionLevelTracer', () => {
 					mode: 'webhook',
 					isRetry: false,
 				});
+			});
 
-				expect(persisted.traceparent).toMatch(traceparentPattern);
-				expect(headers.traceparent).toMatch(traceparentPattern);
-				expect(headers['sentry-trace']).toBeUndefined();
-			} finally {
-				propagation.disable();
-			}
+			expect(persisted?.traceparent).toMatch(traceparentPattern);
+			expect(headers).toEqual({ 'sentry-trace': 'foreign' });
 		});
 	});
 

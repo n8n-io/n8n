@@ -674,6 +674,7 @@ export class McpService {
 			this.nodeTypes,
 			this.telemetry,
 			this,
+			this.logger,
 		);
 		registerIfAllowed(testWorkflowTool);
 

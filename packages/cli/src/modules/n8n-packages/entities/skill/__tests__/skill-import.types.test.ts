@@ -11,10 +11,9 @@ function instanceSkill(id: string, name = id): SerializedSkill {
 }
 
 function plan(...ids: string[]): SkillImportPlan {
-	const target = { projectId: null, agentId: null };
+	const target = { projectId: null };
 	return {
 		shared: ids.map((id) => ({ skill: instanceSkill(id), target, usedBy: [`agent_${id}`] })),
-		owned: new Map(),
 		sharedUsers: new Set(),
 		raisedRevisions: new Map(),
 	};
@@ -50,8 +49,8 @@ describe('reconcileSharedWrites', () => {
 
 	it('reports a project skill that two project scopes plan for their own projects', () => {
 		const plans = [plan('shared'), plan('shared')];
-		plans[0].shared[0].target = { projectId: 'project_1', agentId: null };
-		plans[1].shared[0].target = { projectId: 'project_2', agentId: null };
+		plans[0].shared[0].target = { projectId: 'project_1' };
+		plans[1].shared[0].target = { projectId: 'project_2' };
 		plans[1].shared[0].usedBy = ['agent_second'];
 		expect(reconcileSharedWrites(plans)).toEqual([
 			[],
