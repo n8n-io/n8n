@@ -189,11 +189,13 @@ describe('Promotions in Public API', () => {
 	});
 
 	it('rejects a malformed environment id', async () => {
-		const response = await testServer
-			.publicApiAgentFor(owner)
-			.get('/promotions/environments/not-a-uuid');
+		const agent = testServer.publicApiAgentFor(owner);
 
-		expect(response.status).toBe(400);
+		const environment = await agent.get('/promotions/environments/not-a-uuid');
+		const missingProjects = await agent.get('/promotions/environments/not-a-uuid/missing-projects');
+
+		expect(environment.status).toBe(400);
+		expect(missingProjects.status).toBe(400);
 	});
 
 	describe('GitLab provider validation', () => {
@@ -1743,9 +1745,13 @@ describe('Promotions in Public API', () => {
 
 		const list = await agent.get('/promotions/environments');
 		const apply = await agent.post(`/promotions/environments/${randomUUID()}/apply`);
+		const missingProjects = await agent.get(
+			`/promotions/environments/${randomUUID()}/missing-projects`,
+		);
 
 		expect(list.status).toBe(403);
 		expect(apply.status).toBe(403);
+		expect(missingProjects.status).toBe(403);
 	});
 
 	it('rejects every request when the feature is not licensed', async () => {
