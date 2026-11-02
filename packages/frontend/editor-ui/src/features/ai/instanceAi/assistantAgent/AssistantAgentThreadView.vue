@@ -65,6 +65,7 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
+import { useAssistantAgentMessageTelemetry } from './useAssistantAgentMessageTelemetry';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 
@@ -80,6 +81,7 @@ const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
 const threadsStore = useAssistantAgentThreadsStore();
+const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
 
 // A thread that the empty view just created has its first message waiting. Until
 // the server accepts it, the thread does not exist there yet.
@@ -134,6 +136,7 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 		});
 	}
 	pendingReferences = [];
+	messageTelemetry.onMessageAccepted();
 }
 
 const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
@@ -147,6 +150,7 @@ const trace = useAssistantAgentTrace({
 
 watch(panel, (current) => {
 	if (!current || !pendingMessage) return;
+	messageTelemetry.expectHostSend(pendingMessage);
 	current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
 });
 
@@ -173,12 +177,14 @@ const thread = useAssistantArtifactThread({
 	// Until the chat mounts, its history is not known, so a past build does not open the preview.
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
 	// The hand-off context, for example a credential to set up, goes with this message only.
-	sendMessage: (text, handoffContext) =>
+	sendMessage: (text, authorship, handoffContext) => {
+		messageTelemetry.expectHostSend({ text, authorship });
 		panel.value?.sendMessageFromOutside(
 			text,
 			[],
 			handoffContext ? { context: handoffContext } : undefined,
-		),
+		);
+	},
 });
 provideArtifactThread(thread);
 
@@ -423,6 +429,7 @@ function removeStagedNodes(chipId: string): void {
 						:interaction-extensions="interactionExtensions"
 						@stream-event="trace.recordEvent"
 						@session-created="onSessionCreated"
+						@message-sending="messageTelemetry.trackSend"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
 					>

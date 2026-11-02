@@ -4270,7 +4270,11 @@ describe('AgentChatPanel', () => {
 
 	describe('host extension API', () => {
 		type HostPanelVm = {
-			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			sendMessageFromOutside: (
+				message: string,
+				files?: File[],
+				clientContext?: Record<string, unknown>,
+			) => void;
 			isDirty: () => boolean;
 			setDraft: (text: string) => void;
 			openFilePicker: () => void;
@@ -4401,6 +4405,51 @@ describe('AgentChatPanel', () => {
 				await flushPromises();
 
 				expect(wrapper.emitted('message-accepted')).toBeUndefined();
+			});
+		});
+
+		describe('message-sending', () => {
+			it('emits each new message on send, also when the server does not accept it', async () => {
+				sendMessageMock.mockResolvedValueOnce('busy');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('hello', [], { attachments: [] });
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'hello', files: [], clientContext: { attachments: [] }, isFirstMessage: true }],
+				]);
+			});
+
+			it('emits typed text that cancels an open question, without its files', async () => {
+				messagesMock.value = [
+					{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage,
+					openInteractiveMessage(),
+				];
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('go another direction', [
+					new File(['a'], 'a.png', { type: 'image/png' }),
+				]);
+				await flushPromises();
+
+				expect(cancelAndSteerMock).toHaveBeenCalledOnce();
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'go another direction', files: [], isFirstMessage: false }],
+				]);
+			});
+
+			it('marks a message as not the first once the thread has a user message', async () => {
+				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+				sendMessageMock.mockResolvedValueOnce('sent');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('again');
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')?.[0]?.[0]).toMatchObject({
+					isFirstMessage: false,
+				});
 			});
 		});
 
