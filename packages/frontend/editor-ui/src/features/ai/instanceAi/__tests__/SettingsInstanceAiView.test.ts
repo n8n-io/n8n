@@ -64,16 +64,6 @@ const renderModelDialog = ({ props }: { props: Record<string, unknown> }) =>
 const renderSearchDialog = ({ props }: { props: Record<string, unknown> }) =>
 	renderConnectionDialog({ props: { kind: 'search', ...props } });
 
-async function selectOption(select: HTMLElement, label: string) {
-	const listboxId = select.querySelector('input')?.getAttribute('aria-controls');
-	expect(listboxId).toBeTruthy();
-	const option = Array.from(
-		document.getElementById(listboxId!)?.querySelectorAll('[role="option"]') ?? [],
-	).find((element) => element.textContent === label);
-	expect(option).toBeDefined();
-	await fireEvent.click(option!);
-}
-
 function setPlanName(settingsStore: ReturnType<typeof useSettingsStore>, planName: string) {
 	settingsStore.settings.license = { ...settingsStore.settings.license, planName };
 }
@@ -668,69 +658,12 @@ describe('SettingsInstanceAiView', () => {
 			expect(save).toHaveBeenCalled();
 		});
 
-		it('shows the MCP tool category permissions when the group is expanded', async () => {
-			const { getByTestId, getByLabelText, queryByTestId } = renderComponent();
+		it('does not render MCP tool permission settings', () => {
+			const { queryByTestId } = renderComponent();
 
-			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
-
-			await waitFor(() => {
-				expect(getByTestId('n8n-agent-permission-mcpRead')).toBeVisible();
-				expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible();
-			});
-			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
-		});
-
-		it.each([
-			{
-				permissions: { mcpRead: 'always_allow' as const, mcpWrite: 'require_approval' as const },
-				summary: 'settings.n8nAgent.permissions.group.default',
-			},
-			{
-				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'require_approval' as const },
-				summary: 'settings.n8nAgent.permissions.group.exception',
-			},
-			{
-				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'always_allow' as const },
-				summary: 'settings.n8nAgent.permissions.group.exceptions',
-			},
-		])('shows $summary for MCP tool category permissions', ({ permissions, summary }) => {
-			store.$patch({
-				settings: {
-					...store.settings!,
-					permissions,
-				},
-			});
-
-			const { getByTestId } = renderComponent();
-
-			expect(getByTestId('n8n-agent-permission-group-mcp').textContent).toContain(summary);
-		});
-
-		it('locks the MCP permission group when MCP access is disabled', () => {
-			store.$patch({ settings: { ...store.settings!, mcpAccessEnabled: false } });
-
-			const { queryByTestId, queryByLabelText } = renderComponent();
-
-			expect(queryByLabelText('Toggle settings.n8nAgent.permissions.group.mcp')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-group-mcp')).toBeNull();
 			expect(queryByTestId('n8n-agent-permission-mcpRead')).toBeNull();
 			expect(queryByTestId('n8n-agent-permission-mcpWrite')).toBeNull();
-		});
-
-		it('persists an MCP tool category permission change', async () => {
-			const setPermission = vi.spyOn(store, 'setPermission');
-			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
-			const { getByTestId, getByLabelText } = renderComponent();
-
-			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
-			await waitFor(() => expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible());
-
-			await selectOption(
-				getByTestId('n8n-agent-permission-mcpWrite'),
-				'settings.n8nAgent.permissions.blocked',
-			);
-
-			expect(setPermission).toHaveBeenCalledWith('mcpWrite', 'blocked');
-			expect(save).toHaveBeenCalled();
 		});
 
 		it('offers only always_allow and blocked for createPreference', async () => {

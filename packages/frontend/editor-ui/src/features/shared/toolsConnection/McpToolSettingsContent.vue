@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { N8nButton, N8nDialogBody, N8nDialogFooter, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { DEFAULT_INSTANCE_AI_PERMISSIONS, type McpToolPermissions } from '@n8n/api-types';
+import { DEFAULT_MCP_TOOL_PERMISSIONS, type McpToolPermissions } from '@n8n/api-types';
 
 import McpConnectionStatusCallout from './McpConnectionStatusCallout.vue';
 import McpDetailBody from './McpDetailBody.vue';
@@ -39,12 +39,7 @@ const isConnectionUnhealthy = computed(() => props.item.status === 'disconnected
 const arePermissionsDisabled = computed(() => props.item.status !== 'connected');
 
 const initialSettings = (): McpToolSettings =>
-	props.item.settings ?? {
-		categories: {
-			read: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpRead,
-			write: DEFAULT_INSTANCE_AI_PERMISSIONS.mcpWrite,
-		},
-	};
+	props.item.settings ?? structuredClone(DEFAULT_MCP_TOOL_PERMISSIONS);
 
 const draftSettings = ref<McpToolSettings>(initialSettings());
 const draftPermissions = computed<McpToolPermissions>({

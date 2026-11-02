@@ -167,7 +167,6 @@ const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 interface PermissionGroup {
 	id: string;
 	labelKey: BaseTextKey;
-	descriptionKey?: BaseTextKey;
 	keys: Array<keyof InstanceAiPermissions>;
 }
 
@@ -216,12 +215,6 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		labelKey: 'settings.n8nAgent.permissions.group.web',
 		keys: ['fetchUrl', 'webSearch'],
 	},
-	{
-		id: 'mcp',
-		labelKey: 'settings.n8nAgent.permissions.group.mcp',
-		descriptionKey: 'settings.n8nAgent.permissions.group.mcpDescription',
-		keys: ['mcpRead', 'mcpWrite'],
-	},
 ];
 
 const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
@@ -244,13 +237,7 @@ const permissionGroups = computed(() => [
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
-function isGroupLocked(group: PermissionGroup) {
-	return isOff.value || (group.id === 'mcp' && !isMcpAccessEnabled.value);
-}
-
 function groupSummary(group: PermissionGroup) {
-	if (group.id === 'mcp' && !isMcpAccessEnabled.value)
-		return i18n.baseText('settings.n8nAgent.permissions.group.mcpDisabled');
 	// Each key has its own default, so compare against that one. Comparing
 	// against `require_approval` counts an untouched Preferences group, whose
 	// default is `always_allow`, as an exception.
@@ -739,26 +726,18 @@ async function handleDataSharingToggle(value: boolean) {
 						v-for="group in permissionGroups"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
-						:class="{ [$style.dim]: isGroupLocked(group) }"
+						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText(group.labelKey)"
-						:expandable="!isGroupLocked(group)"
+						:expandable="!isOff"
 						:expand-label="groupSummary(group)"
 						:collapse-label="groupSummary(group)"
 						:data-test-id="`n8n-agent-permission-group-${group.id}`"
 					>
-						<template v-if="isGroupLocked(group)" #action>
+						<template v-if="isOff" #action>
 							<N8nText size="small" color="text-light">{{ groupSummary(group) }}</N8nText>
 						</template>
 						<template #expanded>
 							<div :class="$style.permissionList">
-								<N8nText
-									v-if="group.descriptionKey"
-									:class="$style.permissionDescription"
-									size="small"
-									color="text-light"
-								>
-									{{ i18n.baseText(group.descriptionKey) }}
-								</N8nText>
 								<div v-for="key in group.keys" :key="key" :class="$style.permissionRow">
 									<N8nText size="small" color="text-dark">
 										{{ i18n.baseText(`settings.n8nAgent.permissions.${key}` as BaseTextKey) }}
@@ -767,7 +746,7 @@ async function handleDataSharingToggle(value: boolean) {
 										:class="$style.permissionSelect"
 										:model-value="store.getPermission(key)"
 										size="small"
-										:disabled="store.isSaving || isGroupLocked(group)"
+										:disabled="store.isSaving || isOff"
 										:data-test-id="`n8n-agent-permission-${key}`"
 										@update:model-value="
 											handlePermissionChange(key, $event as InstanceAiPermissionMode)
@@ -914,10 +893,6 @@ async function handleDataSharingToggle(value: boolean) {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
-}
-
-.permissionDescription {
-	padding-bottom: var(--spacing--2xs);
 }
 
 .permissionRow {
