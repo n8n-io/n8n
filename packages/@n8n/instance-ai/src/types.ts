@@ -1686,6 +1686,18 @@ export interface InstanceAiAgentContextReader {
 	lookup(input: AgentContextLookup): Promise<Record<string, unknown>>;
 }
 
+/** A stored file of the thread, as `parse-file` reads it. */
+export interface InstanceAiStoredFile {
+	fileName: string;
+	mimeType: string;
+	content: Buffer;
+}
+
+export interface InstanceAiStoredFileReader {
+	/** Gives `undefined` when the thread has no such file or its bytes are gone. */
+	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+}
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 /** An artifact that a tool created or changed. Tools pass the name when they know it. */
@@ -1864,6 +1876,12 @@ export interface InstanceAiContext {
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];
+	/**
+	 * Reads stored files of the thread by id. When it is set, `parse-file` takes
+	 * a `fileId` and is registered on every turn, so the tool list stays stable
+	 * and files from earlier messages stay readable.
+	 */
+	storedFiles?: InstanceAiStoredFileReader;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */

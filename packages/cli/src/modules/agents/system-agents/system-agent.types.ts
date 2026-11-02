@@ -68,6 +68,18 @@ interface SystemAgentTurnBase<TLease> {
 	 * the payload as it is, so do not put secrets in it.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
+	/**
+	 * Read a stored attachment of this thread by id, from any message. Gives
+	 * `undefined` for a file of another thread or a file whose bytes are gone.
+	 */
+	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
+}
+
+/** A stored attachment of a system-agent thread. */
+export interface SystemAgentFile {
+	fileName: string;
+	mimeType: string;
+	content: Buffer;
 }
 
 export interface SystemAgentStartTurn<TLease = unknown> extends SystemAgentTurnBase<TLease> {

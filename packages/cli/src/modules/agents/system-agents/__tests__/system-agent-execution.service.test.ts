@@ -780,6 +780,41 @@ describe('SystemAgentExecutionService', () => {
 
 				await expect(turn.readAttachment(ref)).rejects.toBe(error);
 			});
+
+			it('reads any stored file of the thread by id, not only the files of the turn', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-earlier',
+					threadId: 'thread-1',
+					fileName: 'earlier.csv',
+					mimeType: 'text/csv',
+				} as never);
+				attachmentService.getStream.mockResolvedValue(Readable.from([Buffer.from('a,b')]));
+
+				const file = await turn.readFile('att-earlier');
+
+				expect(file).toEqual({
+					fileName: 'earlier.csv',
+					mimeType: 'text/csv',
+					content: Buffer.from('a,b'),
+				});
+				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('att-earlier', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					source: 'system_chat',
+				});
+			});
+
+			it('does not read a stored file of another thread by id', async () => {
+				const { turn, attachmentService } = await startTurnWithAttachment();
+				attachmentService.getForSystemAgent.mockResolvedValue({
+					id: 'att-1',
+					threadId: 'thread-2',
+				} as never);
+
+				await expect(turn.readFile('att-1')).resolves.toBeUndefined();
+				expect(attachmentService.getStream).not.toHaveBeenCalled();
+			});
 		});
 
 		it('attaches the attachment store to a turn without attachments', async () => {
@@ -1163,6 +1198,8 @@ describe('SystemAgentExecutionService', () => {
 					resumeData: { approved: true },
 					memory: agentMemory,
 					checkpointStore: agentCheckpointStore,
+					// A resumed turn can still read the stored files of the thread.
+					readFile: expect.any(Function),
 				}),
 			);
 			expect(prepared[0]).toMatchObject({

@@ -1239,12 +1239,21 @@ on returned documents must cite the returned page titles and public URLs.
 
 ## `parse-file` *(conditional)*
 
-Parse an attachment from the current user message. The registry adds this tool
-only when the current turn contains a parseable attachment.
+Parse a user file. The registry adds one of two versions:
+
+- When the host sets `storedFiles` on the context, the tool reads a stored file
+  of the thread by `fileId`. The registry adds it on every turn, so the tool
+  list stays the same and the prompt cache stays valid. The Assistant on the
+  Agents runtime uses this version. The model gets each `fileId` from the file
+  attachment label in the conversation.
+- Otherwise, the tool reads an attachment of the current user message by
+  `attachmentIndex`. The registry adds it only when the current turn contains a
+  parseable attachment.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `attachmentIndex` | number | no | 0 | Zero-based attachment index |
+| `fileId` | string | yes (stored-file version) | — | Id of a stored file of the thread |
+| `attachmentIndex` | number | no (current-message version) | 0 | Zero-based attachment index |
 | `format` | enum | no | detected | `csv`, `tsv`, `json`, `xlsx`, `text`, `markdown`, `html`, `pdf`, or `docx` |
 | `hasHeader` | boolean | no | true | Treat the first CSV or TSV row as headers |
 | `delimiter` | string | no | — | One-character CSV delimiter override |

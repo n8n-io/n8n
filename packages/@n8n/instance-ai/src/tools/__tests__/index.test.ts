@@ -15,6 +15,7 @@ vi.mock('../../parsers/structured-file-parser', () => ({
 
 vi.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
+	createParseStoredFileTool: vi.fn(() => ({ id: 'parse-file', storedFiles: true })),
 }));
 
 vi.mock('../credentials.tool', () => ({
@@ -261,6 +262,29 @@ describe('domain tool construction', () => {
 
 		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
 			id: 'parse-file',
+		});
+	});
+
+	it('registers the stored-file parse-file on every turn when a file reader is wired', () => {
+		const context = makeContext({ storedFiles: { read: vi.fn() } });
+
+		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
+			id: 'parse-file',
+			storedFiles: true,
+		});
+	});
+
+	it('prefers the stored-file parse-file over the current-message version', () => {
+		vi.mocked(isParseableAttachment).mockReturnValue(true);
+		const context = makeContext({
+			storedFiles: { read: vi.fn() },
+			currentUserAttachments: [
+				{ type: 'file', data: '', mimeType: 'text/csv', fileName: 'data.csv' },
+			],
+		});
+
+		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
+			storedFiles: true,
 		});
 	});
 

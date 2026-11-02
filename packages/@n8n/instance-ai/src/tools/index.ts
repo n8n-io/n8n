@@ -253,7 +253,15 @@ function getOrchestratorDomainToolFactories(
 		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
 	}
 
-	if (context.currentUserAttachments?.some(isParseableAttachment)) {
+	// The stored-file version does not depend on the current message, so the
+	// tool list, which leads the cached prompt prefix, stays the same each turn.
+	const { storedFiles } = context;
+	if (storedFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.PARSE_FILE,
+			() => loadParseFileTool().createParseStoredFileTool(storedFiles),
+		]);
+	} else if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([
 			DOMAIN_TOOL_IDS.PARSE_FILE,
 			() => loadParseFileTool().createParseFileTool(context),
