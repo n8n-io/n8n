@@ -95,7 +95,7 @@ export async function listGatewayModels(
 }
 
 /**
- * Bound as the `listSearch` method of the Model field on both nodes. A failure
+ * Bound as the `listSearch` method of the Model field. A failure
  * here leaves the user on "By ID", so a gateway without `/models` still works.
  */
 export async function searchModels(

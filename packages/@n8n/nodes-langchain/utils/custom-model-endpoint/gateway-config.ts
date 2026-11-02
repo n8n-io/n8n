@@ -48,7 +48,7 @@ function assertAbsoluteHttpUrl(baseUrl: string): void {
 }
 
 /**
- * The transport both nodes share: the gateway's own base URL, and one fetch that
+ * The shared transport: the gateway's own base URL, and one fetch that
  * carries the credential, reshapes the gateway's errors, and honours the proxy
  * and egress policy. Every hop goes through it, the OAuth2 token request and the
  * model list included, so none of them can reach the network unpinned.
