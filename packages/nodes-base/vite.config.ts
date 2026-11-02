@@ -6,6 +6,9 @@ import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decora
 // Set before workers are forked so they inherit it.
 process.env.TZ = 'UTC';
 
+// Native expression engines need a process boundary for worker shutdown.
+const FORKED_TESTS = ['nodes/Form/test/FormTriggerV2.webhook.test.ts'];
+
 export default mergeConfig(
 	createVitestConfigWithDecorators({
 		// `vitest doctor` measured threads 18% faster than forks for this suite.
@@ -13,6 +16,16 @@ export default mergeConfig(
 		globalSetup: ['./test/globalSetup.ts'],
 		setupFiles: ['./test/setup.ts'],
 		exclude: ['**/node_modules/**', '**/dist/**', '**/*.integration.test.ts'],
+		projects: [
+			{
+				extends: true,
+				test: { name: 'default', exclude: FORKED_TESTS },
+			},
+			{
+				extends: true,
+				test: { name: 'expression-engines', include: FORKED_TESTS, pool: 'forks' },
+			},
+		],
 	}),
 	{
 		resolve: {
