@@ -226,8 +226,11 @@ workflow, load the `error-workflows` reference and follow its build → publish
    `search_nodes` with `query`/`queries` for service-specific nodes you cannot name exactly
    (short service names like "Gmail", not task phrases — results include
    resource/operation/mode discriminators).
-2. Call `get_node_types` with the exact node IDs you will use
-   (up to ten per call), including discriminators. Do not speculatively fetch
+2. Plan every node first, including utility nodes such as Set, IF, Switch,
+   Code, Wait, Sort and output parsers. Then call `get_node_types` once with
+   the exact node IDs of the whole plan, including discriminators. When the
+   plan has more than ten nodes, send all the calls in the same response. Fetch
+   again only for a node the plan did not expect. Do not speculatively fetch
    definitions for nodes you will not use.
 3. Read `@builderHint`, `@default`, `@searchListMethod`, `@loadOptionsMethod`,
    valid enum values, credential types, and display conditions in the returned
