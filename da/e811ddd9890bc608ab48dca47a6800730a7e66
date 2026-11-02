@@ -6,6 +6,11 @@ packages/cli/test/integration/database/repositories/agent-execution.repository.t
   "git_ai_version": "1.7.4",
   "base_commit_sha": "dae811ddd9890bc608ab48dca47a6800730a7e66",
   "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
   "sessions": {
     "s_0a1a804042c15b": {
       "agent_id": {
@@ -14,6 +19,14 @@ packages/cli/test/integration/database/repositories/agent-execution.repository.t
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c549f720ef6943": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c6ec3e1-95ce-4855-9097-d7ce0c3cd910",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
     }
   }
 }

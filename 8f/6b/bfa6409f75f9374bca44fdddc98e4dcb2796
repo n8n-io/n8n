@@ -1,0 +1,37 @@
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.test.ts
+  s_f3039407b71bd6::t_8d1ad672aa3b22 93
+packages/modules/promotions/frontend/src/composables/usePromotionBindingCreation.test.ts
+  s_f3039407b71bd6::t_8d1ad672aa3b22 68
+packages/modules/promotions/frontend/src/components/review/PromotionReviewChanges.vue
+  s_f3039407b71bd6::t_8d1ad672aa3b22 165
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_f3039407b71bd6::t_8d1ad672aa3b22 143
+packages/modules/promotions/frontend/src/views/PromotionsSettingsView.test.ts
+  s_f3039407b71bd6::t_8d1ad672aa3b22 164,180,296,303
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_f3039407b71bd6::t_8d1ad672aa3b22 685
+packages/modules/promotions/frontend/src/components/PromotionMissingProjectsDialog.test.ts
+  s_f3039407b71bd6::t_8d1ad672aa3b22 50
+packages/modules/promotions/frontend/src/components/PromotionPreviewBadges.test.ts
+  s_f3039407b71bd6::t_ee5f8d8240b705 9
+packages/modules/promotions/frontend/src/promotionPreview.workflow.ts
+  s_f3039407b71bd6::t_8d1ad672aa3b22 7,34
+packages/modules/promotions/frontend/src/composables/usePromotionBindingCreation.ts
+  s_f3039407b71bd6::t_8d1ad672aa3b22 239-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f6bbfa6409f75f9374bca44fdddc98e4dcb2796",
+  "prompts": {},
+  "sessions": {
+    "s_f3039407b71bd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d1d42e2-0ae1-44cd-9118-b0182793683b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
