@@ -16,7 +16,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { createAppPreview } from '../apps.api';
-import type { AppVersions } from '../composables/useAppVersions';
+import { getAppVersionLabel, type AppVersions } from '../composables/useAppVersions';
 import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
 
 const SCREEN_SIZES = ['desktop', 'tablet', 'mobile'] as const;
@@ -82,7 +82,7 @@ const failed = computed(() => props.versions.failed.value || grantFailed.value);
 const buildFailed = computed(() => head.value?.buildStatus === 'failed');
 const versionLabel = computed(() => {
 	const version = preview.value?.version;
-	return version ? (version.label ?? version.id.slice(-8)) : null;
+	return version ? getAppVersionLabel(version) : null;
 });
 
 async function grant(versionId: string) {

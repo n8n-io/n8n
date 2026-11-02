@@ -9,12 +9,16 @@ import { getAppBuild, listAppVersions } from '../apps.api';
 
 const POLL_INTERVAL_MS = 3000;
 
-function isBuilding(status: AppBuildStatus | undefined) {
+export function isBuilding(status: AppBuildStatus | undefined) {
 	return status === 'queued' || status === 'running';
 }
 
-function isBuilt(version: AppVersionResponse) {
+export function isBuilt(version: AppVersionResponse) {
 	return version.buildStatus === 'succeeded' && version.bundleArtifactId !== null;
+}
+
+export function getAppVersionLabel(version: AppVersionResponse) {
+	return version.label ?? version.id.slice(-8);
 }
 
 export function useAppVersions(
