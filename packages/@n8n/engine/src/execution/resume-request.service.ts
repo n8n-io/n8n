@@ -140,26 +140,25 @@ export class ResumeRequestService {
 	}
 
 	private async locateExecutionBoundWait(executionId: string): Promise<ResumeTarget | null> {
-		let stepBoundOnly = false;
-		for (let attempt = 0; attempt < this.hold.attempts; attempt++) {
-			if (attempt > 0) await sleep(this.hold.delayMs);
+		const answer = await this.poll<ResumeTarget | 'step_bound_only' | null>(async () => {
 			const [status, waits] = await Promise.all([
 				this.loadStatus(executionId),
 				this.stepStore.loadWaitingSteps(executionId),
 			]);
 			// An execution ends before its waits are cancelled, so its status decides first.
-			if (!isLive(status)) return null;
+			if (!isLive(status)) return { done: true, answer: null };
 			const executionBound = waits.filter(waitsFor('execution'));
 			if (executionBound.length > 1) throw new ResumeRejectedError('ambiguous');
 			if (executionBound[0]) {
-				return { stepId: executionBound[0].id, nodeId: executionBound[0].nodeId };
+				const { id, nodeId } = executionBound[0];
+				return { done: true, answer: { stepId: id, nodeId } };
 			}
-			stepBoundOnly = waits.some(waitsFor('step'));
-		}
+			return { done: false, answer: waits.some(waitsFor('step')) ? 'step_bound_only' : null };
+		});
 		// Holds first, because another branch can still reach an execution-bound
 		// wait. The token is valid for this execution, so the caller may learn why.
-		if (stepBoundOnly) throw new ResumeRejectedError('step_bound_only');
-		return null;
+		if (answer === 'step_bound_only') throw new ResumeRejectedError('step_bound_only');
+		return answer;
 	}
 
 	/**
@@ -169,17 +168,31 @@ export class ResumeRequestService {
 	 * next iteration as a new step.
 	 */
 	private async locateStepBoundWait(stepId: string): Promise<ResumeLocation> {
-		for (let attempt = 1; ; attempt++) {
+		return await this.poll<ResumeLocation>(async () => {
 			const step = await this.loadStep(stepId, 'not_found');
 			const live = isLive(await this.loadStatus(step.executionId));
 			if (live && waitsFor('step')(step)) {
-				return { executionId: step.executionId, target: { stepId: step.id, nodeId: step.nodeId } };
+				const target = { stepId: step.id, nodeId: step.nodeId };
+				return { done: true, answer: { executionId: step.executionId, target } };
 			}
-			if (!live || isSettledStatus(step.status) || attempt >= this.hold.attempts) {
-				return { executionId: step.executionId, target: null };
-			}
+			return {
+				done: !live || isSettledStatus(step.status),
+				answer: { executionId: step.executionId, target: null },
+			};
+		});
+	}
+
+	/**
+	 * Calls `check` until it is done, at most `hold.attempts` times and
+	 * `hold.delayMs` apart, and returns its last answer.
+	 */
+	private async poll<T>(check: () => Promise<{ done: boolean; answer: T }>): Promise<T> {
+		let result = await check();
+		for (let attempt = 1; !result.done && attempt < this.hold.attempts; attempt++) {
 			await sleep(this.hold.delayMs);
+			result = await check();
 		}
+		return result.answer;
 	}
 
 	/**
