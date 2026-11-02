@@ -26,7 +26,10 @@ const agentThreadsStore = reactive({ deletedThreadIds: new Set<string>(), delete
 const assistantAgentThreadsStore = reactive({
 	deletedThreadIds: new Set<string>(),
 	deleteThread: vi.fn(),
+	renameThread: vi.fn(),
 	remember: vi.fn(),
+	renamedTitles: new Map<string, string>(),
+	knownThreads: [],
 });
 const settingsStore = reactive({ isAssistantAgentEnabled: false });
 
@@ -217,6 +220,7 @@ describe('InstanceAiThreadsView', () => {
 		};
 
 		beforeEach(() => {
+			assistantAgentThreadsStore.deletedThreadIds.clear();
 			settingsStore.isAssistantAgentEnabled = true;
 			store.threadHistory.threads = [
 				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
@@ -263,6 +267,26 @@ describe('InstanceAiThreadsView', () => {
 			expect(store.deleteThread).not.toHaveBeenCalled();
 			expect(agentThreadsStore.deleteThread).not.toHaveBeenCalled();
 			expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(1);
+		});
+
+		it('renames an Assistant agent thread through its own store', async () => {
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const [agentDropdown] = wrapper.findAllComponents({ name: 'ActionDropdown' });
+			agentDropdown.vm.$emit('select', 'rename');
+			await nextTick();
+			const input = wrapper.find<HTMLInputElement>('input[type="text"]');
+			expect(input.element.value).toBe('Agent runtime chat');
+
+			await input.setValue('Invoices');
+			await input.trigger('keydown', { key: 'Enter' });
+
+			expect(assistantAgentThreadsStore.renameThread).toHaveBeenCalledWith('aa1', 'Invoices');
+			expect(store.renameThread).not.toHaveBeenCalled();
+			await vi.waitFor(() => {
+				expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
+			});
 		});
 	});
 
