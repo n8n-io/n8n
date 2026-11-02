@@ -14,11 +14,10 @@ import { createEmptyRunExecutionData, type IRunExecutionData } from 'n8n-workflo
 import { createExecution } from '../shared/db/executions';
 import { createMember, createOwner } from '../shared/db/users';
 
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, WorkflowFinderService } from '@n8n/backend-services';
 import { createGetExecutionTool } from '@/modules/mcp/tools/get-execution.tool';
 import { RedactionModule } from '@/modules/redaction/redaction.module';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 beforeAll(async () => {
 	await testModules.loadModules(['mcp', 'redaction']);

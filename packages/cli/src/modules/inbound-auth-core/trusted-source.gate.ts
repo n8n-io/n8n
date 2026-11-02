@@ -3,7 +3,7 @@ import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TrustedSourceGate } from '@n8n/inbound-auth';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { TrustedSourceIdentityRepository } from './database/repositories/trusted-source-identity.repository';
 import { authorizeAgainstGrant } from './grant-authorization';

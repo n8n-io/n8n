@@ -7,7 +7,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { WorkflowRepository, type User } from '@n8n/db';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { ProjectScopeService, WorkflowFinderService } from '@n8n/backend-services';
 import { Container, Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
@@ -33,7 +33,6 @@ import { pruneMissingConfigReferences } from './json-config/prune-missing-config
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';

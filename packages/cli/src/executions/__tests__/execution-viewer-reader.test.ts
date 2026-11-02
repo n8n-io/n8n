@@ -1,4 +1,4 @@
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, WorkflowFinderService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, IExecutionResponse, User, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
 	findUnsavedManualExecutionForViewer,

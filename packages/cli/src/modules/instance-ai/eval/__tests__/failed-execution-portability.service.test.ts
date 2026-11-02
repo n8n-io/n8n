@@ -13,7 +13,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import { FailedExecutionPortabilityService } from '../failed-execution-portability.service';
 

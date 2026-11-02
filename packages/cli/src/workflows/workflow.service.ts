@@ -14,6 +14,7 @@ import {
 	WorkflowMutationHooksProxy,
 	WorkflowPublishGuardProxy,
 	userHasScopes,
+	WorkflowFinderService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -72,7 +73,6 @@ import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 
 import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
 import { WorkflowValidationService } from './workflow-validation.service';

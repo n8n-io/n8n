@@ -6,7 +6,7 @@ import type { Cipher } from 'n8n-core';
 import type { INode, NodeParameterValueType } from 'n8n-workflow';
 
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';

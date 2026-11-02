@@ -1,8 +1,7 @@
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import { type ProtectedResourceResolver } from '@n8n/backend-services/auth';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';

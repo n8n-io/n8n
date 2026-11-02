@@ -12,9 +12,8 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import {

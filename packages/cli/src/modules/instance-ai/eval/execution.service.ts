@@ -60,7 +60,7 @@ import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { executeAgent } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { pruneConfigForEval } from '@/modules/agents/evaluation/evaluation-config';

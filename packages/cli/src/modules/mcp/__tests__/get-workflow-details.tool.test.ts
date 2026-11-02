@@ -6,9 +6,12 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { type CredentialsFinderService, RoleService } from '@n8n/backend-services';
+import {
+	type CredentialsFinderService,
+	RoleService,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
 import { getWorkflowDetails, createWorkflowDetailsTool } from '../tools/get-workflow-details.tool';

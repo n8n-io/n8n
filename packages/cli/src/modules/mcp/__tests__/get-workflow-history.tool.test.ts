@@ -4,7 +4,7 @@ import { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { createWorkflow } from './mock.utils';

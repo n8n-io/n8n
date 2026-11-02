@@ -4,7 +4,11 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
+import {
+	CredentialsFinderService,
+	RoleService,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import type { CredentialsEntity, Project, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -13,7 +17,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { saveCredential, shareCredentialWithUsers } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 

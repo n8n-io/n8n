@@ -1,6 +1,11 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService, CredentialsFinderService, userHasScopes } from '@n8n/backend-services';
+import {
+	EventService,
+	CredentialsFinderService,
+	userHasScopes,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, OperationContext, User, Project, Folder } from '@n8n/db';
 import {
@@ -37,7 +42,6 @@ import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
 import { WorkflowEngineDefaults } from './workflow-engine-defaults';
-import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';

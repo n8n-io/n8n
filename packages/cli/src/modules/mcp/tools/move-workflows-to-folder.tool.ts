@@ -4,10 +4,9 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import type { FolderFinderService } from '@n8n/backend-services';
+import type { FolderFinderService, WorkflowFinderService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

@@ -3,7 +3,7 @@ import type { OAuthResourceGrant } from 'n8n-workflow';
 
 import { authorizeAgainstGrant } from '@/modules/inbound-auth-core/grant-authorization';
 import type { ProtectedResource } from '@n8n/backend-services/auth';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 /**
  * Builds a trigger resource's grant and authorize members from one grant, so the sealed

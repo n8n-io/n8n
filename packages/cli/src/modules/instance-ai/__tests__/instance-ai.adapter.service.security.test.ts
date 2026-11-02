@@ -37,6 +37,7 @@ import {
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
 	userHasScopes,
+	type WorkflowFinderService,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { CredentialsRepository, GLOBAL_MEMBER_ROLE, SharedCredentialsRepository } from '@n8n/db';
@@ -98,7 +99,6 @@ vi.mock('node:fs/promises', () => ({
 	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 

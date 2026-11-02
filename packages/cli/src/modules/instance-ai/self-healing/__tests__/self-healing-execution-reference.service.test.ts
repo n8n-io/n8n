@@ -5,7 +5,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 

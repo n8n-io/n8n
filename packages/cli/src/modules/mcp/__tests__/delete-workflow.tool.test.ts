@@ -4,7 +4,7 @@ import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';

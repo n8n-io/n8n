@@ -13,10 +13,9 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
 // factory (hoisted above these declarations) silently loads the real module.

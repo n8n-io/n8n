@@ -7,7 +7,7 @@ import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
 } from '@/workflows/workflow-creation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { workflowReferences } from './references/workflow-references';

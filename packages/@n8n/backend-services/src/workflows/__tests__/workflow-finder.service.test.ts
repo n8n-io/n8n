@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
-import type { RoleService } from '@n8n/backend-services';
 import type {
 	FolderRepository,
 	OperationContext,
@@ -9,6 +8,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { RoleService } from '../../services/role.service';
 import { WorkflowFinderService } from '../workflow-finder.service';
 
 function makeService() {

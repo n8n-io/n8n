@@ -13,7 +13,7 @@ import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.
 import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
 import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 vi.mock('@/evaluation.ee/test-runner/test-runner.service.ee');
 

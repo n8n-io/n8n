@@ -13,7 +13,7 @@ import {
 import { Service } from '@n8n/di';
 
 import { NotFoundError } from '@n8n/errors';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';

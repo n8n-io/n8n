@@ -18,9 +18,8 @@ import {
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@n8n/errors';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, WorkflowFinderService } from '@n8n/backend-services';
 import { removeDefaultValues } from '@/workflow-helpers';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 

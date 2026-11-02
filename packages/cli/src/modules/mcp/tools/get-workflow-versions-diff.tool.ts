@@ -7,7 +7,7 @@ import { compareConnections, compareWorkflowsNodes, NodeDiffStatus } from 'n8n-w
 import z from 'zod';
 
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';

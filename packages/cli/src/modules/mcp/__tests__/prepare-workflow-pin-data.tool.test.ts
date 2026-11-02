@@ -12,7 +12,7 @@ import type { Mock } from 'vitest';
 import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { createWorkflow } from './mock.utils';
 import { WorkflowAccessError } from '../mcp.errors';

@@ -7,8 +7,7 @@ import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { UrlService } from '@n8n/backend-services';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { UrlService, WorkflowFinderService } from '@n8n/backend-services';
 
 import { DynamicCredentialsConfig } from './dynamic-credentials.config';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';

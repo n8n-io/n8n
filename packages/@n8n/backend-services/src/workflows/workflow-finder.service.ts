@@ -1,4 +1,3 @@
-import { RoleService, userHasScopes } from '@n8n/backend-services';
 import type {
 	User,
 	WorkflowAccessRoles,
@@ -12,6 +11,9 @@ import type {
 import { FolderRepository, WorkflowAccessRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type AuthPrincipal, type Scope } from '@n8n/permissions';
+
+import { userHasScopes } from '../permissions.ee/check-access';
+import { RoleService } from '../services/role.service';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {

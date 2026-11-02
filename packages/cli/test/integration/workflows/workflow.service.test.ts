@@ -42,13 +42,13 @@ import {
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	type WorkflowPublishGuardProxy,
+	WorkflowFinderService,
 } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';

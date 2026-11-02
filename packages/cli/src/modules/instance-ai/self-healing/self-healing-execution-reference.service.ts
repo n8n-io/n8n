@@ -6,7 +6,7 @@ import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { isExecutionIdV2 } from '@/executions/execution-id';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 @Service()
 export class SelfHealingExecutionReferenceService {

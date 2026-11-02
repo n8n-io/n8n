@@ -29,7 +29,7 @@ import {
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubExecutionService } from './chat-hub-execution.service';

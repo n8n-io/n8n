@@ -16,7 +16,11 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import type {
+	CredentialsFinderService,
+	WorkflowMutationHooksProxy,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import type { NodeTypes } from '@/node-types';
@@ -25,7 +29,6 @@ import type { PolicyEnforcementService } from '@/policy/policy-enforcement.servi
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 

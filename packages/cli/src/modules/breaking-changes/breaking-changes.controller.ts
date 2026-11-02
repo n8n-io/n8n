@@ -12,7 +12,7 @@ import {
 	UpdateMigrationFindingStatusesRequestDto,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, WorkflowFinderService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	Body,
@@ -29,8 +29,6 @@ import {
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
-
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import {
 	BreakingChangeMigrationService,

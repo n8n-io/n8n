@@ -3,8 +3,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Workflow } from 'n8n-workflow';
 
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowPublishedDataService } from '@n8n/backend-services';
+import { WorkflowPublishedDataService, WorkflowFinderService } from '@n8n/backend-services';
 
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';

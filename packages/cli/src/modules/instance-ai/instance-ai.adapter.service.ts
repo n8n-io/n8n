@@ -39,6 +39,7 @@ import {
 	InstanceWriteAccessService,
 	AiPreferenceService,
 	userHasScopes,
+	WorkflowFinderService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -241,7 +242,6 @@ import {
 } from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
 import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

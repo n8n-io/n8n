@@ -4,7 +4,7 @@ import type {
 	WorkflowReviewAutoPublishOutcome,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, WorkflowFinderService } from '@n8n/backend-services';
 import {
 	DbLock,
 	DbLockService,
@@ -21,7 +21,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';

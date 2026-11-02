@@ -8,8 +8,11 @@ import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { NodeTypes } from '@/node-types';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { PublishedWorkflowData, WorkflowPublishedDataService } from '@n8n/backend-services';
+import type {
+	PublishedWorkflowData,
+	WorkflowPublishedDataService,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 
 const ERROR_TRIGGER_TYPE = 'n8n-nodes-base.errorTrigger';
 

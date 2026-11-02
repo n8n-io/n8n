@@ -3,7 +3,7 @@ import { jsonParse } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';

@@ -3,15 +3,13 @@ import type {
 	BreakingChangeReportQueryDto,
 	BreakingChangeRuleDetailResult,
 } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, WorkflowFinderService } from '@n8n/backend-services';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock, type MockProxy } from 'vitest-mock-extended';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { BreakingChangeMigrationService } from '../breaking-changes.migration.service';
 import { BreakingChangesController } from '../breaking-changes.controller';

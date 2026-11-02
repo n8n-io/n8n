@@ -54,7 +54,7 @@ import { BadRequestError } from '@n8n/errors';
 import type { UserLike } from '@/types/user-like.types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';

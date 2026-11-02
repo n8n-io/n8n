@@ -47,7 +47,11 @@ import {
 } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import {
+	CredentialsFinderService,
+	WorkflowMutationHooksProxy,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
@@ -66,8 +70,6 @@ import { findPolicyViolations } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { stripToolSuffix } from '@/utils';
-
-import { WorkflowFinderService } from './workflow-finder.service';
 
 /**
  * Database workflows use their own project permissions at runtime.
