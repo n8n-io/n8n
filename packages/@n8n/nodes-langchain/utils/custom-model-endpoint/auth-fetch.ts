@@ -79,7 +79,6 @@ export function createCustomModelEndpointAuthFetch(
 
 	const assertAllowedUrl = async (hopUrl: string) => {
 		assertUrlAllowed({ url: hopUrl, allowedDomains, node });
-		if (!egressFilter) return;
 		const result = await egressFilter.validateUrl(hopUrl);
 		if (!result.ok) throw result.error;
 	};
