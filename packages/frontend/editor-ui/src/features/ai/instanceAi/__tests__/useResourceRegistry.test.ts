@@ -1251,6 +1251,41 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifacts.get('app-1')).toEqual({ type: 'app', ...app });
 			expect(producedArtifacts.has('app-2')).toBe(false);
 		});
+
+		test('keeps the latest app name from a tool result over thread metadata', async () => {
+			const appTargets = ref([{ appId: 'app-1', projectId: 'project-1', name: 'Old name' }]);
+			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup(
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				() => appTargets.value,
+			);
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'apps',
+								args: { action: 'commit', appId: 'app-1' },
+								result: {
+									app: { id: 'app-1', name: 'New name', projectId: 'project-1' },
+									versionId: 'v1',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('app-1')?.name).toBe('New name');
+			expect(resourceNameIndex.get('new name')?.id).toBe('app-1');
+			expect(linkableResourceNameIndex.get('new name')?.id).toBe('app-1');
+			expect(resourceNameIndex.has('old name')).toBe(false);
+		});
 	});
 
 	describe('producedArtifacts — skill registration', () => {

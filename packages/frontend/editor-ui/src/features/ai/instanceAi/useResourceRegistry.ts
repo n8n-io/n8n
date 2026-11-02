@@ -600,7 +600,7 @@ function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiApp
 			{
 				type: 'app',
 				id: target.appId,
-				name: target.name ?? existing?.name ?? 'App',
+				name: existing?.name ?? target.name ?? 'App',
 				projectId: target.projectId,
 			},
 			{ linkable: existing !== undefined },
