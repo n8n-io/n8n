@@ -1,5 +1,3 @@
-import { Container } from '@n8n/di';
-import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -303,15 +301,11 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 			inline_keyboard: [
 				config.options.map((option) => {
 					if (chatApproval) {
-						const executionId = context.getExecutionId();
-						const hmacSecret = Container.get(InstanceSettings).hmacSignatureSecret;
+						// The context mints the reference where the secret lives. The node
+						// reads no secret itself.
 						return {
 							text: option.label,
-							callback_data: buildHitlCallbackReference(
-								executionId,
-								option.approved ? 'a' : 'd',
-								hmacSecret,
-							),
+							callback_data: context.getApprovalCallbackReference(option.approved ? 'a' : 'd'),
 						};
 					}
 					return {

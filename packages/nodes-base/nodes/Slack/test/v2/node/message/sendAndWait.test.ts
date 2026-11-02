@@ -1,5 +1,3 @@
-import { Container } from '@n8n/di';
-import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -8,10 +6,6 @@ import { mock } from 'vitest-mock-extended';
 import * as GenericFunctions from '../../../../V2/GenericFunctions';
 import { HITL_APPROVE_ACTION_ID, HITL_DECLINE_ACTION_ID } from '../../../../V2/MessageInterface';
 import { SlackV2 } from '../../../../V2/SlackV2.node';
-
-const TEST_HMAC_SECRET = 'test-hmac-secret';
-// The button builder derives the callback reference from the instance HMAC secret.
-Container.set(InstanceSettings, { hmacSignatureSecret: TEST_HMAC_SECRET } as InstanceSettings);
 
 describe('Test SlackV2, message => sendAndWait', () => {
 	let slack: SlackV2;
@@ -40,6 +34,9 @@ describe('Test SlackV2, message => sendAndWait', () => {
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
 		mockExecuteFunctions.getExecutionId.mockReturnValue('exec-1');
+		mockExecuteFunctions.getApprovalCallbackReference.mockImplementation(
+			(decision) => `reference-${decision}`,
+		);
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { data: 'test' } }]);
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 		mockExecuteFunctions.putExecutionToWait.mockImplementation(async () => {});
@@ -135,8 +132,8 @@ describe('Test SlackV2, message => sendAndWait', () => {
 
 		expect(approveButton.url).toBeUndefined();
 		expect(approveButton.action_id).toBe(HITL_APPROVE_ACTION_ID);
-		// The approve button carries a decision-'a' reference for this execution.
-		expect(approveButton.value).toBe(buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET));
+		// The approve button carries the context's decision-'a' reference.
+		expect(approveButton.value).toBe('reference-a');
 	});
 
 	it('assigns the decline action_id to the disapprove button when capturing the responder', async () => {
@@ -169,8 +166,8 @@ describe('Test SlackV2, message => sendAndWait', () => {
 		expect(declineButton.action_id).toBe(HITL_DECLINE_ACTION_ID);
 		expect(approveButton.action_id).toBe(HITL_APPROVE_ACTION_ID);
 		// Each button carries the matching decision in its reference.
-		expect(declineButton.value).toBe(buildHitlCallbackReference('exec-1', 'd', TEST_HMAC_SECRET));
-		expect(approveButton.value).toBe(buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET));
+		expect(declineButton.value).toBe('reference-d');
+		expect(approveButton.value).toBe('reference-a');
 	});
 
 	it('should route API errors to error output when continueOnFail is true', async () => {

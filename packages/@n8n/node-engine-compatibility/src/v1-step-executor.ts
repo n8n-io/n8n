@@ -10,7 +10,6 @@ import {
 	CHAT_NODE_TYPE,
 	Expression,
 	isNodeClassInstance,
-	SEND_AND_WAIT_OPERATION,
 	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
@@ -97,9 +96,9 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
-		// Engine v2 cannot route a reply to these steps yet. Fail before the node
+		// Engine v2 cannot route a chat reply to a step yet. Fail before the node
 		// sends the message. The Chat node waits in every version and operation.
-		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
+		if (node.type === CHAT_NODE_TYPE) {
 			throw new UnsupportedWaitError(node.name, 'an approval');
 		}
 

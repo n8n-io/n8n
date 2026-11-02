@@ -1,4 +1,8 @@
-import { buildHitlCallbackReference, markSlackInteractionRequest } from 'n8n-core';
+import {
+	buildHitlCallbackReference,
+	HITL_CALLBACK_PREFIX_V2,
+	markSlackInteractionRequest,
+} from 'n8n-core';
 import type { IWebhookFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,11 +20,13 @@ const slackApiRequest = vi.mocked(GenericFunctions.slackApiRequest);
 const verifySignature = vi.mocked(SlackTriggerHelpers.verifySignature);
 const sendAndWaitWebhook = vi.mocked(sendAndWaitUtils.sendAndWaitWebhook);
 
-// The button `value` now carries the shared HITL callback reference (executionId|decision|hmac).
-// The node only parses it for the decision (parseHitlCallbackReference does no HMAC check — the
-// HMAC is verified at the CLI layer), so any secret produces a well-formed reference here.
+// The button `value` carries the shared HITL callback reference. The node only parses it for
+// the decision (parseHitlCallbackReference does no HMAC check — the HMAC is verified before node
+// code runs), so any secret produces a well-formed reference here.
 const APPROVE_VALUE = buildHitlCallbackReference('e1', 'a', 'ref-secret');
 const DECLINE_VALUE = buildHitlCallbackReference('e1', 'd', 'ref-secret');
+// An engine v2 reference names a step instead of an execution.
+const STEP_BOUND_APPROVE_VALUE = `${HITL_CALLBACK_PREFIX_V2}AZJqTn9ccACAAAAAAAAAAQ|a|mac`;
 
 interface ContextOptions {
 	method?: string;
@@ -150,6 +156,29 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(sendAndWaitWebhook).not.toHaveBeenCalled();
 		// verifySignature is short-circuited by the missing secret, so no resume data is produced.
 		expect(verifySignature).not.toHaveBeenCalled();
+	});
+
+	it('resumes as approved for a step-bound reference', async () => {
+		const { ctx, httpRequest } = createContext({
+			interaction: true,
+			signatureSecret: 'secret',
+			postDecisionBehavior: 'keepMessage',
+			payload: {
+				user: { id: 'U1', name: 'alice', username: 'alice.w' },
+				actions: [{ action_id: HITL_APPROVE_ACTION_ID, value: STEP_BOUND_APPROVE_VALUE }],
+				channel: { id: 'C1' },
+				message: { ts: '111.222' },
+			},
+		});
+		verifySignature.mockResolvedValue(true);
+		slackApiRequest.mockResolvedValue({ user: { profile: {} } });
+		httpRequest.mockResolvedValue({});
+
+		const result = (await slackSendAndWaitWebhook.call(ctx)) as {
+			workflowData: Array<Array<{ json: { data: Record<string, unknown> } }>>;
+		};
+
+		expect(result.workflowData[0][0].json.data).toMatchObject({ approved: true });
 	});
 
 	it('resumes with the responder, channel and message id, and locks the message via response_url', async () => {

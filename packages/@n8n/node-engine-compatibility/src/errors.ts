@@ -89,7 +89,7 @@ export class EngineRequestNotSupportedError extends UserError {
 
 /**
  * A wait that engine v2 cannot end yet. Engine v2 has no sub-workflow steps
- * and cannot route a reply to a message that a node sent.
+ * and cannot route a chat reply to a step.
  */
 export class UnsupportedWaitError extends UserError {
 	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
