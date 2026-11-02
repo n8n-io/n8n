@@ -72,9 +72,9 @@ function createInput(blueprint: AppBlueprint = BLUEPRINT) {
 	return { action: 'create' as const, blueprint };
 }
 
-async function approveCreate(tool: BuiltTool, blueprint: AppBlueprint = BLUEPRINT) {
-	return await executeTool(tool, createInput(blueprint), {
-		resumeData: { approved: true, blueprint },
+async function approveCreate(tool: BuiltTool, approvedBlueprint: AppBlueprint = BLUEPRINT) {
+	return await executeTool(tool, createInput(), {
+		resumeData: { approved: true, blueprint: approvedBlueprint },
 	});
 }
 
@@ -245,12 +245,17 @@ describe('apps tool', () => {
 		});
 		appService.createApp.mockResolvedValue(app(SERVER_ID));
 
-		await approveCreate(tool, { ...BLUEPRINT, name: 'Admin', namespace: 'admin' });
+		await approveCreate(tool, {
+			...BLUEPRINT,
+			name: 'Admin',
+			namespace: 'admin',
+			visibility: 'instance',
+		});
 
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Admin',
 			namespace: 'admin',
-			visibility: 'project',
+			visibility: 'instance',
 			id: undefined,
 		});
 		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
