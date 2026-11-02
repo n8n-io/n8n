@@ -241,8 +241,9 @@ const SOURCE_FETCH_TIMEOUT_MS = 30_000;
  * archive) is a scanner-side error and says nothing about the package.
  */
 export const isSourceUnavailable = (error: unknown): boolean => {
-	const status = field(field(error, 'response'), 'status');
-	return typeof status === 'number' && status >= 400 && status < 500;
+	if (!axios.isAxiosError(error)) return false;
+	const status = error.response?.status;
+	return status !== undefined && status >= 400 && status < 500;
 };
 
 const fetchSourceInfo = async (packageName: string, version: string) => {

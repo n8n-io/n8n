@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -447,14 +448,19 @@ describe('getExitCode', () => {
 });
 
 describe('isSourceUnavailable', () => {
+	const httpError = (status: number) =>
+		new AxiosError(`Request failed with status code ${status}`, undefined, undefined, undefined, {
+			status,
+		} as AxiosResponse);
+
 	// 4xx is on the package author; everything else is a scanner-side error
 	it.each([
-		[{ response: { status: 404 } }, true],
-		[{ response: { status: 403 } }, true],
-		[{ response: { status: 502 } }, false],
-		[{ code: 'ECONNABORTED' }, false],
-		[new Error('tar extraction failed'), false],
-	])('classifies %o as %s', (error, expected) => {
+		['a 404 response', httpError(404), true],
+		['a 403 response', httpError(403), true],
+		['a 502 response', httpError(502), false],
+		['a timeout', new AxiosError('timeout exceeded', AxiosError.ECONNABORTED), false],
+		['a non-HTTP error', new Error('tar extraction failed'), false],
+	])('classifies %s as %s', (_, error, expected) => {
 		expect(isSourceUnavailable(error)).toBe(expected);
 	});
 });
