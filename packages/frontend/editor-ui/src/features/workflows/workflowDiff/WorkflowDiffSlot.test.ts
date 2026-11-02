@@ -121,7 +121,7 @@ it('preserves labels, empty-side text, and the canvas controls', () => {
 	expect(getByText('Removed')).toBeInTheDocument();
 });
 
-it('compares the name, settings, tags, and archive state of each side', () => {
+it('compares the name, settings, tags, and archive state of each side, ignoring tag order', () => {
 	renderComponent({
 		props: {
 			workflowId: 'workflow',
@@ -130,17 +130,28 @@ it('compares the name, settings, tags, and archive state of each side', () => {
 				...snapshot(),
 				workflowName: 'Old name',
 				settings: { executionOrder: 'v1', timezone: 'UTC' },
-				tags: [{ id: 'tag', name: 'Billing' }],
+				tags: [
+					{ id: 'tag-2', name: 'Finance' },
+					{ id: 'tag-1', name: 'Billing' },
+				],
 			},
-			targetSnapshot: { ...snapshot(), isArchived: true },
+			targetSnapshot: {
+				...snapshot(),
+				isArchived: true,
+				tags: [
+					{ id: 'tag-1', name: 'Billing' },
+					{ id: 'tag-2', name: 'Finance' },
+				],
+			},
 		},
 	});
 	expect(captured[0].sourceWorkflow).toMatchObject({
 		name: 'Old name',
 		settings: { executionOrder: 'v1', timezone: 'UTC' },
-		tags: [{ id: 'tag', name: 'Billing' }],
 		isArchived: false,
 	});
+	// Tag order is not a change, so both sides list the tags in the same order.
+	expect(captured[0].sourceWorkflow?.tags).toEqual(captured[0].targetWorkflow?.tags);
 	expect(captured[0].targetWorkflow).toMatchObject({
 		name: 'Workflow',
 		settings: { executionOrder: 'v0' },

@@ -55,7 +55,6 @@ export type SlotWorkflowDiffSnapshot = Pick<
 		/** The workflow name on this side, when it differs from `workflowName`. */
 		workflowName?: string;
 		settings?: IWorkflowSettings;
-		/** Compared in this order, so sort them. */
 		tags?: Array<{ id: string; name: string }>;
 		isArchived?: boolean;
 	};

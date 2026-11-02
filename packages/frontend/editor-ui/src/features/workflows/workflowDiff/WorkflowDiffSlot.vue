@@ -24,7 +24,8 @@ function toWorkflow(
 		connections: snapshot.connections,
 		nodeGroups: snapshot.nodeGroups,
 		settings: snapshot.settings,
-		tags: snapshot.tags,
+		// The diff compares tags in order, but the tags of a workflow have no order.
+		tags: snapshot.tags && [...snapshot.tags].sort((a, b) => a.name.localeCompare(b.name)),
 		isArchived: snapshot.isArchived,
 	});
 }
