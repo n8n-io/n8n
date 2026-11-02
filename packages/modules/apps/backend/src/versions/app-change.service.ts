@@ -54,26 +54,55 @@ export class AppChangeService {
 	/**
 	 * Saves the source of `expectedDraftVersionId` with other bindings as a new
 	 * version. The new version shares a successful build of the draft, because
-	 * bindings do not change the bundle. Otherwise it starts its own build.
+	 * bindings do not change the bundle. Otherwise it starts its own build. An app
+	 * without a version gets its first version from the scaffold.
 	 */
 	async saveBindings(
 		projectId: string,
 		appId: string,
-		expectedDraftVersionId: string,
+		expectedDraftVersionId: string | null,
 		bindings: AppBinding[],
 	): Promise<AppVersion> {
 		this.builds.assertNotStopping();
+		if (expectedDraftVersionId === null) {
+			return await this.saveAndStartBuild(
+				projectId,
+				appId,
+				null,
+				createAppScaffold(),
+				null,
+				bindings,
+			);
+		}
 		const draft = await this.versions.getVersion(projectId, appId, expectedDraftVersionId);
 		if (draft.buildStatus === 'succeeded' && draft.bundleArtifactId !== null) {
 			return await this.versions.copyDraft(projectId, appId, expectedDraftVersionId, bindings);
 		}
-		const files = await this.versions.readSource(projectId, appId, expectedDraftVersionId);
+		return await this.saveAndStartBuild(
+			projectId,
+			appId,
+			expectedDraftVersionId,
+			await this.versions.readSource(projectId, appId, expectedDraftVersionId),
+			draft.label,
+			bindings,
+		);
+	}
+
+	/** Saves a version and starts its build without waiting for the build. */
+	private async saveAndStartBuild(
+		projectId: string,
+		appId: string,
+		expectedDraftVersionId: string | null,
+		files: AppFiles,
+		label: string | null,
+		bindings: AppBinding[],
+	): Promise<AppVersion> {
 		const version = await this.versions.saveSource(
 			projectId,
 			appId,
 			expectedDraftVersionId,
 			files,
-			draft.label,
+			label,
 			bindings,
 		);
 		try {

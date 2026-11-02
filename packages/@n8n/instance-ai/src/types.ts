@@ -20,6 +20,7 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	AppBinding,
 	AppBindingsResponse,
 	AppBuildResponse,
 	AppListResponse,
@@ -1311,6 +1312,12 @@ export interface InstanceAiAppService {
 	): Promise<AppBuildResponse>;
 	/** The bindings of the draft version, with the TypeScript declarations that describe them. */
 	getBindings(appId: string): Promise<AppBindingsResponse & { types: string }>;
+	/** Saves the full binding list as a new version on top of `baseVersionId`. */
+	setBindings(
+		appId: string,
+		baseVersionId: string | null,
+		bindings: AppBinding[],
+	): Promise<AppBindingsResponse & { types: string }>;
 	/** The `@n8n/app-sdk` package of this instance as a gzip tar archive. */
 	exportSdk(): Promise<Buffer>;
 }

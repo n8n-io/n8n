@@ -235,6 +235,125 @@ describe('apps tool', () => {
 		);
 	});
 
+	describe('binding changes', () => {
+		const tasks = {
+			key: 'tasks',
+			kind: 'dataTable' as const,
+			dataTableId: 't1',
+			permissions: ['read' as const],
+		};
+		const submit = { key: 'submit', kind: 'workflow' as const, workflowId: 'w1' };
+		const saved = { versionId: 'v2', bindings: [], warnings: [], types: '' };
+
+		function withBindings() {
+			const ctx = setup();
+			ctx.appService.getBindings.mockResolvedValue({
+				versionId: 'v1',
+				bindings: [
+					{ ...tasks, name: 'Tasks', columns: [], row: {} },
+					{ ...submit, name: 'Submit', published: true, input: {}, output: {} },
+				],
+				warnings: [],
+				types: '',
+			});
+			ctx.appService.setBindings.mockResolvedValue(saved);
+			ctx.appService.getApp.mockResolvedValue(app(SERVER_ID));
+			return ctx;
+		}
+
+		it('replaces the binding with the same key and keeps the others', async () => {
+			const { tool, appService, onArtifactChanged } = withBindings();
+			const writable = { ...tasks, permissions: ['read' as const, 'insert' as const] };
+
+			const result = await executeTool(tool, {
+				action: 'bind',
+				appId: SERVER_ID,
+				binding: writable,
+			});
+
+			expect(result).toEqual(saved);
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, 'v1', [submit, writable]);
+			expect(onArtifactChanged).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'app', id: SERVER_ID }),
+			);
+		});
+
+		it('adds the first binding to an app without a version', async () => {
+			const { tool, appService } = setup();
+			appService.getBindings.mockResolvedValue({
+				versionId: null,
+				bindings: [],
+				warnings: [],
+				types: '',
+			});
+			appService.setBindings.mockResolvedValue(saved);
+
+			await executeTool(tool, { action: 'bind', appId: SERVER_ID, binding: tasks });
+
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, null, [tasks]);
+		});
+
+		it('removes a binding by its key', async () => {
+			const { tool, appService } = withBindings();
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(appService.setBindings).toHaveBeenCalledWith(SERVER_ID, 'v1', [submit]);
+		});
+
+		it('reports an unknown key and saves nothing', async () => {
+			const { tool, appService } = withBindings();
+
+			const result = await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'other' });
+
+			expect(result).toEqual({ error: 'The app has no binding with the key "other".' });
+			expect(appService.setBindings).not.toHaveBeenCalled();
+		});
+
+		it('moves an open folder on the old draft to the new version', async () => {
+			const { tool } = withBindings();
+			vi.mocked(readBaseVersion).mockResolvedValue('v1');
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(writeBaseVersion).toHaveBeenCalledWith({}, SERVER_ID, 'v2');
+		});
+
+		it.each([
+			{ name: 'is not open', base: undefined },
+			{ name: 'is on another version', base: 'v0' },
+		])('leaves the folder alone when it $name', async ({ base }) => {
+			const { tool } = withBindings();
+			vi.mocked(readBaseVersion).mockResolvedValue(base);
+
+			await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(writeBaseVersion).not.toHaveBeenCalled();
+		});
+
+		it('keeps the saved bindings when the workspace is unavailable', async () => {
+			const { tool, logger } = withBindings();
+			vi.mocked(readBaseVersion).mockRejectedValue(new Error('Sandbox unavailable'));
+
+			const result = await executeTool(tool, { action: 'unbind', appId: SERVER_ID, key: 'tasks' });
+
+			expect(result).toEqual(saved);
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		it('rejects an invalid binding key in the input', () => {
+			const { tool } = setup();
+
+			expect(
+				parseToolInput(tool, {
+					action: 'bind',
+					appId: SERVER_ID,
+					binding: { ...submit, key: 'Not valid' },
+				}).success,
+			).toBe(false);
+		});
+	});
+
 	it('returns the bindings of the draft with their types', async () => {
 		const { tool, appService } = setup();
 		const bindings = {

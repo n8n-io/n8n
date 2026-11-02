@@ -1,5 +1,12 @@
 import { Tool, type Workspace } from '@n8n/agents';
-import { appNameSchema, appNamespaceSchema, type AppBuildResponse } from '@n8n/api-types';
+import {
+	appBindingKeySchema,
+	appBindingSchema,
+	appNameSchema,
+	appNamespaceSchema,
+	type AppBinding,
+	type AppBuildResponse,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
@@ -38,6 +45,18 @@ const inputSchema = z.discriminatedUnion('action', [
 	z.object({ action: z.literal('get'), appId: appIdSchema }),
 	z.object({ action: z.literal('open'), appId: appIdSchema }),
 	z.object({ action: z.literal('bindings'), appId: appIdSchema }),
+	z.object({
+		action: z.literal('bind'),
+		appId: appIdSchema,
+		binding: appBindingSchema.describe(
+			'The binding to add. It replaces the binding with the same key. Use the ID of a workflow, data table or agent in the app project.',
+		),
+	}),
+	z.object({
+		action: z.literal('unbind'),
+		appId: appIdSchema,
+		key: appBindingKeySchema.describe('Key of the binding to remove'),
+	}),
 	z.object({ action: z.literal('commit'), appId: appIdSchema, label: labelSchema }),
 	z.object({ action: z.literal('discard'), appId: appIdSchema }),
 ]);
@@ -137,6 +156,36 @@ async function commit(
 	};
 }
 
+/**
+ * Saves a changed binding list as a new version of the app. An open app folder
+ * that was on the old draft moves to the new version: the source is the same,
+ * so the next commit does not conflict.
+ */
+async function changeBindings(
+	context: InstanceAiContext,
+	workspace: Workspace,
+	apps: InstanceAiAppService,
+	appId: string,
+	change: (bindings: AppBinding[]) => AppBinding[],
+) {
+	const current = await apps.getBindings(appId);
+	// Described bindings carry names and schemas. Parsing keeps only the binding fields.
+	const bindings = change(current.bindings.map((binding) => appBindingSchema.parse(binding)));
+	const result = await apps.setBindings(appId, current.versionId, bindings);
+	try {
+		if ((await readBaseVersion(workspace, appId)) === current.versionId) {
+			await writeBaseVersion(workspace, appId, result.versionId);
+		}
+	} catch (error) {
+		context.logger.warn('Failed to move the app folder to the new bindings version', {
+			appId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+	await reportChangedApp(context, appId, async () => await apps.getApp(appId));
+	return result;
+}
+
 async function handle(
 	context: InstanceAiContext,
 	workspace: Workspace,
@@ -165,6 +214,20 @@ async function handle(
 			return await open(workspace, apps, input.appId);
 		case 'bindings':
 			return await apps.getBindings(input.appId);
+		case 'bind': {
+			const { binding } = input;
+			return await changeBindings(context, workspace, apps, input.appId, (bindings) => [
+				...bindings.filter(({ key }) => key !== binding.key),
+				binding,
+			]);
+		}
+		case 'unbind':
+			return await changeBindings(context, workspace, apps, input.appId, (bindings) => {
+				if (!bindings.some(({ key }) => key === input.key)) {
+					throw new Error(`The app has no binding with the key "${input.key}".`);
+				}
+				return bindings.filter(({ key }) => key !== input.key);
+			});
 		case 'commit':
 			return await commit(context, workspace, apps, input.appId, input.label);
 		case 'discard':
@@ -182,7 +245,8 @@ export function createAppsTool(context: InstanceAiContext) {
 				'Load `app-builder` via `load_skill` before calling this tool. ' +
 				'`create` and `open` put the app source into the sandbox workspace. Edit it there with the ' +
 				'workspace tools. `commit` saves the folder as one version and builds it. ' +
-				'`bindings` lists the workflows, data tables and agents that the app can call.',
+				'`bindings` lists the workflows, data tables and agents that the app can call. ' +
+				'`bind` adds or replaces one binding and `unbind` removes one. Each change saves a new version.',
 		)
 		.input(sanitizeInputSchema(inputSchema))
 		.handler(async (input: Input) => {

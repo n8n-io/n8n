@@ -83,12 +83,28 @@ project under a key. The app uses the key, never a resource ID.
 
 1. Call `bindings` with the `appId`. The result lists each binding with its
    `key`, `kind`, resource name and permissions, and `types` describes the
-   input, output and row shapes. Use only keys from this list.
-2. Read `warnings`. A missing resource or an unpublished workflow or agent
-   gives the app an error. Tell the user about it.
-3. You cannot add or change bindings. If the app needs a resource without a
-   binding, tell the user which binding to add: the key, the kind and the
-   resource. Do not invent keys.
+   input, output and row shapes. Use only keys from this list in the source.
+2. If the app needs a resource without a binding, add one with `bind`:
+   - `{ key, kind: 'dataTable', dataTableId, permissions }` with permissions
+     from `read`, `insert`, `update` and `delete`.
+   - `{ key, kind: 'workflow', workflowId }`.
+   - `{ key, kind: 'agent', agentId, permissions }` with permissions from
+     `chat` and `history`.
+
+   Find the ID with the data table, workflow or agent tools. The resource must
+   be in the project of the app. The key is a short camelCase name, for
+   example `tasks`. `bind` with an existing key replaces that binding.
+3. Remove a binding that the app no longer uses with `unbind` and its `key`.
+4. Grant only the permissions that the app uses. A public app gives every
+   visitor its bindings without sign-in. Ask the user before you give a public
+   app write access, a workflow or agent chat.
+5. Read `warnings` in each result. A missing resource or an unpublished
+   workflow or agent gives the app an error. Tell the user about it.
+
+Each binding change saves a new version of the app, like a commit. You can
+change bindings before the first commit and while the app folder is open. The
+open folder stays valid, so you do not need to `discard`. The live app gets
+the new bindings when the user publishes.
 
 Import the client from `@n8n/app-sdk`. It calls the API of the app origin, so
 it works on the preview and on the published app:

@@ -9,6 +9,7 @@ describe('app DTOs', () => {
 	it('needs the draft version that a binding change is based on', () => {
 		const baseVersionId = '0190a8d6-4a2e-7000-8000-0000000000d1';
 		expect(SetAppBindingsDto.safeParse({ baseVersionId, bindings: [] }).success).toBe(true);
+		expect(SetAppBindingsDto.safeParse({ baseVersionId: null, bindings: [] }).success).toBe(true);
 		expect(SetAppBindingsDto.safeParse({ bindings: [] }).success).toBe(false);
 		expect(SetAppBindingsDto.safeParse({ baseVersionId: 'draft', bindings: [] }).success).toBe(
 			false,

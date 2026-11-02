@@ -69,13 +69,10 @@ export class AppBindingsService {
 		user: User,
 		projectId: string,
 		appId: string,
-		baseVersionId: string,
+		baseVersionId: string | null,
 		bindings: AppBinding[],
 	): Promise<AppBindingsResponse> {
 		const app = await this.requireApp(projectId, appId);
-		if (!app.draftVersionId) {
-			throw new ConflictError('Save the app source before you set its bindings.');
-		}
 		if (app.draftVersionId !== baseVersionId) {
 			throw new ConflictError('The app draft changed. Reload the app before you set its bindings.');
 		}

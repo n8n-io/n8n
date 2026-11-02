@@ -4,6 +4,7 @@ import {
 	AI_GATEWAY_MANAGED_TAG,
 	CreateAppDto,
 	ListAppsQueryDto,
+	SetAppBindingsDto,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
@@ -3592,6 +3593,18 @@ export class InstanceAiAdapterService {
 			getBindings: async (appId) => {
 				const { bindings, renderBindingTypes } = await services('app:read');
 				const result = await bindings().getBindings(projectId, appId);
+				return { ...result, types: renderBindingTypes(result.bindings) };
+			},
+			setBindings: async (appId, baseVersionId, next) => {
+				const { bindings, renderBindingTypes } = await services('app:update');
+				const dto = SetAppBindingsDto.parse({ baseVersionId, bindings: next });
+				const result = await bindings().setBindings(
+					user,
+					projectId,
+					appId,
+					dto.baseVersionId,
+					dto.bindings,
+				);
 				return { ...result, types: renderBindingTypes(result.bindings) };
 			},
 			exportSdk: async () => {

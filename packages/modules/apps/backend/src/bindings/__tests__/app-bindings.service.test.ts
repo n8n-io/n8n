@@ -124,10 +124,19 @@ describe('AppBindingsService', () => {
 		expect(changes.saveBindings).not.toHaveBeenCalled();
 	});
 
-	it('needs a saved version before it stores bindings', async () => {
+	it('saves the bindings of an app without a version', async () => {
 		const { service, changes } = setup({ draftVersionId: null });
 
-		await expect(service.setBindings(user, 'p1', APP_ID, DRAFT_ID, [workflow])).rejects.toThrow(
+		const result = await service.setBindings(user, 'p1', APP_ID, null, [workflow]);
+
+		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, null, [workflow]);
+		expect(result.versionId).toBe(NEW_ID);
+	});
+
+	it('refuses bindings for an app without a version after someone saved one', async () => {
+		const { service, changes } = setup();
+
+		await expect(service.setBindings(user, 'p1', APP_ID, null, [workflow])).rejects.toThrow(
 			ConflictError,
 		);
 		expect(changes.saveBindings).not.toHaveBeenCalled();

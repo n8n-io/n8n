@@ -188,6 +188,22 @@ describe('AppChangeService', () => {
 			},
 		);
 
+		it('saves the first version of an app from the scaffold with the bindings', async () => {
+			const { service, versions, builds } = setup();
+
+			expect((await service.saveBindings('project', 'app', null, bindings)).id).toBe('new-version');
+			expect(versions.getVersion).not.toHaveBeenCalled();
+			expect(versions.saveSource).toHaveBeenCalledWith(
+				'project',
+				'app',
+				null,
+				createAppScaffold(),
+				null,
+				bindings,
+			);
+			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version');
+		});
+
 		it('keeps the saved bindings when the build cannot start', async () => {
 			const { service, versions, builds } = setup();
 			versions.getVersion.mockResolvedValue({ id: 'draft', buildStatus: 'queued' } as AppVersion);
