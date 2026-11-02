@@ -155,21 +155,6 @@ describe('McpConnection — SSE transport', () => {
 			await conn.disconnect();
 		});
 
-		it('toMessage returns undefined for text-only results', async () => {
-			const conn = new McpConnection({ name: 'test', url: server.url });
-			await conn.connect();
-
-			const builtTools = await conn.listTools();
-			const echoTool = builtTools.find((t) => t.name === 'test_echo')!;
-
-			const mcpResult = await conn.callTool('echo', { message: 'text only' });
-			const message = echoTool.toMessage?.(mcpResult);
-
-			expect(message).toBeUndefined();
-
-			await conn.disconnect();
-		});
-
 		it('keeps image results in the tool output without an extra message', async () => {
 			const conn = new McpConnection({ name: 'test', url: server.url });
 			await conn.connect();
@@ -179,7 +164,7 @@ describe('McpConnection — SSE transport', () => {
 
 			const mcpResult = await conn.callTool('image', { caption: 'my photo' });
 
-			expect(imageTool.toMessage?.(mcpResult)).toBeUndefined();
+			expect(imageTool.toMessage).toBeUndefined();
 			expect(imageTool.toModelOutput?.(mcpResult)).toEqual({
 				type: 'content',
 				value: [

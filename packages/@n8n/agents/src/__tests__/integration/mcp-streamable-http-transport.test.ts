@@ -114,7 +114,7 @@ describe('McpConnection — Streamable HTTP transport', () => {
 
 			const mcpResult = await conn.callTool('image', { caption: 'sunset' });
 
-			expect(imageTool.toMessage?.(mcpResult)).toBeUndefined();
+			expect(imageTool.toMessage).toBeUndefined();
 			expect(imageTool.toModelOutput?.(mcpResult)).toEqual({
 				type: 'content',
 				value: [

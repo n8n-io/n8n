@@ -261,18 +261,12 @@ describe('createToolsFromLocalMcpServer', () => {
 	});
 
 	describe('media output', () => {
-		it('does not create an extra message for MCP image results', () => {
+		it('does not set an extra message converter', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
-			expect(tool?.toMessage?.(SCREENSHOT_RESULT)).toBeUndefined();
-		});
-
-		it('does not create an extra message for text-only results', () => {
-			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
-
-			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
+			expect(tool).toBeDefined();
+			expect(tool?.toMessage).toBeUndefined();
 		});
 
 		it('returns AI SDK content output for MCP image results', () => {
@@ -290,13 +284,6 @@ describe('createToolsFromLocalMcpServer', () => {
 					},
 				],
 			});
-		});
-
-		it('does not create an extra message for MCP resource results', () => {
-			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
-
-			expect(tool?.toMessage?.(PDF_RESULT)).toBeUndefined();
 		});
 
 		it('falls back to application/octet-stream when resource has no mimeType', () => {
