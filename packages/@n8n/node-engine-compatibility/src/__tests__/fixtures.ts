@@ -274,6 +274,46 @@ class RunsSubWorkflow implements INodeType {
 	}
 }
 
+/**
+ * Builds a reply link or an approval button reference, as a send-and-wait node
+ * does, and returns it. Puts the execution to wait when `waitTill` is set.
+ */
+class AsksForReply implements INodeType {
+	description = {
+		displayName: 'Asks For Reply',
+		name: 'asksForReply',
+		group: ['transform'],
+		version: 1,
+		description: 'Builds a reply link or button reference',
+		defaults: { name: 'Asks For Reply' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{
+				displayName: 'Reply',
+				name: 'reply',
+				type: 'options',
+				options: [
+					{ name: 'Link', value: 'link' },
+					{ name: 'Button', value: 'button' },
+				],
+				default: 'link',
+			},
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const reference =
+			this.getNodeParameter('reply', 0) === 'link'
+				? this.getSignedResumeUrl({ approved: 'true' })
+				: this.getApprovalCallbackReference('a');
+		const waitTill = this.getNodeParameter('waitTill', 0) as string;
+		if (waitTill) await this.putExecutionToWait(new Date(waitTill));
+		return [[{ json: { reference } }]];
+	}
+}
+
 const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
@@ -287,6 +327,7 @@ const registry = new Map<string, INodeType>([
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
 	['test.waitsUntil', new WaitsUntil()],
 	['test.runsSubWorkflow', new RunsSubWorkflow()],
+	['test.asksForReply', new AsksForReply()],
 	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 

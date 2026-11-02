@@ -1238,6 +1238,13 @@ export interface FunctionsBase {
 	getInstanceId(): string;
 	/** Get the waiting resume url signed with the signature token */
 	getSignedResumeUrl(parameters?: Record<string, string>): string;
+	/**
+	 * Builds the signed reference that an approval button carries, for example
+	 * Telegram's `callback_data` (64 bytes at most). The reference ends this
+	 * node's wait with the decision: `a` approves, `d` declines. The node never
+	 * reads the secret that signs it.
+	 */
+	getApprovalCallbackReference(decision: 'a' | 'd'): string;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
