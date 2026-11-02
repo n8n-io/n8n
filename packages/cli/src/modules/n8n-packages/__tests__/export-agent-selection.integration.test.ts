@@ -166,7 +166,7 @@ it.each(['loose', 'project'] as const)(
 			},
 			new CapturingWriter(),
 		);
-		expect(manifest.agents?.map(({ id }) => id)).toEqual([parent.id, child.id].sort());
+		expect(manifest.agents?.map(({ id }) => id)).toEqual([parent.id, child.id]);
 		expect(counts).toMatchObject({ agents: 2, workflows: 3 });
 		expect(manifest.workflows?.map(({ id }) => id).sort()).toEqual(
 			['loose', 'nested', parent.id].sort(),

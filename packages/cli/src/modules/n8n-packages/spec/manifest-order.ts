@@ -42,7 +42,6 @@ function sortRequirements(requirements: PackageRequirements): PackageRequirement
 		credentials: sortRows(requirements.credentials, id),
 		dataTables: sortRows(requirements.dataTables, id),
 		workflows: sortRows(requirements.workflows, id),
-		agents: sortRows(requirements.agents, id),
 		variables: sortRows(requirements.variables, ({ name }) => name),
 		tags: sortRows(requirements.tags, id),
 		nodeTypes: sortRows(
@@ -62,8 +61,6 @@ export function sortManifest(manifest: PackageManifest): PackageManifest {
 	const { requirements } = manifest;
 	return {
 		...manifest,
-		agents: sorted(manifest.agents, byId),
-		skills: sorted(manifest.skills, byId),
 		projects: sorted(manifest.projects, byId),
 		folders: sorted(manifest.folders, byDepthThenId),
 		workflows: sorted(manifest.workflows, byId),

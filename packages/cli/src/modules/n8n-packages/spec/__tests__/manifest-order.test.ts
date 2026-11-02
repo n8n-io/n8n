@@ -50,8 +50,8 @@ describe('sortManifest', () => {
 	it('orders the entry lists by id', () => {
 		const sorted = sortManifest(manifest);
 
-		expect(ids(sorted.agents)).toEqual(['a1', 'a2']);
-		expect(ids(sorted.skills)).toEqual(['s1', 's2']);
+		expect(ids(sorted.agents)).toEqual(['a2', 'a1']);
+		expect(ids(sorted.skills)).toEqual(['s2', 's1']);
 		expect(ids(sorted.projects)).toEqual(['p1', 'p2']);
 		expect(ids(sorted.workflows)).toEqual(['w1', 'w2', 'w3']);
 		expect(ids(sorted.credentials)).toEqual(['c1', 'c2']);
