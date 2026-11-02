@@ -2049,6 +2049,38 @@ describe('SystemAgentExecutionService', () => {
 			},
 		);
 
+		it('still cancels the root when a descendant disappears during cleanup', async () => {
+			const { service, threadRepository, messageQueue, executionRepository, chatExecutionService } =
+				setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			threadRepository.findByParentThreadId.mockImplementation(async (id) =>
+				id === 'thread-1'
+					? [
+							mock<AgentExecutionThread>({
+								id: 'child-1',
+								agentId: 'child-agent',
+								projectId: 'project-1',
+							}),
+						]
+					: [],
+			);
+			messageQueue.prepareSessionStop
+				.mockResolvedValueOnce({ executionIds: ['exec-1'], queueIds: [], attachmentIds: [] })
+				.mockRejectedValueOnce(new NotFoundError('Session not found'));
+			executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
+
+			await service.stopThreadsOfUser('user-1');
+
+			expect(messageQueue.prepareSessionStop).toHaveBeenCalledWith('child-1', {
+				preserveInput: true,
+			});
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'thread-1', executionId: 'exec-1' }),
+			);
+		});
+
 		it('keeps idle sessions without requesting cancellation', async () => {
 			const { service, threadRepository, messageQueue, chatExecutionService, executionService } =
 				setup();

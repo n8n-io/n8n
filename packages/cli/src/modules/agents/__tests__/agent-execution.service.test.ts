@@ -2347,6 +2347,24 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('deleteExecutionLogsForProject', () => {
+		it('deletes project log blobs with their owning agent and storage location', async () => {
+			agentExecutionRepository.findBlobRefsByProjectId.mockResolvedValue([
+				{ id: 'exec-1', threadId: 'thread-1', agentId: 'project-agent', storedAt: 'fs' },
+				{ id: 'exec-2', threadId: 'thread-2', agentId: 'instance-agent', storedAt: 's3' },
+				{ id: 'exec-3', threadId: 'thread-3', agentId: 'instance-agent', storedAt: 'db' },
+			]);
+
+			await service.deleteExecutionLogsForProject('project-1');
+
+			expect(agentExecutionRepository.findBlobRefsByProjectId).toHaveBeenCalledWith('project-1');
+			expect(agentExecutionLogStore.delete).toHaveBeenCalledExactlyOnceWith([
+				{ executionId: 'exec-1', threadId: 'thread-1', agentId: 'project-agent', storedAt: 'fs' },
+				{ executionId: 'exec-2', threadId: 'thread-2', agentId: 'instance-agent', storedAt: 's3' },
+			]);
+		});
+	});
+
 	describe('deleteExecutionLogsForAgent', () => {
 		it('deletes all blob-stored logs for an agent', async () => {
 			agentExecutionRepository.findBlobRefsByAgentId.mockResolvedValue([

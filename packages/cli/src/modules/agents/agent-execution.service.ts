@@ -763,6 +763,23 @@ export class AgentExecutionService {
 		}
 	}
 
+	/** Include logs from instance agents that have sessions in the deleted project. */
+	async deleteExecutionLogsForProject(projectId: string): Promise<void> {
+		const refs = this.toBlobRefs(
+			await this.agentExecutionRepository.findBlobRefsByProjectId(projectId),
+		);
+		for (const batch of chunk(refs, AgentExecutionService.logDeletionBatchSize)) {
+			await this.agentExecutionLogStore.delete(
+				batch.map((ref) => ({
+					agentId: ref.agentId,
+					threadId: ref.threadId,
+					executionId: ref.id,
+					storedAt: ref.storedAt,
+				})),
+			);
+		}
+	}
+
 	/**
 	 * Delete the SDK-memory threads of an agent's sessions. Call before the agent
 	 * is removed: the cascade then deletes the execution threads that list them.

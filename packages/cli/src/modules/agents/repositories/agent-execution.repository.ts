@@ -468,6 +468,23 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		await this.delete({ threadId });
 	}
 
+	/** Find log handles before the project cascade removes its execution threads. */
+	async findBlobRefsByProjectId(
+		projectId: string,
+	): Promise<(Pick<AgentExecution, 'id' | 'threadId' | 'storedAt'> & { agentId: string })[]> {
+		const executions = await this.find({
+			select: { id: true, threadId: true, storedAt: true, thread: { agentId: true } },
+			relations: { thread: true },
+			where: { thread: { projectId }, storedAt: Not('db') },
+		});
+		return executions.map((execution) => ({
+			id: execution.id,
+			threadId: execution.threadId,
+			storedAt: execution.storedAt,
+			agentId: execution.thread.agentId,
+		}));
+	}
+
 	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */
 	async findBlobRefsByAgentId(
 		agentId: string,

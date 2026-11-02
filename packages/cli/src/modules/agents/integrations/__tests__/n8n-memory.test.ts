@@ -516,14 +516,14 @@ describe('N8nMemory', () => {
 
 			expect(memoryScopeRepository.lockActiveScope).toHaveBeenCalledWith('user-1', {});
 			expect(memoryScopeRepository.lockActiveScope.mock.invocationCallOrder[0]).toBeLessThan(
-				transactionMemoryEntryDelete.mock.invocationCallOrder[0],
+				transactionDelete.mock.invocationCallOrder[0],
 			);
 
 			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(1, {
 				select: { memoryEntryId: true },
 				where: { agentId: 'agent-1', threadId: 'thread-1' },
 			});
-			expect(transactionDelete).toHaveBeenCalledWith(AgentMemoryEntrySourceEntity, {
+			expect(transactionDelete).toHaveBeenNthCalledWith(1, AgentMemoryEntrySourceEntity, {
 				threadId: 'thread-1',
 				agentId: 'agent-1',
 			});

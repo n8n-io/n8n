@@ -6,6 +6,8 @@ import { v4 as uuid } from 'uuid';
 import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import { chatThreadId } from '@/modules/agents/agent-test-chat.service';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
+import { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
+import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { ProjectService } from '@/services/project.service.ee';
@@ -86,7 +88,30 @@ describe('Agent conversations on project deletion', () => {
 				],
 			});
 		}
-		// The fixture has no files. Avoid creating an external sandbox during cleanup.
+		const logs = Container.get(AgentExecutionLogStore);
+		const executions = Container.get(AgentExecutionRepository);
+		const deletedLog = {
+			agentId: instanceAgent.id,
+			threadId: instanceSessionId,
+			executionId: uuid(),
+		};
+		const keptLog = {
+			agentId: instanceAgent.id,
+			threadId: keptInstanceSessionId,
+			executionId: uuid(),
+		};
+		for (const ref of [deletedLog, keptLog]) {
+			await executions.save(
+				executions.create({
+					id: ref.executionId,
+					threadId: ref.threadId,
+					status: 'success',
+					storedAt: 'fs',
+				}),
+			);
+			await logs.write(ref, { timeline: [] }, 'fs');
+		}
+		// The fixture has no knowledge files. Avoid creating an external sandbox during cleanup.
 		const sandbox = vi
 			.spyOn(Container.get(AgentKnowledgeService), 'destroyKnowledgeSandbox')
 			.mockResolvedValue();
@@ -114,5 +139,9 @@ describe('Agent conversations on project deletion', () => {
 		expect(await threads.findOneBy({ id: keptInstanceSessionId })).not.toBeNull();
 		expect(await agents.findOneBy({ id: instanceAgent.id })).not.toBeNull();
 		expect(await Container.get(ProjectRepository).findOneBy({ id: project.id })).toBeNull();
+		expect(await executions.findOneBy({ id: deletedLog.executionId })).toBeNull();
+		expect(await logs.read(deletedLog, 'fs')).toBeNull();
+		expect(await logs.read(keptLog, 'fs')).not.toBeNull();
+		await logs.delete([{ ...keptLog, storedAt: 'fs' }]);
 	});
 });

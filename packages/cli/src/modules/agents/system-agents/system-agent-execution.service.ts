@@ -407,8 +407,12 @@ export class SystemAgentExecutionService {
 	): Promise<void> {
 		let running = false;
 		for (const thread of tree) {
-			const stop = await this.messageQueue.prepareSessionStop(thread.id, { preserveInput: true });
-			if (stop.executionIds.length > 0) running = true;
+			try {
+				const stop = await this.messageQueue.prepareSessionStop(thread.id, { preserveInput: true });
+				if (stop.executionIds.length > 0) running = true;
+			} catch (error) {
+				if (!(error instanceof NotFoundError)) throw error;
+			}
 		}
 		if (!running) return;
 		const latest = await this.executionRepository.findLatestByThreadId(session.id);

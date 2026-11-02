@@ -1047,11 +1047,15 @@ describe('ProjectService', () => {
 				project.id,
 				'agent-2',
 			);
-			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
-			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
+			expect(agentExecutionService.deleteExecutionLogsForProject).toHaveBeenCalledWith(project.id);
 			expect(agentTestChatService.clearAllTestChatMessages).toHaveBeenCalledWith('agent-1');
 			expect(agentTestChatService.clearAllTestChatMessages).toHaveBeenCalledWith('agent-2');
 			expect(agentExecutionService.deleteMemoryThreadsForProject).toHaveBeenCalledWith(project.id);
+			expect(
+				agentExecutionService.deleteExecutionLogsForProject.mock.invocationCallOrder[0],
+			).toBeLessThan(
+				agentExecutionService.deleteMemoryThreadsForProject.mock.invocationCallOrder[0],
+			);
 			expect(
 				agentExecutionService.deleteMemoryThreadsForProject.mock.invocationCallOrder[0],
 			).toBeLessThan(projectRepository.remove.mock.invocationCallOrder[0]);
@@ -1237,7 +1241,7 @@ describe('ProjectService', () => {
 				project.id,
 				'agent-1',
 			);
-			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
+			expect(agentExecutionService.deleteExecutionLogsForProject).toHaveBeenCalledWith(project.id);
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});

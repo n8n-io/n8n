@@ -321,9 +321,9 @@ export class ProjectService {
 				}
 
 				await agentKnowledgeService.destroyKnowledgeSandbox(project.id, agent.id);
-				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
 				await agentTestChats.clearAllTestChatMessages(agent.id);
 			}
+			await agentExecutionService.deleteExecutionLogsForProject(project.id);
 			await agentExecutionService.deleteMemoryThreadsForProject(project.id);
 		}
 
