@@ -722,6 +722,8 @@ export interface SystemAgentThreadSummary {
 	title: string | null;
 	updatedAt: string;
 	projectId: string;
+	/** The memory metadata of the thread, such as the agent that an Assistant thread builds. */
+	metadata?: Record<string, unknown>;
 }
 
 /** One page of the user's own threads with one system agent, newest first. */
