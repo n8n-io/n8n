@@ -88,12 +88,28 @@ async function request(api: ApiHelpers, path: string) {
 	return response.status();
 }
 
-async function approvedAfterResume(api: ApiHelpers, executionId: string) {
+/** Sends the one field of the form page. */
+async function submit(api: ApiHelpers, path: string, value: string) {
+	const response = await api.webhooks.trigger(path, {
+		method: 'POST',
+		headers: BROWSER,
+		multipart: { 'field-0': value },
+		maxNotFoundRetries: 0,
+	});
+	return response.status();
+}
+
+/** Waits for the run to end and returns the response that the Slack node resumed with once. */
+async function responseAfterResume(api: ApiHelpers, executionId: string) {
 	const execution = await api.workflows.waitForExecutionById(executionId);
 	expect(execution.status).toBe('success');
-	const after = flatted.parse(execution.data).resultData.runData.After;
-	expect(after).toHaveLength(1);
-	return after[0].data.main[0][0].json.approved;
+	const { runData } = flatted.parse(execution.data).resultData;
+	expect(runData.After).toHaveLength(1);
+	return runData.Slack[0].data.main[0][0].json.data;
+}
+
+async function approvedAfterResume(api: ApiHelpers, executionId: string) {
+	return (await responseAfterResume(api, executionId)).approved;
 }
 
 /** Changes one character in the middle of the token, where every character carries signed bits. */
@@ -205,5 +221,56 @@ test.describe(
 			expect(await request(api, approvePath)).toBe(200);
 			expect(await approvedAfterResume(api, executionId)).toBe(true);
 		});
+
+		for (const { responseType, label, form, value, response } of [
+			{
+				responseType: 'freeText',
+				label: 'Response',
+				form: {},
+				value: 'hello world',
+				response: { text: 'hello world' },
+			},
+			{
+				responseType: 'customForm',
+				label: 'Answer',
+				form: { defineForm: 'fields', formFields: { values: [{ fieldLabel: 'Answer' }] } },
+				value: 'forty-two',
+				response: { Answer: 'forty-two' },
+			},
+		]) {
+			test(`should show the ${responseType} form on the link and resume on its answer @engine:v2`, async ({
+				api,
+				services,
+			}) => {
+				const { executionId, approvePath } = await startAndReadButtons(api, services.proxy, {
+					transform: (workflow) => {
+						const slack = workflow.nodes?.find((node) => node.name === 'Slack');
+						Object.assign(slack!.parameters, { responseType, ...form });
+						return workflow;
+					},
+				});
+				const [pathOnly, query] = approvePath.split('?');
+
+				const page = await api.webhooks.trigger(approvePath, {
+					headers: BROWSER,
+					maxNotFoundRetries: 0,
+				});
+				expect(page.status()).toBe(200);
+				expect(await page.text()).toContain(label);
+				expect(await request(api, approvePath.replace('approved=true', 'approved=false'))).toBe(
+					401,
+				);
+				expect(await request(api, `${pathOnly}?extra=1&${query}`)).toBe(401);
+				expect((await api.workflows.getExecution(executionId)).status).toBe('waiting');
+
+				expect(await submit(api, approvePath, value)).toBe(200);
+				expect(await responseAfterResume(api, executionId)).toMatchObject(response);
+
+				// The page says that no action is required, and the run stays as it ended.
+				expect(await submit(api, approvePath, 'again')).toBe(200);
+				expect(await request(api, approvePath)).toBe(200);
+				expect(await responseAfterResume(api, executionId)).toMatchObject(response);
+			});
+		}
 	},
 );
