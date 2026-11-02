@@ -296,6 +296,7 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 				:input-thread-id="block.toolCall.confirmation.inputThreadId"
 				:blueprint="resolveAppBlueprint(block.toolCall)!"
 				:read-only="isCardReadOnly(block.toolCall)"
+				:expired="block.toolCall.confirmation.expired"
 			/>
 
 			<!-- Answered questions (read-only after resolution) -->

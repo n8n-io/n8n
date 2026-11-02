@@ -13,6 +13,7 @@ const props = defineProps<{
 	inputThreadId?: string;
 	blueprint: AppBlueprint;
 	readOnly?: boolean;
+	expired?: boolean;
 }>();
 
 const thread = useThread();
@@ -21,7 +22,7 @@ const rootStore = useRootStore();
 const submitted = ref(false);
 
 async function submit(body: InstanceAiConfirmRequest) {
-	if (submitted.value || props.readOnly) return;
+	if (submitted.value || props.readOnly || props.expired) return;
 	submitted.value = true;
 	const confirmed = await thread.confirmAction(props.requestId, body);
 	if (!confirmed) {
@@ -46,5 +47,9 @@ async function submit(body: InstanceAiConfirmRequest) {
 </script>
 
 <template>
-	<AppBlueprintCard :blueprint="blueprint" :read-only="readOnly || submitted" @submit="submit" />
+	<AppBlueprintCard
+		:blueprint="blueprint"
+		:read-only="readOnly || expired || submitted"
+		@submit="submit"
+	/>
 </template>
