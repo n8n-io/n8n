@@ -71,6 +71,7 @@ export type ScanReport = {
 	readonly check: Check | null;
 	readonly message: string | null;
 	readonly findings: readonly Finding[];
+	readonly skippedChecks: readonly Check[];
 };
 
 export const errorMessage = (error: unknown) =>
@@ -100,7 +101,7 @@ const STATUSES = {
 
 export const buildReport = (
 	packageName: string,
-	result: AnalysisResult & { version: string | null },
+	result: AnalysisResult & { version: string | null; skippedChecks?: readonly Check[] },
 ): ScanReport => ({
 	package: packageName,
 	version: result.version,
@@ -108,6 +109,7 @@ export const buildReport = (
 	check: result.check ?? null,
 	message: result.message ?? null,
 	findings: result.findings ?? [],
+	skippedChecks: result.skippedChecks ?? [],
 });
 
 /**
@@ -431,7 +433,7 @@ export const buildScanConfig = async (): Promise<Linter.Config[]> => {
 	);
 };
 
-export const analyzePackage = async (
+export const lintDirectory = async (
 	packageDir: string,
 	filePatterns = ['**/*.js', '**/*.ts', '**/*.json'],
 ): Promise<AnalysisResult> => {
@@ -494,10 +496,137 @@ export const analyzePackage = async (
 	}
 };
 
+const findingsFrom = (result: AnalysisResult, origin: Finding['origin']): Finding[] =>
+	(result.findings ?? []).map((finding) => ({ ...finding, origin }));
+
+const mergeResults = (
+	sourceResult: AnalysisResult,
+	packageResult: AnalysisResult,
+): AnalysisResult => {
+	const failures = [sourceResult, packageResult].filter((result) => !result.passed);
+	const firstFailure = failures.find((result) => result.error !== undefined) ?? failures[0];
+	if (!firstFailure) return { passed: true };
+
+	const details = failures.flatMap((result) => result.details || []).join('\n');
+
+	return {
+		passed: false,
+		message: firstFailure.message,
+		details: details || undefined,
+		findings: [...findingsFrom(sourceResult, 'source'), ...findingsFrom(packageResult, 'package')],
+		check: firstFailure.check,
+		error: firstFailure.error,
+	};
+};
+
+const writeAnalyzed = (label: string, result: AnalysisResult) => {
+	if (stdout.isTTY) {
+		stdout.clearLine(0);
+		stdout.cursorTo(0);
+	}
+	stdout.write(
+		!result.passed && result.error !== undefined
+			? `❌ Could not analyze "${label}" \n`
+			: `✅ Analyzed "${label}" \n`,
+	);
+};
+
+export const isLocalPath = (packageSpec: string): boolean => {
+	const [firstSegment] = packageSpec.replaceAll('\\', '/').split('/');
+	return firstSegment === '.' || firstSegment === '..' || path.isAbsolute(packageSpec);
+};
+
+export type PackageScan = AnalysisResult & {
+	readonly packageName: string;
+	readonly version: string | null;
+	/** Checks that did not run, so a pass does not cover them. */
+	readonly skippedChecks?: readonly Check[];
+};
+
+const readPackageJson = (packageDir: string): unknown => {
+	let stats: fs.Stats;
+	try {
+		stats = fs.statSync(packageDir);
+	} catch {
+		throw new Error(`No directory found at "${packageDir}"`);
+	}
+	if (!stats.isDirectory()) {
+		throw new Error(`"${packageDir}" is not a directory`);
+	}
+
+	const packageJsonPath = path.join(packageDir, 'package.json');
+	let contents: string;
+	try {
+		contents = fs.readFileSync(packageJsonPath, 'utf8');
+	} catch {
+		throw new Error(`No package.json found in "${packageDir}"`);
+	}
+	try {
+		return JSON.parse(contents);
+	} catch (error: unknown) {
+		throw new Error(`Invalid package.json in "${packageDir}": ${errorMessage(error)}`);
+	}
+};
+
+// Asks npm so the `files` field and `.npmignore` apply exactly as on publish.
+const listPublishedFiles = (packageDir: string): string[] => {
+	const npmResult = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+		cwd: packageDir,
+		stdio: 'pipe',
+		encoding: 'utf8',
+		shell: process.platform === 'win32',
+	});
+	if (npmResult.status !== 0) {
+		throw new Error(`Could not list the package files: ${npmResult.stderr.trim()}`);
+	}
+
+	const [packResult]: unknown[] = JSON.parse(npmResult.stdout);
+	const files = field(packResult, 'files');
+	if (!Array.isArray(files)) {
+		throw new Error('Could not list the package files: unexpected "npm pack" output');
+	}
+	return files.map((file: unknown) => field(file, 'path')).filter((p) => typeof p === 'string');
+};
+
+/**
+ * Lints a package directory on disk the way a published package is linted, so
+ * authors can check it before they submit. npm provenance and the attested
+ * source only exist after publishing, so this skips them.
+ */
+export const analyzeLocalPackage = async (packageDir: string): Promise<PackageScan> => {
+	const packageJson = readPackageJson(packageDir);
+	const packageName = field(packageJson, 'name');
+	if (typeof packageName !== 'string') {
+		throw new Error(`No package name in the package.json in "${packageDir}"`);
+	}
+	const rawVersion = field(packageJson, 'version');
+	const version = typeof rawVersion === 'string' ? rawVersion : null;
+	const label = formatPackageSpec(packageName, version);
+
+	const publishedJsFiles = listPublishedFiles(packageDir).filter((file) => file.endsWith('.js'));
+	if (publishedJsFiles.length === 0) {
+		stdout.write(
+			'⚠️ The package has no JavaScript files to publish. Build it to also lint the compiled output.\n',
+		);
+	}
+
+	stdout.write(`Analyzing "${label}"...`);
+	const result = mergeResults(
+		await lintDirectory(packageDir, SOURCE_FILE_PATTERNS),
+		await lintDirectory(packageDir, [
+			'package.json',
+			...publishedJsFiles.map((file) => glob.escapePath(file)),
+		]),
+	);
+	writeAnalyzed(label, result);
+
+	return { packageName, version, ...result, skippedChecks: ['provenance', 'source'] };
+};
+
 export const analyzePackageByName = async (
 	packageName: string,
 	version: string | null,
-): Promise<AnalysisResult & { packageName: string; version: string | null }> => {
+): Promise<PackageScan> => {
 	try {
 		const { data: packageMetadata } = await axios.get<PackageMetadata>(
 			`${registry}/${packageName}`,
@@ -594,37 +723,11 @@ export const analyzePackageByName = async (
 		// into `dist/`. Scope the tarball leg to compiled `.js` and the
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
-		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
-		const failures = [sourceResult, distResult].filter((r) => !r.passed);
-		const firstFailure = failures.find((r) => r.error !== undefined) ?? failures[0];
-		const findings = [
-			...(sourceResult.findings ?? []).map((f) => ({ ...f, origin: 'source' as const })),
-			...(distResult.findings ?? []).map((f) => ({ ...f, origin: 'package' as const })),
-		];
-		const analysisResult: AnalysisResult = firstFailure
-			? {
-					passed: false,
-					message: firstFailure.message,
-					details:
-						failures
-							.map((r) => r.details)
-							.filter(Boolean)
-							.join('\n') || undefined,
-					findings,
-					check: firstFailure.check,
-					error: firstFailure.error,
-				}
-			: { passed: true };
-		if (stdout.isTTY) {
-			stdout.clearLine(0);
-			stdout.cursorTo(0);
-		}
-		stdout.write(
-			firstFailure?.error === undefined
-				? `✅ Analyzed "${label}" \n`
-				: `❌ Could not analyze "${label}" \n`,
+		const analysisResult = mergeResults(
+			await lintDirectory(sourceDir, SOURCE_FILE_PATTERNS),
+			await lintDirectory(packageDir, ['**/*.js', 'package.json']),
 		);
+		writeAnalyzed(label, analysisResult);
 
 		return {
 			packageName,

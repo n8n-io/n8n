@@ -1,20 +1,25 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { parseArgs } from 'node:util';
 
 import {
 	resolvePackage,
+	analyzeLocalPackage,
 	analyzePackageByName,
+	isLocalPath,
 	buildReport,
 	errorMessage,
 	formatPackageSpec,
 	getExitCode,
 	EXIT_CODES,
+	type PackageScan,
 	type ScanReport,
 } from './scanner.js';
 
-const USAGE = 'Usage: npx @n8n/scan-community-package <package-name>[@version] [--output <file>]';
+const USAGE =
+	'Usage: npx @n8n/scan-community-package <package-name>[@version] | <path> [--output <file>]';
 
 let packageSpec: string | undefined;
 let output: string | undefined;
@@ -34,16 +39,25 @@ if (!packageSpec) {
 	process.exit(EXIT_CODES.INTERNAL_ERROR);
 }
 
+const analyzePackage = async (spec: string): Promise<PackageScan> => {
+	if (isLocalPath(spec)) return await analyzeLocalPackage(path.resolve(spec));
+	const { packageName, version } = resolvePackage(spec);
+	return await analyzePackageByName(packageName, version);
+};
+
 const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number }> => {
 	try {
-		const { packageName, version } = resolvePackage(spec);
-		const result = await analyzePackageByName(packageName, version);
+		const result = await analyzePackage(spec);
+		const { packageName } = result;
 		const label = formatPackageSpec(packageName, result.version);
 		const exitCode = getExitCode(result);
+		const isPartialScan = (result.skippedChecks ?? []).length > 0;
 
 		console.log(
 			{
-				[EXIT_CODES.SCAN_SUCCEEDED]: `✅ Package "${label}" has passed all security checks`,
+				[EXIT_CODES.SCAN_SUCCEEDED]: isPartialScan
+					? `✅ Package "${label}" has passed the security checks that run before publishing`
+					: `✅ Package "${label}" has passed all security checks`,
 				[EXIT_CODES.SCAN_FAILED]: `❌ Package "${label}" has failed security checks`,
 				[EXIT_CODES.INTERNAL_ERROR]: `❌ Could not complete the scan of "${label}"`,
 			}[exitCode],
@@ -56,6 +70,12 @@ const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number
 				console.log('\nDetails:');
 				console.log(result.details);
 			}
+		}
+
+		if (isPartialScan) {
+			console.log(
+				'\n⚠️ This was a local scan. The npm provenance and attested source checks run after you publish.',
+			);
 		}
 
 		return { report: buildReport(packageName, result), exitCode };
