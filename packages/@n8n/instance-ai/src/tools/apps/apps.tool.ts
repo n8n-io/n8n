@@ -114,6 +114,7 @@ async function createApp(
 			visibility: blueprint.visibility,
 			id: pendingId,
 		}));
+	await reportChangedApp(context, app.id, async () => app);
 	return existing ? { app, alreadyCreated: true } : { app };
 }
 

@@ -170,7 +170,7 @@ describe('apps tool', () => {
 		});
 	});
 
-	it('creates the first app under the pending id without opening it', async () => {
+	it('creates the first app under the pending id and adds it to the thread without opening it', async () => {
 		const { tool, appService, thread, onArtifactChanged } = setup({
 			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: PENDING_ID, projectId: 'project-1' },
 		});
@@ -190,12 +190,14 @@ describe('apps tool', () => {
 		expect(readBaseVersion).not.toHaveBeenCalled();
 		expect(checkOutDraft).not.toHaveBeenCalled();
 		expect(thread.metadata).toEqual({
-			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: {
-				appId: PENDING_ID,
-				projectId: 'project-1',
-			},
+			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],
 		});
-		expect(onArtifactChanged).not.toHaveBeenCalled();
+		expect(onArtifactChanged).toHaveBeenCalledWith({
+			type: 'app',
+			id: PENDING_ID,
+			name: 'Todos',
+			projectId: 'project-1',
+		});
 	});
 
 	it('keeps the pending id when opening the new app fails', async () => {
@@ -239,7 +241,7 @@ describe('apps tool', () => {
 		});
 	});
 
-	it('does not bind a second app until it is opened', async () => {
+	it('binds a second app without opening it', async () => {
 		const { tool, appService, thread } = setup({
 			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],
 		});
@@ -260,6 +262,7 @@ describe('apps tool', () => {
 		});
 		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
 			{ appId: PENDING_ID, projectId: 'project-1' },
+			{ appId: SERVER_ID, projectId: 'project-1' },
 		]);
 		expect(checkOutDraft).not.toHaveBeenCalled();
 	});
