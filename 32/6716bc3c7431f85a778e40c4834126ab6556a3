@@ -34,6 +34,22 @@ packages/@n8n/cli/README.md
   "base_commit_sha": "326716bc3c7431f85a778e40c4834126ab6556a3",
   "prompts": {},
   "sessions": {
+    "s_6095578164712d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3001f0d-59a3-43bc-820b-25a740e9965d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_b1905cb0c0aa57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13d20cfd-891f-46ea-8ea2-de932961c242",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
     "s_b2694b68ec0a88": {
       "agent_id": {
         "tool": "claude",

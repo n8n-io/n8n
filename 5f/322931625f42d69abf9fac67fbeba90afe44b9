@@ -1,8 +1,10 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_0a1a804042c15b::t_6d3b8f4cb41225 719-721
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.4",
-  "base_commit_sha": "c841aae597b68d843bd901ae75919f74dafb3ec4",
+  "base_commit_sha": "5f322931625f42d69abf9fac67fbeba90afe44b9",
   "prompts": {},
   "sessions": {
     "s_0a1a804042c15b": {
