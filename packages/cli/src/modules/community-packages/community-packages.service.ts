@@ -16,6 +16,7 @@ import {
 	type PublicInstalledPackage,
 } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
@@ -325,6 +326,54 @@ export class CommunityPackagesService {
 		return (await this.readInstalledPackageJson(packageName))?.version ?? null;
 	}
 
+	private getPackageInstallMarkerPath(packageName: string) {
+		return join(this.resolvePackageDirectory(packageName), '.n8n-install-complete');
+	}
+
+	private getPackageInstallAttemptPath(packageName: string) {
+		// Keep ownership metadata outside the extracted package tree. Otherwise a tarball
+		// entry with the same name could replace the token and suppress a valid rollback.
+		const packageKey = createHash('sha256').update(packageName).digest('hex');
+		return join(this.downloadFolder, `.n8n-install-attempt-${packageKey}`);
+	}
+
+	private async ownsPackageInstallAttempt(packageName: string, attemptToken: string) {
+		return (
+			(await readFile(this.getPackageInstallAttemptPath(packageName), 'utf-8').catch(
+				() => null,
+			)) === attemptToken
+		);
+	}
+
+	private async clearPackageInstallAttempt(packageName: string, attemptToken: string) {
+		if (await this.ownsPackageInstallAttempt(packageName, attemptToken)) {
+			await rm(this.getPackageInstallAttemptPath(packageName), { force: true });
+		}
+	}
+
+	private async readPackageInstallMarker(packageName: string): Promise<string | null> {
+		return await readFile(this.getPackageInstallMarkerPath(packageName), 'utf-8').catch(() => null);
+	}
+
+	/**
+	 * The marker is atomically moved into place only after extraction, npm installation, and the
+	 * ledger update finish. The package and ledger versions alone are insufficient: during a
+	 * same-version repair the old ledger entry already matches while files are still being written.
+	 */
+	private async isPackageInstallationComplete(packageName: string, packageVersion: string) {
+		const [onDiskVersion, packageJson, installMarker] = await Promise.all([
+			this.readInstalledPackageVersion(packageName),
+			this.readPackageJson(),
+			this.readPackageInstallMarker(packageName),
+		]);
+
+		return (
+			onDiskVersion === packageVersion &&
+			packageJson?.dependencies[packageName] === packageVersion &&
+			installMarker === packageVersion
+		);
+	}
+
 	/**
 	 * Rebuilds the ledger from the database, the source of truth for what is installed.
 	 * Writing an empty `dependencies` instead would leave `npm outdated` with nothing
@@ -421,6 +470,27 @@ export class CommunityPackagesService {
 
 			for (const missingPackage of missingPackages) {
 				try {
+					// A peer sharing this volume may have completed the repair since the startup
+					// scan. Reuse it only after the ledger confirms the disk write completed.
+					if (
+						await this.isPackageInstallationComplete(
+							missingPackage.packageName,
+							missingPackage.version,
+						)
+					) {
+						try {
+							await this.assertPackageApiVersionSupported(missingPackage.packageName);
+							await this.reloadPackage(missingPackage.packageName);
+							missingPackages.delete(missingPackage);
+							continue;
+						} catch (error) {
+							this.logger.warn(
+								`Community package files on disk appear incomplete or corrupt, reinstalling ${missingPackage.packageName}`,
+								{ error: ensureError(error) },
+							);
+						}
+					}
+
 					const vettedPackage = vettedPackages.find(
 						(p) => p.packageName === missingPackage.packageName,
 					);
@@ -742,7 +812,9 @@ export class CommunityPackagesService {
 
 			accepted = true;
 
-			await this.removeNpmPackage(parsed.packageName, { requireNoRecord: true });
+			await this.removeNpmPackage(parsed.packageName, {
+				requireNoRecord: true,
+			});
 		} catch (error) {
 			const details = { packageName, reason: ensureError(error).message };
 
@@ -763,42 +835,84 @@ export class CommunityPackagesService {
 				});
 			}
 
-			const onDiskVersion = await this.readInstalledPackageVersion(packageName);
-			if (onDiskVersion === packageVersion && this.loadNodesAndCredentials.loaders[packageName]) {
-				this.logger.debug(
-					`Community package ${packageName} already at ${packageVersion}, skipping`,
-				);
+			if (await this.isPackageInstallationComplete(packageName, packageVersion)) {
+				const loadedVersion = (
+					this.loadNodesAndCredentials.loaders[packageName] as PackageDirectoryLoader | undefined
+				)?.packageJson.version;
+				if (loadedVersion === packageVersion) {
+					this.logger.debug(
+						`Community package ${packageName} already loaded at ${packageVersion}, skipping`,
+					);
+					return;
+				}
+
+				// A peer can finish the shared-volume write before this event arrives. Load those
+				// files instead of downloading the same package into the same directory again. Only
+				// replace an absent or stale loader, so a redundant event cannot remove a working one.
+				await this.assertPackageApiVersionSupported(packageName);
+				try {
+					await this.reloadPackage(packageName);
+				} catch (error) {
+					this.logger.warn('Community package files on disk appear incomplete or corrupt', {
+						error: ensureError(error),
+						packageName,
+						packageVersion,
+					});
+					// Fall through to the download path to repair the shared files.
+					return await this.installOrUpdateNpmPackageFiles(packageName, packageVersion);
+				}
+				this.logger.info(`Community package loaded from disk: ${packageName}`);
 				return;
 			}
 
-			const authToken = this.getNpmAuthToken();
-			const backupDirectory = await this.backupPackageDirectory(packageName);
+			await this.installOrUpdateNpmPackageFiles(packageName, packageVersion);
+		});
+	}
 
-			// Only the directory is rolled back here, never the ledger: on a follower its
-			// entry is justified by the leader's database record, not by this instance's disk.
-			try {
-				await this.downloadPackage(packageName, packageVersion, authToken);
-				// The command may come from a newer leader in a mixed fleet.
-				await this.assertPackageApiVersionSupported(packageName);
-			} catch (error) {
-				// No reload: the previous package was not unloaded before the download
-				await this.restorePackageDirectory(packageName, backupDirectory);
-				throw error;
-			}
+	private async installOrUpdateNpmPackageFiles(packageName: string, packageVersion: string) {
+		const authToken = this.getNpmAuthToken();
+		const previousVersion = (await this.readPackageJson())?.dependencies[packageName];
+		const backupDirectory = await this.backupPackageDirectory(packageName);
+		const attemptToken = randomUUID();
 
-			// A failed load keeps the new directory: rolling back to a working older version
-			// would leave this instance silently behind the leader's record.
-			try {
-				await this.loadNodesAndCredentials.unloadPackage(packageName);
-				await this.loadNodesAndCredentials.loadPackage(packageName);
-				await this.loadNodesAndCredentials.postProcessLoaders();
-				this.loadNodesAndCredentials.releaseTypes();
-			} finally {
+		try {
+			await this.downloadPackage(packageName, packageVersion, authToken, attemptToken);
+			// The command may come from a newer leader in a mixed fleet.
+			await this.assertPackageApiVersionSupported(packageName);
+		} catch (error) {
+			// No reload: the previous package was not unloaded before the download.
+			// Restore the ledger too: downloadPackage updates it before the API guard runs.
+			if (await this.ownsPackageInstallAttempt(packageName, attemptToken)) {
+				await this.restorePackageFiles(packageName, { backupDirectory, previousVersion });
+			} else {
+				this.logger.warn(
+					'Skipped community package rollback because another install took ownership',
+					{
+						packageName,
+					},
+				);
 				await this.discardBackupDirectory(packageName, backupDirectory);
 			}
+			throw error;
+		}
 
-			this.logger.info(`Community package installed: ${packageName}`);
-		});
+		// A failed load keeps the new directory: rolling back to a working older version
+		// would leave this instance silently behind the leader's record.
+		try {
+			await this.reloadPackage(packageName);
+		} finally {
+			await this.discardBackupDirectory(packageName, backupDirectory);
+			await this.clearPackageInstallAttempt(packageName, attemptToken);
+		}
+
+		this.logger.info(`Community package installed: ${packageName}`);
+	}
+
+	private async reloadPackage(packageName: string) {
+		await this.loadNodesAndCredentials.unloadPackage(packageName);
+		await this.loadNodesAndCredentials.loadPackage(packageName);
+		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.loadNodesAndCredentials.releaseTypes();
 	}
 
 	private async removeNpmPackage(packageName: string, options: { requireNoRecord?: boolean } = {}) {
@@ -993,11 +1107,15 @@ export class CommunityPackagesService {
 		packageName: string,
 		packageVersion: string,
 		authToken?: string,
+		attemptToken?: string,
 	): Promise<string> {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
 		await mkdir(packageDirectory, { recursive: true });
+		if (attemptToken) {
+			await writeFile(this.getPackageInstallAttemptPath(packageName), attemptToken, 'utf-8');
+		}
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
@@ -1045,6 +1163,17 @@ export class CommunityPackagesService {
 				{ cwd: packageDirectory, registry, authToken },
 			);
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
+
+			// A rename on the same filesystem is atomic, so readers either see no marker or
+			// the complete version. Never expose a partially-written completion signal.
+			const markerPath = this.getPackageInstallMarkerPath(packageName);
+			const temporaryMarkerPath = `${markerPath}.${process.pid}.${Date.now()}`;
+			try {
+				await writeFile(temporaryMarkerPath, packageJson.version, 'utf-8');
+				await rename(temporaryMarkerPath, markerPath);
+			} finally {
+				await rm(temporaryMarkerPath, { force: true });
+			}
 		} finally {
 			// `npm pack` failing to print a filename would otherwise resolve this to
 			// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.
@@ -1070,6 +1199,9 @@ export class CommunityPackagesService {
 	}
 
 	private async removePackageJsonDependency(packageName: string) {
+		const packageJson = await this.readPackageJson();
+		if (packageJson && !(packageName in packageJson.dependencies)) return;
+
 		await this.mutatePackageJsonDependencies((dependencies) => {
 			delete dependencies[packageName];
 		});
