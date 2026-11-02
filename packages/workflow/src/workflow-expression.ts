@@ -29,7 +29,7 @@ export class WorkflowExpression {
 
 	constructor(private readonly workflow: Workflow) {
 		const hasVm2SandboxNode = Object.values(workflow.nodes).some((node) =>
-			VM2_SANDBOX_NODE_TYPES.has(node.type),
+			DEPRECATED_VM2_SANDBOX_NODE_TYPES.has(node.type),
 		);
 		this.expression = new Expression(workflow.timezone, !hasVm2SandboxNode);
 	}
