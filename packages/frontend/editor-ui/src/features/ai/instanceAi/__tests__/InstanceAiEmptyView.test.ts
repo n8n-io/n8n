@@ -783,8 +783,8 @@ describe('InstanceAiEmptyView', () => {
 
 		const { getByTestId, getByText, queryByTestId } = renderView();
 
-		expect(getByText('REPLACE ME')).toBeVisible();
-		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('3');
+		expect(getByText('Build an app with workflows, data tables and agents')).toBeVisible();
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('5');
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'apps.assistant.empty.placeholder',
 		);

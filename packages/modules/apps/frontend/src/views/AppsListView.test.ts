@@ -152,9 +152,15 @@ describe('AppsListView', () => {
 
 	it('shows the empty state when there are no apps', async () => {
 		vi.mocked(listApps).mockResolvedValue({ data: [], count: 0 });
-		const { findByTestId } = renderComponent();
+		const { findByTestId, findByText } = renderComponent();
 
 		expect(await findByTestId('apps-empty-state')).toBeInTheDocument();
+		expect(await findByText('Create your first app')).toBeVisible();
+		expect(
+			await findByText(
+				'Give your team a dashboard, form or tracker they open in the browser. It works with your workflows, data tables and agents.',
+			),
+		).toBeVisible();
 	});
 
 	it('starts a pending app from the empty state', async () => {
