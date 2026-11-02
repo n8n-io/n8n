@@ -7160,6 +7160,9 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)

@@ -157,19 +157,17 @@ describe('AppsListView', () => {
 	it('starts a pending app from the empty state', async () => {
 		route.params = { projectId: 'project-1' };
 		vi.mocked(listApps).mockResolvedValue({ data: [], count: 0 });
-		const randomUuid = vi
-			.spyOn(crypto, 'randomUUID')
-			.mockReturnValue('11111111-1111-4111-8111-111111111111');
 		const { findByRole } = renderComponent();
 
 		await userEvent.click(await findByRole('button', { name: 'Create app' }));
 
+		const appId = vi.mocked(push).mock.calls.at(-1)?.[0]?.params?.appId;
+		expect(appId).toEqual(expect.any(String));
 		expect(push).toHaveBeenCalledWith({
 			name: 'AppDetailView',
-			params: { projectId: 'project-1', appId: '11111111-1111-4111-8111-111111111111' },
-			state: { instanceAiPendingAppId: '11111111-1111-4111-8111-111111111111' },
+			params: { projectId: 'project-1', appId },
+			state: { instanceAiPendingAppId: appId },
 		});
-		randomUuid.mockRestore();
 	});
 
 	it('does not show the empty state while a search is cleared', async () => {

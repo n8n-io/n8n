@@ -56,7 +56,9 @@ function expectAgentCreated(projectId: string) {
 	});
 }
 
-function expectAppCreated(projectId: string, appId: string) {
+function expectAppCreated(projectId: string) {
+	const appId = routerPushMock.mock.calls.at(-1)?.[0]?.params?.appId;
+	expect(appId).toEqual(expect.any(String));
 	expect(routerPushMock).toHaveBeenCalledWith({
 		name: APP_DETAIL_VIEW,
 		params: { projectId, appId },
@@ -653,9 +655,6 @@ describe('useGlobalEntityCreation', () => {
 				id: 'personal-project',
 				scopes: ['app:create'],
 			} as Project;
-			const randomUuid = vi
-				.spyOn(crypto, 'randomUUID')
-				.mockReturnValue('11111111-1111-4111-8111-111111111111');
 			const { menu, handleSelect } = useGlobalEntityCreation();
 
 			expect(menu.value).toContainEqual(
@@ -663,8 +662,7 @@ describe('useGlobalEntityCreation', () => {
 			);
 			handleSelect('app');
 
-			expectAppCreated('personal-project', '11111111-1111-4111-8111-111111111111');
-			randomUuid.mockRestore();
+			expectAppCreated('personal-project');
 		});
 
 		it('offers personal and team projects in the app submenu', () => {
