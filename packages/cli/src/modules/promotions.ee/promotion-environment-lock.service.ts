@@ -31,6 +31,15 @@ export function throwIfLockLost(signal: AbortSignal): void {
  *
  * The lock is not reentrant. A locked path must not call another locked path for the same
  * environment.
+ *
+ * What the lock does not cover:
+ * - Separate n8n instances (separate databases or Redis) that push to the same remote branch.
+ *   They share no lock. The remote rejects a direct push that is not a fast-forward, but a push
+ *   with `force` replaces the other instance's commit.
+ * - Two environments of one instance that cover the same project or branch. Each one has its own
+ *   lock ([LIGO-1399](https://linear.app/n8n/issue/LIGO-1399) decides the rule).
+ * - Two promotion branch names that are the same to the millisecond. The push is not forced, so
+ *   the remote rejects the second one, and a retry gets a new name.
  */
 @Service()
 export class PromotionEnvironmentLockService {
