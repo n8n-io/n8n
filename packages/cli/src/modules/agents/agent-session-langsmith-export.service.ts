@@ -1,7 +1,7 @@
 import { redactDeep, redactText } from '@n8n/agents';
 import type { AgentSessionLangSmithExportResponse } from '@n8n/api-types';
 import { buildProxyHeaders } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -12,7 +12,6 @@ import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION } from '@/constants';
 import { ConflictError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -193,7 +192,7 @@ export class AgentSessionLangSmithExportService {
 		});
 		const proxyHeaders = buildProxyHeaders({
 			feature: 'agent-builder',
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 		});
 		const transportFetch = createAiProxyFetch(this.outboundHttp);
 		const fetchImplementation: typeof globalThis.fetch = async (request, init) => {
@@ -254,7 +253,7 @@ function buildSessionRun(session: LoadedSession, path: string): DraftRun {
 			childSessionCount: session.children.length,
 		},
 		metadata: {
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 			threadId: session.thread.id,
 			agentId: session.thread.agentId,
 			agentName: session.thread.agentName,

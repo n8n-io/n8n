@@ -7,7 +7,7 @@ import {
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import {
 	continueInstanceAiTraceContext,
@@ -25,7 +25,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type {
 	AgentExecutionStreamChunk,
 	SteeredMessageEvent,
@@ -602,7 +602,7 @@ export class AssistantTurnTracer {
 			messageGroupId: scope.messageGroupId,
 			runId: scope.runId,
 			userId: scope.userId,
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 			workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			// Read per turn: Chrome updates extensions silently.
 			browserExtension: this.browserSessionService.getExtensionTraceContext(scope.userId),
