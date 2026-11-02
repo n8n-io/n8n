@@ -186,6 +186,28 @@ describe('affectedPackages', () => {
 		expect(affectedPackages({ rootDir, changedFiles: ['pnpm-lock.yaml'] })).toEqual(['a', 'b']);
 	});
 
+	it('limits a lockfile change to the packages whose dependencies it changed', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/a': { name: 'a' },
+				'packages/b': { name: 'b', deps: ['a'] },
+				'packages/c': { name: 'c' },
+			},
+		});
+		// No dependents walk: the impact already follows workspace links.
+		expect(
+			affectedPackages({
+				rootDir,
+				changedFiles: ['pnpm-lock.yaml'],
+				lockfileImpactedPackages: ['a'],
+			}),
+		).toEqual(['a']);
+		expect(
+			affectedPackages({ rootDir, changedFiles: ['pnpm-lock.yaml'], lockfileImpactedPackages: [] }),
+		).toEqual([]);
+	});
+
 	it('expands all packages when root package.json changes', () => {
 		const rootDir = makeFixture({
 			patterns: ['packages/*'],
