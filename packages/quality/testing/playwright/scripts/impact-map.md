@@ -37,8 +37,7 @@ each spec we record which functions actually ran:
   Each spec gets the call counts of its own window, so code that every spec
   runs maps to every spec. Code that ran while the server started maps to the
   pseudo-spec `<boot>`. Selection reads `<boot>` as every spec when a changed
-  function ran at boot. A change outside every function (imports, class fields,
-  new methods) selects only the specs that ran the file in their own tests.
+  function ran at boot. A file-level fallback leaves `<boot>` out (see §8).
 
 We only record a function if it **actually executed** (`hits > 0`) — code that was
 merely loaded but never run is not mapped.
@@ -149,6 +148,11 @@ the file falls back to file-level. An import that still loads the module
 without a value binding also falls back: a side-effect import
 (`import './x'`), `import { type A } from './x'` (compiled to `import {}` with
 `verbatimModuleSyntax`), and `import x = require('./x')`.
+
+A file-level fallback selects the specs that ran one of the file's functions
+in their own tests. It leaves out `<boot>`, so that each file that loads at
+boot does not select every spec. If only `<boot>` ran the file, the fallback
+selects every spec.
 
 Frontend and `.vue` files always use file-level selection.
 

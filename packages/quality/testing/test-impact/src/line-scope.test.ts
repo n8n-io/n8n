@@ -170,13 +170,15 @@ describe('resolveSpans', () => {
 		const oneLine = [...ranges, { start: 12, end: 12 }];
 		const map = { ...fileMap, '12': ['inline.spec'] };
 		const outerAndNested = ['callback.spec', 'inline.spec', 'outer.spec'];
-		expect(resolveSpans(map, oneLine, [{ lo: 12, hi: 12 }])).toEqual(outerAndNested);
-		expect(resolveSpans(map, oneLine, [{ lo: 5, hi: 5 }])).toEqual(outerAndNested);
-		expect(resolveSpans(map, oneLine, [{ lo: 8, hi: 8 }])).toEqual(outerAndNested);
+		for (const line of [12, 5, 8]) {
+			expect(resolveSpans(map, oneLine, [{ lo: line, hi: line }])).toEqual(
+				inFunctions(outerAndNested),
+			);
+		}
 	});
 
 	it('keeps the first line of a function that no other function encloses', () => {
-		expect(resolveSpans(fileMap, ranges, [{ lo: 22, hi: 22 }])).toEqual([]);
+		expect(resolveSpans(fileMap, ranges, [{ lo: 22, hi: 22 }])).toEqual(inFunctions([]));
 	});
 });
 
