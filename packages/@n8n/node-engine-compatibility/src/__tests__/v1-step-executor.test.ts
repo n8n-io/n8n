@@ -24,6 +24,8 @@ import {
 	UnsupportedStepTypeError,
 	VmExpressionEngineRequiredError,
 } from '../errors';
+import { EXECUTE_WORKFLOW_TYPE } from '../constants';
+import type { SubWorkflowResolver } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import {
@@ -623,22 +625,37 @@ describe('sub-workflows', () => {
 	const input = items({ a: 1 }, { a: 2 });
 	const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
+	/**
+	 * Runs `fixture` as the Execute Sub-workflow node: the graph names the real
+	 * node type, which is the one the shim serves, and the type lookup answers
+	 * with the fixture's behaviour.
+	 */
 	function executorWith(
-		graph: WorkflowGraph,
-		resolveSubWorkflow = vi.fn().mockResolvedValue(resolved),
+		fixture: string,
+		{
+			parameters = {},
+			resolveSubWorkflow = vi.fn().mockResolvedValue(resolved),
+		}: { parameters?: Record<string, unknown>; resolveSubWorkflow?: SubWorkflowResolver } = {},
 	) {
+		const graph = graphWith(EXECUTE_WORKFLOW_TYPE, parameters);
 		const executor = new V1StepExecutor({
-			nodeTypes: testNodeTypes,
+			nodeTypes: {
+				...testNodeTypes,
+				getByNameAndVersion: (type, version) =>
+					testNodeTypes.getByNameAndVersion(
+						type === EXECUTE_WORKFLOW_TYPE ? fixture : type,
+						version,
+					),
+			},
 			additionalDataFactory: testAdditionalDataFactory,
 			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
 			resolveSubWorkflow,
 		});
-		return { executor, resolveSubWorkflow };
+		return { graph, executor, resolveSubWorkflow };
 	}
 
 	it('turns an awaited executeWorkflow call into a sub-execution, resolved through the host', async () => {
-		const graph = graphWith('test.runsSubWorkflow');
-		const { executor, resolveSubWorkflow } = executorWith(graph);
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.runsSubWorkflow');
 
 		const result = await executor.execute(stepRequest(graph, 'n', input));
 
@@ -652,7 +669,7 @@ describe('sub-workflows', () => {
 				executionId: 'exec-1',
 				workflowId: 'wf-1',
 				mode: 'manual',
-				node: { id: 'n', name: 'Subject', type: 'test.runsSubWorkflow', typeVersion: 1 },
+				node: { id: 'n', name: 'Subject', type: EXECUTE_WORKFLOW_TYPE, typeVersion: 1 },
 			},
 			context: { userId: undefined, projectId: undefined },
 			items: [{ json: { a: 1 } }, { json: { a: 2 } }],
@@ -660,8 +677,7 @@ describe('sub-workflows', () => {
 	});
 
 	it('starts a fire-and-forget call as a detached sub-execution and keeps the node outputs', async () => {
-		const graph = graphWith('test.firesSubWorkflow');
-		const { executor } = executorWith(graph);
+		const { graph, executor } = executorWith('test.firesSubWorkflow');
 
 		const result = await executor.execute(stepRequest(graph, 'n', input));
 
@@ -674,8 +690,7 @@ describe('sub-workflows', () => {
 	});
 
 	it('answers executeWorkflow from the sub-execution result on a sub-execution resume, asking the host for nothing', async () => {
-		const graph = graphWith('test.echoesSubWorkflow');
-		const { executor, resolveSubWorkflow } = executorWith(graph);
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.echoesSubWorkflow');
 		const resume = {
 			kind: 'subExecution' as const,
 			executionId: 'sub-1',
@@ -701,8 +716,9 @@ describe('sub-workflows', () => {
 	});
 
 	it('keeps only the last pass of each terminal node when the caller asks for the last run only', async () => {
-		const graph = graphWith('test.echoesSubWorkflow', { returnLastRunOnly: true });
-		const { executor } = executorWith(graph);
+		const { graph, executor } = executorWith('test.echoesSubWorkflow', {
+			parameters: { returnLastRunOnly: true },
+		});
 		const resume = {
 			kind: 'subExecution' as const,
 			executionId: 'sub-1',
@@ -719,8 +735,7 @@ describe('sub-workflows', () => {
 	});
 
 	it('fails the node with the sub-execution error on a failed sub-execution resume', async () => {
-		const graph = graphWith('test.echoesSubWorkflow');
-		const { executor } = executorWith(graph);
+		const { graph, executor } = executorWith('test.echoesSubWorkflow');
 		const resume = {
 			kind: 'subExecution' as const,
 			executionId: 'sub-1',
@@ -734,8 +749,7 @@ describe('sub-workflows', () => {
 	});
 
 	it('refuses an inline sub-workflow and asks the host for nothing', async () => {
-		const graph = graphWith('test.runsInlineSubWorkflow');
-		const { executor, resolveSubWorkflow } = executorWith(graph);
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.runsInlineSubWorkflow');
 
 		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
 			'Engine v2 runs sub-workflows from the database only',
@@ -744,8 +758,7 @@ describe('sub-workflows', () => {
 	});
 
 	it('refuses a second call in one run, so "once for each item" fails before any sub-execution starts', async () => {
-		const graph = graphWith('test.runsSubWorkflowPerItem');
-		const { executor, resolveSubWorkflow } = executorWith(graph);
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.runsSubWorkflowPerItem');
 
 		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
 			'Engine v2 runs one sub-workflow for each run of a node',
@@ -754,11 +767,40 @@ describe('sub-workflows', () => {
 	});
 
 	it('refuses the call when the host resolves no sub-workflows', async () => {
-		const graph = graphWith('test.runsSubWorkflow');
+		const graph = graphWith(EXECUTE_WORKFLOW_TYPE);
 
 		await expect(testStepExecutor(graph).execute(stepRequest(graph, 'n', input))).rejects.toThrow(
 			'This host cannot run sub-workflows',
 		);
+	});
+
+	it('refuses the call from any node but the Execute Sub-workflow node, asking the host for nothing', async () => {
+		const graph = graphWith('test.runsSubWorkflow');
+		const resolveSubWorkflow = vi.fn().mockResolvedValue(resolved);
+		const executor = new V1StepExecutor({
+			nodeTypes: testNodeTypes,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+			resolveSubWorkflow,
+		});
+
+		await expect(executor.execute(stepRequest(graph, 'n', input))).rejects.toThrow(
+			'from the Execute Sub-workflow node only',
+		);
+		expect(resolveSubWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('starts no sub-execution for a run the node failed, even with continueOnFail', async () => {
+		const { graph, executor, resolveSubWorkflow } = executorWith('test.callsSubWorkflowThenFails');
+		const subject = graph.nodes.find((node) => node.id === 'n');
+		(subject?.config as { continueOnFail?: boolean }).continueOnFail = true;
+
+		const result = await executor.execute(stepRequest(graph, 'n', input));
+
+		// The node's own outcome stands: its input passes through, and no sub-execution is owed.
+		expect(result.subExecution).toBeUndefined();
+		expect(result.outputs).toEqual(input);
+		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
 	});
 });
 

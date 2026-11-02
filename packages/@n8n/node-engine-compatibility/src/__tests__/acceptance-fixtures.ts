@@ -398,7 +398,8 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 										`execution ${executionId} never recorded an outcome: the engine stalled without calling finishExecution. Steps: ${states.join(', ')}`,
 									),
 								);
-							});
+							})
+							.catch(reject);
 					}, 10_000).unref();
 				}),
 			]);

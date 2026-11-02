@@ -6,9 +6,9 @@ import type {
 	WorkflowDocument,
 	WorkflowGraph,
 } from '@n8n/engine';
-import type { ExecuteContext } from 'n8n-core';
 
 import type { SubWorkflowCalls } from './sub-workflow-calls';
+import type { DurableWaitExecuteContext } from './v1-adapters';
 import type {
 	INode,
 	INodeCredentials,
@@ -136,5 +136,5 @@ export interface CreateExecuteContextParams {
 
 export interface RunNodeParams {
 	nodeType: ExecutableNodeType;
-	context: ExecuteContext;
+	context: DurableWaitExecuteContext;
 }

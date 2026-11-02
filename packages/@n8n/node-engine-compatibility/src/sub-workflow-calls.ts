@@ -7,10 +7,12 @@ import type {
 } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
 
+import { EXECUTE_WORKFLOW_TYPE } from './constants';
 import {
 	InlineSubWorkflowError,
 	RepeatedSubWorkflowCallError,
 	SubWorkflowsNotSupportedError,
+	UnsupportedSubWorkflowCallerError,
 } from './errors';
 import type { CallOptions, SubWorkflowResolveResult, SubWorkflowResolver } from './types';
 import { toV1ExecuteMode } from './v1-adapters';
@@ -57,6 +59,9 @@ export class SubWorkflowCalls {
 		}
 		this.called = true;
 
+		if (this.node.type !== EXECUTE_WORKFLOW_TYPE) {
+			throw new UnsupportedSubWorkflowCallerError(this.node.name, this.node.type);
+		}
 		if (workflowInfo.id === undefined) throw new InlineSubWorkflowError(this.node.name);
 		if (!this.resolve) throw new SubWorkflowsNotSupportedError(this.node.name);
 

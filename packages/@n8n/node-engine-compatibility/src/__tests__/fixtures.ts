@@ -361,6 +361,26 @@ class RunsInlineSubWorkflow implements INodeType {
 	}
 }
 
+/** Calls a sub-workflow and then fails on its own, before the call could matter. */
+class CallsSubWorkflowThenFails implements INodeType {
+	description = {
+		displayName: 'Calls Sub Workflow Then Fails',
+		name: 'callsSubWorkflowThenFails',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and then throws',
+		defaults: { name: 'Calls Sub Workflow Then Fails' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow({ id: 'sub-workflow' }, this.getInputData());
+		throw new Error('boom after the call');
+	}
+}
+
 /** Runs a sub-workflow once per item, as the deprecated "each" mode does. */
 class RunsSubWorkflowPerItem implements INodeType {
 	description = {
@@ -395,11 +415,15 @@ const registry = new Map<string, INodeType>([
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
 	['test.waitsUntil', new WaitsUntil()],
-	['test.runsSubWorkflow', new RunsSubWorkflow()],
+	// The shim serves `executeWorkflow` for the Execute Sub-workflow node only, so the
+	// fixtures that call it stand in for that node by its type.
+	['n8n-nodes-base.executeWorkflow', new RunsSubWorkflow()],
 	['test.firesSubWorkflow', new FiresSubWorkflow()],
 	['test.echoesSubWorkflow', new EchoesSubWorkflow()],
 	['test.runsInlineSubWorkflow', new RunsInlineSubWorkflow()],
 	['test.runsSubWorkflowPerItem', new RunsSubWorkflowPerItem()],
+	['test.callsSubWorkflowThenFails', new CallsSubWorkflowThenFails()],
+	['test.runsSubWorkflow', new RunsSubWorkflow()],
 	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
 ]);
 
