@@ -82,7 +82,7 @@ test('checkPackageProvenance fails for unsupported provenance predicate types', 
 		),
 		{
 			passed: false,
-			message: 'Unsupported npm provenance predicate type: "https://example.com/provenance/v1"',
+			message: 'Unsupported npm provenance predicate type: https://example.com/provenance/v1',
 		},
 	);
 });

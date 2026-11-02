@@ -86,7 +86,7 @@ export const safeJoinPath = (parentPath: string, ...paths: string[]): string => 
 
 	if (!isContainedWithin(parentPath, candidate)) {
 		throw new Error(
-			`Path traversal detected, refusing to join paths: "${parentPath}" and ${JSON.stringify(paths)}`,
+			`Path traversal detected, refusing to join paths: ${parentPath} and ${JSON.stringify(paths)}`,
 		);
 	}
 
