@@ -213,6 +213,7 @@ describe('McpToolChangeService', () => {
 						'content-type': 'application/json',
 						accept: 'application/json, text/event-stream',
 						'mcp-method': method,
+						'mcp-protocol-version': '2026-07-28',
 					},
 					signal,
 					body: JSON.stringify({
@@ -240,7 +241,7 @@ describe('McpToolChangeService', () => {
 		};
 		const abort = new AbortController();
 		const response = await request('subscriptions/listen', abort.signal);
-		expect(response.status).toBe(200);
+		expect(response.status, response.ok ? undefined : await response.text()).toBe(200);
 		const reader = response.body!.getReader();
 		expect(await readFrame(reader)).toContain('notifications/subscriptions/acknowledged');
 		expect(await readFrame(reader)).toContain('notifications/tools/list_changed');
