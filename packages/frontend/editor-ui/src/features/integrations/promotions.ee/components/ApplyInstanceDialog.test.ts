@@ -219,6 +219,49 @@ describe('ApplyInstanceDialog', () => {
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
 
+	it('counts the projects that the binding flow created before the apply', async () => {
+		api.applyPromotion.mockResolvedValue(blocked({ missingBindings: [credential] }));
+		const { findByTestId } = renderComponent({
+			global: {
+				stubs: {
+					PromotionBindingsFlow: defineComponent({
+						emits: ['project-created', 'applied', 'update:open'],
+						setup:
+							(_props, { emit }) =>
+							() =>
+								h('button', {
+									'data-test-id': 'stub-applied',
+									onClick: () => {
+										emit('project-created', { id: 'project-a', name: 'A' });
+										emit('project-created', { id: 'project-b', name: 'B' });
+										// The apply finds both projects and updates them.
+										emit('applied', {
+											...applied,
+											counts: {
+												...applied.counts,
+												projects: { created: 1, updated: 2, skipped: 0, deleted: 0 },
+											},
+										});
+										emit('update:open', false);
+									},
+								}),
+					}),
+				},
+			},
+		});
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+		await userEvent.click(await findByTestId('stub-applied'));
+
+		await waitFor(() =>
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringMatching(/^Projects: 3 created, 0 deleted\./),
+				}),
+			),
+		);
+	});
+
 	it('warns when applied workflows could not be published', async () => {
 		// The fixture imports two workflows that stayed blocked or failed to publish.
 		api.applyPromotion.mockResolvedValue(applied);
