@@ -31,7 +31,7 @@ describe('readCustomModelEndpointCredential', () => {
 			expect(login).toEqual({ type: 'bearer', token: 'sk-test' });
 		});
 
-		it.each([
+		it.each<[string, 'header' | 'body' | undefined, 'header' | 'body']>([
 			['sends the credentials in the header by default', undefined, 'header'],
 			['sends them in the body when asked', 'body', 'body'],
 		])('reads an OAuth2 login and %s', (_name, sendCredentialsIn, expected) => {

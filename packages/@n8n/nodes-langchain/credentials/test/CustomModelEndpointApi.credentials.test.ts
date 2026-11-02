@@ -1,5 +1,6 @@
 import type {
 	ICredentialDataDecryptedObject,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
@@ -9,6 +10,13 @@ import { CustomModelEndpointApi } from '../CustomModelEndpointApi.credentials';
 
 describe('CustomModelEndpointApi Credential', () => {
 	const credential = new CustomModelEndpointApi();
+
+	const OAUTH2: ICredentialDataDecryptedObject = {
+		authentication: 'oauth2',
+		tokenUrl: 'https://login.example.com/oauth2/token',
+		clientId: 'client-1',
+		clientSecret: 'cs-9f2a71c4ab',
+	};
 
 	const findProperty = (name: string) =>
 		credential.properties.find((property) => property.name === name);
@@ -135,5 +143,69 @@ describe('CustomModelEndpointApi Credential', () => {
 
 			expect(result.headers).toEqual({ authorization: 'Bearer sk-test' });
 		});
+
+		it('sends the token that preAuthentication minted, beside the gateway headers', async () => {
+			const result = await authenticate({
+				...OAUTH2,
+				sessionToken: 'tok-abc',
+				gatewayHeaders: { headers: [{ name: 'x-gateway-team', value: 'platform' }] },
+			});
+
+			expect(result.headers).toEqual({
+				authorization: 'Bearer tok-abc',
+				'x-gateway-team': 'platform',
+			});
+		});
+
+		it('sends no Authorization header before a token has been minted', async () => {
+			const result = await authenticate(OAUTH2);
+
+			expect(result.headers).toEqual({});
+		});
+	});
+
+	describe('preAuthentication', () => {
+		const minting = (response: unknown) => {
+			const httpRequest = vi.fn(async () => response);
+			const helper = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
+			return {
+				httpRequest,
+				mint: async (credentials: ICredentialDataDecryptedObject) =>
+					await credential.preAuthentication.call(helper, credentials),
+			};
+		};
+
+		it('asks the login server for a token and hands it to authenticate', async () => {
+			const { httpRequest, mint } = minting({ access_token: 'tok-abc', expires_in: 3600 });
+
+			expect(await mint(OAUTH2)).toEqual({ sessionToken: 'tok-abc' });
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'POST',
+					url: 'https://login.example.com/oauth2/token',
+					headers: expect.objectContaining({
+						authorization: `Basic ${Buffer.from('client-1:cs-9f2a71c4ab').toString('base64')}`,
+						'content-type': 'application/x-www-form-urlencoded',
+					}),
+					body: 'grant_type=client_credentials',
+				}),
+			);
+		});
+
+		it('fails when the login server returns no access token', async () => {
+			const { mint } = minting({ token_type: 'Bearer' });
+
+			await expect(mint(OAUTH2)).rejects.toThrow('no access token');
+		});
+
+		it.each(['bearer', 'header', 'basic', 'none'] as const)(
+			'asks for nothing when the login method is "%s"',
+			async (authentication) => {
+				const { httpRequest, mint } = minting({});
+
+				expect(await mint({ authentication })).toEqual({});
+				expect(httpRequest).not.toHaveBeenCalled();
+			},
+		);
 	});
 });
