@@ -2,12 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { IExecutionResponse } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { timingSafeEqual } from 'crypto';
 import { ErrorReporter } from 'n8n-core';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	jsonParse,
-	UnexpectedError,
 	ChatNodeMessageType,
 	type ChatNodeMessageRegular,
 	type ChatNodeMessageWithButtons,
