@@ -1,0 +1,55 @@
+packages/@n8n/agents/src/sdk/tool.ts
+  s_dfe3f914c8bb46::t_51f362b5702a86 15,144-146
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_dfe3f914c8bb46::t_afe4b83806563b 91-92,125-126
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_dfe3f914c8bb46::t_501ff7dd0575e0 98
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_dfe3f914c8bb46::t_35782323cf959e 13-14,104,849,851-865,1185-1200
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_dfe3f914c8bb46::t_32404ecaa6e4a6 6,12-13,111,117,121-123
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_60135f1d19155a 188,242,256,270-273,275-282,463,486,488
+packages/cli/src/modules/agents/approval/__tests__/approval-description.test.ts
+  s_dfe3f914c8bb46::t_df82b163f32416 1-109
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_e144a08dba587e 4-5,106-119,121,186-187,195-198,279-280,282-285
+packages/cli/src/modules/agents/approval/approval-description.ts
+  s_dfe3f914c8bb46::t_2959aee39f1bdf 1-66
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-suspension-cards.test.ts
+  s_dfe3f914c8bb46::t_fdcb60d6c08aad 26-44
+packages/cli/src/modules/agents/integrations/__tests__/integration-tools.test.ts
+  s_dfe3f914c8bb46::t_f24ede41afe9a7 2,1753-1759,1767-1768
+packages/cli/src/modules/agents/integrations/agent-chat-suspension-cards.ts
+  s_dfe3f914c8bb46::t_a8a9ad6086afcb 12,52,63-65
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_d0c5e834990cef 45
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_dfe3f914c8bb46::t_95eda3e994e982 246
+packages/frontend/editor-ui/src/features/agents/__tests__/ApprovalCard.test.ts
+  s_dfe3f914c8bb46::t_217e37d8750ba8 68-77
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_82f04279e049a1 479-483,509
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_dfe3f914c8bb46::t_772ab822f6aca0 65-66
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_dfe3f914c8bb46::t_c24fba9e325de8 151-153
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_dfe3f914c8bb46::t_5247766805a06d 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ed7d3469fbbcecafc244d2ed5c1947fea8188b3d",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
