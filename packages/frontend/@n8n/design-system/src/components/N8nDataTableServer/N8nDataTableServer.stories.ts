@@ -57,6 +57,33 @@ export default {
 	},
 };
 
+type Account = Person & {
+	email: string;
+	lastActive: string;
+	twoFactor: string;
+	projects: string;
+	createdAt: string;
+};
+
+const accounts: Account[] = people.slice(0, 8).map((person, index) => ({
+	...person,
+	email: `person.${person.id}@example.com`,
+	lastActive: `${index + 1} day${index === 0 ? '' : 's'} ago`,
+	twoFactor: index % 2 === 0 ? 'Enabled' : 'Disabled',
+	projects: ['Marketing', 'Sales', 'Engineering', 'Support'].slice(0, (index % 4) + 1).join(', '),
+	createdAt: `2026-0${(index % 9) + 1}-14`,
+}));
+
+const wideHeaders: Array<TableHeader<Account>> = [
+	{ title: 'Name', key: 'name', width: 220 },
+	{ title: 'Email', key: 'email', width: 260 },
+	{ title: 'Role', key: 'role', width: 160 },
+	{ title: 'Last active', key: 'lastActive', width: 160 },
+	{ title: '2FA', key: 'twoFactor', width: 120 },
+	{ title: 'Projects', key: 'projects', width: 320, disableSort: true },
+	{ title: 'Created', key: 'createdAt', width: 140 },
+];
+
 export const Default: StoryFn = () => ({
 	// The generic table is not assignable to Storybook's component type.
 	components: { N8nDataTableServer: N8nDataTableServer as unknown as Component },
@@ -118,3 +145,49 @@ export const Default: StoryFn = () => ({
 		</div>
 	`,
 });
+
+function wideTableStory(): StoryFn {
+	return (args) => ({
+		components: { N8nDataTableServer: N8nDataTableServer as unknown as Component },
+		setup() {
+			return { args, headers: wideHeaders, items: accounts, total: accounts.length };
+		},
+		template: `
+			<div style="max-width: 720px; padding: var(--spacing--md);">
+				<N8nDataTableServer
+					v-bind="args"
+					:headers="headers"
+					:items="items"
+					:items-length="total"
+				/>
+			</div>
+		`,
+	});
+}
+
+export const HorizontalScroll = wideTableStory();
+HorizontalScroll.args = { showSelect: false };
+HorizontalScroll.parameters = {
+	docs: {
+		description: {
+			story:
+				'The table is wider than its container. It scrolls sideways. No column stays in place.',
+		},
+	},
+};
+
+export const PinnedColumn = wideTableStory();
+PinnedColumn.args = { pinColumns: 1, showSelect: true };
+PinnedColumn.argTypes = {
+	pinColumns: {
+		control: { type: 'number', min: 0, max: wideHeaders.length, step: 1 },
+	},
+};
+PinnedColumn.parameters = {
+	docs: {
+		description: {
+			story:
+				'Leading columns stay in place while the table scrolls. Change Pin columns in the controls. The selection column stays in front of them when it is shown. A border appears on the inner edge once you scroll.',
+		},
+	},
+};
