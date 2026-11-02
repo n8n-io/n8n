@@ -216,14 +216,16 @@ export class SourceControlPreferencesService {
 		const keyPair = await generateSshKeyPair(keyPairType);
 
 		try {
-			await this.settingsRepository.save({
-				key: 'features.sourceControl.sshKeys',
-				value: JSON.stringify({
+			// Upsert is atomic, so mains that start at the same time do not fail on a duplicate key
+			await this.settingsRepository.upsertByKey(
+				'features.sourceControl.sshKeys',
+				JSON.stringify({
 					encryptedPrivateKey: await this.cipher.encryptV2(keyPair.privateKey),
 					publicKey: keyPair.publicKey,
 				}),
-				loadOnStartup: true,
-			});
+				true,
+				{},
+			);
 		} catch (error) {
 			throw new UnexpectedError('Failed to write key pair to database', { cause: error });
 		}
@@ -304,13 +306,11 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await this.settingsRepository.save(
-					{
-						key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
-						value: settingsValue,
-						loadOnStartup: true,
-					},
-					{ transaction: false },
+				await this.settingsRepository.upsertByKey(
+					SOURCE_CONTROL_PREFERENCES_DB_KEY,
+					settingsValue,
+					true,
+					{},
 				);
 			} catch (error) {
 				throw new UnexpectedError('Failed to save source control preferences', { cause: error });

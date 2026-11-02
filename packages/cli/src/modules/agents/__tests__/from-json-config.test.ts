@@ -137,7 +137,7 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						reflect?: unknown;
+						consolidate?: unknown;
 					};
 					titleGeneration?: {
 						sync?: boolean;
@@ -1412,6 +1412,7 @@ describe('buildFromJson()', () => {
 					enabled: true,
 					credential: 'openai-key',
 					topK: 7,
+					guidance: { include: ['timezone'], exclude: ['passwords'] },
 				},
 			},
 		});
@@ -1430,13 +1431,44 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.hasEpisodicMemory).toBe(true);
 		expect(getMemoryConfig(agent)?.episodicMemory).toMatchObject({
 			topK: 7,
+			guidance: { include: ['timezone'], exclude: ['passwords'] },
 			embeddingProviderOptions: {
 				apiKey: 'test-api-key',
 				baseURL: 'https://custom.example/v1',
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.consolidate).toBeUndefined();
+	});
+
+	it('sends credential episodic memory embeddings through the model fetch', async () => {
+		const modelFetch = vi.fn();
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: { enabled: true, credential: 'openai-key' },
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: {
+					resolve: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+					list: vi.fn().mockResolvedValue([]),
+				},
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				modelFetch,
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.episodicMemory?.embeddingProviderOptions).toEqual({
+			apiKey: 'test-api-key',
+			fetch: modelFetch,
+		});
 	});
 
 	it('configures episodic memory with managed proxy embedding credentials', async () => {
@@ -1482,8 +1514,8 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
-		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
+	it('configures the episodic memory consolidator with a separate credential from embeddings', async () => {
+		const consolidateSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryConsolidateFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
@@ -1516,7 +1548,7 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(reflectSpy).toHaveBeenCalledWith({
+		expect(consolidateSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
 			baseURL: 'https://episodic-reflector-key.example/v1',
@@ -1821,7 +1853,18 @@ describe('buildFromJson()', () => {
 			expect(finishSearch).toHaveBeenCalledWith({
 				failed: false,
 				contentChars: JSON.stringify(result).length,
+				searchDurationMs: expect.any(Number),
+				emptySearch: false,
 			});
+		});
+
+		it('reports a vector store search without results as empty', async () => {
+			const searchHandler = vi.fn().mockResolvedValue({ results: [] });
+			const { searchTool, finishSearch } = await buildSearchTool(searchHandler);
+
+			await searchTool?.handler?.({ query: 'refund policy' }, { runId: 'run-1' });
+
+			expect(finishSearch).toHaveBeenCalledWith(expect.objectContaining({ emptySearch: true }));
 		});
 
 		it('reports a failed vector store search as failed, then throws its error', async () => {
@@ -1835,7 +1878,11 @@ describe('buildFromJson()', () => {
 			).rejects.toBe(error);
 
 			expect(onVectorStoreSearch).toHaveBeenCalledWith('run-1');
-			expect(finishSearch).toHaveBeenCalledWith({ failed: true });
+			expect(finishSearch).toHaveBeenCalledWith({
+				failed: true,
+				searchDurationMs: expect.any(Number),
+				errorType: 'Error',
+			});
 		});
 
 		it.each([

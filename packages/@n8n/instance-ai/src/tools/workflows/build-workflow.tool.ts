@@ -170,15 +170,15 @@ export const buildWorkflowInputSchema = z
 			.string()
 			.optional()
 			.describe(
-				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools, and required before `workflow-sdk validate`).',
+				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools).',
 			),
 		workflowId: z
 			.string()
 			.optional()
 			.describe(
-				'Real n8n workflow id from a prior workflow_builder_build_workflow or workflow_builder_workflows() tool result, used to bind this file on the first update. ' +
+				'Real n8n workflow id from a prior workflow_builder_build_workflow or list_workflows tool result, used to bind this file on the first update. ' +
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
-					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflow_builder_workflows() before inventing one.',
+					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with list_workflows before inventing one.',
 			),
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		approvalSummary: approvalSummarySchema,
@@ -201,7 +201,7 @@ export const buildWorkflowInputSchema = z
 					'explicitly asked ("create a new Slack credential") or needs to enter a replacement for a ' +
 					'credential whose secret is invalid or rotated, never as a default. Those slots are ' +
 					'left unresolved instead of being filled from an existing credential or Gateway credits, so ' +
-					'credential setup can offer to create one. Pass the same list to workflow_builder_workflows(action="setup").',
+					'credential setup can offer to create one. Pass the same list to setup_workflow.',
 			),
 		executionIntent: z
 			.enum(['one-off', 'reusable'])
@@ -234,7 +234,7 @@ const FOLDER_PATH_PLACEMENT_DESCRIPTION =
 	'Folder to create the NEW workflow in, named the way the user named it — "Clients/Acme", "Acme". ' +
 	'Pass it whenever the workflow has a clear home: the user named a folder, or the related workflows you read live there. ' +
 	'Resolved strictly (exact path, then folder name, then path suffix), never fuzzy: an unresolved folder fails the build before anything is saved and lists the real folders, so retry with one of those or ask the user. ' +
-	'New workflows only — to move an existing workflow use `workspace(action="move-workflow-to-folder")`.';
+	'New workflows only — to move an existing workflow use `move_workflow_to_folder`.';
 
 /** Same contract plus a folder target; advertised only while folder exploration is on for the run. */
 export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSchema
@@ -353,7 +353,7 @@ function oneOffOperationsGuidance(activated: boolean): string {
 }
 
 function postBuildFlowGuidance(activated: boolean): string {
-	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`workflow_builder_executions(action="list")\` and \`workflow_builder_executions(action="get")\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
+	return `This direct build is not complete yet. ${followInstructionsClause(POST_BUILD_FLOW_SKILL_ID, activated)} before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then generic testing prompts. Until a non-simulated execution succeeds, never offer publishing as an alternative to the live test. A user-run execution counts only after \`list_executions\` and \`get_execution\` confirm that it succeeded and ran the required path; the user's statement alone is not execution evidence. Honor an explicit publish request before live execution only after warning that the live path remains untested. Offer the explicit error-workflow opt-in for direct new primary workflows only after the primary workflow is successfully published. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.`;
 }
 
 /** Activates the follow-up skill, and returns whether it is active. */
@@ -598,12 +598,13 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 	return new Tool(DOMAIN_TOOL_IDS.BUILD_WORKFLOW)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.BUILD_WORKFLOW))
+		.requiresWorkspace()
 		.description(
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
+				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` then call this tool with filePath. This tool validates the source and returns the findings. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
@@ -731,7 +732,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					shouldEdit: false,
 					reason: 'workflow_source_refresh_required',
 					guidance:
-						'Call workflow_builder_workflows(action="get-as-code") for this workflow before rebuilding. ' +
+						'Call get_workflow_as_code for this workflow before rebuilding. ' +
 						'If it reports a conflict, preserve your edits separately, remove the stale file, and read the workflow again. Then reapply your edits.',
 				});
 				trackWorkflowSourceBuild(context, {
@@ -795,7 +796,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					shouldEdit: false,
 					reason: 'folder_placement_on_update',
 					guidance:
-						'`folderPath` only applies when creating a new workflow. Nothing was saved. Re-run without `folderPath` to update the workflow, and move it with `workspace(action="move-workflow-to-folder")` if the user asked for that.',
+						'`folderPath` only applies when creating a new workflow. Nothing was saved. Re-run without `folderPath` to update the workflow, and move it with `move_workflow_to_folder` if the user asked for that.',
 				});
 				trackWorkflowSourceBuild(context, {
 					result: 'blocked',

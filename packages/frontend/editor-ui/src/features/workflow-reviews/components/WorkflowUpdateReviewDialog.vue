@@ -21,7 +21,7 @@ import { I18nT } from 'vue-i18n';
 import { useToast } from '@n8n/composables/useToast';
 import CharacterCount from '@/app/components/CharacterCount.vue';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useReviewVersionName } from '@/features/workflow-reviews/composables/useReviewVersionName';
 import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
 import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';

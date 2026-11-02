@@ -83,6 +83,7 @@ export type TrustedSource = {
 	status: TrustedSourceStatus;
 	lastError: string | null;
 	lastCheckedAt: string | null;
+	firstAuthenticatedAt: string | null;
 	createdAt: string;
 	updatedAt: string;
 	config: TrustedSourceConfigLatest;

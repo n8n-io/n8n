@@ -125,11 +125,16 @@ describe('LangSmithTelemetry', () => {
 		expect(typeof spanProcessor.onStart).toBe('function');
 		expect(typeof spanProcessor.onEnd).toBe('function');
 		expect(typeof spanProcessor.shutdown).toBe('function');
-		expect(mockProvider.register).toHaveBeenCalledWith({ propagator: null });
 		expect(mockProvider.getTracer).toHaveBeenCalledWith('@n8n/agents');
 		expect(built.tracer).toBe(mockTracer);
 		expect(built.provider).toBe(mockProvider);
 		expect(process.env.LANGCHAIN_TRACING_V2).toBe('true');
+	});
+
+	it('does not register its tracer provider as the global provider', async () => {
+		await new LangSmithTelemetry({ apiKey: 'ls-key' }).build();
+
+		expect(mockProvider.register).not.toHaveBeenCalled();
 	});
 
 	it('resolves function headers for every export request', async () => {

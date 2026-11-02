@@ -70,20 +70,41 @@ const engineV2ModuleOnlyImport = {
 		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
 };
 
-// The skills module serves agents, MCP and n8n Assistant, so it does not depend on them.
-// The agents module registers what the skills module needs on `SkillAgentsProxy`.
-const skillsModuleBoundary = {
+// Code outside the skills module imports only its public API, `@/modules/skills`.
+// These patterns match import strings only. The code-health rule `skills-module-boundary`
+// resolves imports to files, so it also catches relative imports.
+const skillsModuleEntry = {
+	group: ['@/modules/skills/**'],
+	message: 'Import the skills module from @/modules/skills, its public API.',
+};
+
+// Tests outside the skills module may also use its fixtures.
+const skillsModuleEntryForTests = {
+	group: ['@/modules/skills/**', '!@/modules/skills/testing'],
+	message:
+		'Import the skills module from @/modules/skills, or its test fixtures from @/modules/skills/testing.',
+};
+
+// The skills module imports nothing else from cli, so it can move into its own package. The
+// allowlist only shrinks. It does not import the modules that use skills either: the agents
+// module registers what the skills module needs on `SkillUsageProxy`.
+const skillsModuleIsolation = {
 	group: [
-		'@/modules/agents/**',
-		'@/modules/instance-ai/**',
-		'@/modules/mcp/**',
+		// ESLint reads these as gitignore lines, which cannot re-include a file below an
+		// excluded folder, so `!@/permissions.ee` lets the last line re-include one file.
+		'@/*',
+		'!@/posthog',
+		'!@/telemetry',
+		'!@/permissions.ee',
+		'@/*/**',
+		'!@/permissions.ee/check-access',
 		// Any depth, so files in subfolders of the skills module are covered too.
 		'../**/agents/**',
 		'../**/instance-ai/**',
 		'../**/mcp/**',
 	],
 	message:
-		'The skills module must not import the modules that use skills. Ask for what you need through SkillAgentsProxy.',
+		'The skills module imports nothing from the rest of cli except its allowlist. Ask the agents module through SkillUsageProxy.',
 };
 
 const METRICS_DATABASE_IMPORT_MESSAGE =
@@ -172,7 +193,7 @@ export default defineConfig({
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
-						patterns: [jsonwebtokenSubpathRestriction],
+						patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 					},
 				],
 			},
@@ -192,7 +213,7 @@ export default defineConfig({
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
-						patterns: [jsonwebtokenSubpathRestriction],
+						patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 					},
 				],
 			},
@@ -220,7 +241,7 @@ export default defineConfig({
 							engineV2ModuleOnlyImport,
 							jsonwebtokenSigningRestriction,
 						],
-						patterns: [jsonwebtokenSubpathRestriction, skillsModuleBoundary],
+						patterns: [jsonwebtokenSubpathRestriction, skillsModuleIsolation],
 					},
 				],
 			},
@@ -235,7 +256,7 @@ export default defineConfig({
 					'error',
 					{
 						paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
-						patterns: [jsonwebtokenSubpathRestriction],
+						patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 					},
 				],
 			},
@@ -252,7 +273,10 @@ export default defineConfig({
 			rules: {
 				'no-restricted-imports': [
 					'error',
-					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+					{
+						paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport],
+						patterns: [skillsModuleEntry],
+					},
 				],
 			},
 		},
@@ -269,7 +293,7 @@ export default defineConfig({
 							engineV2ModuleOnlyImport,
 							jsonwebtokenVerifyOnlyRestriction,
 						],
-						patterns: [jsonwebtokenSubpathRestriction],
+						patterns: [jsonwebtokenSubpathRestriction, skillsModuleEntry],
 					},
 				],
 			},
@@ -280,7 +304,10 @@ export default defineConfig({
 			rules: {
 				'no-restricted-imports': [
 					'error',
-					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+					{
+						paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport],
+						patterns: [skillsModuleEntryForTests],
+					},
 				],
 			},
 		},
@@ -289,7 +316,20 @@ export default defineConfig({
 			// the tests block above would reinstate the restriction they are exempt from.
 			files: ['./src/modules/engine-v2/**/__tests__/**/*.ts'],
 			rules: {
-				'no-restricted-imports': ['error', { paths: [POLICY_INTERNAL_RESTRICTION] }],
+				'no-restricted-imports': [
+					'error',
+					{ paths: [POLICY_INTERNAL_RESTRICTION], patterns: [skillsModuleEntryForTests] },
+				],
+			},
+		},
+		{
+			// Integration tests reach the skills module like the tests in src do.
+			files: ['./test/**/*.ts'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{ paths: [POLICY_INTERNAL_RESTRICTION], patterns: [skillsModuleEntryForTests] },
+				],
 			},
 		},
 		{

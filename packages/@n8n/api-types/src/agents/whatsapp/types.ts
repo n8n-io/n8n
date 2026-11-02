@@ -33,3 +33,37 @@ export type WhatsAppCredentialCheck =
 export interface WhatsAppWebhookStatus {
 	verified: boolean;
 }
+
+/**
+ * Where Meta's own review of the number, display name or business stands.
+ * Meta can take days to finish these, so the settings show the state and keep
+ * it current.
+ *
+ * - `connected`: nothing to report.
+ * - `numberUnavailable`: Meta shows the number as disconnected, banned, deleted or moved. The agent cannot send or receive.
+ * - `numberPending`: Meta has not activated the number. The agent cannot send or receive.
+ * - `dailyLimit`: the number reached its daily limit. The agent can reply, but cannot start conversations.
+ * - `nameInReviewBlocked`, `nameDeclinedBlocked`: a first display name is not approved. The agent cannot send.
+ * - `nameInReview`, `nameDeclined`: a changed display name is not approved. The agent still works on the old name.
+ * - `businessNotVerified`, `businessInReview`: the agent works, but scheduled messages stay at the 250-people-a-day tier.
+ * - `unknown`: n8n could not read the state from Meta. Show nothing.
+ */
+export type WhatsAppMetaState =
+	| 'connected'
+	| 'numberUnavailable'
+	| 'numberPending'
+	| 'dailyLimit'
+	| 'nameInReviewBlocked'
+	| 'nameDeclinedBlocked'
+	| 'nameInReview'
+	| 'nameDeclined'
+	| 'businessNotVerified'
+	| 'businessInReview'
+	| 'unknown';
+
+export interface WhatsAppMetaStatus {
+	state: WhatsAppMetaState;
+	/** The display name that the state is about, as Meta shows it. */
+	displayName?: string;
+	displayPhoneNumber?: string;
+}

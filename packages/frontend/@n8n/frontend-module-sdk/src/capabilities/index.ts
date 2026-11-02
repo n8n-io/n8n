@@ -4,4 +4,5 @@ export { mcpExposeAllOffer } from './mcpExposeAllOffer';
 export { mcpDiscoverySettings } from './mcpDiscoverySettings';
 // EOF Experiment cleanup
 export { modalOpeners } from './modalOpeners';
+export { projectPermissions } from './projectPermissions';
 export { workflowMcpAccessSync } from './workflowMcpAccessSync';

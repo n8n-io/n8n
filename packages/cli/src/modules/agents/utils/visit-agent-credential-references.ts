@@ -7,6 +7,7 @@ import { isRecord } from '@n8n/utils/is-record';
 
 interface CredentialReference {
 	id: string;
+	path: string[];
 	setId: (id: string) => void;
 	managedToken?: string;
 }
@@ -51,10 +52,12 @@ function visitLocation(
 	[key, ...rest]: string[],
 	visit: CredentialVisitor,
 	managedToken?: string,
+	path: string[] = [],
 ): void {
 	if (key === '[]') {
 		if (Array.isArray(value)) {
-			for (const entry of value) visitLocation(entry, rest, visit, managedToken);
+			for (const [index, entry] of value.entries())
+				visitLocation(entry, rest, visit, managedToken, [...path, String(index)]);
 		}
 		return;
 	}
@@ -62,12 +65,13 @@ function visitLocation(
 	if (!isRecord(value)) return;
 
 	if (key === '*') {
-		for (const entry of Object.values(value)) visitLocation(entry, rest, visit, managedToken);
+		for (const [name, entry] of Object.entries(value))
+			visitLocation(entry, rest, visit, managedToken, [...path, name]);
 		return;
 	}
 
 	if (rest.length > 0) {
-		visitLocation(value[key], rest, visit, managedToken);
+		visitLocation(value[key], rest, visit, managedToken, [...path, key]);
 		return;
 	}
 
@@ -75,6 +79,7 @@ function visitLocation(
 	if (typeof id === 'string') {
 		visit({
 			id,
+			path: [...path, key],
 			managedToken,
 			setId: (nextId) => {
 				value[key] = nextId;

@@ -83,6 +83,7 @@ describe('resolveCredentialAwareModelConfig', () => {
 				usageCredential: { id: 'vertex' },
 				...(sdk !== undefined && { sdk }),
 			});
+			expect(getCachedCatalog).toHaveBeenCalledWith({ fetch: expect.any(Function) });
 		},
 	);
 

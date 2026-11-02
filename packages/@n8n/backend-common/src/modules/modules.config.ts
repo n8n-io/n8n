@@ -49,6 +49,7 @@ export const MODULE_NAMES = [
 	'skills',
 	'apps',
 	'knowledge',
+	'execution-limits',
 	'llm-usage',
 ] as const;
 

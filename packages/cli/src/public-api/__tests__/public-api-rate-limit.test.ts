@@ -15,6 +15,7 @@ import {
 import type { Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import express from 'express';
+import { MemoryStore } from 'express-rate-limit';
 import type { Request, RequestHandler, Response } from 'express';
 import RedisMock from 'ioredis-mock';
 import { request as httpRequest } from 'node:http';
@@ -45,27 +46,33 @@ const authStrategyRegistry = mock<AuthStrategyRegistry>();
 const lastActiveAtService = mock<LastActiveAtService>();
 const authenticatedUser = mock<User>({ id: 'user-1' });
 
+function rateLimitSettings(rateLimit: Partial<RateLimitConfig>): RateLimitConfig {
+	return {
+		enabled: true,
+		globalReadLimit: 100,
+		globalReadWindowSeconds: 60,
+		globalWriteLimit: 100,
+		globalWriteWindowSeconds: 60,
+		endpointReadLimit: 100,
+		endpointReadWindowSeconds: 60,
+		endpointWriteLimit: 100,
+		endpointWriteWindowSeconds: 60,
+		...rateLimit,
+	};
+}
+
 function activateApp(
 	rateLimit: Partial<RateLimitConfig>,
 	storeFactory: PublicApiRateLimitStoreFactory,
 ): express.Express {
-	const globalConfig = mock<GlobalConfig>({
-		publicApi: {
-			rateLimit: {
-				enabled: true,
-				globalReadLimit: 100,
-				globalReadWindowSeconds: 60,
-				globalWriteLimit: 100,
-				globalWriteWindowSeconds: 60,
-				endpointReadLimit: 100,
-				endpointReadWindowSeconds: 60,
-				endpointWriteLimit: 100,
-				endpointWriteWindowSeconds: 60,
-				...rateLimit,
-			},
-		},
-	});
+	return activateAppWithSettings(rateLimit, storeFactory).app;
+}
 
+function activateAppWithSettings(
+	rateLimit: Partial<RateLimitConfig>,
+	storeFactory: PublicApiRateLimitStoreFactory,
+) {
+	const settings = rateLimitSettings(rateLimit);
 	const app = express();
 	const router = express.Router({ mergeParams: true });
 	new PublicApiControllerRegistry(
@@ -74,7 +81,7 @@ function activateApp(
 		lastActiveAtService,
 		mock<EventService>(),
 		new PublicApiRateLimitService(
-			mock<PublicApiRateLimitSettingsService>({ settings: globalConfig.publicApi.rateLimit }),
+			mock<PublicApiRateLimitSettingsService>({ settings }),
 			new RateLimitService(),
 			storeFactory,
 		),
@@ -82,7 +89,7 @@ function activateApp(
 		mock<Logger>(),
 	).activate(router, 'v1');
 	app.use('/api/v1', router);
-	return app;
+	return { app, settings };
 }
 
 function registerWidgets() {
@@ -254,7 +261,7 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		}
 	});
 
-	it('turns off a layer when its limit is 0', async () => {
+	it('turns off a counter when its limit is 0', async () => {
 		const app = activate({ globalReadLimit: 0, endpointReadLimit: 2 });
 
 		expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
@@ -263,10 +270,10 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 	});
 
 	it.each([
-		{ layer: 'per-endpoint', globalReadLimit: 0, endpointReadLimit: 3 },
-		{ layer: 'all-endpoints', globalReadLimit: 3, endpointReadLimit: 0 },
+		{ counter: 'per-endpoint', globalReadLimit: 0, endpointReadLimit: 3 },
+		{ counter: 'all-endpoints', globalReadLimit: 3, endpointReadLimit: 0 },
 	])(
-		'reports the $layer limit in the headers when it is the only active limit',
+		'reports the $counter limit in the headers when it is the only active limit',
 		async ({ globalReadLimit, endpointReadLimit }) => {
 			const app = activate({ globalReadLimit, endpointReadLimit });
 
@@ -467,6 +474,77 @@ describe.each<Mode>(['single main', 'multi-main'])('Public API rate limiting on 
 		});
 	});
 
+	describe('when the settings change while the app runs', () => {
+		it('starts to limit when rate limiting is turned on', async () => {
+			const { app, settings } = activateAppWithSettings(
+				{ enabled: false, globalReadLimit: 1 },
+				createStoreFactory(mode),
+			);
+			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
+
+			settings.enabled = true;
+
+			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 429]);
+		});
+
+		it('stops limiting and sends no rate-limit headers when rate limiting is turned off', async () => {
+			const { app, settings } = activateAppWithSettings(
+				{ globalReadLimit: 1 },
+				createStoreFactory(mode),
+			);
+			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 429]);
+
+			settings.enabled = false;
+			const response = await send(app, 'get', '/widgets');
+
+			expect(response.status).toBe(200);
+			expect(response.headers['x-ratelimit-limit']).toBeUndefined();
+		});
+
+		it('applies a lower limit on the next request', async () => {
+			const { app, settings } = activateAppWithSettings(
+				{ globalReadLimit: 5 },
+				createStoreFactory(mode),
+			);
+			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([200]);
+
+			settings.globalReadLimit = 1;
+
+			expect(await sendTimes(app, 1, 'get', '/widgets')).toEqual([429]);
+		});
+
+		it('starts a counter whose limit changes from 0', async () => {
+			const { app, settings } = activateAppWithSettings(
+				{ globalReadLimit: 0 },
+				createStoreFactory(mode),
+			);
+			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 200]);
+
+			settings.globalReadLimit = 1;
+
+			expect(await sendTimes(app, 2, 'get', '/widgets')).toEqual([200, 429]);
+		});
+
+		it.runIf(mode === 'single main')('starts a new count with the new window', async () => {
+			const { app, settings } = activateAppWithSettings(
+				{
+					globalReadLimit: 10,
+					globalReadWindowSeconds: 3600,
+					endpointReadLimit: 0,
+				},
+				createStoreFactory(mode),
+			);
+			await send(app, 'get', '/widgets');
+
+			settings.globalReadWindowSeconds = 1;
+			const response = await send(app, 'get', '/widgets/other');
+
+			const resetInSeconds = Number(response.headers['x-ratelimit-reset']) - Date.now() / 1000;
+			expect(resetInSeconds).toBeLessThanOrEqual(2);
+			expect(response.headers['x-ratelimit-remaining']).toBe('9');
+		});
+	});
+
 	it('does not count a HEAD request, which the registry rejects with 405', async () => {
 		const app = activate({ globalReadLimit: 1, endpointReadLimit: 1 });
 
@@ -517,7 +595,7 @@ describe('Public API rate limiting across mains', () => {
 		expect((await send(main1, 'get', '/widgets/1')).status).toBe(429);
 	});
 
-	it('keeps a Redis key for each layer, access and endpoint', async () => {
+	it('keeps a Redis key for each counter, access and endpoint', async () => {
 		const main = activateApp({}, multiMain());
 
 		await send(main, 'get', '/widgets/1');
@@ -553,6 +631,36 @@ describe('Public API rate limiting across mains', () => {
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 
+	it('counts the first request after startup while Redis is still connecting', async () => {
+		const logger = mock<Logger>();
+		let connected = false;
+		const main = activateApp(
+			{ globalReadLimit: 1 },
+			multiMain({
+				createRedisClient: () => {
+					setImmediate(() => (connected = true));
+					return redisClient(() => !connected);
+				},
+				logger,
+			}),
+		);
+		await new Promise(setImmediate);
+
+		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('keeps the shared count when a window changes', async () => {
+		const { app: main1, settings } = activateAppWithSettings({ globalReadLimit: 2 }, multiMain());
+		const main2 = activateApp({ globalReadLimit: 2 }, multiMain());
+		expect(await sendTimes(main1, 1, 'get', '/widgets')).toEqual([200]);
+
+		settings.globalReadWindowSeconds = 30;
+
+		expect(await sendTimes(main1, 1, 'get', '/widgets/other')).toEqual([200]);
+		expect(await sendTimes(main2, 1, 'get', '/widgets')).toEqual([429]);
+	});
+
 	it('still blocks a request when Redis cannot take back its count', async () => {
 		const main = activateApp(
 			{ globalReadLimit: 1 },
@@ -560,5 +668,52 @@ describe('Public API rate limiting across mains', () => {
 		);
 
 		expect(await sendTimes(main, 2, 'get', '/widgets')).toEqual([200, 429]);
+	});
+});
+
+describe('PublicApiRateLimitService when a window changes during a request', () => {
+	const apiKeyRequest = () =>
+		({
+			tokenGrant: { apiKeyId: 'key-1' },
+			ip: '127.0.0.1',
+			headers: {},
+			app: { get: () => false },
+		}) as unknown as Request;
+
+	it('takes back a blocked count from the store that counted it', async () => {
+		const stores: MemoryStore[] = [];
+		const storeFactory = mock<PublicApiRateLimitStoreFactory>({
+			create: () => {
+				const store = new MemoryStore();
+				stores.push(store);
+				return store;
+			},
+		});
+		const settings = rateLimitSettings({ globalReadLimit: 1, endpointReadLimit: 0 });
+		const [countEndpoint, countAllEndpoints, enforceLimits] = new PublicApiRateLimitService(
+			mock<PublicApiRateLimitSettingsService>({ settings }),
+			new RateLimitService(),
+			storeFactory,
+		).createRouteLimiters('get', '/v1/widgets');
+		const res = mock<Response>();
+		res.status.mockReturnValue(res);
+		const run = async (handler: RequestHandler, req: Request) => await handler(req, res, vi.fn());
+
+		const blocked = apiKeyRequest();
+		await run(countEndpoint, apiKeyRequest());
+		await run(countAllEndpoints, apiKeyRequest());
+		await run(countEndpoint, blocked);
+		await run(countAllEndpoints, blocked);
+
+		settings.globalReadWindowSeconds = 30;
+		await run(countAllEndpoints, apiKeyRequest());
+		const [oldStore, newStore] = stores;
+		const takeBackFromOld = vi.spyOn(oldStore, 'decrement');
+		const takeBackFromNew = vi.spyOn(newStore, 'decrement');
+		await run(enforceLimits, blocked);
+
+		expect(res.status).toHaveBeenCalledWith(429);
+		expect(takeBackFromOld).toHaveBeenCalledWith('apiKey:key-1');
+		expect(takeBackFromNew).not.toHaveBeenCalled();
 	});
 });

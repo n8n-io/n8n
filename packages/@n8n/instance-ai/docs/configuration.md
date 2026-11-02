@@ -11,6 +11,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_ENABLED` | boolean | unset | Whether the n8n Assistant is on when no admin has turned it on or off in Settings > Assistant. When unset, it's off on the Enterprise plan and on for all other plans. A choice saved in Settings > Assistant overrides this variable. |
 | `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to run successfully. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `google-vertex-anthropic/claude-opus-4-8`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | Explicit API key for the environment-selected model. It works with built-in providers and custom endpoints. When it is empty, built-in providers can use their standard API-key environment variable. Some local endpoints do not require a key. |
@@ -44,7 +45,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
 | `N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED` | boolean | `false` | Enable workflow suggestions, internal self-healing investigations, and result review routes. Restart n8n after changing this setting. Investigations require a backend caller. This does not add automatic triggers. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
-| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `workflow_builder_workflows(action="list")`). `false` falls back to the PostHog flag. |
+| `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `list_workflows`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Browser Use tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 

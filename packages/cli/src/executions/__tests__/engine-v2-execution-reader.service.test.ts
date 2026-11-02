@@ -44,6 +44,7 @@ const snapshot = (overrides: Partial<ExecutionSnapshot> = {}): ExecutionSnapshot
 	hostMode: 'manual',
 	graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [], seeded: [] },
 	workflow: workflowDocument(),
+	parent: null,
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:05.000Z',
 	finishedAt: '2026-08-25T10:00:05.000Z',
@@ -272,6 +273,17 @@ describe('EngineV2ExecutionReader', () => {
 			dataPlane.getExecution.mockRejectedValue(error);
 
 			await expect(reader.findReference(EXECUTION_ID)).rejects.toBe(error);
+		});
+	});
+
+	describe('fromSnapshot', () => {
+		it('maps a snapshot the caller already holds, without a read', async () => {
+			const result = await reader.fromSnapshot(snapshot({ status: 'waiting', finishedAt: null }));
+
+			expect(dataPlane.getExecution).not.toHaveBeenCalled();
+			expect(result).toEqual(
+				expect.objectContaining({ id: EXECUTION_ID, status: 'waiting', finished: false }),
+			);
 		});
 	});
 

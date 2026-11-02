@@ -1,3 +1,4 @@
+import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
 import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
@@ -89,6 +90,7 @@ function makeService() {
 			agentRepository,
 			new AgentDefinitionService(
 				agentTaskRepository,
+				mock<AgentHistoryRepository>(),
 				agentTaskSnapshotRepository,
 				agentRepository,
 				mock<TransactionRunner>(),

@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
@@ -35,7 +37,7 @@ import type {
 } from '../../repositories/agent-execution.repository';
 import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
-import type { AgentTurnFinalizeOutcome } from '../../types/agent-turn-outcome';
+import type { AgentTurnFinalizeOutcome, FormattedTurnError } from '../../types/agent-turn-outcome';
 import { executionToMessagesDto } from '../../utils/execution-to-message-mapper';
 import { SystemAgentExecutionService } from '../system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agent-registry';
@@ -132,6 +134,9 @@ function setup(
 		name: 'Test Assistant',
 		authorize: vi.fn(async (_user: User, _projectId: string) => true),
 		prepareTurn: vi.fn(async (_turn: SystemAgentTurn<TestLease>) => handle),
+		formatSetupError: vi.fn(
+			async (_user: User, _error: unknown): Promise<FormattedTurnError | undefined> => undefined,
+		),
 		normalizeResumeData: vi.fn((data: unknown) => ({ normalized: data })),
 		...(workspace ? { workspace } : {}),
 	} satisfies SystemAgentProvider<TestLease>;
@@ -647,6 +652,50 @@ describe('SystemAgentExecutionService', () => {
 			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
 		});
 
+		it('runs the whole turn inside the turn context of the handle', async () => {
+			const { service, handle, turnExecutionService, onSettled } = setup([textChunk], {
+				status: 'completed',
+			});
+			const storage = new AsyncLocalStorage<string>();
+			const seen: Array<string | undefined> = [];
+			const withTurnContext = vi.fn(async (run: () => Promise<unknown>) => {
+				return await storage.run('turn-span', run);
+			});
+			handle.withTurnContext = async <T>(run: () => Promise<T>) =>
+				(await withTurnContext(run)) as T;
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				seen.push(storage.getStore());
+				await config.prepare();
+				yield textChunk;
+				await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'completed' });
+			});
+			onSettled.mockImplementation(async () => {
+				seen.push(storage.getStore());
+			});
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(withTurnContext).toHaveBeenCalledTimes(1);
+			expect(seen).toEqual(['turn-span', 'turn-span']);
+		});
+
+		it('settles as errored and rethrows when the turn throws through withTurnContext', async () => {
+			const { service, handle, onSettled, turnExecutionService } = setup();
+			handle.withTurnContext = async <T>(run: () => Promise<T>) => await run();
+			const failure = new Error('stream broke');
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toThrow('stream broke');
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
+		});
+
 		it('gives the provider the session grants of the thread', async () => {
 			const { service, provider, threadGrants } = setup([textChunk]);
 			threadGrants.findKeys.mockResolvedValue(new Set(['tool:run']));
@@ -1002,6 +1051,66 @@ describe('SystemAgentExecutionService', () => {
 			expect(toChatErrorEvent(running, 'Chat failed')).toMatchObject({
 				errorCode: 'turn_already_running',
 			});
+		});
+
+		it('formats an error that the turn setup threw', async () => {
+			const { service, provider, turnExecutionService } = setup([]);
+			const setupFailure = new Error('credits exhausted');
+			provider.prepareTurn.mockRejectedValue(setupFailure);
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			const error = await service
+				.consume(claimFor(), user, new AbortController().signal, vi.fn())
+				.catch((e: unknown) => e);
+
+			expect(provider.formatSetupError).toHaveBeenCalledWith(user, setupFailure);
+			expect(error).toBeInstanceOf(AgentFormattedTurnError);
+			expect(error).toMatchObject({ message: quotaError.message, errorCode: 'quota_exhausted' });
+			expect(toChatErrorEvent(error, 'Chat failed')).toEqual({
+				type: 'error',
+				message: quotaError.message,
+				errorCode: 'quota_exhausted',
+			});
+			expect(turnExecutionService.execute).not.toHaveBeenCalled();
+		});
+
+		it('keeps the setup error of a stopped turn', async () => {
+			const { service, provider } = setup([]);
+			const claimController = new AbortController();
+			const setupFailure = new Error('setup stopped');
+			provider.prepareTurn.mockImplementation(async () => {
+				claimController.abort();
+				throw setupFailure;
+			});
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			await expect(service.consume(claimFor(), user, claimController.signal, vi.fn())).rejects.toBe(
+				setupFailure,
+			);
+			expect(provider.formatSetupError).not.toHaveBeenCalled();
+		});
+
+		it('keeps a setup error that already has a client code', async () => {
+			const { service, provider } = setup([]);
+			const running = new AgentTurnAlreadyRunningError();
+			provider.prepareTurn.mockRejectedValue(running);
+			provider.formatSetupError.mockResolvedValue(quotaError);
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(running);
+			expect(provider.formatSetupError).not.toHaveBeenCalled();
+		});
+
+		it('keeps the raw setup error when the setup formatter fails', async () => {
+			const { service, provider } = setup([]);
+			const setupFailure = new Error('no model');
+			provider.prepareTurn.mockRejectedValue(setupFailure);
+			provider.formatSetupError.mockRejectedValue(new Error('formatter broke'));
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toBe(setupFailure);
 		});
 
 		it('formats the errors of a resumed turn', async () => {
@@ -1468,6 +1577,43 @@ describe('SystemAgentExecutionService', () => {
 
 			await expect(service.getUsableThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(
 				NotFoundError,
+			);
+		});
+
+		it('finds no thread for an id that the user has no thread with', async () => {
+			const { service, threadRepository, provider } = setup();
+			threadRepository.findOwnedById.mockResolvedValue(null);
+
+			await expect(service.findUsableThread(AGENT_ID, user, 'new-thread')).resolves.toBeNull();
+			expect(provider.authorize).not.toHaveBeenCalled();
+		});
+
+		it('still runs the floor when it finds a thread', async () => {
+			const { service } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(service.findUsableThread(AGENT_ID, user, 'thread-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('listThreads', () => {
+		it("reads a page of the user's sessions with the agent", async () => {
+			const { service, threadRepository } = setup();
+			const page = { threads: [thread], hasMore: true };
+			threadRepository.findOwnedHistoryPage.mockResolvedValue(page);
+			const before = { updatedAt: new Date('2026-10-19T10:00:00.000Z'), id: 'thread-0' };
+
+			await expect(
+				service.listThreads(AGENT_ID, user, { limit: 5, search: 'digest', before }),
+			).resolves.toBe(page);
+			expect(threadRepository.findOwnedHistoryPage).toHaveBeenCalledWith(
+				AGENT_ID,
+				user.id,
+				5,
+				'digest',
+				before,
 			);
 		});
 	});

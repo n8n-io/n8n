@@ -7,7 +7,7 @@ import type {
 import { computed, effectScope, onScopeDispose, ref, watch, type ComputedRef } from 'vue';
 
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
 	listenForCredentialChanges,

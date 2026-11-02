@@ -81,7 +81,7 @@ export class AgentsBuilderService {
 
 	async getSessionContext(user: User, projectId: string, agentId: string): Promise<string> {
 		await this.assertAccess(user, projectId, ['agent:read']);
-		return await buildBuilderSessionContext(projectId, agentId);
+		return buildBuilderSessionContext(projectId, agentId);
 	}
 
 	async getCredentialDefaults(user: User, projectId: string, agentId: string) {

@@ -13,7 +13,7 @@ import {
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import type { AgentN8nChatThreadSummary, InstanceAiThreadSummary } from '@n8n/api-types';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { formatTimeAgo } from '@/app/utils/formatters/dateFormatter';
@@ -30,9 +30,11 @@ import {
 import { clearPendingThreadHandoff } from './composables/useInstanceAiHandoff';
 import { INSTANCE_AI_VIEW } from './constants';
 import { useInstanceAiStore } from './instanceAi.store';
+import { useAssistantAgentThreadsStore } from './assistantAgent/assistantAgentThreads.store';
 
 const store = useInstanceAiStore();
 const agentThreadsStore = useAgentN8nChatThreadsStore();
+const assistantAgentThreadsStore = useAssistantAgentThreadsStore();
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
@@ -106,8 +108,14 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 	}
 }
 
-async function handleAgentThreadAction(action: string, thread: AgentN8nChatThreadSummary) {
-	if (action === 'delete') await agentThreadsStore.deleteThread(thread);
+/** The delete-only menu of n8n Chat agent threads and Assistant agent threads. */
+async function handleAgentThreadAction(
+	action: string,
+	item: Exclude<RecentChatItem, { kind: 'assistant' }>,
+) {
+	if (action !== 'delete') return;
+	if (item.kind === 'assistant-agent') await assistantAgentThreadsStore.deleteThread(item.thread);
+	else await agentThreadsStore.deleteThread(item.thread);
 }
 </script>
 
@@ -196,7 +204,7 @@ async function handleAgentThreadAction(action: string, thread: AgentN8nChatThrea
 							:items="agentActions"
 							:class="$style.actions"
 							placement="bottom-end"
-							@select="handleAgentThreadAction($event, item.thread)"
+							@select="handleAgentThreadAction($event, item)"
 						>
 							<template #activator>
 								<N8nIconButton

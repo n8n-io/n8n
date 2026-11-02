@@ -5,8 +5,10 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	AuthIdentity,
 	AuthIdentityRepository,
+	isPerson,
 	isValidEmail,
 	GLOBAL_MEMBER_ROLE,
+	PersonRepository,
 	SettingsRepository,
 	type User,
 	UserRepository,
@@ -101,6 +103,7 @@ export class OidcService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly personRepository: PersonRepository,
 	) {}
 
 	async init() {
@@ -349,17 +352,18 @@ export class OidcService {
 		});
 
 		if (openidUser) {
+			if (!isPerson(openidUser.user)) {
+				throw new ForbiddenError('A service account cannot log in with OIDC');
+			}
+
 			await this.applySsoProvisioning(openidUser.user, claims, userInfo);
 
 			return { user: openidUser.user, idToken: tokens.id_token };
 		}
 
-		const foundUser = await this.userRepository.findOne({
-			where: { email },
-			relations: ['authIdentities', 'role'],
-		});
+		const foundPerson = await this.personRepository.findByEmailWithAuthIdentities(email);
 
-		if (foundUser) {
+		if (foundPerson) {
 			// Linking to an existing account uses the email as the key, so only do it
 			// when the IdP says the email is verified.
 			this.assertEmailVerified(userInfo.email_verified);
@@ -371,13 +375,13 @@ export class OidcService {
 			const id = this.authIdentityRepository.create({
 				providerId: claims.sub,
 				providerType: 'oidc',
-				userId: foundUser.id,
+				userId: foundPerson.id,
 			});
 
 			await this.authIdentityRepository.save(id);
-			await this.applySsoProvisioning(foundUser, claims, userInfo);
+			await this.applySsoProvisioning(foundPerson, claims, userInfo);
 
-			return { user: foundUser, idToken: tokens.id_token };
+			return { user: foundPerson, idToken: tokens.id_token };
 		}
 
 		const user = await this.userRepository.manager.transaction(async (trx) => {

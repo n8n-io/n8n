@@ -141,3 +141,28 @@ describe('instance context turn properties', () => {
 		).toBeNull();
 	});
 });
+
+describe('Hub skill context metrics', () => {
+	it('accepts cumulative failure metrics on a suspended turn without an instance block', () => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({
+				...absentSegment,
+				segment: 'suspended',
+				status: 'suspended',
+				hub_skill_snapshot_sequence: 1,
+				hub_skill_attempt_count: 1,
+				hub_skill_attempted_ids: ['skill-1'],
+				hub_skill_load_count: 0,
+				hub_skill_failures: [{ operation: 'main', reason: 'temporarily_unavailable', count: 1 }],
+			}),
+		).toBeNull();
+	});
+	it('rejects unbounded failure reasons', () => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({
+				...absentSegment,
+				hub_skill_failures: [{ operation: 'main', reason: 'raw server error', count: 1 }],
+			}),
+		).not.toBeNull();
+	});
+});

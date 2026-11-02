@@ -183,7 +183,7 @@ describe('POST /n8n-packages/import-selection', () => {
 		expect(await workflowRepository.findOneBy({ id: 'WFA' })).not.toBeNull();
 	});
 
-	it('returns 409 for a conflicting import under workflowConflictPolicy=fail', async () => {
+	it('returns 409 for a conflicting import under conflictPolicy=fail', async () => {
 		const project = await createTeamProject('Target', owner);
 		const tarBuffer = await buildProjectPackage(project.id);
 
@@ -199,7 +199,7 @@ describe('POST /n8n-packages/import-selection', () => {
 			.post('/n8n-packages/import-selection')
 			.field('selectedProjectId', project.id)
 			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
-			.field('workflowConflictPolicy', 'fail')
+			.field('conflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(409);

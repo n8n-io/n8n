@@ -24,7 +24,7 @@ Use this skill when you need quick reminders on critical patterns.
 
 **Error Handling:**
 ```typescript
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 throw new UnexpectedError('message', { extra: { context } });
 // DON'T use deprecated ApplicationError
 ```

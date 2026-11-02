@@ -196,6 +196,23 @@ it('shows the changes of the review from the shell', () => {
 	expect(getByTestId('promotion-changes-stub')).toHaveTextContent('rev-1');
 });
 
+it('shows how a review without its environment ended, instead of loading its changes', () => {
+	const { getByTestId, queryByTestId } = renderComponent({
+		props: {
+			item: item({ state: 'closed', reviewState: 'closed', remoteError: 'no_connection' }),
+			onItemChange,
+		},
+	});
+
+	const ended = getByTestId('inbox-promotion-review-without-environment');
+	expect(ended).toHaveTextContent('This review is now closed');
+	expect(ended).toHaveTextContent(
+		"The environment of this review was deleted or no longer uses GitLab, so n8n can't show its changes.",
+	);
+	expect(queryByTestId('inbox-promotion-review-remote-error')).not.toBeInTheDocument();
+	expect(queryByTestId('promotion-changes-stub')).not.toBeInTheDocument();
+});
+
 it.each([
 	['the changes still load', { status: 'loading' } as const, null],
 	[

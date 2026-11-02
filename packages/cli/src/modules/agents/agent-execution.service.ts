@@ -24,6 +24,7 @@ import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
+import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import {
 	checkpointExecutionId,
@@ -259,6 +260,13 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+
+		await this.agentExecutionThreadRepository.markChatResumedAfterStop(
+			params.threadId,
+			!params.hideUserMessageFromTranscript && params.userMessage !== null && !params.resumeRunId,
+			ctx,
+		);
+
 		const inputMessageIds = await this.reserveInput(
 			params,
 			inserted.id,
@@ -381,6 +389,13 @@ export class AgentExecutionService {
 
 	getAbortSignal(executionId: string): AbortSignal {
 		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
+	}
+
+	stopExecution(executionId: string): boolean {
+		const controller = this.executionControllers.get(executionId);
+		if (!controller) return false;
+		controller.abort(SESSION_STOPPED_REASON);
+		return true;
 	}
 
 	reportUsage(
@@ -888,9 +903,14 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const inputs = await this.messageRepository.findExecutionInputs(executions.map(({ id }) => id));
 		const seen = new Set<string>();
+
 		for (const execution of executions) {
 			const messages = inputs.get(execution.id);
+
 			if (!messages) continue;
+
+			if (messages.some((message) => message.origin?.stopReport)) execution.stopReport = true;
+
 			execution.inputMessageIds = messages.map(({ id }) => id);
 			execution.inputMessages = [];
 			for (const message of messages) {
@@ -987,6 +1007,20 @@ export class AgentExecutionService {
 	 */
 	async findThreadById(threadId: string): Promise<AgentExecutionThread | null> {
 		return await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+	}
+
+	async findAccessibleThreadById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.agentExecutionThreadRepository.findAccessibleById(
+			threadId,
+			projectId,
+			agentId,
+			userId,
+		);
 	}
 
 	async canUseDraftThread(

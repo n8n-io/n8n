@@ -227,6 +227,34 @@ function expectStateMapsNotPolluted(state: AgentRunState): void {
 // ---------------------------------------------------------------------------
 
 describe('agent-run-reducer', () => {
+	it('keeps skill updates through history restore and deduplicates replay', () => {
+		const state = stateWithRun('run-1', 'root');
+		const event: InstanceAiEvent = {
+			type: 'skill-update',
+			runId: 'run-1',
+			agentId: 'root',
+			payload: {
+				skillId: 'hub:1',
+				name: 'Writing',
+				version: 'v2',
+				change: 'updated',
+				content: 'Use the revised writing instructions.',
+			},
+		};
+		reduceEvent(state, event);
+		const restored = stateFromAgentTree(deepCopy(toAgentTree(state)))!;
+		reduceEvent(restored, event);
+		expect(restored.agentsById.root.timeline).toEqual([
+			{ type: 'skill-update', runId: 'run-1', ...event.payload },
+		]);
+		reduceEvent(restored, {
+			...event,
+			payload: { skillId: 'hub:1', version: null, change: 'unavailable' },
+		});
+		expect(restored.agentsById.root.timeline).toHaveLength(2);
+		expect(restored.agentsById.root.toolCalls).toEqual([]);
+	});
+
 	describe('instance context', () => {
 		it('appends what the turn was handed to the root timeline', () => {
 			const state = stateWithRun('run-1', 'root');

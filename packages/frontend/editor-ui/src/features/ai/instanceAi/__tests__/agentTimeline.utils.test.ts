@@ -1080,3 +1080,19 @@ describe('buildTimelineBlocks — instance context', () => {
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
 });
+
+test('keeps an automatic skill update in the trace before the answer', () => {
+	const update: InstanceAiTimelineEntry = {
+		type: 'skill-update',
+		runId: 'run-1',
+		skillId: 'hub:1',
+		name: 'Writing',
+		version: 'v2',
+		change: 'updated',
+	};
+	const answer: InstanceAiTimelineEntry = { type: 'text', content: 'Here is the answer.' };
+	expect(buildTimelineBlocks([update, answer], {}, {}, 'completed')).toEqual([
+		{ type: 'thinking', key: 'thinking-0', entries: [update], active: false },
+		{ type: 'text', key: 'text-1', entry: answer },
+	]);
+});

@@ -106,7 +106,7 @@ export class N8nPackagesPublicController {
 	) {}
 
 	@Post('/import')
-	@ApiKeyScope('workflow:import')
+	@ApiKeyScope({ anyOf: ['workflow:import', 'agent:import'] })
 	@ApiSummary(IMPORT_SUMMARY)
 	@ApiDescription(IMPORT_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)

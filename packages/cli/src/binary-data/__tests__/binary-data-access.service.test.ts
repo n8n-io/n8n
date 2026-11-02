@@ -40,7 +40,7 @@ describe('BinaryDataAccessService', () => {
 
 				expect(result).toBe(true);
 				expect(workflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
-					scopes: ['workflow:read'],
+					scopes: ['execution:read'],
 				});
 				expect(executionRepository.existsForAccessibleWorkflows).toHaveBeenCalledWith('1', ['wf1']);
 				expect(binaryDataRepository.findSourceByFileId).not.toHaveBeenCalled();

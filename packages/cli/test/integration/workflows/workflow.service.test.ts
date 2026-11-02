@@ -1093,6 +1093,26 @@ describe('workflow publication outbox', () => {
 			const count = await workflowPublishedVersionRepository.count();
 			expect(count).toBe(0);
 		});
+
+		test('archive removes the workflow from the active workflow manager and records deactivated by the user', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			activeWorkflowManager.remove.mockClear();
+
+			await workflowService.archive(owner, workflow.id);
+
+			expect(activeWorkflowManager.remove).toHaveBeenCalledExactlyOnceWith(workflow.id);
+			const history = await workflowPublishHistoryRepository.find({
+				where: { workflowId: workflow.id },
+				order: { id: 'ASC' },
+			});
+			expect(history.map(({ event, versionId, userId }) => ({ event, versionId, userId }))).toEqual(
+				[
+					{ event: 'activated', versionId: workflow.versionId, userId: owner.id },
+					{ event: 'deactivated', versionId: workflow.versionId, userId: owner.id },
+				],
+			);
+		});
 	});
 });
 

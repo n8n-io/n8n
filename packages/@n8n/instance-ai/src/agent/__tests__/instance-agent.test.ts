@@ -14,11 +14,13 @@ const mockAgentInstances: Array<{
 	thinking: Mock;
 	mcpConnectionFailures: Mock;
 	modelFetch: Mock;
+	functionId: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
 	storage: vi.fn(),
 	observationalMemory: vi.fn(),
+	titleGeneration: vi.fn(),
 	build: vi.fn(),
 };
 
@@ -40,6 +42,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.thinking = vi.fn().mockReturnThis();
 		this.mcpConnectionFailures = vi.fn().mockReturnThis();
 		this.modelFetch = vi.fn().mockReturnThis();
+		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -73,14 +76,14 @@ vi.mock('../../tools', () => ({
 			currentUserAttachments?: unknown[];
 		}) => {
 			const names = [
-				'workflow_builder_workflows',
+				'list_workflows',
 				'research',
 				'n8n-docs',
 				'search_nodes',
 				'get_node_types',
 				'get_node_parameter_options',
 				'execute_node',
-				'workflow_builder_executions',
+				'run_workflow',
 				'workflow_builder_build_workflow',
 			];
 			if (context.evaluationConfigService) names.push('eval-config');
@@ -93,10 +96,7 @@ vi.mock('../../tools', () => ({
 	createOrchestratorDomainTools: vi.fn(
 		(context: { runLabel?: string }) =>
 			new Map([
-				[
-					'workflow_builder_workflows',
-					mockBuiltTool(`workflow_builder_workflows-${context.runLabel ?? 'unknown'}`),
-				],
+				['list_workflows', mockBuiltTool(`list_workflows-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
 				['search_nodes', mockBuiltTool(`search_nodes-${context.runLabel ?? 'unknown'}`)],
@@ -106,10 +106,7 @@ vi.mock('../../tools', () => ({
 					mockBuiltTool(`get_node_parameter_options-${context.runLabel ?? 'unknown'}`),
 				],
 				['execute_node', mockBuiltTool(`execute_node-${context.runLabel ?? 'unknown'}`)],
-				[
-					'workflow_builder_executions',
-					mockBuiltTool(`workflow_builder_executions-${context.runLabel ?? 'unknown'}`),
-				],
+				['run_workflow', mockBuiltTool(`run_workflow-${context.runLabel ?? 'unknown'}`)],
 				[
 					'workflow_builder_build_workflow',
 					mockBuiltTool(`workflow_builder_build_workflow-${context.runLabel ?? 'unknown'}`),
@@ -204,6 +201,7 @@ describe('createInstanceAgent', () => {
 		Memory.mockClear();
 		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.titleGeneration.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.build.mockReset().mockReturnValue({
 			memory: {},
 		});
@@ -250,8 +248,8 @@ describe('createInstanceAgent', () => {
 		expect(attachedTools['workflow_builder_build_workflow-run-1']).toMatchObject({
 			name: 'workflow_builder_build_workflow-run-1',
 		});
-		expect(attachedTools['workflow_builder_workflows-run-1']).toMatchObject({
-			name: 'workflow_builder_workflows-run-1',
+		expect(attachedTools['list_workflows-run-1']).toMatchObject({
+			name: 'list_workflows-run-1',
 		});
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
@@ -322,7 +320,7 @@ describe('createInstanceAgent', () => {
 			'get_node_types',
 			'get_node_parameter_options',
 			'execute_node',
-			'workflow_builder_executions',
+			'run_workflow',
 		]) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
@@ -422,6 +420,7 @@ describe('createInstanceAgent', () => {
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 			modelFetch,
+			requestLabels: true,
 		} as never);
 		await createInstanceAgent({
 			modelId: 'test-model',
@@ -432,7 +431,9 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('instance-ai.orchestrator');
 		expect(mockAgentInstances[1]?.modelFetch).not.toHaveBeenCalled();
+		expect(mockAgentInstances[1]?.functionId).not.toHaveBeenCalled();
 	});
 
 	it('attaches native telemetry from the trace context when present', async () => {
@@ -556,7 +557,7 @@ describe('createInstanceAgent', () => {
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
 		createOrchestratorDomainTools.mockReturnValueOnce(
-			new Map([['workflow_builder_workflows', { id: 'workflow_builder_workflows' }]]),
+			new Map([['list_workflows', { id: 'list_workflows' }]]),
 		);
 		createToolsFromLocalMcpServer.mockReturnValue(
 			new Map([
@@ -700,7 +701,7 @@ describe('createInstanceAgent', () => {
 		});
 
 		it('reports no tools for a service whose only tool collides with a domain tool', async () => {
-			const orchestrationContext = await buildWith('workflow_builder_workflows');
+			const orchestrationContext = await buildWith('list_workflows');
 
 			expect(lastDomainToolContext()).toEqual([
 				{ slug: 'linear', toolNames: [] },
@@ -1013,6 +1014,41 @@ describe('createInstanceAgent', () => {
 				},
 			}),
 		);
+	});
+
+	describe('title generation', () => {
+		async function createWithMemoryConfig(memoryConfig: Record<string, unknown>) {
+			await createInstanceAgent({
+				modelId: 'anthropic/claude-opus-5-5',
+				context: {
+					runLabel: 'memory-test',
+					licenseHints: undefined,
+					localMcpServer: undefined,
+				},
+				orchestrationContext: {
+					runId: 'memory-test',
+				},
+				memory: { id: 'memory-store' },
+				memoryConfig,
+				mcpManager: createMcpManagerStub(),
+			} as never);
+		}
+
+		it('does not generate titles unless the caller asks for it', async () => {
+			await createWithMemoryConfig({});
+
+			expect(mockMemoryBuilder.titleGeneration).not.toHaveBeenCalled();
+		});
+
+		it('passes the title model to the Memory builder', async () => {
+			await createWithMemoryConfig({
+				titleGeneration: { model: 'anthropic/claude-haiku-4-5' },
+			});
+
+			expect(mockMemoryBuilder.titleGeneration).toHaveBeenCalledWith({
+				model: 'anthropic/claude-haiku-4-5',
+			});
+		});
 	});
 
 	it('forwards midRunObservation to the Memory builder when provided', async () => {

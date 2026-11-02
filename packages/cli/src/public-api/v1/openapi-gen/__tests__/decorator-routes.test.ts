@@ -172,7 +172,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape.widgetId).toBeInstanceOf(z.ZodString);
 	});
 
-	it('bare route: omits every optional field, but always adds success/auth responses', () => {
+	it('bare route: omits every optional field, but always adds success, auth, and rate-limit responses', () => {
 		class WidgetsPublicController {
 			@Get('/')
 			@ApiResponse(200)
@@ -193,6 +193,9 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
+		});
+		expect(operation.config.responses[429]).toEqual({
+			$ref: '../../../../shared/spec/responses/tooManyRequests.yml',
 		});
 		expect(Object.keys(operation.config).filter((key) => key.startsWith('x-'))).toEqual([]);
 	});

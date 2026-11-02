@@ -24,17 +24,13 @@ function resolveTimeoutMs(raw: string | undefined): number {
  * and AI-MCP calls, built through the single transport implementer
  * (`@n8n/backend-network`).
  *
- * The outbound network policy stays bypassed (`'unsafe'`): these targets are
- * fixed provider hosts plus user-configured `baseURL`s (self-hosted Ollama,
- * OpenAI-compatible gateways), which the previous hand-rolled helpers did not
- * filter either. The long AI timeout is applied so slow completions are not
- * cut off at undici's 5-minute default.
+ * Model-provider base URLs are user-configured, so follow the configured SSRF
+ * policy while preserving the long AI timeout.
  */
 export function createAiProxyFetch(outboundHttp: OutboundHttp): CustomFetch {
 	return outboundHttp
 		.transport({
 			proxy: 'env',
-			useDefaultSsrfPolicy: 'unsafe',
 			timeouts: {
 				headersTimeout: AI_REQUEST_TIMEOUT_MS,
 				bodyTimeout: AI_REQUEST_TIMEOUT_MS,
@@ -44,8 +40,8 @@ export function createAiProxyFetch(outboundHttp: OutboundHttp): CustomFetch {
 }
 
 /**
- * A proxy-aware fetch for user-configured MCP endpoints. Unlike model-provider
- * fetches, MCP URLs are user-controlled, so follow the configured SSRF policy
+ * A proxy-aware fetch for user-configured MCP endpoints.
+ * MCP URLs are user-controlled, so follow the configured SSRF policy
  * while preserving the long AI timeout.
  */
 export function createAiMcpFetch(outboundHttp: OutboundHttp): CustomFetch {

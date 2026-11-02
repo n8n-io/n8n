@@ -36,6 +36,8 @@ const dropdownId = `n8n-action-toggle-dropdown-${getCurrentInstance()?.uid ?? 0}
 const items = computed((): Array<DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>> => {
 	return props.actions.map((action) => ({
 		...action,
+		icon:
+			typeof action.icon === 'string' ? { type: 'icon' as const, value: action.icon } : action.icon,
 		id: (action.id ?? action.value) as ActionValue,
 		testId: `action-${String(action.id ?? action.value)}`,
 		data: action,

@@ -12,6 +12,7 @@ import {
 } from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
+import { readFileSync } from 'node:fs';
 import { appendFile } from 'node:fs/promises';
 
 import { evalUsageGuardrail } from './eval-usage';
@@ -24,10 +25,8 @@ export { Tool };
 // Model constants
 // ---------------------------------------------------------------------------
 
-export const SONNET_MODEL = 'anthropic/claude-sonnet-4-6';
 /** Default for eval agents with no model set. CI uses the same model for its mocks. */
 const EVAL_MODEL = 'anthropic/claude-sonnet-5-5';
-export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 export const JUDGE_MODEL = 'anthropic/claude-sonnet-5-5';
 const JUDGE_EFFORT: AnthropicThinkingEffort = 'high';
 
@@ -186,10 +185,11 @@ function effortFromEnv(name: string): AnthropicThinkingEffort | undefined {
 function resolveEvalEffort(options: {
 	judge?: boolean;
 	model?: string;
+	effort?: AnthropicThinkingEffort;
 }): AnthropicThinkingEffort | undefined {
 	if (options.judge) return effortFromEnv('N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT') ?? JUDGE_EFFORT;
-	// A caller that pins its model (an in-product helper) keeps the standard effort.
-	if (options.model !== undefined) return undefined;
+	// A caller that pins its model (an in-product helper) uses its own effort, or the standard one.
+	if (options.model !== undefined) return options.effort;
 	return effortFromEnv('N8N_INSTANCE_AI_EVAL_EFFORT');
 }
 
@@ -266,10 +266,23 @@ function usageLogHooks(
 	};
 }
 
+/**
+ * Same switch as `InstanceAiConfig.modelRequestLabels`, read here so harness callers share it.
+ * Parses as `@n8n/config` does: the env value as is, else the trimmed `_FILE` contents.
+ */
+function requestLabelsEnabled(): boolean {
+	const name = 'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS';
+	const filePath = process.env[`${name}_FILE`];
+	const value = process.env[name] ?? (filePath ? readFileSync(filePath, 'utf8').trim() : '');
+	return ['true', '1'].includes(value.toLowerCase());
+}
+
 export function createEvalAgent(
 	name: string,
 	options: {
 		model?: string;
+		/** Thinking effort for a pinned `model`. Ignored without one. */
+		effort?: AnthropicThinkingEffort;
 		instructions: string;
 		cache?: boolean;
 		/** Host-resolved model used when no eval model API key is configured in the environment. */
@@ -285,6 +298,8 @@ export function createEvalAgent(
 		options.fallbackModelConfig,
 	);
 	const agent = new Agent(name).model(model);
+	// The SDK accepts only `[A-Za-z0-9._-]` in a caller id.
+	if (requestLabelsEnabled()) agent.functionId(name.replace(/[^A-Za-z0-9._-]+/g, '-'));
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.telemetry) agent.telemetry(options.telemetry);
 

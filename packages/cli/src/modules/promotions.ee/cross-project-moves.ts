@@ -1,7 +1,7 @@
-import type { ApplyCheckResult } from '@n8n/api-types';
+import type { PromotionPreviewCheck } from '@n8n/api-types';
 import { UnexpectedError } from 'n8n-workflow';
 
-export type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
+export type CrossProjectMove = PromotionPreviewCheck['movedWorkflows'][number];
 
 export type CrossProjectMoves = {
 	workflows: CrossProjectMove[];
@@ -101,17 +101,6 @@ function describeItems({ workflows, folders }: CrossProjectMoves): string {
 		({ id, name, project, projectExists, instanceProject }: CrossProjectMove) =>
 			`${type} "${name}" (${id}) is in ${here(instanceProject)} here and in project "${project.name}" on the branch${projectExists ? '' : `, and project "${project.name}" does not exist on this instance yet`}`;
 	return [...workflows.map(describe('workflow')), ...folders.map(describe('folder'))].join('; ');
-}
-
-/**
- * The Apply refusal. An item can't move here to a branch project that does not exist here yet, so
- * then only the source fix is offered.
- */
-export function describeCrossProjectMoves(moves: CrossProjectMoves): string {
-	const remedy = [...moves.workflows, ...moves.folders].every(({ projectExists }) => projectExists)
-		? 'Move them on this instance to match the branch, or move them back on the source instance and promote again.'
-		: 'Move them back on the source instance, then promote again.';
-	return `Apply can't move workflows or folders between projects: ${describeItems(moves)}. ${remedy}`;
 }
 
 /** The promote refusal: the branch would hold a move that Apply then refuses. */

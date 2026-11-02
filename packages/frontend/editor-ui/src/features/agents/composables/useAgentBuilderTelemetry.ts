@@ -149,6 +149,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 			deps.agentId.value,
 			knownTriggerTypes,
 			configuredIntegrations,
+			integrations.filter((integration) => isDraftIntegration(integration)),
 		);
 		return configured;
 	}

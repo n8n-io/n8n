@@ -4,6 +4,7 @@ import {
 	instanceAiSetupCredentialSelectionKey,
 	type InstanceAiSetupCredentialSelection,
 } from '@n8n/api-types';
+import { node, trigger, workflow } from '@n8n/workflow-sdk';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
@@ -20,6 +21,7 @@ import {
 	buildWorkflowInputSchema,
 	createBuildWorkflowTool,
 } from '../build-workflow.tool';
+import { collectHostSdkValidatorWarnings } from '../host-sdk-validation';
 import { prepareWorkflowSetup } from '../prepare-workflow-setup';
 import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
@@ -282,6 +284,12 @@ describe('createBuildWorkflowTool', () => {
 		).toThrow(/projectId/);
 	});
 
+	it('needs the workspace, since it reads and compiles the source file there', () => {
+		const { context } = makeContext({ source: 'workflow source' });
+
+		expect(createBuildWorkflowTool(context).requiresWorkspace).toBe(true);
+	});
+
 	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
 		const { context } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
@@ -509,7 +517,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(false);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+			expect(result.errors?.join(' ')).toContain('move_workflow_to_folder');
 		});
 
 		it.each(['', ' ', '/'])(
@@ -631,7 +639,7 @@ describe('createBuildWorkflowTool', () => {
 			'never offer publishing as an alternative to the live test',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
-			'A user-run execution counts only after `workflow_builder_executions(action="list")`',
+			'A user-run execution counts only after `list_executions`',
 		);
 		expect(result.postBuildFlow?.guidance).toContain(
 			'Do not replace the error-workflow opt-in with a generic add-anything',
@@ -3273,6 +3281,54 @@ describe('createBuildWorkflowTool', () => {
 				'[TS2322] src/workflows/main.workflow.ts:4:1: Type mismatch',
 			],
 		});
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('returns a wrapped mock output that only the host SDK reports', async () => {
+		const { context, filePath } = makeContext({});
+		const authored = workflow('wf-1', 'Mocks').add(
+			trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } }).to(
+				node({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.3,
+					config: {
+						name: 'Fetch Orders',
+						parameters: { url: 'https://example.com' },
+						output: [{ json: { orderId: 'ord_1' } }],
+					},
+				}),
+			),
+		);
+		const compiledJson = authored.toJSON({ tidyUp: true });
+		// The published SDK in the sandbox reported nothing; the host check adds the finding.
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: compiledJson,
+			warnings: collectHostSdkValidatorWarnings(
+				compiledJson,
+				authored.generatePinData().toJSON().pinData,
+				[],
+			),
+			compiler: 'sandbox-tsx',
+		});
+		const actualWarnings = await vi.importActual<typeof import('../workflow-validation-warnings')>(
+			'../workflow-validation-warnings',
+		);
+		vi.mocked(partitionWarnings).mockImplementationOnce(actualWarnings.partitionWarnings);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: { reason: 'workflow_source_validation_failed' },
+		});
+		expect(result.errors).toEqual([
+			expect.stringMatching(
+				/^\[MOCK_OUTPUT_JSON_ENVELOPE\] \(Fetch Orders\): Node 'Fetch Orders' wraps/,
+			),
+		]);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 	});
 

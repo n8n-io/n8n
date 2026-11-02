@@ -29,6 +29,8 @@ export interface FolderPlanItem {
 	moved?: true;
 	/** On `update`: the folder takes `name`. */
 	renamed?: true;
+	/** For `skip`: the name of the folder on the target, which the import keeps. */
+	existingName?: string;
 }
 
 export interface FolderImportPlan {

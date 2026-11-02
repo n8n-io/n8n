@@ -7,6 +7,7 @@ export * from './agent-json-config.schema';
 export * from './agent-message-origin.schema';
 export * from './agent-node-tool-operations';
 export * from './agent-personalisation';
+export * from './agent-test.constants';
 export * from './agent-skill.schema';
 export * from './skills.schema';
 export * from './skill-names';
@@ -43,11 +44,9 @@ export {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	isAgentToolNodeType,
 } from '../agent-builder-tool-node-types';
-// ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
+// CONFIGURE_CHANNEL_TOOL_NAME comes from
 // ./agent-interaction.schema (re-exported below via `export *`).
 export {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	cancellationResumeSchema,
 	type CancellationResumeData,

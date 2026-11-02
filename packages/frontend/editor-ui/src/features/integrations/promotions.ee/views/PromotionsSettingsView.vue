@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { promotionDirectionSchema, type PromotionDirection } from '@n8n/api-types';
+import {
+	isPromotionGitHostType,
+	promotionDirectionSchema,
+	type PromotionDirection,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -24,7 +28,7 @@ import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
@@ -50,7 +54,7 @@ const router = useRouter();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 const { next: nextLoad } = useLatestFetch();
-const { connectErrors, canClone, connect } = usePromotionCheckout();
+const { connectErrors, canConnect, connect } = usePromotionCheckout();
 const {
 	busy: switchBusy,
 	canSwitchBack,
@@ -102,10 +106,14 @@ async function retry(environment: PromotionEnvironment) {
 }
 
 async function remove(environment: PromotionEnvironment) {
+	// Only a Promote environment on a Git host has promotion reviews to close.
+	const hasReviews =
+		environment.direction === 'promote' && isPromotionGitHostType(environment.provider.type);
+	const messageKey = hasReviews
+		? 'settings.promotions.environment.remove.confirm.message.gitHost'
+		: 'settings.promotions.environment.remove.confirm.message';
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.promotions.environment.remove.confirm.message', {
-			interpolate: { name: environment.name },
-		}),
+		i18n.baseText(messageKey, { interpolate: { name: environment.name } }),
 		i18n.baseText('settings.promotions.environment.remove.confirm.title'),
 		{
 			confirmButtonText: i18n.baseText('settings.promotions.environment.remove.confirm.button'),
@@ -193,7 +201,7 @@ async function remove(environment: PromotionEnvironment) {
 							:environment="environments[direction]"
 							:busy="busy.get(environments[direction].id)"
 							:connect-error="connectErrors.get(environments[direction].id)"
-							:can-clone="canClone"
+							:can-connect="canConnect"
 							:data-test-id="`promotion-environment-card-${direction}`"
 							@retry="retry(environments[direction])"
 							@edit="

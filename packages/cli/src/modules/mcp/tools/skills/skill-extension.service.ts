@@ -12,7 +12,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-import { SkillService } from '@/modules/skills/skill.service';
+import { SkillService } from '@/modules/skills';
 import { Telemetry } from '@/telemetry';
 
 const SKILLS_EXTENSION_ID = 'io.modelcontextprotocol/skills';
@@ -127,7 +127,7 @@ export class McpSkillExtensionService {
 		server.registerResource(
 			'skill-file',
 			new ResourceTemplate('skill://{skillId}/{name}/{+path}', { list: undefined }),
-			{ description: 'A file of a skills hub skill' },
+			{ description: 'A file of a skill' },
 			async (uri, { skillId, name, path }) => {
 				const found = await this.skillAt(user, skillId, name);
 				const filePath = typeof path === 'string' ? fromUriPath(path) : undefined;
@@ -141,6 +141,9 @@ export class McpSkillExtensionService {
 					scope: found.projectId ? 'project' : 'instance',
 					project_id: found.projectId ?? undefined,
 					file: file.path === SKILL_MD_PATH ? 'skill_md' : 'reference',
+					...(found.origin
+						? { source_provider: found.origin.provider, source_access: found.origin.access }
+						: {}),
 				});
 				return {
 					contents: [{ uri: uri.href, mimeType: 'text/markdown', text: file.content }],

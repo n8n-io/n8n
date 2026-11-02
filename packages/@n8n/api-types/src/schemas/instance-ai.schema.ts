@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
+import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -126,6 +127,32 @@ export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 	return `workflows:update:${workflowId}`;
 }
 
+/**
+ * Builds the thread-level "always allow" grant key for a gated action on one
+ * workflow, such as `publish` or `unarchive`. Scoped per workflow, so approving
+ * one workflow never approves the same action on another.
+ */
+export function buildWorkflowActionSessionGrantKey(action: string, workflowId: string): string {
+	return `workflows:${action}:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a workspace action, such
+ * as `tag-workflow` or `create-folder`.
+ */
+export function buildWorkspaceSessionGrantKey(action: string): string {
+	return `workspace:${action}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for deleting the test
+ * executions of one workflow. Scoped per workflow, so approving the cleanup of
+ * one workflow never approves it for another.
+ */
+export function buildCleanupTestExecutionsSessionGrantKey(workflowId: string): string {
+	return `workspace:cleanup-test-executions:${workflowId}`;
+}
+
 /** Builds the thread-level grant for using a credential with one exact service origin. */
 export function buildCredentialDestinationGrantKey(workflowId: string, origin: string): string {
 	return `credential-destination:${encodeURIComponent(workflowId)}:${encodeURIComponent(origin)}`;
@@ -244,6 +271,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-interrupted',
 	'confirmation-request',
 	'instance-context',
+	'skill-update',
 	'tasks-update',
 	'setup-items',
 	'preferences-applied',
@@ -1112,6 +1140,25 @@ export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
 });
 
+/** Host event of an Assistant agent turn with the temporary workflows that the turn end archived. */
+export const ASSISTANT_WORKFLOWS_ARCHIVED_EVENT = 'workflows-archived';
+
+export const workflowsArchivedPayloadSchema = z.object({
+	workflowIds: z.array(z.string()),
+});
+
+/** Host event of an Assistant agent turn with the LangSmith ids of the turn's trace. */
+export const ASSISTANT_TRACE_EVENT = 'assistant-trace';
+
+export const assistantTracePayloadSchema = z.object({
+	/** OTel trace id of the turn's root span. */
+	traceId: z.string().optional(),
+	langsmithTraceId: z.string(),
+	langsmithRunId: z.string(),
+});
+
+export type AssistantTracePayload = z.infer<typeof assistantTracePayloadSchema>;
+
 /**
  * One entry of the setup panel checklist. Service-keyed (one row per
  * credential type, fanned out to all nodes that use it via `nodeBindings`),
@@ -1225,6 +1272,16 @@ export const aiPreferencesAppliedPayloadSchema = z.object({
 
 export type AiPreferencesAppliedPayload = z.infer<typeof aiPreferencesAppliedPayloadSchema>;
 
+export const skillUpdatePayloadSchema = z.object({
+	skillId: z.string(),
+	name: z.string().optional(),
+	version: z.string().nullable(),
+	change: z.enum(['updated', 'restored', 'unavailable']),
+	/** The content delivered for this response. Older events contain metadata only. */
+	content: z.string().optional(),
+});
+export type InstanceAiSkillUpdatePayload = z.infer<typeof skillUpdatePayloadSchema>;
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -1291,6 +1348,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: instanceContextPayloadSchema,
 	}),
+	z.object({ type: z.literal('skill-update'), ...eventBase, payload: skillUpdatePayloadSchema }),
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({
@@ -1461,6 +1519,15 @@ export const instanceAiAgentAttachmentSchema = z.object({
 });
 export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
 
+export const INSTANCE_AI_APP_TARGETS_METADATA_KEY = 'instanceAiAppTargets';
+export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingAppTarget';
+
+export const instanceAiAppTargetSchema = z.object({
+	appId: z.string().uuid(),
+	projectId: z.string().min(1),
+});
+export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1579,7 +1646,7 @@ export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSc
  * agent resolves contents with its tools. Cap matches the send-message field.
  */
 export const instanceAiThreadArtifactSchema = z.object({
-	type: z.enum(['workflow', 'agent', 'data-table']),
+	type: assistantArtifactTypeSchema,
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
 	projectId: z.string().min(1).max(64).optional(),
@@ -1599,51 +1666,6 @@ export const instanceAiThreadArtifactsContextSchema = z.object({
 export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
-
-/** Identifies a resource that a thread tab shows. */
-export const instanceAiThreadTabRefSchema = instanceAiThreadArtifactSchema.pick({
-	type: true,
-	id: true,
-});
-export type InstanceAiThreadTabRef = z.infer<typeof instanceAiThreadTabRefSchema>;
-
-/** One open tab. The name lets the tab render before the resource details load. */
-export const instanceAiThreadTabSchema = instanceAiThreadTabRefSchema.extend({
-	name: z.string().max(255),
-	projectId: z.string().min(1).max(64).optional(),
-});
-export type InstanceAiThreadTab = z.infer<typeof instanceAiThreadTabSchema>;
-
-/**
- * The tabs a user has open in a thread. `tabs` is in display order.
- * `closedTabs` holds the artifacts the user closed, so they do not reopen when
- * the thread loads again.
- */
-/** Most open tabs a stored thread tabs state holds. */
-export const MAX_INSTANCE_AI_THREAD_OPEN_TABS = 100;
-/** Most closed artifacts a stored thread tabs state remembers. */
-export const MAX_INSTANCE_AI_THREAD_CLOSED_TABS = 500;
-
-export const instanceAiThreadTabsStateSchema = z.object({
-	tabs: z.array(instanceAiThreadTabSchema).max(MAX_INSTANCE_AI_THREAD_OPEN_TABS),
-	closedTabs: z.array(instanceAiThreadTabRefSchema).max(MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
-	activeTab: instanceAiThreadTabRefSchema.nullable(),
-	/**
-	 * Whether the preview panel is open. Without it, the active tab does not
-	 * tell if the user can see that tab. Optional, so a state saved before this
-	 * field existed stays valid.
-	 */
-	previewOpen: z.boolean().optional(),
-});
-export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
-
-export interface InstanceAiThreadTabsResponse {
-	/**
-	 * `null` when no tabs are stored for this thread yet. The server stores them
-	 * when the agent changes an artifact, and the client when the user changes a tab.
-	 */
-	state: InstanceAiThreadTabsState | null;
-}
 
 /**
  * Build style for a run. `progressive` makes the agent build a minimal working
@@ -1955,6 +1977,7 @@ export type InstanceAiTimelineEntry =
 	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string }
+	| ({ type: 'skill-update'; runId: string; responseId?: string } & InstanceAiSkillUpdatePayload)
 	/** Store the context summary in the timeline so normal history replay restores it. */
 	| {
 			type: 'instance-context';
@@ -2295,6 +2318,10 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 
 /**
  * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * These overrides control assistant permissions, not backend authorization.
+ * Backend entry points must enforce instance protection separately. The instance
+ * MCP server permits only reads and production workflow executions on protected instances.
  *
  * This set mirrors n8n's own backend permission model for protected branches:
  * publish/unpublish, credential delete/update, and workflow update have no
@@ -2767,12 +2794,12 @@ export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
 /** Enables the node-usage context surface for Instance AI: the `node-usage`
 
- *  action and the `nodeTypes` filter on `workflows(action="list")`. */
+ *  action and the `nodeTypes` filter on `list_workflows`. */
 export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
 
 /**
  * Rollout flag for folder exploration in Instance AI: folder attribution on
- * `workflows(action="list")` rows plus `folderPath` / `folderId` / `recursive`
+ * `list_workflows` rows plus `folderPath` / `folderId` / `recursive`
  * on that action. Off by default. PostHog owns cohort rollout;
  * `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` force-enables.
  */

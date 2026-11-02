@@ -94,6 +94,7 @@ erDiagram
   integer id
   integer intervalSeconds
   varchar_16_ kind
+  timestamp_3__with_time_zone lastDispatchedAt
   timestamp_3__with_time_zone lastFiredAt
   integer maxAttempts
   integer misfireGraceSeconds

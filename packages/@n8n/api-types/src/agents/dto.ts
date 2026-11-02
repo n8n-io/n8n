@@ -26,6 +26,10 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
+import {
+	workflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
+} from '../schemas/workflow-version.schema';
 
 export class AgentsSettingsDto extends Z.class({
 	enabled: z.boolean(),
@@ -147,6 +151,19 @@ export class ListN8nChatThreadsQueryDto extends Z.class({
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
 	search: threadTitleSearchSchema,
+}) {}
+
+/** The thread list of a system agent: one page, optionally filtered by title. */
+export class ListSystemAgentThreadsQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().max(512).optional(),
+	limit: z.string().optional(),
+	search: threadTitleSearchSchema,
+}) {}
+
+/** A message to a system agent. `projectId` is the working project of a new session. */
+export class SystemAgentChatQueryDto extends Z.class({
+	projectId: z.string().min(1).max(128).optional(),
 }) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
@@ -486,7 +503,15 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 	deleteExternalResource: z.boolean().optional(),
 }) {}
 
+const agentVersionMetadataShape = {
+	name: workflowVersionNameSchema.unwrap().trim().nullable().optional(),
+	description: workflowVersionDescriptionSchema.nullable(),
+};
+
+export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
+
 export class PublishAgentDto extends Z.class({
+	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
 }) {}
 

@@ -147,8 +147,7 @@ export async function handleLifecycleNotifications(
 	const log = (level: 'debug' | 'warn', message: string, fields: Record<string, unknown>) =>
 		this.logger[level](`Microsoft Teams Trigger: ${message}`, { ...meta, ...fields });
 
-	// Without a stored secret `verifyWebhook` accepts any sender, so no Graph call may
-	// follow. The subscriptions expire and the next publish replaces them with a secret.
+	// Do not make Graph calls if this helper is invoked without a stored secret.
 	const clientState = getStoredSecret(webhookData);
 	if (clientState === undefined) {
 		log('warn', 'skipped lifecycle notifications: no stored secret, republish the workflow', {});
@@ -324,7 +323,6 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 				: undefined;
 		return verifySignatureGeneric({
 			getExpectedSignature: () => expectedSecret ?? null,
-			skipIfNoExpectedSignature: true,
 			getActualSignature: () => (typeof actualClientState === 'string' ? actualClientState : null),
 		});
 	});
