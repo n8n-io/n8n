@@ -75,8 +75,11 @@ goes around it. `OTEL_PROPAGATORS` names the headers n8n writes while the switch
 | off                               | anything                | none                                   |
 | on                                | not set                 | `traceparent`, `tracestate`, `baggage` |
 | on                                | `tracecontext`          | `traceparent`, `tracestate`            |
-| on                                | `baggage`               | `baggage`, when the execution has entries |
+| on                                | `baggage`               | `baggage`                              |
 | on                                | `none`                  | none                                   |
+
+`tracestate` goes out only when the trace has one, and `baggage` only when the execution has
+entries.
 
 `OTEL_PROPAGATORS` is the standard OpenTelemetry variable, and n8n takes the default the
 specification gives, `tracecontext,baggage`. It carries two names: `tracecontext` writes
@@ -84,8 +87,9 @@ specification gives, `tracecontext,baggage`. It carries two names: `tracecontext
 registers a repeated name once, and logs a warning for a name it does not carry, such as `b3`,
 before leaving it out. n8n reads the variable once at startup, so a change needs a restart.
 
-`ExecutionLevelTracer` keeps private W3C propagators only to read and write the trace context
-and the baggage saved on the execution row, which must work when outbound headers are off.
+`ExecutionLevelTracer` and `caller-baggage.ts` keep private W3C propagators only to read and
+write the trace context and the baggage saved on the execution row, which must work when
+outbound headers are off.
 
 Both ways obey these rules:
 
@@ -134,26 +138,16 @@ on, because the entries are kept on the workflow span.
 **Inbound.** The webhook reads `baggage` next to `traceparent`, also when no `traceparent` is
 sent. The otel module reads it through its module context (`extractInboundBaggage`), so the
 webhook code does not load the module. n8n reads the header only when OTel and outbound
-injection are both on, so a row never holds caller data that this instance cannot send.
+injection are both on. The row can still hold entries that `OTEL_PROPAGATORS` keeps off the wire.
 
-`sanitizeInboundBaggage` drops an entry in three cases:
+`toCallerBaggage` parses the header with the OpenTelemetry `W3CBaggagePropagator`, which
+drops an entry it cannot read and applies the SDK limits: 180 entries, 4096 bytes for one entry,
+8192 bytes in total. n8n then drops every entry whose key starts with `n8n.`, compared after
+percent-decoding and whatever its case, so `n8n%2Efoo` and `N8N.Foo` cannot hide it. The result
+is written back in W3C form, so a percent-encoded value can come back normalized.
 
-| Case | Reason |
-| --- | --- |
-| The key starts with `n8n.` | n8n owns that prefix. The key is compared after percent-decoding and whatever its case, so `n8n%2Efoo` and `N8N.Foo` cannot hide it. |
-| The W3C parser cannot read it | An empty key or value, or one that does not percent-decode, reaches no receiver. |
-| It is past 180 entries, 4096 bytes for one entry, or 8192 bytes in total | The limits the OpenTelemetry SDK applies on both sides. W3C asks only for a minimum: 64 entries and 8192 bytes in total, with no limit for one entry. |
-
-n8n forwards every other entry as it arrived, byte for byte: the HTTP server rejects a header
-value that n8n could not send again, and a stricter check would only drop entries the receiving
-parser reads anyway. When n8n drops an entry it logs one warning for the header, with counts
-only and no entry content.
-
-**Outbound.** `ExecutionLevelTracer` parses the saved string into an OpenTelemetry `Baggage`
-when the workflow span starts, and drops the `n8n.` entries a second time. The webhook keeps
-them out of the row; this keeps them off the wire even if a row holds one. The parsed entries
-are written back in W3C form, so a percent-encoded value can come back normalized — what goes
-out is the same entries, not always the same bytes.
+**Outbound.** `ExecutionLevelTracer` runs the same parser on the saved string when the workflow
+span starts, so a forged `n8n.` entry stays off the wire even if a row holds one.
 
 **Persistence.** The result is saved in `tracingContext.baggage` on the execution: once when
 the row is created, then again at the start of each segment. A queue-mode worker and a resume

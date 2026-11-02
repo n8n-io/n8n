@@ -1,6 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Attributes, Baggage, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
+import type {
+	Attributes,
+	Baggage,
+	BaggageEntry,
+	Context,
+	Exception,
+	Span,
+	TimeInput,
+} from '@opentelemetry/api';
 import {
 	context,
 	defaultTextMapGetter,
@@ -10,11 +18,7 @@ import {
 	SpanStatusCode,
 	trace,
 } from '@opentelemetry/api';
-import {
-	isTimeInputHrTime,
-	W3CBaggagePropagator,
-	W3CTraceContextPropagator,
-} from '@opentelemetry/core';
+import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExecutionStatus } from 'n8n-workflow';
 
@@ -37,12 +41,12 @@ import {
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
-import { ATTR, BUILT_IN_ATTRIBUTE_KEYS, isReservedBaggageKey } from './otel.constants';
+import { toBaggageHeader, toCallerBaggage } from './caller-baggage';
+import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
 import { OtelConfigureHook } from './otel-configure-hook';
 import type { TracingContext } from './tracing-context';
 
 const propagator = new W3CTraceContextPropagator();
-const baggagePropagator = new W3CBaggagePropagator();
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -97,7 +101,7 @@ export class ExecutionLevelTracer {
 
 			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
 			const workflowContext = trace.setSpan(parentCtx, span);
-			const baggage = toBaggage(params.tracingContext?.baggage);
+			const baggage = toCallerBaggage(params.tracingContext?.baggage);
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
@@ -432,45 +436,26 @@ function spanContext(span: Span, baggage: Baggage | undefined): Context {
 	return baggage ? propagation.setBaggage(ctx, baggage) : ctx;
 }
 
-function toBaggage(header: string | undefined): Baggage | undefined {
-	if (!header) return undefined;
-	const extracted = baggagePropagator.extract(
-		ROOT_CONTEXT,
-		{ baggage: header },
-		defaultTextMapGetter,
-	);
-	const baggage = propagation.getBaggage(extracted);
-	if (!baggage) return undefined;
-
-	const reserved = baggage
-		.getAllEntries()
-		.map(([key]) => key)
-		.filter(isReservedBaggageKey);
-
-	const kept = baggage.removeEntries(...reserved);
-	return kept.getAllEntries().length ? kept : undefined;
-}
-
 function toTracingParentContext(
 	span: Span,
 	identity: ExecutionIdentity,
 	baggage: Baggage | undefined,
 ): TracingContext {
 	const carrier: Record<string, string> = {};
-	const ctx = spanContext(span, baggage);
-	propagator.inject(ctx, carrier, defaultTextMapSetter);
-	baggagePropagator.inject(ctx, carrier, defaultTextMapSetter);
+	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
+	const baggageHeader = baggage && toBaggageHeader(baggage);
 	return {
 		traceparent: carrier.traceparent,
 		tracestate: carrier.tracestate,
 		identity,
-		...(carrier.baggage && { baggage: carrier.baggage }),
+		...(baggageHeader && { baggage: baggageHeader }),
 	};
 }
 
 /**
- * The caller baggage with the `otel.configure` entries on top. The hook is
- * operator configuration, so it wins where a key is in both.
+ * The `otel.configure` entries first, then the caller baggage where the hook
+ * did not set the key. The hook is operator configuration, so it wins on a
+ * shared key, and it survives when the propagator cuts the header at its limit.
  */
 function withHookEntries(
 	baggage: Baggage | undefined,
@@ -479,9 +464,10 @@ function withHookEntries(
 	const hookEntries = Object.entries(entries);
 	if (hookEntries.length === 0) return baggage;
 
-	let merged = baggage ?? propagation.createBaggage();
-	for (const [key, value] of hookEntries) merged = merged.setEntry(key, { value });
-	return merged;
+	const merged: Record<string, BaggageEntry> = {};
+	for (const [key, value] of hookEntries) merged[key] = { value };
+	for (const [key, entry] of baggage?.getAllEntries() ?? []) merged[key] ??= entry;
+	return propagation.createBaggage(merged);
 }
 
 function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {

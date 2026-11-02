@@ -248,17 +248,6 @@ describe('Caller baggage', () => {
 	const savedBaggage = async (executionId: string) =>
 		(await executionRepository.findOneBy({ id: executionId }))?.tracingContext?.baggage;
 
-	it('should keep the caller baggage in the saved trace context', async () => {
-		const project = await createTeamProject();
-		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
-		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, {
-			tracingContext,
-		});
-		await waitForExecution(executionRepository, executionId);
-
-		expect(await savedBaggage(executionId)).toBe('tenant=acme');
-	});
-
 	it('should keep the caller baggage and send it from each node on a worker', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);

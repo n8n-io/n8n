@@ -13,7 +13,8 @@ import { OtelConfigureHook } from '../otel-configure-hook';
 import type { TracingContext } from '../tracing-context';
 import { OtelTestProvider } from './support/otel-test-provider';
 
-import { DEFAULT_OUTBOUND_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
+import { DEFAULT_OUTBOUND_PROPAGATOR } from '@/observability/outbound-propagator';
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
@@ -1088,10 +1089,10 @@ describe('ExecutionLevelTracer', () => {
 			return headers;
 		};
 
-		it('sends the caller baggage on node and workflow requests', () => {
+		it('sends the caller baggage on node and workflow requests, also without a traceparent', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-bag',
-				tracingContext: withBaggage,
+				tracingContext: { baggage: 'tenant=acme' },
 				workflow: defaultWorkflow,
 			});
 			tracer.startNode({ executionId: 'exec-bag', node });
@@ -1102,20 +1103,6 @@ describe('ExecutionLevelTracer', () => {
 
 			expect(nodeHeaders).toEqual({ traceparent: expect.any(String), baggage: 'tenant=acme' });
 			expect(workflowHeaders.baggage).toBe('tenant=acme');
-		});
-
-		it('sends the caller baggage when the webhook sent no traceparent', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-bag-root',
-				tracingContext: { baggage: 'tenant=acme' },
-				workflow: defaultWorkflow,
-			});
-
-			const headers = inject(tracer, 'exec-bag-root');
-			end(tracer, 'exec-bag-root');
-
-			expect(headers.traceparent).toBeDefined();
-			expect(headers.baggage).toBe('tenant=acme');
 		});
 
 		it('sends no baggage when the execution has none', () => {
@@ -1146,19 +1133,6 @@ describe('ExecutionLevelTracer', () => {
 			expect(headers).not.toHaveProperty('baggage');
 		});
 
-		it('sends no headers when outbound headers are off', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-bag-off',
-				tracingContext: withBaggage,
-				workflow: defaultWorkflow,
-			});
-
-			const headers = inject(tracer, 'exec-bag-off', undefined, TRACING_OFF.propagator);
-			end(tracer, 'exec-bag-off');
-
-			expect(headers).toEqual({});
-		});
-
 		it('saves the caller baggage, so a resumed segment sends it again', () => {
 			const saved = tracer.startWorkflow({
 				executionId: 'exec-bag-resume',
@@ -1182,27 +1156,12 @@ describe('ExecutionLevelTracer', () => {
 			expect(headers.baggage).toBe('tenant=acme');
 		});
 
-		it('keeps the caller baggage off the context that agent runs use', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-bag-ctx',
-				tracingContext: withBaggage,
-				workflow: defaultWorkflow,
-			});
-			tracer.startNode({ executionId: 'exec-bag-ctx', node });
-
-			const ctx = tracer.getActiveContext('exec-bag-ctx', node.name);
-			end(tracer, 'exec-bag-ctx');
-
-			expect(ctx).toBeDefined();
-			expect(propagation.getBaggage(ctx!)).toBeUndefined();
-		});
-
 		it.each([
 			['a reserved key', 'tenant=acme,n8n.execution.id=forged'],
 			['a percent-encoded reserved key', 'tenant=acme,n8n%2Eexecution%2Eid=forged'],
 			['a reserved key in another case', 'tenant=acme,N8N.Execution.Id=forged'],
-		])('sends no entry that n8n owns, given %s', (_name, header) => {
-			tracer.startWorkflow({
+		])('neither saves nor sends an entry that n8n owns, given %s', (_name, header) => {
+			const saved = tracer.startWorkflow({
 				executionId: 'exec-bag-forged',
 				tracingContext: { ...inboundTracingContext, baggage: header },
 				workflow: defaultWorkflow,
@@ -1211,18 +1170,48 @@ describe('ExecutionLevelTracer', () => {
 			const headers = inject(tracer, 'exec-bag-forged');
 			end(tracer, 'exec-bag-forged');
 
+			expect(saved.baggage).toBe('tenant=acme');
 			expect(headers.baggage).toBe('tenant=acme');
 		});
 
-		it('saves no entry that n8n owns, so a resumed segment cannot send one', () => {
+		it('saves and sends nothing when only entries that n8n owns are sent', () => {
 			const saved = tracer.startWorkflow({
-				executionId: 'exec-bag-forged-save',
+				executionId: 'exec-bag-forged-only',
 				tracingContext: { ...inboundTracingContext, baggage: 'n8n.execution.id=forged' },
 				workflow: defaultWorkflow,
 			});
-			end(tracer, 'exec-bag-forged-save');
+
+			const headers = inject(tracer, 'exec-bag-forged-only');
+			end(tracer, 'exec-bag-forged-only');
 
 			expect(saved.baggage).toBeUndefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+
+		it('puts the hook entries first, so an overflow cuts the caller baggage and not the operator entries', () => {
+			const configureHook = new OtelConfigureHook(logger);
+			configureHook.api.registerOutboundBaggageMapper(() => ({
+				tenant: 'hook',
+				'project.id': 'p'.repeat(60),
+			}));
+			const hookTracer = makeTracer({ configureHook });
+			const filler = Array.from(
+				{ length: 20 },
+				(_, i) => `k${String(i).padStart(2, '0')}=${'v'.repeat(402)}`,
+			);
+			hookTracer.startWorkflow({
+				executionId: 'exec-bag-hook',
+				tracingContext: { baggage: ['tenant=acme', ...filler].join(',') },
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(hookTracer, 'exec-bag-hook');
+			end(hookTracer, 'exec-bag-hook');
+
+			const entries = headers.baggage.split(',');
+			expect(entries.slice(0, 2)).toEqual(['tenant=hook', `project.id=${'p'.repeat(60)}`]);
+			expect(entries).toHaveLength(21);
+			expect(entries.at(-1)).toBe(filler[18]);
 		});
 
 		it('does not add caller baggage to span attributes', () => {

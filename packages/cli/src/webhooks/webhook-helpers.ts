@@ -1861,14 +1861,8 @@ export function extractTracingContext(
 			typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined;
 	}
 
-	try {
-		const baggage = otel?.extractInboundBaggage(headers.baggage);
-		if (baggage) tracingContext.baggage = baggage;
-	} catch (error) {
-		Container.get(Logger).warn('Failed to read the inbound baggage header', {
-			error: error instanceof Error ? error.message : String(error),
-		});
-	}
+	const baggage = otel?.extractInboundBaggage(headers.baggage);
+	if (baggage) tracingContext.baggage = baggage;
 
 	return tracingContext.traceparent || tracingContext.baggage ? tracingContext : undefined;
 }

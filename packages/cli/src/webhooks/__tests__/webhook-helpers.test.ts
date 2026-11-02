@@ -1347,7 +1347,7 @@ describe('extractTracingContext', () => {
 	const traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
 	const otel = {
 		injectTraceHeaders: vi.fn(),
-		extractInboundBaggage: vi.fn((header: unknown) =>
+		extractInboundBaggage: vi.fn((header: string | string[] | undefined) =>
 			header === 'tenant=acme' ? 'tenant=acme' : undefined,
 		),
 	};
@@ -1389,19 +1389,6 @@ describe('extractTracingContext', () => {
 
 	it('returns undefined when the otel module returns no baggage', () => {
 		expect(extractTracingContext({ baggage: 'n8n.workflow.id=forged' }, otel)).toBeUndefined();
-	});
-
-	it('keeps the trace context when the otel module throws', () => {
-		const throwing = {
-			...otel,
-			extractInboundBaggage: vi.fn(() => {
-				throw new Error('boom');
-			}),
-		};
-
-		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, throwing)).toEqual({
-			traceparent,
-		});
 	});
 });
 

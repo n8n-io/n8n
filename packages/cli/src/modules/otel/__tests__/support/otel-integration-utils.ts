@@ -22,7 +22,7 @@ import path from 'path';
 import { ActiveExecutions } from '@/active-executions';
 import { JobProcessor } from '@/scaling/job-processor';
 import type { Job } from '@/scaling/scaling.types';
-import { DEFAULT_OUTBOUND_PROPAGATOR } from '@/observability/swappable-pipeline';
+import { DEFAULT_OUTBOUND_PROPAGATOR } from '@/observability/outbound-propagator';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '@test-integration/utils';
 
