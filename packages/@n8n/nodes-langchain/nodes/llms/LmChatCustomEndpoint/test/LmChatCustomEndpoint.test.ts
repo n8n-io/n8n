@@ -76,6 +76,17 @@ describe('LmChatCustomEndpoint', () => {
 		});
 	});
 
+	it('wraps the model, so an empty tool-call content reaches the gateway as a string', async () => {
+		const { response } = await node.supplyData.call(contextWith(), 0);
+
+		// The wrapper patches in place and leaves this marker behind
+		const marked = Object.getOwnPropertySymbols(response).some(
+			(symbol) => symbol.description === 'wrappedChatModelMessageInput',
+		);
+
+		expect(marked).toBe(true);
+	});
+
 	it('passes the chosen model and the shared configuration to the client', async () => {
 		await node.supplyData.call(contextWith({ model: 'llama-3.1-70b' }), 0);
 
