@@ -115,40 +115,49 @@ const badges = computed(() => {
 	];
 	return entries
 		.filter(({ show }) => show)
-		.map(({ direction, changes }) => ({
-			direction,
-			loading: changes.loading.value,
-			failed: changes.failed.value,
-			blocked: !!changes.blocker.value,
-			anchor: changes.blocker.value
-				? 'blocked'
-				: changes.loading.value || (!changes.failed.value && changes.changeCount.value === 0)
-					? 'static'
-					: 'link',
-			changeCount: changes.changeCount.value,
-			disabled:
+		.map(({ direction, changes }) => {
+			const blocked = !!changes.blocker.value;
+			const disabled =
 				changes.loading.value ||
-				!!changes.blocker.value ||
-				(!changes.failed.value && changes.changeCount.value === 0),
-			label: changes.loading.value
-				? i18n.baseText(`promotions.preview.badge.loading.${direction}`)
-				: changes.failed.value
-					? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
-					: changes.blocker.value
-						? i18n.baseText('promotions.preview.badge.blocked.promote')
-						: changes.changeCount.value === 0
-							? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
-							: i18n.baseText(`promotions.preview.badge.${direction}`, {
-									adjustToNumber: changes.changeCount.value,
-									interpolate: {
-										count: String(changes.changeCount.value),
-										environment:
-											environments.value.find((environment) => environment.direction === direction)
-												?.name ?? '',
-									},
-								}),
-			to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
-		}));
+				blocked ||
+				(!changes.failed.value && changes.changeCount.value === 0);
+
+			let anchor: 'link' | 'static' | 'blocked' = 'link';
+			if (blocked) {
+				anchor = 'blocked';
+			} else if (disabled) {
+				anchor = 'static';
+			}
+
+			return {
+				direction,
+				loading: changes.loading.value,
+				failed: changes.failed.value,
+				blocked,
+				anchor,
+				changeCount: changes.changeCount.value,
+				disabled,
+				label: changes.loading.value
+					? i18n.baseText(`promotions.preview.badge.loading.${direction}`)
+					: changes.failed.value
+						? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
+						: changes.blocker.value
+							? i18n.baseText('promotions.preview.badge.blocked.promote')
+							: changes.changeCount.value === 0
+								? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
+								: i18n.baseText(`promotions.preview.badge.${direction}`, {
+										adjustToNumber: changes.changeCount.value,
+										interpolate: {
+											count: String(changes.changeCount.value),
+											environment:
+												environments.value.find(
+													(environment) => environment.direction === direction,
+												)?.name ?? '',
+										},
+									}),
+				to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
+			};
+		});
 });
 </script>
 
