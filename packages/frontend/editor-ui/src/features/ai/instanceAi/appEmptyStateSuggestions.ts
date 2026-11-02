@@ -1,6 +1,6 @@
 import type { InstanceAiEmptyStateSuggestion } from './emptyStateSuggestions';
 
-export const INSTANCE_AI_APP_SUGGESTIONS_VERSION = 'v1';
+export const INSTANCE_AI_APP_SUGGESTIONS_VERSION = 'apps-v1';
 
 export const INSTANCE_AI_APP_SUGGESTIONS: readonly InstanceAiEmptyStateSuggestion[] = [
 	{
