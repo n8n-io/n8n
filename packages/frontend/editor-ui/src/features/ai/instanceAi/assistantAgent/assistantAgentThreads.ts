@@ -1,6 +1,12 @@
-import type { InstanceAiAttachment, ProviderAttachmentCapabilities } from '@n8n/api-types';
+import {
+	INSTANCE_AI_THREAD_SOURCES,
+	type InstanceAiAttachment,
+	type ProviderAttachmentCapabilities,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse } from 'n8n-workflow';
 import type { InjectionKey } from 'vue';
+import { z } from 'zod';
 
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
@@ -42,12 +48,50 @@ export function forgetAssistantAgentThread(threadId: string): void {
 	knownAgentThreads.delete(threadId);
 }
 
+const launchSchema = z.object({
+	projectId: z.string().min(1),
+	source: z.enum(INSTANCE_AI_THREAD_SOURCES),
+	origin: z.enum(['internal', 'external']),
+	templateId: z.string().optional(),
+});
+
+/** Where a new Assistant agent thread came from, for its launch telemetry. */
+export type AssistantAgentThreadLaunch = z.infer<typeof launchSchema>;
+
+const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`;
+
+/**
+ * Marks a new thread as an Assistant agent thread. The server knows the thread
+ * only after its first message, so the marker is in localStorage: a hand-off
+ * can open the thread in a new tab, or before the user sends anything.
+ *
+ * Temporary: the marker exists because both Assistant runtimes share the thread
+ * URL. When the current runtime is removed, move the project and the launch
+ * fields into the hand-off stash and remove the marker (AST-1898).
+ */
+export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAgentThreadLaunch) {
+	rememberAssistantAgentThread(threadId, launch.projectId);
+	localStorage.setItem(launchKey(threadId), JSON.stringify(launch));
+}
+
+export function getAssistantAgentLaunch(threadId: string): AssistantAgentThreadLaunch | undefined {
+	const raw = localStorage.getItem(launchKey(threadId));
+	if (!raw) return undefined;
+	const parsed = launchSchema.safeParse(jsonParse(raw, { fallbackValue: null }));
+	return parsed.success ? parsed.data : undefined;
+}
+
+/** Clear the marker once the server has the thread, or when the thread is dropped. */
+export function clearAssistantAgentLaunch(threadId: string): void {
+	localStorage.removeItem(launchKey(threadId));
+}
+
 /** The runtime of a thread when it is known without a request, else `undefined`. */
 export function knownAssistantThreadRuntime(
 	threadId: string,
 	options: { assistantAgentEnabled: boolean; isAssistantThread: (threadId: string) => boolean },
 ): AssistantThreadRuntime | undefined {
-	const projectId = knownAgentThreads.get(threadId);
+	const projectId = knownAgentThreads.get(threadId) ?? getAssistantAgentLaunch(threadId)?.projectId;
 	if (projectId) return { kind: 'assistant-agent', projectId };
 	if (!options.assistantAgentEnabled || options.isAssistantThread(threadId)) {
 		return { kind: 'assistant' };
