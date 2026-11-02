@@ -6,7 +6,7 @@ import {
 	type ProjectContext,
 } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
-import { ProjectTypes, type Project } from '@n8n/rest-api-client';
+import { ProjectTypes, type IUser, type Project } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import type { PromotionPreview } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -14,7 +14,6 @@ import { mock } from 'vitest-mock-extended';
 import { waitFor } from '@testing-library/vue';
 import { reactive } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
-import type { IUser } from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import { billingPreview } from '../__tests__/preview.fixtures';

@@ -236,6 +236,8 @@ export function usePromotionBindingCreation(
 					settled = true;
 					stopWatching?.();
 					finish = undefined;
+					// The editor's error goes to the caller unchanged, so its toast shows the real cause.
+					// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
 					if (error) reject(error);
 					else resolve(saved);
 				};

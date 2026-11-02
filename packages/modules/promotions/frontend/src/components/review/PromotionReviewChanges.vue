@@ -162,7 +162,7 @@ const details = usePromotionResourceDetails(
 	activeWorkflowKey,
 );
 
-const cards = ref<InstanceType<typeof PromotionChangeCards> | null>(null);
+const cards = ref<InstanceType<typeof PromotionChangeCards>>();
 async function inspect(key: ResourceKey) {
 	const resource = graph.value?.resources.get(key);
 	if (resource && hasWorkflowDiff(resource)) activeWorkflowKey.value = key;

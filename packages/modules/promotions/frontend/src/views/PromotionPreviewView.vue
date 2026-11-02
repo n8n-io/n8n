@@ -140,7 +140,7 @@ const order = computed(() => (graph.value ? cardOrder(tree.value, graph.value.re
 const inspectedKey = computed(() =>
 	typeof route.query.resource === 'string' ? route.query.resource : undefined,
 );
-const cards = ref<InstanceType<typeof PromotionChangeCards> | null>(null);
+const cards = ref<InstanceType<typeof PromotionChangeCards>>();
 
 const hasDiff = (key: ResourceKey) => {
 	const resource = graph.value?.resources.get(key);
