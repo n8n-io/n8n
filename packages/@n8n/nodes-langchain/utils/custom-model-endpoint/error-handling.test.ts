@@ -75,7 +75,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		expect(await response.text()).toBe(body);
 	});
 
-	it('leaves a successful response untouched', async () => {
+	it('hands back the very same response when there is nothing to hide', async () => {
 		const ok = new Response('{"choices":[]}', { status: 200 });
 		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
 			secrets: [],
@@ -161,15 +161,6 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 
 		expect(text).not.toContain(KEY);
 		expect(text).toContain('[redacted]');
-	});
-
-	it('hands back the very same response when there is nothing to hide', async () => {
-		const ok = new Response('{"choices":[]}', { status: 200 });
-		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
-			secrets: [],
-		});
-
-		expect(await wrapped(BASE_URL)).toBe(ok);
 	});
 
 	it('redacts a 200 body whatever the gateway called its content type', async () => {
