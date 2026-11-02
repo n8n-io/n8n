@@ -883,6 +883,29 @@ export class N8nClient {
 	}
 
 	/**
+	 * Expose workflows to MCP. MCP tools skip a workflow whose `availableInMCP`
+	 * is off, and a restored seed workflow starts with it off.
+	 * PATCH /rest/mcp/workflows/toggle-access
+	 */
+	async setWorkflowsAvailableInMcp(workflowIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/workflows/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, workflowIds },
+		});
+	}
+
+	/**
+	 * Expose Agents to MCP, for the same reason as workflows.
+	 * PATCH /rest/mcp/agents/toggle-access
+	 */
+	async setAgentsAvailableInMcp(agentIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/agents/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, agentIds },
+		});
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */
@@ -1182,6 +1205,18 @@ export class N8nClient {
 		return (result.data ?? []).flatMap(({ id, name, type, icon }) =>
 			type === 'team' && id !== undefined && name !== undefined ? [{ id, name, icon }] : [],
 		);
+	}
+
+	/**
+	 * Let a user see a team project without writing to it. An MCP build acts as its
+	 * own member, who sees no team project the owner did not share.
+	 * POST /rest/projects/:projectId/users
+	 */
+	async addProjectViewer(projectId: string, userId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/users`, {
+			method: 'POST',
+			body: { relations: [{ userId, role: 'project:viewer' }] },
+		});
 	}
 
 	/**

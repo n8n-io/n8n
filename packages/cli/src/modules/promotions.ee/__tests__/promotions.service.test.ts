@@ -42,6 +42,12 @@ import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 
+// These dependencies are injected as mocks. Do not load their implementation graphs.
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs/promises')>();
 	return { ...fs, rm: vi.fn(fs.rm), stat: vi.fn(fs.stat) };
@@ -1967,6 +1973,58 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('listMissingProjects', () => {
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForEnvironment.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('lists the package projects that do not exist on this instance, sorted by name', async () => {
+			const commitSha = 'a'.repeat(40);
+			gitService.listBranchTree.mockResolvedValue({ commitSha, lsTreeOutput: '' });
+			gitService.readTreeAtCommit.mockResolvedValue(
+				new Map([['projects/billing/project.json', Buffer.from('{}')]]),
+			);
+			inventoryReader.read.mockResolvedValue({
+				projects: [
+					{ id: 'p-support', name: 'Support', path: 'projects/support' },
+					{ id: 'p1', name: 'Exists here', path: 'projects/exists' },
+					{
+						id: 'p-billing',
+						name: 'Billing',
+						icon: { type: 'emoji', value: '💰' },
+						path: 'projects/billing',
+					},
+				],
+				workflows: [],
+				folders: [],
+				credentials: [],
+				variables: [],
+				dataTables: [],
+			});
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: { commitSha, branchName: 'dev' },
+				data: [
+					{ id: 'p-billing', name: 'Billing', icon: { type: 'emoji', value: '💰' } },
+					{ id: 'p-support', name: 'Support' },
+				],
+			});
+		});
+
+		it('lists no projects when the branch has no package yet', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: null,
+				data: [],
+			});
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 
@@ -2146,7 +2204,7 @@ describe('PromotionsService', () => {
 					projectConflictPolicy: 'overwrite',
 					conflictPolicy: 'new-version',
 					idPolicy: 'source',
-					publishingPolicy: 'match-source',
+					publishingPolicy: 'preserve-target-state',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
@@ -2472,6 +2530,7 @@ describe('PromotionsService', () => {
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
 						credentialConflictPolicy: 'overwrite',
+						publishingPolicy: 'preserve-target-state',
 						layoutConflictPolicy: 'follow-package',
 						credentialPersonalRoute: 'exclude',
 					},
@@ -2681,7 +2740,7 @@ describe('PromotionsService', () => {
 
 						expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
 						expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledExactlyOnceWith(
-							expect.anything(),
+							expect.objectContaining({ publishingPolicy: 'preserve-target-state' }),
 							expect.any(GitCommitPackageReader),
 							{
 								selectedProjectId: 'p1',

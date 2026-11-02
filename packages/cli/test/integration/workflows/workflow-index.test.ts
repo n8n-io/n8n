@@ -359,6 +359,38 @@ describe('WorkflowIndexService Integration', () => {
 				}),
 			).toBe(true);
 		});
+
+		it('should record the error workflow from the settings in the draft index', async () => {
+			const workflow = await createWorkflow({
+				nodes: [httpRequestNode],
+				settings: { errorWorkflow: 'error-workflow-1' },
+			});
+			// A newer version than the indexed one makes the startup scan pick the workflow up.
+			await workflowRepository.update(workflow.id, { versionCounter: 2 });
+
+			await workflowIndexService.buildIndex();
+
+			const draftDeps = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id, publishedVersionId: IsNull() },
+			});
+			expect(getDependencyKeys(draftDeps, 'errorWorkflow')).toEqual(['error-workflow-1']);
+		});
+
+		it('should record the error workflow from the settings in the published index', async () => {
+			const workflow = await createWorkflow({
+				nodes: [httpRequestNode],
+				settings: { errorWorkflow: 'error-workflow-1' },
+			});
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+
+			await workflowIndexService.buildIndex();
+
+			const publishedDeps = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id, publishedVersionId: Not(IsNull()) },
+			});
+			expect(getDependencyKeys(publishedDeps, 'errorWorkflow')).toEqual(['error-workflow-1']);
+		});
 	});
 
 	describe('workflow-deactivated event (unpublish)', () => {

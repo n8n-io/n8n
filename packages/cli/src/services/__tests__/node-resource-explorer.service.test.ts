@@ -160,6 +160,25 @@ describe('NodeResourceExplorerService', () => {
 		});
 	});
 
+	test('resolves the credential for use rather than for viewing', async () => {
+		mockCredentialOwned();
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('not loaded');
+		});
+		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+		} as never);
+
+		await service.exploreResources(user, baseParams);
+
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+			'cred-1',
+			user,
+			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
+		);
+	});
+
 	test('accepts the n8n Connect managed tag and passes a gateway-managed credential', async () => {
 		mockNodeDescription({ properties: [] as never });
 		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
@@ -897,9 +916,12 @@ describe('NodeResourceExplorerService', () => {
 
 			await service.resolveParameterOptions(user, resolveParams);
 
-			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
-				'credential:read',
-			]);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'cred-1',
+				user,
+				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
+			);
 			expect(dynamicNodeParametersService.getResourceLocatorResults.mock.calls[0]?.[5]).toEqual({
 				slackApi: { id: 'cred-1', name: 'Stored Slack' },
 			});

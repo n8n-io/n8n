@@ -7,7 +7,7 @@ You can read other accessible workflows for context, including sub-workflows.
 
 ## Step 1: Diagnose the failure
 
-Start with `workflow_builder_executions(action="debug")`. Inspect the failed node's error,
+Start with `debug_execution`. Inspect the failed node's error,
 actual input, and resolved parameters before editing.
 
 Treat `unreconstructable-context` as missing replay context, not proof of an

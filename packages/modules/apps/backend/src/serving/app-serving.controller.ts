@@ -9,9 +9,12 @@ import type { NextFunction, Response } from 'express';
 import path from 'node:path';
 
 import { AppBundleCache } from './app-bundle-cache';
+import { AppHostService } from './app-host.service';
 import { AppsConfig } from '../apps.config';
 import { AppAuthService, type AppRequest } from '../auth/app-auth.service';
+import { AppPreviewService } from '../preview/app-preview.service';
 
+const APP_CSP = "base-uri 'self'; object-src 'none'";
 const parseCookies = cookieParser();
 const ipRateLimit = createIpRateLimit(Container.get(AppsConfig).rateLimitServe, 60_000);
 
@@ -20,6 +23,8 @@ export class AppServingController {
 	constructor(
 		private readonly bundles: AppBundleCache,
 		private readonly auth: AppAuthService,
+		private readonly hosts: AppHostService,
+		private readonly preview: AppPreviewService,
 	) {}
 
 	@Middleware()
@@ -34,14 +39,18 @@ export class AppServingController {
 			res.sendStatus(404);
 			return;
 		}
-		await this.auth.authenticate(req, res, next);
+		if (this.hosts.previewNamespace(req)) {
+			await this.preview.authenticate(req, res, next);
+		} else {
+			await this.auth.authenticate(req, res, next);
+		}
 	}
 
 	// The controller middleware checks app access instead of the n8n session cookie.
 	@Get('/{*path}', { skipAuth: true, ipRateLimit, middlewares: [compression()] })
 	async serve(req: AppRequest, res: Response) {
 		try {
-			const versionId = req.appContext?.app.publishedVersionId;
+			const versionId = req.appContext?.versionId;
 			if (!versionId) throw new NotFoundError('App not found.');
 			const bundle = await this.bundles.get(versionId);
 			const name = this.filePath(req.path);
@@ -56,7 +65,9 @@ export class AppServingController {
 				'Content-Type': file.contentType,
 				'X-Content-Type-Options': 'nosniff',
 				'Referrer-Policy': 'same-origin',
-				'Content-Security-Policy': "base-uri 'self'; object-src 'none'",
+				'Content-Security-Policy': req.appContext?.preview
+					? `${APP_CSP}; frame-ancestors ${this.preview.editorOrigin}`
+					: APP_CSP,
 			});
 			res.send(file.body);
 		} catch (error) {

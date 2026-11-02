@@ -12,6 +12,8 @@ const props = defineProps<{
 	attachments: ChatMessageAttachment[];
 	projectId: string;
 	agentId: string;
+	/** Session that shows the files. A sub-agent session needs it to read its granted files. */
+	threadId?: string;
 }>();
 
 const rootStore = useRootStore();
@@ -45,6 +47,8 @@ function downloadUrl(attachment: ChatMessageAttachment): string | undefined {
 		props.projectId,
 		props.agentId,
 		attachment.fileId,
+		'chat',
+		props.threadId,
 	);
 }
 

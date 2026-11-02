@@ -13,6 +13,7 @@ export class AppsModule implements ModuleInterface {
 		await import('./apps-list.controller.js');
 		await import('./build/app-build.controller.js');
 		await import('./publication/app-publication.controller.js');
+		await import('./preview/app-preview.controller.js');
 		const { AppBlobStore } = await import('./storage/app-blob-store.js');
 		await Container.get(AppBlobStore).init();
 		const { AppSourceVersionStore, AppBuildResultStore } = await import(

@@ -172,6 +172,34 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
 		});
 
+		it.each([
+			{ workflowBuilderAvailable: true, sandboxEnabled: true, expected: true },
+			{ workflowBuilderAvailable: true, sandboxEnabled: false, expected: false },
+			{ workflowBuilderAvailable: false, sandboxEnabled: true, expected: false },
+		])(
+			'keeps the app service, tool and skill only with a sandbox workspace (%o)',
+			async ({ workflowBuilderAvailable, sandboxEnabled, expected }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.createContext.mockReturnValue(
+					mock<InstanceAiContext>({ appService: mock() }),
+				);
+				fields.settingsService.getSandboxStatus.mockReturnValue({ workflowBuilderAvailable });
+				const runtime = createRuntime();
+				runtime.sandbox.resolveConfig = vi.fn(
+					async () => ({ enabled: sandboxEnabled, provider: 'local' }) as unknown as SandboxConfig,
+				);
+
+				const { context } = await factory.create(params, runtime);
+
+				expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ appBuildingEnabled: expected }),
+					expect.anything(),
+				);
+				expect(context.appService !== undefined).toBe(expected);
+				expect(context.workspace !== undefined).toBe(expected);
+			},
+		);
+
 		it('uses the workflow task coordinator directly when the runtime does not sync tasks', async () => {
 			const { factory } = createSetupFactory();
 

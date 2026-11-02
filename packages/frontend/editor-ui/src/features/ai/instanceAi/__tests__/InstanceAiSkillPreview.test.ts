@@ -15,15 +15,17 @@ const detail: SkillDetail = {
 	projectId: null,
 	projectName: null,
 	projectType: null,
-	agentId: null,
-	agentName: null,
 	source: 'assistant',
 	createdBy: null,
 	latestVersion: 2,
 	usedByAgents: 0,
 	availableToAssistant: true,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
+	canStopSyncing: false,
+	syncState: null,
+	canCheckForUpdates: false,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 	skill: {
@@ -34,6 +36,7 @@ const detail: SkillDetail = {
 	},
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+	syncedFrom: null,
 };
 
 /** The reused Skills Hub components use `data-testid`, which `getByTestId` does not read. */

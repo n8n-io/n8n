@@ -49,6 +49,11 @@ describe('buildCatalog', () => {
 		expect(entry.properties).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ name: 'surface', type: '"aia" | "mcp"', optional: false }),
+				expect.objectContaining({
+					name: 'hub_skill_snapshot_sequence',
+					type: 'integer',
+					optional: true,
+				}),
 				{ name: 'block_state', type: '"absent" | "injected"', optional: false },
 				{
 					name: 'absence_reason',
@@ -70,8 +75,8 @@ describe('buildCatalog', () => {
 				},
 			]),
 		);
-		expect(entry.properties).toHaveLength(24);
-		expect(new Set(entry.properties.map((property) => property.name)).size).toBe(24);
+		expect(entry.properties).toHaveLength(40);
+		expect(new Set(entry.properties.map((property) => property.name)).size).toBe(40);
 	});
 });
 

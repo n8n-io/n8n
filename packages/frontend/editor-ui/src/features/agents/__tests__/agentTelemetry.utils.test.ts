@@ -43,10 +43,10 @@ describe('buildAgentConfigFingerprint', () => {
 		],
 	};
 
-	it('produces a 16-char hex config_version and includes the raw instructions', async () => {
+	it('produces a 16-char hex config_version and omits the instructions', async () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['slack']);
 		expect(fp.config_version).toMatch(/^[0-9a-f]{16}$/);
-		expect(fp.instructions).toBe('do things');
+		expect(fp).not.toHaveProperty('instructions');
 	});
 
 	it('keeps the same fingerprint when Web Crypto is unavailable', async () => {
@@ -219,7 +219,6 @@ describe('buildAgentConfigFingerprint', () => {
 
 	it('handles null config', async () => {
 		const fp = await buildAgentConfigFingerprint(null, []);
-		expect(fp.instructions).toBe('');
 		expect(fp.tools).toEqual([]);
 		expect(fp.skills).toEqual([]);
 		expect(fp.tasks).toEqual([]);

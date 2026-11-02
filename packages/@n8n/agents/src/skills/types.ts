@@ -190,6 +190,8 @@ export interface RuntimeSkillFileContent {
 export type RuntimeSkillFileLoader = (
 	skillId: string,
 	filePath: string,
+	/** Keep failure details local to this read when calls run concurrently. */
+	onError?: (error: RuntimeSkillLoadError) => void,
 ) => Promise<RuntimeSkillFileContent | null>;
 
 export interface RuntimeSkillLoadError {
@@ -200,6 +202,8 @@ export interface RuntimeSkillLoadError {
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Observe applied revocations and skill context prepared for model calls. */
+	onContext?: (skills: RuntimeSkillContextUsage[]) => void;
 	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
 	shouldAppendSkillUpdates?: (skillId: string) => boolean;
 	/**
@@ -212,6 +216,12 @@ export interface RuntimeSkillSource {
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
 	getLoadError?: (skillId: string) => RuntimeSkillLoadError | undefined;
+}
+
+export interface RuntimeSkillContextUsage {
+	skillId: string;
+	version?: string;
+	kind: 'carried' | 'refreshed' | 'revoked' | 'unavailable';
 }
 
 export interface RuntimeSkillStateScope {

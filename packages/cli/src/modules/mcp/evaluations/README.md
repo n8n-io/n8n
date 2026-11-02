@@ -43,6 +43,7 @@ For example, create `.env.mcp-evals` at the repo root:
 N8N_ENABLED_MODULES=instance-ai
 N8N_AI_ENABLED=true
 N8N_INSTANCE_AI_EVAL_INSTANCE=true
+N8N_INSTANCE_AI_ENABLED=true
 
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5-20250929
 N8N_INSTANCE_AI_MODEL_API_KEY=sk-ant-...

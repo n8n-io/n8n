@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { promotionDirectionSchema, type PromotionDirection } from '@n8n/api-types';
+import {
+	isPromotionGitHostType,
+	promotionDirectionSchema,
+	type PromotionDirection,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -32,6 +36,8 @@ import { invalidateInstancePromotionConnection } from '../composables/useInstanc
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
+	ENVIRONMENTS_DOCS_URL,
+	ENVIRONMENTS_SETUP_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
 } from '../promotions.constants';
@@ -102,10 +108,14 @@ async function retry(environment: PromotionEnvironment) {
 }
 
 async function remove(environment: PromotionEnvironment) {
+	// Only a Promote environment on a Git host has promotion reviews to close.
+	const hasReviews =
+		environment.direction === 'promote' && isPromotionGitHostType(environment.provider.type);
+	const messageKey = hasReviews
+		? 'settings.promotions.environment.remove.confirm.message.gitHost'
+		: 'settings.promotions.environment.remove.confirm.message';
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.promotions.environment.remove.confirm.message', {
-			interpolate: { name: environment.name },
-		}),
+		i18n.baseText(messageKey, { interpolate: { name: environment.name } }),
 		i18n.baseText('settings.promotions.environment.remove.confirm.title'),
 		{
 			confirmButtonText: i18n.baseText('settings.promotions.environment.remove.confirm.button'),
@@ -154,7 +164,7 @@ async function remove(environment: PromotionEnvironment) {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
-			:show-docs-link="false"
+			:docs-url="ENVIRONMENTS_SETUP_DOCS_URL"
 		>
 			<template #titleTrailing>
 				<N8nPreviewBadge size="xsmall" />
@@ -166,8 +176,7 @@ async function remove(environment: PromotionEnvironment) {
 				<N8nText size="small" color="text-base">
 					<I18nT keypath="settings.promotions.environments.description" tag="span" scope="global">
 						<template #environments>
-							<!-- FIXME: link to the environments docs page once it exists. -->
-							<N8nExternalLink inline size="small" href="#">{{
+							<N8nExternalLink inline size="small" :href="ENVIRONMENTS_DOCS_URL">{{
 								i18n.baseText('settings.promotions.environments.description.link')
 							}}</N8nExternalLink>
 						</template>

@@ -1,12 +1,13 @@
 import { appSchema, appVersionSchema } from '@n8n/api-types';
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AppRepository } from '../app.repository';
 import { AppHostService } from '../serving/app-host.service';
 import { appStorageLockSubKey } from '../storage/app-storage-lock';
 import { AppVersionRepository } from '../versions/app-version.repository';
+import { assertBuiltVersion } from '../versions/assert-built-version';
 
 @Service()
 export class AppPublicationService {
@@ -33,12 +34,7 @@ export class AppPublicationService {
 					if (!this.hosts.origin(app.namespace)) {
 						throw new BadRequestError('Use a valid app namespace before publishing this app.');
 					}
-					const version = await this.versions.findVersionById(versionId, ctx);
-					if (!version || version.appId !== appId)
-						throw new NotFoundError('App version not found.');
-					if (version.buildStatus !== 'succeeded' || version.bundleArtifactId === null) {
-						throw new ConflictError('Select a successful app version with a stored bundle.');
-					}
+					assertBuiltVersion(await this.versions.findVersionById(versionId, ctx), appId);
 				}
 				await this.apps.setPublishedVersion(projectId, appId, versionId, ctx);
 			},
