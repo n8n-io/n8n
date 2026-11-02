@@ -210,8 +210,15 @@ export interface IntegrationActionParams {
 	fileScope?: { projectId: string; threadId: string };
 }
 
+export type IntegrationRecipientCheckParams = Pick<
+	IntegrationActionParams,
+	'descriptor' | 'action' | 'input' | 'resourceId' | 'currentMessageContext'
+>;
+
 export interface IntegrationActionExecutor {
 	execute(params: IntegrationActionParams): Promise<IntegrationActionResult>;
+	/** Returns the reason when the integration refuses the recipient, or undefined to allow it. */
+	checkRecipient?(params: IntegrationRecipientCheckParams): string | undefined;
 }
 
 export type IntegrationActionResult =

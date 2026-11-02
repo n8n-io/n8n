@@ -27,6 +27,7 @@ import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	integrationMemoryResourceId,
 	integrationTypeFromMemoryResourceId,
+	isTaskRunMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 	userIdFromSystemChatMemoryResourceId,
@@ -68,7 +69,11 @@ import {
 	resolveIntegrationContextQueryDefinitions,
 } from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
-import type { IntegrationActionResult, ReplyExpectation } from '../../integration-tool-types';
+import type {
+	IntegrationActionResult,
+	IntegrationMessageContext,
+	ReplyExpectation,
+} from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
 import {
 	GRAPH_API_BASE_URL,
@@ -323,32 +328,43 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * A customer chat can message only that customer. A scheduled task or an n8n
-	 * user chat can message any number. An unknown origin gets no send.
+	 * A run that a customer message started can message only that customer. This
+	 * holds in a task session too: a customer's reply continues the task that
+	 * messaged them. A scheduled task or an n8n user chat can message any number.
+	 * An unknown origin gets no send.
 	 */
 	checkActionRecipient(params: {
 		action: string;
 		input: Record<string, unknown>;
 		resourceId?: string;
+		currentMessageContext?: IntegrationMessageContext;
 	}): string | undefined {
 		if (params.action !== 'send_dm' && params.action !== 'send_template') return undefined;
 
-		const { resourceId } = params;
-		if (resourceId === undefined) return RECIPIENT_REFUSAL;
+		const { resourceId, currentMessageContext } = params;
+		const startedBy =
+			currentMessageContext?.platform === this.type
+				? currentMessageContext.interactingUserId
+				: undefined;
+		const customer =
+			startedBy ??
+			(resourceId !== undefined && integrationTypeFromMemoryResourceId(resourceId) === this.type
+				? resourceId.slice(integrationMemoryResourceId(this.type, '').length)
+				: undefined);
 
-		if (integrationTypeFromMemoryResourceId(resourceId) === this.type) {
+		if (customer !== undefined) {
 			const { userId } = params.input;
-			const customer = resourceId.slice(integrationMemoryResourceId(this.type, '').length);
 			const sameCustomer =
 				typeof userId === 'string' && digitsOnly(customer) === digitsOnly(userId);
 			return sameCustomer ? undefined : RECIPIENT_REFUSAL;
 		}
 
 		const startedByBusinessOrUser =
-			resourceId.startsWith('task:') ||
-			userIdFromDraftChatMemoryResourceId(resourceId) !== undefined ||
-			userIdFromProductionChatMemoryResourceId(resourceId) !== undefined ||
-			userIdFromSystemChatMemoryResourceId(resourceId) !== undefined;
+			isTaskRunMemoryResourceId(resourceId) ||
+			(resourceId !== undefined &&
+				(userIdFromDraftChatMemoryResourceId(resourceId) !== undefined ||
+					userIdFromProductionChatMemoryResourceId(resourceId) !== undefined ||
+					userIdFromSystemChatMemoryResourceId(resourceId) !== undefined));
 		return startedByBusinessOrUser ? undefined : RECIPIENT_REFUSAL;
 	}
 

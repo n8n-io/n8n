@@ -424,6 +424,27 @@ describe('ChatIntegrationActionExecutor', () => {
 			expect(adapter.openDM).not.toHaveBeenCalled();
 		});
 
+		it('asks the integration about the recipient before an approval would start', () => {
+			const { executor, descriptor } = setup();
+
+			expect(
+				executor.checkRecipient({
+					descriptor,
+					action: 'send_template',
+					input: { userId: '447700900123' },
+					resourceId: integrationMemoryResourceId('whatsapp', '447397567320'),
+				}),
+			).toEqual(expect.any(String));
+			expect(
+				executor.checkRecipient({
+					descriptor,
+					action: 'send_template',
+					input: { userId: '447700900123' },
+					resourceId: taskRunMemoryResourceId('task-1'),
+				}),
+			).toBeUndefined();
+		});
+
 		it('sends to any number from a scheduled task', async () => {
 			const { adapter, executor, descriptor } = setup();
 

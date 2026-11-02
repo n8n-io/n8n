@@ -236,6 +236,23 @@ export async function executeActionToolOperation(params: {
 		};
 	}
 
+	// Refuse before the approval gate, so nobody approves a send that cannot go out.
+	const recipientRefusal = actionExecutor.checkRecipient?.({
+		descriptor,
+		action: operation.action,
+		input: actionInput,
+		resourceId: persistence?.resourceId,
+		currentMessageContext:
+			params.currentMessageContext ??
+			(persistence ? getOptionalCurrentContext({ descriptor, persistence }) : undefined),
+	});
+	if (recipientRefusal) {
+		return {
+			ok: false,
+			error: { code: INTEGRATION_ERROR_CODES.ACTION_DECLINED, message: recipientRefusal },
+		};
+	}
+
 	const needsApproval =
 		operation.action !== approvedAction &&
 		actionNeedsApproval(descriptor.approval, operation.action) &&
@@ -433,6 +450,10 @@ function withPreviousSubject(
 		...(!context.subject && previousContext.subject ? { subject: previousContext.subject } : {}),
 		...(!context.agentUserId && previousContext.agentUserId
 			? { agentUserId: previousContext.agentUserId }
+			: {}),
+		// The user who started the run stays the same after the agent sends a message.
+		...(!context.interactingUserId && previousContext.interactingUserId
+			? { interactingUserId: previousContext.interactingUserId }
 			: {}),
 		...(replyExpectation ? { replyExpectation } : {}),
 		...(replyTarget ? { replyTarget } : {}),

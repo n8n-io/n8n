@@ -33,6 +33,7 @@ import type {
 	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationMessageContext,
+	IntegrationRecipientCheckParams,
 	IntegrationToolConnectionDescriptor,
 } from './integration-tools';
 import { ChannelRateLimitGuard } from './channel-rate-limit.guard';
@@ -86,6 +87,17 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		private readonly outboundFiles: AgentOutboundFiles,
 	) {}
 
+	checkRecipient(params: IntegrationRecipientCheckParams): string | undefined {
+		return this.integrationRegistry
+			.get(params.descriptor.integration.type)
+			?.checkActionRecipient?.({
+				action: params.action,
+				input: params.input,
+				resourceId: params.resourceId,
+				currentMessageContext: params.currentMessageContext,
+			});
+	}
+
 	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
@@ -102,11 +114,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 
 		const integrationDef = this.integrationRegistry.get(params.descriptor.integration.type);
-		const refusal = integrationDef?.checkActionRecipient?.({
-			action: params.action,
-			input: params.input,
-			resourceId: params.resourceId,
-		});
+		const refusal = this.checkRecipient(params);
 		if (refusal) return integrationError(INTEGRATION_ERROR_CODES.ACTION_DECLINED, refusal);
 
 		const files = await this.checkFiles(params);

@@ -56,6 +56,36 @@ describe('WhatsAppIntegration.checkActionRecipient', () => {
 		expect(check(action, '447397567320')).toEqual(expect.any(String));
 	});
 
+	describe('a customer message in a task session', () => {
+		const taskSession = taskRunMemoryResourceId('task-1');
+		const inboundContext = {
+			integrationConnectionId: 'whatsapp:cred-a',
+			platform: 'whatsapp',
+			target: { type: 'thread' as const, threadId: 'whatsapp:111:447397567320' },
+			interactingUserId: '447397567320',
+			updatedAt: '2026-11-02T10:00:00.000Z',
+		};
+		const checkWithContext = (action: string, userId: string, platform = 'whatsapp') =>
+			integration.checkActionRecipient({
+				action,
+				input: { userId },
+				resourceId: taskSession,
+				currentMessageContext: { ...inboundContext, platform },
+			});
+
+		it.each(['send_dm', 'send_template'])('refuses %s to another number', (action) => {
+			expect(checkWithContext(action, '447700900123')).toEqual(expect.any(String));
+		});
+
+		it.each(['send_dm', 'send_template'])('allows %s to the same customer', (action) => {
+			expect(checkWithContext(action, '+44 7397 567320')).toBeUndefined();
+		});
+
+		it('ignores a context from another platform', () => {
+			expect(checkWithContext('send_dm', '447700900123', 'slack')).toBeUndefined();
+		});
+	});
+
 	it('does not restrict other actions', () => {
 		expect(check('respond', '447700900123', customerChat)).toBeUndefined();
 		expect(check('add_reaction', '447700900123')).toBeUndefined();

@@ -28,6 +28,7 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 	IntegrationContextQueryParams,
+	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
@@ -596,6 +597,7 @@ export abstract class AgentChatIntegration {
 		action: IntegrationAction;
 		input: Record<string, unknown>;
 		resourceId?: string;
+		currentMessageContext?: IntegrationMessageContext;
 	}): string | undefined;
 
 	/**
