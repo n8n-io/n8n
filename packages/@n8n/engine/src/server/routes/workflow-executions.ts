@@ -8,7 +8,6 @@ import {
 	createGetExecutionHandler,
 	createSearchExecutionsHandler,
 } from './workflow-executions.handlers';
-import { createResumeTargetHandler } from './resume-requests';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
@@ -107,10 +106,6 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
 	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
-	router.post(
-		'/:id/resume-target',
-		createResumeTargetHandler(deps.resumeRequests, deps.executionQuery),
-	);
 
 	return router;
 }

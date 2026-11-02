@@ -33,7 +33,6 @@ export type {
 	ResolveStepRequest,
 	ResolveStepResponse,
 	ResumeLocateRequest,
-	ResumeTargetRequest,
 	ResumeTargetResponse,
 } from './server';
 
