@@ -268,7 +268,10 @@ function getPinnedCellBindings(column: Column<T, unknown>) {
 
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
-const { canScrollLeft } = useHorizontalScrollEdges(scrollContainer, tableElement);
+const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(
+	scrollContainer,
+	tableElement,
+);
 
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
@@ -454,7 +457,10 @@ const table = useVueTable({
 
 <template>
 	<div>
-		<div class="n8n-data-table-server-wrapper" :class="{ 'is-scrolled-left': canScrollLeft }">
+		<div
+			class="n8n-data-table-server-wrapper"
+			:class="{ 'is-scrolled-left': canScrollLeft, 'can-scroll-right': canScrollRight }"
+		>
 			<div ref="scrollContainer" class="table-scroll">
 				<table
 					ref="tableElement"
@@ -585,6 +591,8 @@ const table = useVueTable({
 </template>
 
 <style lang="scss" scoped>
+@use '../../css/mixins/motion';
+
 .n8n-data-table-server {
 	height: 100%;
 	font-size: var(--font-size--sm);
@@ -705,6 +713,27 @@ const table = useVueTable({
 		width: 1px;
 		background-color: var(--color--foreground);
 		pointer-events: none;
+	}
+
+	// A shadow fades in over the right edge while columns are still hidden past it.
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: var(--spacing--xl);
+		z-index: 3;
+		pointer-events: none;
+		opacity: 0;
+		background: linear-gradient(to left, var(--shadow-color), transparent);
+		transition: opacity var(--duration--snappy) var(--easing--ease-out);
+
+		@include motion.reduced-motion;
+	}
+
+	&.can-scroll-right::after {
+		opacity: 1;
 	}
 }
 

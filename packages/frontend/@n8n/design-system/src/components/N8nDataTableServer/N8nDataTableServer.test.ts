@@ -322,6 +322,40 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('should show the right-edge hint only while columns remain past that edge', async () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
+		});
+
+		const wrapper = container.querySelector('.n8n-data-table-server-wrapper')!;
+		const scroller = container.querySelector<HTMLElement>('.table-scroll')!;
+		expect(wrapper).not.toHaveClass('can-scroll-right');
+
+		// jsdom has no layout, so stand in for a table that is wider than its frame.
+		let scrollLeft = 0;
+		Object.defineProperty(scroller, 'scrollLeft', {
+			get: () => scrollLeft,
+			set: (value: number) => {
+				scrollLeft = value;
+			},
+			configurable: true,
+		});
+		Object.defineProperty(scroller, 'scrollWidth', { get: () => 800, configurable: true });
+		Object.defineProperty(scroller, 'clientWidth', { get: () => 400, configurable: true });
+
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).toHaveClass('can-scroll-right');
+		});
+
+		scroller.scrollLeft = 400;
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).not.toHaveClass('can-scroll-right');
+		});
+	});
+
 	it('should emit all items per page when All is selected', async () => {
 		const { emitted, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 106, showAll: true },

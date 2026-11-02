@@ -8,16 +8,19 @@ export function useHorizontalScrollEdges(
 	content: Ref<MaybeElement> = ref(null),
 ) {
 	const canScrollLeft = ref(false);
+	const canScrollRight = ref(false);
 
 	function update() {
 		const element = container.value;
 		if (!element) {
 			canScrollLeft.value = false;
+			canScrollRight.value = false;
 			return;
 		}
 
-		// Ignore a sub-pixel remainder so the edge line does not flicker at the start.
+		// Ignore a sub-pixel remainder so the edge hint does not flicker.
 		canScrollLeft.value = element.scrollLeft > 1;
+		canScrollRight.value = element.scrollWidth - element.clientWidth - element.scrollLeft > 1;
 	}
 
 	useEventListener(container, 'scroll', update, { passive: true });
@@ -25,5 +28,5 @@ export function useHorizontalScrollEdges(
 	useResizeObserver(content, update);
 	watch(container, update, { flush: 'post' });
 
-	return { canScrollLeft };
+	return { canScrollLeft, canScrollRight };
 }
