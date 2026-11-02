@@ -212,16 +212,7 @@ function finishLaunch(): void {
 	clearPendingWorkflowAttachment(props.threadId);
 	clearPendingComposerDraft(props.threadId);
 	clearPendingHandoffContext(props.threadId);
-	if (!launch) return;
 	clearAssistantAgentLaunch(props.threadId);
-	telemetry.track('User launched Instance AI thread', {
-		thread_id: props.threadId,
-		instance_id: rootStore.instanceId,
-		source: launch.source,
-		origin: launch.origin,
-		...(launch.templateId ? { template_id: launch.templateId } : {}),
-		runtime: 'agents',
-	});
 }
 
 function onSessionCreated(): void {

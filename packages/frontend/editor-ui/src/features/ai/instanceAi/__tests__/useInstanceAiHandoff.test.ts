@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
 	instanceAiReady: { value: true },
 	settings: { isAssistantAgentEnabled: false },
+	telemetryTrack: vi.fn(),
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
@@ -24,7 +25,10 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('uuid', () => ({ v4: () => 'thread-1' }));
 vi.mock('@sentry/vue', () => ({ captureException: mocks.captureException }));
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {}, pushRef: 'push-ref' }),
+	useRootStore: () => ({ restApiContext: {}, pushRef: 'push-ref', instanceId: 'instance-1' }),
+}));
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: mocks.telemetryTrack }),
 }));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
@@ -772,11 +776,14 @@ describe('useInstanceAiHandoff', () => {
 
 			expect(threadId).toBe('thread-1');
 			expect(mocks.syncThread).not.toHaveBeenCalled();
-			expect(getAssistantAgentLaunch('thread-1')).toEqual({
-				projectId: 'project-1',
+			expect(getAssistantAgentLaunch('thread-1')).toEqual({ projectId: 'project-1' });
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith('User launched Instance AI thread', {
+				thread_id: 'thread-1',
+				instance_id: 'instance-1',
 				source: 'website-template',
 				origin: 'external',
-				templateId: '42',
+				template_id: '42',
+				runtime: 'agents',
 			});
 			expect(consumePendingFirstMessage('thread-1')?.message).toBe('Adjust template 42');
 		});
@@ -863,7 +870,11 @@ describe('useInstanceAiHandoff', () => {
 
 			expect(opened).toBe(true);
 			expect(mocks.syncThread).not.toHaveBeenCalled();
-			expect(getAssistantAgentLaunch('thread-1')?.source).toBe('preferences_empty_state');
+			expect(getAssistantAgentLaunch('thread-1')).toEqual({ projectId: 'project-1' });
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({ source: 'preferences_empty_state' }),
+			);
 			expect(getPendingComposerDraft('thread-1')?.text).toBe('Suggest my preferences');
 		});
 
@@ -877,7 +888,11 @@ describe('useInstanceAiHandoff', () => {
 			expect(threadId).toBe('thread-1');
 			expect(mocks.syncThread).not.toHaveBeenCalled();
 			expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
-			expect(getAssistantAgentLaunch('thread-1')?.source).toBe('canvas_action_button');
+			expect(getAssistantAgentLaunch('thread-1')).toEqual({ projectId: 'personal-1' });
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({ source: 'canvas_action_button' }),
+			);
 			expect(getPendingWorkflowAttachment('thread-1')?.id).toBe('wf-1');
 		});
 	});

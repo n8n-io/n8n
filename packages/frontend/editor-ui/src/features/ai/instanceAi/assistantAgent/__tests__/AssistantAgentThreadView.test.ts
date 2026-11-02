@@ -1014,21 +1014,13 @@ describe('AssistantAgentThreadView', () => {
 			expect(getPendingComposerDraft('thread-new')).toBeNull();
 		});
 
-		it('tracks the launch once the server accepts the first message', async () => {
+		it('drops the launch marker once the server accepts the first message', async () => {
 			await renderNewThread();
-			expect(telemetryTrack).not.toHaveBeenCalled();
+			expect(getAssistantAgentLaunch('thread-new')).toEqual({ projectId: 'project-1' });
 
 			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
 			onSessionCreated();
 
-			expect(telemetryTrack).toHaveBeenCalledWith('User launched Instance AI thread', {
-				thread_id: 'thread-new',
-				instance_id: expect.anything(),
-				source: 'website-template',
-				origin: 'external',
-				template_id: '42',
-				runtime: 'agents',
-			});
 			expect(getAssistantAgentLaunch('thread-new')).toBeUndefined();
 		});
 	});
