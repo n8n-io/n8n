@@ -1,9 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { OAuth2FlowProxy, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ResourceAdmission, TrustedSourceStore } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -30,7 +32,6 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
-	OAuth2FailureReason,
 	OAuthResourceGrant,
 	Workflow,
 	WorkflowExecuteMode,
@@ -72,17 +73,17 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	isExecutionIdV2,
+	type ExecutionIdV2,
+} from '@/executions/execution-id';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { parseBody } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
-import {
-	type AuthFailureReason,
-	OAuthTokenVerifierProxy,
-} from '@/services/oauth-token-verifier-proxy.service';
-import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 import type { WebhookResponseWait } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -450,9 +451,7 @@ async function sendResponseNodeResponse(
 			applySandboxCSP(res);
 			try {
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				res.once('close', () => stream.destroy());
-				stream.pipe(res, { end: false });
-				await finished(stream);
+				await ResponseHelper.sendStreamToResponse(res, stream);
 			} finally {
 				void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
 					workflowId: workflow.id,
@@ -491,7 +490,9 @@ async function sendResponseNodeResponse(
 			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 			{ executionId, workflowId: workflow.id },
 		);
-		responder.respondWithError(error);
+		// The client left, or a stream that failed halfway destroyed the response.
+		if (res.destroyed) responder.respondWithNoResponse();
+		else responder.respondWithError(error);
 	}
 }
 
@@ -787,16 +788,17 @@ export function prepareExecutionData(
 	return { runExecutionData, pinData };
 }
 
-function translateAuthFailureReason(reason?: AuthFailureReason): OAuth2FailureReason {
-	switch (reason) {
-		case 'verifier_not_registered':
-		case 'unknown_error':
-			return 'verifier_unavailable';
-		case 'insufficient_scope':
-			return 'insufficient_scope';
-		default:
-			return 'invalid_token';
-	}
+/**
+ * Only a binding-mode source has a `trusted_source_identity` row the worker gate can re-check.
+ * A source that names the user by id has none, and a seal naming one would fail there.
+ */
+async function bindingOf(
+	claim: { sourceId: string; subject: string } | undefined,
+): Promise<{ sourceId: string; subject: string } | undefined> {
+	if (!claim) return undefined;
+	const source = await Container.get(TrustedSourceStore).getById(claim.sourceId);
+	if (source?.config.identity.subject !== 'binding') return undefined;
+	return { sourceId: claim.sourceId, subject: claim.subject };
 }
 
 function toWebhookUser(user: IUser): IUser {
@@ -858,28 +860,61 @@ async function prepareWebhookAdditionalData({
 
 	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);
 	additionalData.beginN8nOAuth2Flow = oauth2FlowProxy.begin.bind(oauth2FlowProxy);
-	additionalData.completeN8nOAuth2Flow = oauth2FlowProxy.complete.bind(oauth2FlowProxy);
-	additionalData.refreshN8nOAuth2Flow =
-		oauth2FlowProxy.refreshVirtualClientToken.bind(oauth2FlowProxy);
+	additionalData.completeN8nOAuth2Flow = async (code, state) =>
+		await oauth2FlowProxy.complete(code, state, {
+			method: req.method,
+			url: req.originalUrl,
+			ip: req.ip ?? '',
+		});
+	additionalData.refreshN8nOAuth2Flow = oauth2FlowProxy.refresh.bind(oauth2FlowProxy);
 
 	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
 	// request, instead of resolving the resource a second time.
-	let admittedBy: { resource: string; grant?: OAuthResourceGrant } | undefined;
+	let admittedBy:
+		| {
+				resource: string;
+				grant?: OAuthResourceGrant;
+				binding?: { sourceId: string; subject: string };
+		  }
+		| undefined;
 
+	// The token arrives in a header of the trigger's own choosing (`x-auth-token`, a
+	// cookie), so the node hands it over and the surface stamps the inbound request itself.
+	// An empty token still answers with the challenge, so a 401 always names the metadata.
 	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
-		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
-		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
-		if (result.user) {
-			admittedBy = { resource: resourceUrl, grant: result.grant };
+		const resource = await Container.get(ProtectedResourceRegistry).getByResourceUrl(resourceUrl);
+		if (!resource) return { valid: false, reason: 'invalid_token' };
+
+		const admission = Container.get(ResourceAdmission);
+		const admitted = await admission.admitBearer(
+			resource,
+			{ method: req.method, url: req.originalUrl, ip: req.ip ?? '' },
+			token,
+		);
+		if (!admitted.ok) {
 			return {
-				valid: true,
-				user: toWebhookUser(result.user),
+				valid: false,
+				reason: admitted.reason === 'insufficient_scope' ? 'insufficient_scope' : 'invalid_token',
+				challenge: await admission.challenge(admitted),
 			};
 		}
+		const { context } = admitted;
 
+		req.ctx = { ...req.ctx, security: context };
+		admittedBy = {
+			resource: resourceUrl,
+			grant: resource.getGrant?.(),
+			binding: await bindingOf(context.subjectClaim),
+		};
+		const { subject } = context;
 		return {
-			valid: false,
-			reason: translateAuthFailureReason(result.context?.reason),
+			valid: true,
+			user: {
+				id: subject.id,
+				email: subject.email ?? '',
+				firstName: subject.firstName ?? '',
+				lastName: subject.lastName ?? '',
+			},
 		};
 	};
 
@@ -906,9 +941,12 @@ async function prepareWebhookAdditionalData({
 			throw new UnexpectedError('Cannot establish a trigger identity without a resource grant');
 		}
 
+		// The binding travels with the seal, so the worker gate re-checks its status without
+		// a token. Only the admission that produced it knows it.
+		const binding = admittedBy?.resource === resource ? admittedBy.binding : undefined;
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,
-		).buildTriggerIdentityCredentials(token, resource, grant, subject);
+		).buildTriggerIdentityCredentials(token, resource, grant, subject, binding);
 		const runExecutionData = getRunExecutionData();
 		if (runExecutionData) {
 			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
@@ -994,6 +1032,8 @@ export async function executeWebhook(
 		storedAt?: ExecutionStorageLocation;
 		/** Called before WorkflowRunner.run for an existing execution. */
 		onResume?: () => void;
+		/** For an engine v2 execution: the wait that the resume ends on the data plane. */
+		engineResume?: EngineV2ResumeRequest;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1057,7 +1097,7 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	/** The id of the v2 run, created before the webhook node runs. */
+	/** The id of the v2 run, set before the webhook node runs. */
 	let engineV2ExecutionId: ExecutionIdV2 | undefined;
 	/** What the webhook node produced for a v2 run, until the dispatcher takes it. */
 	let engineV2Payload: INodeExecutionData[][] | undefined;
@@ -1073,9 +1113,17 @@ export async function executeWebhook(
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			// A workflow that runs on engine v2 in this mode never starts on v1, so a
+			// resume here names a v2 execution. Anything else is a bug.
+			if (executionId !== undefined && !isExecutionIdV2(executionId)) {
+				throw new UnexpectedError('An engine v2 resume needs a v2 execution id', {
+					extra: { executionId },
+				});
+			}
 			// Created before the node runs, so a file the node stores is written under
-			// the path of its run from the start, and no rename is needed later.
-			engineV2ExecutionId = createExecutionIdV2();
+			// the path of its run from the start, and no rename is needed later. A
+			// resume reuses the id of the waiting execution.
+			engineV2ExecutionId = executionId ?? createExecutionIdV2();
 			additionalData.executionId = engineV2ExecutionId;
 		}
 
@@ -1317,7 +1365,12 @@ export async function executeWebhook(
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId
-				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				? {
+						executionId,
+						expectedStatus: 'waiting',
+						storedAt: options?.storedAt,
+						engineResume: options?.engineResume,
+					}
 				: undefined,
 			responsePromise,
 		);
@@ -1600,8 +1653,8 @@ export async function executeWebhook(
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
-		// The run never reached the dispatcher, so the files the webhook node stored
-		// belong to no execution and the control plane deletes them.
+		// The run never reached the dispatcher, so no run uses the files that the
+		// webhook node stored.
 		if (engineV2Payload !== undefined) {
 			await Container.get(EngineV2PayloadFiles).discard(engineV2Payload);
 		}

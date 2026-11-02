@@ -9,7 +9,7 @@ import { ITokenIdentifier } from './identifier-interface';
 import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod/v4';
 import { CredentialResolverError } from '@n8n/decorators';
-import { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import { OAuthTokenVerifierProxy } from '@n8n/backend-services/auth';
 import { TrustedSourceGate } from '@n8n/inbound-auth';
 import { UserRepository } from '@n8n/db';
 

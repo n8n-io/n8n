@@ -1,5 +1,11 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import type {
+	EventService,
+	RoleService,
+	WorkflowMutationHooksProxy,
+	WorkflowPublishGuardProxy,
+	RestrictedNodeTypesProviderProxy,
+} from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Transaction,
@@ -55,11 +61,10 @@ import type { WorkflowHookContextService } from '@/workflow-hook-context.service
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
-import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
-import type { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
+import type { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
@@ -73,6 +78,7 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<{
 			getManyAndCountWithSharingSubquery: Mock;
 			getWorkflowsAndFoldersWithCountWithSharingSubquery: Mock;
+			findCallableSubworkflows: Mock;
 		}>;
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
@@ -94,8 +100,6 @@ describe('WorkflowService', () => {
 			webhookServiceMock = mock<WebhookService>();
 
 			workflowFinderServiceMock = mock<WorkflowFinderService>();
-			// By default the requester can read the supplied parent workflow.
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
@@ -163,7 +167,6 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
@@ -183,7 +186,6 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
@@ -203,7 +205,6 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
@@ -223,110 +224,82 @@ describe('WorkflowService', () => {
 					workflowRoles: expect.any(Array),
 				}),
 				undefined,
-				undefined, // callableForParentWorkflowId
 			);
 		});
 
-		describe('callableForParentWorkflowId', () => {
-			test('should pass parentWorkflowId when includeCallableSubworkflows is true', async () => {
+		describe('getCallableSubworkflows', () => {
+			test('should query with read roles and the Execute Workflow Trigger node type', async () => {
 				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-						parentWorkflowId: 'parent-wf-id',
-					},
-				};
+				workflowRepositoryMock.findCallableSubworkflows.mockResolvedValue({
+					workflows: [],
+					count: 0,
+				});
 
-				await workflowService.getMany(user, options);
+				await workflowService.getCallableSubworkflows(user, 'parent-wf-id', {
+					query: 'search',
+					skip: 10,
+					take: 5,
+				});
 
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+				expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:read']);
+				expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:read']);
+				expect(workflowRepositoryMock.findCallableSubworkflows).toHaveBeenCalledWith(
 					user,
-					expect.any(Object),
-					options,
+					{
+						scopes: ['workflow:read'],
+						projectRoles: ['project:viewer'],
+						workflowRoles: ['project:viewer'],
+					},
 					'parent-wf-id',
+					{
+						query: 'search',
+						triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+						skip: 10,
+						take: 5,
+					},
 				);
 			});
 
-			test('should pass undefined when includeCallableSubworkflows is false', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: false,
-						parentWorkflowId: 'parent-wf-id',
-					},
-				};
+			test('should return minimal rows with the project name for team projects only', async () => {
+				workflowRepositoryMock.findCallableSubworkflows.mockResolvedValue({
+					count: 2,
+					workflows: [
+						{
+							id: 'team-wf',
+							name: 'Team',
+							activeVersionId: 'version-1',
+							isArchived: false,
+							nodes: [{ type: 'n8n-nodes-base.code' }],
+							shared: [{ project: { type: 'team', name: 'Team Project' } }],
+						},
+						{
+							id: 'personal-wf',
+							name: 'Personal',
+							activeVersionId: null,
+							isArchived: true,
+							shared: [{ project: { type: 'personal', name: 'Jane <jane@example.com>' } }],
+						},
+					],
+				});
 
-				await workflowService.getMany(user, options);
+				const result = await workflowService.getCallableSubworkflows(mock<User>(), 'parent-wf-id', {
+					skip: 0,
+					take: 10,
+				});
 
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
-			});
-
-			test('should pass undefined when includeCallableSubworkflows is true but parentWorkflowId is missing', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-					},
-				};
-
-				await workflowService.getMany(user, options);
-
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
-			});
-
-			test('should pass undefined when includeCallableSubworkflows is true but parentWorkflowId is not a string', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-						parentWorkflowId: 123, // invalid type
-					},
-				};
-
-				await workflowService.getMany(user, options);
-
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
-			});
-
-			test('should pass undefined when the requester cannot read the parent workflow', async () => {
-				const user = mock<User>();
-				const options = {
-					filter: {
-						includeCallableSubworkflows: true,
-						parentWorkflowId: 'parent-wf-id',
-					},
-				};
-				// Requester has no read access to the supplied parent workflow.
-				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(null);
-
-				await workflowService.getMany(user, options);
-
-				expect(workflowFinderServiceMock.findWorkflowForUser).toHaveBeenCalledWith(
-					'parent-wf-id',
-					user,
-					['workflow:read'],
-				);
-				expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-					user,
-					expect.any(Object),
-					options,
-					undefined,
-				);
+				expect(result).toEqual({
+					count: 2,
+					data: [
+						{
+							id: 'team-wf',
+							name: 'Team',
+							active: true,
+							isArchived: false,
+							projectName: 'Team Project',
+						},
+						{ id: 'personal-wf', name: 'Personal', active: false, isArchived: true },
+					],
+				});
 			});
 		});
 
@@ -461,12 +434,10 @@ describe('WorkflowService', () => {
 				expect(result).toMatchObject({ workflows: [folder], count: 1 });
 				expect(
 					workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery,
-				).toHaveBeenCalledWith(
-					expect.anything(),
-					expect.anything(),
-					{ ...restrictedNodeFilter, workflowIdsIn: null },
-					undefined,
-				);
+				).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+					...restrictedNodeFilter,
+					workflowIdsIn: null,
+				});
 			});
 
 			test('limits the list query to the restricted workflow ids', async () => {
@@ -479,7 +450,6 @@ describe('WorkflowService', () => {
 					expect.anything(),
 					expect.anything(),
 					{ ...restrictedNodeFilter, workflowIdsIn },
-					undefined,
 				);
 			});
 		});
@@ -1470,6 +1440,144 @@ describe('WorkflowService', () => {
 					}),
 					expect.anything(),
 				);
+			});
+		});
+
+		describe('redactCallerExecutions', () => {
+			beforeEach(async () => {
+				// Use the real default removal, which drops `redactCallerExecutions: true`.
+				const actual = await vi.importActual<typeof WorkflowHelpers>('@/workflow-helpers');
+				vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation(
+					actual.removeDefaultValues,
+				);
+			});
+
+			// `mock()` does not keep `false` values in nested objects, so set the stored
+			// settings on the mock after it is made.
+			function setupStoredCallerRedaction(redactCallerExecutions?: boolean) {
+				const existingWorkflow = setupExistingWorkflow();
+				existingWorkflow.settings =
+					redactCallerExecutions === undefined ? {} : { redactCallerExecutions };
+			}
+
+			const savedSettings = () => workflowRepositoryMock.updateContent.mock.calls[0][1].settings;
+
+			test('requires disableRedaction to turn the setting off', async () => {
+				setupStoredCallerRedaction(undefined);
+				userHasScopesMock.mockResolvedValue(true);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:disableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('strips the setting when the user cannot turn it off', async () => {
+				setupStoredCallerRedaction(undefined);
+				userHasScopesMock.mockResolvedValue(false);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
+			});
+
+			test('requires enableRedaction to turn the setting back on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: true }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('requires enableRedaction for a non-boolean value that turns the setting on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
+						Array.isArray(scopes) &&
+						scopes.includes('workflow:disableRedaction') &&
+						!scopes.includes('workflow:enableRedaction'),
+				);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('clears the stored value for a non-boolean value that turns the setting on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockResolvedValue(true);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
+			});
+
+			test('does not check scopes or change settings when the effective value does not change', async () => {
+				// Not set means on, so sending `true` changes nothing.
+				setupStoredCallerRedaction(undefined);
+
+				const prepared = await workflowService.prepareUpdate(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: true }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).not.toHaveBeenCalled();
+				expect(prepared.changes.settings).not.toHaveProperty('redactCallerExecutions');
+				expect(prepared.settingsChanged).toBe(false);
+			});
+
+			test('strips a change when the instance lacks the data-redaction license', async () => {
+				setupStoredCallerRedaction(undefined);
+				licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+				userHasScopesMock.mockResolvedValue(true);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
 			});
 		});
 	});

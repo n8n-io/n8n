@@ -1,4 +1,4 @@
-import type { InstanceAiThreadTabsState } from '@n8n/api-types';
+import type { AssistantThreadTabsState } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { UserRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,7 +10,7 @@ import { InstanceAiThreadRepository } from '@/modules/instance-ai/repositories/i
 
 import { createMember } from '../shared/db/users';
 
-const firstState: InstanceAiThreadTabsState = {
+const firstState: AssistantThreadTabsState = {
 	tabs: [
 		{ type: 'workflow', id: 'wf-1', name: 'First Workflow', projectId: 'project-1' },
 		{ type: 'data-table', id: 'dt-1', name: 'Table' },
@@ -20,7 +20,7 @@ const firstState: InstanceAiThreadTabsState = {
 	previewOpen: true,
 };
 
-const secondState: InstanceAiThreadTabsState = {
+const secondState: AssistantThreadTabsState = {
 	tabs: [{ type: 'data-table', id: 'dt-1', name: 'Table' }],
 	closedTabs: [
 		{ type: 'agent', id: 'agent-1' },

@@ -39,29 +39,24 @@ export class ProjectImporter {
 		for (const project of projects) {
 			const existing = await this.projectService.findProject(project.sourceProjectId);
 
+			const conflict = { sourceProjectId: project.sourceProjectId, name: project.name };
 			if (existing) {
 				// Never import over a personal project
 				if (existing.type !== 'team') {
-					throw new ForbiddenError(
-						`Cannot import project "${project.name}": its id belongs to a non-team project on this instance.`,
-					);
+					conflicts.push({ kind: 'not-team', ...conflict });
+					continue;
 				}
 				// Required for `merge` too: the package's contents are still written into the project.
 				const authorized = await this.projectService.getProjectWithScope(user, existing.id, [
 					'project:update',
 				]);
 				if (!authorized) {
-					throw new ForbiddenError(
-						`You do not have permission to update the existing project "${project.name}".`,
-					);
+					conflicts.push({ kind: 'update-forbidden', ...conflict });
+					continue;
 				}
 
 				if (decision.blocked) {
-					conflicts.push({
-						kind: 'fail-policy',
-						sourceProjectId: project.sourceProjectId,
-						name: project.name,
-					});
+					conflicts.push({ kind: 'fail-policy', ...conflict });
 					continue;
 				}
 
@@ -71,7 +66,11 @@ export class ProjectImporter {
 						: { action: 'skip', existingName: existing.name, ...toFields(project) },
 				);
 			} else {
-				this.assertCanCreateProjects(user);
+				const refusal = this.createRefusal(user);
+				if (refusal) {
+					conflicts.push({ kind: refusal, ...conflict });
+					continue;
+				}
 				items.push({ action: 'create', ...toFields(project) });
 			}
 		}
@@ -146,15 +145,35 @@ export class ProjectImporter {
 		return summaries;
 	}
 
-	private assertCanCreateProjects(user: User): void {
-		if (!hasGlobalScope(user, 'project:create')) {
-			throw new ForbiddenError('You do not have permission to create projects.');
-		}
-		if (!this.licenseState.isLicensed('feat:projectRole:admin')) {
-			throw new ForbiddenError(
+	private createRefusal(user: User): 'create-forbidden' | 'license' | undefined {
+		if (!hasGlobalScope(user, 'project:create')) return 'create-forbidden';
+		if (!this.licenseState.isLicensed('feat:projectRole:admin')) return 'license';
+		return undefined;
+	}
+}
+
+/**
+ * The error that an import throws for a refused project. `fail-policy` has none: another policy
+ * can resolve it, so the import reports it as a blocking issue.
+ */
+export function projectRefusalError(conflict: ProjectConflict): ForbiddenError | undefined {
+	switch (conflict.kind) {
+		case 'not-team':
+			return new ForbiddenError(
+				`Cannot import project "${conflict.name}": its id belongs to a non-team project on this instance.`,
+			);
+		case 'update-forbidden':
+			return new ForbiddenError(
+				`You do not have permission to update the existing project "${conflict.name}".`,
+			);
+		case 'create-forbidden':
+			return new ForbiddenError('You do not have permission to create projects.');
+		case 'license':
+			return new ForbiddenError(
 				'Your license does not allow creating team projects. Project import requires a license that supports team projects.',
 			);
-		}
+		case 'fail-policy':
+			return undefined;
 	}
 }
 

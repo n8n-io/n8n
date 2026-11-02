@@ -292,6 +292,7 @@ export function toV1ExecuteContext({
 	additionalData,
 	stepContext,
 	itemsByConnection,
+	resumeToken,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
@@ -300,6 +301,7 @@ export function toV1ExecuteContext({
 	};
 
 	const runExecutionData = createRunExecutionData({
+		resumeToken,
 		startData: {},
 		resultData: { runData: execution.runData },
 		executionData: {

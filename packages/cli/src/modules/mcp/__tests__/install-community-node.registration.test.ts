@@ -1,5 +1,14 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RoleService,
+	FolderFinderService,
+	InstanceWriteAccessService,
+	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
+	AiPreferenceService,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -10,13 +19,12 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -28,7 +36,7 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
@@ -148,6 +156,7 @@ describe('install_community_node registration', () => {
 			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig, { communityNodeDiscoveryEnabled: true }),
 			mockInstance(ExecutionRedactionServiceProxy),
+			mockInstance(InstanceWriteAccessService),
 		);
 
 	beforeEach(() => {

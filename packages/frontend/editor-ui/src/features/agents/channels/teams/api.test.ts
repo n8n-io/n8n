@@ -4,13 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	checkTeamsCredential,
+	checkTeamsFileAccess,
 	createTeamsManagerCredential,
 	fetchTeamsAppPackage,
 	getTeamsAzureSubscriptions,
 	getTeamsManagedSetup,
+	getTeamsCatalogState,
 	getTeamsSetupState,
 	provisionTeamsApp,
 	provisionTeamsBot,
+	publishTeamsApp,
 } from './api';
 
 vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
@@ -58,6 +61,12 @@ describe('teams channel api', () => {
 		expect(sent()).toEqual([context, 'POST', `${BASE}/check/cred-1`]);
 	});
 
+	it('checks file access by credential id, in its path', async () => {
+		await checkTeamsFileAccess(context, 'project-1', 'agent-1', 'cred-1');
+
+		expect(sent()).toEqual([context, 'GET', `${BASE}/file-access/cred-1`]);
+	});
+
 	it('reads the managed setup state', async () => {
 		await getTeamsManagedSetup(context, 'project-1', 'agent-1');
 
@@ -103,6 +112,43 @@ describe('teams channel api', () => {
 		await provisionTeamsBot(context, 'project-1', 'agent-1', payload);
 
 		expect(sent()).toEqual([context, 'POST', `${BASE}/provision-bot`, payload]);
+	});
+
+	it('publishes the package to the organisation catalogue', async () => {
+		const payload = {
+			managerCredentialId: 'manager-1',
+			credentialId: 'bot-cred-1',
+			settings: { teamChannels: true },
+		};
+
+		await publishTeamsApp(context, 'project-1', 'agent-1', payload);
+
+		expect(sent()).toEqual([context, 'POST', `${BASE}/publish`, payload]);
+	});
+
+	describe('getTeamsCatalogState', () => {
+		it('reads where the app stands, with the sign-in to read it with', async () => {
+			await getTeamsCatalogState(context, 'project-1', 'agent-1', 'manager-1');
+
+			expect(sent()).toEqual([
+				context,
+				'GET',
+				`${BASE}/catalog`,
+				{ managerCredentialId: 'manager-1' },
+			]);
+		});
+
+		/** The channel's own credential carries what the last publish recorded. */
+		it('names the channel credential when there is one', async () => {
+			await getTeamsCatalogState(context, 'project-1', 'agent-1', 'manager-1', 'bot-cred-1');
+
+			expect(sent()).toEqual([
+				context,
+				'GET',
+				`${BASE}/catalog`,
+				{ managerCredentialId: 'manager-1', credentialId: 'bot-cred-1' },
+			]);
+		});
 	});
 
 	describe('fetchTeamsAppPackage', () => {

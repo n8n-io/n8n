@@ -42,8 +42,19 @@ const setupSnapshotProps = {
 	web_search_provider: z.enum(['brave', 'searxng']).nullable(),
 };
 
+/** The runtimes that run an n8n Assistant thread. */
+export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
+export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
+const assistantRuntime = z
+	.enum(ASSISTANT_RUNTIMES)
+	.describe(
+		"The runtime that runs the thread: 'instance-ai' is the current Assistant runtime, 'agents' is the Assistant agent on the Agents runtime",
+	);
+
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
+const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
+const taxonomyInspirationVariant = z.enum(['control', 'variant', 'variant-bis']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
@@ -90,6 +101,125 @@ const threadActionSource = z.enum([
 const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
 
 const instanceContextTurnSchema = z.object({
+	hub_skill_snapshot_sequence: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Cumulative Hub skill snapshot number. Select the highest number per run_id; do not sum snapshots.',
+		),
+	hub_skill_attempt_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Distinct main Hub skill load tool calls, including failed and pending calls. Measures Assistant selection intent.',
+		),
+	hub_skill_load_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Successful main Hub skill loads. Does not prove that the model followed the instructions.',
+		),
+	hub_skill_failure_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Failed main Hub skill attempts.'),
+	hub_skill_carried_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active, unchanged Hub skills included in model context during this run. Excludes skills first loaded in this run.',
+		),
+	hub_skill_refresh_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Distinct Hub skill versions delivered after a change to an active skill.'),
+	hub_skill_revocation_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active Hub skills that the runtime removed as non-retryable unavailability.',
+		),
+	hub_skill_unavailable_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active Hub skill versions omitted because current content was temporarily unavailable.',
+		),
+	hub_skill_reference_attempt_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Distinct Hub reference read tool calls, including failed and pending calls.'),
+	hub_skill_reference_read_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Successful Hub reference reads. Not main skill loads.'),
+	hub_skill_reference_failure_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Failed Hub reference reads.'),
+	hub_skill_attempted_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs requested in main load calls in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_loaded_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs successfully loaded in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_carried_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs carried unchanged into model context in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_refreshed_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs delivered with updated instructions in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_failures: z
+		.array(
+			z.object({
+				operation: z.enum(['main', 'reference']),
+				reason: z.enum([
+					'temporarily_unavailable',
+					'unavailable',
+					'invalid_reference',
+					'tool_error',
+				]),
+				count: z.number().int().nonnegative(),
+			}),
+		)
+		.optional()
+		.describe(
+			'Cumulative failed tool calls by operation and bounded reason. Contains no error text.',
+		),
 	surface: assistantSurfaceSchema,
 	user_id: z.string(),
 	thread_id: z.string().optional(),
@@ -192,6 +322,34 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
 		}),
 	},
+	// Experiment cleanup (124_workflow_previews_above_assistant)
+	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED: {
+		name: 'AI Assistant workflow previews above assistant exposed',
+		description:
+			'A user assigned to the workflow previews experiment (124) reached the n8n Assistant empty state, the view that hosts the previews above the chat input, including the control variant. Fires once per visit to that view. Does not fire on a thread, nor for the proactive starter, split empty-state, or n8n Chat agent picker layouts, which replace this view.',
+		properties: z.object({
+			variant: workflowPreviewsAboveAssistantVariant.describe(
+				'Variant of the 124_workflow_previews_above_assistant feature flag the user saw',
+			),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/124_workflow_previews_above_assistant': workflowPreviewsAboveAssistantVariant,
+		}),
+	},
+	// EOF Experiment cleanup
+	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	INSPIRATION_FROM_TAXONOMY_EXPOSED: {
+		name: 'AI Assistant inspiration from taxonomy exposed',
+		description:
+			'A sales-and-marketing respondent assigned to 129_aia_inspiration_from_taxonomy_v2 reached the n8n Assistant empty state, the view that shows the prompt suggestions, including the control variant. Fires once per visit. Does not fire on a thread, nor for the proactive starter, split empty-state, n8n Chat agent picker, or workflow-preview layouts, which replace this suggestion list. Not fired for any other experiment.',
+		properties: z.object({
+			variant: taxonomyInspirationVariant.describe(
+				'Variant of the 129_aia_inspiration_from_taxonomy_v2 feature flag the user saw: control, variant, or variant-bis',
+			),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/129_aia_inspiration_from_taxonomy_v2': taxonomyInspirationVariant,
+		}),
+	},
+	// EOF Experiment cleanup
 	FREE_NUDGE_DISMISSED: {
 		name: 'Instance AI free nudge dismissed',
 		description: 'The user dismissed a visible Instance AI free-use nudge.',
@@ -365,21 +523,6 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe('Whether the document was visible when the response rendered'),
 		}),
 	},
-	COMPUTER_USE_MODAL_OPENED: {
-		name: 'User opened computer use connection modal',
-		description: 'The user opened the Computer Use connection interface.',
-		properties: z.object({
-			is_connected: z.boolean(),
-			source: z.enum(['input_menu', 'tools_modal']),
-		}),
-	},
-	COMPUTER_USE_CONNECTION_COMMAND_COPIED: {
-		name: 'User copied computer use connection command',
-		description: 'The user copied the Computer Use connection command.',
-		properties: z.object({
-			os: z.enum(['mac', 'windows', 'linux']),
-		}),
-	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
 		name: 'Builder specced templated cred',
 		description:
@@ -521,6 +664,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The user sent an Instance AI chat message that carried node context. Fires only when the submitted message includes at least one node attachment; node_count is the total nodes across every attached set in the message.',
 		properties: z.object({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
+			runtime: assistantRuntime,
 		}),
 	},
 	USER_OPENED_AI_ASSISTANT_MENTION_PICKER: {
@@ -666,7 +810,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	BUILDER_LISTED_WORKFLOWS: {
 		name: 'Builder listed workflows',
 		description:
-			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+			'Instance AI called list_workflows. Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),

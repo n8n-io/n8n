@@ -25,11 +25,10 @@ import type {
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
 type FieldMap = IDataObject;
@@ -41,7 +40,6 @@ export class EvaluationDatasetService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly dataTableService: DataTableService,
-		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	/**
@@ -88,11 +86,6 @@ export class EvaluationDatasetService {
 	 * re-read server-side from the execution — the client only sends the mapping.
 	 */
 	async addRow(user: User, workflowId: string, configId: string, dto: AddDatasetRowDto) {
-		// This write path is workflow-scoped and so bypasses the data table
-		// controller/middleware that normally blocks writes on a protected
-		// (read-only) instance. Mirror that guard here.
-		this.assertInstanceWriteAccess();
-
 		const config = await this.loadDataTableConfig(workflowId, configId);
 		const { workflowData, runData } = await this.loadSuccessfulExecution(
 			workflowId,
@@ -130,18 +123,6 @@ export class EvaluationDatasetService {
 	// Internals
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Block Data Table writes when the instance is in source-control read-only
-	 * (protected) mode, matching the canonical data table routes.
-	 */
-	private assertInstanceWriteAccess(): void {
-		if (this.instanceWriteAccess.isReadOnly()) {
-			throw new ForbiddenError(
-				'Cannot modify data tables on a protected instance. This instance is in read-only mode.',
-			);
-		}
-	}
-
 	private async loadDataTableConfig(
 		workflowId: string,
 		configId: string,
@@ -163,6 +144,15 @@ export class EvaluationDatasetService {
 		executionId: string,
 		user: User,
 	): Promise<{ workflowData: IWorkflowBase; runData: IRunData }> {
+		// The routes are gated on the workflow, but run data sits behind
+		// `execution:read`, which a custom project role can lack.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId,
+		});
+		if (!canReadExecutions) {
+			throw new NotFoundError('Execution not found');
+		}
+
 		// Load via ExecutionPersistence (not the raw repository): it reads the run
 		// data from the store recorded in `storedAt` (`db` or `fs`). The raw
 		// repository only reads the DB blob, which is empty for fs-stored

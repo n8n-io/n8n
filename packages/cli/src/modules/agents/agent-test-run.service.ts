@@ -14,8 +14,11 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	AgentExecutionOrchestratorService,
@@ -188,6 +191,7 @@ export class AgentTestRunService {
 		newSession,
 		credentialProvider,
 	}: PrepareDraftRunInput): Promise<PrepareDraftRunResult> {
+		await this.assertCanRunDraft(user, projectId);
 		const sessionMode: AgentSessionMode = !sessionId || newSession ? 'new' : 'existing';
 		if (sessionId) {
 			if (
@@ -216,6 +220,17 @@ export class AgentTestRunService {
 			sessionId: sessionId || randomUUID(),
 			sessionMode,
 		};
+	}
+
+	/**
+	 * A draft is unpublished config, so running it needs `agent:read` on top of
+	 * the `agent:execute` the routes check. A chat-only member reaches published
+	 * agents through n8n Chat instead.
+	 */
+	private async assertCanRunDraft(user: User, projectId: string): Promise<void> {
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
+		}
 	}
 
 	async executePreparedDraftRun({
@@ -248,6 +263,7 @@ export class AgentTestRunService {
 		onExecutionRecorded,
 		...execution
 	}: ResumePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
+		await this.assertCanRunDraft(execution.user, execution.projectId);
 		let executionId: string | undefined;
 		const stream = this.agentExecutionOrchestratorService.resumeForChat({
 			...execution,

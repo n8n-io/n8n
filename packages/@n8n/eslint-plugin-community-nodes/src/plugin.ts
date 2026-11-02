@@ -29,6 +29,7 @@ const configs = {
 			'@n8n/community-nodes/no-deprecated-workflow-functions': 'error',
 			'@n8n/community-nodes/no-emoji-in-options': 'error',
 			'@n8n/community-nodes/node-usable-as-tool': 'error',
+			'@n8n/community-nodes/open-ended-node-fields': 'warn',
 			'@n8n/community-nodes/package-name-convention': 'error',
 			'@n8n/community-nodes/credential-test-required': 'error',
 			'@n8n/community-nodes/no-credential-reuse': 'error',
@@ -64,6 +65,8 @@ const configs = {
 			'@n8n/community-nodes/valid-node-categories': 'error',
 			'@n8n/community-nodes/valid-peer-dependencies': 'error',
 			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
+			'@n8n/community-nodes/operation-name-repeats-resource': 'warn',
+			'@n8n/community-nodes/operation-standard-action': 'warn',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -79,6 +82,7 @@ const configs = {
 			'@n8n/community-nodes/no-deprecated-workflow-functions': 'error',
 			'@n8n/community-nodes/no-emoji-in-options': 'error',
 			'@n8n/community-nodes/node-usable-as-tool': 'error',
+			'@n8n/community-nodes/open-ended-node-fields': 'warn',
 			'@n8n/community-nodes/package-name-convention': 'error',
 			'@n8n/community-nodes/credential-test-required': 'error',
 			'@n8n/community-nodes/no-credential-reuse': 'error',
@@ -114,6 +118,8 @@ const configs = {
 			'@n8n/community-nodes/valid-node-categories': 'error',
 			'@n8n/community-nodes/valid-peer-dependencies': 'error',
 			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
+			'@n8n/community-nodes/operation-name-repeats-resource': 'warn',
+			'@n8n/community-nodes/operation-standard-action': 'warn',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

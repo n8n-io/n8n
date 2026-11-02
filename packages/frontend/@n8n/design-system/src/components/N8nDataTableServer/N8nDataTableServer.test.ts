@@ -1,6 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor, within } from '@testing-library/vue';
 
+import { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
 import { createComponentRenderer } from '../../__tests__/render';
 
@@ -9,7 +10,7 @@ const renderComponent = createComponentRenderer(N8nDataTableServer);
 const getRenderedOptions = async () => {
 	const dropdown = await waitFor(() => screen.getByRole('listbox'));
 	expect(dropdown).toBeInTheDocument();
-	return dropdown.querySelectorAll('.el-select-dropdown__item');
+	return dropdown.querySelectorAll('[data-test-id="select-item"]');
 };
 
 const itemFactory = () => ({
@@ -119,12 +120,12 @@ describe('N8nDataTableServer', () => {
 		// account for the debounce
 		await new Promise((r) => setTimeout(r, 100));
 
-		const option50 = Array.from(options).find((option) => option.textContent === '50');
+		const option50 = Array.from(options).find((option) => option.textContent === '50/page');
 		await userEvent.click(option50!);
 
 		expect(emitted('update:options').length).toBe(4);
 		expect(emitted('update:options').at(-1)).toStrictEqual([
-			expect.objectContaining({ page: 1, itemsPerPage: 50 }),
+			expect.objectContaining({ page: 0, itemsPerPage: 50 }),
 		]);
 	});
 
@@ -184,27 +185,191 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
-	it('should adjust page to highest available when page size changes and current page exceeds maximum', async () => {
+	it('should render one skeleton row per page size while the first page loads', () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: [], headers, itemsLength: 100, loading: true, itemsPerPage: 25 },
+		});
+
+		expect(container.querySelectorAll('tbody tr').length).toBe(25);
+	});
+
+	it('should render a bounded skeleton while All is loading', () => {
+		const { container } = render(N8nDataTableServer, {
+			props: {
+				items: [],
+				//@ts-expect-error testing-library errors due to header generics
+				headers,
+				itemsLength: 100,
+				loading: true,
+				itemsPerPage: PAGINATION_ALL_ITEMS_PER_PAGE,
+				showAll: true,
+			},
+		});
+
+		expect(container.querySelectorAll('tbody tr').length).toBe(10);
+	});
+
+	it('should return to the first page when the page size changes', async () => {
 		const { emitted, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 106, itemsPerPage: 50, page: 2 },
 		});
 
-		// change the page size select option
-		const selectInput = await findAllByRole('combobox'); // Find the select input
+		const selectInput = await findAllByRole('combobox');
 		await userEvent.click(selectInput[0]);
 
 		const options = await getRenderedOptions();
 		expect(options.length).toBe(4);
 
-		const option100 = Array.from(options).find((option) => option.textContent === '100');
+		const option100 = Array.from(options).find((option) => option.textContent === '100/page');
 		await userEvent.click(option100!);
 
-		// With 106 items and 50 per page, max page should be 2 (0-based index 1)
-		// Since we were on page 2, we should be adjusted to page 1
 		expect(emitted('update:options')).toEqual(
 			expect.arrayContaining([
-				expect.arrayContaining([expect.objectContaining({ page: 1, itemsPerPage: 100 })]),
+				expect.arrayContaining([expect.objectContaining({ page: 0, itemsPerPage: 100 })]),
 			]),
 		);
+	});
+
+	it('should pin the first column, and the selection column, when asked to', async () => {
+		const { container, rerender } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
+		});
+
+		const headerCells = container.querySelectorAll('thead tr th');
+		expect(headerCells[0]).toHaveClass('is-pinned');
+		expect(headerCells[0]).toHaveClass('is-pinned-edge');
+		expect(headerCells[0]).toHaveStyle({ left: '0px' });
+		expect(headerCells[1]).not.toHaveClass('is-pinned');
+
+		const bodyCells = container.querySelectorAll('tbody tr:first-child td');
+		expect(bodyCells[0]).toHaveClass('is-pinned');
+		expect(bodyCells[0]).toHaveClass('is-pinned-edge');
+		expect(bodyCells[1]).not.toHaveClass('is-pinned');
+
+		await rerender({ showSelect: true });
+
+		await waitFor(() => {
+			const cells = container.querySelectorAll('tbody tr:first-child td');
+			expect(cells[0]).toHaveClass('is-pinned');
+			expect(cells[0]).not.toHaveClass('is-pinned-edge');
+			expect(cells[1]).toHaveClass('is-pinned');
+			expect(cells[1]).toHaveClass('is-pinned-edge');
+			expect(cells[1]).toHaveStyle({ left: '40px' });
+			expect(cells[2]).not.toHaveClass('is-pinned');
+		});
+	});
+
+	it('should pin the leading columns when given a count', () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 2 },
+		});
+
+		const headerCells = container.querySelectorAll('thead tr th');
+		expect(headerCells[0]).toHaveClass('is-pinned');
+		expect(headerCells[0]).not.toHaveClass('is-pinned-edge');
+		expect(headerCells[1]).toHaveClass('is-pinned-edge');
+		expect(headerCells[1]).toHaveStyle({ left: '150px' });
+		expect(headerCells[2]).not.toHaveClass('is-pinned');
+
+		const bodyCells = container.querySelectorAll('tbody tr:first-child td');
+		expect(bodyCells[0]).toHaveClass('is-pinned');
+		expect(bodyCells[1]).toHaveClass('is-pinned-edge');
+		expect(bodyCells[2]).not.toHaveClass('is-pinned');
+	});
+
+	it('should not pin any column by default', () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
+		});
+
+		expect(container.querySelector('.is-pinned')).toBeNull();
+	});
+
+	it('should show the pinned edge only after the table has scrolled sideways', async () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
+		});
+
+		const wrapper = container.querySelector('.n8n-data-table-server-wrapper')!;
+		const scroller = container.querySelector<HTMLElement>('.table-scroll')!;
+		expect(wrapper).not.toHaveClass('is-scrolled-left');
+
+		// jsdom has no layout, so stand in for a table that has been scrolled.
+		let scrollLeft = 0;
+		Object.defineProperty(scroller, 'scrollLeft', {
+			get: () => scrollLeft,
+			set: (value: number) => {
+				scrollLeft = value;
+			},
+			configurable: true,
+		});
+
+		scroller.scrollLeft = 40;
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).toHaveClass('is-scrolled-left');
+		});
+
+		scroller.scrollLeft = 0;
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).not.toHaveClass('is-scrolled-left');
+		});
+	});
+
+	it('should show the right-edge hint only while columns remain past that edge', async () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
+		});
+
+		const wrapper = container.querySelector('.n8n-data-table-server-wrapper')!;
+		const scroller = container.querySelector<HTMLElement>('.table-scroll')!;
+		expect(wrapper).not.toHaveClass('can-scroll-right');
+
+		// jsdom has no layout, so stand in for a table that is wider than its frame.
+		let scrollLeft = 0;
+		Object.defineProperty(scroller, 'scrollLeft', {
+			get: () => scrollLeft,
+			set: (value: number) => {
+				scrollLeft = value;
+			},
+			configurable: true,
+		});
+		Object.defineProperty(scroller, 'scrollWidth', { get: () => 800, configurable: true });
+		Object.defineProperty(scroller, 'clientWidth', { get: () => 400, configurable: true });
+
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).toHaveClass('can-scroll-right');
+		});
+
+		scroller.scrollLeft = 400;
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).not.toHaveClass('can-scroll-right');
+		});
+	});
+
+	it('should emit all items per page when All is selected', async () => {
+		const { emitted, findAllByRole } = renderComponent({
+			props: { items, headers, itemsLength: 106, showAll: true },
+		});
+
+		const selectInput = await findAllByRole('combobox');
+		await userEvent.click(selectInput[0]);
+
+		const options = await getRenderedOptions();
+		const allOption = Array.from(options).find((option) => option.textContent === 'All');
+		await userEvent.click(allOption!);
+
+		expect(emitted('update:options').at(-1)).toStrictEqual([
+			expect.objectContaining({ itemsPerPage: PAGINATION_ALL_ITEMS_PER_PAGE }),
+		]);
 	});
 });

@@ -4,6 +4,7 @@ import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	collectSubWorkflowOutput,
+	escalateSubWorkflowRedaction,
 	getLastExecutedNodeData,
 	Workflow,
 	UnexpectedError,
@@ -17,6 +18,7 @@ import {
 	resolveVariables,
 	safeParseWorkflowStructure,
 	summarizeDynamicCredentialsUsage,
+	summarizeSubWorkflowRedaction,
 	validateWorkflowGroups,
 	type IDataObject,
 	type INodeCredentialsDetails,
@@ -35,6 +37,7 @@ import { v4 as uuid } from 'uuid';
 import { BadRequestError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 
 import { OwnershipService } from './services/ownership.service';
@@ -254,6 +257,11 @@ export function removeDefaultValues(
 		delete cleanedSettings.credentialResolverId;
 	}
 
+	// Remove redactCallerExecutions if it is on, because an unset value is on
+	if (cleanedSettings.redactCallerExecutions === true) {
+		delete cleanedSettings.redactCallerExecutions;
+	}
+
 	return cleanedSettings;
 }
 
@@ -428,6 +436,12 @@ export function shouldRestartParentExecution(
 	return parentExecution.shouldResume;
 }
 
+/** The ids in either list, once each; `undefined` when both are empty. */
+function unionIds(first: string[] | undefined, second: string[] | undefined) {
+	const ids = new Set([...(first ?? []), ...(second ?? [])]);
+	return ids.size > 0 ? [...ids].sort() : undefined;
+}
+
 /**
  * Updates a parent execution's nodeExecutionStack with the final results from a completed child execution.
  * This ensures that when the parent resumes, the Execute Workflow node (running in disabled mode)
@@ -489,15 +503,27 @@ export async function updateParentExecutionWithChildResults(
 	// On resume the parent's flagged 'waiting' task is popped and the node re-runs disabled
 	// (never calling `executeWorkflow` again), so the child's private-credential usage must
 	// ride on the stack entry to reach the freshly stamped task (see `WorkflowExecute`).
-	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(subworkflowResults.data);
+	const childCredentialIds = childWorkflowData
+		? Container.get(CredentialsPermissionChecker).getCredentialIdsForNodes(childWorkflowData.nodes)
+		: [];
+	const dynamicCredentialsUsage = summarizeDynamicCredentialsUsage(
+		subworkflowResults.data,
+		childCredentialIds,
+	);
 	if (Object.keys(dynamicCredentialsUsage).length > 0) {
 		// Union with a sibling child's earlier report ("run once for each item" spawns several
 		// children per wait) — flags only ever accumulate, like every other flag writer.
+		const earlierUsage = nodeExecutionStack[0].metadata?.dynamicCredentialsUsage;
+		const usedCredentialIds = unionIds(
+			earlierUsage?.usedCredentialIds,
+			dynamicCredentialsUsage.usedCredentialIds,
+		);
 		nodeExecutionStack[0].metadata = {
 			...nodeExecutionStack[0].metadata,
 			dynamicCredentialsUsage: {
-				...nodeExecutionStack[0].metadata?.dynamicCredentialsUsage,
+				...earlierUsage,
 				...dynamicCredentialsUsage,
+				...(usedCredentialIds && { usedCredentialIds }),
 			},
 		};
 
@@ -515,6 +541,11 @@ export async function updateParentExecutionWithChildResults(
 			if (dynamicCredentialsUsage.attemptedDynamicCredentials) {
 				waitingTask.attemptedDynamicCredentials = true;
 			}
+			const waitingTaskCredentialIds = unionIds(
+				waitingTask.usedCredentialIds,
+				dynamicCredentialsUsage.usedCredentialIds,
+			);
+			if (waitingTaskCredentialIds) waitingTask.usedCredentialIds = waitingTaskCredentialIds;
 		}
 		const { runtimeData } = parentWithSubWorkflowResults.data.executionData ?? {};
 		if (
@@ -525,6 +556,17 @@ export async function updateParentExecutionWithChildResults(
 			runtimeData.executedByUserId = dynamicCredentialsUsage.dynamicCredentialsResolvedUserId;
 		}
 	}
+
+	// The parent keeps a copy of the child's output (or error), so it redacts at least what the
+	// child redacts. The resume restores this context as is, so escalate it before it is saved.
+	// Without the child's saved workflow, the opt-out cannot be read, so the child's own
+	// channels pass up.
+	escalateSubWorkflowRedaction(
+		parentWithSubWorkflowResults.data.executionData?.runtimeData,
+		summarizeSubWorkflowRedaction(subworkflowResults.data, {
+			includeOwn: childWorkflowData?.settings?.redactCallerExecutions !== false,
+		}),
+	);
 
 	if (subworkflowError) {
 		// Record the error on the waiting parent's Execute Workflow node so the node

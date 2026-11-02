@@ -232,6 +232,7 @@ export class SuspendedRunRestorer {
 				this.logger.warn('Cannot resume orphaned run: failed to build execution environment', {
 					requestId: orphan.requestId,
 					threadId: orphan.threadId,
+					runId: orphan.runId,
 					error: getErrorMessage(outcome.error),
 				});
 				return null;

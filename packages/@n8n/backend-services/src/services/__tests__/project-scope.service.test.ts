@@ -71,4 +71,21 @@ describe('ProjectScopeService', () => {
 		]);
 		expect(result).toEqual(['project-1', 'project-2']);
 	});
+
+	describe('getMemberProjectIds', () => {
+		it('returns only member projects for a user with the global scope', async () => {
+			roleService.rolesWithScope.mockResolvedValue(['project:admin']);
+			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue(['project-1']);
+
+			const result = await service.getMemberProjectIds(makeUser(['agent:update']), [
+				'agent:update',
+			]);
+
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				'user-1',
+				['project:admin'],
+			);
+			expect(result).toEqual(['project-1']);
+		});
+	});
 });

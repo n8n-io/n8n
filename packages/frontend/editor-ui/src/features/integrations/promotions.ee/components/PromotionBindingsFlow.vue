@@ -6,7 +6,6 @@ import { usePromotionBindingCreation } from '../composables/usePromotionBindingC
 import type {
 	AppliedResult,
 	BlockedApplyResult,
-	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatedPromotionProject,
 	SourceChangedResult,
@@ -15,7 +14,6 @@ import type {
 const props = defineProps<{
 	open: boolean;
 	blockedResult: BlockedApplyResult;
-	continueWith: ContinueTarget;
 }>();
 const emit = defineEmits<{
 	'update:open': [open: boolean];
@@ -25,7 +23,7 @@ const emit = defineEmits<{
 	'project-created': [project: CreatedPromotionProject];
 }>();
 const i18n = useI18n();
-const { createBinding, createdProjects, updatePreflight } = usePromotionBindingCreation(
+const { createBinding, createdProjects, updateCheck } = usePromotionBindingCreation(
 	props.blockedResult,
 	(project) => emit('project-created', project),
 );
@@ -36,9 +34,8 @@ const { createBinding, createdProjects, updatePreflight } = usePromotionBindingC
 		:open="open"
 		:blocked-result="blockedResult"
 		:create-binding="createBinding"
-		:continue-with="continueWith"
 		@update:open="emit('update:open', $event)"
-		@preflight-updated="updatePreflight"
+		@check-updated="updateCheck"
 		@applied="emit('applied', $event)"
 		@source-changed="emit('source-changed', $event)"
 		@close-requested="emit('close-requested', $event)"

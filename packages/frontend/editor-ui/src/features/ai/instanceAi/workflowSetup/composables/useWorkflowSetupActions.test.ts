@@ -6,7 +6,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
@@ -37,7 +36,6 @@ interface Harness {
 	defer: ReturnType<typeof vi.fn>;
 	markSectionSkipped: ReturnType<typeof vi.fn>;
 	buildCompletedSetupPayload: ReturnType<typeof vi.fn>;
-	thread: { id: string; findToolCallByRequestId: ReturnType<typeof vi.fn> };
 	actions: ReturnType<typeof useWorkflowSetupActions>;
 }
 
@@ -88,13 +86,6 @@ function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 		return { nodeCredentials: out };
 	});
 
-	const thread = {
-		id: 'thread-1',
-		findToolCallByRequestId: vi.fn(() => ({
-			confirmation: { inputThreadId: 'input-thread-1' },
-		})),
-	};
-
 	const actions = useWorkflowSetupActions({
 		requestId: ref('req-1'),
 		workflowId: ref('workflow-1'),
@@ -112,7 +103,8 @@ function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 			buildCompletedSetupPayload,
 		},
 		applyMachine: { apply, defer },
-		thread: thread as unknown as ThreadRuntime,
+		threadId: ref('thread-1'),
+		inputThreadId: ref<string | undefined>('input-thread-1'),
 	});
 
 	return {
@@ -131,7 +123,6 @@ function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 		defer,
 		markSectionSkipped,
 		buildCompletedSetupPayload,
-		thread,
 		actions,
 	};
 }

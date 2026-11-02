@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import type { OutboundHttp } from '@n8n/backend-network';
+import type {
+	HttpConnectionPoolOptions,
+	HttpRequestClient,
+	OutboundHttp,
+} from '@n8n/backend-network';
 import {
 	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
@@ -78,6 +82,8 @@ export class MessageEventBusDestinationWebhook
 
 	requestOptions?: IHttpRequestOptions;
 
+	private httpClient?: HttpRequestClient;
+
 	constructor(
 		eventBusInstance: MessageEventBus,
 		options: MessageEventBusDestinationWebhookOptions,
@@ -136,7 +142,25 @@ export class MessageEventBusDestinationWebhook
 			maxSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
 			maxFreeSockets: options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 			maxTotalSockets: options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+			// Closes idle sockets, which the receiver would otherwise keep open
+			timeout: options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 		};
+	}
+
+	private buildConnectionPool(): HttpConnectionPoolOptions {
+		return {
+			agentOptions: this.buildAgentOptions(this.options),
+			proxy: this.resolveProxy(this.options),
+			skipSslCertificateValidation: this.options?.allowUnauthorizedCerts === true,
+		};
+	}
+
+	private getHttpClient(): HttpRequestClient {
+		this.httpClient ??= this.outboundHttp.requests({
+			useDefaultSsrfPolicy: 'unsafe', // The destination URL is admin-configured, so SSRF protection is disabled.
+			connectionPool: this.buildConnectionPool(),
+		});
+		return this.httpClient;
 	}
 
 	private buildConnectionOptions(): IHttpRequestOptions {
@@ -145,7 +169,6 @@ export class MessageEventBusDestinationWebhook
 			method: this.method as IHttpRequestMethods,
 			headers: {},
 			disableFollowRedirect: true,
-			agentOptions: this.buildAgentOptions(this.options),
 			timeout: this.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 		};
 
@@ -153,15 +176,6 @@ export class MessageEventBusDestinationWebhook
 		if (redirectInner?.followRedirects) {
 			requestOptions.disableFollowRedirect = false;
 			requestOptions.maxRedirects = redirectInner.maxRedirects;
-		}
-
-		const proxy = this.resolveProxy(this.options);
-		if (proxy) {
-			requestOptions.proxy = proxy;
-		}
-
-		if (this.options?.allowUnauthorizedCerts) {
-			requestOptions.skipSslCertificateValidation = true;
 		}
 
 		return requestOptions;
@@ -416,9 +430,7 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		try {
-			const requestResponse = await this.outboundHttp
-				.requests({ useDefaultSsrfPolicy: 'unsafe' }) // The destination URL is admin-configured, so SSRF protection is disabled.
-				.request(request);
+			const requestResponse = await this.getHttpClient().request(request);
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.statusCode === this.expectedStatusCode) {
@@ -442,5 +454,10 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		return sendResult;
+	}
+
+	async close() {
+		await super.close();
+		this.httpClient?.close();
 	}
 }

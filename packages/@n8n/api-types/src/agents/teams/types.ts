@@ -74,6 +74,25 @@ export interface TeamsAgentSetupState {
 	 */
 	defaultDisplayName: string;
 	defaultDescription: string;
+	/**
+	 * Whether the connected credential is one the recommended setup made for
+	 * this agent. A channel wired up by hand is left to the manual flow even
+	 * where the recommended one could have run.
+	 */
+	provisionedByN8n: boolean;
+	/**
+	 * Where an administrator approves the app's file access in one step. Only
+	 * for an app the recommended setup made, which registers the return address
+	 * the consent screen needs.
+	 */
+	fileAccessConsentUrl: string | null;
+	/** The Azure Bot the recommended setup made. Null for one made by hand or before n8n kept it. */
+	azureBot: { name: string; portalUrl: string } | null;
+	/**
+	 * The saved channel would build a different app than the one n8n last
+	 * handed over, so Teams holds an older version. False when n8n has no record.
+	 */
+	appOutdated: boolean;
 }
 
 /**
@@ -87,6 +106,23 @@ export type TeamsCredentialCheck =
 			status: 'failed';
 			reason: 'certificate' | 'incomplete' | 'rejected' | 'unreachable' | 'cloud';
 	  };
+
+/**
+ * Whether an administrator approved the app's Graph permissions: reading files
+ * attached in channels and group chats, and finding people and channels. Read
+ * from a fresh token, so it shows an approval at once, while a running agent
+ * keeps its older token for up to an hour. `unknown` when Microsoft gave no
+ * token to read it from.
+ */
+export interface TeamsFileAccessCheck {
+	status: 'approved' | 'notApproved' | 'unknown';
+}
+
+/**
+ * Sent through Microsoft's admin consent screen and handed back unchanged, so
+ * the agent page knows to open the Teams settings.
+ */
+export type TeamsFileAccessConsentState = 'teams-file-access';
 
 /**
  * One Microsoft sign-in the user can provision with. Several may exist in a
@@ -140,6 +176,7 @@ export interface TeamsProvisionedAppSummary {
 	appName: string;
 	organizationName: string | null;
 	entraAppUrl: string;
+	fileAccessConsentUrl: string | null;
 	/**
 	 * When the client secret stops working. n8n created it, so the user cannot
 	 * replace it by hand — the channel settings offer a renew instead.
@@ -158,4 +195,16 @@ export interface TeamsProvisionedBotSummary {
 	botName: string;
 	resourceGroup: string;
 	subscriptionId: string;
+}
+
+/**
+ * Where the Teams app stands in the organisation's catalogue, read back from
+ * Microsoft rather than tracked by n8n.
+ *
+ * `unknown` covers an app that is not listed yet: published policies take a day
+ * or two to apply, so an app missing from the listing has not been refused.
+ */
+export interface TeamsCatalogState {
+	status: 'published' | 'submitted' | 'rejected' | 'unknown';
+	teamsAppId: string | null;
 }

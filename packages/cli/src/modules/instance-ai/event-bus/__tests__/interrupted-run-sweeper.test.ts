@@ -280,9 +280,10 @@ describe('InterruptedRunSweeper', () => {
 		expect(metrics.sweep.runsMarkedInterrupted).toBe(1);
 	});
 
-	it('multi-main: recent durable activity is a liveness heartbeat and skips the run', async () => {
+	it('multi-main: recent durable activity keeps a run live without checkpoints', async () => {
 		const { sweeper, published } = buildSweeper({
 			events: [runStart()],
+			checkpoints: [],
 			isMultiMain: true,
 			lastFactAt: new Date(), // written seconds ago: a sibling is driving it
 		});

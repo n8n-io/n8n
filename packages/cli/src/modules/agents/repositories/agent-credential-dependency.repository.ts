@@ -1,4 +1,9 @@
-import { BaseRepository, CredentialsEntity, TransactionRunner } from '@n8n/db';
+import {
+	BaseRepository,
+	CredentialsEntity,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 
@@ -12,18 +17,26 @@ export type AgentCredentialDependencyReference = Pick<
 	'agentId' | 'credentialId'
 >;
 
+class AgentCredentialDependencyTable extends BaseRepository<AgentCredentialDependency> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentCredentialDependency, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
-export class AgentCredentialDependencyRepository extends BaseRepository<AgentCredentialDependency> {
+export class AgentCredentialDependencyRepository {
+	private readonly table: AgentCredentialDependencyTable;
+
 	constructor(
 		dataSource: DataSource,
 		private readonly txRunner: TransactionRunner,
 	) {
-		super(AgentCredentialDependency, dataSource.manager, txRunner);
+		this.table = new AgentCredentialDependencyTable(dataSource, txRunner);
 	}
 
-	async refreshForAgent(agentId: string): Promise<void> {
-		await this.txRunner.run({}, async (ctx) => {
-			const manager = this.managerFor(ctx);
+	async refreshForAgent(agentId: string, ctx: OperationContext): Promise<void> {
+		await this.txRunner.run(ctx, async (ctx) => {
+			const manager = this.table.managerFor(ctx);
 			const isPostgres = manager.connection.options.type === 'postgres';
 
 			// Starting with a write serializes the authoritative re-read on SQLite.
@@ -76,16 +89,17 @@ export class AgentCredentialDependencyRepository extends BaseRepository<AgentCre
 		});
 	}
 
-	async removeForAgent(agentId: string): Promise<void> {
-		await this.managerFor({}).delete(AgentCredentialDependency, { agentId });
+	async removeForAgent(agentId: string, ctx: OperationContext): Promise<void> {
+		await this.table.managerFor(ctx).delete(AgentCredentialDependency, { agentId });
 	}
 
 	async findByCredentialIds(
 		credentialIds: string[],
+		ctx: OperationContext,
 	): Promise<AgentCredentialDependencyReference[]> {
 		if (credentialIds.length === 0) return [];
 
-		return await this.find({
+		return await this.table.managerFor(ctx).find(AgentCredentialDependency, {
 			select: ['agentId', 'credentialId'],
 			where: { credentialId: In(credentialIds) },
 		});

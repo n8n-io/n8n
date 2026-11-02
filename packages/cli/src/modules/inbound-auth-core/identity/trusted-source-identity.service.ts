@@ -1,6 +1,11 @@
 import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, RoleService } from '@n8n/backend-services';
+import {
+	RoleMappingProxyService,
+	type ResolvedRoles,
+	type RoleMappingProvider,
+} from '@n8n/backend-services/auth';
 import { Time } from '@n8n/constants';
 import {
 	isValidEmail,
@@ -20,12 +25,6 @@ import {
 } from '@n8n/inbound-auth';
 import { GLOBAL_OWNER_ROLE_SLUG, type Principal, type SecurityContext } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
-
-import {
-	RoleMappingProxyService,
-	type ResolvedRoles,
-	type RoleMappingProvider,
-} from '@/services/role-mapping-proxy.service';
 
 import type { TrustedSourceIdentityEntity } from '../database/entities/trusted-source-identity.entity';
 import {

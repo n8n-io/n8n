@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 
 import type { PromptCachingConfigSchema } from './agent-json-config.schema';
+import { getProviderPrefix, splitModelId } from './model-id';
 
 /**
  * Static capability map for LLM providers the agent runtime can target.
@@ -182,12 +183,53 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	},
 };
 
+export function isGoogleVertexAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return provider === 'google-vertex' && model.startsWith('claude-');
+}
+
+export function isOpenRouterAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return provider === 'openrouter' && model.startsWith('anthropic/claude-');
+}
+
+/**
+ * Prefix of a Claude deployment on Microsoft Foundry, after the provider:
+ * `azure-openai/anthropic/<deployment>`. A deployment name is user-chosen, so
+ * the prefix records that the deployment answers on the Anthropic Messages API.
+ */
+export const AZURE_FOUNDRY_ANTHROPIC_PREFIX = 'anthropic/';
+
+export function isAzureFoundryAnthropicModel(modelId: string): boolean {
+	const { provider, model } = splitModelId(modelId);
+	return provider === 'azure-openai' && model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX);
+}
+
+export function isRoutedAnthropicModel(modelId: string): boolean {
+	return (
+		isGoogleVertexAnthropicModel(modelId) ||
+		isOpenRouterAnthropicModel(modelId) ||
+		isAzureFoundryAnthropicModel(modelId)
+	);
+}
+
+/** Cache support depends on the model when the provider routes to several vendors. */
+export function getModelPromptCachingCapability(
+	modelId: string,
+): ProviderCapabilities['promptCaching'] {
+	if (isRoutedAnthropicModel(modelId)) return 'ttl';
+	return PROVIDER_CAPABILITIES[getProviderPrefix(modelId)]?.promptCaching ?? false;
+}
+
 /** Attachment support of a provider. Unknown providers support none. */
 export function getProviderAttachmentCapabilities(
 	provider: string | undefined,
 ): ProviderAttachmentCapabilities {
 	return (provider && PROVIDER_CAPABILITIES[provider]?.attachments) || NO_ATTACHMENTS;
 }
+
+// Raster types that every provider with image support accepts. Others, such as SVG, TIFF or HEIC, make the model call fail.
+const MODEL_IMAGE_MEDIA_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 
 /**
  * Whether a media type is accepted as an inline file part by the given
@@ -200,7 +242,8 @@ export function isAttachmentMediaTypeSupported(
 ): boolean {
 	if (!mediaType) return false;
 	const attachments = getProviderAttachmentCapabilities(provider);
-	if (mediaType.startsWith('image/')) return attachments.image;
+	if (mediaType.startsWith('image/'))
+		return attachments.image && MODEL_IMAGE_MEDIA_TYPES.has(mediaType);
 	if (mediaType === 'application/pdf') return attachments.pdf;
 	if (mediaType.startsWith('audio/')) return attachments.audio;
 	return false;
@@ -211,7 +254,7 @@ export function acceptedMimeTypesFromCapabilities(
 	capabilities: ProviderAttachmentCapabilities,
 ): string {
 	return [
-		capabilities.image ? 'image/*' : null,
+		capabilities.image ? [...MODEL_IMAGE_MEDIA_TYPES].join(',') : null,
 		capabilities.pdf ? 'application/pdf' : null,
 		capabilities.audio ? 'audio/*' : null,
 	]

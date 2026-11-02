@@ -4,17 +4,19 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 export type { EngineLogger } from './logging';
 
 export {
-	ACTION_TOKEN,
-	IDENTITY_TOKEN,
+	ACTION_TOKEN_SPEC,
+	IDENTITY_TOKEN_SPEC,
 	InvalidActionTokenError,
 	InvalidIdentityTokenError,
 	mintActionToken,
 	mintIdentityToken,
+	mintResumeToken,
 	SharedSecretIdentityVerifier,
 	verifyActionToken,
 } from './auth';
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
+export { triggerOutputsSchema, workflowGraphSchema } from './server';
 export type {
 	CancelExecutionResponse,
 	EngineErrorResponse,
@@ -22,9 +24,14 @@ export type {
 	StepDetail,
 } from './server';
 export type {
+	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 	ExecutionListItem,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeTargetRequest,
+	ResumeTargetResponse,
 } from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
@@ -59,7 +66,7 @@ export type {
 	UndeliverableMessage,
 } from './response-channel';
 
-export { UnimplementedError } from './common';
+export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
 export { deriveLoops, isBatchStepConfig } from './graph';
@@ -82,6 +89,8 @@ export type {
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
+	SubExecutionDeclaration,
+	SubExecutionMode,
 } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
@@ -100,7 +109,7 @@ export type {
 	WorkQueue,
 } from './queue';
 
-export { ExecutionNotFoundError, StepNotFoundError } from './execution';
+export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
 export type {
 	CallerContext,
 	ExecutionMode,
@@ -112,6 +121,8 @@ export type {
 	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	ParentLink,
+	InvalidParentLinkReason,
 	StartExecutionRequest,
 	StartExecutionResult,
 	StepError,
@@ -125,6 +136,7 @@ export type {
 	StepView,
 	SeededSteps,
 	TriggerOutputs,
+	ExecutorWaitDeclaration,
 	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';

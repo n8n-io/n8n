@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeAuthError, TokenExchangeRequestError } from '../token-exchange.errors';

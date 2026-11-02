@@ -197,9 +197,15 @@ const onSubmitChanges = () => {
 					<N8nTooltip
 						v-if="status.action === 'submit-changes'"
 						:disabled="!submitChangesHint"
-						:content="submitChangesHint"
 						:show-after="300"
 					>
+						<template #content>
+							<span
+								:class="$style.submitChangesHint"
+								data-test-id="workflow-review-submit-changes-hint"
+								>{{ submitChangesHint }}</span
+							>
+						</template>
 						<N8nButton
 							size="small"
 							:disabled="!isSubmitChangesEnabled"
@@ -217,6 +223,11 @@ const onSubmitChanges = () => {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/focus';
+
+/* A blocked-publish reason can list one restriction scope on each line. */
+.submitChangesHint {
+	white-space: pre-line;
+}
 
 .pill {
 	display: inline-flex;

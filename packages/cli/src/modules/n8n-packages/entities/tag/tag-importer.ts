@@ -56,20 +56,14 @@ export class TagImporter {
 			return requirement;
 		});
 
-		const targetsById = new Map(
-			(await this.tagService.getByIds(referencedTagIds)).map((tag) => [tag.id, toTagRef(tag)]),
-		);
-		const wantedNames = [...new Set(referencedRequirements.map(({ name }) => name.trim()))];
-		const holdersByName = new Map(
-			(await this.tagService.getByNames(wantedNames)).map((tag) => [tag.name, toTagRef(tag)]),
-		);
+		const local = await this.findLocalTags(referencedRequirements);
 
 		const decisionFailures: TagDecisionFailure[] = [];
 		for (const requirement of referencedRequirements) {
-			const holder = holdersByName.get(requirement.name.trim());
+			const holder = local.byName.get(requirement.name.trim());
 			const effect = decideTagImportAction(
 				requirement,
-				targetsById.get(requirement.id),
+				local.byId.get(requirement.id),
 				holder && holder.id !== requirement.id ? holder : undefined,
 				request.missingMode,
 				request.conflictPolicy,
@@ -99,6 +93,23 @@ export class TagImporter {
 		}
 
 		return plan;
+	}
+
+	/**
+	 * Finds the local tags that can match package tags: by ID, and by name. Names match
+	 * trimmed and case-sensitive. The promotions preview uses this too, so it matches as Apply does.
+	 */
+	async findLocalTags(
+		tags: ReadonlyArray<{ id: string; name: string }>,
+	): Promise<{ byId: Map<string, TagRef>; byName: Map<string, TagRef> }> {
+		const [byId, byName] = await Promise.all([
+			this.tagService.getByIds([...new Set(tags.map(({ id }) => id))]),
+			this.tagService.getByNames([...new Set(tags.map(({ name }) => name.trim()))]),
+		]);
+		return {
+			byId: new Map(byId.map((tag) => [tag.id, toTagRef(tag)])),
+			byName: new Map(byName.map((tag) => [tag.name, toTagRef(tag)])),
+		};
 	}
 
 	/**

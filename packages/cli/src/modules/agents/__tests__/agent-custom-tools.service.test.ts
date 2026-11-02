@@ -1,3 +1,5 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import { TransactionRunner } from '@n8n/db';
 import type { EventService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import type { ToolDescriptor } from '@n8n/agents';
@@ -12,7 +14,7 @@ import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import {
 	type AgentFixtureOverrides,
@@ -35,7 +37,7 @@ const descriptor: ToolDescriptor = {
 	providerOptions: null,
 };
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		projectId,
@@ -52,7 +54,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		skills: {},
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService() {
@@ -71,7 +73,9 @@ function makeService() {
 			agentUpdateBroadcaster,
 			modificationTelemetry,
 		),
-		createAgentSkillRefsService(agentRepository),
+		createAgentSkillRefsService(),
+		mock<AgentDefinitionService>(),
+		historyTransactionRunner(),
 	);
 
 	return {
@@ -111,7 +115,7 @@ describe('AgentCustomToolsService', () => {
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 	});
 
 	it('keeps save effects silent when a custom tool loses the revision fence', async () => {
@@ -207,7 +211,7 @@ describe('AgentCustomToolsService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {}, undefined);
 	});
 
 	it('snapshots only configured custom tools', () => {
@@ -271,8 +275,13 @@ describe('AgentCustomToolsService', () => {
 			expect.objectContaining({
 				by: 'user',
 				changedParts: ['tools'],
-				wasUnconfigured: false,
 			}),
 		);
 	});
 });
+
+function historyTransactionRunner() {
+	const runner = mock<TransactionRunner>();
+	runner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	return runner;
+}

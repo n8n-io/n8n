@@ -191,8 +191,26 @@ export class RunDataPanel {
 		return this.root.locator('a').first();
 	}
 
-	async switchDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema' | 'binary'): Promise<void> {
-		await this.root.getByTestId(`radio-button-${mode}`).click();
+	/** A string, not a closed list, because frontend modules can add display modes. */
+	async switchDisplayMode(mode: string): Promise<void> {
+		await this.getDisplayModeOption(mode).click();
+	}
+
+	getDisplayModeOption(mode: string) {
+		return this.root.getByTestId(`radio-button-${mode}`);
+	}
+
+	/** The sandboxed iframe of the HTML display mode. */
+	getHtmlPreview() {
+		return this.root.locator('iframe.__html-display').contentFrame();
+	}
+
+	getHtmlPreviewHeadings() {
+		return this.getHtmlPreview().getByRole('heading');
+	}
+
+	getHtmlPreviewHeading(name: string) {
+		return this.getHtmlPreview().getByRole('heading', { name, exact: true });
 	}
 
 	/** The download button of a binary entry in the binary display mode. */

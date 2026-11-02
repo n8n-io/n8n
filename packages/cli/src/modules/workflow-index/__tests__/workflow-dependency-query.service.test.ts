@@ -15,14 +15,6 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentUsageProviderProxy } from '../agent-usage-provider-proxy.service';
 import { WorkflowDependencyQueryService } from '../workflow-dependency-query.service';
 
-const { isCredSharingEnabledMock } = vi.hoisted(() => ({
-	isCredSharingEnabledMock: vi.fn(),
-}));
-
-vi.mock('@/constants/credential-sharing', () => ({
-	isCredSharingEnabled: isCredSharingEnabledMock,
-}));
-
 describe('WorkflowDependencyQueryService', () => {
 	const dependencyRepository = mock<WorkflowDependencyRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -51,7 +43,6 @@ describe('WorkflowDependencyQueryService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		agentUsageProvider.findAgentUsages.mockResolvedValue([]);
-		isCredSharingEnabledMock.mockReturnValue(true);
 	});
 
 	describe('getResourceDependencies', () => {
@@ -60,7 +51,7 @@ describe('WorkflowDependencyQueryService', () => {
 				new Set(['cred-1']),
 			);
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
-			dependencyRepository.find.mockResolvedValue([
+			dependencyRepository.findDependenciesForResources.mockResolvedValue([
 				mock({ workflowId: 'wf-1', dependencyType: 'credentialId', dependencyKey: 'cred-1' }),
 			]);
 			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Test Cred' })]);
@@ -109,7 +100,7 @@ describe('WorkflowDependencyQueryService', () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
 				new Set(['wf-1', 'wf-2']),
 			);
-			dependencyRepository.find.mockResolvedValue([
+			dependencyRepository.findDependenciesForResources.mockResolvedValue([
 				mock({ workflowId: 'wf-2', dependencyType: 'workflowCall', dependencyKey: 'wf-1' }),
 			]);
 			workflowRepository.find.mockResolvedValue([
@@ -126,33 +117,13 @@ describe('WorkflowDependencyQueryService', () => {
 				expect.objectContaining({ relations: expect.anything() }),
 			);
 		});
-
-		it('does not request the owner-project relation when the flag is disabled, even for a credential lookup', async () => {
-			isCredSharingEnabledMock.mockReturnValue(false);
-			mockCredentialDep();
-			workflowRepository.find.mockResolvedValue([
-				mock({ id: 'wf-1', name: 'Test Workflow', shared: [] as SharedWorkflow[] }),
-			]);
-
-			const result = await service.getResourceDependencies(['cred-1'], 'credential', user);
-
-			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: ['id', 'name'] }),
-			);
-			expect(result['cred-1'].dependencies).toContainEqual({
-				id: 'wf-1',
-				name: 'Test Workflow',
-				type: 'workflowParent',
-				projectId: undefined,
-			});
-		});
 	});
 
 	describe('getResourceDependencies with a credential the user cannot see', () => {
 		beforeEach(() => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
-			dependencyRepository.find.mockResolvedValue([
+			dependencyRepository.findDependenciesForResources.mockResolvedValue([
 				mock({ workflowId: 'wf-1', dependencyType: 'credentialId', dependencyKey: 'cred-1' }),
 			]);
 			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Personal Cred' })]);
@@ -205,16 +176,6 @@ describe('WorkflowDependencyQueryService', () => {
 
 		it('counts it as hidden when not asked to list it', async () => {
 			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user);
-
-			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
-		});
-
-		it('counts it as hidden when credential sharing is disabled', async () => {
-			isCredSharingEnabledMock.mockReturnValue(false);
-
-			const result = await service.getResourceDependencies(['wf-1'], 'workflow', user, {
-				listUnavailableCredentials: true,
-			});
 
 			expect(result['wf-1']).toEqual({ dependencies: [], inaccessibleCount: 1 });
 		});

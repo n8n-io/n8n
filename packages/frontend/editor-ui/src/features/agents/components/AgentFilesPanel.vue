@@ -14,9 +14,11 @@ import { ElSkeletonItem } from 'element-plus';
 import { ALLOWED_AGENT_FILE_EXTENSIONS, type AgentFileDto } from '@n8n/api-types';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const props = withDefaults(
 	defineProps<{
+		agentId: string;
 		files: AgentFileDto[];
 		disabled?: boolean;
 		loading?: boolean;
@@ -39,6 +41,7 @@ const emit = defineEmits<{
 type FileAction = 'delete';
 
 const i18n = useI18n();
+const agentTelemetry = useAgentTelemetry();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
 const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
@@ -119,6 +122,7 @@ function onAction(actionId: FileAction, file: AgentFileDto) {
 
 function openFilePicker() {
 	if (isUploadDisabled.value) return;
+	agentTelemetry.trackClickedKnowledgeUpload({ agentId: props.agentId });
 	fileInput.value?.click();
 }
 

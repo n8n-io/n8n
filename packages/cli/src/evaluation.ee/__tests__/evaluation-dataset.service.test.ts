@@ -7,10 +7,10 @@ import type { IConnections, IRunData } from 'n8n-workflow';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { InstanceWriteAccessService } from '@n8n/backend-services';
+
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvaluationDatasetService } from '../evaluation-dataset.service';
@@ -23,7 +23,6 @@ describe('EvaluationDatasetService', () => {
 	let executionPersistence: Mocked<ExecutionPersistence>;
 	let executionRedactionServiceProxy: Mocked<ExecutionRedactionServiceProxy>;
 	let dataTableService: Mocked<DataTableService>;
-	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
 	let service: EvaluationDatasetService;
 
 	const user = mock<User>({ id: 'user-1' });
@@ -114,13 +113,11 @@ describe('EvaluationDatasetService', () => {
 		executionPersistence = mock<ExecutionPersistence>();
 		executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 		dataTableService = mock<DataTableService>();
-		instanceWriteAccess = mock<InstanceWriteAccessService>();
 		service = new EvaluationDatasetService(
 			configRepository,
 			executionPersistence,
 			executionRedactionServiceProxy,
 			dataTableService,
-			instanceWriteAccess,
 		);
 
 		configRepository.findByIdAndWorkflowId.mockResolvedValue(makeConfig());
@@ -133,7 +130,6 @@ describe('EvaluationDatasetService', () => {
 		);
 		dataTableService.getProjectIdForDataTable.mockResolvedValue(PROJECT_ID);
 		dataTableService.getColumns.mockResolvedValue(makeColumns());
-		instanceWriteAccess.isReadOnly.mockReturnValue(false);
 		userHasScopesMock.mockReset();
 		userHasScopesMock.mockResolvedValue(true);
 	});
@@ -331,8 +327,23 @@ describe('EvaluationDatasetService', () => {
 			});
 		});
 
+		it('throws NotFoundError without loading the execution when the user cannot read the workflow executions', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('execution:read'),
+			);
+			await expect(
+				service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID),
+			).rejects.toThrow(NotFoundError);
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['execution:read'], false, {
+				workflowId: WORKFLOW_ID,
+			});
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+		});
+
 		it('throws ForbiddenError when the user cannot read the data table', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('dataTable:readRow'),
+			);
 			await expect(
 				service.getCandidate(user, WORKFLOW_ID, CONFIG_ID, EXECUTION_ID),
 			).rejects.toThrow(ForbiddenError);
@@ -341,21 +352,26 @@ describe('EvaluationDatasetService', () => {
 	});
 
 	describe('addRow', () => {
-		it('throws ForbiddenError when the instance is in read-only (protected) mode', async () => {
-			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+		it('throws NotFoundError without loading the execution when the user cannot read the workflow executions', async () => {
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('execution:read'),
+			);
 			const dto: AddDatasetRowDto = {
 				executionId: EXECUTION_ID,
 				mapping: { question: { source: 'input', field: 'question' } },
 			};
 
 			await expect(service.addRow(user, WORKFLOW_ID, CONFIG_ID, dto)).rejects.toThrow(
-				ForbiddenError,
+				NotFoundError,
 			);
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 			expect(dataTableService.insertRows).not.toHaveBeenCalled();
 		});
 
 		it('enforces write access on the data table and throws ForbiddenError when denied', async () => {
-			userHasScopesMock.mockResolvedValue(false);
+			userHasScopesMock.mockImplementation(
+				async (_user, scopes) => !scopes.includes('dataTable:writeRow'),
+			);
 			const dto: AddDatasetRowDto = {
 				executionId: EXECUTION_ID,
 				mapping: { question: { source: 'input', field: 'question' } },

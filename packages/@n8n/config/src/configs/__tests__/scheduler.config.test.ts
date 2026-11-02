@@ -32,7 +32,6 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.retentionSeconds).toBe(24 * 60 * 60);
 			expect(scheduler.failedRetentionSeconds).toBe(7 * 24 * 60 * 60);
 			expect(scheduler.retentionIntervalSeconds).toBe(60 * 60);
-			expect(scheduler.minIntervalSeconds).toBe(0);
 			expect(scheduler.jitterRatio).toBe(0.1);
 			expect(scheduler.materializationTimeoutSeconds).toBe(60);
 			expect(scheduler.executorTimeoutSeconds).toBe(60);
@@ -74,7 +73,6 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_RETENTION', '43200');
 			vi.stubEnv('N8N_SCHEDULER_FAILED_RETENTION', '86400');
 			vi.stubEnv('N8N_SCHEDULER_RETENTION_INTERVAL', '600');
-			vi.stubEnv('N8N_SCHEDULER_MIN_INTERVAL', '15');
 			vi.stubEnv('N8N_SCHEDULER_JITTER_RATIO', '0.25');
 			vi.stubEnv('N8N_SCHEDULER_MATERIALIZATION_TIMEOUT', '30');
 			vi.stubEnv('N8N_SCHEDULER_EXECUTOR_TIMEOUT', '15');
@@ -97,7 +95,6 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.retentionSeconds).toBe(43200);
 			expect(scheduler.failedRetentionSeconds).toBe(86400);
 			expect(scheduler.retentionIntervalSeconds).toBe(600);
-			expect(scheduler.minIntervalSeconds).toBe(15);
 			expect(scheduler.jitterRatio).toBe(0.25);
 			expect(scheduler.materializationTimeoutSeconds).toBe(30);
 			expect(scheduler.executorTimeoutSeconds).toBe(15);
@@ -127,14 +124,6 @@ describe('SchedulerConfig', () => {
 			const { scheduler } = Container.get(GlobalConfig);
 
 			expect(scheduler.taskTimeoutSeconds).toBe(300);
-		});
-
-		it('should allow disabling the min-interval clamp with 0', () => {
-			vi.stubEnv('N8N_SCHEDULER_MIN_INTERVAL', '0');
-
-			const { scheduler } = Container.get(GlobalConfig);
-
-			expect(scheduler.minIntervalSeconds).toBe(0);
 		});
 	});
 });

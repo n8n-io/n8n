@@ -1,7 +1,8 @@
+import type { SerializedDataTableColumn } from '@n8n/api-types';
+
 import { diffDataTableColumns, findSchemaIncompatibility } from './data-table-compat';
 import type { SchemaIncompatibility, TargetColumn } from './data-table-compat';
 import type { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
-import type { SerializedDataTableColumn } from '../../spec/serialized/data-table.schema';
 
 /**
  * Decides whether a matched table's schema blocks the import. `keep-existing`

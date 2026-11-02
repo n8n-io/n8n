@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -19,9 +20,22 @@ import { InstanceSettings } from 'n8n-core';
 export class OAuthServerModule implements ModuleInterface {
 	async init() {
 		const { instanceType } = Container.get(InstanceSettings);
+		const { OAuthGrantRepository } = await import(
+			'./database/repositories/oauth-grant.repository.js'
+		);
+		const { UserDeactivationHooks } = await import('@/services/user-deactivation-hooks.service.js');
+		const grants = Container.get(OAuthGrantRepository);
+		Container.get(UserDeactivationHooks).register('oauth-server', async (userId, ctx) => {
+			await grants.deleteUserGrants(userId, ctx);
+		});
 
-		// Only import controllers in the main process, since the webhook/worker processes don't run an HTTP server and don't need them.
 		if (instanceType === 'main') {
+			await grants.deleteGrantsForDisabledUsers().catch((error: unknown) => {
+				Container.get(Logger).error('Failed to clean up OAuth grants for disabled users', {
+					error,
+				});
+			});
+			// Webhook and worker processes do not serve these controllers.
 			await import('./oauth.controller.js');
 			await import('./oauth-consent.controller.js');
 			await import('./oauth-clients.controller.js');
@@ -37,24 +51,15 @@ export class OAuthServerModule implements ModuleInterface {
 
 		// The JWKS endpoint is served by main only.
 		if (instanceType === 'main') {
-			const { JwksRegistry } = await import('@/jwks/jwks.registry.js');
+			const { JwksRegistry } = await import('@n8n/backend-services/auth');
 			const { OAuthSigningJwksProvider } = await import('./oauth-signing-jwks.provider.js');
 			Container.get(JwksRegistry).register(Container.get(OAuthSigningJwksProvider));
 		}
 
-		// Discovery reads this server's metadata and keys in process, like any other trusted source.
-		const { LocalAuthorizationServer } = await import('@n8n/inbound-auth');
-		const { OAuthServerLocalAuthorizationServer } = await import(
-			'./oauth-local-authorization-server.js'
-		);
-		Container.set(LocalAuthorizationServer, Container.get(OAuthServerLocalAuthorizationServer));
-
 		// Register the token service as the OAuth token verifier provider, so
 		// protected-resource modules verify bearer tokens through the core
 		// `OAuthTokenVerifierProxy` instead of importing this module.
-		const { OAuthTokenVerifierProxy } = await import(
-			'@/services/oauth-token-verifier-proxy.service.js'
-		);
+		const { OAuthTokenVerifierProxy } = await import('@n8n/backend-services/auth');
 		const { OAuthTokenService } = await import('./oauth-token.service.js');
 		Container.get(OAuthTokenVerifierProxy).registerProvider(Container.get(OAuthTokenService));
 
@@ -63,9 +68,21 @@ export class OAuthServerModule implements ModuleInterface {
 		);
 		registerProtectedResourceResolvers();
 
-		const { OAuth2FlowProxy } = await import('@/services/oauth2-flow-proxy.service.js');
+		const { OAuth2FlowProxy } = await import('@n8n/backend-services/auth');
 		const { OAuth2FlowService } = await import('./oauth-flow.service.js');
 		Container.get(OAuth2FlowProxy).registerProvider(Container.get(OAuth2FlowService));
+
+		// Last: discovery reads this server's metadata in process as soon as it registers, and
+		// that metadata lists the scopes of the resolvers registered above.
+		const { LocalAuthorizationServerProxy } = await import(
+			'@/modules/inbound-auth-core/local-authorization-server.proxy.js'
+		);
+		const { OAuthServerLocalAuthorizationServer } = await import(
+			'./oauth-local-authorization-server.js'
+		);
+		await Container.get(LocalAuthorizationServerProxy).registerProvider(
+			Container.get(OAuthServerLocalAuthorizationServer),
+		);
 	}
 
 	async entities() {

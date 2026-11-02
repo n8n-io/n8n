@@ -32,7 +32,7 @@ export class ProcessInternalsService {
 			add('scaling', Container.get(ScalingService).getDiagnosticCounts());
 		}
 
-		if (instanceType === 'main' || instanceType === 'webhook') {
+		if (instanceType === 'main' || instanceType === 'webhook' || instanceType === 'worker') {
 			add('activeExecutions', Container.get(ActiveExecutions).getDiagnosticCounts());
 		}
 

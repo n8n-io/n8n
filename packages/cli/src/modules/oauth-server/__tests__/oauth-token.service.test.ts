@@ -4,20 +4,22 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { OperationContext, TransactionRunner, User } from '@n8n/db';
+import { TransactionRunner, type User, type OperationContext } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { KeyObject } from 'node:crypto';
 import { createHmac, createPublicKey, generateKeyPairSync } from 'node:crypto';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
 import { OAUTH_ACCESS_TOKEN_TTL_SECONDS } from '../oauth-signing-key.constants';
+import { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
+import { OAuthGrantService } from '../oauth-grant.service';
 import { OAuthTokenService } from '../oauth-token.service';
 import { JWTVerificationError } from '../oauth.errors';
 import {
@@ -30,8 +32,7 @@ import {
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const LEGACY_HMAC_SECRET = 'legacy-hmac-secret';
@@ -52,7 +53,6 @@ let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
 let urlService: MockProxy<UrlService>;
 let service: OAuthTokenService;
-let txRunner: MockProxy<TransactionRunner>;
 const workflowFinderService = mock<WorkflowFinderService>();
 const signingKeys = createSigningKeyService();
 const signingKeyService = signingKeys.service;
@@ -73,6 +73,19 @@ registry.register({
 	authorize: async () => true,
 });
 
+const activeGrantUser = mock<User>({ disabled: false });
+const grantRepository = mock<OAuthGrantRepository>();
+const grantTransactionRunner = mock<TransactionRunner>();
+const grantService = new OAuthGrantService(grantTransactionRunner, grantRepository);
+
+beforeEach(() => {
+	grantRepository.lockUserForGrant.mockReset().mockResolvedValue(activeGrantUser);
+	grantTransactionRunner.run.mockImplementation(
+		async <T>(ctx: OperationContext, work: (ctx: OperationContext) => Promise<T>) =>
+			await work(ctx),
+	);
+});
+
 describe('OAuthTokenService', () => {
 	beforeAll(async () => {
 		await signingKeyService.initialize();
@@ -84,13 +97,6 @@ describe('OAuthTokenService', () => {
 		urlService = mock<UrlService>();
 		urlService.getInstanceBaseUrl.mockReturnValue(TEST_BASE_URL);
 
-		// The runner just invokes the work with the (root) context — repositories are mocked,
-		// so no real transaction is opened.
-		txRunner = mock<TransactionRunner>();
-		txRunner.run.mockImplementation(
-			async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) => await fn(ctx),
-		);
-
 		service = new OAuthTokenService(
 			logger,
 			jwtService,
@@ -98,10 +104,10 @@ describe('OAuthTokenService', () => {
 			accessTokenRepository,
 			refreshTokenRepository,
 			registry,
-			txRunner,
 			workflowFinderService,
 			urlService,
 			signingKeyService,
+			grantService,
 		);
 	});
 
@@ -128,7 +134,7 @@ describe('OAuthTokenService', () => {
 			expect(decoded.sub).toBe(userId);
 			expect(decoded.aud).toBe(TEST_RESOURCE_URL);
 			expect(decoded.client_id).toBe(clientId);
-			expect(decoded.meta.isOAuth).toBe(true);
+			expect(decoded.meta).toBeUndefined();
 			expect(decoded.jti).toBeDefined();
 			expect(decoded.iat).toBeDefined();
 			expect(decoded.exp).toBeDefined();
@@ -216,7 +222,7 @@ describe('OAuthTokenService', () => {
 				TEST_RESOURCE_URL,
 			);
 
-			expect(txRunner.run).toHaveBeenCalled();
+			expect(grantTransactionRunner.run).toHaveBeenCalled();
 
 			expect(accessTokenRepository.insertToken).toHaveBeenCalledWith(
 				{ token: accessToken, clientId, userId },
@@ -238,6 +244,22 @@ describe('OAuthTokenService', () => {
 	});
 
 	describe('validateAndRotateRefreshToken', () => {
+		it.each([null, mock<User>({ disabled: true })])(
+			'requires an active token owner (%#)',
+			async (user) => {
+				refreshTokenRepository.findByToken.mockResolvedValue(
+					mock<RefreshToken>({ userId: 'user-123' }),
+				);
+				grantRepository.lockUserForGrant.mockResolvedValueOnce(user);
+				await expect(
+					service.validateAndRotateRefreshToken('refresh', 'client'),
+				).rejects.toMatchObject({ name: 'InvalidGrantError' });
+				expect(refreshTokenRepository.deleteValidByToken).not.toHaveBeenCalled();
+				expect(accessTokenRepository.insertToken).not.toHaveBeenCalled();
+				expect(refreshTokenRepository.insertToken).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should rotate refresh token and return new token pair in a transaction', async () => {
 			const refreshToken = 'old-refresh-token';
 			const clientId = 'client-123';
@@ -264,7 +286,7 @@ describe('OAuthTokenService', () => {
 			});
 
 			// The work ran through the runner, and all operations went through the repositories.
-			expect(txRunner.run).toHaveBeenCalled();
+			expect(grantTransactionRunner.run).toHaveBeenCalled();
 			expect(refreshTokenRepository.findByToken).toHaveBeenCalled();
 			expect(refreshTokenRepository.deleteValidByToken).toHaveBeenCalled();
 			expect(accessTokenRepository.insertToken).toHaveBeenCalledTimes(1);
@@ -396,10 +418,10 @@ describe('OAuthTokenService', () => {
 				accessTokenRepository,
 				refreshTokenRepository,
 				boundRegistry,
-				txRunner,
 				workflowFinderService,
 				urlService,
 				signingKeyService,
+				grantService,
 			);
 		});
 
@@ -604,6 +626,16 @@ describe('OAuthTokenService', () => {
 	});
 
 	describe('verifyOAuthAccessToken', () => {
+		it('requires an active user for a stored access token', async () => {
+			const { accessToken } = service.generateTokenPair('user-123', 'client-123', undefined, []);
+			accessTokenRepository.findOne.mockResolvedValue(mock<AccessToken>({ token: accessToken }));
+			userRepository.findOne.mockResolvedValueOnce(mock<User>({ id: 'user-123', disabled: true }));
+			await expect(service.verifyOAuthAccessToken(accessToken)).resolves.toEqual({
+				user: null,
+				context: { reason: 'user_disabled', auth_type: 'oauth' },
+			});
+		});
+
 		it('should verify token and return user', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
@@ -615,7 +647,7 @@ describe('OAuthTokenService', () => {
 				userId,
 			});
 
-			const user = mock<User>({ id: userId });
+			const user = mock<User>({ id: userId, disabled: false });
 
 			accessTokenRepository.findOne.mockResolvedValue(accessTokenRecord);
 			userRepository.findOne.mockResolvedValue(user);
@@ -770,10 +802,10 @@ describe('OAuthTokenService', () => {
 				accessTokenRepository,
 				refreshTokenRepository,
 				multiResourceRegistry,
-				txRunner,
 				workflowFinderService,
 				urlService,
 				signingKeyService,
+				grantService,
 			);
 		});
 
@@ -852,10 +884,10 @@ describe('OAuthTokenService', () => {
 				accessTokenRepository,
 				refreshTokenRepository,
 				scopedRegistry,
-				txRunner,
 				workflowFinderService,
 				urlService,
 				signingKeyService,
+				grantService,
 			);
 		});
 
@@ -932,7 +964,7 @@ describe('OAuthTokenService', () => {
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: accessToken, clientId: 'client-456', userId: 'user-123' }),
 			);
-			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123' }));
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
 
 			const result = await scopedService.verifyOAuthAccessToken(accessToken);
 
@@ -973,10 +1005,10 @@ describe('OAuthTokenService', () => {
 				accessTokenRepository,
 				refreshTokenRepository,
 				configuredRegistry,
-				txRunner,
 				workflowFinderService,
 				urlService,
 				signingKeyService,
+				grantService,
 			);
 		});
 
@@ -1025,7 +1057,6 @@ describe('OAuthTokenService', () => {
 				iat: now,
 				exp: now + OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 				scope: '',
-				meta: { isOAuth: true },
 			};
 		};
 

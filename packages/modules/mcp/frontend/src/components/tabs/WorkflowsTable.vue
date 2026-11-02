@@ -291,7 +291,7 @@ const onConnectClick = () => {
 			>
 				<template #actions>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						data-test-id="mcp-bulk-remove-access-button"
 						:label="i18n.baseText('settings.mcp.workflows.table.action.removeMCPAccess')"
 						@click="onBulkRemoveMcpAccess"

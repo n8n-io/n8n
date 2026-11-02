@@ -4,7 +4,7 @@ import { UserError } from 'n8n-workflow';
 
 import { Telemetry } from '@/telemetry';
 
-type Step = 'create_app' | 'create_bot';
+type Step = 'create_app' | 'create_bot' | 'install';
 
 export interface TeamsSetupStepReport {
 	agentId: string;
@@ -13,6 +13,11 @@ export interface TeamsSetupStepReport {
 	step: Step;
 	/** `manual` is the rung taken when the account reaches no subscription. */
 	botRoute?: 'provisioned' | 'manual';
+	/**
+	 * Only the catalogue routes. A sideload finishes in the Teams client, where
+	 * n8n cannot see it, so it reports no outcome at all.
+	 */
+	installRoute?: 'published' | 'submitted';
 }
 
 /**
@@ -79,6 +84,7 @@ export class TeamsSetupTelemetryService {
 				step: report.step,
 				outcome,
 				...(report.botRoute ? { bot_route: report.botRoute } : {}),
+				...(report.installRoute ? { install_route: report.installRoute } : {}),
 				...(reason ? { reason } : {}),
 			});
 		} catch {

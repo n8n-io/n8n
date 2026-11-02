@@ -11,13 +11,12 @@ import {
 	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowDependency, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type FindManyOptions } from '@n8n/typeorm';
 
 import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -31,6 +30,15 @@ const DEFAULT_NODE_USAGE_WORKFLOW_LIMIT = 10;
  *  rarely reaches for more types than this — but it stays bounded, because an instance-wide read
  *  otherwise returns every type in use. */
 const DEFAULT_NODE_USAGE_TYPE_LIMIT = 100;
+
+const RESOURCE_DEPENDENCY_TYPES: Record<
+	DependencyResourceType,
+	Array<WorkflowDependency['dependencyType']>
+> = {
+	workflow: ['workflowCall', 'errorWorkflow'],
+	credential: ['credentialId'],
+	dataTable: ['dataTableId'],
+};
 
 /**
  * Node-type usage over the workflows in scope. Exactly one of `nodeTypes` and `workflows` is set:
@@ -174,11 +182,9 @@ export class WorkflowDependencyQueryService {
 			]);
 
 		// Only a credential's dependency details need each workflow's owning
-		// project (to link a "used in" workflow back to its project), and only
-		// while the feature that surfaces that link is enabled — so this never
-		// adds work to workflow/data-table dependency lookups or flag-off
-		// instances (e.g. the credentials list's pre-existing "N workflows" pill).
-		const needsWorkflowProject = resourceType === 'credential' && isCredSharingEnabled();
+		// project (to link a "used in" workflow back to its project), so this never
+		// adds work to workflow/data-table dependency lookups.
+		const needsWorkflowProject = resourceType === 'credential';
 		const workflowFindOptions: FindManyOptions<WorkflowEntity> = needsWorkflowProject
 			? {
 					where: { id: In([...maps.allWfIds]) },
@@ -239,9 +245,7 @@ export class WorkflowDependencyQueryService {
 		// Same usability rule as the node credential field, so a user with only
 		// see-rights sees the credential as unavailable in both places.
 		const listUnavailable =
-			options.listUnavailableCredentials === true &&
-			resourceType === 'workflow' &&
-			isCredSharingEnabled();
+			options.listUnavailableCredentials === true && resourceType === 'workflow';
 		const unusableCredIds = new Set(
 			listUnavailable
 				? (
@@ -326,22 +330,17 @@ export class WorkflowDependencyQueryService {
 		if (accessibleInputIds.length === 0) return null;
 
 		const [rawDeps, agentDeps] = await Promise.all([
-			this.dependencyRepository.find({
-				where: [
-					{
-						workflowId: In(accessibleInputIds),
-						dependencyType: In(['credentialId', 'dataTableId', 'errorWorkflow', 'workflowCall']),
-					},
-					{ dependencyKey: In(accessibleInputIds) },
-				],
-				select: ['workflowId', 'dependencyType', 'dependencyKey'],
-			}),
+			this.dependencyRepository.findDependenciesForResources(
+				accessibleInputIds,
+				RESOURCE_DEPENDENCY_TYPES[resourceType],
+				resourceType === 'workflow',
+			),
 			this.loadAgentDeps(resourceType, accessibleInputIds),
 		]);
 
 		if (rawDeps.length === 0 && agentDeps.length === 0) return null;
 
-		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps) };
+		return { accessibleInputIds, maps: this.buildDepMaps(rawDeps, agentDeps, resourceType) };
 	}
 
 	/** Agents using the resources, as `{ agentId, resourceId }` regardless of resource type. */
@@ -353,8 +352,9 @@ export class WorkflowDependencyQueryService {
 	}
 
 	private buildDepMaps(
-		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
+		rawDeps: Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>,
 		agentDeps: Array<{ agentId: string; resourceId: string }>,
+		resourceType: DependencyResourceType,
 	): RawDepMaps {
 		const agentUsageMap = new Map<string, Set<string>>();
 		const credMap = new Map<string, Set<string>>();
@@ -370,25 +370,31 @@ export class WorkflowDependencyQueryService {
 
 		for (const dep of rawDeps) {
 			allWfIds.add(dep.workflowId);
+			// Batch queries also load outgoing dependencies. Only matching target types can add parents.
+			if (RESOURCE_DEPENDENCY_TYPES[resourceType].includes(dep.dependencyType)) {
+				addToSet(
+					dep.dependencyType === 'errorWorkflow' ? errorWfParentMap : parentMap,
+					dep.dependencyKey,
+					dep.workflowId,
+				);
+			}
+			if (resourceType !== 'workflow') continue;
+
 			switch (dep.dependencyType) {
 				case 'credentialId':
 					addToSet(credMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allCredIds.add(dep.dependencyKey);
 					break;
 				case 'dataTableId':
 					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allDtIds.add(dep.dependencyKey);
 					break;
 				case 'workflowCall':
 					addToSet(subMap, dep.workflowId, dep.dependencyKey);
-					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
 				case 'errorWorkflow':
 					addToSet(errorWfMap, dep.workflowId, dep.dependencyKey);
-					addToSet(errorWfParentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
 			}

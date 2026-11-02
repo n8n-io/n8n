@@ -14,7 +14,7 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -287,11 +287,13 @@ describe('GET /credentials/for-workflow', () => {
 			['workflowId', 'owner', () => owner],
 			['projectId', 'owner', () => owner],
 		])(
-			'it will only return the credentials in that project if "%s" is used as the query parameter and the actor is a "%s"',
+			'returns the credentials in that project and the actor\'s own if "%s" is used as the query parameter and the actor is a "%s"',
 			async (_, queryParam, actorGetter) => {
 				const actor = actorGetter();
-				// Credential in personal project that should not be returned
-				await saveCredential(randomCredentialPayload(), { user: actor });
+				// The actor's own credential travels with them into the project
+				const personalCredential = await saveCredential(randomCredentialPayload(), {
+					user: actor,
+				});
 
 				const teamProject = await createTeamProject();
 				await linkUserToProject(actor, teamProject, 'project:viewer');
@@ -310,26 +312,19 @@ describe('GET /credentials/for-workflow', () => {
 								: { projectId: teamProject.id },
 						);
 					expect(response.statusCode).toBe(200);
-					expect(response.body.data).toHaveLength(1);
+					expect(response.body.data).toHaveLength(2);
 					expect(response.body.data).toContainEqual(
 						expect.objectContaining({
 							id: savedCredential.id,
 							scopes: expect.arrayContaining(['credential:read']),
 						}),
 					);
+					expect(response.body.data).toContainEqual(
+						expect.objectContaining({ id: personalCredential.id, sharedRoute: 'personal' }),
+					);
 				}
 			},
 		);
-	});
-
-	describe('for team projects with N8N_ENV_FEAT_CRED_SHARING enabled', () => {
-		beforeEach(() => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
-		});
-
-		afterEach(() => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-		});
 
 		test('offers a credential shared directly with the user only to that user', async () => {
 			const teamProject = await createTeamProject();
@@ -376,6 +371,83 @@ describe('GET /credentials/for-workflow', () => {
 
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toEqual([]);
+		});
+
+		test('omits a credential shared directly with the user when forAgent is true', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+
+			const sharedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			await shareCredentialWithUsers(sharedCredential, [member]);
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toEqual([]);
+		});
+
+		test('offers a credential shared directly with the user when forAgent is false', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+
+			const sharedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			await shareCredentialWithUsers(sharedCredential, [member]);
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id, forAgent: 'false' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).toMatchObject({ id: sharedCredential.id });
+		});
+
+		test('keeps the credentials of the project when forAgent is true', async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+			const projectCredential = await saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+			});
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: teamProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).toMatchObject({ id: projectCredential.id });
+		});
+
+		test('keeps the credentials of the personal project of the user when forAgent is true', async () => {
+			const ownCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get('/credentials/for-workflow')
+				.query({ projectId: memberPersonalProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toContainEqual(expect.objectContaining({ id: ownCredential.id }));
+		});
+
+		test('keeps the personal credentials of other users that the owner may use instance-wide when forAgent is true', async () => {
+			const ownCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+			const memberCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+			const response = await authOwnerAgent
+				.get('/credentials/for-workflow')
+				.query({ projectId: ownerPersonalProject.id, forAgent: 'true' });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toContainEqual(expect.objectContaining({ id: ownCredential.id }));
+			expect(response.body.data).toContainEqual(
+				expect.objectContaining({ id: memberCredential.id }),
+			);
 		});
 	});
 
@@ -1715,6 +1787,72 @@ describe('instance role with credential visibility but not use', () => {
 				id: ownerCredential.id,
 				name: ownerCredential.name,
 				type: ownerCredential.type,
+				data: {},
+			},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
+	});
+});
+
+// ----------------------------------------
+// A project viewer can see a credential but not drive it
+// ----------------------------------------
+
+describe('project role with credential visibility but not use', () => {
+	// The project-lane counterpart of the instance rung above: `project:viewer`
+	// holds `credential:read` and nothing beyond it, so the credential is listed
+	// and readable, but it cannot be tested or probed with the viewer's access.
+	const mockCredentialsTester = Container.get(CredentialsTester) as MockProxy<CredentialsTester>;
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	const credentialInTeamProjectWith = async (role: ProjectRole) => {
+		const project = await createTeamProject();
+		const credential = await saveCredential(randomCredentialPayload(), { project });
+		await linkUserToProject(member, project, role);
+		return credential;
+	};
+
+	test('POST /credentials/test is refused for a project viewer', async () => {
+		const credential = await credentialInTeamProjectWith('project:viewer');
+
+		const response = await authMemberAgent.post('/credentials/test').send({
+			credentials: {
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: {},
+			},
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(mockCredentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
+	test('POST /credentials/:id/probe is refused for a project viewer', async () => {
+		const credential = await credentialInTeamProjectWith('project:viewer');
+
+		const response = await authMemberAgent.post(`/credentials/${credential.id}/probe`).send({});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('POST /credentials/test still works for a project editor', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = await credentialInTeamProjectWith('project:editor');
+
+		const response = await authMemberAgent.post('/credentials/test').send({
+			credentials: {
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
 				data: {},
 			},
 		});

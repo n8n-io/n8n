@@ -57,9 +57,22 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
  * loops entered mid-body, and loops with more than one candidate entry are
  * all rejected.
  */
+export interface ConvertOptions {
+	/**
+	 * Let the named root be a non-trigger node. v1 starts a partial run at the
+	 * nearest node with run data when no trigger has any; its outputs then stand
+	 * in for the trigger payload.
+	 */
+	allowNonTriggerRoot?: boolean;
+}
+
 export class V1WorkflowConverter {
-	convert(workflow: IWorkflowBase, firedTriggerName?: string): WorkflowGraph {
-		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName);
+	convert(
+		workflow: IWorkflowBase,
+		firedTriggerName?: string,
+		options: ConvertOptions = {},
+	): WorkflowGraph {
+		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName, options);
 		// Rooted first: a disabled node must not cut the reachable set short.
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
 
@@ -82,6 +95,7 @@ export class V1WorkflowConverter {
 	private resolveFiredTrigger(
 		workflow: IWorkflowBase,
 		firedTriggerName?: string,
+		options: ConvertOptions = {},
 	): INode | undefined {
 		const liveNodes = workflow.nodes.filter((node) => node.disabled !== true);
 
@@ -89,8 +103,11 @@ export class V1WorkflowConverter {
 			const fired = liveNodes.find((node) => node.name === firedTriggerName);
 			if (fired === undefined) throw new UnknownTriggerError(firedTriggerName);
 			// A non-trigger named here would lose its own work: the step drops its
-			// parameters and stands in for the payload.
-			if (!isTriggerNodeType(fired.type)) throw new NotATriggerError(fired.name, fired.type);
+			// parameters and stands in for the payload. A caller that supplies that
+			// payload, as a partial run does, may opt in.
+			if (!options.allowNonTriggerRoot && !isTriggerNodeType(fired.type)) {
+				throw new NotATriggerError(fired.name, fired.type);
+			}
 			return fired;
 		}
 

@@ -325,7 +325,7 @@ defineExpose({
 					{{ i18n.baseText('generic.learnMore') }} <N8nIcon icon="arrow-up-right" />
 				</N8nButton>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="xsmall"
 					:data-test-id="`${emptyStateType}-button`"
 					@click="emptyStateConfig.buttonAction"

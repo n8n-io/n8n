@@ -16,7 +16,7 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		const activation = enabled === undefined ? {} : { enabled };
 		const config = {
 			...minimalConfig,
-			skills: [{ type: 'skill', id: 'notes', ...activation }],
+			skills: [{ type: 'skill', id: 'notes' }],
 			tools: [
 				{ type: 'custom', id: 'search', requireApproval: true, ...activation },
 				{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', ...activation },
@@ -41,7 +41,7 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({
 				...minimalConfig,
-				skills: [{ type: 'skill', id: 'notes', enabled: 'false' }],
+				tools: [{ type: 'custom', id: 'search', enabled: 'false' }],
 			}).success,
 		).toBe(false);
 	});
@@ -59,6 +59,30 @@ describe('AgentJsonConfigSchema — model', () => {
 			expect(result.success).toBe(true);
 		},
 	);
+
+	it('accepts gateway model IDs containing @ after the provider', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: 'openai/@OpenAI/gpt-5-mini',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects @ in the provider segment', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: '@openai/gpt-5-mini',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a model without a provider', () => {
+		const result = AgentJsonConfigSchema.safeParse({ ...minimalConfig, model: 'gpt-5-mini' });
+
+		expect(result.success).toBe(false);
+	});
 });
 
 describe('AgentJsonConfigSchema — reasoning', () => {
