@@ -196,9 +196,9 @@ export class AgentChatAttachmentService {
 
 	/**
 	 * The files of a session for the session files list, newest first. A
-	 * sandbox file can have many versions with the same bytes, so the list
-	 * keeps the newest file for each hash. Older files have no hash and all
-	 * stay. The caller checks access to the session.
+	 * sandbox file can have many versions with the same name and bytes, so the
+	 * list keeps the newest file for each name and hash. Older files have no
+	 * hash and all stay. The caller checks access to the session.
 	 */
 	async listForSession(
 		scope: { projectId: string; threadId: string },
@@ -209,8 +209,9 @@ export class AgentChatAttachmentService {
 		return files
 			.filter((file) => {
 				if (!file.contentHash) return true;
-				if (seen.has(file.contentHash)) return false;
-				seen.add(file.contentHash);
+				const key = `${file.contentHash}:${file.fileName}`;
+				if (seen.has(key)) return false;
+				seen.add(key);
 				return true;
 			})
 			.map((file) => ({
@@ -225,13 +226,13 @@ export class AgentChatAttachmentService {
 
 	/**
 	 * Files with the given content hashes that the thread can read, keyed by
-	 * hash. Each hash maps to its newest readable file.
+	 * hash. Each hash maps to its readable files, newest first.
 	 */
 	async findReadableByHashes(
 		hashes: string[],
 		scope: { projectId: string; threadId: string },
-	): Promise<Map<string, AgentChatAttachment>> {
-		const result = new Map<string, AgentChatAttachment>();
+	): Promise<Map<string, AgentChatAttachment[]>> {
+		const result = new Map<string, AgentChatAttachment[]>();
 		if (hashes.length === 0) return result;
 		const root = await this.findRootThread(scope.threadId);
 		const files = await this.repository.findByHashesInThread(
@@ -247,12 +248,12 @@ export class AgentChatAttachmentService {
 						scope.threadId,
 					);
 		for (const file of files) {
-			if (!file.contentHash || result.has(file.contentHash)) continue;
+			if (!file.contentHash) continue;
 			const readable =
 				scope.threadId === root.id ||
 				file.createdByThreadId === scope.threadId ||
 				granted.has(file.id);
-			if (readable) result.set(file.contentHash, file);
+			if (readable) result.set(file.contentHash, [...(result.get(file.contentHash) ?? []), file]);
 		}
 		return result;
 	}

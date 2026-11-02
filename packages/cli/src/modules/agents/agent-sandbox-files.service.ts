@@ -46,6 +46,12 @@ export const SANDBOX_FILES_INSTRUCTIONS = [
 	`To use a conversation file, such as a user upload, in your workspace, copy it to ${SANDBOX_INPUTS_DIR}/ with import_files.`,
 ].join(' ');
 
+/** A stored file is the same file of `outputs/` when its name and bytes match. */
+function isSameOutputFile(file: AgentChatAttachment, path: string): boolean {
+	// ponytail: a path over the name cap is stored as `<id>.<ext>`, so it matches on the bytes only. Store the full path in its own column if that matters.
+	return path.length > MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH || file.fileName === path;
+}
+
 export interface ActiveRun {
 	agentId: string | null;
 	getWorkspace: () => Workspace | undefined;
@@ -225,7 +231,7 @@ export class AgentSandboxFilesService {
 
 	/**
 	 * Store the new files of `outputs/` at the end of a turn. A file is new
-	 * when the thread cannot read a file with the same bytes. Never throws:
+	 * when the thread cannot read a file with the same name and bytes. Never throws:
 	 * a file that fails is logged, and the next turn tries it again.
 	 */
 	async syncOutputs(workspace: Workspace, scope: SandboxFileScope): Promise<void> {
@@ -237,16 +243,18 @@ export class AgentSandboxFilesService {
 				files.map((file) => file.hash),
 				scope,
 			);
-			const seen = new Set(known.keys());
+			const seen = new Set<string>();
 			for (const file of files) {
-				if (seen.has(file.hash)) continue;
+				const key = `${file.hash}:${file.path}`;
+				if (seen.has(key)) continue;
+				if (known.get(file.hash)?.some((stored) => isSameOutputFile(stored, file.path))) continue;
 				if (signal.aborted) {
 					this.logger.warn('Stopped storing agent sandbox files: the time budget ran out', {
 						threadId: scope.threadId,
 					});
 					return;
 				}
-				seen.add(file.hash);
+				seen.add(key);
 				// ponytail: a file over a count or total cap still gets read before the cap check. The time budget limits the cost.
 				await this.store(workspace, file.path, scope, signal).catch((error: unknown) => {
 					this.logger.warn('Failed to store an agent sandbox file', {
@@ -352,7 +360,7 @@ export class AgentSandboxFilesService {
 
 		const contentHash = hashFileContent(data);
 		const existing = await this.attachmentService.findReadableByHashes([contentHash], scope);
-		const found = existing.get(contentHash);
+		const found = existing.get(contentHash)?.find((file) => isSameOutputFile(file, relativePath));
 		if (found) return found;
 
 		const id = generateNanoId();
