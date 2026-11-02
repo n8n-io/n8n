@@ -5,6 +5,7 @@ import type {
 	INode,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import jwt from 'jsonwebtoken';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -434,7 +435,16 @@ describe('JiraTrigger', () => {
 			});
 			webhookFns.getBodyData.mockReturnValue({});
 			webhookFns.getQueryData.mockReturnValue({});
-			webhookFns.getCredentials.mockResolvedValue({ domain } as ICredentialDataDecryptedObject);
+			const clientId = 'oauth-client-id';
+			const clientSecret = 'oauth-client-secret';
+			webhookFns.getHeaderData.mockReturnValue({
+				authorization: `Bearer ${jwt.sign({ iss: clientId }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
+			});
+			webhookFns.getCredentials.mockResolvedValue({
+				domain,
+				clientId,
+				clientSecret,
+			} as ICredentialDataDecryptedObject);
 			webhookFns.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
 				{ id: cloudId, url: domain },
 			]);
@@ -479,6 +489,15 @@ describe('JiraTrigger', () => {
 			});
 			webhookFns.getBodyData.mockReturnValue({});
 			webhookFns.getQueryData.mockReturnValue({});
+			const clientId = 'oauth-client-id';
+			const clientSecret = 'oauth-client-secret';
+			webhookFns.getHeaderData.mockReturnValue({
+				authorization: `Bearer ${jwt.sign({ iss: clientId }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
+			});
+			webhookFns.getCredentials.mockResolvedValue({
+				clientId,
+				clientSecret,
+			} as ICredentialDataDecryptedObject);
 			webhookFns.helpers.returnJsonArray.mockImplementation((data: IDataObject | IDataObject[]) => [
 				{ json: data as IDataObject },
 			]);
@@ -843,6 +862,103 @@ describe('JiraTrigger', () => {
 			});
 
 			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+	});
+
+	describe('Webhook request verification (Cloud OAuth2)', () => {
+		const clientId = 'oauth-client-id';
+		const clientSecret = 'oauth-client-secret';
+		const credentials = { jiraSoftwareCloudOAuth2Api: { clientId, clientSecret } };
+		const node = { parameters: { jiraVersion: 'cloudOAuth2', authenticateWebhook: false } };
+		const event = { webhookEvent: 'jira:issue_created', issue: { key: 'TEST-1' } };
+
+		const sign = (
+			payload: Record<string, unknown> = {},
+			secret: string = clientSecret,
+			options: jwt.SignOptions = {},
+		) =>
+			jwt.sign({ iss: clientId, sub: 'account-id', ...payload }, secret, {
+				algorithm: 'HS256',
+				expiresIn: '15m',
+				...options,
+			});
+
+		const callWebhook = async (headerData: Record<string, unknown>) =>
+			await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData,
+			});
+
+		test('should pass a request carrying a valid signed token through', async () => {
+			const { responseData } = await callWebhook({ authorization: `Bearer ${sign()}` });
+
+			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+
+		test('should accept a case-insensitive scheme', async () => {
+			const { responseData } = await callWebhook({ authorization: `bearer ${sign()}` });
+
+			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+
+		test('should reject a request with no Authorization header', async () => {
+			const { responseData, response } = await callWebhook({});
+
+			expect(response.status).toHaveBeenCalledWith(401);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a non-Bearer Authorization header', async () => {
+			const { responseData, response } = await callWebhook({ authorization: 'Basic abc123' });
+
+			expect(response.status).toHaveBeenCalledWith(401);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a valid token when the credential has no client secret', async () => {
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials: { jiraSoftwareCloudOAuth2Api: { clientId } },
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+			});
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a token signed with a different secret', async () => {
+			const token = sign({}, 'another-secret');
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject an expired token', async () => {
+			const token = sign({}, clientSecret, { expiresIn: '-1m' });
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a token with an unexpected issuer', async () => {
+			const token = sign({ iss: 'someone-else' });
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject an unsigned (alg none) token', async () => {
+			const token = jwt.sign({ iss: clientId }, '', { algorithm: 'none' });
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
 		});
 	});
 });
