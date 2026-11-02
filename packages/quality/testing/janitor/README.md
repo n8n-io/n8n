@@ -231,7 +231,28 @@ janitor scope
 janitor test-scoped --shard=1/2 --coverage
 ```
 
-**Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
+**Turbo cache first: `test-run`.** CI test jobs call `janitor test-run`
+instead of a bare `turbo run`. It does a turbo dry run of the cacheable full
+task (for example `test:unit`) and replays every package whose result is
+cached. Every other package gets the `scope` decision above: skipped packages
+do not run, full packages run the full task (so the result is cached for the
+next push), and scoped packages run the scoped task (`test:unit:changed`). A
+package without a scoped task runs the full task. If the dry run fails, the job
+runs the scoped task (or the full task) for all its packages, as before.
+
+The full task never runs with `--only`: with it, turbo leaves dependency tasks
+out of the hash, and a change in a dependency would replay a stale result. Only
+a job with a scoped task skips packages. A job without one (backend unit,
+backend integration, DB) replays or runs every package, as it did before.
+
+```bash
+janitor test-run --full-task=test:unit --scoped-task=test:unit:changed \
+  --filter=n8n --only --summarize -- --shard=1/2
+```
+
+**Bailout triggers (force ALL packages):** root `package.json`, and
+`pnpm-lock.yaml` when `LOCKFILE_IMPACTED_PACKAGES` is not set. With it, a
+lockfile change forces only the packages whose resolved dependencies changed.
 
 **Empty `CHANGED_FILES` means "no signal → run everything", not "nothing
 changed".** A `null`/empty value resolves to all packages (`affected-packages`)
