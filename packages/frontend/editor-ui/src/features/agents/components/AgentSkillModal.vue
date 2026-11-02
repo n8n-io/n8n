@@ -133,10 +133,8 @@ export type AgentSkillModalData = {
 	onStopSyncing?: (id: string) => void | Promise<void>;
 	/** The latest version of a saved hub skill. Set means the skill has versions to show. */
 	latestVersion?: number;
-	/** Opens the editor with the Versions panel shown ("View timeline" in Settings). */
+	/** Opens the editor with the Versions panel shown ("Version history" in Settings). */
 	initialVersionsOpen?: boolean;
-	/** Opens the editor comparing the latest version with the one before it. */
-	initialCompare?: boolean;
 	/** Agent builder: the versions the agent's draft and published agent run. */
 	agentVersions?: { draft: number; published: number | null; pinned: boolean };
 	/** Agent builder: pins the agent draft to a saved version. The caller reopens the editor. */
@@ -821,7 +819,6 @@ const {
 	diffCounts,
 	comparedSkill,
 	compareVersions,
-	compareLatestTwo,
 } = useSkillVersions(
 	() => props.data.skillId,
 	() => baseVersion.value,
@@ -947,10 +944,6 @@ function leaveCompare() {
 	comparison.value = null;
 	viewedVersion.value = null;
 }
-
-onMounted(() => {
-	if (props.data.initialCompare) void compareLatestTwo();
-});
 
 /** Saves the content of an older version as the next version and keeps the editor open on it. */
 async function restoreVersion(version: number) {
