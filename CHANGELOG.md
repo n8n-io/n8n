@@ -1,3 +1,6 @@
+## [2.45.7-exp.g86c6a0b7](https://github.com/n8n-io/n8n/compare/n8n@2.45.7...n8n@2.45.7-exp.g86c6a0b7) (2026-11-02)
+
+
 ## [2.45.7](https://github.com/n8n-io/n8n/compare/n8n@2.45.6...n8n@2.45.7) (2026-10-30)
 
 
