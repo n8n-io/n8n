@@ -61,6 +61,18 @@ ruleTester.run('credential-unnecessary-password', CredentialUnnecessaryPasswordR
 			name: 'sensitive field correctly masked',
 			code: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
 		},
+		// CE-3604: A separator must not make password masking unnecessary.
+		...['api_key', 'access_key', 'private-key', 'client_secret'].map((fieldName) => ({
+			name: `${fieldName} keeps password masking`,
+			code: createCredentialCode([createProperty(fieldName, fieldName, { password: true })]),
+		})),
+		{
+			name: 'separated non-sensitive names without password masking',
+			code: createCredentialCode([
+				createProperty('Client ID', 'client_id'),
+				createProperty('Token URL', 'token_url'),
+			]),
+		},
 		{
 			name: 'masked field with a sensitive marker is left alone even when its name contains a non-sensitive substring',
 			code: createCredentialCode([
@@ -89,6 +101,11 @@ ruleTester.run('credential-unnecessary-password', CredentialUnnecessaryPasswordR
 			name: 'ID field should not use password option',
 			code: createCredentialCode([createProperty('Client ID', 'clientId', { password: true })]),
 			errors: [{ messageId: 'unnecessaryPasswordOption', data: { fieldName: 'clientId' } }],
+		},
+		{
+			name: 'snake_case client ID should not use password masking',
+			code: createCredentialCode([createProperty('Client ID', 'client_id', { password: true })]),
+			errors: [{ messageId: 'unnecessaryPasswordOption', data: { fieldName: 'client_id' } }],
 		},
 		{
 			name: 'multiple non-sensitive masked fields are each flagged',
