@@ -40,7 +40,7 @@ defineExpose({ currentSettings, validationError });
 		@edit="emit('edit')"
 	>
 		<template #top>
-			<AgentChannelWhatsAppMetaCallout :status="metaStatus" />
+			<AgentChannelWhatsAppMetaCallout :status="metaStatus" @setup="emit('create')" />
 		</template>
 	</AgentChannelStandardEditView>
 </template>

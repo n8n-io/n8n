@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { WhatsAppMetaStatus } from '@n8n/api-types';
-import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { metaTitleKey, presentWhatsAppMetaState } from './metaStatus';
 
 const props = defineProps<{ status: WhatsAppMetaStatus | null }>();
+const emit = defineEmits<{ setup: [] }>();
 
 const i18n = useI18n();
 
@@ -45,7 +46,17 @@ const interpolate = computed(() => ({
 				{{ i18n.baseText(presentation.descriptionKey) }}
 			</N8nText>
 		</div>
-		<template v-if="presentation.action" #actions>
+		<template v-if="presentation.setupAction" #actions>
+			<N8nButton
+				variant="solid"
+				size="small"
+				:class="$style.action"
+				:label="i18n.baseText(presentation.setupAction.labelKey)"
+				data-testid="whatsapp-meta-callout-setup"
+				@click="emit('setup')"
+			/>
+		</template>
+		<template v-else-if="presentation.action" #actions>
 			<N8nLink
 				:href="presentation.action.url"
 				theme="text"
