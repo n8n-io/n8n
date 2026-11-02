@@ -1,15 +1,16 @@
 import { AuthIdentity } from '../auth-identity';
 import { type Role } from '../role';
-import { User } from '../user';
+import { Person } from '../person';
+import type { User } from '../user';
 
-describe('User Entity', () => {
+describe('Person Entity', () => {
 	describe('computeIsPending', () => {
-		const createUser = (overrides: Partial<User> = {}) => {
-			const user = new User();
-			user.password = null;
-			user.role = { slug: 'global:member' } as Role;
-			user.authIdentities = [];
-			return Object.assign(user, overrides);
+		const createPerson = (overrides: Partial<Person> = {}) => {
+			const person = new Person();
+			person.password = null;
+			person.role = { slug: 'global:member' } as Role;
+			person.authIdentities = [];
+			return Object.assign(person, overrides);
 		};
 
 		const createAuthIdentity = (providerType: 'email' | 'saml' | 'oidc' | 'ldap'): AuthIdentity => {
@@ -20,64 +21,64 @@ describe('User Entity', () => {
 		};
 
 		it('should be pending when password is null and no auth identities', () => {
-			const user = createUser();
-			user.computeIsPending();
-			expect(user.isPending).toBe(true);
+			const person = createPerson();
+			person.computeIsPending();
+			expect(person.isPending).toBe(true);
 		});
 
 		it('should NOT be pending when password is set', () => {
-			const user = createUser({ password: 'hashed-password' });
-			user.computeIsPending();
-			expect(user.isPending).toBe(false);
+			const person = createPerson({ password: 'hashed-password' });
+			person.computeIsPending();
+			expect(person.isPending).toBe(false);
 		});
 
 		it('should NOT be pending when user is global owner (even without password)', () => {
-			const user = createUser({ role: { slug: 'global:owner' } as Role });
-			user.computeIsPending();
-			expect(user.isPending).toBe(false);
+			const person = createPerson({ role: { slug: 'global:owner' } as Role });
+			person.computeIsPending();
+			expect(person.isPending).toBe(false);
 		});
 
 		it('should NOT be pending when user has SAML auth identity', () => {
-			const user = createUser({ authIdentities: [createAuthIdentity('saml')] });
-			user.computeIsPending();
-			expect(user.isPending).toBe(false);
+			const person = createPerson({ authIdentities: [createAuthIdentity('saml')] });
+			person.computeIsPending();
+			expect(person.isPending).toBe(false);
 		});
 
 		it('should NOT be pending when user has OIDC auth identity', () => {
-			const user = createUser({ authIdentities: [createAuthIdentity('oidc')] });
-			user.computeIsPending();
-			expect(user.isPending).toBe(false);
+			const person = createPerson({ authIdentities: [createAuthIdentity('oidc')] });
+			person.computeIsPending();
+			expect(person.isPending).toBe(false);
 		});
 
 		it('should NOT be pending when user has LDAP auth identity', () => {
-			const user = createUser({ authIdentities: [createAuthIdentity('ldap')] });
-			user.computeIsPending();
-			expect(user.isPending).toBe(false);
+			const person = createPerson({ authIdentities: [createAuthIdentity('ldap')] });
+			person.computeIsPending();
+			expect(person.isPending).toBe(false);
 		});
 
 		it('should be pending when user only has email auth identity (no password)', () => {
-			const user = createUser({ authIdentities: [createAuthIdentity('email')] });
-			user.computeIsPending();
-			expect(user.isPending).toBe(true);
+			const person = createPerson({ authIdentities: [createAuthIdentity('email')] });
+			person.computeIsPending();
+			expect(person.isPending).toBe(true);
 		});
 
 		it('should handle undefined authIdentities gracefully', () => {
-			const user = createUser();
-			user.authIdentities = undefined as unknown as AuthIdentity[];
-			user.computeIsPending();
-			expect(user.isPending).toBe(true);
+			const person = createPerson();
+			person.authIdentities = undefined as unknown as AuthIdentity[];
+			person.computeIsPending();
+			expect(person.isPending).toBe(true);
 		});
 	});
 
 	describe('JSON.stringify', () => {
 		it('should not serialize sensitive data', () => {
-			const user = Object.assign(new User(), {
+			const person = Object.assign(new Person(), {
 				email: 'test@example.com',
 				firstName: 'Don',
 				lastName: 'Joe',
 				password: '123456789',
 			});
-			expect(JSON.stringify(user)).toEqual(
+			expect(JSON.stringify(person)).toEqual(
 				'{"kind":"person","email":"test@example.com","firstName":"Don","lastName":"Joe"}',
 			);
 		});
@@ -94,9 +95,9 @@ describe('User Entity', () => {
 		])(
 			'given fistName: %s, lastName: %s and email: %s this gives the projectName: "%s"',
 			async (firstName, lastName, email, projectName) => {
-				const user = new User();
-				Object.assign(user, { firstName, lastName, email });
-				expect(user.createPersonalProjectName()).toBe(projectName);
+				const person = new Person();
+				Object.assign(person, { firstName, lastName, email });
+				expect(person.createPersonalProjectName()).toBe(projectName);
 			},
 		);
 	});
@@ -104,27 +105,27 @@ describe('User Entity', () => {
 	describe('preUpsertHook email validation', () => {
 		describe('valid email scenarios', () => {
 			it('should allow null email', () => {
-				const user = new User();
-				(user as { email: string | null }).email = null;
+				const person = new Person();
+				(person as { email: string | null }).email = null;
 
-				expect(() => user.preUpsertHook()).not.toThrow();
-				expect(user.email).toBeNull();
+				expect(() => person.preUpsertHook()).not.toThrow();
+				expect(person.email).toBeNull();
 			});
 
 			it('should allow undefined email', () => {
-				const user = new User();
-				(user as { email: string | undefined }).email = undefined;
+				const person = new Person();
+				(person as { email: string | undefined }).email = undefined;
 
-				expect(() => user.preUpsertHook()).not.toThrow();
-				expect(user.email).toBeNull();
+				expect(() => person.preUpsertHook()).not.toThrow();
+				expect(person.email).toBeNull();
 			});
 
 			it('should lowercase valid emails', () => {
-				const user = new User();
-				user.email = 'TEST@EXAMPLE.COM';
+				const person = new Person();
+				person.email = 'TEST@EXAMPLE.COM';
 
-				expect(() => user.preUpsertHook()).not.toThrow();
-				expect(user.email).toBe('test@example.com');
+				expect(() => person.preUpsertHook()).not.toThrow();
+				expect(person.email).toBe('test@example.com');
 			});
 
 			it('should accept standard valid email formats', () => {
@@ -138,11 +139,11 @@ describe('User Entity', () => {
 				];
 
 				validEmails.forEach((email) => {
-					const user = new User();
-					user.email = email;
+					const person = new Person();
+					person.email = email;
 
-					expect(() => user.preUpsertHook()).not.toThrow();
-					expect(user.email).toBe(email.toLowerCase());
+					expect(() => person.preUpsertHook()).not.toThrow();
+					expect(person.email).toBe(email.toLowerCase());
 				});
 			});
 		});
@@ -171,14 +172,38 @@ describe('User Entity', () => {
 				['   '],
 				['a'.repeat(300) + '@invalid'],
 			])('should throw Error for invalid email <%s>', (email) => {
-				const user = new User();
-				user.email = email;
+				const person = new Person();
+				person.email = email;
 
-				expect(() => user.preUpsertHook()).toThrow(Error);
-				expect(() => user.preUpsertHook()).toThrow(
+				expect(() => person.preUpsertHook()).toThrow(Error);
+				expect(() => person.preUpsertHook()).toThrow(
 					`Cannot save user <${email}>: Provided email is invalid`,
 				);
 			});
 		});
+	});
+});
+
+// Type-level test. The `typecheck` step catches a failure, not the test run.
+describe('User type', () => {
+	const personOnly = [
+		'email',
+		'firstName',
+		'lastName',
+		'password',
+		'mfaSecret',
+		'personalizationAnswers',
+		'lastActiveAt',
+		'isPending',
+		'authIdentities',
+		'apiKeys',
+		'createPersonalProjectName',
+	] as const;
+
+	it('has none of the person columns, so code must narrow to Person to read them', () => {
+		expectTypeOf<Extract<keyof User, (typeof personOnly)[number]>>().toEqualTypeOf<never>();
+		expectTypeOf<Extract<keyof Person, (typeof personOnly)[number]>>().toEqualTypeOf<
+			(typeof personOnly)[number]
+		>();
 	});
 });
