@@ -6,9 +6,32 @@ import type {
 } from 'n8n-workflow';
 
 // The dispatcher needs the instance SSRF module, which a unit test does not stand up
+const { gateway } = vi.hoisted(() => ({
+	gateway: {
+		reply: new Response('{}', { status: 200 }),
+		calls: [] as Array<{ url: string; headers: Headers; timeout?: number }>,
+	},
+}));
+
 vi.mock('@n8n/ai-utilities', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/ai-utilities')>()),
 	getProxyAgent: () => undefined,
+	proxyFetch: async ({
+		input,
+		init,
+		timeoutOptions,
+	}: {
+		input: RequestInfo | URL;
+		init?: RequestInit;
+		timeoutOptions?: { headersTimeout?: number };
+	}) => {
+		gateway.calls.push({
+			url: String(input),
+			headers: new Headers(init?.headers ?? {}),
+			timeout: timeoutOptions?.headersTimeout,
+		});
+		return gateway.reply.clone();
+	},
 }));
 
 import {
@@ -96,59 +119,104 @@ describe('readEndpointCredential', () => {
 });
 
 describe('createCustomModelEndpointConfig', () => {
-	const contextWith = (egressFilter: Partial<NodeEgressFilter>) =>
+	const KEY = 'sk-live-9f2a71c4ab';
+
+	beforeEach(() => {
+		gateway.reply = new Response('{}', { status: 200 });
+		gateway.calls.length = 0;
+	});
+
+	// A test double stands in for the instance SSRF module, as the siblings do
+	const filterFrom = (validateUrl: unknown) =>
+		({ validateUrl, createSecureLookup: () => undefined }) as unknown as NodeEgressFilter;
+
+	const contextWith = (egressFilter: NodeEgressFilter) =>
 		({
 			getNode: () => nodeWith({ [CUSTOM_MODEL_ENDPOINT_CREDENTIAL]: {} }),
 			helpers: { getSecureEgressFilter: () => egressFilter },
 		}) as unknown as ISupplyDataFunctions;
 
-	const allowAll = () => ({
-		validateUrl: vi.fn(async () => ({ ok: true })),
-		createSecureLookup: () => undefined,
-	});
-
-	it('points the client at the credential base URL', () => {
-		const { configuration, endpoint } = createCustomModelEndpointConfig(
-			contextWith(allowAll()),
+	const configFor = (egressFilter: NodeEgressFilter) =>
+		createCustomModelEndpointConfig(
+			contextWith(egressFilter),
 			{ url: 'https://gateway.example.com/v1', authentication: 'none' },
 			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
 		);
+
+	it('points the client at the credential base URL', () => {
+		const { configuration, endpoint } = configFor(filterFrom(vi.fn(async () => ({ ok: true }))));
 
 		expect(configuration.baseURL).toBe('https://gateway.example.com/v1');
 		expect(endpoint.login.type).toBe('none');
 	});
 
 	it('checks the target against the egress filter before the request leaves', async () => {
-		const egressFilter = allowAll();
-		const { configuration } = createCustomModelEndpointConfig(
-			contextWith(egressFilter),
-			{ url: 'https://gateway.example.com/v1', authentication: 'none' },
-			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
-		);
+		const validateUrl = vi.fn(async () => ({ ok: true }));
+		const { configuration } = configFor(filterFrom(validateUrl));
 
-		await expect(
-			configuration.fetch?.('https://gateway.example.com/v1/chat/completions'),
-		).rejects.toThrow();
+		await configuration.fetch?.('https://gateway.example.com/v1/chat/completions');
 
-		expect(egressFilter.validateUrl).toHaveBeenCalledWith(
-			'https://gateway.example.com/v1/chat/completions',
-		);
+		expect(validateUrl).toHaveBeenCalledWith('https://gateway.example.com/v1/chat/completions');
 	});
 
 	it('refuses a target the egress filter rejects', async () => {
 		const blocked = new Error('Blocked by SSRF policy');
-		const egressFilter = {
-			validateUrl: vi.fn(async () => ({ ok: false, error: blocked })),
-			createSecureLookup: () => undefined,
-		};
-		const { configuration } = createCustomModelEndpointConfig(
-			contextWith(egressFilter),
-			{ url: 'https://gateway.example.com/v1', authentication: 'none' },
-			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
+		const { configuration } = configFor(
+			filterFrom(vi.fn(async () => ({ ok: false, error: blocked }))),
 		);
 
 		await expect(configuration.fetch?.('https://gateway.example.com/v1/models')).rejects.toThrow(
 			'Blocked by SSRF policy',
 		);
 	});
+
+	const withKey = (overrides: Record<string, unknown> = {}) =>
+		createCustomModelEndpointConfig(
+			contextWith(filterFrom(vi.fn(async () => ({ ok: true })))),
+			{
+				url: 'https://gateway.example.com/v1',
+				authentication: 'bearer',
+				apiKey: KEY,
+			},
+			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL, ...overrides },
+		);
+
+	it('carries the login, the per-request headers and the timeout to the wire', async () => {
+		const { configuration } = withKey({
+			timeout: 1_500,
+			requestHeaders: { 'x-n8n-workflow-id': 'wf-1' },
+		});
+
+		await configuration.fetch?.('https://gateway.example.com/v1/chat/completions');
+
+		expect(gateway.calls.at(-1)).toMatchObject({
+			url: 'https://gateway.example.com/v1/chat/completions',
+			timeout: 1_500,
+		});
+		expect(gateway.calls.at(-1)?.headers.get('authorization')).toBe(`Bearer ${KEY}`);
+		expect(gateway.calls.at(-1)?.headers.get('x-n8n-workflow-id')).toBe('wf-1');
+	});
+
+	it.each([
+		['one of its own', JSON.stringify({ message: `Rejected ${KEY}` })],
+		[
+			'one already shaped for the client',
+			JSON.stringify({ error: { message: `Rejected ${KEY}` } }),
+		],
+	])(
+		'reshapes and redacts a gateway failure that echoes the key, given %s',
+		async (_name, body) => {
+			gateway.reply = new Response(body, { status: 401 });
+			const { configuration } = withKey();
+
+			const response = await configuration.fetch?.(
+				'https://gateway.example.com/v1/chat/completions',
+			);
+			const text = (await response?.text()) ?? '';
+
+			expect(response?.status).toBe(401);
+			expect(text).not.toContain(KEY);
+			expect(JSON.parse(text)).toMatchObject({ error: { message: 'Rejected [redacted]' } });
+		},
+	);
 });

@@ -5,6 +5,8 @@ import type { Mocked } from 'vitest';
 
 import { LmChatCustomEndpoint } from '../LmChatCustomEndpoint.node';
 
+import { createCustomModelEndpointConfig } from '@utils/custom-model-endpoint/gateway-config';
+
 vi.mock('@langchain/openai');
 vi.mock('@utils/custom-model-endpoint/gateway-config', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@utils/custom-model-endpoint/gateway-config')>()),
@@ -28,6 +30,9 @@ const nodeDef: INode = {
 
 type Params = Record<string, unknown>;
 
+/** Built rather than written, so the node-param lint rule does not read it as a display name. */
+const BLANK = ' '.repeat(2);
+
 const contextWith = (params: Params = {}) => {
 	const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 		{},
@@ -38,17 +43,22 @@ const contextWith = (params: Params = {}) => {
 	ctx.getCredentials = vi.fn().mockResolvedValue({ url: 'https://gateway.example.com/v1' });
 	ctx.getWorkflow = vi.fn().mockReturnValue({ id: 'wf-1', name: 'Nightly' });
 	ctx.getExecutionId = vi.fn().mockReturnValue('exec-1');
+	const given: Params = { model: 'gpt-4o', options: {}, sendContextHeaders: false, ...params };
 	ctx.getNodeParameter = vi
 		.fn()
-		.mockImplementation((name: string, _i: number, fallback: unknown) => {
-			const given = { model: 'gpt-4o', options: {}, sendContextHeaders: false, ...params };
-			return name in given ? given[name] : fallback;
-		});
+		.mockImplementation((name: string, _i: number, fallback: unknown) =>
+			name in given ? given[name] : fallback,
+		);
 
 	return ctx;
 };
 
-const constructorArgs = () => MockedChatOpenAI.mock.calls[0][0];
+const constructorArgs = () => {
+	const args = MockedChatOpenAI.mock.calls[0]?.[0];
+	if (!args) throw new Error('the chat client was never constructed');
+	return args;
+};
+const configOptions = () => vi.mocked(createCustomModelEndpointConfig).mock.calls[0][2];
 
 describe('LmChatCustomEndpoint', () => {
 	let node: LmChatCustomEndpoint;
@@ -114,15 +124,56 @@ describe('LmChatCustomEndpoint', () => {
 		expect(constructorArgs().modelKwargs).toEqual({ seed: 7 });
 	});
 
-	it('drops a header row left without a name instead of failing the request', async () => {
-		const blank = ' '.repeat(2);
-		const headers = [
-			{ name: blank, value: 'ignored' },
-			{ name: 'X-Tenant', value: 'acme' },
-		];
+	describe('the headers it asks the transport to send', () => {
+		it.each<[string, Params, Record<string, string>]>([
+			[
+				'drops a row left without a name',
+				{
+					'headers.header': [
+						{ name: BLANK, value: 'ignored' },
+						{ name: 'X-Tenant', value: 'acme' },
+					],
+				},
+				{ 'X-Tenant': 'acme' },
+			],
+			[
+				'drops a row whose value is neither text nor a number',
+				{ 'headers.header': [{ name: 'X-Tenant', value: { nested: true } }] },
+				{},
+			],
+			[
+				'names the workflow and the execution when the context headers are on',
+				{ sendContextHeaders: true },
+				{
+					'x-n8n-workflow-id': 'wf-1',
+					'x-n8n-workflow-name': 'Nightly',
+					'x-n8n-execution-id': 'exec-1',
+				},
+			],
+			['sends no context header when they are off', { sendContextHeaders: false }, {}],
+			[
+				'lets a header of the node override a context header',
+				{
+					sendContextHeaders: true,
+					'headers.header': [{ name: 'x-n8n-workflow-name', value: 'Renamed' }],
+				},
+				{
+					'x-n8n-workflow-id': 'wf-1',
+					'x-n8n-workflow-name': 'Renamed',
+					'x-n8n-execution-id': 'exec-1',
+				},
+			],
+		])('%s', async (_name, params, expected) => {
+			await node.supplyData.call(contextWith(params), 0);
 
-		await expect(
-			node.supplyData.call(contextWith({ 'headers.header': headers }), 0),
-		).resolves.toBeDefined();
+			expect(configOptions().requestHeaders).toEqual(expected);
+		});
+	});
+
+	it('gives the transport the timeout, so one request cannot hang the execution', async () => {
+		await node.supplyData.call(contextWith({ options: { timeout: 5_000 } }), 0);
+
+		expect(configOptions()).toMatchObject({ timeout: 5_000 });
+		expect(constructorArgs()).toMatchObject({ timeout: 5_000 });
 	});
 });
