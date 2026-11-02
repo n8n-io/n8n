@@ -106,7 +106,11 @@ export interface N8nSandboxConfig extends EnabledSandboxConfigBase {
 	id?: string;
 }
 
-export interface MxcSandboxConfig extends Omit<EnabledSandboxConfigBase, 'ephemeral'> {
+/**
+ * `ephemeral` has no effect for mxc: the workspace folder stays on disk until the sandbox is
+ * deleted. It stays in the type because shared callers set it for every provider.
+ */
+export interface MxcSandboxConfig extends EnabledSandboxConfigBase {
 	provider: 'mxc';
 	/** Workspace id. It is also the name of the agent's folder in `workspaceRoot`. */
 	id: string;
