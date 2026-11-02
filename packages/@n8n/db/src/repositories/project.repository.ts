@@ -1,8 +1,8 @@
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
+import type { FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
+import { Brackets, DataSource, EntityManager, In, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -78,8 +78,12 @@ export class ProjectRepository extends BaseRepository<Project> {
 		});
 	}
 
-	async getPersonalProjectForUserOrFail(userId: string, entityManager?: EntityManager) {
-		const em = entityManager ?? this.manager;
+	async getPersonalProjectForUserOrFail(
+		userId: string,
+		ctx: OperationContext | EntityManager = {},
+	) {
+		// Keep the manager form until the credential service uses operation contexts.
+		const em = ctx instanceof EntityManager ? ctx : this.managerFor(ctx);
 
 		return await em.findOneOrFail(Project, {
 			where: {

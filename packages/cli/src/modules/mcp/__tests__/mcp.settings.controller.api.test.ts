@@ -102,9 +102,7 @@ describe('POST /mcp/api-key/rotate', () => {
 		expect(userId).toBe(owner.id);
 
 		// Verify old API key is no longer valid
-		const currentApiKeys = await Container.get(ApiKeyRepository).find({
-			where: { userId: owner.id },
-		});
+		const currentApiKeys = await Container.get(ApiKeyRepository).findByUserId(owner.id);
 
 		expect(currentApiKeys.length).toBe(1);
 		expect(currentApiKeys[0].apiKey).toBe(apiKey);
@@ -163,9 +161,7 @@ describe('POST /mcp/api-key/rotate', () => {
 
 		// Verify in database
 		const apiKeyRepo = Container.get(ApiKeyRepository);
-		const storedApiKey = await apiKeyRepo.findOne({
-			where: { userId: owner.id },
-		});
+		const [storedApiKey] = await apiKeyRepo.findByUserId(owner.id);
 
 		expect(storedApiKey).toBeDefined();
 		expect(storedApiKey?.apiKey).toBe(response.body.data.apiKey);
@@ -288,9 +284,7 @@ describe('MCP API Key Edge Cases', () => {
 		await Promise.all(requests);
 
 		const apiKeyRepo = Container.get(ApiKeyRepository);
-		const storedApiKey = await apiKeyRepo.find({
-			where: { userId: owner.id },
-		});
+		const storedApiKey = await apiKeyRepo.findByUserId(owner.id);
 		expect(storedApiKey.length).toBe(1);
 	});
 });

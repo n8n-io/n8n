@@ -45,10 +45,7 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 			if (decoded.iss !== issuer) return null;
 		}
 
-		const apiKeyRecord = await this.apiKeyRepository.findOne({
-			where: { apiKey: token, audience },
-			relations: { user: { role: true } },
-		});
+		const apiKeyRecord = await this.apiKeyRepository.findByKeyWithUser(token, audience);
 
 		if (!apiKeyRecord?.user) return false;
 
@@ -78,11 +75,9 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 		if (Date.now() - previousMs < LAST_USED_AT_THROTTLE_MS) return;
 
 		// Best-effort: never block auth if the write fails, but log so we don't hide bugs.
-		void this.apiKeyRepository
-			.update({ id: apiKeyId }, { lastUsedAt: new Date() })
-			.catch((error) => {
-				this.logger.warn('Failed to update lastUsedAt on API key', { apiKeyId, error });
-			});
+		void this.apiKeyRepository.updateLastUsedAt(apiKeyId, new Date()).catch((error) => {
+			this.logger.warn('Failed to update lastUsedAt on API key', { apiKeyId, error });
+		});
 	}
 
 	async authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult> {

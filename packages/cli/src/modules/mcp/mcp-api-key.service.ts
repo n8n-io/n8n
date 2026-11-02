@@ -1,7 +1,6 @@
-import { ApiKey, ApiKeyRepository, User } from '@n8n/db';
+import { ApiKeyRepository, TransactionRunner, User, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { AuthMethod } from '@n8n/permissions';
-import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ApiKeyAudience } from 'n8n-workflow';
@@ -30,37 +29,30 @@ export class McpServerApiKeyService {
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 		private readonly authStrategyRegistry: AuthStrategyRegistry,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
-	async createMcpServerApiKey(user: User, trx?: EntityManager) {
-		const manager = trx ?? this.apiKeyRepository.manager;
-
+	async createMcpServerApiKey(user: User, ctx: OperationContext = {}) {
 		const apiKey = this.jwtService.sign('mcpApiKey', {
 			sub: user.id,
 			iss: API_KEY_ISSUER,
 			jti: randomUUID(),
 		});
 
-		const apiKeyEntity = this.apiKeyRepository.create({
-			userId: user.id,
-			apiKey,
-			audience: API_KEY_AUDIENCE,
-			scopes: [],
-			label: API_KEY_LABEL,
-		});
-
-		await manager.insert(ApiKey, apiKeyEntity);
-
-		return await manager.findOneByOrFail(ApiKey, { apiKey });
+		return await this.apiKeyRepository.createKey(
+			{
+				userId: user.id,
+				apiKey,
+				audience: API_KEY_AUDIENCE,
+				scopes: [],
+				label: API_KEY_LABEL,
+			},
+			ctx,
+		);
 	}
 
 	async findServerApiKeyForUser(user: User, { redact = true } = {}) {
-		const apiKey = await this.apiKeyRepository.findOne({
-			where: {
-				userId: user.id,
-				audience: API_KEY_AUDIENCE,
-			},
-		});
+		const apiKey = await this.apiKeyRepository.findByUserAndAudience(user.id, API_KEY_AUDIENCE);
 
 		if (apiKey && redact) {
 			apiKey.apiKey = this.redactApiKey(apiKey.apiKey);
@@ -116,13 +108,8 @@ export class McpServerApiKeyService {
 		}
 	}
 
-	async deleteAllMcpApiKeysForUser(user: User, trx?: EntityManager) {
-		const manager = trx ?? this.apiKeyRepository.manager;
-
-		await manager.delete(ApiKey, {
-			userId: user.id,
-			audience: API_KEY_AUDIENCE,
-		});
+	async deleteAllMcpApiKeysForUser(user: User, ctx: OperationContext = {}) {
+		await this.apiKeyRepository.deleteAllForUser(user.id, API_KEY_AUDIENCE, ctx);
 	}
 
 	private redactApiKey(apiKey: string) {
@@ -139,12 +126,7 @@ export class McpServerApiKeyService {
 	}
 
 	async getOrCreateApiKey(user: User) {
-		const apiKey = await this.apiKeyRepository.findOne({
-			where: {
-				userId: user.id,
-				audience: API_KEY_AUDIENCE,
-			},
-		});
+		const apiKey = await this.apiKeyRepository.findByUserAndAudience(user.id, API_KEY_AUDIENCE);
 
 		if (apiKey) {
 			apiKey.apiKey = this.redactApiKey(apiKey.apiKey);
@@ -155,9 +137,9 @@ export class McpServerApiKeyService {
 	}
 
 	async rotateMcpServerApiKey(user: User) {
-		return await this.apiKeyRepository.manager.transaction(async (trx) => {
-			await this.deleteAllMcpApiKeysForUser(user, trx);
-			return await this.createMcpServerApiKey(user, trx);
+		return await this.txRunner.run({}, async (ctx) => {
+			await this.deleteAllMcpApiKeysForUser(user, ctx);
+			return await this.createMcpServerApiKey(user, ctx);
 		});
 	}
 }

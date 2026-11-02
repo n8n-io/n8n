@@ -1,5 +1,13 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
+import {
+	ApiKeyRepository,
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	ProjectRelationRepository,
+	ProjectRepository,
+	TransactionRunner,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	getOwnerOnlyApiKeyScopes,
@@ -9,10 +17,15 @@ import {
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
+import {
+	createAdminWithApiKey,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+} from '@test-integration/db/users';
 
 import { JwtService } from '@n8n/backend-services';
 import { PublicApiKeyService } from '../public-api-key.service';
+import { UserService } from '../user.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
@@ -30,7 +43,13 @@ describe('PublicApiKeyService', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		apiKeyRepository = Container.get(ApiKeyRepository);
-		publicApiKeyService = new PublicApiKeyService(apiKeyRepository, jwtService, mock(), mock());
+		publicApiKeyService = new PublicApiKeyService(
+			apiKeyRepository,
+			jwtService,
+			mock(),
+			mock(),
+			Container.get(TransactionRunner),
+		);
 	});
 
 	afterAll(async () => {
@@ -68,7 +87,7 @@ describe('PublicApiKeyService', () => {
 
 			// Assert
 
-			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+			const apiKeyOnDb = await apiKeyRepository.findByIdOrFail(apiKeyId);
 
 			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
 				false,
@@ -83,9 +102,50 @@ describe('PublicApiKeyService', () => {
 
 			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
 
-			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+			const apiKeyOnDb = await apiKeyRepository.findByIdOrFail(apiKeyId);
 			expect(apiKeyOnDb.scopes).toEqual(MEMBER_API_KEY_SCOPES);
 		});
+	});
+
+	describe('role change transaction', () => {
+		it.each([false, true])(
+			'keeps user, project and API key changes atomic (failure: %s)',
+			async (fail) => {
+				const user = await createMemberWithApiKey();
+				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+					user.id,
+				);
+				const deleteKeys = apiKeyRepository.deleteAllForUser.bind(apiKeyRepository);
+				const deletion = vi
+					.spyOn(apiKeyRepository, 'deleteAllForUser')
+					.mockImplementationOnce(async (userId, audience, ctx) => {
+						await deleteKeys(userId, audience, ctx);
+						if (fail) throw new Error('Role change failed');
+					});
+
+				try {
+					const change = Container.get(UserService).changeUserRole(user, {
+						newRoleName: 'global:chatUser',
+					});
+					if (fail) {
+						await expect(change).rejects.toThrow('Role change failed');
+					} else {
+						await change;
+					}
+
+					const storedUser = await Container.get(UserRepository).findByIdWithRole(user.id);
+					const projectRelation = await Container.get(ProjectRelationRepository).findOneOrFail({
+						where: { userId: user.id, projectId: project.id },
+						relations: ['role'],
+					});
+					expect(storedUser?.role.slug).toBe(fail ? 'global:member' : 'global:chatUser');
+					expect(projectRelation.role.slug).toBe(fail ? 'project:personalOwner' : 'project:viewer');
+					expect(await apiKeyRepository.findByUserId(user.id)).toHaveLength(fail ? 1 : 0);
+				} finally {
+					deletion.mockRestore();
+				}
+			},
+		);
 	});
 
 	describe('apiKeyHasValidScopes', () => {
