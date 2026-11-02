@@ -5,6 +5,9 @@ import type {
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+
 import { formatRunActivity, useRunActivity } from '../composables/useRunActivity';
 
 function call(toolName: string, args: Record<string, unknown> = {}): InstanceAiToolCallState {
@@ -83,19 +86,6 @@ describe('useRunActivity, specific states', () => {
 	function activityOf(toolCalls: InstanceAiToolCallState[]) {
 		return useRunActivity()([message(agent({ toolCalls }))]);
 	}
-
-	it('adds the newest node, then configures it after 2 seconds', () => {
-		const deriveActivity = useRunActivity();
-		const write: InstanceAiToolCallState = {
-			...call('workspace_write_file'),
-			inputProgress: { nodeNames: ['Every Morning', 'Read Invoices'] },
-		};
-		const messages = [message(agent({ toolCalls: [write] }))];
-
-		expect(deriveActivity(messages, 1000)).toEqual({ label: 'Adding Read Invoices' });
-		expect(deriveActivity(messages, 2500)).toEqual({ label: 'Adding Read Invoices' });
-		expect(deriveActivity(messages, 3000)).toEqual({ label: 'Configuring Read Invoices' });
-	});
 
 	it('rotates between the nodes a blocked build names', () => {
 		const deriveActivity = useRunActivity();
@@ -214,6 +204,75 @@ describe('useRunActivity, specific states', () => {
 
 			expect(activityOf([answered]).waiting).toBeUndefined();
 			expect(activityOf([expired]).waiting).toBeUndefined();
+		});
+	});
+});
+
+describe('useRunActivity, long steps', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.getNodeType = vi.fn(
+			(name: string) =>
+				({
+					'n8n-nodes-base.gmail': { displayName: 'Gmail' },
+					'n8n-nodes-base.slack': { displayName: 'Slack' },
+				})[name] ?? null,
+		) as unknown as typeof nodeTypesStore.getNodeType;
+	});
+
+	const readTypes: InstanceAiToolCallState = {
+		...call('get_node_types', {
+			nodeTypes: ['n8n-nodes-base.gmail', { nodeType: 'n8n-nodes-base.slack' }, 'acme.unknown'],
+		}),
+		isLoading: false,
+	};
+
+	it('rotates through the node types the agent read while it writes the source', () => {
+		const deriveActivity = useRunActivity();
+		const messages = [message(agent({ toolCalls: [readTypes, call('workspace_write_file')] }))];
+
+		expect(deriveActivity(messages, 0)).toEqual({ label: 'Configuring Gmail nodes' });
+		expect(deriveActivity(messages, 3000)).toEqual({ label: 'Configuring Slack nodes' });
+		expect(deriveActivity(messages, 6000)).toEqual({ label: 'Configuring Gmail nodes' });
+	});
+
+	it('rotates through the node types while an edit runs', () => {
+		const messages = [
+			message(agent({ toolCalls: [readTypes, call('workspace_str_replace_file')] })),
+		];
+
+		expect(useRunActivity()(messages, 0)).toEqual({ label: 'Configuring Gmail nodes' });
+	});
+
+	it('uses the node types a sub-agent read', () => {
+		const child = agent({
+			agentId: 'child',
+			role: 'workflow-builder',
+			kind: 'builder',
+			toolCalls: [readTypes, call('workspace_write_file')],
+		});
+
+		expect(useRunActivity()([message(agent({ children: [child] }))], 0).detail).toBe(
+			'Configuring Gmail nodes',
+		);
+	});
+
+	it('keeps the tool label while the workflow is tested, so the canvas shows the running node', () => {
+		const verify = call('workflow_builder_verify_built_workflow', { workflowId: 'wf-1' });
+
+		expect(useRunActivity()([message(agent({ toolCalls: [readTypes, verify] }))], 0)).toEqual({
+			label: 'Verifying workflow',
+		});
+	});
+
+	it('keeps the tool label when the agent read no node types', () => {
+		const write = call('workspace_write_file', {
+			path: 'src/workflows/daily-invoices.workflow.ts',
+		});
+
+		expect(useRunActivity()([message(agent({ toolCalls: [write] }))], 0)).toEqual({
+			label: 'Writing daily invoices',
 		});
 	});
 });

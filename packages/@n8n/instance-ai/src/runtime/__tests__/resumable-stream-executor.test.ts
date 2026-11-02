@@ -578,45 +578,6 @@ describe('executeResumableStream', () => {
 		]);
 	});
 
-	it('publishes the node names a streaming source write has written so far', async () => {
-		const eventBus = createEventBus();
-		const source = "const gmail = node({ config: { name: 'Read Invoices' } });";
-
-		await executeResumableStream({
-			agent: {},
-			stream: {
-				runId: 'agent-run-1',
-				fullStream: fromChunks([
-					{ type: 'tool-input-start', toolCallId: 'call-1', toolName: 'workspace_write_file' },
-					{
-						type: 'tool-input-delta',
-						toolCallId: 'call-1',
-						delta: `{"content":${JSON.stringify(source)}`,
-					},
-				]),
-			},
-			context: {
-				threadId: 'thread-1',
-				runId: 'run-1',
-				agentId: 'agent-1',
-				eventBus,
-				signal: new AbortController().signal,
-				logger: createLogger(),
-			},
-			control: { mode: 'manual' },
-		});
-
-		expect(eventBus.publish).toHaveBeenCalledWith(
-			'thread-1',
-			expect.objectContaining({
-				type: 'tool-input-progress',
-				runId: 'run-1',
-				agentId: 'agent-1',
-				payload: { toolCallId: 'call-1', nodeNames: ['Read Invoices'] },
-			}),
-		);
-	});
-
 	it('assigns stable response IDs from native start-step chunks', async () => {
 		const eventBus = createEventBus();
 

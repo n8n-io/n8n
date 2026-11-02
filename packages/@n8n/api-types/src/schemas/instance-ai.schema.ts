@@ -273,7 +273,6 @@ export const instanceAiEventTypeSchema = z.enum([
 	'text-block',
 	'reasoning-block',
 	'tool-input-start',
-	'tool-input-progress',
 	'tool-call',
 	'tool-result',
 	'tool-error',
@@ -309,8 +308,6 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'workflow-draft',
 	// Belongs to one draft revision, which is ephemeral too.
 	'workflow-draft-issues',
-	// Live progress of a streaming tool call; the tool-call event follows with the full args.
-	'tool-input-progress',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -561,16 +558,6 @@ export const toolInputStartPayloadSchema = z.object({
 	toolCallId: z.string(),
 	toolName: z.string(),
 });
-
-export const TOOL_INPUT_PROGRESS_MAX_NODE_NAMES = 50;
-
-/** What a tool call has written so far while its arguments stream. */
-export const toolInputProgressPayloadSchema = z.object({
-	toolCallId: z.string(),
-	/** The node names in the source written so far, in source order. */
-	nodeNames: z.array(z.string().max(200)).max(TOOL_INPUT_PROGRESS_MAX_NODE_NAMES),
-});
-export type InstanceAiToolInputProgressPayload = z.infer<typeof toolInputProgressPayloadSchema>;
 
 export const toolResultPayloadSchema = z.object({
 	toolCallId: z.string(),
@@ -1453,11 +1440,6 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: toolInputStartPayloadSchema,
 	}),
-	z.object({
-		type: z.literal('tool-input-progress'),
-		...eventBase,
-		payload: toolInputProgressPayloadSchema,
-	}),
 	// Coalesced full text/reasoning of one streamed segment, produced by the
 	// durable event log (deltas are live-only and never persisted). On replay the
 	// reducer REPLACES the segment's streamed deltas, so a client that reconnects
@@ -2146,8 +2128,6 @@ export interface InstanceAiToolCallState {
 	toolCallId: string;
 	toolName: string;
 	args: Record<string, unknown>;
-	/** Live progress while the arguments stream. Not stored. */
-	inputProgress?: Omit<InstanceAiToolInputProgressPayload, 'toolCallId'>;
 	result?: unknown;
 	error?: string;
 	/** True when the run ended with the call in flight, so its effect is unverified. */

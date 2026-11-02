@@ -291,54 +291,24 @@ export function useToolLabel() {
 		return undefined;
 	}
 
-	/** The node the agent is on while the source streams. Close enough for a loading state. */
-	function getSourceProgressLabel(
-		action: SourceAction,
-		nodeName: string,
-		configuring: boolean,
-	): string {
-		const key: BaseTextKey =
-			action === 'editing'
-				? 'instanceAi.tools.workflowSource.updating'
-				: configuring
-					? 'instanceAi.tools.workflowSource.configuring'
-					: 'instanceAi.tools.workflowSource.adding';
-		return i18n.baseText(key, { interpolate: { name: nodeName } });
-	}
-
-	/** Workflow source writes say what happens to the node being written, else name the workflow. */
+	/** Workflow source writes name the workflow, never the file. */
 	function getWorkflowSourceLabel(
 		toolName: string,
 		args: Record<string, unknown> | undefined,
-		progress: InstanceAiToolCallState['inputProgress'],
-		configuring: boolean,
 	): string | undefined {
 		const action = Object.hasOwn(WORKFLOW_SOURCE_ACTIONS, toolName)
 			? WORKFLOW_SOURCE_ACTIONS[toolName]
 			: undefined;
 		if (!action) return undefined;
-		const newestNode = progress?.nodeNames.at(-1);
-		if (newestNode) return getSourceProgressLabel(action, newestNode, configuring);
 		const name = workflowSourceName(args);
 		return name
 			? i18n.baseText(WORKFLOW_SOURCE_LABEL_KEYS[action], { interpolate: { name } })
 			: undefined;
 	}
 
-	function getToolLabel(
-		rawToolName: string,
-		args?: Record<string, unknown>,
-		progress?: InstanceAiToolCallState['inputProgress'],
-		/** The newest streamed node has been written for a while, so it is being configured. */
-		options: { configuring?: boolean } = {},
-	): string {
+	function getToolLabel(rawToolName: string, args?: Record<string, unknown>): string {
 		const toolName = resolveBuilderToolName(rawToolName, args?.action);
-		const sourceLabel = getWorkflowSourceLabel(
-			toolName,
-			args,
-			progress,
-			options.configuring ?? false,
-		);
+		const sourceLabel = getWorkflowSourceLabel(toolName, args);
 		if (sourceLabel) return sourceLabel;
 		if (toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT) {
 			const operationKey = getBuildAgentOperationKey(args?.operation);

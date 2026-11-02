@@ -36,9 +36,6 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.workflowSource.writing': 'Writing {name}',
 				'instanceAi.tools.workflowSource.editing': 'Editing {name}',
 				'instanceAi.tools.workflowSource.building': 'Building {name}',
-				'instanceAi.tools.workflowSource.adding': 'Adding {name}',
-				'instanceAi.tools.workflowSource.configuring': 'Configuring {name}',
-				'instanceAi.tools.workflowSource.updating': 'Updating {name}',
 				'instanceAi.tools.agent_builder_get_node_types': 'Reading node schema',
 				'instanceAi.tools.list_credentials': 'Inspecting credentials',
 				'instanceAi.tools.setup_credentials': 'Setting up credentials',
@@ -427,21 +424,6 @@ describe('workflow source labels', () => {
 		);
 		expect(getToolLabel('workflow_builder_build_workflow', { filePath: path })).toBe(
 			'Building daily invoice processing',
-		);
-	});
-
-	test('adds, then configures, the node the agent writes while the source streams', () => {
-		const progress = { nodeNames: ['Every Morning', 'Read Invoices'] };
-
-		expect(getToolLabel('workspace_write_file', {}, progress)).toBe('Adding Read Invoices');
-		expect(
-			getToolLabel('workflow_builder_build_workflow', {}, progress, { configuring: true }),
-		).toBe('Configuring Read Invoices');
-	});
-
-	test('says the agent updates a node while an edit streams', () => {
-		expect(getToolLabel('workspace_str_replace_file', { path }, { nodeNames: ['Gmail'] })).toBe(
-			'Updating Gmail',
 		);
 	});
 

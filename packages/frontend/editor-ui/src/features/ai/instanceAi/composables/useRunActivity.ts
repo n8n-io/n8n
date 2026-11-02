@@ -11,6 +11,8 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { useNow } from '@vueuse/core';
 
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+
 import { useSteadyValue } from './useSteadyValue';
 import { getAgentActivityKey, getAgentSectionTitle, isActiveBuilderAgent } from '../builderAgents';
 import { useToolLabel } from '../toolLabels';
@@ -29,10 +31,41 @@ export function formatRunActivity(activity: RunActivity): string {
 
 // A validation error names its node after its code: `[SET_INVALID_ASSIGNMENT] (Set): ...`.
 const ERROR_NODE_PATTERN = /^\[[A-Z0-9_]+\]\s*\(([^)]+)\)/;
-/** A streamed node counts as configured once it has been the newest for this long. */
-const CONFIGURING_AFTER_MS = 2000;
-/** How long each node shows while the agent fixes several. */
-const FIX_ROTATION_MS = 3000;
+/** How long each name shows while a status rotates through several. */
+const ROTATION_MS = 3000;
+
+/**
+ * Long source writes rotate through the node types the agent read, so the
+ * status moves. Verification does not: the canvas shows the node that runs.
+ */
+const NODE_TYPE_ROTATION_KEYS: Readonly<Record<string, BaseTextKey>> = {
+	workspace_write_file: 'instanceAi.activity.configuringNodes',
+	workspace_str_replace_file: 'instanceAi.activity.configuringNodes',
+};
+
+function collectToolCalls(node: InstanceAiAgentNode): InstanceAiToolCallState[] {
+	return [...node.toolCalls, ...node.children.flatMap(collectToolCalls)];
+}
+
+/** The node types the run read schemas for, in the order it read them. */
+function readNodeTypes(tree: InstanceAiAgentNode): string[] {
+	return unique(
+		collectToolCalls(tree).flatMap((toolCall) => {
+			if (toolCall.toolName !== SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) return [];
+			const { nodeTypes } = toolCall.args;
+			if (!Array.isArray(nodeTypes)) return [];
+			return nodeTypes.flatMap((request: unknown) => {
+				if (typeof request === 'string') return [request];
+				return isRecord(request) && typeof request.nodeType === 'string' ? [request.nodeType] : [];
+			});
+		}),
+	);
+}
+
+/** One name of a list, a different one every few seconds. */
+function rotate(names: string[], now: number): string {
+	return names[Math.floor(now / ROTATION_MS) % names.length];
+}
 
 function unique(names: string[]): string[] {
 	return [...new Set(names)];
@@ -114,26 +147,41 @@ export function useRunActivity() {
 	const i18n = useI18n();
 	const { getToolLabel } = useToolLabel();
 
-	// When each streamed node first became the newest, by tool call.
-	const newestNodeSince = new Map<string, number>();
+	function nodeTypeDisplayNames(tree: InstanceAiAgentNode): string[] {
+		const nodeTypes = readNodeTypes(tree);
+		if (nodeTypes.length === 0) return [];
+		const nodeTypesStore = useNodeTypesStore();
+		return unique(
+			nodeTypes.flatMap((nodeType) => nodeTypesStore.getNodeType(nodeType)?.displayName ?? []),
+		);
+	}
 
-	function runningToolLabel(toolCall: InstanceAiToolCallState, now: number): string {
-		const newestNode = toolCall.inputProgress?.nodeNames.at(-1);
-		let configuring = false;
-		if (newestNode) {
-			const key = `${toolCall.toolCallId}\u0000${newestNode}`;
-			const since = newestNodeSince.get(key) ?? now;
-			newestNodeSince.set(key, since);
-			configuring = now - since >= CONFIGURING_AFTER_MS;
+	/**
+	 * A long call names one of the node types the agent read, a different one
+	 * every few seconds. Close enough for a loading state, and it keeps moving.
+	 */
+	function runningToolLabel(
+		toolCall: InstanceAiToolCallState,
+		tree: InstanceAiAgentNode,
+		now: number,
+	): string {
+		const toolName = resolveBuilderToolName(toolCall.toolName, toolCall.args.action);
+		const key = Object.hasOwn(NODE_TYPE_ROTATION_KEYS, toolName)
+			? NODE_TYPE_ROTATION_KEYS[toolName]
+			: undefined;
+		const names = key ? nodeTypeDisplayNames(tree) : [];
+		if (key && names.length > 0) {
+			return i18n.baseText(key, { interpolate: { name: rotate(names, now) } });
 		}
-		return getToolLabel(toolCall.toolName, toolCall.args, toolCall.inputProgress, { configuring });
+		return getToolLabel(toolCall.toolName, toolCall.args);
 	}
 
 	/** One of the nodes being fixed, a different one every few seconds. */
 	function fixingLabel(nodeNames: string[], now: number): string | undefined {
 		if (nodeNames.length === 0) return undefined;
-		const name = nodeNames[Math.floor(now / FIX_ROTATION_MS) % nodeNames.length];
-		return i18n.baseText('instanceAi.activity.fixingNode', { interpolate: { name } });
+		return i18n.baseText('instanceAi.activity.fixingNode', {
+			interpolate: { name: rotate(nodeNames, now) },
+		});
 	}
 
 	function buildNextStep(result: unknown, now: number): string {
@@ -195,14 +243,14 @@ export function useRunActivity() {
 				i18n.baseText('instanceAi.statusBar.thinking');
 			const activeTool = activeChild.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
 			const detail = activeTool
-				? runningToolLabel(activeTool, now)
+				? runningToolLabel(activeTool, tree, now)
 				: nextStepLabel(activeChild, now);
 			return detail ? { label: roleLabel, detail } : { label: roleLabel };
 		}
 
 		// Check root-level active tools
 		const activeTool = tree.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
-		if (activeTool) return { label: runningToolLabel(activeTool, now) };
+		if (activeTool) return { label: runningToolLabel(activeTool, tree, now) };
 
 		return { label: nextStepLabel(tree, now) ?? i18n.baseText('instanceAi.statusBar.thinking') };
 	};
@@ -214,7 +262,7 @@ export function useRunActivity() {
  */
 export function useSteadyRunActivity(messages: () => InstanceAiMessage[]) {
 	const deriveActivity = useRunActivity();
-	// Some states move on with time (configuring a node, rotating fixes), not only with events.
+	// Some states rotate with time (node types, fixes), not only with events.
 	const now = useNow({ interval: 1000 });
 	return useSteadyValue(() => deriveActivity(messages(), now.value.getTime()) ?? undefined, {
 		key: (activity) => `${activity.waiting ? 'waiting:' : ''}${formatRunActivity(activity)}`,

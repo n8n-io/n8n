@@ -904,58 +904,6 @@ describe('agent-run-reducer', () => {
 			expect(state.toolCallsById['tc-eval-setup'].renderHint).toBe('eval-setup');
 		});
 
-		describe('tool-input-progress', () => {
-			function startWrite(state: AgentRunState) {
-				reduceEvent(state, {
-					type: 'tool-input-start',
-					runId: 'run-1',
-					agentId: 'root',
-					payload: { toolCallId: 'tc-1', toolName: 'workspace_write_file' },
-				});
-			}
-			const progress = (nodeNames: string[]) =>
-				({
-					type: 'tool-input-progress',
-					runId: 'run-1',
-					agentId: 'root',
-					payload: { toolCallId: 'tc-1', nodeNames },
-				}) as const;
-
-			it('keeps the node names a streaming call has written so far', () => {
-				const state = stateWithRun('run-1', 'root');
-				startWrite(state);
-
-				reduceEvent(state, progress(['Every Morning', 'Read Invoices']));
-
-				expect(state.toolCallsById['tc-1'].inputProgress).toEqual({
-					nodeNames: ['Every Morning', 'Read Invoices'],
-				});
-			});
-
-			it('drops the progress when the full call arrives', () => {
-				const state = stateWithRun('run-1', 'root');
-				startWrite(state);
-				reduceEvent(state, progress(['Every Morning']));
-
-				reduceEvent(state, {
-					type: 'tool-call',
-					runId: 'run-1',
-					agentId: 'root',
-					payload: { toolCallId: 'tc-1', toolName: 'workspace_write_file', args: { path: 'a' } },
-				});
-
-				expect(state.toolCallsById['tc-1'].inputProgress).toBeUndefined();
-			});
-
-			it('ignores progress for an unknown call', () => {
-				const state = stateWithRun('run-1', 'root');
-
-				reduceEvent(state, progress(['Every Morning']));
-
-				expect(state.toolCallsById['tc-1']).toBeUndefined();
-			});
-		});
-
 		it('tool-input-start announces a pending tool call before its args stream', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, {

@@ -163,17 +163,18 @@ it. The text comes from `useToolLabel`, as in the rest of the chat.
 - **Workflow source:** labels name the workflow, never the file: "Writing
   daily invoice processing", "Editing …", "Building …". Other files keep
   "Writing file".
-- **Live progress:** while the agent streams workflow source
-  (`workspace_write_file`, `workspace_str_replace_file`, or a build with
-  `sourceCode`), the backend reads the streamed arguments
-  (`ToolInputProgressTracker`). It publishes the node names written so far as
-  an ephemeral `tool-input-progress` event, at most once every 2 seconds for
-  each call. The run reducer keeps them on the tool call (`inputProgress`)
-  until the full `tool-call` arrives. The frontend picks the verb on a timer.
-  Accuracy is not important in a loading state:
-  - a new newest node → "Adding Read Invoices"
-  - the same newest node 2 s later → "Configuring Read Invoices"
-  - an edit (`workspace_str_replace_file`) → "Updating Read Invoices"
+- **Long source writes:** a source write or an edit can run for many
+  seconds. While one runs, the status rotates every 3 s through the node
+  types that the run read with `get_node_types`: "Configuring Gmail nodes" →
+  "Configuring Slack nodes". Accuracy is not important in a loading state;
+  the status must keep moving. Without read node types, the tool label shows.
+  Verification keeps its tool label: the canvas shows the node that runs, so
+  a rotating node name could contradict it.
+
+  A first version streamed the node names from the tool arguments
+  (`tool-input-delta`) as an ephemeral event. It did not show in a manual run,
+  and it needed a parser and a new event. The rotation needs neither, so the
+  streaming version was removed.
 - **Between calls:** the step after the last finished call, not "Thinking":
   - after a node search: "Choosing nodes"
   - after a schema read or a skill load: "Planning the workflow"

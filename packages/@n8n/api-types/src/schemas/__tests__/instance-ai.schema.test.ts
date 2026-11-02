@@ -296,33 +296,6 @@ describe('instanceAiEventSchema', () => {
 		});
 	});
 
-	describe('tool-input-progress events', () => {
-		const progressEvent = {
-			type: 'tool-input-progress',
-			runId: 'run-1',
-			agentId: 'agent-1',
-			payload: {
-				toolCallId: 'tc-1',
-				nodeNames: ['Schedule Trigger', 'Gmail'],
-			},
-		};
-
-		it('parses the node names of a streaming tool call', () => {
-			expect(instanceAiEventSchema.parse(progressEvent)).toEqual(progressEvent);
-		});
-
-		it('rejects more than 50 node names', () => {
-			const nodeNames = Array.from({ length: 51 }, (_, i) => `Node ${i}`);
-			const event = { ...progressEvent, payload: { ...progressEvent.payload, nodeNames } };
-
-			expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
-		});
-
-		it('is ephemeral, so progress is never persisted or replayed', () => {
-			expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('tool-input-progress')).toBe(true);
-		});
-	});
-
 	describe('workflow-draft-issues events', () => {
 		const issuesEvent = {
 			type: 'workflow-draft-issues',

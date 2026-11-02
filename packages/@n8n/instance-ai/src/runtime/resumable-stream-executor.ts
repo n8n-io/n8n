@@ -11,7 +11,6 @@ import type {
 	OrchestratorRunStopSignal,
 } from './orchestrator-run-control';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../stream/map-chunk';
-import { ToolInputProgressTracker } from '../stream/tool-input-progress';
 import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { parseSuspension, resumeAgentStream } from '../utils/stream-helpers';
@@ -359,7 +358,6 @@ async function consumeStreamPass(args: {
 	 * the next structural fact so blocks stay exactly 1:1 with segments.
 	 */
 	let syntheticSegmentId: string | undefined;
-	const toolInputProgress = new ToolInputProgressTracker();
 	let suspension: SuspensionInfo | undefined;
 	let hasError = false;
 	let error: unknown;
@@ -459,16 +457,7 @@ async function consumeStreamPass(args: {
 		const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
 		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
-		const events: InstanceAiEvent[] = mappedEvent ? [mappedEvent] : [];
-		const progress = toolInputProgress.observe(chunk, Date.now());
-		if (progress) {
-			events.push({
-				type: 'tool-input-progress',
-				runId: options.context.runId,
-				agentId: options.context.agentId,
-				payload: progress,
-			});
-		}
+		const events = mappedEvent ? [mappedEvent] : [];
 		// The first thing the user sees the agent do: answer text, visible reasoning
 		// or the start of a tool call.
 		if (mappedEvent && RESPONSE_CHUNK_TYPES.includes(mappedEvent.type)) {
