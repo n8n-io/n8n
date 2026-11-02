@@ -452,7 +452,7 @@ describe('ResumeRequestService.resolve', () => {
 		await expect(service.resolve('s1', 'not-a-token', outputs)).rejects.toEqual(
 			rejection('invalid_token'),
 		);
-		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+		expect(stepStore.loadStep).not.toHaveBeenCalled();
 	});
 
 	// A token for another step must not learn whether this step waits.

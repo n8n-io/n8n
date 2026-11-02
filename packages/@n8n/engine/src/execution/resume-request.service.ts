@@ -195,10 +195,11 @@ export class ResumeRequestService {
 	 * ended.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
+		const claims = verifyResumeToken(this.secret, token);
+		if (!claims) throw new ResumeRejectedError('invalid_token');
 		// As a bad token, so a caller cannot learn whether a step id exists.
 		const step = await this.loadStep(stepId, 'invalid_token');
-		const claims = verifyResumeToken(this.secret, token);
-		if (!claims || !namesStep(claims, step)) throw new ResumeRejectedError('invalid_token');
+		if (!namesStep(claims, step)) throw new ResumeRejectedError('invalid_token');
 		if (!waitsFor(BINDING_OF_KIND[claims.kind])(step)) {
 			throw new ResumeRejectedError('not_waiting');
 		}
