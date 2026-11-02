@@ -26,10 +26,13 @@ const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 	pinia: createTestingPinia(),
 	global: {
 		stubs: {
-			Modal: {
-				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
+			DialogHeader: { template: '<div><slot /></div>' },
+			DialogTitle: { template: '<h2><slot /></h2>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 		},
 	},
 });

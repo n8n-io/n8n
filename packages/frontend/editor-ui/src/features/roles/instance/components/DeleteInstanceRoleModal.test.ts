@@ -1,21 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import type { Role } from '@n8n/permissions';
 import DeleteInstanceRoleModal from './DeleteInstanceRoleModal.vue';
-
-// The real ElDialog teleports to #app-modals; stub it so the modal content renders inline.
-const ElDialogStub = {
-	props: ['modelValue'],
-	template: `
-		<div v-if="modelValue" role="dialog">
-			<slot name="header" />
-			<slot />
-			<slot name="footer" />
-		</div>
-	`,
-};
 
 const role: Role = {
 	displayName: 'Support Agent',
@@ -50,11 +38,6 @@ const availableRoles: Role[] = [
 
 const renderComponent = createComponentRenderer(DeleteInstanceRoleModal, {
 	props: { modelValue: true, role, userCount: 3, availableRoles },
-	global: {
-		stubs: {
-			ElDialog: ElDialogStub,
-		},
-	},
 });
 
 describe('DeleteInstanceRoleModal', () => {
@@ -63,37 +46,41 @@ describe('DeleteInstanceRoleModal', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('should show the role name, user count and reassignment prompt', () => {
-		const { getByText } = renderComponent();
+	it('should show the role name, user count and reassignment prompt', async () => {
+		const { findByText } = renderComponent();
 
-		expect(getByText('Delete Support Agent role')).toBeInTheDocument();
-		expect(getByText('3 users')).toBeInTheDocument();
-		expect(getByText(/are currently assigned to this role/)).toBeInTheDocument();
+		expect(await findByText('Delete Support Agent role')).toBeInTheDocument();
+		expect(await findByText('3 users')).toBeInTheDocument();
+		expect(await findByText(/are currently assigned to this role/)).toBeInTheDocument();
 	});
 
-	it('should use the singular form for a single assigned user', () => {
-		const { getByText } = renderComponent({
+	it('should use the singular form for a single assigned user', async () => {
+		const { findByText } = renderComponent({
 			props: { modelValue: true, role, userCount: 1, availableRoles },
 		});
 
-		expect(getByText('1 user')).toBeInTheDocument();
+		expect(await findByText('1 user')).toBeInTheDocument();
 	});
 
-	it('should disable confirm until a role is picked, with a neutral default label', () => {
-		const { getByTestId } = renderComponent();
+	it('should disable confirm until a role is picked, with a neutral default label', async () => {
+		const { findByTestId } = renderComponent();
 
-		const confirmButton = getByTestId('confirm-delete-reassign-role');
+		const confirmButton = await findByTestId('confirm-delete-reassign-role');
 		expect(confirmButton).toBeDisabled();
 		expect(confirmButton).toHaveTextContent('Delete and reassign users');
 	});
 
 	it('should reflect the chosen role in the confirm label and emit on confirm', async () => {
-		const { getByTestId, getByText, emitted } = renderComponent();
+		const { findByTestId, getByTestId, getByText, emitted } = renderComponent();
 
 		// N8nSelect (ElSelect): open the dropdown, then pick the option.
-		await userEvent.click(getByTestId('reassign-role-select'));
+		await userEvent.click(await findByTestId('reassign-role-select'));
 		await waitFor(() => expect(getByText('Admin')).toBeInTheDocument());
-		await userEvent.click(getByText('Admin'));
+		// The option is teleported to body. jsdom does not apply the dialog's
+		// .el-popper pointer-events rule, so the click check would reject it.
+		await userEvent.click(getByText('Admin'), {
+			pointerEventsCheck: PointerEventsCheckLevel.Never,
+		});
 
 		const confirmButton = getByTestId('confirm-delete-reassign-role');
 		await waitFor(() =>
@@ -107,9 +94,9 @@ describe('DeleteInstanceRoleModal', () => {
 	});
 
 	it('should close without emitting confirm when cancelled', async () => {
-		const { getByTestId, emitted } = renderComponent();
+		const { findByTestId, emitted } = renderComponent();
 
-		await userEvent.click(getByTestId('cancel-delete-role'));
+		await userEvent.click(await findByTestId('cancel-delete-role'));
 
 		expect(emitted().confirm).toBeUndefined();
 		expect(emitted()['update:modelValue']).toEqual([[false]]);

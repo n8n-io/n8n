@@ -1,18 +1,31 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nText, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogDescription,
+	N8nDialogTitle,
+	N8nText,
+	N8nIcon,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import Modal from '@/app/components/Modal.vue';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 import type { AppEntry } from '../composables/useAppCredentials';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { Icon, ThemeIconColor } from 'n8n-workflow';
+
+defineOptions({ inheritAttrs: false });
 
 const APP_INSTALL_MODAL_KEY = 'appInstallModal';
 
@@ -29,7 +42,10 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const usersStore = useUsersStore();
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
 const { installNode, loading } = useInstallNode();
+const resolvedModalName = computed(() => props.modalName ?? APP_INSTALL_MODAL_KEY);
+const modalOpen = computed(() => uiStore.modalsById[resolvedModalName.value]?.open === true);
 
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
@@ -161,6 +177,19 @@ const handleClose = () => {
 	emit('close');
 };
 
+async function closeDialog() {
+	uiStore.closeModal(resolvedModalName.value);
+	handleClose();
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+function preventCloseWhileLoading(event: Event) {
+	if (loading.value) event.preventDefault();
+}
+
 // Fetch data when appEntry changes
 watch(
 	() => props.appEntry,
@@ -174,16 +203,14 @@ watch(
 </script>
 
 <template>
-	<Modal
-		:name="modalName ?? APP_INSTALL_MODAL_KEY"
-		:center="true"
-		width="520px"
-		:close-on-click-modal="!loading"
-		:close-on-press-escape="!loading"
-		data-test-id="app-install-modal"
-		@close="handleClose"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		@update:open="onDialogOpenUpdate"
+		@interact-outside="preventCloseWhileLoading"
+		@escape-key-down="preventCloseWhileLoading"
 	>
-		<template #header>
+		<N8nDialogHeader>
 			<div :class="$style.header">
 				<NodeIcon
 					v-if="nodeTypeForIcon"
@@ -193,7 +220,7 @@ watch(
 					:circle="false"
 					:show-tooltip="false"
 				/>
-				<span :class="$style.title">{{ appEntry?.app.displayName }}</span>
+				<N8nDialogTitle>{{ appEntry?.app.displayName }}</N8nDialogTitle>
 				<N8nTooltip v-if="isOfficial" placement="bottom" :show-after="500">
 					<template #content>
 						{{
@@ -207,23 +234,24 @@ watch(
 					<OfficialIcon :class="$style.officialIcon" />
 				</N8nTooltip>
 			</div>
-		</template>
-
-		<template #content>
-			<div :class="$style.content">
-				<N8nText v-if="description" color="text-base" size="medium" :class="$style.description">
+		</N8nDialogHeader>
+		<N8nDialogBody>
+			<div :class="$style.content" data-test-id="app-install-modal">
+				<N8nDialogDescription v-if="description">
 					{{ description }}
-				</N8nText>
+				</N8nDialogDescription>
 
 				<div :class="$style.separator" />
 
 				<div :class="$style.info">
 					<N8nTooltip placement="top">
-						<template #content>{{
-							isOfficial
-								? i18n.baseText('communityNodeInfo.officialApproved')
-								: i18n.baseText('communityNodeInfo.approved')
-						}}</template>
+						<template #content>
+							{{
+								isOfficial
+									? i18n.baseText('communityNodeInfo.officialApproved')
+									: i18n.baseText('communityNodeInfo.approved')
+							}}</template
+						>
 						<div :class="$style.infoItem">
 							<N8nIcon :class="$style.infoIcon" icon="shield-half" />
 							<N8nText color="text-light" size="small">
@@ -264,22 +292,19 @@ watch(
 
 				<ContactAdministratorToInstall v-if="!isAdminOrOwner" />
 			</div>
-		</template>
-
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					v-if="isAdminOrOwner"
-					:label="i18n.baseText('communityNodeDetails.install')"
-					icon="download"
-					:loading="loading"
-					:class="$style.installButton"
-					data-test-id="install-community-node-button"
-					@click="handleInstall"
-				/>
-			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				v-if="isAdminOrOwner"
+				:label="i18n.baseText('communityNodeDetails.install')"
+				icon="download"
+				:loading="loading"
+				:class="$style.installButton"
+				data-test-id="install-community-node-button"
+				@click="handleInstall"
+			/>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -293,12 +318,6 @@ watch(
 	margin-right: var(--spacing--sm);
 }
 
-.title {
-	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text);
-}
-
 .officialIcon {
 	display: inline-flex;
 	flex-shrink: 0;
@@ -310,12 +329,6 @@ watch(
 .content {
 	display: flex;
 	flex-direction: column;
-}
-
-.description {
-	margin-top: var(--spacing--md);
-	margin-bottom: var(--spacing--xl);
-	line-height: 1.6;
 }
 
 .separator {
@@ -355,11 +368,6 @@ watch(
 			color: var(--color--primary);
 		}
 	}
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
 }
 
 .installButton {
