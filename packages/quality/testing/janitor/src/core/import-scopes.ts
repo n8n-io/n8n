@@ -42,6 +42,9 @@ function importInfo(sf: ts.SourceFile, node: ts.Statement): ImportInfo | undefin
 	if (bindings && ts.isNamespaceImport(bindings)) names.push(bindings.name.text);
 	if (bindings && ts.isNamedImports(bindings)) {
 		for (const el of bindings.elements) if (!el.isTypeOnly) names.push(el.name.text);
+		// With `verbatimModuleSyntax`, `import { type A }` compiles to `import {}`,
+		// which still loads the module, like a side-effect import.
+		if (!clause.name && names.length === 0) return { start, end, names, opaque: true };
 	}
 	return { start, end, names, opaque: false };
 }
@@ -87,9 +90,18 @@ function hasDecorators(node: ts.Node): boolean {
 	return ts.canHaveDecorators(node) && (ts.getDecorators(node)?.length ?? 0) > 0;
 }
 
-/** True when a class or any of its members has a decorator. */
+/**
+ * True when a class, one of its members, or a parameter of one of its members
+ * has a decorator. Each of these makes TypeScript emit design-type metadata.
+ */
 function isDecoratedClass(node: ts.ClassLikeDeclaration): boolean {
-	return hasDecorators(node) || node.members.some(hasDecorators);
+	return (
+		hasDecorators(node) ||
+		node.members.some(
+			(m) =>
+				hasDecorators(m) || (ts.isFunctionLike(m) && m.parameters.some((p) => hasDecorators(p))),
+		)
+	);
 }
 
 type RefKind = 'value' | 'type' | 'metadata';
@@ -146,20 +158,26 @@ function useSpans(facts: ModuleFacts, names: Set<string>): LineSpan[] | null {
 
 /**
  * Resolve one module-level hunk. `oldLines` are the removed lines in the map
- * commit's lines, and `newLines` the added lines in the working tree. Returns
- * the spans that replace the hunk (possibly none), or null when the hunk holds
- * other code and must keep its module-level span.
+ * commit's lines, and `newLines` the added lines in the working tree. The uses
+ * are read in `baseFacts`, the file at the base commit, so that uses added after
+ * the map commit count too. `toMapLines` translates them to the map commit's
+ * lines, or returns null when a use is in code that changed since then.
+ * Returns the spans that replace the hunk (possibly none), or null when the
+ * hunk must keep its module-level span.
  */
 export function narrowImportHunk(
 	mapFacts: ModuleFacts,
+	baseFacts: ModuleFacts,
 	headFacts: ModuleFacts,
 	oldLines: number[],
 	newLines: number[],
+	toMapLines: (spans: LineSpan[]) => LineSpan[] | null,
 ): LineSpan[] | null {
 	const oldNames = touchedImportNames(mapFacts, oldLines);
 	const newNames = touchedImportNames(headFacts, newLines);
 	if (!oldNames || !newNames) return null;
 	const names = new Set([...oldNames, ...newNames]);
 	if (names.size === 0) return [];
-	return useSpans(mapFacts, names);
+	const uses = useSpans(baseFacts, names);
+	return uses && toMapLines(uses);
 }

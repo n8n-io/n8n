@@ -140,8 +140,10 @@ no runtime effect of its own. It resolves to the lines that use the changed
 imports' value bindings, and each of those lines resolves as above. Type-only
 uses do not count, except in the signatures of a decorated class: with
 `emitDecoratorMetadata`, TypeScript emits those types when the module loads, so
-the file falls back to file-level. A side-effect import (`import './x'`) also
-falls back.
+the file falls back to file-level. An import that still loads the module
+without a value binding also falls back: a side-effect import
+(`import './x'`), `import { type A } from './x'` (compiled to `import {}` with
+`verbatimModuleSyntax`), and `import x = require('./x')`.
 
 Frontend and `.vue` files always use file-level selection.
 

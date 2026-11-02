@@ -95,6 +95,8 @@ function readLineScope(
 	const mapFacts = moduleFacts(git(root, ['show', `${mapSha}:${file}`]));
 	const ranges = functionRanges(mapFacts.sf);
 	let headFacts: ModuleFacts | undefined;
+	let baseFacts: ModuleFacts | undefined;
+	const toMapLines = (uses: LineSpan[]) => translateSpans(uses, drift);
 	const spans: LineSpan[] = [];
 	for (const hunk of hunks) {
 		const translated = translateSpans(changedSpans([hunk]), drift);
@@ -115,9 +117,18 @@ function readLineScope(
 			continue;
 		}
 		headFacts ??= moduleFacts(readWorkingTree(root, file));
+		baseFacts ??= moduleFacts(git(root, ['show', `${baseRef}:${file}`]));
 		const oldLines = oldSpans.map((s) => s.lo);
 		const newLines = lineList(hunk.newStart, hunk.newCount);
-		spans.push(...(narrowImportHunk(mapFacts, headFacts, oldLines, newLines) ?? [span]));
+		const narrowed = narrowImportHunk(
+			mapFacts,
+			baseFacts,
+			headFacts,
+			oldLines,
+			newLines,
+			toMapLines,
+		);
+		spans.push(...(narrowed ?? [span]));
 	}
 	return { spans, ranges };
 }
