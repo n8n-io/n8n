@@ -6,6 +6,7 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
+import { appNameSchema, appNamespaceSchema, appVisibilitySchema } from './app.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -838,8 +839,25 @@ export const confirmationInputTypeSchema = z.enum([
 	'questions',
 	'resource-decision',
 	'continue',
+	'app-blueprint',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
+
+export const appBlueprintSchema = z.object({
+	name: appNameSchema,
+	namespace: appNamespaceSchema,
+	visibility: appVisibilitySchema,
+	description: z.string().trim().min(1).max(500),
+	theme: z.enum(['light', 'dark', 'both']),
+	additionalInstructions: z.string().trim().min(1).max(2000).optional(),
+});
+export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
+
+export const appBlueprintResumeSchema = z.object({
+	approved: z.boolean(),
+	blueprint: appBlueprintSchema,
+});
+export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
 export const instanceAiTargetApprovalSchema = z.object({
 	toolName: z.string(),
@@ -924,7 +942,8 @@ export const confirmationRequestPayloadSchema = z.object({
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, ' +
 				'resource-decision shows 5-option gateway permission dialog, ' +
-				'continue shows a single primary button (used by pause-for-user)',
+				'continue shows a single primary button (used by pause-for-user), ' +
+				'app-blueprint shows the editable app proposal card',
 		),
 	questions: z
 		.array(instanceAiQuestionSchema)
@@ -973,6 +992,9 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'When present, renders the "waiting for a test request" card with the armed test URLs',
 		),
+	appBlueprint: appBlueprintSchema
+		.optional()
+		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -1001,6 +1023,7 @@ export function isDisplayableConfirmationRequest(
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
 	if (payload.testListener) return true;
+	if (payload.appBlueprint) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1012,6 +1035,8 @@ export function isDisplayableConfirmationRequest(
 			return hasItems(payload.questions);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
+		case 'app-blueprint':
+			return payload.appBlueprint !== undefined;
 		default:
 			return assertNever(inputType);
 	}

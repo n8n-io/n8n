@@ -128,8 +128,6 @@ export const allowedElementPlusComponents = [
 	'ElDropdownMenu',
 	'ElOption',
 	'ElOptionGroup',
-	'ElRadio',
-	'ElRadioGroup',
 	'ElRow',
 	'ElScrollbar',
 	'ElSelect',

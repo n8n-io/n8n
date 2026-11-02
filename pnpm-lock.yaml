@@ -642,8 +642,8 @@ catalogs:
       specifier: ^8.8.1
       version: 8.8.1
     isolated-vm:
-      specifier: ^7.0.1
-      version: 7.0.1
+      specifier: ^7.0.2
+      version: 7.0.2
     js-base64:
       specifier: 3.7.8
       version: 3.7.8
@@ -2965,7 +2965,7 @@ importers:
         version: link:../utils
       isolated-vm:
         specifier: 'catalog:'
-        version: 7.0.1
+        version: 7.0.2
       jmespath:
         specifier: 0.16.0
         version: 0.16.0
@@ -5032,7 +5032,7 @@ importers:
         version: 3.6.13
       isolated-vm:
         specifier: 'catalog:'
-        version: 7.0.1
+        version: 7.0.2
       jose:
         specifier: ^6.2.9
         version: 6.2.9
@@ -8429,7 +8429,7 @@ importers:
         version: 2.1.15
       isolated-vm:
         specifier: 'catalog:'
-        version: 7.0.1
+        version: 7.0.2
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
@@ -19896,8 +19896,8 @@ packages:
     resolution: {integrity: sha512-7c7mBznZu2ktfvyT582E2msM+Udc1EjOyhVRE/0ZsjD9LBtWSm23h3PtiRh2a35XoUsTQQjJXaJzuLjXsOdFDg==}
     engines: {node: '>=6.0'}
 
-  isolated-vm@7.0.1:
-    resolution: {integrity: sha512-nBCQ1hXEaYKYJ79wwfhaF44ITOJC30Hw0wPEsFeNsdD3hdeKK7FW1SGMQYBUA+qasvkqdOazI+iBuq0lcbN/aw==}
+  isolated-vm@7.0.2:
+    resolution: {integrity: sha512-Z1sYxpptGyGiKblG16EJEdP5x9/68C6AuqFFsewnrxlwSlrTLHKqtRMogOjcYZ0f8/cijMaRi+XwiHVQ1+uG+g==}
     engines: {node: '>=24.0.0'}
 
   isomorphic-ws@5.0.0:
@@ -38161,7 +38161,7 @@ snapshots:
 
   iso-639-1@2.1.15: {}
 
-  isolated-vm@7.0.1:
+  isolated-vm@7.0.2:
     dependencies:
       node-gyp-build: 4.8.4
 
