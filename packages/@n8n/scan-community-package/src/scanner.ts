@@ -524,8 +524,6 @@ export const analyzePackageByName = async (
 		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 		const failures = [sourceResult, distResult].filter((r) => !r.passed);
-		// An errored leg makes the whole scan inconclusive, so its message wins
-		// over a violation found by the other leg.
 		const firstFailure = failures.find((r) => r.error !== undefined) ?? failures[0];
 		const analysisResult: AnalysisResult = firstFailure
 			? {
