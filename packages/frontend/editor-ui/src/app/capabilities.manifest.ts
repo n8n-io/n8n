@@ -66,6 +66,8 @@ const projectPermissions = {
 		...(useUsersStore().currentUser?.globalScopes ?? []),
 		...(useProjectsStore().myProjects.find((project) => project.id === projectId)?.scopes ?? []),
 	],
+	defaultProjectId: () =>
+		useProjectsStore().currentProject?.id ?? useProjectsStore().personalProject?.id,
 	isReadOnly: () => useSourceControlStore().preferences.branchReadOnly,
 };
 

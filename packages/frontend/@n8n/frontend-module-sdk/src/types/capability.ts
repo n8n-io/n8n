@@ -28,6 +28,8 @@ export interface ModalOpeners {
 export interface ProjectPermissions {
 	/** The user's global scopes plus their scopes in the project. Reads reactive state, so call it in a `computed`. */
 	scopesFor(projectId: string): Scope[];
+	/** The current project, or the personal project when no project is open. */
+	defaultProjectId?(): string | undefined;
 	/** Whether the instance blocks writes (source control read-only branch). Reads reactive state. */
 	isReadOnly(): boolean;
 }

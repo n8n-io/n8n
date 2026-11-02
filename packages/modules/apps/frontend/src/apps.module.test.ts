@@ -71,6 +71,15 @@ describe('AppsModule', () => {
 			expect(router.currentRoute.value.name).toBe(APP_DETAIL_VIEW);
 		});
 
+		it('opens the pending App builder when the user can create apps', async () => {
+			provideScopes(['app:create']);
+			const router = createTestRouter();
+
+			await router.push('/projects/project-1/apps/pending-app');
+
+			expect(router.currentRoute.value.name).toBe(APP_DETAIL_VIEW);
+		});
+
 		it('redirects to the project workflows when the user cannot read apps', async () => {
 			provideScopes(['app:list']);
 			const router = createTestRouter();

@@ -247,4 +247,22 @@ describe('AppView', () => {
 		expect(getByTestId('publishable-version')).toHaveTextContent('v1');
 		expect(getByTestId('app-view-preview')).toBeInTheDocument();
 	});
+
+	it('shows the pending state while the app does not exist', async () => {
+		vi.mocked(getApp).mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+
+		const { findByTestId } = renderComponent({ props: { pending: true } });
+
+		expect(await findByTestId('app-view-pending')).toBeInTheDocument();
+		expect(getApp).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
+	});
+
+	it('resolves a pending route when the app already exists', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+
+		const { findByTestId, emitted } = renderComponent({ props: { pending: true } });
+
+		expect(await findByTestId('app-view-preview')).toBeInTheDocument();
+		expect(emitted('created')).toEqual([[]]);
+	});
 });

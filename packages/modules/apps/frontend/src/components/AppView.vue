@@ -20,9 +20,11 @@ import {
 	type AppConfigureTab,
 } from './configure/appConfigureTabs';
 
-const props = defineProps<{ projectId: string; appId: string }>();
+const props = withDefaults(defineProps<{ projectId: string; appId: string; pending?: boolean }>(), {
+	pending: false,
+});
 
-const emit = defineEmits<{ deleted: [appId: string] }>();
+const emit = defineEmits<{ created: []; deleted: [appId: string] }>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -53,7 +55,6 @@ const configureTab = computed<AppConfigureTab>({
 		section.value = `configure.${tab}`;
 	},
 });
-
 async function loadApp(keepView = false) {
 	const isLatest = latestFetch.next();
 	if (!keepView) {
@@ -64,6 +65,7 @@ async function loadApp(keepView = false) {
 		const result = await getApp(rootStore.restApiContext, props.projectId, props.appId);
 		if (!isLatest()) return;
 		app.value = result;
+		if (props.pending) emit('created');
 	} catch (error) {
 		if (!isLatest()) return;
 		if (error instanceof ResponseError && error.httpStatusCode === 404) {
@@ -76,7 +78,8 @@ async function loadApp(keepView = false) {
 }
 
 async function refresh() {
-	await Promise.all([loadApp(true), versions.refresh()]);
+	await loadApp(true);
+	await versions.refresh();
 }
 
 watch(
@@ -91,7 +94,7 @@ defineExpose({ refresh });
 <template>
 	<div :class="$style.view" data-test-id="app-view">
 		<AppHeader
-			v-if="loading || app"
+			v-if="loading || app || pending"
 			v-model:tab="activeTab"
 			:project-id="projectId"
 			:app="app"
@@ -100,32 +103,41 @@ defineExpose({ refresh });
 			@deleted="emit('deleted', $event)"
 		/>
 
-		<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
-			<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
-
-			<N8nEmptyState
-				v-else-if="!app"
-				:heading="i18n.baseText('apps.detail.notFound.heading')"
-				:description="i18n.baseText('apps.detail.notFound.description')"
-				data-test-id="app-view-not-found"
-			/>
-
-			<template v-else>
-				<AppPreview
-					v-if="activeTab === 'preview'"
-					:project-id="projectId"
-					:app="app"
-					:versions="versions"
+		<div :class="$style.workspace">
+			<slot name="aside" />
+			<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
+				<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
+				<N8nEmptyState
+					v-else-if="pending && !app"
+					:heading="i18n.baseText('apps.pending.heading')"
+					:description="i18n.baseText('apps.pending.description')"
+					data-test-id="app-view-pending"
 				/>
-				<AppConfigure
-					v-else
-					v-model:tab="configureTab"
-					:app="app"
-					:versions="versions"
-					@updated="app = $event"
+
+				<N8nEmptyState
+					v-else-if="!app"
+					:heading="i18n.baseText('apps.detail.notFound.heading')"
+					:description="i18n.baseText('apps.detail.notFound.description')"
+					data-test-id="app-view-not-found"
 				/>
-			</template>
-		</main>
+
+				<template v-else>
+					<AppPreview
+						v-if="activeTab === 'preview'"
+						:project-id="projectId"
+						:app="app"
+						:versions="versions"
+					/>
+					<AppConfigure
+						v-else
+						v-model:tab="configureTab"
+						:app="app"
+						:versions="versions"
+						@updated="app = $event"
+					/>
+				</template>
+			</main>
+		</div>
 	</div>
 </template>
 
@@ -135,6 +147,15 @@ defineExpose({ refresh });
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+}
+
+.workspace {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	min-width: 0;
+	container-type: inline-size;
 }
 
 .content {
