@@ -14,9 +14,9 @@ import { resolveStoredConfig } from './promotion-config-settings';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { buildCacheDescriptor } from './promotions-git.utils';
 
-type CleanupCommand = PubSubCommandMap['promotion-checkout-cleanup'];
+type EnvironmentChangedCommand = PubSubCommandMap['promotion-environment-changed'];
 
-type CleanupReason = CleanupCommand['reason'];
+type EnvironmentChange = EnvironmentChangedCommand['change'];
 
 /**
  * The one place that removes local checkouts, so that the environment lock
@@ -46,12 +46,12 @@ export class PromotionCheckoutCleanupService {
 
 	async resetCheckoutAfterDisconnect(environmentId: string): Promise<void> {
 		await this.reset([environmentId]);
-		this.publishToOtherMains([environmentId], 'disconnected');
+		this.publishToOtherMains([environmentId], 'checkout-disconnected');
 	}
 
 	async resetCheckoutAfterSettingsChange(environmentId: string): Promise<void> {
 		await this.reset([environmentId]);
-		this.publishToOtherMains([environmentId], 'settings-changed');
+		this.publishToOtherMains([environmentId], 'updated');
 	}
 
 	/** A new host URL changes the remote URL of every environment that stores a repository path. */
@@ -65,7 +65,7 @@ export class PromotionCheckoutCleanupService {
 			return;
 		}
 		await this.reset(environmentIds);
-		this.publishToOtherMains(environmentIds, 'settings-changed');
+		this.publishToOtherMains(environmentIds, 'updated');
 	}
 
 	/**
@@ -96,12 +96,15 @@ export class PromotionCheckoutCleanupService {
 	 * removes only a checkout that is no longer current. It never publishes, so
 	 * messages cannot loop.
 	 */
-	@OnPubSubEvent('promotion-checkout-cleanup', { instanceType: 'main' })
-	async handleCleanupFromOtherMain({ environmentIds, reason }: CleanupCommand): Promise<void> {
+	@OnPubSubEvent('promotion-environment-changed', { instanceType: 'main' })
+	async handleEnvironmentChangeFromOtherMain({
+		environmentIds,
+		change,
+	}: EnvironmentChangedCommand): Promise<void> {
 		try {
-			if (reason === 'deleted') {
+			if (change === 'deleted') {
 				await this.purgeIfDeleted(environmentIds);
-			} else if (reason === 'disconnected') {
+			} else if (change === 'checkout-disconnected') {
 				// The database stores no connected state, so there is nothing to check.
 				await this.reset(environmentIds);
 			} else {
@@ -110,7 +113,7 @@ export class PromotionCheckoutCleanupService {
 		} catch (error) {
 			this.warn(
 				'Failed to clean up the promotion checkouts for another main',
-				{ environmentIds, reason },
+				{ environmentIds, change },
 				error,
 			);
 		}
@@ -188,17 +191,17 @@ export class PromotionCheckoutCleanupService {
 	 * A lost message only leaves disk in use, and the startup check removes the
 	 * folders of deleted environments, so the request does not wait for the publish.
 	 */
-	private publishToOtherMains(environmentIds: string[], reason: CleanupReason) {
+	private publishToOtherMains(environmentIds: string[], change: EnvironmentChange) {
 		if (!this.instanceSettings.isMultiMain || environmentIds.length === 0) return;
 		void this.publisher
 			.publishCommand({
-				command: 'promotion-checkout-cleanup',
-				payload: { environmentIds, reason },
+				command: 'promotion-environment-changed',
+				payload: { environmentIds, change },
 			})
 			.catch((error: unknown) => {
 				this.warn(
 					'Failed to ask the other mains to remove their promotion checkouts',
-					{ environmentIds, reason },
+					{ environmentIds, change },
 					error,
 				);
 			});

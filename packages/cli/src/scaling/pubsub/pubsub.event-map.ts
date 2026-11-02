@@ -449,14 +449,14 @@ export type PubSubCommandMap = {
 	// #region Promotions
 
 	/**
-	 * Not a self-send command: the main that handled the request already cleaned up.
+	 * Not a self-send command: the main that handled the request already reacted.
 	 * Each receiver reads the database before it removes anything, so a late or
 	 * duplicate message cannot remove a checkout that is still current.
 	 */
-	'promotion-checkout-cleanup': {
+	'promotion-environment-changed': {
 		environmentIds: string[];
-		/** An environment update and a host URL change share a reason, because the receiver runs the same check. */
-		reason: 'deleted' | 'disconnected' | 'settings-changed';
+		/** `updated` also covers a provider host URL change, because it changes the remote of each environment. */
+		change: 'deleted' | 'updated' | 'checkout-disconnected';
 	};
 
 	// #endregion

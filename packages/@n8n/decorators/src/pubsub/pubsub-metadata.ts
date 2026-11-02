@@ -60,7 +60,7 @@ export type PubSubEventName =
 	| 'agent-tasks-changed'
 	| 'redaction-floor-changed'
 	| 'reload-type-availability-policies'
-	| 'promotion-checkout-cleanup'
+	| 'promotion-environment-changed'
 	| 'pubsub-reconnected';
 
 export type PubSubEventFilter =

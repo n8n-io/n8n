@@ -312,8 +312,8 @@ describe('PromotionsService', () => {
 			await service.disconnect(ENVIRONMENT_ID);
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'promotion-checkout-cleanup',
-				payload: { environmentIds: [ENVIRONMENT_ID], reason: 'disconnected' },
+				command: 'promotion-environment-changed',
+				payload: { environmentIds: [ENVIRONMENT_ID], change: 'checkout-disconnected' },
 			});
 		});
 
