@@ -1,0 +1,19 @@
+packages/workflow/test/expression-error-item-engine-parity.test.ts
+  s_d5fb565ce05377::t_af38f17e871844 197,241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42041f77e2dbe5ed83c00c3f3bf5e70d675d3bf8",
+  "prompts": {},
+  "sessions": {
+    "s_d5fb565ce05377": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a88269b-591c-4a3b-9b95-40ac8285608e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

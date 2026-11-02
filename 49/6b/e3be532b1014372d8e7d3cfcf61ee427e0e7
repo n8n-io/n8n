@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1793357871538-AddContentHashToAgentChatAttachments.ts
+  s_f6ecac1d27039d::t_90f818ab845684 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "496be3be532b1014372d8e7d3cfcf61ee427e0e7",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
