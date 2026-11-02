@@ -31,6 +31,7 @@ import {
 	getBase,
 	getDraftWorkflowData,
 	getPublishedWorkflowData,
+	triggerReturnsLastRunOnly,
 } from '@/workflow-execute-additional-data';
 
 import type {
@@ -84,6 +85,7 @@ export class EngineSubWorkflowService {
 				triggerName: trigger.name,
 				triggerOutputs,
 			})),
+			returnLastRunOnly: triggerReturnsLastRunOnly(subWorkflowData.nodes),
 		};
 	}
 

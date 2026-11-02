@@ -59,6 +59,8 @@ export interface ResolveSubWorkflowResponse {
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
+	/** The trigger's "Items to Return" option, which the caller applies to the sub-execution's result. */
+	returnLastRunOnly: boolean;
 }
 
 // The engine defaults a missing edge index to 0 when it parses a start request.
@@ -79,6 +81,7 @@ const resolveSubWorkflowResponseSchema = z.object({
 	graph: graphSchema,
 	workflow: jsonObjectSchema,
 	triggerOutputs: triggerOutputsSchema.nullable(),
+	returnLastRunOnly: z.boolean(),
 });
 
 /** Narrows a parsed response body. The client trusts nothing else about it. */
