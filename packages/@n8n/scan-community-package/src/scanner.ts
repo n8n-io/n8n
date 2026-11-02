@@ -34,6 +34,10 @@ type SourceRepo = {
 	readonly gitCommit: string;
 };
 
+type SourcePackageLayout =
+	| { readonly passed: true; readonly packageDir: string; readonly isNested: boolean }
+	| { readonly passed: false; readonly message: string };
+
 export type AnalysisResult =
 	| { readonly passed: true; readonly message?: string; readonly details?: never }
 	| {
@@ -247,9 +251,47 @@ export const findPackageRoot = (sourceDir: string, packageName: string): string 
 	return null;
 };
 
+// Existing packages have six months from this policy start to move to a dedicated repository.
+const MONOREPO_POLICY_START = Date.parse('2026-09-24T00:00:00Z');
+const MONOREPO_GRACE_END = Date.parse('2027-03-24T00:00:00Z');
+
+export const isExistingPackageInMonorepoGracePeriod = (
+	packageMetadata: Pick<PackageMetadata, 'time'>,
+	now = Date.now(),
+): boolean => {
+	const createdAt = Date.parse(packageMetadata.time?.created ?? '');
+	return (
+		Number.isFinite(createdAt) && createdAt < MONOREPO_POLICY_START && now < MONOREPO_GRACE_END
+	);
+};
+
+export const checkSourcePackageLayout = (
+	sourceDir: string,
+	packageName: string,
+	allowExistingMonorepo = false,
+): SourcePackageLayout | null => {
+	const packageDir = findPackageRoot(sourceDir, packageName);
+	if (!packageDir) return null;
+
+	// A dedicated repository can keep its only manifest below the root.
+	const hasOtherPackages = glob
+		.sync('**/package.json', { cwd: sourceDir, absolute: true, ignore: ['**/node_modules/**'] })
+		.some((manifest) => path.dirname(manifest) !== packageDir);
+	if (hasOtherPackages && !allowExistingMonorepo) {
+		return {
+			passed: false,
+			message:
+				'Community nodes must use a single-package repository. Monorepo packages are not supported.',
+		};
+	}
+
+	return { passed: true, packageDir, isNested: packageDir !== sourceDir };
+};
+
 const downloadAndExtractSource = async (
 	{ owner, repo, gitCommit }: SourceRepo,
 	packageName: string,
+	allowExistingMonorepo: boolean,
 ) => {
 	const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${gitCommit}`;
 	const { data } = await axios.get<ArrayBuffer>(url, {
@@ -276,7 +318,7 @@ const downloadAndExtractSource = async (
 	}
 	fs.unlinkSync(safeJoinPath(TEMP_DIR, tarballName));
 
-	return findPackageRoot(sourceDir, packageName);
+	return checkSourcePackageLayout(sourceDir, packageName, allowExistingMonorepo);
 };
 
 /**
@@ -291,7 +333,7 @@ export const SOURCE_FILE_PATTERNS = ['package.json', '{nodes,credentials}/**/*.{
  * tests can assert the external `eslint-plugin-n8n-nodes-base` plugin and its
  * rulesets are wired in, independent of ESLint execution.
  */
-export const buildScanConfig = async (): Promise<Linter.Config[]> => {
+export const buildScanConfig = async (skipMonorepoRule = false): Promise<Linter.Config[]> => {
 	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
 	const parser = await import('@typescript-eslint/parser');
 	const n8nNodesPlugin = (await import('eslint-plugin-n8n-nodes-base')).default;
@@ -351,18 +393,20 @@ export const buildScanConfig = async (): Promise<Linter.Config[]> => {
 			files: ['**/*.ts'],
 			languageOptions: { parser },
 		},
+		skipMonorepoRule ? { rules: { '@n8n/community-nodes/no-monorepo': 'off' } } : [],
 	);
 };
 
 export const analyzePackage = async (
 	packageDir: string,
 	filePatterns = ['**/*.js', '**/*.ts', '**/*.json'],
+	skipMonorepoRule = false,
 ): Promise<AnalysisResult> => {
 	const eslint = new ESLint({
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: await buildScanConfig(),
+		overrideConfig: await buildScanConfig(skipMonorepoRule),
 	});
 
 	try {
@@ -414,6 +458,7 @@ export const analyzePackageByName = async (
 		);
 		const exactVersion = resolveVersion(packageMetadata, version);
 		const label = `${packageName}@${exactVersion}`;
+		const allowExistingMonorepo = isExistingPackageInMonorepoGracePeriod(packageMetadata);
 
 		stdout.write(`Checking provenance for ${label}...`);
 		const provenanceResult = checkPackageProvenance(packageMetadata, exactVersion);
@@ -441,13 +486,17 @@ export const analyzePackageByName = async (
 		// back to a tarball-only scan would silently reintroduce that blind
 		// spot.
 		stdout.write(`Fetching source for ${label}...`);
-		let sourceDir: string | null = null;
+		let sourceLayout: SourcePackageLayout | null = null;
 		let sourceInfo: SourceRepo | null = null;
 		let sourceError: unknown = null;
 		try {
 			sourceInfo = await fetchSourceInfo(packageName, exactVersion);
 			if (sourceInfo) {
-				sourceDir = await downloadAndExtractSource(sourceInfo, packageName);
+				sourceLayout = await downloadAndExtractSource(
+					sourceInfo,
+					packageName,
+					allowExistingMonorepo,
+				);
 			}
 		} catch (error: unknown) {
 			sourceError = error;
@@ -457,7 +506,7 @@ export const analyzePackageByName = async (
 			stdout.cursorTo(0);
 		}
 
-		if (!sourceDir || !sourceInfo) {
+		if (!sourceLayout || !sourceInfo) {
 			const reason = sourceError
 				? errorMessage(sourceError)
 				: 'unsupported or unlocatable source repository';
@@ -468,6 +517,14 @@ export const analyzePackageByName = async (
 				version: exactVersion,
 				passed: false,
 				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
+			};
+		}
+		if (!sourceLayout.passed) {
+			stdout.write(`❌ Unsupported source layout for ${label} \n`);
+			return {
+				packageName,
+				version: exactVersion,
+				...sourceLayout,
 			};
 		}
 
@@ -491,8 +548,18 @@ export const analyzePackageByName = async (
 		// into `dist/`. Scope the tarball leg to compiled `.js` and the
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
-		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
+		// The source layout decides if a nested manifest is valid. Metadata alone cannot tell.
+		const skipMonorepoRule = sourceLayout.isNested;
+		const sourceResult = await analyzePackage(
+			sourceLayout.packageDir,
+			SOURCE_FILE_PATTERNS,
+			skipMonorepoRule,
+		);
+		const distResult = await analyzePackage(
+			packageDir,
+			['**/*.js', 'package.json'],
+			skipMonorepoRule,
+		);
 		const failures = [sourceResult, distResult].filter((r) => !r.passed);
 		const [firstFailure] = failures;
 		const analysisResult: AnalysisResult = firstFailure
