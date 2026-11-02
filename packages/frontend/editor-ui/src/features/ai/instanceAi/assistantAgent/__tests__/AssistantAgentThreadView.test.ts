@@ -42,6 +42,7 @@ const {
 	panelProps,
 	panelSlots,
 	sendMessageFromOutside,
+	sendHostMessage,
 	telemetryTrack,
 	previewProps,
 	previewThread,
@@ -53,6 +54,7 @@ const {
 	panelProps: { current: {} as Record<string, unknown> },
 	panelSlots: { current: [] as string[] },
 	sendMessageFromOutside: vi.fn(),
+	sendHostMessage: vi.fn(),
 	telemetryTrack: vi.fn(),
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
 	previewThread: { current: undefined as ArtifactThread | undefined },
@@ -112,6 +114,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			};
 			expose({
 				sendMessageFromOutside,
+				sendHostMessage,
 				focusInput,
 				setDraft,
 				addComposerAttachment,
@@ -291,6 +294,7 @@ describe('AssistantAgentThreadView', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		sendMessageFromOutside.mockReset();
+		sendHostMessage.mockReset().mockResolvedValue('sent');
 		telemetryTrack.mockReset();
 		panelProps.current = {};
 		previewProps.current = undefined;
@@ -599,15 +603,26 @@ describe('AssistantAgentThreadView', () => {
 
 			await user.click(getByTestId('instance-ai-fix-with-ai-button'));
 
-			expect(sendMessageFromOutside).toHaveBeenCalledOnce();
-			const [prompt, files, clientContext] = sendMessageFromOutside.mock.calls[0];
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			expect(sendHostMessage).toHaveBeenCalledOnce();
+			const [prompt, clientContext] = sendHostMessage.mock.calls[0];
 			expect(prompt).toContain('Extract Emails');
 			expect(prompt).toContain('Intentional break');
-			expect(files).toEqual([]);
 			expect(clientContext).toEqual({
 				attachments: [{ type: 'workflow', id: 'wf-1', name: 'Untitled', executionId: 'exec-1' }],
 			});
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
+
+		it('offers the fix again when the chat refuses the send', async () => {
+			sendHostMessage.mockResolvedValue('busy');
+			const user = userEvent.setup();
+			const { getByTestId } = await renderWithFailedRun();
+
+			await user.click(getByTestId('instance-ai-fix-with-ai-button'));
+			await flushPromises();
+
+			expect(getByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
 		});
 
 		it('hides the offer after dismiss until another run fails', async () => {
