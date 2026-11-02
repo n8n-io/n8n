@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type {
@@ -16,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
 import {
 	EngineDidNotAdmitError,
 	type EngineDataPlaneProxyService,
@@ -136,11 +138,13 @@ describe('EngineV2Dispatcher', () => {
 	const pushRegistry = mock<EngineV2PushRegistry>();
 	const payloadFiles = mock<EngineV2PayloadFiles>();
 	const manualRunPlanner = mock<EngineV2ManualRunPlanner>();
+	const lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 
 	let dispatcher: EngineV2Dispatcher;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		lifecycleSubscriptions.subscribe.mockResolvedValue(undefined);
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
 		payloadFiles.claimForExecution.mockResolvedValue(undefined);
@@ -809,6 +813,45 @@ describe('EngineV2Dispatcher', () => {
 				await dispatcher.start(runData());
 
 				expect(pushRegistry.register).not.toHaveBeenCalled();
+			});
+
+			it('subscribes to the lifecycle events before it dispatches', async () => {
+				const executionId = await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+				expect(lifecycleSubscriptions.subscribe).toHaveBeenCalledExactlyOnceWith(executionId);
+				expect(lifecycleSubscriptions.subscribe.mock.invocationCallOrder[0]).toBeGreaterThan(
+					pushRegistry.register.mock.invocationCallOrder[0],
+				);
+				expect(lifecycleSubscriptions.subscribe.mock.invocationCallOrder[0]).toBeLessThan(
+					proxy.startExecution.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('does not subscribe when nothing is watching the run', async () => {
+				await dispatcher.start(runData());
+
+				expect(lifecycleSubscriptions.subscribe).not.toHaveBeenCalled();
+			});
+
+			it('does not start the run when the subscription fails', async () => {
+				const failure = new Error('Redis is unavailable');
+				lifecycleSubscriptions.subscribe.mockRejectedValueOnce(failure);
+				const data = runData({
+					pushRef: 'push-1',
+					triggerToStartFrom: {
+						name: MANUAL_TRIGGER.name,
+						data: taskData([[{ json: { from: 'trigger' } }]]),
+					},
+				});
+
+				await expect(dispatcher.start(data)).rejects.toBe(failure);
+
+				const [executionId] = pushRegistry.register.mock.calls[0];
+				expect(proxy.startExecution).not.toHaveBeenCalled();
+				expect(pushRegistry.release).toHaveBeenCalledExactlyOnceWith(executionId);
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith([
+					[{ json: { from: 'trigger' } }],
+				]);
 			});
 
 			it('releases the session when the data plane refused the run', async () => {
