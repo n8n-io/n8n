@@ -485,19 +485,25 @@ export class ExecutionPersistence {
 
 		// A narrowing `select` must still include the fields we route and read by: `storedAt` (else
 		// every execution defaults to the fs store) and `id`/`workflowId` (else no bundle resolves).
+		// `status` and `createdAt` go into the report for executions whose data is missing.
 		// With the guard active also `jsonSizeBytes` (to decide) and `workflowVersionId` (for the
 		// skipped response). An undefined `select` loads all columns, so no action.
 		if (queryParams.select) {
 			const guardFields = max > 0 ? (['jsonSizeBytes', 'workflowVersionId'] as const) : [];
+			const requiredFields = [
+				'id',
+				'workflowId',
+				'storedAt',
+				'status',
+				'createdAt',
+				...guardFields,
+			] as const;
 			if (Array.isArray(queryParams.select)) {
-				for (const field of ['id', 'workflowId', 'storedAt', ...guardFields] as const) {
+				for (const field of requiredFields) {
 					if (!queryParams.select.includes(field)) queryParams.select.push(field);
 				}
 			} else {
-				queryParams.select.id = true;
-				queryParams.select.workflowId = true;
-				queryParams.select.storedAt = true;
-				for (const field of guardFields) queryParams.select[field] = true;
+				for (const field of requiredFields) queryParams.select[field] = true;
 			}
 		}
 
