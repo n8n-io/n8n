@@ -74,9 +74,14 @@ describe('AppAuthService', () => {
 
 	it('authenticates instance apps with the session cookie', async () => {
 		const { service, req, res, admission } = setup('instance');
+		req.cookies = { '__Host-n8n-app-session': 'app-token' };
 		const next = vi.fn();
 		await service.authenticate(req, res, next);
-		expect(admission.admitBearer).toHaveBeenCalledOnce();
+		expect(admission.admitBearer).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			'app-token',
+		);
 		expect(next).toHaveBeenCalledOnce();
 	});
 
