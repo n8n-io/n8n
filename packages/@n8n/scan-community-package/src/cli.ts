@@ -5,7 +5,7 @@ import { resolvePackage, analyzePackageByName, getExitCode, EXIT_CODES } from '.
 const [packageSpec] = process.argv.slice(2);
 if (!packageSpec) {
 	console.error('Usage: npx @n8n/scan-community-package <package-name>[@version]');
-	process.exit(EXIT_CODES.SCAN_INCOMPLETE);
+	process.exit(EXIT_CODES.INTERNAL_ERROR);
 }
 
 try {
@@ -33,5 +33,5 @@ try {
 	process.exitCode = getExitCode(result);
 } catch (error: unknown) {
 	console.error('Analysis failed:', error);
-	process.exitCode = EXIT_CODES.SCAN_INCOMPLETE;
+	process.exitCode = EXIT_CODES.INTERNAL_ERROR;
 }

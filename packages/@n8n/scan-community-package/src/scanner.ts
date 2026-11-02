@@ -54,18 +54,18 @@ const field = (value: unknown, key: string): unknown => (isRecord(value) ? value
  */
 export const EXIT_CODES = {
 	/** The package passed all checks. */
-	PASSED: 0,
+	SCAN_SUCCEEDED: 0,
 	/** The scan could not finish. Matches Node.js, which exits with 1 on an uncaught exception. */
-	SCAN_INCOMPLETE: 1,
+	INTERNAL_ERROR: 1,
 	/** The scan finished and the package failed a check. */
-	CHECK_FAILED: 2,
+	SCAN_FAILED: 2,
 } as const;
 
 export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES];
 
 export const getExitCode = (result: AnalysisResult): ExitCode => {
-	if (result.passed) return EXIT_CODES.PASSED;
-	return result.error === undefined ? EXIT_CODES.CHECK_FAILED : EXIT_CODES.SCAN_INCOMPLETE;
+	if (result.passed) return EXIT_CODES.SCAN_SUCCEEDED;
+	return result.error === undefined ? EXIT_CODES.SCAN_FAILED : EXIT_CODES.INTERNAL_ERROR;
 };
 
 /**
