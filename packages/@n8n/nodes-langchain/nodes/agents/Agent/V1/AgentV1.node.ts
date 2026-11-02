@@ -326,7 +326,7 @@ export class AgentV1 implements INodeType {
 			properties: [
 				{
 					displayName:
-						'This agent type is deprecated and is removed in n8n v3. Replace this node with an AI Agent node on the latest version, then reconnect its model, memory and tools.',
+						'This mode is deprecated and is removed in n8n v3. After the update, this node will fail when executed. Replace it with an AI Agent on the latest version and reconnect its model, memory and tools.',
 					name: 'deprecated',
 					type: 'notice',
 					default: '',
@@ -337,8 +337,19 @@ export class AgentV1 implements INodeType {
 								'openAiFunctionsAgent',
 								'planAndExecuteAgent',
 								'reActAgent',
-								'sqlAgent',
 							],
+						},
+					},
+				},
+				{
+					displayName:
+						'This mode is deprecated and is removed in n8n v3. After the update, this node will fail when executed. Replace it with an AI Agent on the latest version, reconnect its model and memory, and connect a database tool, such as Postgres or MySQL, to keep querying your database.',
+					name: 'deprecatedSqlAgent',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							agent: ['sqlAgent'],
 						},
 					},
 				},
