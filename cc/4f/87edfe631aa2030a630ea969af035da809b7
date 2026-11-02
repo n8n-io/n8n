@@ -1,0 +1,103 @@
+packages/cli/src/modules/promotions.ee/__tests__/utils/git-remote-fixture.ts
+  s_ff45a7d9223bfa::t_c75e6e82ebe66b 3,5,7-9,11-12,25-26,28,46
+  s_ff45a7d9223bfa::t_6bfbf5d0a96cb6 1-2,4,13-18,23-24,27,29-30,36-42,44-45,47-50
+  s_ff45a7d9223bfa::t_6d5d4c8c52d8a3 6,10
+  s_ff45a7d9223bfa::t_4a8bfbe7fcbf4f 35
+  s_ff45a7d9223bfa::t_e47ab46a49c23e 19-22,31-34
+  s_7884164a60c5ec::t_b3796683b726a5 43
+packages/cli/src/modules/promotions.ee/__tests__/git-remote-fixture.integration.test.ts
+  s_ff45a7d9223bfa::t_98d8ba99032b5c 2-3,5
+  s_ff45a7d9223bfa::t_c75e6e82ebe66b 4,35-52
+  s_ff45a7d9223bfa::t_26fc1c7eeb7861 53
+  s_7884164a60c5ec::t_906327aedd56a5 1,6-34
+packages/cli/src/modules/promotions.ee/__tests__/diff-package-files.integration.test.ts
+  s_ff45a7d9223bfa::t_dfd6695765d29b 10,33
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_7884164a60c5ec::t_70becfeb869a3b 109,333
+  s_7884164a60c5ec::t_3065abdd52d1ae 2438
+  s_ff45a7d9223bfa::t_2f0d53afa8feb1 532-533,584,587,1810,1972,1986,1992,2008,2016,2029,2055,2071,2080,2096,2105,2153,2163,2179,2185,2295,2523,2541,2564,2621,2628,2641,2702,2758,2793
+  s_ff45a7d9223bfa::t_dc508d3ee8310a 130,154-161,237,2434
+  s_ff45a7d9223bfa::t_9f449c4a39e879 852-859,876-883
+  s_ff45a7d9223bfa::t_dfd6695765d29b 46,414-415,665,708,721,784,846,931,952,976,985,999,2136,2894,2909,2913,2942,2966,2970,3045,3299,3368,3387,3401,3412,3489,3590,3631,3737,3776
+  s_ff45a7d9223bfa::t_56829a30dca62a 331-332,383,558,608,900,1464,1520,1553,1580,1613,1643,1673,1696,1719,1836,1876,1971,2261,2326,2360,2439,2466,2984,3068,3119,3145,3178,3202,3244,3291,3314,3339,3367,3400
+  s_ff45a7d9223bfa::t_512e3e4bc2b4df 113
+  s_ff45a7d9223bfa::t_b4a63565fee6c4 2391-2395
+  s_ff45a7d9223bfa::t_dcbe740fbb3fb0 2503
+  s_ff45a7d9223bfa::t_397bb5ab6c515c 131,235-236
+  s_ff45a7d9223bfa::t_9321c80a45f25c 334-335
+  s_ff45a7d9223bfa::t_f896e41748a13f 901
+  s_ff45a7d9223bfa::t_c6be6e6f6a5227 103-108,737-739,742-744,779-783,916-918,1446-1450,3031-3035,3651-3653
+  s_ff45a7d9223bfa::t_27449ceb7ad4c4 851,860-866,875,884-886,915,919,3036
+  s_ff45a7d9223bfa::t_710052bf8dce19 336-337
+packages/cli/test/integration/promotion-review-inbox.test.ts
+  s_ff45a7d9223bfa::t_17081aa0482d3e 160,162,164,167,172,218,410
+  s_7884164a60c5ec::t_61cb3f38fb7b66 13,159,163,178,220
+  s_ff45a7d9223bfa::t_09e8872aabf891 17
+  s_ff45a7d9223bfa::t_512e3e4bc2b4df 125
+  s_ff45a7d9223bfa::t_29ce31b16ec8fa 126
+  s_ff45a7d9223bfa::t_9fd248571bc238 182-186
+packages/cli/test/integration/shared/utils/test-server.test.ts
+  s_7884164a60c5ec::t_d185efa610bbd7 1-20
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.integration.test.ts
+  s_ff45a7d9223bfa::t_166004b8c3a726 129-132,134,136-152,155,186
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_ff45a7d9223bfa::t_512e3e4bc2b4df 37
+  s_ff45a7d9223bfa::t_dc508d3ee8310a 2510-2524
+  s_7884164a60c5ec::t_7a7a0dd8e5dcc6 2504-2508
+  s_ff45a7d9223bfa::t_1c290f6168334f 2509
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-changes.integration.test.ts
+  s_7884164a60c5ec::t_fd43c4a1184967 6,32,116
+  s_ff45a7d9223bfa::t_dfd6695765d29b 31,146,153,176,188-189,203-204,306,319,344,544,551-552,562
+  s_ff45a7d9223bfa::t_512e3e4bc2b4df 46
+  s_ff45a7d9223bfa::t_e47ab46a49c23e 9,33,35,54,87-89
+  s_ff45a7d9223bfa::t_c6be6e6f6a5227 294-296,520-524
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_7884164a60c5ec::t_4afa518a2b8ab2 75
+  s_7884164a60c5ec::t_84bb30800a4ecb 266,270
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_ff45a7d9223bfa::t_43136e83e3e1ab 99-103
+  s_ff45a7d9223bfa::t_512e3e4bc2b4df 8,54,57,79,92,104,122,144-145,148-155
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  s_7884164a60c5ec::t_8f66b330e11213 8
+  s_7884164a60c5ec::t_31dd8af4f63b24 23-48
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_ff45a7d9223bfa::t_0c5d7767819b2e 27,65,84,86-88,90,111-114,118,154-155,157-159,162-165,167,174-176
+  s_7884164a60c5ec::t_9b38199d7808fe 62,127,173
+  s_ff45a7d9223bfa::t_e2f841cdb899e2 253-256
+  s_7884164a60c5ec::t_ce8f3e13be4562 25
+  s_ff45a7d9223bfa::t_dfd6695765d29b 61,89,153,160-161,171
+  s_ff45a7d9223bfa::t_190467fc27d127 166,168-169,741,1342-1343
+  s_ff45a7d9223bfa::t_cb84b0d1a08c24 170,172
+  s_ff45a7d9223bfa::t_305ceb52ec8d62 355,388,437,546,563,852,995,1059,1288
+  s_ff45a7d9223bfa::t_c6be6e6f6a5227 156
+  s_ff45a7d9223bfa::t_512e3e4bc2b4df 78
+  s_ff45a7d9223bfa::t_9f5338e07fec5a 691-692,799-800,907-908,945-946,1120-1121,1165-1166,1195-1196,1252-1253
+packages/cli/src/modules/promotions.ee/__tests__/utils/promotion-fixtures.ts
+  s_7884164a60c5ec::t_42c84fd93cada6 1-55
+packages/cli/test/integration/shared/types.ts
+  s_ff45a7d9223bfa::t_4669e4064bbe91 101-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc4f87edfe631aa2030a630ea969af035da809b7",
+  "prompts": {},
+  "sessions": {
+    "s_7884164a60c5ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ad9fa5-3198-4174-941b-7bcc2df06a41",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_ff45a7d9223bfa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18394-cfb2-7020-b04f-e51e4e8b1a24",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

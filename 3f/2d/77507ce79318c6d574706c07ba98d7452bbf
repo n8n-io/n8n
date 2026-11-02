@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/css/sassDeprecations.test.ts
+  s_1a9a2a66d41801::t_6f01ccb325d158 1-44
+packages/frontend/@n8n/design-system/src/css/slider.scss
+  s_1a9a2a66d41801::t_0639f652d1b98e 5-8,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f2d77507ce79318c6d574706c07ba98d7452bbf",
+  "prompts": {},
+  "sessions": {
+    "s_1a9a2a66d41801": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1beece3-b6f8-43d6-99d5-681eb3dcead3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

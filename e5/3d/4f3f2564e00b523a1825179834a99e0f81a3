@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/integrations/__tests__/integration-tool-descriptions.test.ts
+  s_b3df909994b475::t_d6486eb3b4be02 7,15,20-27
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_b3df909994b475::t_d6486eb3b4be02 1206-1211
+packages/cli/src/modules/agents/integrations/integration-tool-descriptions.ts
+  s_b3df909994b475::t_d6486eb3b4be02 52-53,56-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e53d4f3f2564e00b523a1825179834a99e0f81a3",
+  "prompts": {},
+  "sessions": {
+    "s_b3df909994b475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ecbb022-eecd-4d86-a9e8-f27685592a87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
