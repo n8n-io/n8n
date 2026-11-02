@@ -337,7 +337,7 @@ describe('create-workflow-from-code MCP tool', () => {
 			);
 		});
 
-		test('drops the version-scoped settings that the code sets', async () => {
+		test('ignores version-scoped settings from the submitted workflow', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { ...mockWorkflowJson, settings: { engineType: 'v2', timezone: 'UTC' } },
 				warnings: [],
