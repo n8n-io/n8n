@@ -418,6 +418,8 @@ useKeybindings({
 @use '@/app/css/variables' as *;
 
 .sideMenu {
+	--menu--color--background: #c084fc;
+	--color--background--light-2: #c084fc;
 	position: relative;
 	height: 100%;
 	display: flex;
