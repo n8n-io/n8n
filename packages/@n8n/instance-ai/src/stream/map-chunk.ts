@@ -15,9 +15,9 @@ import {
 	testListenerCardSchema,
 	appBlueprintSchema,
 	confirmationInputTypeSchema,
+	type InstanceAiEvent,
 	type InstanceAiConfirmationInputType,
 } from '@n8n/api-types';
-import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
