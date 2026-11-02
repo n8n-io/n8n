@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import type { Alias } from 'vite';
+import type { Alias, Plugin } from 'vite';
 import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
 
@@ -98,3 +98,19 @@ export const createVitestConfig = (
 	});
 
 export const vitestConfig = createVitestConfig();
+
+/**
+ * Run every project in the `forks` pool, whatever pool the caller asked for.
+ *
+ * Stryker's vitest runner always asks for `pool: 'threads'`. isolated-vm aborts
+ * the whole process when a worker thread that started an isolate exits
+ * (laverdet/isolated-vm#464), so packages that start the vm expression engine
+ * add this plugin to their Stryker-only vitest config.
+ */
+export const forksPoolPlugin = (): Plugin => ({
+	name: 'n8n:forks-pool',
+	configureVitest({ vitest, project }) {
+		vitest.config.pool = 'forks';
+		project.config.pool = 'forks';
+	},
+});

@@ -1,30 +1,9 @@
-// Vitest config used by Stryker only — NOT by `pnpm test`, NOT by CI unit runs.
-//
-// Runs the legacy expression engine, not vm/isolated-vm: the vm evaluator
-// SIGABRTs in Stryker's worker on teardown (upstream isolated-vm #464, repros on
-// Node 22 + 24). Trade-off: vm-only branches in expression.ts — the production
-// default engine — go unscored. Swap
-// back to N8N_EXPRESSION_ENGINE=vm once #464 is fixed or we pnpm-patch the guard.
+// Vitest config used by Stryker only, not by `pnpm test` or CI unit runs.
+// It is the normal config, thus every expression engine runs. The only change
+// is the `forks` pool: the vm engine crashes Stryker's default `threads` pool.
+import { forksPoolPlugin } from '@n8n/vitest-config/node';
+import { mergeConfig } from 'vitest/config';
 
-import { defineConfig } from 'vitest/config';
-import { createBaseInlineConfig } from '@n8n/vitest-config/node';
+import vitestConfig from './vitest.config';
 
-const { reporters, outputFile, ...sharedTestConfig } = createBaseInlineConfig({
-	include: ['test/**/*.test.ts'],
-});
-
-export default defineConfig({
-	test: {
-		reporters,
-		outputFile,
-		projects: [
-			{
-				test: {
-					...sharedTestConfig,
-					name: 'legacy-engine',
-					env: { N8N_EXPRESSION_ENGINE: 'legacy' },
-				},
-			},
-		],
-	},
-});
+export default mergeConfig(vitestConfig, { plugins: [forksPoolPlugin()] });
