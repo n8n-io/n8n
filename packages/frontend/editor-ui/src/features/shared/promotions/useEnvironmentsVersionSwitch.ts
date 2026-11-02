@@ -21,11 +21,9 @@ export function useEnvironmentsVersionSwitch() {
 	const router = useRouter();
 	const sourceControlStore = useSourceControlStore();
 
-	/** Only an admin of an instance with a v1 repository has a classic setup to go back to. */
-	const canSwitchBack = computed(
-		() =>
-			sourceControlStore.preferences.connected &&
-			hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
+	/** While Environments v2 is in preview, any admin can switch back, with or without a classic setup. */
+	const canSwitchBack = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
 	);
 
 	const busy = ref(false);
