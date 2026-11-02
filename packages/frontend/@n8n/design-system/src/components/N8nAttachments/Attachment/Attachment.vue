@@ -1,26 +1,90 @@
 <script setup lang="ts">
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { usePreferredReducedMotion } from '@vueuse/core';
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '../../../composables/useI18n';
 import N8nIcon from '../../N8nIcon';
 import N8nIconButton from '../../N8nIconButton';
 import N8nText from '../../N8nText';
 import N8nTooltip from '../../N8nTooltip';
 import type { AttachmentEmits, AttachmentProps } from './Attachment.types';
+import poofSprite from './mono-poof-sprite.svg?url';
 
 const props = defineProps<AttachmentProps>();
-defineEmits<AttachmentEmits>();
+const emit = defineEmits<AttachmentEmits>();
 
 const { t } = useI18n();
 
 const MAX_FILE_NAME_CHARS = 20;
+/** Keep the source frame timing, but omit its loop pause. */
+const POOF_DURATION_MS = 520;
+/** Close the gap after the initial burst. */
+const POOF_COLLAPSE_DELAY_MS = 160;
 /** Keep attachment actions small and prevent form submission. */
 const actionButtonProps = { size: 'small', variant: 'solid', type: 'button' } as const;
 
 const isHovered = ref(false);
 const isReturning = ref(false);
+const isSpaceReleased = ref(false);
+const isRemoving = ref(false);
+const poofRect = ref<DOMRect>();
+const spriteReady = ref(false);
+const isPlaying = ref(false);
+
 const reducedMotion = usePreferredReducedMotion();
+const attachmentRoot = useTemplateRef<HTMLDivElement>('attachmentRoot');
+
+let removalEmitted = false;
+let collapseTimeout: ReturnType<typeof setTimeout> | undefined;
+let removalTimeout: ReturnType<typeof setTimeout> | undefined;
+
+function finishRemoval() {
+	if (!isRemoving.value || removalEmitted) return;
+	clearTimeout(removalTimeout);
+	clearTimeout(collapseTimeout);
+	isSpaceReleased.value = true;
+	removalEmitted = true;
+	emit('remove');
+}
+
+function startPlayback() {
+	spriteReady.value = true;
+	if (!isRemoving.value || isPlaying.value) return;
+	isPlaying.value = true;
+	collapseTimeout = setTimeout(() => {
+		isSpaceReleased.value = true;
+	}, POOF_COLLAPSE_DELAY_MS);
+	clearTimeout(removalTimeout);
+	/** Recover if the browser does not send animationend. */
+	removalTimeout = setTimeout(finishRemoval, POOF_DURATION_MS + 200);
+}
+
+function removeAttachment() {
+	if (isRemoving.value) return;
+	poofRect.value = attachmentRoot.value?.getBoundingClientRect();
+	isRemoving.value = true;
+	if (reducedMotion.value === 'reduce') {
+		finishRemoval();
+	} else if (spriteReady.value) {
+		startPlayback();
+	} else {
+		/** Recover if the sprite never loads. Start playback only after load. */
+		removalTimeout = setTimeout(finishRemoval, 5000);
+	}
+}
+
+function finishPoof(event: AnimationEvent) {
+	if (event.target === event.currentTarget) finishRemoval();
+}
+
+watch(reducedMotion, (preference) => {
+	if (preference === 'reduce') finishRemoval();
+});
+onBeforeUnmount(() => {
+	clearTimeout(removalTimeout);
+	clearTimeout(collapseTimeout);
+});
+
 const marqueeDistance = ref(0);
 const captionViewport = useTemplateRef<HTMLSpanElement>('captionViewport');
 
@@ -78,13 +142,23 @@ const fileType = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.container" @mouseenter="startMarquee" @mouseleave="stopMarquee">
-		<div v-if="isRemovable !== false" :class="$style.toolbar">
+	<div
+		v-show="!isSpaceReleased"
+		ref="attachmentRoot"
+		:class="[$style.container, { [$style.removing]: isRemoving }]"
+		@mouseenter="startMarquee"
+		@mouseleave="stopMarquee"
+	>
+		<div v-if="isRemovable !== false && !isRemoving" :class="$style.toolbar">
 			<N8nTooltip :content="t('generic.remove')">
-				<N8nIconButton v-bind="actionButtonProps" icon="trash-2" @click.stop="$emit('remove')" />
+				<N8nIconButton v-bind="actionButtonProps" icon="trash-2" @click.stop="removeAttachment" />
 			</N8nTooltip>
 		</div>
-		<figure :class="['n8n-attachment', $style.attachment]" :data-type="fileType">
+		<figure
+			:class="['n8n-attachment', $style.attachment]"
+			:aria-hidden="isRemoving || undefined"
+			:data-type="fileType"
+		>
 			<img
 				v-if="fileType === 'image'"
 				:src="src"
@@ -121,10 +195,33 @@ const fileType = computed(() => {
 				</span>
 			</figcaption>
 		</figure>
+		<Teleport to="body">
+			<div
+				:class="[$style.poof, { [$style.playing]: isPlaying }]"
+				:style="{
+					'--poof-duration': `${POOF_DURATION_MS}ms`,
+					left: `${poofRect?.left ?? 0}px`,
+					top: `${poofRect?.top ?? 0}px`,
+					width: `${poofRect?.width ?? 0}px`,
+					height: `${poofRect?.height ?? 0}px`,
+				}"
+				aria-hidden="true"
+			>
+				<img
+					:src="poofSprite"
+					role="presentation"
+					:class="$style.sprite"
+					@load="startPlayback"
+					@error="finishRemoval"
+					@animationend="finishPoof"
+				/>
+			</div>
+		</Teleport>
 	</div>
 </template>
 
 <style module lang="scss">
+@use '../../../css/common/var';
 @use '../../../css/mixins/utils';
 @use '../../../css/mixins/motion';
 @use '../../../css/mixins/mixins';
@@ -138,6 +235,76 @@ const fileType = computed(() => {
 	&:hover,
 	&:focus-within {
 		z-index: 2;
+	}
+}
+
+.removing {
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.poof {
+	position: fixed;
+	z-index: var.$index-popper;
+	overflow: hidden;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.sprite {
+	display: block;
+	width: 400%;
+	max-width: none;
+	height: 300%;
+}
+
+.playing {
+	visibility: visible;
+
+	.sprite {
+		/** Keep unequal frame delays without the source loop pause. */
+		animation: poof var(--poof-duration) steps(1, end) 1 forwards;
+	}
+}
+
+/** The source sheet has four columns and three rows. */
+@keyframes poof {
+	0% {
+		transform: translate(0, 0);
+	}
+	7.692308% {
+		transform: translate(-25%, 0);
+	}
+	15.384615% {
+		transform: translate(-50%, 0);
+	}
+	30.769231% {
+		transform: translate(-75%, 0);
+	}
+	38.461538% {
+		transform: translate(0, -33.333333%);
+	}
+	46.153846% {
+		transform: translate(-25%, -33.333333%);
+	}
+	53.846154% {
+		transform: translate(-50%, -33.333333%);
+	}
+	61.538462% {
+		transform: translate(-75%, -33.333333%);
+	}
+	69.230769% {
+		transform: translate(0, -66.666667%);
+	}
+	76.923077% {
+		transform: translate(-25%, -66.666667%);
+	}
+	84.615385% {
+		transform: translate(-50%, -66.666667%);
+	}
+	92.307692%,
+	100% {
+		transform: translate(-75%, -66.666667%);
 	}
 }
 
