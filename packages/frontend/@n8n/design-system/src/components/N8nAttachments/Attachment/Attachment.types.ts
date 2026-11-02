@@ -6,12 +6,12 @@ export interface AttachmentProps {
 	mimeType: string;
 	/** Optional file size in bytes. */
 	sizeBytes?: number;
-	/** Image preview URL, independent of the link URL. */
+	/** Image preview URL. */
 	src?: string;
-	/** Optional URL for opening or downloading the attachment. */
-	href?: string;
-	/** Whether the attachment has a remove control. */
+	/** Whether the attachment has a remove control. Default true. */
 	isRemovable?: boolean;
+	/** Whether the attachment can open in a preview dialog. Default true. */
+	isPreviewable?: boolean;
 }
 
 /** Events for one attachment. The parent retains the original file. */

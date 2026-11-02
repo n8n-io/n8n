@@ -53,40 +53,28 @@ function onHover(event: MouseEvent) {
 	display: flex;
 	flex-direction: row;
 	overflow-x: scroll;
+	gap: var(--spacing--4xs);
+	padding-block: var(--spacing--3xs);
 
 	@include scrollbar-mixins.hoverable-scroll-bar;
 	@include scrollbar-mixins.scroll-mask(right);
 
-	&:dir(rtl) {
-		--attachment-direction: -1;
-	}
+	// > :not(:first-child) {
+	// 	margin-inline-start: calc(-1 * var(--spacing--xs));
+	// }
 
-	> * {
-		flex-shrink: 0;
-		transform: translateX(
-				calc(
-					var(--attachment-direction) * var(--attachment-index, 0) *
-						(var(--spacing--xs) + var(--spacing--4xs))
-				)
-			)
-			rotate(0deg);
-		transition: transform var(--duration--snappy) var(--easing--ease-in-out);
+	// > :nth-child(odd) :global(.n8n-attachment) {
+	// 	transform: rotate(-3deg);
+	// }
 
-		@include motion.reduced-motion;
-	}
+	// > :nth-child(even) :global(.n8n-attachment) {
+	// 	transform: rotate(3deg);
+	// }
 
-	> :not(:first-child) {
-		margin-inline-start: calc(-1 * var(--spacing--xs));
-	}
-}
+	// > :global(.n8n-attachment) {
+	// 	transition: transform var(--duration--snappy) var(--easing--ease-in-out);
 
-.group.stacked {
-	> :nth-child(odd) {
-		transform: translateX(0) rotate(-3deg);
-	}
-
-	> :nth-child(even) {
-		transform: translateX(0) rotate(3deg);
-	}
+	// 	@include motion.reduced-motion;
+	// }
 }
 </style>
