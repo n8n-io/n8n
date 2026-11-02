@@ -20,9 +20,10 @@ export function registerUserDeletionHandler() {
 		resource: 'agent-user-memory',
 		transferAll: async () => {},
 		deleteAll: async () => {},
-		afterUserDeleted: async (userId, personalProjectId) => {
-			await Container.get(AgentUserDeletionRepository).completeDeletion(userId);
-			await Container.get(AgentProjectDeletionRepository).completeDeletion(personalProjectId);
+		finalizeUserDeletion: async (userId, personalProjectId, ctx) => {
+			await Container.get(AgentExecutionThreadRepository).shareUserSessionHistory(userId, ctx);
+			await Container.get(AgentUserDeletionRepository).completeDeletion(userId, ctx);
+			await Container.get(AgentProjectDeletionRepository).completeDeletion(personalProjectId, ctx);
 		},
 		deleteAllForUser: async (userId) => {
 			await Container.get(AgentUserDeletionRepository).beginDeletion(userId);
@@ -39,9 +40,7 @@ export function registerUserDeletionHandler() {
 			);
 			const project =
 				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
-			const threads = Container.get(AgentExecutionThreadRepository);
 			await Container.get(AgentProjectCleanupService).cleanupProject(project.id);
-			await threads.shareUserSessionHistory(userId);
 		},
 	});
 }

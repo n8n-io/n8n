@@ -107,13 +107,17 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/** Keep project-agent sessions readable after their user is removed. */
-	async shareUserSessionHistory(userId: string): Promise<void> {
-		const threads = await this.find({
+	async shareUserSessionHistory(userId: string, ctx: OperationContext = {}): Promise<void> {
+		const threads = await this.managerFor(ctx).find(AgentExecutionThread, {
 			select: { id: true },
 			where: { ownerId: userId, accessScope: 'user', agent: { scope: 'project' } },
 		});
 		for (const batch of chunk(threads, CHECKPOINT_BATCH_SIZE)) {
-			await this.update({ id: In(batch.map(({ id }) => id)) }, { accessScope: 'project' });
+			await this.managerFor(ctx).update(
+				AgentExecutionThread,
+				{ id: In(batch.map(({ id }) => id)) },
+				{ accessScope: 'project' },
+			);
 		}
 	}
 

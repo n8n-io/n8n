@@ -1,7 +1,8 @@
+import type { OperationContext } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
@@ -63,7 +64,7 @@ export class AgentProjectCleanupService {
 		await agentChatAttachmentService.deleteByProject(projectId);
 	}
 
-	async completeProjectDeletion(projectId: string): Promise<void> {
-		await this.deletion.completeDeletion(projectId);
+	async completeProjectDeletion(projectId: string, ctx: OperationContext): Promise<void> {
+		await this.deletion.completeDeletion(projectId, ctx);
 	}
 }

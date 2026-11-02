@@ -5,12 +5,21 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { SettingsRepository, TransactionRunner, UserRepository, type User } from '@n8n/db';
+import {
+	ProjectRepository,
+	SettingsRepository,
+	TransactionRunner,
+	UserRepository,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
+import { BinaryDataService } from 'n8n-core';
 
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
@@ -505,6 +514,87 @@ describe('Agent memory on user deletion', () => {
 		});
 		expect(destroy).not.toHaveBeenCalled();
 	}, 10_000);
+
+	it('rolls back module finalization with account deletion and allows a retry', async () => {
+		const user = await createMember();
+		const personal = await getPersonalProject(user);
+		const { scope } = await createSession(user);
+		const deletion = Container.get(AgentProjectDeletionRepository);
+		const complete = deletion.completeDeletion.bind(deletion);
+		const failure = vi
+			.spyOn(deletion, 'completeDeletion')
+			.mockImplementationOnce(async (projectId, ctx) => {
+				await complete(projectId, ctx);
+				throw new Error('Finalization failed');
+			});
+		try {
+			await expect(Container.get(UserService).deleteUser(admin, user.id)).rejects.toThrow(
+				'Finalization failed',
+			);
+		} finally {
+			failure.mockRestore();
+		}
+		expect(await Container.get(UserRepository).findOneBy({ id: user.id })).not.toBeNull();
+		expect(await Container.get(ProjectRepository).findOneBy({ id: personal.id })).not.toBeNull();
+		expect(await threadRepo.findOneByOrFail({ id: scope.threadId })).toMatchObject({
+			ownerId: user.id,
+			accessScope: 'user',
+		});
+		for (const key of [`agents.userDeletion.${user.id}`, `agents.projectDeletion.${personal.id}`]) {
+			expect(await Container.get(SettingsRepository).findOneBy({ key })).not.toBeNull();
+		}
+		await Container.get(UserService).deleteUser(admin, user.id);
+		expect(await Container.get(UserRepository).findOneBy({ id: user.id })).toBeNull();
+		expect(await threadRepo.findOneByOrFail({ id: scope.threadId })).toMatchObject({
+			ownerId: null,
+			accessScope: 'project',
+		});
+	});
+
+	it.each(['during', 'after'])('rejects tool output files %s account deletion', async (when) => {
+		const user = await createMember();
+		const { scope, agentId } = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const thread = await threadRepo.findOneByOrFail({ id: scope.threadId });
+		const binary = Container.get(BinaryDataService);
+		const store = vi.spyOn(binary, 'store').mockResolvedValue({
+			id: 'filesystem-v2:late-output',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
+		});
+		const read = vi.spyOn(binary, 'getAsBuffer').mockResolvedValue(Buffer.from('tool output'));
+		const remove = vi.spyOn(binary, 'deleteManyByBinaryDataId').mockResolvedValue([]);
+		const write = async () => {
+			const output = await Container.get(AgentFileBridge).adoptFromItems(
+				[
+					{
+						json: {},
+						binary: { data: { data: '', mimeType: 'text/plain', fileName: 'result.txt' } },
+					},
+				],
+				{ agentId, projectId: thread.projectId, threadId: thread.id, resourceId: scope.resourceId },
+			);
+			expect(output.files).toEqual([]);
+			expect(remove).toHaveBeenCalledWith(['filesystem-v2:late-output']);
+		};
+		const systemAgents = Container.get(SystemAgentExecutionService);
+		const stop = systemAgents.stopThreadsOfUser.bind(systemAgents);
+		const stopping = vi
+			.spyOn(systemAgents, 'stopThreadsOfUser')
+			.mockImplementation(async (userId) => {
+				if (when === 'during') await write();
+				await stop(userId);
+			});
+		try {
+			await Container.get(UserService).deleteUser(admin, user.id);
+			if (when === 'after') await write();
+			expect(store).toHaveBeenCalledOnce();
+		} finally {
+			stopping.mockRestore();
+			remove.mockRestore();
+			read.mockRestore();
+			store.mockRestore();
+		}
+	});
 
 	it('clears inactive and source-less user memories across agents without changing other scopes', async () => {
 		const [user, other] = await Promise.all([createMember(), createMember()]);

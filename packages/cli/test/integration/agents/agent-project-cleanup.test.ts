@@ -29,6 +29,34 @@ describe('Agent conversations on project deletion', () => {
 		await testDb.terminate();
 	});
 
+	it('rolls back the project cascade when marker finalization fails', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Pending deletion', owner);
+		const deletion = Container.get(AgentProjectDeletionRepository);
+		const complete = deletion.completeDeletion.bind(deletion);
+		const failure = vi
+			.spyOn(deletion, 'completeDeletion')
+			.mockImplementationOnce(async (projectId, ctx) => {
+				await complete(projectId, ctx);
+				throw new Error('Finalization failed');
+			});
+		try {
+			await expect(Container.get(ProjectService).deleteProject(owner, project.id)).rejects.toThrow(
+				'Finalization failed',
+			);
+		} finally {
+			failure.mockRestore();
+		}
+		expect(await Container.get(ProjectRepository).findOneBy({ id: project.id })).not.toBeNull();
+		expect(
+			await Container.get(SettingsRepository).findOneBy({
+				key: `agents.projectDeletion.${project.id}`,
+			}),
+		).not.toBeNull();
+		await Container.get(ProjectService).deleteProject(owner, project.id);
+		expect(await Container.get(ProjectRepository).findOneBy({ id: project.id })).toBeNull();
+	});
+
 	it('rejects a late checkpoint save before the project cascade', async () => {
 		const project = await createTeamProject();
 		const agents = Container.get(AgentRepository);

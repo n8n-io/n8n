@@ -7,7 +7,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 class ProjectDeletionTable extends BaseRepository<Project> {
 	constructor(dataSource: DataSource, transactions: TransactionRunner) {
@@ -31,8 +31,8 @@ export class AgentProjectDeletionRepository {
 		return `agents.projectDeletion.${projectId}`;
 	}
 
-	async completeDeletion(projectId: string): Promise<void> {
-		await this.table.manager.delete(Settings, { key: this.markerKey(projectId) });
+	async completeDeletion(projectId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.table.managerFor(ctx).delete(Settings, { key: this.markerKey(projectId) });
 	}
 
 	async beginDeletion(projectId: string): Promise<void> {

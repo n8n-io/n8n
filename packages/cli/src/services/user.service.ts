@@ -4,7 +4,7 @@ import { EventService, UrlService, RoleService, JwtService } from '@n8n/backend-
 import { GlobalConfig } from '@n8n/config';
 import type { Person, PublicUser } from '@n8n/db';
 import {
-	AuthIdentity,
+	TransactionRunner,
 	Project,
 	ProjectRelation,
 	User,
@@ -88,6 +88,7 @@ export class UserService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly personRepository: PersonRepository,
 		private readonly scimSwitchReader: ScimSwitchReader,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -690,11 +691,15 @@ export class UserService {
 		// Clean up user-owned module data before account deletion, including on transfer.
 		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
 
-		await this.getManager().transaction(async (trx) => {
-			await trx.delete(AuthIdentity, { userId: userToDelete.id });
-			await trx.delete(Project, { id: personalProjectToDelete.id });
-			await trx.delete(User, { id: userToDelete.id });
+		await this.txRunner.run({}, async (ctx) => {
+			await ownershipTransferService.finalizeUserDeletion(
+				userToDelete.id,
+				personalProjectToDelete.id,
+				ctx,
+			);
+			await this.userRepository.deleteAccount(userToDelete.id, personalProjectToDelete.id, ctx);
 		});
+
 		this.eventService.emit('user-deleted', {
 			// No user acts in a system deletion, so the event names the system.
 			user: actorUser,
@@ -705,11 +710,6 @@ export class UserService {
 			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
 			migrationUserId: transfereeId,
 		});
-
-		await ownershipTransferService.completeUserDeletion(
-			userToDelete.id,
-			personalProjectToDelete.id,
-		);
 
 		await this.externalHooks.run('user.deleted', [await this.toPublic(userToDelete)]);
 

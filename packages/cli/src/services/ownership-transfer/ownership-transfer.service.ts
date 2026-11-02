@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
 import {
 	SharedCredentialsRepository,
@@ -128,9 +129,13 @@ export class OwnershipTransferService {
 		}
 	}
 
-	async completeUserDeletion(userId: string, personalProjectId: string): Promise<void> {
+	async finalizeUserDeletion(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
 		for (const handler of this.transferHandlers.getAll()) {
-			await handler.afterUserDeleted?.(userId, personalProjectId);
+			await handler.finalizeUserDeletion?.(userId, personalProjectId, ctx);
 		}
 	}
 }

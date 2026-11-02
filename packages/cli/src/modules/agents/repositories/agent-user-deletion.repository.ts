@@ -1,7 +1,7 @@
 import { BaseRepository, User, Settings, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 class UserDeletionTable extends BaseRepository<User> {
 	constructor(dataSource: DataSource, transactions: TransactionRunner) {
@@ -25,8 +25,8 @@ export class AgentUserDeletionRepository {
 		return `agents.userDeletion.${userId}`;
 	}
 
-	async completeDeletion(userId: string): Promise<void> {
-		await this.table.manager.delete(Settings, { key: this.markerKey(userId) });
+	async completeDeletion(userId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.table.managerFor(ctx).delete(Settings, { key: this.markerKey(userId) });
 	}
 
 	async beginDeletion(userId: string): Promise<void> {

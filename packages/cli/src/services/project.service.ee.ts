@@ -5,6 +5,7 @@ import {
 	type User,
 	FolderRepository,
 	Project,
+	TransactionRunner,
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -91,6 +92,7 @@ export class ProjectService {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
 		private readonly roleRepository: RoleRepository,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	private get workflowService() {
@@ -272,11 +274,13 @@ export class ProjectService {
 		const projectMembers = await this.projectRelationRepository.findBy({ projectId: project.id });
 		const memberUserIds = projectMembers.map((pr) => pr.userId);
 
-		// 9. delete project
-		await this.projectRepository.remove(project);
-		if (this.moduleRegistry.isActive('agents')) {
-			await (await this.agentProjectCleanupService).completeProjectDeletion(projectId);
-		}
+		// 9. Delete the project and its deletion marker in one transaction.
+		await this.txRunner.run({}, async (ctx) => {
+			await this.projectRepository.removeProjectForDeletion(project, ctx);
+			if (this.moduleRegistry.isActive('agents')) {
+				await (await this.agentProjectCleanupService).completeProjectDeletion(projectId, ctx);
+			}
+		});
 
 		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
 		try {
