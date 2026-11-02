@@ -5,6 +5,7 @@ import {
 	type AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 import {
@@ -236,7 +237,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 	type StoredMessage = { role: string; content: string };
 	type Internals = {
 		resolveAiPreferencesTurn: (
-			userId: string,
+			user: User,
 			project: { id: string; name: string; type: 'team' } | undefined,
 			threadId: string,
 			loadHistory: () => Promise<unknown[]>,
@@ -259,7 +260,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		project: { id: string; name: string; type: 'team' } | undefined,
 	) {
 		return await service.resolveAiPreferencesTurn(
-			'user-1',
+			user,
 			project,
 			'thread-1',
 			async () => await loadHistory(service.agentMemory),
@@ -278,6 +279,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		],
 	};
 	const none = { instance: [], user: [], projects: [] };
+	const user = { id: 'user-1' } as User;
 	const boundProject = { id: 'project-1', name: 'Marketing', type: 'team' as const };
 
 	/** A persisted user turn whose leading thread-context carries `block`, as the service stores it. */
@@ -379,9 +381,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 
 		const turn = await resolvePreferences(service, boundProject);
 
-		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith('user-1', [
-			boundProject,
-		]);
+		expect(service.aiPreferenceService.getApplicable).toHaveBeenCalledWith(user, [boundProject]);
 		expect(turn.block).toContain('<ai-preferences>');
 		expect(turn.block).toContain('Preferences for project "Marketing":');
 		expect(turn.block).toContain('- Keep replies short.');

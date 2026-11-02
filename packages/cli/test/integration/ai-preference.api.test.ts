@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 
 import { AiPreferenceService, renderAiPreferencesBlock } from '@n8n/backend-services';
 
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
@@ -952,7 +953,7 @@ describe('the preferences a write produces', () => {
 		const first = await seed({ content: 'Keep replies short.', userId: member.id });
 		const second = await seed({ content: 'Keep replies short.', userId: member.id });
 
-		const applicable = await Container.get(AiPreferenceService).getApplicable(member.id, []);
+		const applicable = await Container.get(AiPreferenceService).getApplicable(member, []);
 
 		// Ids, not order: two writes inside one millisecond tie on `createdAt` and the query
 		// falls back to `id ASC`, which is a random uuid. Order is covered where it is seeded,
@@ -971,12 +972,12 @@ describe('the preferences a write produces', () => {
 
 		// A thread bound to a team project does not see it; one bound to the personal
 		// project does, and the block folds it into the personal group instead of naming its owner.
-		const inTeamProject = await service.getApplicable(member.id, [
+		const inTeamProject = await service.getApplicable(member, [
 			{ id: project.id, name: project.name, type: 'team' },
 		]);
 		expect(inTeamProject.projects).toEqual([]);
 
-		const inPersonalProject = await service.getApplicable(member.id, [
+		const inPersonalProject = await service.getApplicable(member, [
 			{ id: personal.id, name: personal.name, type: 'personal' },
 		]);
 		expect(inPersonalProject.projects).toEqual([
@@ -990,5 +991,65 @@ describe('the preferences a write produces', () => {
 		const block = renderAiPreferencesBlock(inPersonalProject);
 		expect(block).toContain('Personal preferences:\n- Only here.');
 		expect(block).not.toContain(personal.name);
+	});
+
+	test.each(['project:viewer', 'project:editor', 'project:admin'] as const)(
+		'reach a %s in the bound project',
+		async (role) => {
+			const user = await createMember();
+			await linkUserToProject(user, project, role);
+			const marketing = await seed({ content: 'Marketing rule.', projectId: project.id });
+
+			const applicable = await Container.get(AiPreferenceService).getApplicable(user, [
+				{ id: project.id, name: project.name, type: 'team' },
+			]);
+
+			expect(applicable.projects).toEqual([
+				{
+					id: project.id,
+					name: 'Marketing',
+					type: 'team',
+					items: [{ id: marketing.id, content: 'Marketing rule.' }],
+				},
+			]);
+		},
+	);
+
+	test('skip the bound project for a role with project:read but no projectAiPreference:read', async () => {
+		const role = await createCustomRoleWithScopeSlugs(['project:read'], { roleType: 'project' });
+		const user = await createMember();
+		await linkUserToProject(user, project, role.slug);
+		const instance = await seed({ content: 'Everyone.' });
+		const mine = await seed({ content: 'Just me.', userId: user.id });
+		await seed({ content: 'Marketing rule.', projectId: project.id });
+
+		const applicable = await Container.get(AiPreferenceService).getApplicable(user, [
+			{ id: project.id, name: project.name, type: 'team' },
+		]);
+
+		expect(applicable).toEqual({
+			instance: [{ id: instance.id, content: 'Everyone.' }],
+			user: [{ id: mine.id, content: 'Just me.' }],
+			projects: [],
+		});
+	});
+
+	test.each([
+		['owner', () => owner],
+		['admin', () => admin],
+	])("skip another user's personal project for an %s", async (_, caller) => {
+		const othersPersonal = await getPersonalProject(outsider);
+		const instance = await seed({ content: 'Everyone.' });
+		await seed({ content: 'Theirs, there', projectId: othersPersonal.id });
+
+		const applicable = await Container.get(AiPreferenceService).getApplicable(caller(), [
+			{ id: othersPersonal.id, name: othersPersonal.name, type: 'personal' },
+		]);
+
+		expect(applicable).toEqual({
+			instance: [{ id: instance.id, content: 'Everyone.' }],
+			user: [],
+			projects: [],
+		});
 	});
 });
