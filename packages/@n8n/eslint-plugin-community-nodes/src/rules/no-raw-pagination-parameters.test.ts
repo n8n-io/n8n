@@ -1,7 +1,9 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 
 import { configs } from '../plugin.js';
+import { NoRawPaginationParametersRule } from './no-raw-pagination-parameters.js';
 
 const linter = new Linter();
 const ruleId = '@n8n/community-nodes/no-raw-pagination-parameters';
@@ -48,6 +50,76 @@ const returnAllAndLimit = `
 		displayOptions: { show: { returnAll: [false] } },
 	},
 `;
+
+const ruleTester = new RuleTester();
+
+ruleTester.run('no-raw-pagination-parameters', NoRawPaginationParametersRule, {
+	valid: [
+		{
+			name: 'unrelated class in a node file',
+			filename: 'Test.node.ts',
+			code: `class Test {
+				description = { properties: [{ name: 'offset', type: 'number', default: 0 }] };
+			}`,
+		},
+		{
+			name: 'request data in a node execute method',
+			filename: 'Test.node.ts',
+			code: createNodeCode(
+				'',
+				`execute() {
+				return { name: 'cursor', type: 'string', default: '' };
+			}`,
+			),
+		},
+		{
+			name: 'unrelated exported array',
+			filename: 'Description.ts',
+			code: "export const fields = [{ name: 'offset', type: 'number', default: 0 }];",
+		},
+		{
+			name: 'hidden pagination field in an exported properties array',
+			filename: 'Description.ts',
+			code: `export const fields: INodeProperties[] = [
+				{ displayName: 'Cursor', name: 'cursor', type: 'hidden', default: '' },
+			];`,
+		},
+	],
+	invalid: [
+		...[
+			'offset',
+			'cursor',
+			'page',
+			'pageToken',
+			'page_token',
+			'pageSize',
+			'page_size',
+			'skip',
+			'perPage',
+			'per_page',
+			'startIndex',
+			'nextToken',
+		].map((name) => ({
+			name: `pagination field ${name} in an exported properties array`,
+			filename: 'Description.ts',
+			code: `export const fields: INodeProperties[] = [
+				{ displayName: '${name}', name: '${name}', type: 'string', default: '' },
+			];`,
+			errors: [{ messageId: 'rawPaginationParameter' as const, data: { name } }],
+		})),
+		{
+			name: 'pagination field in a fixed collection',
+			filename: 'Test.node.ts',
+			code: createNodeCode(`{
+				displayName: 'Filters', name: 'filters', type: 'fixedCollection', default: {},
+				options: [{ name: 'filter', displayName: 'Filter', values: [
+					{ displayName: 'Skip', name: 'skip', type: 'number', default: 0 },
+				] }],
+			}`),
+			errors: [{ messageId: 'rawPaginationParameter', data: { name: 'skip' } }],
+		},
+	],
+});
 
 function expectedWarning(name: string) {
 	return expect.objectContaining({
