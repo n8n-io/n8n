@@ -1,0 +1,133 @@
+# Component specification
+
+Reusable presentation for files and images. Feature components prepare data, manage state, and handle actions.
+
+- **Component names:** N8nAttachment and N8nAttachmentGroup
+- **Figma component:** TBD
+- **Implementation:** Custom Vue components
+- **Status:** Target contract. `Attachment.vue` currently renders only a file name or its default slot. `AttachmentGroup.vue` has an initial stacked layout. This document does not imply that all behavior below is implemented.
+
+## Scope and boundaries
+
+- `N8nAttachment` displays one file or image and its available controls.
+- `N8nAttachmentGroup` arranges attachments supplied through its default slot.
+- Feature components own file selection, validation, conversion, uploads, state updates, and action handling.
+- Feature components create and release object URLs. They also resolve server URLs and decide how to handle unavailable files.
+- Neither component imports Instance AI or Agents types, stores, or services.
+- Resource references use the shared AI `ChatResource` component, not an attachment component. Generic context labels are not automatically resource references.
+- This extraction does not change API payloads or stored messages.
+
+## N8nAttachment
+
+### Public API definition
+
+`Attachment.types.ts` defines the public props and events. Apply the documented defaults when implementing the component.
+
+**Props**
+
+| Prop | Type | Purpose |
+| --- | --- | --- |
+| `fileName` | `string` | Required file name. Supplies the visible label and image alternative text. |
+| `mimeType` | `string` | Required MIME type. Selects file or image presentation. |
+| `sizeBytes` | `number` | Optional file size in bytes. Omit the size label when absent. Zero is a valid size. |
+| `src` | `string` | Optional image preview URL. |
+| `isRemovable` | `boolean` | Shows a remove control when true. Default: `true`. |
+| `isPreviewable` | `boolean` | Allows the attachment to open in a preview dialog. Default: `true`. |
+
+**Events**
+
+| Event | Payload | Purpose |
+| --- | --- | --- |
+| `remove` | None | Requests removal. The parent identifies and removes the item. |
+| `load` | None | Reports that the image preview loaded. |
+| `error` | None | Reports that the image preview failed to load. |
+
+**Slots**
+
+- `default`: The current placeholder accepts content in place of the file name. The final customization contract remains open. Do not depend on this slot to replace controls or accessible labels until that contract is set.
+
+### Target behavior
+
+- Display an image preview when the MIME type identifies an image and `src` is available.
+- Display a file representation for other MIME types and for images without a preview URL.
+- Keep the file name available when a preview fails. A failed preview must not remove the remove control.
+- Show the file size when supplied. Reuse a shared size formatter if one exists.
+- Long names must not push controls out of the attachment. Keep the full name available to assistive technology when the visible text is truncated.
+- Do not render a file link. A future lightbox will handle preview interaction when `isPreviewable` is true. The lightbox implementation is outside this initial contract.
+- Do not fetch files, start downloads in code, or manage object URLs.
+- A remove action emits `remove` once. It must not trigger preview interaction.
+- The parent changes the list after removal. The component does not remove itself.
+- Use Design System tokens for spacing, color, borders, and text. Support light and dark modes.
+
+### Accessibility
+
+- Use a native button for removal. Keep future preview controls separate. Do not nest interactive controls.
+- Give the remove button a translated accessible name that identifies the file.
+- Use `fileName` as image alternative text. Avoid duplicate announcements when the file name is also visible.
+- Preserve visible keyboard focus on controls.
+- Do not use color alone to communicate a failed or unavailable preview.
+
+### Open decisions
+
+The initial props do not define loading, upload progress, error messages, or unavailable-file states. Confirm the required display states with consumers before adding a status API. Do not infer upload status from image `load` or `error` events.
+
+## N8nAttachmentGroup
+
+### Public API definition
+
+**Props:** None initially.
+
+**Events:** None initially.
+
+**Slots**
+
+- `default`: Attachment items. The parent owns iteration, stable keys, and event handlers.
+
+### Layout and interaction
+
+The initial implementation uses a horizontal stack, not a wrapping grid:
+
+- Direct child elements do not shrink.
+- Items overlap and alternate their rotation in the resting state.
+- Pointer entry spreads the items. Pointer exit restores the stack.
+- The group uses horizontal scrolling for overflow.
+- Child offsets follow rendered order, including items rendered through Vue list fragments.
+- Offsets reverse in right-to-left layouts.
+- Motion respects the reduced-motion preference.
+
+Before release, ensure keyboard users can reach each item and its controls without pointer hover. Consider spreading the stack on `focus-within`, so focused controls are not hidden by adjacent items. This is a target accessibility requirement, not current behavior.
+
+The group does not select, sort, remove, or collapse items. Wrapping, collapse limits, and overflow counters are future options, not part of the initial API. An empty slot must not create an empty-state message.
+
+## Integration
+
+Paths below are relative to `packages/frontend/editor-ui/src/features/`.
+
+| Consumer | Responsibility after extraction |
+| --- | --- |
+| `ai/instanceAi/components/AttachmentPreview.vue` | Adapt file and image data to `N8nAttachment`. Route resource references through `ChatResource`. |
+| `ai/instanceAi/components/InstanceAiInput.vue` | Use the group for draft files. Retain selection, validation, and removal logic. |
+| `ai/instanceAi/components/InstanceAiMessage.vue` | Display sent files and resource references through their respective presentation components. |
+| `ai/instanceAi/components/InstanceAiResourceChip.vue` | Replace with, or migrate into, shared `ChatResource`. |
+| `ai/instanceAi/components/NodeChip.vue` and `NodesAttachmentChips.vue` | Use `ChatResource` for presentation. Retain node lookup, grouping, expansion, and selection updates. |
+| `agents/components/AgentChatPanel.vue` | Use attachment components for draft files and `ChatResource` for references. Remove presentation imports from Instance AI. |
+| `agents/components/AgentChatMessageAttachments.vue` | Use both attachment components. Retain URL resolution and unavailable-file handling. |
+
+Agent Build mode embeds the Instance AI conversation and receives its presentation changes through that integration. Keep the existing Instance AI and Agents logic split.
+
+## Acceptance coverage
+
+Add focused component tests and stories for these cases as implementation proceeds. This list defines required coverage; it does not report existing test results.
+
+| Area | Required cases |
+| --- | --- |
+| File display | File name, size omitted, zero size, long name, unknown MIME type |
+| Image display | Valid preview, missing preview, failed preview |
+| Removal | Visible by default; hidden when disabled; one event; no preview activation |
+| Preview | Enabled by default; disabled when `isPreviewable` is false |
+| Image events | Successful load and failed load emit the corresponding event |
+| Accessibility | File-specific remove label, image alternative text, visible focus, no nested controls |
+| Group | Empty, one item, multiple items, list fragments, item insertion and removal |
+| Layout | Narrow container, horizontal overflow, right-to-left layout, pointer and keyboard access |
+| Appearance | Light mode, dark mode, reduced motion |
+| Integration | Draft removal, unavailable files, and resource references remain feature-owned |
