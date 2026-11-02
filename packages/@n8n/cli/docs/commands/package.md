@@ -112,7 +112,7 @@ Requires the API key to hold:
 - `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish` — when the import plans that action. Skipped Agents require no write grants.
 - `skill:create` — when the import creates a project or instance skill. The skills of one Agent need only the Agent grants.
 - `skill:update` — when the import saves a new version of a matched project or instance skill.
-- `workflow:activate` — when the import publishes a workflow, including a republish under the default `--publishing-policy=preserve-published-state`. Skipped and archived workflows need no grant.
+- `workflow:activate` — when the import publishes a workflow, including a republish under the default `--publishing-policy=preserve-published-state`. Skipped workflows and workflows marked as archived in the package need no activation grant.
 - `workflow:deactivate` — when `--publishing-policy=match-source` or `unpublish-all` unpublishes a workflow. Archiving a workflow needs only `workflow:delete`.
 - `workflow:delete` — when `--conflict-policy=new-version` archives or restores a matched workflow, or when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `folder:delete` — when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
