@@ -758,11 +758,8 @@ jobs:
           DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
         run: node .github/scripts/attest-image-sbom.mjs
 
-  # The attestation jobs above write to GHCR only. Docker Hub merges its own
-  # index, but from the same platform images, so it has the same digest. Cosign
-  # (`sha256-<hex>.att`) and actions/attest (`sha256-<hex>` referrers) store
-  # attestations under tags derived from that digest. Copying those tags lets
-  # users verify the Docker Hub image directly.
+  # The attestation jobs above write to GHCR only. This job copies their tags
+  # to Docker Hub, so users can verify the image they pull from there.
   mirror-attestations-docker-hub:
     name: Mirror Attestations to Docker Hub
     needs:
@@ -802,40 +799,16 @@ jobs:
 
       - name: Copy attestation tags from GHCR to Docker Hub
         env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          IMAGES: >-
-            ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
-            ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_image }}@${{ needs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
-            ${{ needs.create_multi_arch_manifest.outputs.runners_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
-            ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}@${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
-        run: |
-          set -euo pipefail
-          FAILED=0
-          for REF in $IMAGES; do
-            # An image that was not built has an empty digest.
-            [[ "$REF" == *@sha256:* ]] || continue
-            SRC_REPO="${REF%@*}"
-            DIGEST="${REF#*@}"
-            DST_REPO="docker.io/${DOCKER_USERNAME}/${SRC_REPO##*/}"
-
-            if ! docker buildx imagetools inspect --raw "${DST_REPO}@${DIGEST}" > /dev/null 2>&1; then
-              echo "::error::${DST_REPO} has no manifest ${DIGEST}. The GHCR and Docker Hub indexes differ, so the GHCR attestations do not apply."
-              FAILED=1
-              continue
-            fi
-
-            for TAG in "sha256-${DIGEST#sha256:}" "sha256-${DIGEST#sha256:}.att"; do
-              if ! docker buildx imagetools inspect --raw "${SRC_REPO}:${TAG}" > /dev/null 2>&1; then
-                echo "No ${SRC_REPO}:${TAG} - skipping"
-                continue
-              fi
-              # --prefer-index=false copies the manifest byte for byte. Without it,
-              # a single manifest is wrapped in a new index.
-              docker buildx imagetools create --prefer-index=false \
-                --tag "${DST_REPO}:${TAG}" "${SRC_REPO}:${TAG}"
-            done
-          done
-          exit "$FAILED"
+          DOCKER_HUB_NAMESPACE: ${{ secrets.DOCKER_USERNAME }}
+          N8N_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
+          N8N_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+          N8N_PC_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_image }}
+          N8N_PC_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
+          RUNNERS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
+          RUNNERS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+          DISTROLESS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+          DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+        run: node .github/scripts/docker/mirror-attestations.mjs
 
   security-scan:
     name: Security Scan
