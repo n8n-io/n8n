@@ -336,11 +336,41 @@
 		"src/features/shared/editors/plugins/codemirror/completions/__tests__/mock.ts",
 		"src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts"
 	],
+	"packages/modules/apps/frontend": [
+		"src/__tests__/setup.ts",
+		"src/apps.module.test.ts",
+		"src/apps.module.ts",
+		"src/views/AppsListView.vue"
+	],
+	"packages/modules/inbox/frontend": [
+		"src/__tests__/setup.ts",
+		"src/inbox.store.test.ts",
+		"src/inbox.store.ts",
+		"src/views/InboxView.vue"
+	],
 	"packages/modules/insights/frontend": [
 		"src/__tests__/setup.ts",
 		"src/chartjs.utils.ts",
 		"src/components/InsightsDashboard.test.ts",
 		"src/components/InsightsDashboard.vue"
+	],
+	"packages/modules/mcp/frontend": [
+		"src/SettingsMCPView.vue",
+		"src/__tests__/setup.ts",
+		"src/mcp.store.test.ts",
+		"src/mcp.store.ts"
+	],
+	"packages/modules/self-healing/frontend": [
+		"src/__tests__/setup.ts",
+		"src/self-healing.store.test.ts",
+		"src/self-healing.store.ts",
+		"src/views/SelfHealingConfigView.vue"
+	],
+	"packages/modules/type-availability-policies/frontend": [
+		"src/__tests__/setup.ts",
+		"src/components/RestrictedNodePanel.vue",
+		"src/type-availability-policies.store.test.ts",
+		"src/type-availability-policies.store.ts"
 	],
 	"packages/modules/instance-registry/frontend": [
 		"src/__tests__/setup.ts",
