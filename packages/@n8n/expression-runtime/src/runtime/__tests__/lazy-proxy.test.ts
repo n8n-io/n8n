@@ -186,6 +186,14 @@ describe('createDeepLazyProxy', () => {
 			return proxy();
 		}
 
+		it('reads a named key of an array from the host', () => {
+			const p = arrayProxy(['$json'], 1);
+			mocks.getValueAtPath.mockReturnValue('session-1');
+
+			expect(p.sessionId).toBe('session-1');
+			expect(mocks.getValueAtPath).toHaveBeenCalledWith(['$json', 'sessionId']);
+		});
+
 		it('creates a nested proxy for object elements', () => {
 			const p = proxyWithLargeArray();
 			mocks.getArrayElement.mockReturnValue({ __isObject: true, __keys: ['a'] });
@@ -234,7 +242,9 @@ describe('createDeepLazyProxy', () => {
 
 		it('returns undefined for non-numeric non-length properties', () => {
 			const p = proxyWithLargeArray();
-			expect(p.items.foo).toBeUndefined();
+			const items = p.items;
+			mocks.getValueAtPath.mockReturnValue(undefined);
+			expect(items.foo).toBeUndefined();
 			expect(mocks.getArrayElement).not.toHaveBeenCalled();
 		});
 
