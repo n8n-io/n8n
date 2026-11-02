@@ -20,6 +20,8 @@ export {
 export { loadDaytona } from './lazy-daytona';
 export { SandboxAcquisitionError, SandboxNameConflictError, SandboxNotReadyError } from './errors';
 export { createFilesystem, createSandbox } from './create-workspace';
+export { MxcSandbox, type MxcSandboxOptions } from './mxc-sandbox';
+export { MxcLocalFilesystem } from '../filesystem/mxc-local-filesystem';
 export type {
 	BaseFilesystemOptions,
 	FilesystemLifecycleHook,
@@ -34,6 +36,8 @@ export type {
 	CreateSandboxOptions,
 	DaytonaSandboxConfig,
 	N8nSandboxConfig,
+	MxcSandboxConfig,
+	RemoteSandboxProvider,
 	DisabledSandboxConfig,
 	ExecuteCommandOptions,
 	FileContent,

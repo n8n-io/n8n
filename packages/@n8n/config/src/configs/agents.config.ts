@@ -106,6 +106,39 @@ export class AgentsConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
+	 * Set to `mxc` to run agent workspace commands and scripts on this host in Microsoft
+	 * Execution Containers instead of a remote sandbox. Agent workspaces then live on this
+	 * host's disk, so only use it with a single main instance. When unset, agents use the
+	 * sandbox provider of the n8n Assistant.
+	 */
+	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
+	sandboxProvider: string = '';
+
+	/**
+	 * Absolute path of the folder where n8n creates one workspace folder for each agent when
+	 * the agent sandbox provider is `mxc`. When unset, n8n uses `n8n-agent-workspaces` in the
+	 * home folder of the user that runs n8n. Keep it outside the n8n user folder, because agent
+	 * commands can't access that folder.
+	 */
+	@Env('N8N_AGENTS_MXC_WORKSPACE_ROOT')
+	mxcWorkspaceRoot: string = '';
+
+	/**
+	 * Comma-separated list of absolute folder paths that agent commands can read but not
+	 * change when the agent sandbox provider is `mxc`, for example `/data/reports,/data/exports`.
+	 */
+	@Env('N8N_AGENTS_MXC_READONLY_PATHS')
+	mxcReadonlyPaths: string = '';
+
+	/**
+	 * Absolute path of a folder where n8n saves a report each time an agent command tries to
+	 * access a blocked file or network address, when the agent sandbox provider is `mxc`.
+	 * Only works on Windows. When unset, n8n doesn't save these reports.
+	 */
+	@Env('N8N_AGENTS_MXC_DENIALS_REPORT_DIR')
+	mxcDenialsReportDir: string = '';
+
+	/**
 	 * How often (seconds) each main checks that the channels of its published
 	 * agents are actually running, and retries the ones that are not. Set to 0 to
 	 * stop checking, which leaves a channel that failed to start down until the

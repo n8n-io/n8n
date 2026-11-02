@@ -1,4 +1,5 @@
 import { DaytonaSandbox } from './daytona-sandbox';
+import { MxcSandbox } from './mxc-sandbox';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import type {
 	CreateSandboxOptions,
@@ -8,6 +9,7 @@ import type {
 } from './types';
 import type { BaseFilesystemOptions } from '../filesystem/base-filesystem';
 import { DaytonaFilesystem } from '../filesystem/daytona-filesystem';
+import { MxcLocalFilesystem } from '../filesystem/mxc-local-filesystem';
 import { N8nSandboxFilesystem } from '../filesystem/n8n-sandbox-filesystem';
 
 export async function createSandbox(
@@ -67,6 +69,18 @@ function buildSandbox(
 		});
 	}
 
+	if (provider === 'mxc') {
+		return new MxcSandbox({
+			id: config.id,
+			workspaceRoot: config.workspaceRoot,
+			readonlyPaths: config.readonlyPaths,
+			deniedPaths: config.deniedPaths,
+			denialsReportDir: config.denialsReportDir,
+			timeout: config.timeout ?? 300_000,
+			logger: options.logger ?? config.logger,
+		});
+	}
+
 	const exhaustiveProvider: never = provider;
 	throw new Error(`Unsupported sandbox provider: ${String(exhaustiveProvider)}`);
 }
@@ -84,6 +98,10 @@ export function createFilesystem(
 
 	if (sandbox instanceof N8nSandboxServiceSandbox) {
 		return new N8nSandboxFilesystem(sandbox, options);
+	}
+
+	if (sandbox instanceof MxcSandbox) {
+		return new MxcLocalFilesystem(sandbox, options);
 	}
 
 	if (sandbox instanceof DaytonaSandbox) {

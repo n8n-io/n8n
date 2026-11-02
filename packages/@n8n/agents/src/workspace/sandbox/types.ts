@@ -51,7 +51,11 @@ export type {
 	WriteOptions,
 };
 
-export type SandboxProvider = 'daytona' | 'n8n-sandbox';
+/** Providers that run the workspace in a remote sandbox service. */
+export type RemoteSandboxProvider = 'daytona' | 'n8n-sandbox';
+
+/** `mxc` runs agent workspaces on the n8n host. Only agents can opt in to it. */
+export type SandboxProvider = RemoteSandboxProvider | 'mxc';
 
 export interface SandboxConfigBase {
 	provider: SandboxProvider;
@@ -102,7 +106,26 @@ export interface N8nSandboxConfig extends EnabledSandboxConfigBase {
 	id?: string;
 }
 
-export type SandboxConfig = DisabledSandboxConfig | DaytonaSandboxConfig | N8nSandboxConfig;
+export interface MxcSandboxConfig extends EnabledSandboxConfigBase {
+	provider: 'mxc';
+	/** Workspace id. It is also the name of the agent's folder in `workspaceRoot`. */
+	id: string;
+	/** Parent folder for local agent workspaces. */
+	workspaceRoot: string;
+	/** Host folders that commands can read but not change. */
+	readonlyPaths?: string[];
+	/** Host folders that commands and file tools can never access. */
+	deniedPaths?: string[];
+	/** Windows only: folder for the MXC denial reports. */
+	denialsReportDir?: string;
+	logger?: Logger;
+}
+
+export type SandboxConfig =
+	| DisabledSandboxConfig
+	| DaytonaSandboxConfig
+	| N8nSandboxConfig
+	| MxcSandboxConfig;
 
 export type SandboxInstance = WorkspaceSandbox;
 export type SandboxFilesystem = WorkspaceFilesystem;

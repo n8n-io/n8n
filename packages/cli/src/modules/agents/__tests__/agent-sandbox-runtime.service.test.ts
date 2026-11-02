@@ -78,7 +78,7 @@ function makeSandboxSettingsService(
 function makeService({
 	configOverrides = {},
 	logger = mock<Logger>(),
-	instanceSettings = mock<InstanceSettings>({ instanceId }),
+	instanceSettings = mock<InstanceSettings>({ instanceId, n8nFolder: '/home/node/.n8n' }),
 	agentRepository = makeAgentRepository(),
 	sandboxSettingsService = makeSandboxSettingsService(),
 }: {
@@ -95,6 +95,10 @@ function makeService({
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
+			sandboxProvider: '',
+			mxcWorkspaceRoot: '',
+			mxcReadonlyPaths: '',
+			mxcDenialsReportDir: '',
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -356,5 +360,86 @@ describe('AgentSandboxRuntimeService', () => {
 			`agent-kb-${knowledgeSandboxId}`,
 			knowledgeSandboxId,
 		]);
+	});
+
+	describe('with N8N_AGENTS_AI_SANDBOX_PROVIDER=mxc', () => {
+		const mxcConfig: Partial<AgentsConfig> = {
+			sandboxProvider: 'mxc',
+			mxcWorkspaceRoot: '/srv/agent-workspaces',
+			mxcReadonlyPaths: '/data/reports, /data/exports',
+		};
+		const n8nFolder = '/home/node/.n8n';
+
+		it('runs agent workspaces in a local mxc sandbox rooted at the filesystem base path', async () => {
+			createFilesystemMock.mockReturnValue(
+				mock<WorkspaceFilesystem>({ basePath: `/srv/agent-workspaces/${workspaceSandboxId}` }),
+			);
+			const service = makeService({
+				configOverrides: mxcConfig,
+				instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder }),
+			});
+
+			const runtime = await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+
+			expect(createSandboxMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					enabled: true,
+					provider: 'mxc',
+					id: workspaceSandboxId,
+					workspaceRoot: '/srv/agent-workspaces',
+					readonlyPaths: ['/data/reports', '/data/exports'],
+					deniedPaths: [n8nFolder],
+				}),
+				expect.anything(),
+			);
+			expect(runtime.provider).toBe('mxc');
+			expect(runtime.workspaceRoot).toBe(`/srv/agent-workspaces/${workspaceSandboxId}`);
+		});
+
+		it('refuses a workspace root inside the n8n user folder', async () => {
+			const service = makeService({
+				configOverrides: { ...mxcConfig, mxcWorkspaceRoot: `${n8nFolder}/workspaces` },
+				instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder }),
+			});
+
+			await expect(
+				service.acquireWorkspaceSandbox(projectId, agentId, principalHash),
+			).rejects.toThrow(/must be outside the n8n user folder/);
+		});
+
+		it('keeps the knowledge sandbox on the n8n Assistant provider', async () => {
+			const service = makeService({ configOverrides: mxcConfig });
+
+			await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(createSandboxMock).toHaveBeenCalledWith(
+				expect.objectContaining({ provider: 'daytona' }),
+				expect.anything(),
+			);
+		});
+
+		it('also deletes the local mxc workspace on teardown', async () => {
+			const destroyed: Array<{ provider: string; id: string }> = [];
+			createSandboxMock.mockImplementation(async (config) => {
+				const target = makeSandbox(config.provider, config.id);
+				target.deleteRemote.mockImplementation(async () => {
+					destroyed.push({ provider: config.provider, id: config.id });
+				});
+				return target;
+			});
+			const service = makeService({ configOverrides: mxcConfig });
+
+			await service.destroyWorkspaceSandbox(projectId, agentId, principalHash);
+
+			expect(destroyed).toContainEqual({ provider: 'mxc', id: workspaceSandboxId });
+		});
+	});
+
+	it('warns about an unsupported N8N_AGENTS_AI_SANDBOX_PROVIDER value', () => {
+		const logger = mock<Logger>();
+
+		makeService({ configOverrides: { sandboxProvider: 'docker' }, logger });
+
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('"docker"'));
 	});
 });

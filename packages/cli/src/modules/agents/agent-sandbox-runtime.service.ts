@@ -4,6 +4,7 @@ import {
 	getPromptWorkspaceRoot,
 	type CommandResult,
 	type DaytonaSandboxConfig,
+	type MxcSandboxConfig,
 	type FilesystemLifecycleHook,
 	type N8nSandboxConfig,
 	type SandboxProvider,
@@ -15,7 +16,9 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { homedir } from 'node:os';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { v5 as uuidv5 } from 'uuid';
 
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
@@ -130,7 +133,23 @@ export class AgentSandboxRuntimeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentRepository: AgentRepository,
 		private readonly sandboxSettingsService: SandboxSettingsService,
-	) {}
+	) {
+		const configured = this.agentsConfig.sandboxProvider.trim();
+		if (configured && configured !== 'mxc') {
+			this.logger.warn(
+				`Ignoring N8N_AGENTS_AI_SANDBOX_PROVIDER="${configured}". The only supported value is "mxc".`,
+			);
+		}
+	}
+
+	/** `mxc` is an agents-only opt-in. Otherwise agents share the n8n Assistant sandbox provider. */
+	private getWorkspaceProvider(): SandboxProvider {
+		return this.isMxcWorkspaceProvider() ? 'mxc' : this.sandboxSettingsService.getProvider();
+	}
+
+	private isMxcWorkspaceProvider(): boolean {
+		return this.agentsConfig.sandboxProvider.trim() === 'mxc';
+	}
 
 	async warmKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
 		this.assertSandboxConfiguration(projectId, agentId);
@@ -178,7 +197,7 @@ export class AgentSandboxRuntimeService {
 		principalHash: AgentSandboxPrincipalHash,
 		options?: { onFilesystemInit?: FilesystemLifecycleHook },
 	): Promise<AgentSandboxRuntime> {
-		const provider = this.sandboxSettingsService.getProvider();
+		const provider = this.getWorkspaceProvider();
 		const sandboxId = buildWorkspaceSandboxId({
 			instanceId: this.instanceSettings.instanceId,
 			projectId,
@@ -298,10 +317,11 @@ export class AgentSandboxRuntimeService {
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 	): Promise<void> {
-		const sandboxes = [
+		const sandboxes: Array<[SandboxProvider, string]> = [
 			['daytona', daytonaName],
 			['n8n-sandbox', n8nSandboxId],
-		] as const;
+		];
+		if (this.isMxcWorkspaceProvider()) sandboxes.push(['mxc', n8nSandboxId]);
 
 		for (const [provider, sandboxId] of sandboxes) {
 			await this.tryDestroySandbox(projectId, agentId, provider, sandboxId, labels);
@@ -319,7 +339,9 @@ export class AgentSandboxRuntimeService {
 			const config =
 				provider === 'daytona'
 					? await this.resolveDaytonaSandboxConfig(projectId, sandboxId, labels)
-					: await this.resolveN8nSandboxConfig(sandboxId);
+					: provider === 'mxc'
+						? this.resolveMxcSandboxConfig(sandboxId)
+						: await this.resolveN8nSandboxConfig(sandboxId);
 			const sandbox = await createSandbox(config, { logger: this.logger });
 			// deleteRemote deletes by sandbox identity even though this instance never
 			// started it; destroy() is scoped to remotes the instance acquired.
@@ -354,12 +376,14 @@ export class AgentSandboxRuntimeService {
 		const config =
 			provider === 'daytona'
 				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, lifecycle)
-				: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
+				: provider === 'mxc'
+					? this.resolveMxcSandboxConfig(n8nSandboxId)
+					: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
 		return await this.startSandbox(config, projectId, agentId, cacheKey, startOptions);
 	}
 
 	private async startSandbox(
-		config: DaytonaSandboxConfig | N8nSandboxConfig,
+		config: DaytonaSandboxConfig | N8nSandboxConfig | MxcSandboxConfig,
 		projectId: string,
 		agentId: string,
 		cacheKey: string,
@@ -377,7 +401,11 @@ export class AgentSandboxRuntimeService {
 			sandbox,
 			startOptions.onFilesystemInit ? { onInit: startOptions.onFilesystemInit } : undefined,
 		);
-		const workspaceRoot = getPromptWorkspaceRoot(provider);
+		const workspaceRoot =
+			provider === 'mxc' ? filesystem.basePath : getPromptWorkspaceRoot(provider);
+		if (!workspaceRoot) {
+			throw new UnexpectedError('The mxc sandbox filesystem has no workspace folder');
+		}
 		this.logger.debug('Acquired agent sandbox', {
 			projectId,
 			agentId,
@@ -414,6 +442,41 @@ export class AgentSandboxRuntimeService {
 			timeout: this.agentsConfig.sandboxTimeout,
 			createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
 			...lifecycle,
+		};
+	}
+
+	/** Local workspace in Microsoft Execution Containers, with one host folder for each sandbox id. */
+	private resolveMxcSandboxConfig(sandboxId: string): MxcSandboxConfig {
+		const { mxcWorkspaceRoot, mxcReadonlyPaths, mxcDenialsReportDir, sandboxTimeout } =
+			this.agentsConfig;
+		const workspaceRoot = resolve(
+			mxcWorkspaceRoot.trim() || join(homedir(), 'n8n-agent-workspaces'),
+		);
+		const fromUserFolder = relative(this.instanceSettings.n8nFolder, workspaceRoot);
+		const insideUserFolder =
+			fromUserFolder !== '..' &&
+			!fromUserFolder.startsWith(`..${sep}`) &&
+			!isAbsolute(fromUserFolder);
+		if (insideUserFolder) {
+			// Agent commands are denied access to the n8n user folder, so no workspace could work.
+			throw new OperationalError(
+				`N8N_AGENTS_MXC_WORKSPACE_ROOT must be outside the n8n user folder (${this.instanceSettings.n8nFolder}).`,
+			);
+		}
+		return {
+			enabled: true,
+			provider: 'mxc',
+			id: sandboxId,
+			workspaceRoot,
+			readonlyPaths: mxcReadonlyPaths
+				.split(',')
+				.map((path) => path.trim())
+				.filter(Boolean),
+			// The n8n user folder holds the encryption key and the database.
+			deniedPaths: [this.instanceSettings.n8nFolder],
+			logger: this.logger,
+			...(mxcDenialsReportDir.trim() ? { denialsReportDir: mxcDenialsReportDir.trim() } : {}),
+			timeout: sandboxTimeout,
 		};
 	}
 
