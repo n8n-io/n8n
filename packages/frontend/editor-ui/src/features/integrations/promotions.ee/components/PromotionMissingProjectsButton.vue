@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SerializedProject } from '@n8n/api-types';
+import type { PromotionMissingProject } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { N8nButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -23,7 +23,7 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const { next: nextLoad } = useLatestFetch();
 
-const projects = shallowRef<SerializedProject[]>();
+const projects = shallowRef<PromotionMissingProject[]>();
 const loadError = ref<string>();
 const dialogOpen = ref(false);
 

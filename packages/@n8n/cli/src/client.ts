@@ -5,7 +5,7 @@ import type {
 	ImportPackageSelectionRequestDto,
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
-import type { SerializedProject } from '@n8n/api-types/dist/dto/packages/project.schema';
+import type { PromotionMissingProject } from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
 
 export interface PaginatedResponse<T> {
@@ -201,7 +201,7 @@ export type PromotionCheckoutResult = {
 export type PromotionMissingProjectList = {
 	environmentId: string;
 	git: { commitSha: string; branchName: string } | null;
-	data: SerializedProject[];
+	data: PromotionMissingProject[];
 };
 
 /** A new provider, with the generated public key for SSH providers. */

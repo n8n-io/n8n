@@ -45,9 +45,6 @@ responses:
                     minLength: 1
                   name:
                     type: string
-                    minLength: 1
-                  description:
-                    type: string
                   icon:
                     type: object
                     properties:
@@ -61,6 +58,8 @@ responses:
                     required:
                       - type
                       - value
+                  description:
+                    type: string
                   customTelemetryTags:
                     type: array
                     items:

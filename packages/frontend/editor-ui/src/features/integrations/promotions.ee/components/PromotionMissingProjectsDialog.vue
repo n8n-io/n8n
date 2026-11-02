@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ROLE, type SerializedProject } from '@n8n/api-types';
+import { ROLE, type PromotionMissingProject } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useToast } from '@n8n/composables/useToast';
@@ -41,7 +41,7 @@ type RowState =
 const props = defineProps<{
 	open: boolean;
 	environmentName: string;
-	projects: SerializedProject[];
+	projects: PromotionMissingProject[];
 }>();
 
 const emit = defineEmits<{
@@ -203,7 +203,7 @@ function onOpenChange(value: boolean) {
 	close();
 }
 
-async function create(project: SerializedProject): Promise<RowState> {
+async function create(project: PromotionMissingProject): Promise<RowState> {
 	try {
 		await createPublicProject(rootStore.publicApiContext, project);
 		return { status: 'created' };
