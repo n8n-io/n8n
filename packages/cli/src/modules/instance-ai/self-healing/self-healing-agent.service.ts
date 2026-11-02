@@ -80,7 +80,6 @@ export type SelfHealingRunResult = {
 	error?: unknown;
 	usage: SelfHealingResultUsage;
 	candidates?: Array<{
-		filePath: string;
 		baseline: WorkflowSuggestionBaseline;
 		compile: () => Promise<CandidateWorkflowResult>;
 	}>;
@@ -295,14 +294,13 @@ export class SelfHealingAgentService {
 			if (output.success) result.output = output.data;
 			else result.validationError = output.error.message;
 			const filePaths = output.success ? output.data.candidateFilePaths : [];
-			const changed = filePaths.map(resolveFile);
+			const resolved = filePaths.map(resolveFile);
 			if (
-				changed.length > 0 &&
-				changed.every((target) => target !== undefined) &&
-				new Set(changed).size === changed.length
+				resolved.length > 0 &&
+				resolved.every((target) => target !== undefined) &&
+				new Set(resolved).size === resolved.length
 			) {
-				result.candidates = changed.map((target, index) => ({
-					filePath: filePaths[index],
+				result.candidates = resolved.map((target, index) => ({
 					baseline: target,
 					compile: async () =>
 						await this.candidates.compile(
@@ -417,11 +415,10 @@ export class SelfHealingAgentService {
 		for (const { id, otherProject } of discovered[workflowId].subWorkflows) {
 			if (otherProject) continue;
 			signal.throwIfAborted();
-			if (await this.suggestions.hasPendingSuggestion(id)) continue;
+			if (await this.suggestions.getPendingResultId(id)) continue;
+			const group = [workflowId, ...subWorkflows.map((target) => target.workflowId), id];
 			const configuration = { id: configurationId, projectId };
-			if (!(await this.configurations.hasReviewerWhoCanEditAll(configuration, [workflowId, id]))) {
-				continue;
-			}
+			if (!(await this.configurations.hasReviewerWhoCanEditAll(configuration, group))) continue;
 			try {
 				const subWorkflow = await this.suggestions.captureBaseline(id, user.id);
 				if (subWorkflow.projectId === projectId) subWorkflows.push(subWorkflow);

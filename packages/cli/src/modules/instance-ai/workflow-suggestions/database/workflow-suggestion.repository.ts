@@ -152,6 +152,24 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		});
 	}
 
+	async getOpenResultIds(workflowId: string) {
+		const query = this.managerFor({}).createQueryBuilder(SelfHealingResult, 'result');
+		const pendingSuggestion = query
+			.subQuery()
+			.select('1')
+			.from(WorkflowSuggestion, 'suggestion')
+			.where('suggestion.selfHealingResultId = result.id')
+			.andWhere('suggestion.workflowId = :workflowId')
+			.andWhere("suggestion.state = 'pending'")
+			.getQuery();
+		const results = await query
+			.select('result.id')
+			.where(`(result.workflowId = :workflowId OR EXISTS ${pendingSuggestion})`, { workflowId })
+			.andWhere("result.reviewState = 'open'")
+			.getMany();
+		return results.map(({ id }) => id);
+	}
+
 	async getForResult(selfHealingResultId: string, ctx: OperationContext = {}) {
 		return await this.managerFor(ctx).find(WorkflowSuggestion, {
 			where: { selfHealingResultId },

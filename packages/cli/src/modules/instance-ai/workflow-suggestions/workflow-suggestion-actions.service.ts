@@ -1,7 +1,4 @@
-import type {
-	WorkflowSuggestionAppliedVersion,
-	WorkflowSuggestionProposalDetail,
-} from '@n8n/api-types';
+import type { WorkflowSuggestionAppliedVersion } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	TransactionRunner,
@@ -43,10 +40,6 @@ type PublicationRequestResult = {
 	restorationError?: { workflowId: string; error: string };
 };
 
-type GroupActionResult = PublicationRequestResult & {
-	suggestions: WorkflowSuggestionProposalDetail[];
-};
-
 @Service()
 export class WorkflowSuggestionActionsService {
 	constructor(
@@ -66,7 +59,7 @@ export class WorkflowSuggestionActionsService {
 		group: SuggestionGroup,
 		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId?: string,
-	): Promise<GroupActionResult> {
+	): Promise<PublicationRequestResult> {
 		const [user] = await Promise.all(
 			group.map(async ({ workflowId }) => {
 				const editor = await this.service.requireEditor(actor.id, workflowId);
@@ -87,11 +80,7 @@ export class WorkflowSuggestionActionsService {
 			}
 			for (const { workflowId } of group) await this.notifyEditors(workflowId, user.id);
 		}
-		const suggestions: WorkflowSuggestionProposalDetail[] = [];
-		for (const { id, workflowId } of group) {
-			suggestions.push(await this.service.getProposal(user, projectId, workflowId, id));
-		}
-		return { suggestions, ...publication };
+		return publication;
 	}
 
 	// Result dismissal joins this write so the result and its suggestions commit together.

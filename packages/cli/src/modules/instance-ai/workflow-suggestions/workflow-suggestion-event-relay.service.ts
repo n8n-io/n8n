@@ -41,6 +41,19 @@ export class WorkflowSuggestionEventRelay {
 		await this.reconcile(workflowId);
 	}
 
+	async afterWorkflowsTransferred(workflowIds: string[]): Promise<void> {
+		for (const workflowId of workflowIds) {
+			try {
+				await this.suggestions.closeResultsOfMovedWorkflow(workflowId);
+			} catch (error) {
+				this.logger.warn('Could not close the self-healing results of a moved workflow', {
+					workflowId,
+					error,
+				});
+			}
+		}
+	}
+
 	async beforeWorkflowDeleted(workflowId: string): Promise<void> {
 		const resultId = await this.suggestions.getPendingResultId(workflowId);
 		if (resultId) this.deletedMemberResults.set(workflowId, resultId);
@@ -52,7 +65,7 @@ export class WorkflowSuggestionEventRelay {
 			this.deletedMemberResults.delete(workflowId);
 			if (!resultId) continue;
 			try {
-				await this.suggestions.closeResultOfDeletedMember(resultId);
+				await this.suggestions.closeResultAsOutdated(resultId);
 			} catch (error) {
 				this.logger.warn('Could not close the self-healing result of a deleted workflow', {
 					workflowId,

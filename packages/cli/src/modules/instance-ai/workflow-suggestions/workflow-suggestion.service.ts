@@ -213,10 +213,6 @@ export class WorkflowSuggestionService {
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
-	async hasPendingSuggestion(workflowId: string) {
-		return (await this.suggestions.getPendingForWorkflow(workflowId)) !== null;
-	}
-
 	async createSuggestion(
 		prepared: PreparedWorkflowSuggestion,
 		selfHealingResultId: string,
@@ -310,11 +306,17 @@ export class WorkflowSuggestionService {
 		return (await this.suggestions.getPendingForWorkflow(workflowId))?.selfHealingResultId;
 	}
 
-	async closeResultOfDeletedMember(selfHealingResultId: string) {
+	async closeResultAsOutdated(selfHealingResultId: string) {
 		await this.txRunner.run(
 			{},
 			async (ctx) => await this.closeOutdatedResult(selfHealingResultId, ctx),
 		);
+	}
+
+	async closeResultsOfMovedWorkflow(workflowId: string) {
+		for (const id of await this.suggestions.getOpenResultIds(workflowId)) {
+			await this.closeResultAsOutdated(id);
+		}
 	}
 
 	async getForResult(selfHealingResultId: string, ctx: OperationContext = {}) {

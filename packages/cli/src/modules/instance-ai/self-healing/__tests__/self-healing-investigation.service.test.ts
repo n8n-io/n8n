@@ -240,7 +240,6 @@ describe('SelfHealingInvestigationService', () => {
 			};
 			run.candidates = [
 				{
-					filePath: 'candidate.ts',
 					baseline,
 					compile: vi.fn().mockResolvedValue({
 						success: true,
@@ -278,7 +277,6 @@ describe('SelfHealingInvestigationService', () => {
 			run.output = output;
 			run.candidates = [
 				{
-					filePath: 'candidate.ts',
 					baseline,
 					compile: vi.fn().mockResolvedValue({
 						success: true,
@@ -371,12 +369,10 @@ describe('SelfHealingInvestigationService', () => {
 			};
 			run.candidates = [
 				{
-					filePath: 'candidate.ts',
 					baseline,
 					compile: vi.fn().mockResolvedValue(compiled('Parent')),
 				},
 				{
-					filePath: 'sub-workflow.ts',
 					baseline: subWorkflow,
 					compile: vi.fn().mockResolvedValue(compiled('Child')),
 				},
@@ -401,7 +397,6 @@ describe('SelfHealingInvestigationService', () => {
 		it('omits an unchanged candidate and its missing setup', async () => {
 			const unchanged = compiled('Child');
 			run.candidates![1] = {
-				filePath: 'sub-workflow.ts',
 				baseline: mock<WorkflowSuggestionBaseline>({
 					workflowId: 'sub-workflow',
 					original: unchanged.workflow,
@@ -447,7 +442,7 @@ describe('SelfHealingInvestigationService', () => {
 				candidateFilePaths: ['candidate.workflow.ts'],
 			};
 			const compile = vi.fn();
-			run.candidates = [{ filePath: 'candidate.workflow.ts', baseline, compile }];
+			run.candidates = [{ baseline, compile }];
 			await startAndFinish();
 			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
 			expect(compile).not.toHaveBeenCalled();

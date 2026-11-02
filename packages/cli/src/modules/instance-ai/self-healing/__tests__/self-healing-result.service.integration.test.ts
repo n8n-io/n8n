@@ -799,7 +799,6 @@ it('rolls back all completion writes and releases the claim on failure', async (
 			usage: input.usage,
 			candidates: [
 				{
-					filePath: 'candidate.workflow.ts',
 					baseline: runInput.baseline,
 					compile: async () => ({
 						success: true,
@@ -1718,6 +1717,56 @@ describe('grouped completion', () => {
 			);
 		},
 	);
+
+	it.each([
+		['the sub-workflow', false],
+		['the triggering workflow of a sub-workflow-only result', true],
+	])('closes the result as outdated when %s moves to another project', async (_, moveTrigger) => {
+		const { investigation, user, project, original, subWorkflow, completion } =
+			await groupCompletion();
+		const [trigger, member] = completion.candidates;
+		const result = await completeResult({
+			investigationId: investigation.id,
+			...completion,
+			candidates: [moveTrigger ? { ...trigger, graph: original } : trigger, member],
+		});
+		const moved = moveTrigger ? original : subWorkflow;
+		const destination = await createTeamProject(undefined, user);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: moved.id, projectId: project.id },
+			{ projectId: destination.id },
+		);
+
+		await Container.get(WorkflowSuggestionEventRelay).afterWorkflowsTransferred([moved.id]);
+
+		expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({
+			reviewState: 'outdated',
+		});
+		expect((await suggestions.getForResult(result.id)).map(({ state }) => state)).toEqual(
+			moveTrigger ? ['closed'] : ['closed', 'closed'],
+		);
+	});
+
+	it('rejects Apply of a sub-workflow-only result after the triggering workflow moves', async () => {
+		const { investigation, user, project, original, completion } = await groupCompletion();
+		const result = await completeResult({
+			investigationId: investigation.id,
+			...completion,
+			candidates: [{ ...completion.candidates[0], graph: original }, completion.candidates[1]],
+		});
+		const destination = await createTeamProject(undefined, user);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: original.id, projectId: project.id },
+			{ projectId: destination.id },
+		);
+
+		await expect(service.act(user, project.id, original.id, result.id, 'apply')).rejects.toThrow(
+			'This result is no longer available in this project. Refresh the page.',
+		);
+		expect((await suggestions.getForResult(result.id)).map(({ state }) => state)).toEqual([
+			'pending',
+		]);
+	});
 
 	it('saves nothing when a member no longer matches its baseline', async () => {
 		const { investigation, subWorkflow, completion } = await groupCompletion();

@@ -521,7 +521,7 @@ describe('SelfHealingAgentService', () => {
 		};
 		const result = await service.execute(input, options);
 
-		expect(result.candidates?.[0].filePath).toBe(filePath);
+		expect(result.candidates).toHaveLength(1);
 		await result.candidates?.[0].compile();
 		expect(candidates.compile).toHaveBeenCalledWith(expect.objectContaining({ filePath }), user);
 	});
@@ -910,8 +910,8 @@ describe('SelfHealingAgentService', () => {
 				if (workflowId === 'moved') return subBaseline(workflowId, 'other-project');
 				return subBaseline(workflowId);
 			});
-			suggestions.hasPendingSuggestion.mockImplementation(
-				async (workflowId) => workflowId === 'pending',
+			suggestions.getPendingResultId.mockImplementation(async (workflowId) =>
+				workflowId === 'pending' ? 'pending-result' : undefined,
 			);
 			configurations.hasReviewerWhoCanEditAll.mockImplementation(
 				async (_, workflowIds) => !workflowIds.includes('no-reviewer'),
@@ -928,6 +928,10 @@ describe('SelfHealingAgentService', () => {
 			expect(configurations.hasReviewerWhoCanEditAll).toHaveBeenCalledWith(
 				{ id: input.configurationId, projectId: baseline.projectId },
 				[baseline.workflowId, 'eligible'],
+			);
+			expect(configurations.hasReviewerWhoCanEditAll).toHaveBeenCalledWith(
+				{ id: input.configurationId, projectId: baseline.projectId },
+				[baseline.workflowId, 'eligible', 'second'],
 			);
 			expect(preparedIds()).toEqual([baseline.workflowId, 'eligible', 'second']);
 		});
@@ -981,10 +985,7 @@ describe('SelfHealingAgentService', () => {
 
 		const result = await service.execute(includeSubWorkflow(), options);
 
-		expect(result.candidates).toEqual([
-			expect.objectContaining({ filePath: `/workspace/${subWorkflowFile}`, baseline: subWorkflow }),
-			expect.objectContaining({ filePath: `./${triggeringFile}`, baseline }),
-		]);
+		expect(result.candidates?.map(({ baseline }) => baseline)).toEqual([subWorkflow, baseline]);
 		await result.candidates?.[0].compile();
 		expect(candidates.compile).toHaveBeenCalledWith(
 			expect.objectContaining({ filePath: `/workspace/${subWorkflowFile}`, baseline: subWorkflow }),

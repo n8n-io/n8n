@@ -298,11 +298,12 @@ export class SelfHealingResultService {
 			workflowId,
 			resultId,
 		);
+		await this.requireCurrentProject(workflowId, projectId);
 		const allowedOutcomes = action === 'apply' ? ['fix_ready', 'needs_you'] : ['fix_ready'];
 		if (suggestions.length === 0 || !allowedOutcomes.includes(result.outcome)) {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
-		const { suggestions: proposals, ...publication } = await this.actions.apply(
+		const publication = await this.actions.apply(
 			reviewer,
 			projectId,
 			suggestions,
@@ -316,6 +317,11 @@ export class SelfHealingResultService {
 			result.executionId,
 		);
 		const current = await this.results.getResult(resultId, { projectId, workflowId });
+		const proposals = await this.suggestions.getProposals(
+			reviewer,
+			projectId,
+			await this.getSuggestions(current),
+		);
 		return {
 			...this.toDetail(current, proposals, execution),
 			...publication,

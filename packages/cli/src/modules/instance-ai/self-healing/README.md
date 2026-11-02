@@ -202,8 +202,8 @@ When it is set, the agent run discovers the sub-workflows of the triggering work
 captures their baselines before it prepares the files. It keeps the nearest sub-workflows in the
 same project that pass the baseline checks, up to `MAX_SUB_WORKFLOW_TARGETS`. Sub-workflows without
 edit access, with unpublished changes, or with a pending suggestion are left out. A sub-workflow is also
-left out when no reviewer can edit both it and the triggering workflow, so a reviewer can always see the
-result. Sub-workflows get no admission reservation.
+left out when no reviewer can edit it, the triggering workflow, and the sub-workflows already kept, so a
+reviewer can always see the result. Sub-workflows get no admission reservation.
 `POST .../self-healing-configurations/sub-workflows/preview` returns the discovery result for
 each selected workflow, so the form can show it.
 
@@ -358,7 +358,8 @@ Apply saves the proposed fix without publishing; the UI opens the editor when `r
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. When one suggestion becomes outdated, every pending
 suggestion of its result closes as outdated. When a workflow with a pending suggestion is deleted,
-the result and its other pending suggestions also close as outdated. If Apply fails, keep the review open and show the error.
+the result and its other pending suggestions also close as outdated. When the triggering workflow or a
+workflow with a pending suggestion moves to another project, the open result closes as outdated. If Apply fails, keep the review open and show the error.
 
 The Discard and close button calls `POST /:resultId/dismiss`.
 Dismissal discards every pending suggestion of the result in one transaction, and the result gets the

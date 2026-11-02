@@ -131,16 +131,18 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 		actor = user,
 	): Promise<
 		WorkflowSuggestionProposalDetail &
-			Omit<Awaited<ReturnType<WorkflowSuggestionActionsService['apply']>>, 'suggestions'>
+			Awaited<ReturnType<WorkflowSuggestionActionsService['apply']>>
 	> => {
-		if (action === 'discard') {
-			await actions.discardPending(actor, project.id, [suggestion]);
-			return await suggestionService.getProposal(actor, project.id, workflow.id, suggestion.id);
-		}
-		const {
-			suggestions: [proposal],
-			...publication
-		} = await actions.apply(actor, project.id, [suggestion], action);
+		const publication =
+			action === 'discard'
+				? await actions.discardPending(actor, project.id, [suggestion]).then(() => ({}))
+				: await actions.apply(actor, project.id, [suggestion], action);
+		const proposal = await suggestionService.getProposal(
+			actor,
+			project.id,
+			workflow.id,
+			suggestion.id,
+		);
 		return { ...proposal, ...publication };
 	};
 	return { user, workflow, original, project, graph, suggestion, act };
