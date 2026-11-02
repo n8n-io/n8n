@@ -11,9 +11,8 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import type { ExecutionRedactionServiceProxy, WorkflowFinderService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow the execution belongs to'),

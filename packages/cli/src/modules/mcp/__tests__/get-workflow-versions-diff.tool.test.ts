@@ -5,7 +5,7 @@ import type { Mock } from 'vitest';
 
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';

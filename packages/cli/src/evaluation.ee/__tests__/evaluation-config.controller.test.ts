@@ -3,7 +3,7 @@ import type { AuthenticatedRequest, EvaluationConfig, User, WorkflowEntity } fro
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import { EvaluationApiError } from '../evaluation-api-error';
 import { EvaluationConfigController } from '../evaluation-config.controller';

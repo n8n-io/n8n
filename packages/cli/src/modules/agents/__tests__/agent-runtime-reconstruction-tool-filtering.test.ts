@@ -20,7 +20,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, WorkflowFinderService } from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -28,7 +28,6 @@ import { userHasScopes } from '@n8n/backend-services';
 import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';

@@ -1,6 +1,10 @@
 import type { DecideWorkflowReviewRequestDto } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type RoleService,
+	type WorkflowFinderService,
+} from '@n8n/backend-services';
 import type {
 	DbLockService,
 	Project,
@@ -35,7 +39,6 @@ import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });

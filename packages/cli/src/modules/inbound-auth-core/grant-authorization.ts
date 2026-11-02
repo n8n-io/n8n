@@ -1,7 +1,7 @@
 import type { ResourcePrincipal } from '@n8n/inbound-auth';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 /**
  * Re-takes the grant's decision for `user`. Used by the live resource's `authorize` and,

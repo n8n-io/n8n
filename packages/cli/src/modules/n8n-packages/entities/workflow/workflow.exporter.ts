@@ -1,7 +1,7 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';

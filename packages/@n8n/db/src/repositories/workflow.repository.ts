@@ -1361,7 +1361,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
-	): Promise<WorkflowListResult> {
+	): Promise<{ workflows: WorkflowEntity[]; count: number }> {
 		const query = this.getManyQueryWithSharingSubquery(user, sharingOptions, options);
 
 		const [workflows, count] = await query.getManyAndCount();

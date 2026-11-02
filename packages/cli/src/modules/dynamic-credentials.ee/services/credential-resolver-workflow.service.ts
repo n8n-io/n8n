@@ -6,7 +6,7 @@ import { ICredentialContext, INode, isNodeWithWorkflowSelector, jsonParse } from
 
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { carriesN8nIdentity } from '../credential-resolvers/identifiers/n8n-identifier';

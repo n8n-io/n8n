@@ -34,6 +34,7 @@ and infrastructure services that need the persistence layer or that only
 - `userHasScopes`: the scope checks behind `@GlobalScope` and `@ProjectScope`.
 - `ScopedResourceResolverRegistry`: lets a module tell the scope checks which
   project owns one of its resources.
+- `WorkflowFinderService`: finds the workflows that a user can access.
 
 The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
 and the scope checks here, one area at a time.

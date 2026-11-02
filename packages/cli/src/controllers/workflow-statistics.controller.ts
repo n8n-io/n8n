@@ -6,7 +6,7 @@ import { Response, NextFunction } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { StatisticsRequest } from './workflow-statistics.types';
 

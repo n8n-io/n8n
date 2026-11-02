@@ -16,8 +16,7 @@ import { WorkflowReviewAuthorizationService } from '../workflow-review-authoriza
 
 import { NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@n8n/backend-services';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { RoleService, WorkflowFinderService } from '@n8n/backend-services';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';

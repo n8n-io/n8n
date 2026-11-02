@@ -19,7 +19,7 @@ import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metr
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { TagService } from '@/services/tag.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { UrlService, WorkflowFinderService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
@@ -30,7 +30,6 @@ import {
 import { isExpressionErrorWorkflowId, staticErrorWorkflowId } from '@/workflows/error-workflow-id';
 import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { assertExecutionTimeoutWithinMax } from '@/workflows/execution-timeout-validation';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';

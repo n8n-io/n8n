@@ -23,7 +23,7 @@ import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@n8n/backend-module-data-table';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { OwnershipService } from '@/services/ownership.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // ---------------------------------------------------------------------------

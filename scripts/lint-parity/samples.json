@@ -257,7 +257,6 @@
 		"src/workflows/publication/workflow-publication-outbox-consumer.ts",
 		"src/workflows/publication/workflow-publication-reconciler.service.ts",
 		"src/workflows/workflow-creation.service.ts",
-		"src/workflows/workflow-finder.service.ts",
 		"src/workflows/workflow-history/workflow-history.service.ts",
 		"src/workflows/workflow-sharing.service.ts",
 		"src/workflows/workflow-validation.service.ts",

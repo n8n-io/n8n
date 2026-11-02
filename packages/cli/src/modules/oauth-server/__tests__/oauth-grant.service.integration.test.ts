@@ -9,10 +9,13 @@ import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { mock } from 'vitest-mock-extended';
 
-import { ProtectedResourceRegistry, type UrlService } from '@n8n/backend-services';
+import {
+	ProtectedResourceRegistry,
+	type UrlService,
+	type WorkflowFinderService,
+} from '@n8n/backend-services';
 import { processUsers } from '@/modules/ldap.ee/helpers.ee';
 import { UserDeactivationHooks } from '@/services/user-deactivation-hooks.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createManyUsers, createUser } from '@test-integration/db/users';
 
 import { AccessToken } from '../database/entities/oauth-access-token.entity';

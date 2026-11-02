@@ -38,6 +38,7 @@ import {
 	type RoleService,
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
+	type WorkflowFinderService,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
@@ -74,7 +75,6 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { TagService } from '@/services/tag.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

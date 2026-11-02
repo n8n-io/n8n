@@ -10,9 +10,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, WorkflowFinderService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createSuccessfulExecution } from '@test-integration/db/executions';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';

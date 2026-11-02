@@ -6,7 +6,7 @@ import type { Mock } from 'vitest';
 import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import { ExecutionListService } from '@/executions/execution-list.service';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { createSearchExecutionsTool } from '../tools/search-executions.tool';
 

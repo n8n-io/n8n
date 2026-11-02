@@ -1,8 +1,7 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { FolderFinderService } from '@n8n/backend-services';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { FolderFinderService, WorkflowFinderService } from '@n8n/backend-services';
 
 import { FolderSerializer } from './folder.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';

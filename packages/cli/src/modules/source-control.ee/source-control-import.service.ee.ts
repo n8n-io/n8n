@@ -64,9 +64,12 @@ import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
 import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowMutationHooksProxy, WorkflowPublishGuardProxy } from '@n8n/backend-services';
+import {
+	WorkflowMutationHooksProxy,
+	WorkflowPublishGuardProxy,
+	WorkflowFinderService,
+} from '@n8n/backend-services';
 
 import { WorkflowService } from '@/workflows/workflow.service';
 

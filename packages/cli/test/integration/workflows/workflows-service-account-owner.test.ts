@@ -1,11 +1,10 @@
 import { createWorkflow, shareWorkflowWithUsers, testDb } from '@n8n/backend-test-utils';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { WorkflowSharingService, WorkflowFinderService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { accountFullName, GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { OwnershipService } from '@/services/ownership.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createAdmin, createMember, createServiceAccountWithProject } from '../shared/db/users';
 

@@ -17,7 +17,7 @@ import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.servi
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 @RestController('/workflows')
 export class TestRunsController {

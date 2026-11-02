@@ -51,6 +51,10 @@ export {
 	type ShareWorkflowOptions,
 } from './services/workflow-sharing.service';
 export { FolderFinderService } from './services/folder-finder.service';
+export {
+	WorkflowFinderService,
+	type FindWorkflowsForUserOptions,
+} from './workflows/workflow-finder.service';
 export { InstanceWriteAccessService } from './services/instance-write-access.service';
 export { UrlService } from './services/url.service';
 export {

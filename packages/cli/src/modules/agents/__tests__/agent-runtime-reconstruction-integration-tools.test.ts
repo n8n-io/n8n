@@ -3,6 +3,7 @@ import {
 	type CredentialsFinderService,
 	type EventService,
 	type ProjectScopeService,
+	type WorkflowFinderService,
 } from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
@@ -34,7 +35,6 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';

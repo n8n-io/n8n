@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';

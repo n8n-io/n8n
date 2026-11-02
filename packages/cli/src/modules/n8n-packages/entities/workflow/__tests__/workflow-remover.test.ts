@@ -2,7 +2,7 @@ import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@n8n/errors';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import type { WorkflowPlanItem } from '../workflow-import.types';

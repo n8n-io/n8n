@@ -14,7 +14,7 @@ import { Logger } from '@n8n/backend-common';
 import { parseMessage } from '@n8n/chat-hub';
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
-import type { EntityManager } from '@n8n/db';
+import type { EntityManager, OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import {
@@ -29,7 +29,7 @@ import {
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubExecutionService } from './chat-hub-execution.service';
@@ -219,8 +219,9 @@ export class ChatHubService {
 		manual: boolean,
 		agentName?: string,
 		trx?: EntityManager,
+		ctx?: OperationContext,
 	) {
-		await this.ensureValidModel(user, model, manual, trx);
+		await this.ensureValidModel(user, model, manual, trx, ctx);
 
 		const session = await this.sessionRepository.createChatSession(
 			{
@@ -404,6 +405,7 @@ export class ChatHubService {
 		model: ChatHubConversationModel,
 		manual: boolean,
 		trx?: EntityManager,
+		ctx?: OperationContext,
 	) {
 		if (model.provider === 'custom-agent') {
 			// Find the agent to get its name
@@ -423,7 +425,7 @@ export class ChatHubService {
 					includeTags: false,
 					includeParentFolder: false,
 					includeActiveVersion: manual ? false : true,
-					em: trx,
+					ctx,
 				},
 			);
 
@@ -487,6 +489,7 @@ export class ChatHubService {
 					false,
 					payload.agentName,
 					trx,
+					ctx,
 				);
 
 				const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
@@ -495,7 +498,12 @@ export class ChatHubService {
 
 				// Validate attachments against the model's upload policy before storing
 				if (attachments.length > 0) {
-					const policy = await this.chatHubWorkflowService.getAttachmentPolicy(model, user, trx);
+					const policy = await this.chatHubWorkflowService.getAttachmentPolicy(
+						model,
+						user,
+						trx,
+						ctx,
+					);
 					this.chatHubAttachmentService.validateAttachments(
 						attachments,
 						policy.allowFileUploads,
@@ -641,6 +649,7 @@ export class ChatHubService {
 					true,
 					payload.agentName,
 					trx,
+					ctx,
 				);
 
 				const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
@@ -653,6 +662,7 @@ export class ChatHubService {
 						model,
 						user,
 						trx,
+						ctx,
 						true,
 					);
 					this.chatHubAttachmentService.validateAttachments(
@@ -944,6 +954,7 @@ export class ChatHubService {
 							model,
 							user,
 							trx,
+							ctx,
 							true,
 						);
 						this.chatHubAttachmentService.validateAttachments(

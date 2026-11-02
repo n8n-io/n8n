@@ -17,7 +17,7 @@ import type { INode } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, WorkflowFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
@@ -33,7 +33,6 @@ import type { WorkflowHookContextService } from '@/workflow-hook-context.service
 import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';

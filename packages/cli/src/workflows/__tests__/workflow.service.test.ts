@@ -5,6 +5,7 @@ import type {
 	WorkflowMutationHooksProxy,
 	WorkflowPublishGuardProxy,
 	RestrictedNodeTypesProviderProxy,
+	WorkflowFinderService,
 } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -59,7 +60,6 @@ import type { TagService } from '@/services/tag.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 

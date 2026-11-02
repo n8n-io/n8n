@@ -27,7 +27,7 @@ import { isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import { hasExternalBinaryData } from '@/executions/sum-binary-data-bytes';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { formatExecutionError } from '../instance-ai.adapter.service';
 

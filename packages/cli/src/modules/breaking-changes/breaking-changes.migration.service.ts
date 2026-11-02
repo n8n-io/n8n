@@ -7,7 +7,7 @@ import type { INode } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 

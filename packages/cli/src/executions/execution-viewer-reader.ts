@@ -1,11 +1,10 @@
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, WorkflowFinderService } from '@n8n/backend-services';
 import type { ExecutionEntity, IExecutionResponse, User } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 /**
  * Load an execution with its run data, redacted for `viewer` the same way the

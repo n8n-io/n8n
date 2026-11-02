@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import {
 	SelfHealingTemporaryWorkflowRepository,

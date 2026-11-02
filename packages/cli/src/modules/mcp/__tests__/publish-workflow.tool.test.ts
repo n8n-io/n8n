@@ -6,7 +6,7 @@ import type { Mock } from 'vitest';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { Telemetry } from '@/telemetry';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createWorkflow } from './mock.utils';

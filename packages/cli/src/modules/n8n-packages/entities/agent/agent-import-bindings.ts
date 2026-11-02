@@ -1,11 +1,10 @@
-import { ProjectScopeService } from '@n8n/backend-services';
+import { ProjectScopeService, WorkflowFinderService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { getStaticSubworkflowId, setStaticSubworkflowId } from 'n8n-workflow';
 
 import type { PlannedAgentDestinations } from '@/modules/agents/utils/agent-definition';
 import { extractAgentWorkflowRefs } from '@/modules/agents/utils/extract-agent-workflow-refs';
 import { visitAgentCredentialReferences } from '@/modules/agents/utils/visit-agent-credential-references';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentImportMatchService } from './agent-import-match.service';
 import type {

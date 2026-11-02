@@ -1,7 +1,7 @@
 import type { User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import type { TrustedSourceIdentityRepository } from '../database/repositories/trusted-source-identity.repository';
 import { TrustedSourceDbGate } from '../trusted-source.gate';

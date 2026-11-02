@@ -13,7 +13,7 @@ import { mock } from 'vitest-mock-extended';
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowFinderService } from '@n8n/backend-services';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
 import { FullItemRedactionStrategy } from '../strategies/full-item-redaction.strategy';

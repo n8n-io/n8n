@@ -39,8 +39,7 @@ import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils'
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowPublishedDataService } from '@n8n/backend-services';
+import type { WorkflowPublishedDataService, WorkflowFinderService } from '@n8n/backend-services';
 
 export { type FoundWorkflow };
 

@@ -13,7 +13,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import type { SelfHealingTemporaryWorkflowRepository } from '../database/self-healing-temporary-workflow.repository';
 import { SelfHealingTemporaryWorkflowService } from '../self-healing-temporary-workflow.service';

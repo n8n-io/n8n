@@ -4,7 +4,7 @@ import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_PATH_SUFFIX } from 'n8n-workflow';
 
 import type { ProtectedResource, ProtectedResourceResolver } from '@n8n/backend-services/auth';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 
 import { triggerResourceGate } from '../resource-gate';
 import {

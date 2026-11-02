@@ -12,7 +12,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowFinderService } from '@n8n/backend-services';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { AppWorkflowAdapter } from '../app-workflow.adapter';
