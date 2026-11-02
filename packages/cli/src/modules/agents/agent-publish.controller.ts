@@ -20,14 +20,14 @@ import type { Response } from 'express';
 
 import { AgentPublishService } from './agent-publish.service';
 import { AgentRunnableStateService } from './agent-runnable-state.service';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentPublishController {
 	constructor(
 		private readonly agentPublishService: AgentPublishService,
 		private readonly agentRunnableStateService: AgentRunnableStateService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 	) {}
 
 	@Post('/:agentId/publish')
@@ -39,7 +39,7 @@ export class AgentPublishController {
 		@Body payload: PublishAgentDto,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -72,7 +72,7 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -101,7 +101,7 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -131,7 +131,7 @@ export class AgentPublishController {
 		@Body payload: RevertAgentToVersionDto,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -209,7 +209,7 @@ export class AgentPublishController {
 		@Param('versionId') versionId: string,
 		@Body payload: UpdateAgentVersionDto,
 	) {
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			req.headers?.['push-ref'],
 			req.params.projectId,

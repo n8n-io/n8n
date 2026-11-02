@@ -12,7 +12,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 import { AgentTaskService } from './agent-task.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -23,7 +23,7 @@ export class AgentTasksController {
 	constructor(
 		private readonly agentTaskService: AgentTaskService,
 		private readonly agentRepository: AgentRepository,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 	) {}
 
 	@Get('/:agentId/tasks')
@@ -48,7 +48,7 @@ export class AgentTasksController {
 		const projectId = req.params.projectId;
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -74,7 +74,7 @@ export class AgentTasksController {
 		const projectId = req.params.projectId;
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -99,7 +99,7 @@ export class AgentTasksController {
 		const projectId = req.params.projectId;
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,

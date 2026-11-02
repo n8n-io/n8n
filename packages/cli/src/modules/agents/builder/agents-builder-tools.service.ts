@@ -48,7 +48,6 @@ import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
-import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
@@ -66,6 +65,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
+import { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	AgentTestRunService,
 	collectStandardApprovals,
@@ -518,7 +518,7 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly telemetry: Telemetry,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
@@ -583,7 +583,7 @@ export class AgentsBuilderToolsService {
 	 */
 	private async getEditorLockFailure(agentId: string): Promise<EditorLockFailure | null> {
 		try {
-			await this.collaborationService.ensureAgentEditable(agentId);
+			await this.agentWriteLockService.ensureAgentEditable(agentId);
 			return null;
 		} catch (error) {
 			if (error instanceof LockedError) {
