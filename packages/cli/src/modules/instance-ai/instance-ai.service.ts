@@ -566,6 +566,7 @@ export class InstanceAiService {
 			settingsService: this.settingsService,
 			aiService: this.aiService,
 			getTemplatesService: () => this.adapterService.getTemplatesService(),
+			telemetry: this.telemetry,
 			resolveTracingConfig: async (threadId, userId) => {
 				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };

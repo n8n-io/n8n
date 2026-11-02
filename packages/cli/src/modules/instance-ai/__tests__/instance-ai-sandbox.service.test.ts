@@ -1,6 +1,11 @@
 import type { Mock } from 'vitest';
-import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
+import {
+	SandboxAcquisitionError,
+	SandboxNotReadyError,
+	SandboxProviderHealth,
+} from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { OperationalError } from '@n8n/errors';
@@ -57,6 +62,7 @@ type Overrides = {
 	backgroundTasks?: Partial<InstanceAiSandboxBackgroundTasks>;
 	settingsService?: Partial<InstanceAiSandboxSettings>;
 	aiService?: Partial<InstanceAiSandboxProxy>;
+	providerHealth?: SandboxProviderHealth;
 };
 
 function createSandboxService(overrides: Overrides = {}) {
@@ -81,6 +87,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		getClient: vi.fn(),
 		...overrides.aiService,
 	};
+	const telemetry = { track: vi.fn() };
 	const options: InstanceAiSandboxServiceOptions = {
 		config: overrides.config as InstanceAiConfig,
 		logger,
@@ -91,9 +98,20 @@ function createSandboxService(overrides: Overrides = {}) {
 		aiService,
 		resolveTracingConfig: overrides.resolveTracingConfig,
 		getTemplatesService: overrides.getTemplatesService ?? vi.fn(),
+		telemetry,
+		providerHealth: overrides.providerHealth,
 	};
 	const service = new InstanceAiSandboxService(options);
-	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };
+	return {
+		service,
+		logger,
+		errorReporter,
+		runState,
+		backgroundTasks,
+		settingsService,
+		aiService,
+		telemetry,
+	};
 }
 
 describe('InstanceAiSandboxService', () => {
@@ -912,6 +930,286 @@ describe('InstanceAiSandboxService', () => {
 
 			expect(workspace.destroy).toHaveBeenCalledTimes(1);
 			expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('provider fallback', () => {
+		const fallbackConfig: Partial<InstanceAiConfig> = {
+			sandboxEnabled: true,
+			sandboxProvider: 'n8n-sandbox',
+			sandboxFallbackProvider: 'daytona',
+			n8nSandboxServiceUrl: 'https://env.sandbox',
+		};
+
+		type Provider = 'n8n-sandbox' | 'daytona';
+		type FakeWorkspace = { init: Mock; destroy: Mock };
+
+		function unavailable(message = 'Service Unavailable') {
+			return Object.assign(new Error(message), { status: 503 });
+		}
+
+		/** Each provider fails its start with the given error, or starts when none is set. */
+		function mockProviders(failures: Partial<Record<Provider, unknown>>) {
+			const workspaces: FakeWorkspace[] = [];
+			(createSandbox as Mock).mockImplementation(async (config: { provider: Provider }) => ({
+				id: `${config.provider}-sandbox`,
+				provider: config.provider,
+			}));
+			(createWorkspace as Mock).mockImplementation((sandbox: { provider: Provider }) => {
+				const workspace: FakeWorkspace = {
+					init: vi.fn(async () => {
+						const failure = failures[sandbox.provider];
+						if (failure !== undefined) throw failure;
+					}),
+					destroy: vi.fn(async () => {}),
+				};
+				workspaces.push(workspace);
+				return workspace;
+			});
+			(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+			return workspaces;
+		}
+
+		function createdProviders(): string[] {
+			return (createSandbox as Mock).mock.calls.map(
+				(call) => (call[0] as { provider: string }).provider,
+			);
+		}
+
+		it('returns only the primary provider when no fallback is set', () => {
+			const { service } = createSandboxService({
+				config: { ...fallbackConfig, sandboxFallbackProvider: '' },
+			});
+
+			expect(service.getProviderChain()).toEqual(['n8n-sandbox']);
+		});
+
+		it.each([
+			['the primary provider', 'n8n-sandbox'],
+			['an unknown provider', 'e2b'],
+		])('ignores %s as the fallback and logs it once', (_label, sandboxFallbackProvider) => {
+			const { service, logger } = createSandboxService({
+				config: { ...fallbackConfig, sandboxFallbackProvider },
+			});
+
+			expect(service.getProviderChain()).toEqual(['n8n-sandbox']);
+			expect(service.getProviderChain()).toEqual(['n8n-sandbox']);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+		});
+
+		it('creates the sandbox on the fallback provider when the primary is unavailable', async () => {
+			const workspaces = mockProviders({ 'n8n-sandbox': unavailable() });
+			const { service, telemetry } = createSandboxService({ config: fallbackConfig });
+
+			const entry = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+
+			expect(createdProviders()).toEqual(['n8n-sandbox', 'daytona']);
+			expect(createSandbox).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					provider: 'daytona',
+					daytonaApiKey: 'test-daytona-key',
+					name: 'instance-ai-thread-thread-1',
+				}),
+				expect.objectContaining({ useSnapshotFallback: true }),
+			);
+			expect(workspaces[0].destroy).toHaveBeenCalledTimes(1);
+			expect(entry).toMatchObject({ provider: 'daytona', failedOverFrom: 'n8n-sandbox' });
+			expect(entry?.workspace).toBe(workspaces[1]);
+			expect(setupSandboxWorkspace).toHaveBeenCalledWith(workspaces[1], {}, expect.any(Object));
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_SANDBOX_FAILED_OVER,
+				{
+					from_provider: 'n8n-sandbox',
+					to_provider: 'daytona',
+					failure_class: 'Error:503',
+					circuit_open: false,
+				},
+			);
+		});
+
+		it('fails over when the primary provider cannot be reached', async () => {
+			mockProviders({
+				'n8n-sandbox': new Error('fetch failed', {
+					cause: Object.assign(new Error('connect failed'), { code: 'ECONNREFUSED' }),
+				}),
+			});
+			const { service } = createSandboxService({ config: fallbackConfig });
+
+			const entry = await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+			expect(entry?.provider).toBe('daytona');
+		});
+
+		it('fails over when the primary returns the generic acquisition error', async () => {
+			mockProviders({
+				'n8n-sandbox': new SandboxAcquisitionError('Failed to acquire sandbox', 'DaytonaError:502'),
+			});
+			const { service } = createSandboxService({ config: fallbackConfig });
+
+			const entry = await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+			expect(entry?.provider).toBe('daytona');
+		});
+
+		it.each([
+			['an authentication error', Object.assign(new Error('Unauthorized'), { status: 401 })],
+			['a sandbox that is not ready', new SandboxNotReadyError('sandbox did not become ready')],
+		])('does not fail over on %s', async (_label, error) => {
+			mockProviders({ 'n8n-sandbox': error });
+			const { service, telemetry } = createSandboxService({ config: fallbackConfig });
+
+			await expect(service.getOrCreateWorkspaceEntry('thread-1', fakeUser)).rejects.toBe(error);
+
+			expect(createdProviders()).toEqual(['n8n-sandbox']);
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('throws the primary error when the fallback provider fails too', async () => {
+			const primaryError = unavailable('primary down');
+			mockProviders({ 'n8n-sandbox': primaryError, daytona: unavailable('fallback down') });
+			const { service, logger } = createSandboxService({ config: fallbackConfig });
+
+			await expect(service.getOrCreateWorkspaceEntry('thread-1', fakeUser)).rejects.toBe(
+				primaryError,
+			);
+
+			expect(createdProviders()).toEqual(['n8n-sandbox', 'daytona']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'The sandbox fallback provider also failed',
+				expect.objectContaining({ provider: 'daytona', error: 'fallback down' }),
+			);
+		});
+
+		it('does not use a fallback provider that is not configured', async () => {
+			const primaryError = unavailable();
+			mockProviders({ 'n8n-sandbox': primaryError });
+			const { service, logger } = createSandboxService({
+				config: fallbackConfig,
+				settingsService: { resolveDaytonaConfig: vi.fn(async () => ({})) },
+			});
+
+			await expect(service.getOrCreateWorkspaceEntry('thread-1', fakeUser)).rejects.toBe(
+				primaryError,
+			);
+
+			expect(createdProviders()).toEqual(['n8n-sandbox']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'The sandbox fallback provider is not configured, so it is not used',
+				expect.objectContaining({ provider: 'daytona' }),
+			);
+		});
+
+		it('keeps a cached thread on the fallback provider after the primary recovers', async () => {
+			const failures: Partial<Record<Provider, unknown>> = { 'n8n-sandbox': unavailable() };
+			mockProviders(failures);
+			const { service } = createSandboxService({ config: fallbackConfig });
+
+			const first = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+			delete failures['n8n-sandbox'];
+			const second = await service.getOrCreateWorkspace(
+				'thread-1',
+				fakeUser,
+				{} as InstanceAiContext,
+			);
+
+			expect(second).toBe(first);
+			expect(second?.provider).toBe('daytona');
+			expect(createdProviders()).toEqual(['n8n-sandbox', 'daytona']);
+		});
+
+		it('tries the primary provider again when the thread needs a new sandbox', async () => {
+			const failures: Partial<Record<Provider, unknown>> = { 'n8n-sandbox': unavailable() };
+			mockProviders(failures);
+			const { service } = createSandboxService({ config: fallbackConfig });
+
+			await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+			delete failures['n8n-sandbox'];
+			service.invalidateCachedWorkspaces();
+			const entry = await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+
+			expect(entry?.provider).toBe('n8n-sandbox');
+			expect(entry?.failedOverFrom).toBeUndefined();
+			expect(createdProviders()).toEqual(['n8n-sandbox', 'daytona', 'n8n-sandbox']);
+		});
+
+		it('skips the primary provider while its circuit is open', async () => {
+			mockProviders({ 'n8n-sandbox': unavailable() });
+			const providerHealth = new SandboxProviderHealth({ failureThreshold: 1 });
+			const { service, telemetry, errorReporter } = createSandboxService({
+				config: fallbackConfig,
+				providerHealth,
+			});
+
+			await service.getOrCreateWorkspaceEntry('thread-1', fakeUser);
+			const entry = await service.getOrCreateWorkspaceEntry('thread-2', fakeUser);
+
+			expect(entry?.provider).toBe('daytona');
+			expect(createdProviders()).toEqual(['n8n-sandbox', 'daytona', 'daytona']);
+			expect(errorReporter.warn).toHaveBeenCalledTimes(1);
+			expect(telemetry.track).toHaveBeenLastCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_SANDBOX_FAILED_OVER,
+				{
+					from_provider: 'n8n-sandbox',
+					to_provider: 'daytona',
+					failure_class: null,
+					circuit_open: true,
+				},
+			);
+		});
+
+		it('drops the cached entry when setup fails because the provider is unavailable', async () => {
+			mockProviders({});
+			(setupSandboxWorkspace as Mock)
+				.mockRejectedValueOnce(unavailable('setup lost the service'))
+				.mockResolvedValue(undefined);
+			const { service } = createSandboxService({ config: fallbackConfig });
+
+			await expect(
+				service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
+			).rejects.toThrow('setup lost the service');
+			await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
+
+			expect(createdProviders()).toEqual(['n8n-sandbox', 'n8n-sandbox']);
+		});
+
+		it('resolves the fallback config when the primary config cannot be resolved', async () => {
+			const { service } = createSandboxService({
+				config: fallbackConfig,
+				settingsService: { resolveN8nSandboxConfig: vi.fn().mockRejectedValue(unavailable()) },
+			});
+
+			await expect(service.resolveSandboxConfig(fakeUser)).resolves.toMatchObject({
+				enabled: true,
+				provider: 'daytona',
+			});
+		});
+
+		it('deletes the uncached remote sandbox when n8n-sandbox is the fallback provider', async () => {
+			const { service } = createSandboxService({
+				config: {
+					...fallbackConfig,
+					sandboxProvider: 'daytona',
+					sandboxFallbackProvider: 'n8n-sandbox',
+				},
+			});
+			const sandbox = { destroy: vi.fn(async () => {}) };
+			(createSandbox as Mock).mockResolvedValue(sandbox);
+
+			await service.destroySandbox('thread-1');
+
+			expect(createSandbox).toHaveBeenCalledWith(
+				expect.objectContaining({ provider: 'n8n-sandbox' }),
+				expect.any(Object),
+			);
+			expect(sandbox.destroy).toHaveBeenCalledTimes(1);
 		});
 	});
 

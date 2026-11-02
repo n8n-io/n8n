@@ -273,6 +273,25 @@ end with a cancelled status; their underlying work can finish independently.
 Provider-side automatic stop and deletion are not reported. They require
 provider notifications or polling.
 
+## Provider fallback
+
+Set `N8N_INSTANCE_AI_SANDBOX_FALLBACK_PROVIDER` to the other provider to use it
+when the primary provider is unavailable. Configure both providers. n8n ignores
+a fallback that equals the primary provider or that has no connection.
+
+- A new thread sandbox goes to the fallback provider when the primary provider
+  fails with a network error, a timeout, a 5xx response or a 429 response.
+- Authentication, quota and configuration errors do not cause a fallback. The
+  acquisition fails, so that the operator sees the problem.
+- After repeated failures, the primary provider is skipped for a cooldown. The
+  cooldown doubles after each failed test request. This state is kept in each
+  process.
+- A cached thread keeps the provider of its sandbox. It tries the primary
+  provider again only when it needs a new sandbox, for example after idle
+  eviction or a restart. A failover starts with an empty sandbox: files from
+  earlier turns stay in the sandbox on the other provider.
+- Failovers emit the `AI Assistant sandbox failed over` telemetry event.
+
 ## Workspace root
 
 The n8n sandbox service and current Daytona snapshots use `/home/user/workspace`
@@ -299,6 +318,7 @@ roots. If n8n cannot create the link, the tools use `/home/daytona/workspace`.
 | ----------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------- |
 | `N8N_INSTANCE_AI_SANDBOX_ENABLED`               | `false`                   | Enable the sandbox-backed workspace                                           |
 | `N8N_INSTANCE_AI_SANDBOX_PROVIDER`              | `n8n-sandbox`             | Select `n8n-sandbox` or `daytona`                                             |
+| `N8N_INSTANCE_AI_SANDBOX_FALLBACK_PROVIDER`     | empty                     | Provider for new sandboxes when the primary provider is unavailable          |
 | `N8N_SANDBOX_SERVICE_URL`                       | empty                     | n8n sandbox service URL                                                       |
 | `N8N_SANDBOX_SERVICE_API_KEY`                   | empty                     | n8n sandbox service API key                                                   |
 | `DAYTONA_API_URL`                               | empty                     | Daytona API URL                                                               |
