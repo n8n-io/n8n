@@ -31,12 +31,12 @@ describe('createModelTokenCounter', () => {
 	it.each([
 		{ model: 'openai/gpt-5', encoding: 'o200k_base' },
 		{ model: 'anthropic/claude-haiku-4-5', encoding: 'cl100k_base' },
-	] as const)('counts uniform spaces accurately for $encoding', async ({ model, encoding }) => {
+	] as const)('counts uniform spaces accurately for $encoding', async ({ model }) => {
 		const text = ' '.repeat(8_000);
-		const encoder = await getEncoding(encoding);
-		const expected = encoder.encode(text, [], []).length;
 
-		expect(await createModelTokenCounter(model)(text)).toBe(expected);
+		// A full encode returns 63 tokens for both encodings.
+		// Keep this value fixed to avoid the tokenizer's quadratic cost for long space runs.
+		expect(await createModelTokenCounter(model)(text)).toBe(63);
 	});
 
 	it.each([
