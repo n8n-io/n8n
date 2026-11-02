@@ -56,9 +56,7 @@ export const EXIT_CODES = {
 	SCAN_FAILED: 2,
 } as const;
 
-export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES];
-
-export const getExitCode = (result: AnalysisResult): ExitCode => {
+export const getExitCode = (result: AnalysisResult) => {
 	if (result.passed) return EXIT_CODES.SCAN_SUCCEEDED;
 	return result.error === undefined ? EXIT_CODES.SCAN_FAILED : EXIT_CODES.INTERNAL_ERROR;
 };
@@ -533,8 +531,7 @@ export const analyzePackageByName = async (
 		const failures = [sourceResult, distResult].filter((r) => !r.passed);
 		// An errored leg makes the whole scan inconclusive, so its message wins
 		// over a violation found by the other leg.
-		const errored = failures.find((r) => r.error !== undefined);
-		const firstFailure = errored ?? failures[0];
+		const firstFailure = failures.find((r) => r.error !== undefined) ?? failures[0];
 		const analysisResult: AnalysisResult = firstFailure
 			? {
 					passed: false,
@@ -544,14 +541,18 @@ export const analyzePackageByName = async (
 							.map((r) => r.details)
 							.filter(Boolean)
 							.join('\n') || undefined,
-					error: errored?.error,
+					error: firstFailure.error,
 				}
 			: { passed: true };
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(errored ? `❌ Could not analyze ${label} \n` : `✅ Analyzed ${label} \n`);
+		stdout.write(
+			firstFailure?.error === undefined
+				? `✅ Analyzed ${label} \n`
+				: `❌ Could not analyze ${label} \n`,
+		);
 
 		return {
 			packageName,

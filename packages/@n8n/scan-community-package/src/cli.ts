@@ -12,15 +12,17 @@ try {
 	const { packageName, version } = resolvePackage(packageSpec);
 	const result = await analyzePackageByName(packageName, version);
 	const label = `${packageName}@${result.version}`;
+	const exitCode = getExitCode(result);
 
-	if (result.passed) {
-		console.log(`✅ Package ${label} has passed all security checks`);
-	} else {
-		console.log(
-			result.error === undefined
-				? `❌ Package ${label} has failed security checks`
-				: `❌ Could not complete the scan of ${label}`,
-		);
+	console.log(
+		{
+			[EXIT_CODES.SCAN_SUCCEEDED]: `✅ Package ${label} has passed all security checks`,
+			[EXIT_CODES.SCAN_FAILED]: `❌ Package ${label} has failed security checks`,
+			[EXIT_CODES.INTERNAL_ERROR]: `❌ Could not complete the scan of ${label}`,
+		}[exitCode],
+	);
+
+	if (!result.passed) {
 		console.log(`Reason: ${result.message}`);
 
 		if (result.details) {
@@ -30,7 +32,7 @@ try {
 	}
 
 	// Set rather than call process.exit() so piped stdout is flushed first
-	process.exitCode = getExitCode(result);
+	process.exitCode = exitCode;
 } catch (error: unknown) {
 	console.error('Analysis failed:', error);
 	process.exitCode = EXIT_CODES.INTERNAL_ERROR;
