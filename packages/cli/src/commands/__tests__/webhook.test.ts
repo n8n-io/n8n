@@ -8,11 +8,10 @@ import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Push } from '@/push';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
-import { JwtService, PushProxy, RedisClientService } from '@n8n/backend-services';
+import { JwtService, RedisClientService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from '../base-command';
@@ -42,8 +41,6 @@ mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) });
 mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) });
 mockInstance(MessageEventBus, { initialize: vi.fn().mockResolvedValue(undefined) });
 mockInstance(LogStreamingEventRelay);
-const push = mockInstance(Push);
-const pushProxy = mockInstance(PushProxy);
 const systemTaskRunner = mockInstance(SystemTaskRunner);
 
 describe('Webhook', () => {
@@ -157,20 +154,6 @@ describe('Webhook', () => {
 			expect(postProcessMock).toHaveBeenCalled();
 			expect(hookInitMock.mock.invocationCallOrder[0]).toBeLessThan(
 				postProcessMock.mock.invocationCallOrder[0],
-			);
-		});
-
-		it('should register the push service on the push proxy before the modules initialize', async () => {
-			const webhook = createWebhook();
-
-			await webhook.init();
-
-			// @ts-expect-error - Accessing protected property for testing
-			const initModulesMock = webhook.moduleRegistry.initModules as Mock;
-
-			expect(pushProxy.registerProvider).toHaveBeenCalledWith(push);
-			expect(pushProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
-				initModulesMock.mock.invocationCallOrder[0],
 			);
 		});
 

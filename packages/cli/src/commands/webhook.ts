@@ -8,11 +8,10 @@ import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { JwtService, PushProxy } from '@n8n/backend-services';
+import { JwtService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
@@ -95,7 +94,6 @@ export class Webhook extends BaseCommand {
 		});
 		Container.get(LogStreamingEventRelay).init();
 
-		Container.get(PushProxy).registerProvider(Container.get(Push));
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Re-register pubsub event handlers after modules have been initialized

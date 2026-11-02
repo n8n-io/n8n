@@ -13,7 +13,6 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Push } from '@/push';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
@@ -22,7 +21,7 @@ import { resolveQueueName, resolveWorkerPoolName } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
-import { JwtService, PushProxy } from '@n8n/backend-services';
+import { JwtService } from '@n8n/backend-services';
 
 import { BaseCommand } from './base-command';
 
@@ -159,7 +158,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}),
 		);
 
-		Container.get(PushProxy).registerProvider(Container.get(Push));
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		// Re-register pubsub event handlers after modules have been initialized

@@ -29,7 +29,6 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { Push } from '@/push';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
@@ -84,7 +83,6 @@ mockInstance(CommunityPackagesConfig, { enabled: false });
 mockInstance(JwtService);
 mockInstance(BinaryDataConfig);
 mockInstance(TaskRunnerModule);
-mockInstance(Push);
 const systemTaskRunner = mockInstance(SystemTaskRunner);
 
 describe('Worker', () => {
