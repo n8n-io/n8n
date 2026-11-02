@@ -2,12 +2,11 @@ import type { TeamsProvisionedAppSummary } from '@n8n/api-types';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
 import { withTeamsFailure } from './teams-setup-telemetry.service';
 
 import { CredentialsFinderService, UrlService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError, UserError } from '@n8n/errors';
 
 import { adminConsentRedirectUri, adminConsentUrl } from './teams-admin-consent';
 import { GRAPH_APP_ROLES } from './teams-graph-permissions';

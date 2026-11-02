@@ -14,9 +14,8 @@ import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 

@@ -8,7 +8,8 @@ import { readFileSync } from 'fs';
 import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
-import { createRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	ExecutionStatus,
 	IDataObject,
