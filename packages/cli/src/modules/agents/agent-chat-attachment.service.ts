@@ -1,4 +1,4 @@
-import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
+import { isAttachmentMediaTypeSupported, type AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -176,6 +176,40 @@ export class AgentChatAttachmentService {
 		await this.grantRepository.grant(attachmentIds, scope.childThreadId);
 	}
 
+	/**
+	 * List the files that a sub-agent thread made and let its parent read them.
+	 * The root thread reads them already, but a parent that is not the root
+	 * cannot read them without this grant.
+	 */
+	async returnToParent(scope: {
+		projectId: string;
+		parentThreadId: string;
+		childThreadId: string;
+	}): Promise<AgentToolOutputFile[]> {
+		const chain = await this.threadRepository.findDelegationChain(scope.childThreadId);
+		if (chain[1]?.id !== scope.parentThreadId) {
+			throw new UserError('Files can only be returned to the parent of a sub-agent');
+		}
+		const rootId = chain[chain.length - 1].id;
+		const files = await this.repository.findCreatedByThread(
+			scope.childThreadId,
+			{ projectId: scope.projectId, threadId: rootId },
+			{},
+		);
+		if (scope.parentThreadId !== rootId) {
+			await this.grantRepository.grant(
+				files.map((file) => file.id),
+				scope.parentThreadId,
+			);
+		}
+		return files.map((file) => ({
+			fileId: file.id,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.fileSizeBytes,
+		}));
+	}
+
 	private async findRootThread(threadId: string) {
 		const chain = await this.threadRepository.findDelegationChain(threadId);
 		return chain[chain.length - 1];
@@ -211,13 +245,27 @@ export class AgentChatAttachmentService {
 		return await this.repository.findByIdForSystemAgent(attachmentId, scope, {});
 	}
 
-	/** Return metadata only when the caller can read the session. */
+	/**
+	 * Return metadata only when the caller can read the session. A file of a
+	 * sub-agent session belongs to the agent of the root thread, so give
+	 * `threadId` to check the read grants of that session instead.
+	 */
 	async getForAgent(
 		attachmentId: string,
-		scope: { agentId: string; projectId: string; userId: string },
+		scope: { agentId: string; projectId: string; userId: string; threadId?: string },
 	): Promise<AgentChatAttachment | null> {
 		const attachment = await this.repository.findByIdForAgent(attachmentId, scope, {});
-		if (!attachment) return null;
+		if (!attachment) {
+			if (!scope.threadId) return null;
+			const session = await this.threadRepository.findOneBy({ id: scope.threadId });
+			if (!session || !threadBelongsTo(session, scope.projectId, scope.agentId, scope.userId)) {
+				return null;
+			}
+			return await this.getReadable(attachmentId, {
+				projectId: scope.projectId,
+				threadId: scope.threadId,
+			});
+		}
 		const thread = await this.threadRepository.findOneBy({ id: attachment.threadId });
 		if (thread) {
 			return threadBelongsTo(thread, scope.projectId, scope.agentId, scope.userId)
@@ -241,6 +289,14 @@ export class AgentChatAttachmentService {
 			if (error instanceof FileNotFoundError || isEntityNotFoundError(error)) return false;
 			throw error;
 		}
+	}
+
+	async getBuffer(attachment: AgentChatAttachment): Promise<Buffer> {
+		return await this.binaryDataService.getAsBuffer({
+			id: attachment.binaryDataId,
+			data: '',
+			mimeType: attachment.mimeType,
+		});
 	}
 
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {

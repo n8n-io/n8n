@@ -10,7 +10,7 @@ import type {
 } from './agent-chat-integration';
 import { onceStatusHandle, postToUserOrThread } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
-import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
+import type { AgentChatStreamConsumer, EarlierToolResult } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
 import type { InternalThread } from './types';
 import type {
@@ -22,6 +22,11 @@ import { parseBackgroundApprovalAction } from '../background/sub-agent-backgroun
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> & {
 	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
 	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
+	/** The agent thread and earlier tool results of a suspended run. */
+	getSuspendedRun?(config: {
+		agentId: string;
+		runId: string;
+	}): Promise<{ threadId: string; toolResults: EarlierToolResult[] } | null>;
 };
 
 /** Covers both an expired callback key and a checkpoint that is gone. */
@@ -243,6 +248,24 @@ export class AgentChatHitlResumeHandler {
 		}
 	}
 
+	private async getSuspendedRun(runId: string) {
+		try {
+			return (
+				(await this.options.agentService.getSuspendedRun?.({
+					agentId: this.options.agentId,
+					runId,
+				})) ?? null
+			);
+		} catch (error) {
+			// Without it, the resume still runs, but files queued before the suspension are not sent.
+			this.options.logger.warn('[AgentChatBridge] Could not read the suspended run', {
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
+		}
+	}
+
 	private async isRunResumable(runId: string): Promise<boolean> {
 		if (!this.options.agentService.isResumable) return true;
 		try {
@@ -311,6 +334,8 @@ export class AgentChatHitlResumeHandler {
 
 		this.activeResumedRuns.add(runId);
 		try {
+			// Read before the resume, which replaces the checkpoint.
+			const suspendedRun = await this.getSuspendedRun(runId);
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
 			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
 			try {
@@ -327,6 +352,12 @@ export class AgentChatHitlResumeHandler {
 					...resumeExecutionContext,
 					statusHandle,
 					...(cardUserId ? { actingUserId: cardUserId } : {}),
+					...(suspendedRun
+						? {
+								agentThreadId: suspendedRun.threadId,
+								earlierToolResults: suspendedRun.toolResults,
+							}
+						: {}),
 				});
 			} finally {
 				// The stream consumer clears the status right before the first response;

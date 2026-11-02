@@ -97,7 +97,7 @@ describe('SkillRuntimeService agent reads', () => {
 
 		const targets = await runtime.findTargets([id, 'skill_gone']);
 
-		expect([...targets]).toEqual([[id, { projectId: project.id, agentId: null }]]);
+		expect([...targets]).toEqual([[id, { projectId: project.id }]]);
 	});
 
 	it('resolves version ids to their skill, content and number', async () => {

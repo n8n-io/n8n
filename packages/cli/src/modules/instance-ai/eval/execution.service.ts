@@ -54,7 +54,7 @@ import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';

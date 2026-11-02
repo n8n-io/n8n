@@ -10,6 +10,8 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
+import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
+import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import type { AgentWorkspaceService } from '../../agent-workspace.service';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
 import type { SubAgentRunner, SubAgentRunResult } from '../../sub-agents/sub-agent-runner';
@@ -65,12 +67,15 @@ function setup() {
 		}),
 	);
 	const workspaceService = mock<AgentWorkspaceService>();
+	const attachmentService = mock<AgentChatAttachmentService>();
+	attachmentService.getReadable.mockResolvedValue(mock<AgentChatAttachment>());
 	const backgroundRunner = new SubAgentBackgroundRunner(
 		runner,
 		jobService,
 		logger,
 		jobRepository,
 		workspaceService,
+		attachmentService,
 	);
 	const context = {
 		projectId: 'project-1',
@@ -78,7 +83,15 @@ function setup() {
 		credentialProvider: mock<CredentialProvider>(),
 		runType: 'production' as const,
 	};
-	return { backgroundRunner, runner, jobService, context, jobRepository, workspaceService };
+	return {
+		backgroundRunner,
+		runner,
+		jobService,
+		context,
+		jobRepository,
+		workspaceService,
+		attachmentService,
+	};
 }
 
 async function flushDetachedRun() {
@@ -322,6 +335,30 @@ describe('spawn', () => {
 		expect(runner.run.mock.calls[1][0]).not.toHaveProperty('parentExecutionId');
 	});
 
+	it('forwards files to the run, which grants them to the child', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn({ ...request, fileIds: ['file-1'] }, context);
+		await flushDetachedRun();
+
+		expect(runner.run.mock.calls[0][0]).toMatchObject({ fileIds: ['file-1'] });
+	});
+
+	it('rejects a file that the parent cannot read before any job row is registered', async () => {
+		const { backgroundRunner, runner, jobService, attachmentService, context } = setup();
+		attachmentService.getReadable.mockResolvedValue(null);
+
+		await expect(
+			backgroundRunner.spawn({ ...request, fileIds: ['other'] }, context),
+		).rejects.toThrow('File "other" not found in this conversation');
+		expect(attachmentService.getReadable).toHaveBeenCalledWith('other', {
+			projectId: 'project-1',
+			threadId: 'thread-1',
+		});
+		expect(jobService.registerSubAgentJob).not.toHaveBeenCalled();
+		expect(runner.run).not.toHaveBeenCalled();
+	});
+
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {
 		const { backgroundRunner, runner, context } = setup();
 
@@ -415,6 +452,21 @@ describe('spawn', () => {
 				result: 'the answer',
 			},
 			{ status: 'running', timeoutAt: expect.any(Date) },
+		);
+	});
+
+	it('lists the files that the child made when the job settles', async () => {
+		const { backgroundRunner, runner, jobService, context } = setup();
+		const files = [{ fileId: 'out-1', fileName: 'out.png', mimeType: 'image/png', sizeBytes: 3 }];
+		runner.run.mockResolvedValue(completedRunResult({ files }));
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(jobService.settle).toHaveBeenCalledWith(
+			expect.any(String),
+			{ status: 'completed', result: 'the answer', files },
+			expect.anything(),
 		);
 	});
 

@@ -866,8 +866,7 @@ export const listAttachableSkills = async (
 	const { data } = await makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
 		attachableTo: agentId,
 	});
-	const targetRank = (skill: SkillListItem) =>
-		skill.scope === 'instance' ? 2 : skill.agentId ? 1 : 0;
+	const targetRank = (skill: SkillListItem) => (skill.scope === 'instance' ? 1 : 0);
 	const byTargetThenName = (left: SkillListItem, right: SkillListItem) =>
 		targetRank(left) - targetRank(right) || left.name.localeCompare(right.name);
 	return data.sort(byTargetThenName);
@@ -1086,6 +1085,21 @@ export const listSystemAgentThreads = async (
 		},
 	);
 
+/** Renames one of the user's own threads with a system agent. */
+export const renameSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+	title: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
+		{ title },
+	);
+};
+
 /** Deletes one of the user's own threads with a system agent. */
 export const deleteSystemAgentThread = async (
 	context: IRestApiContext,
@@ -1099,15 +1113,19 @@ export const deleteSystemAgentThread = async (
 	);
 };
 
-/** Builds the download/thumbnail URL for a chat attachment on either channel. */
+/**
+ * Builds the download/thumbnail URL for a chat attachment on either channel.
+ * Give `threadId` for a sub-agent session: its files belong to the root agent.
+ */
 export const getChatAttachmentUrl = (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	attachmentId: string,
 	channel: AgentChatChannel = 'chat',
+	threadId?: string,
 ): string =>
-	`${agentChatBaseUrl(context, projectId, agentId, channel)}/attachments/${encodeURIComponent(attachmentId)}`;
+	`${agentChatBaseUrl(context, projectId, agentId, channel)}/attachments/${encodeURIComponent(attachmentId)}${threadId ? `?threadId=${encodeURIComponent(threadId)}` : ''}`;
 
 export const getTestChatMessages = async (
 	context: IRestApiContext,

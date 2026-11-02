@@ -394,7 +394,6 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../composables/agentTelemetry.utils', () => ({
 	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
-		instructions: '',
 		tools: [],
 		skills: [],
 		triggers: [],
@@ -511,7 +510,6 @@ describe('AgentChatPanel', () => {
 				agentId: 'a1',
 				status: 'draft',
 				agentConfig: expect.objectContaining({
-					instructions: 'Help.',
 					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
 				}),
 			});
@@ -3330,7 +3328,6 @@ describe('AgentChatPanel', () => {
 		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
 		await wrapper.setProps({ continueSessionId: 'session-2' });
 		fingerprint.resolve({
-			instructions: '',
 			tools: [],
 			skills: [],
 			tasks: [],
@@ -3362,7 +3359,6 @@ describe('AgentChatPanel', () => {
 
 		busy.value = true;
 		fingerprint.resolve({
-			instructions: '',
 			tools: [],
 			skills: [],
 			tasks: [],
@@ -4304,16 +4300,24 @@ describe('AgentChatPanel', () => {
 				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
 			});
 
-			it('renders the inline-offers slot between the transcript and the composer', () => {
+			it('renders the inline-offers slot at the end of the transcript', () => {
 				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
 				const wrapper = mountPanel({}, undefined, {
 					'inline-offers': '<div data-testid="host-offer" />',
 				});
 
-				const html = wrapper.html();
+				expect(
+					wrapper.find('[data-testid="message-list-stub"] [data-testid="host-offer"]').exists(),
+				).toBe(true);
+			});
+
+			it('shows the inline-offers slot instead of the empty state', () => {
+				const wrapper = mountPanel({}, undefined, {
+					'inline-offers': '<div data-testid="host-offer" />',
+				});
+
 				expect(wrapper.find('[data-testid="host-offer"]').exists()).toBe(true);
-				expect(html.indexOf('message-list-stub')).toBeLessThan(html.indexOf('host-offer'));
-				expect(html.indexOf('host-offer')).toBeLessThan(html.indexOf('data-testid="chat-input"'));
+				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
 			});
 
 			it('renders the above-input slot before the composer', () => {

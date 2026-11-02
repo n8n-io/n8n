@@ -84,6 +84,12 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return row;
 	}
 
+	async loadExecutionStatus(id: string): Promise<ExecutionStatus> {
+		const row = await this.repo.findOne({ select: { status: true }, where: { id } });
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row.status;
+	}
+
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { status: to });
 		return result.affected === 1;

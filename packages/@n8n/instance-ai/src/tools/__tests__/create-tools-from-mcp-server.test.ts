@@ -261,26 +261,12 @@ describe('createToolsFromLocalMcpServer', () => {
 	});
 
 	describe('media output', () => {
-		it('returns native file parts from toMessage for MCP image results', () => {
+		it('does not set an extra message converter', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
 
-			const message = tool?.toMessage?.(SCREENSHOT_RESULT);
-
-			expect(message).toEqual({
-				role: 'assistant',
-				content: [
-					{ type: 'text', text: 'current browser screenshot' },
-					{ type: 'file', data: 'base64-screenshot', mediaType: 'image/png' },
-				],
-			});
-		});
-
-		it('does not create an extra message for text-only results', () => {
-			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
-
-			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
+			expect(tool).toBeDefined();
+			expect(tool?.toMessage).toBeUndefined();
 		});
 
 		it('returns AI SDK content output for MCP image results', () => {
@@ -300,16 +286,6 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
-		it('returns a native file part from toMessage for MCP resource results', () => {
-			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
-
-			expect(tool?.toMessage?.(PDF_RESULT)).toEqual({
-				role: 'assistant',
-				content: [{ type: 'file', data: 'base64-pdf', mediaType: 'application/pdf' }],
-			});
-		});
-
 		it('falls back to application/octet-stream when resource has no mimeType', () => {
 			const server = makeMockServer();
 			const tool = createToolsFromLocalMcpServer({ server, logger: mockLogger }).get('write_file');
@@ -318,9 +294,15 @@ describe('createToolsFromLocalMcpServer', () => {
 				content: [{ type: 'resource', resource: { uri: 'file:///x', blob: 'base64-bytes' } }],
 			};
 
-			expect(tool?.toMessage?.(result)).toEqual({
-				role: 'assistant',
-				content: [{ type: 'file', data: 'base64-bytes', mediaType: 'application/octet-stream' }],
+			expect(tool?.toModelOutput?.(result)).toEqual({
+				type: 'content',
+				value: [
+					{
+						type: 'file',
+						data: { type: 'data', data: 'base64-bytes' },
+						mediaType: 'application/octet-stream',
+					},
+				],
 			});
 		});
 

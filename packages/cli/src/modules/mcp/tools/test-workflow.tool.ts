@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -25,6 +26,7 @@ import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { findEnabledEligibleTrigger } from '../mcp.utils';
 import {
+	getRunErrorForViewer,
 	waitForExecutionResult,
 	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
 	WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS,
@@ -77,6 +79,7 @@ export const createTestWorkflowTool = (
 	nodeTypes: NodeTypes,
 	telemetry: Telemetry,
 	mcpService: McpService,
+	logger: Logger,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'test_workflow',
 	config: {
@@ -117,6 +120,7 @@ export const createTestWorkflowTool = (
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				workflowId,
 				pinData as IPinData,
 				triggerNodeName,
@@ -175,6 +179,7 @@ export async function testWorkflow(
 	workflowRunner: WorkflowRunner,
 	nodeTypes: NodeTypes,
 	mcpService: McpService,
+	logger: Logger,
 	workflowId: string,
 	pinData: IPinData,
 	triggerNodeName?: string,
@@ -287,12 +292,13 @@ export async function testWorkflow(
 		timeoutSeconds * Time.seconds.toMilliseconds,
 	);
 	const hasError = data.status === 'error' || data.data.resultData?.error;
+	if (!hasError) {
+		return { executionId, status: data.status, error: undefined };
+	}
 
 	return {
 		executionId,
-		status: hasError ? 'error' : data.status,
-		error: hasError
-			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
-			: undefined,
+		status: 'error',
+		error: await getRunErrorForViewer(executionId, user, logger),
 	};
 }
