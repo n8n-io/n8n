@@ -196,7 +196,9 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	async create(input: CreateTrustedSourceInput): Promise<TrustedSource> {
 		// Persist the parsed, migrated output, not the raw input: stored rows hold the latest version
 		// with defaults filled in, so a later default change must not alter them.
-		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config));
+		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config), {
+			managedBy: 'admin',
+		});
 		const row = await this.trustedSourceRepository.insertRow(
 			{
 				name: input.name,
@@ -228,6 +230,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		if (input.config !== undefined) {
 			const config = migrateToLatest(
 				trustedSourceConfigSchemaFor(row.managedBy).parse(input.config),
+				{ managedBy: row.managedBy },
 			);
 			changes.configVersion = config.version;
 			changes.config = await this.cipher.encryptV2(config);
@@ -270,7 +273,9 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		const existing = await this.trustedSourceRepository.findById(id, {});
 
 		if (!existing) {
-			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config));
+			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config), {
+				managedBy: 'system',
+			});
 			await this.trustedSourceRepository.insertIfAbsent(
 				{
 					id,
@@ -295,7 +300,6 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 
 		// Only a direct database write can put an admin row under the reserved id.
 		if (existing.managedBy !== 'system') return 'conflict';
-		await this.ensureAppsSurface(existing);
 		if (existing.issuer === issuer) return 'unchanged';
 
 		// Another seeder can move the issuer first; then the row holding it is this one.
@@ -326,21 +330,6 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return 'issuer-updated';
 	}
 
-	private async ensureAppsSurface(source: TrustedSourceEntity): Promise<void> {
-		const config = trustedSourceConfigSchemaFor('system').parse(
-			jsonParse<unknown>(await this.cipher.decryptV2(source.config)),
-		);
-		if (config.surfaces.apps === undefined) {
-			config.surfaces.apps = {};
-			await this.trustedSourceRepository.updateById(
-				source.id,
-				{ config: await this.cipher.encryptV2(config) },
-				{},
-			);
-			await this.invalidateCache(source);
-		}
-	}
-
 	private async loadAdminRow(id: string, action: 'update' | 'delete') {
 		const row = await this.trustedSourceRepository.findById(id, {});
 		if (!row) throw new NotFoundError(`Trusted source "${id}" not found`);
@@ -367,7 +356,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		try {
 			const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
 			const config = trustedSourceConfigSchemaFor(row.managedBy).parse(document);
-			return this.toRuntime(row, migrateToLatest(config));
+			return this.toRuntime(row, migrateToLatest(config, { managedBy: row.managedBy }));
 		} catch (error) {
 			this.logger.warn('Skipping unusable trusted source', {
 				id: row.id,

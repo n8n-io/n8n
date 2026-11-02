@@ -7,7 +7,7 @@ import {
 import { toTrustedSourceTelemetryFacets, trustedSourceFacetsOf } from '../trusted-source-facets';
 
 const parse = (input: TrustedSourceConfigInput, managedBy: ManagedBy = 'admin') =>
-	migrateToLatest(trustedSourceConfigSchemaFor(managedBy).parse(input));
+	migrateToLatest(trustedSourceConfigSchemaFor(managedBy).parse(input), { managedBy });
 
 describe('trustedSourceFacetsOf', () => {
 	it('reads the defaults of a minimal admin config', () => {

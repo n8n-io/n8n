@@ -349,11 +349,44 @@ describe('manual discovery endpoints must be https', () => {
 describe('migrateToLatest', () => {
 	const asConfig = (document: Record<string, unknown>) =>
 		document as unknown as TrustedSourceConfig;
+	const admin = { managedBy: 'admin' } as const;
+	const system = { managedBy: 'system' } as const;
 
 	test('returns a v2 document unchanged', () => {
 		const parsed = TrustedSourceConfigSchema.parse(trustedSourceConfigV2Fixture);
 
-		expect(migrateToLatest(parsed)).toBe(parsed);
+		expect(migrateToLatest(parsed, admin)).toBe(parsed);
+	});
+
+	test('adds the apps surface to a v1 system document', () => {
+		const parsed = TrustedSourceConfigSchema.parse({
+			...trustedSourceConfigV1Fixture,
+			surfaces: { 'public-api': {}, trigger: { audiences: ['custom-audience'] } },
+		});
+
+		expect(migrateToLatest(parsed, system).surfaces).toEqual({
+			'public-api': {},
+			trigger: { audiences: ['custom-audience'] },
+			apps: {},
+		});
+	});
+
+	test('keeps the apps settings of a v1 system document that has them', () => {
+		const parsed = TrustedSourceConfigSchema.parse({
+			...trustedSourceConfigV1Fixture,
+			surfaces: { apps: { audiences: ['apps'] } },
+		});
+
+		expect(migrateToLatest(parsed, system).surfaces).toEqual({ apps: { audiences: ['apps'] } });
+	});
+
+	test('does not add the apps surface to a v1 admin document', () => {
+		const parsed = TrustedSourceConfigSchema.parse({
+			...trustedSourceConfigV1Fixture,
+			surfaces: { 'public-api': {} },
+		});
+
+		expect(migrateToLatest(parsed, admin).surfaces).toEqual({ 'public-api': {} });
 	});
 
 	test.each(['off', 'jit'] as const)(
@@ -370,7 +403,7 @@ describe('migrateToLatest', () => {
 			const parsed = TrustedSourceConfigSchema.parse(document);
 			const original = structuredClone(parsed);
 
-			const migrated = migrateToLatest(parsed);
+			const migrated = migrateToLatest(parsed, admin);
 
 			expect(migrated).toEqual({
 				...document,
@@ -385,8 +418,8 @@ describe('migrateToLatest', () => {
 	test('throws on a version without a migration', () => {
 		const v0 = asConfig({ ...trustedSourceConfigV1Fixture, version: 0 });
 
-		expect(() => migrateToLatest(v0, {})).toThrow(UnexpectedError);
-		expect(() => migrateToLatest(v0, {})).toThrow(
+		expect(() => migrateToLatest(v0, admin, {})).toThrow(UnexpectedError);
+		expect(() => migrateToLatest(v0, admin, {})).toThrow(
 			'No migration from trusted source config version 0',
 		);
 	});
@@ -395,8 +428,8 @@ describe('migrateToLatest', () => {
 		const v0 = asConfig({ ...trustedSourceConfigV1Fixture, version: 0 });
 		const stuck = { 0: (config: TrustedSourceConfig) => config };
 
-		expect(() => migrateToLatest(v0, stuck)).toThrow(UnexpectedError);
-		expect(() => migrateToLatest(v0, stuck)).toThrow('did not advance the version');
+		expect(() => migrateToLatest(v0, admin, stuck)).toThrow(UnexpectedError);
+		expect(() => migrateToLatest(v0, admin, stuck)).toThrow('did not advance the version');
 	});
 
 	test.each([
@@ -404,7 +437,7 @@ describe('migrateToLatest', () => {
 		{ name: 'v2', fixture: trustedSourceConfigV2Fixture },
 	])('migrates the $name fixture to a document the latest schema accepts', ({ fixture }) => {
 		const parsed = TrustedSourceConfigSchema.parse(fixture);
-		const migrated = migrateToLatest(parsed);
+		const migrated = migrateToLatest(parsed, admin);
 
 		expect(TrustedSourceConfigSchema.safeParse(migrated).success).toBe(true);
 		expect(migrated.version).toBe(2);

@@ -276,15 +276,27 @@ export const trustedSourceConfigSchemaFor = (managedBy: ManagedBy) =>
 		}
 	});
 
-type ConfigMigration = (config: TrustedSourceConfig) => TrustedSourceConfig;
+/** What a step knows about the row besides its document. */
+export type ConfigMigrationContext = { managedBy: ManagedBy };
+
+type ConfigMigration = (
+	config: TrustedSourceConfig,
+	context: ConfigMigrationContext,
+) => TrustedSourceConfig;
 
 /** One step per version, keyed by the version it migrates from. */
 export const configMigrations: Record<number, ConfigMigration> = {
-	1: (config) => {
+	// Renames `provision.human` to `provision.person`. It also adds the apps surface, which v1 system
+	// rows were seeded without. Admin sources keep their surfaces: an upgrade must not widen them.
+	1: (config, { managedBy }) => {
 		if (config.version !== 1) return config;
 		return {
 			...config,
 			version: 2,
+			surfaces:
+				managedBy === 'system'
+					? { ...config.surfaces, apps: config.surfaces.apps ?? {} }
+					: config.surfaces,
 			identity: {
 				...config.identity,
 				provision: { person: config.identity.provision.human },
@@ -310,28 +322,23 @@ const isLatest = (config: TrustedSourceConfig): config is TrustedSourceConfigLat
  */
 export function migrateToLatest(
 	config: TrustedSourceConfig,
+	context: ConfigMigrationContext,
 	migrations: Readonly<Record<number, ConfigMigration>> = configMigrations,
 ): TrustedSourceConfigLatest {
 	let current: TrustedSourceConfig = config;
-	let version: number = current.version;
-	while (version !== LATEST_VERSION) {
-		const migrate: ConfigMigration | undefined = migrations[version];
+	while (!isLatest(current)) {
+		const from: number = current.version;
+		const migrate: ConfigMigration | undefined = migrations[from];
 		if (!migrate) {
-			throw new UnexpectedError(`No migration from trusted source config version ${version}`);
+			throw new UnexpectedError(`No migration from trusted source config version ${from}`);
 		}
-		current = migrate(current);
+		current = migrate(current, context);
 		// A step must advance the version, or the chain would never end.
-		if (current.version <= version) {
+		if (current.version <= from) {
 			throw new UnexpectedError(
-				`Migration from trusted source config version ${version} did not advance the version`,
+				`Migration from trusted source config version ${from} did not advance the version`,
 			);
 		}
-		version = current.version;
-	}
-	if (!isLatest(current)) {
-		throw new UnexpectedError(
-			'Migration chain did not reach the latest trusted source config version',
-		);
 	}
 	return current;
 }
