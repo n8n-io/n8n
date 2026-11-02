@@ -162,7 +162,11 @@ describe('ActiveExecutions', () => {
 
 			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
 				FAKE_SECOND_EXECUTION_ID,
-				expect.objectContaining({ id: FAKE_SECOND_EXECUTION_ID, status: 'running' }),
+				expect.objectContaining({
+					id: FAKE_SECOND_EXECUTION_ID,
+					status: 'running',
+					resumeAttempts: 0,
+				}),
 				{ requireStatus: expectedStatus },
 			);
 		},
@@ -302,7 +306,7 @@ describe('ActiveExecutions', () => {
 					deployment: { type: 'default' },
 				}),
 				mock<License>(),
-				new ProductionHold(),
+				new ProductionHold(mock<EventService>()),
 			);
 			return service;
 		};

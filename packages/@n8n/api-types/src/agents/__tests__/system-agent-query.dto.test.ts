@@ -1,4 +1,8 @@
-import { ListSystemAgentThreadsQueryDto, SystemAgentChatQueryDto } from '../dto';
+import {
+	ListSystemAgentThreadsQueryDto,
+	RenameSystemAgentThreadDto,
+	SystemAgentChatQueryDto,
+} from '../dto';
 
 describe('ListSystemAgentThreadsQueryDto', () => {
 	it('accepts a page query and trims the search', () => {
@@ -59,5 +63,20 @@ describe('SystemAgentChatQueryDto', () => {
 	it('rejects an empty or repeated project id', () => {
 		expect(SystemAgentChatQueryDto.safeParse({ projectId: '' }).success).toBe(false);
 		expect(SystemAgentChatQueryDto.safeParse({ projectId: ['a', 'b'] }).success).toBe(false);
+	});
+});
+
+describe('RenameSystemAgentThreadDto', () => {
+	it('accepts a title and trims it', () => {
+		const result = RenameSystemAgentThreadDto.safeParse({ title: '  Weekly digest ' });
+
+		expect(result.success).toBe(true);
+		expect(result.data).toEqual({ title: 'Weekly digest' });
+	});
+
+	it('rejects a missing, blank or too long title', () => {
+		expect(RenameSystemAgentThreadDto.safeParse({}).success).toBe(false);
+		expect(RenameSystemAgentThreadDto.safeParse({ title: '   ' }).success).toBe(false);
+		expect(RenameSystemAgentThreadDto.safeParse({ title: 'a'.repeat(256) }).success).toBe(false);
 	});
 });

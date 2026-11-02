@@ -155,7 +155,7 @@ describe('McpConnection — custom fetch forwarding', () => {
 		expect(options.eventSourceInit?.fetch).toBe(customFetch);
 	});
 
-	it('omits `fetch` and `eventSourceInit` when no custom fetch is provided', async () => {
+	it('uses a redirect-aware fetch for SSE when no custom fetch is provided', async () => {
 		const conn = new McpConnection({
 			name: 's3',
 			url: 'https://example.test/mcp',
@@ -169,8 +169,8 @@ describe('McpConnection — custom fetch forwarding', () => {
 			URL,
 			{ fetch?: typeof fetch; eventSourceInit?: { fetch?: typeof fetch } },
 		];
-		expect(options.fetch).toBeUndefined();
-		expect(options.eventSourceInit).toBeUndefined();
+		expect(options.fetch).toEqual(expect.any(Function));
+		expect(options.eventSourceInit?.fetch).toBe(options.fetch);
 	});
 });
 

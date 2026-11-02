@@ -1,4 +1,4 @@
-import type { SystemAgentThreadSummary } from '@n8n/api-types';
+import type { SystemAgentThreadSummary, SystemAgentThreadsResponse } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
@@ -6,6 +6,7 @@ import {
 	deleteSystemAgentThread,
 	getSystemAgentThread,
 	listSystemAgentThreads,
+	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
 import { knownAssistantThreadRuntime } from '../assistantAgentThreads';
@@ -15,6 +16,7 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listSystemAgentThreads: vi.fn(),
 	getSystemAgentThread: vi.fn(),
 	deleteSystemAgentThread: vi.fn(),
+	renameSystemAgentThread: vi.fn(),
 }));
 
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
@@ -39,6 +41,7 @@ describe('useAssistantAgentThreadsStore', () => {
 		vi.mocked(listSystemAgentThreads).mockReset();
 		vi.mocked(getSystemAgentThread).mockReset();
 		vi.mocked(deleteSystemAgentThread).mockReset();
+		vi.mocked(renameSystemAgentThread).mockReset();
 		showError.mockReset();
 	});
 
@@ -67,6 +70,73 @@ describe('useAssistantAgentThreadsStore', () => {
 			kind: 'assistant-agent',
 			projectId: 'project-opened-old',
 		});
+	});
+
+	it('renames a thread and keeps the new title over a response that the rename overtook', async () => {
+		let finishList!: (response: SystemAgentThreadsResponse) => void;
+		const page = { data: [thread('a', '2026-01-02T00:00:00.000Z')], nextCursor: null };
+		vi.mocked(listSystemAgentThreads)
+			.mockResolvedValueOnce(page)
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					finishList = resolve;
+				}),
+			);
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		// The list request starts before the rename and answers after it, with the old title.
+		const staleFetch = store.fetchRecent();
+		await store.renameThread('a', 'Invoices');
+		finishList(page);
+		await staleFetch;
+
+		expect(renameSystemAgentThread).toHaveBeenCalledWith(
+			expect.anything(),
+			'assistant',
+			'a',
+			'Invoices',
+		);
+		expect(store.threadsById.get('a')?.title).toBe('Invoices');
+	});
+
+	it('restores the old title and rethrows when the rename fails', async () => {
+		vi.mocked(listSystemAgentThreads).mockResolvedValue({
+			data: [thread('a', '2026-01-02T00:00:00.000Z')],
+			nextCursor: null,
+		});
+		vi.mocked(renameSystemAgentThread).mockRejectedValue(new Error('Request failed'));
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		await expect(store.renameThread('a', 'Invoices')).rejects.toThrow('Request failed');
+
+		expect(store.threadsById.get('a')?.title).toBe('Chat a');
+	});
+
+	it('keeps the title of a later rename when an earlier rename fails', async () => {
+		vi.mocked(listSystemAgentThreads).mockResolvedValue({
+			data: [thread('a', '2026-01-02T00:00:00.000Z')],
+			nextCursor: null,
+		});
+		let failFirst: (error: Error) => void = () => {};
+		vi.mocked(renameSystemAgentThread)
+			.mockImplementationOnce(
+				async () =>
+					await new Promise<void>((_resolve, reject) => {
+						failFirst = reject;
+					}),
+			)
+			.mockResolvedValueOnce();
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		const first = store.renameThread('a', 'Invoices');
+		await store.renameThread('a', 'Receipts');
+		failFirst(new Error('Request failed'));
+		await expect(first).rejects.toThrow('Request failed');
+
+		expect(store.threadsById.get('a')?.title).toBe('Receipts');
 	});
 
 	it('deletes a thread and keeps it out of the lists', async () => {

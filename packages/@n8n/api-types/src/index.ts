@@ -433,6 +433,8 @@ export {
 	taskItemSchema,
 	taskListSchema,
 	tasksUpdatePayloadSchema,
+	instanceContextPayloadSchema,
+	statusPayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
@@ -450,6 +452,8 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	appBlueprintSchema,
+	appBlueprintResumeSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -603,6 +607,8 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	AppBlueprint,
+	AppBlueprintResume,
 } from './schemas/instance-ai.schema';
 
 export type {

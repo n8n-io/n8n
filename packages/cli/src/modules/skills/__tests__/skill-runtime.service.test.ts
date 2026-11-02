@@ -154,12 +154,11 @@ describe('SkillRuntimeService', () => {
 			]);
 		});
 
-		it.each(['disabled', 'agent', 'other-project', 'permission', 'missing'])(
+		it.each(['disabled', 'other-project', 'permission', 'missing'])(
 			'refuses a reference that is %s',
 			async (reason) => {
 				row.skill.projectId = 'project-1';
 				if (reason === 'disabled') row.skill.availableToAssistant = false;
-				if (reason === 'agent') row.skill.agentId = 'agent-1';
 				if (reason === 'other-project') row.skill.projectId = 'project-2';
 				if (reason === 'permission') vi.mocked(userHasScopes).mockResolvedValue(false);
 				skills.findAssistantSkillFile.mockResolvedValue(
@@ -411,18 +410,18 @@ describe('SkillRuntimeService', () => {
 	});
 
 	describe('agent reads', () => {
-		it('findTargets maps each found skill to its project and agent', async () => {
+		it('findTargets maps each found skill to its project', async () => {
 			skills.findByIds.mockResolvedValue([
 				skillRow('skill_a', { projectId: PROJECT }),
-				skillRow('skill_b', { agentId: 'agent-1' }),
+				skillRow('skill_b'),
 			]);
 
 			const targets = await runtime.findTargets(['skill_a', 'skill_b', 'skill_gone'], TX_CTX);
 
 			expect(skills.findByIds).toHaveBeenCalledWith(['skill_a', 'skill_b', 'skill_gone'], TX_CTX);
 			expect([...targets]).toEqual([
-				['skill_a', { projectId: PROJECT, agentId: null }],
-				['skill_b', { projectId: null, agentId: 'agent-1' }],
+				['skill_a', { projectId: PROJECT }],
+				['skill_b', { projectId: null }],
 			]);
 		});
 

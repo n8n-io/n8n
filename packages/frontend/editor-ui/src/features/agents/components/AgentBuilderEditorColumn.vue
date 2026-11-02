@@ -15,7 +15,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentHitlPanel from './AgentHitlPanel.vue';
@@ -95,14 +95,7 @@ watch(
 	},
 );
 
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
-watch(
-	() => props.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
+useTypeAvailability(() => props.projectId);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];

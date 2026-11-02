@@ -215,6 +215,11 @@ n8n-cli promotion-environment connect <applyId>
 # 4. Promote from this instance, or apply to it.
 n8n-cli promotion-environment promote <promoteId>
 n8n-cli promotion-environment apply <applyId>
+
+# A project that exists only in the Apply package must exist here before you
+# apply to it from its project. Create it empty, with the same ID:
+n8n-cli promotion-environment list-missing-projects <applyId>
+n8n-cli promotion-environment create-missing-projects <applyId>   # exits 1 if one fails
 ```
 
 GitLab setup. A GitLab provider lists its repositories and branches, so read the

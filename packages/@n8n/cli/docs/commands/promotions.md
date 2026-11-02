@@ -506,6 +506,31 @@ Rows and other columns are kept. The flag applies all such changes when the
 command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
 
+## `promotion-environment list-missing-projects` / `create-missing-projects`
+
+Create the team projects of the Apply package that do not exist on this
+instance yet. The project Apply flow only works for a project that exists here
+with the same ID.
+
+```bash
+n8n-cli promotion-environment list-missing-projects env-2
+n8n-cli promotion-environment create-missing-projects env-2
+n8n-cli promotion-environment create-missing-projects env-2 -p proj-abc -p proj-def
+n8n-cli promotion-environment create-missing-projects env-2 --admin proj-abc=user-123
+```
+
+Projects are matched by ID, not by name. Each project is created empty, with the
+ID, name, icon, description, and telemetry tags from the package. You become its
+project admin. Use `--admin <projectId>=<userId>` to add another user as project
+admin of a new project. Nothing else is imported. Then apply changes to each project with
+`apply-selection`.
+
+Without `-p`, the command creates every missing project. Each result has the
+status `created`, `already-exists`, `failed`, or `admin-failed`. For
+`admin-failed`, the project exists, but the admin was not assigned. Assign the
+admin with `project add-member`. The command exits `1` when a project could not
+be created or its admin could not be assigned.
+
 ## `promotion-environment list-projects` / `add-project` / `remove-project`
 
 Link team projects to a `projects`-scoped environment.

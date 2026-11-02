@@ -43,6 +43,19 @@ describe('RestrictedNodePopover', () => {
 		expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument();
 	});
 
+	it('marks the lock as handling Escape only while the card is open', async () => {
+		const { rerender } = renderPopover({ active: false });
+		const marker = () => screen.getByTestId('node-restricted-icon').parentElement as HTMLElement;
+		expect(marker()).not.toHaveAttribute('data-escape-owner');
+
+		await rerender({ active: true });
+
+		expect(await screen.findByTestId('node-restricted-popover')).toHaveAttribute(
+			'data-escape-owner',
+		);
+		expect(marker()).toHaveAttribute('data-escape-owner');
+	});
+
 	it('opens for the keyboard-active row and names the node and the instance scope', async () => {
 		renderPopover({ active: true });
 
