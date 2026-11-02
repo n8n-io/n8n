@@ -178,9 +178,8 @@ describe('Expression - fast native evaluation parity', () => {
 	// builds: HANDLED entries must be evaluated natively, RUNTIME_BAILOUT
 	// entries must hand off to the engine. Parity alone cannot tell the two
 	// apart, since a bailout returns the engine's value either way.
-	const nativeOutcome = (expr: string) => {
+	const nativeOutcome = (expr: string, { data, items } = fixtureFor(expr)) => {
 		const node = workflow.getNode('Current');
-		const { data, items } = fixtureFor(expr);
 		const proxy = new WorkflowDataProxy(
 			workflow,
 			data,
@@ -462,8 +461,6 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 		});
 
-		// The vm and quickjs serialiser drops an own `__proto__` key; legacy
-		// keeps it. Native hands the copy to the engine, whichever it is.
 		test('an own __proto__ key on a whole-value read hands off to the engine', () => {
 			const payload = { json: { item: JSON.parse('{"__proto__":1,"safe":2}') as object } };
 			const data = runDataFor([payload as never]);
@@ -473,8 +470,24 @@ describe('Expression - fast native evaluation parity', () => {
 				handled: false,
 				fallbackReason: 'unsupported_type',
 			});
-			expect(run(true)).toStrictEqual(run(false));
-			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
+			for (const native of [true, false]) {
+				const result = run(native);
+				expect(Object.hasOwn(result, '__proto__')).toBe(true);
+				expect(result).toStrictEqual(payload.json.item);
+			}
+		});
+
+		// A node set to continue on error puts the error on the item, next to `json`.
+		test('a node reference to an item that holds an error matches the engine', () => {
+			const failed = { json: { id: 'abc' }, error: new Error('Request failed') };
+			const items = [failed as never];
+			const data = runDataFor(items);
+			const expr = "={{ $('Source').first().json.id }}";
+			const run = (native: boolean) => evaluate(expr, native, data, items);
+
+			expect(nativeOutcome(expr, { data, items }).handled).toBe(true);
+			expect(run(false)).toBe('abc');
+			expect(run(true)).toBe('abc');
 		});
 	});
 
@@ -850,6 +863,61 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 		});
 	});
+
+	// CET-571: Edit Fields (Set) v2 in raw JSON mode resolves `{{ $input.all().length }}`
+	// over items that can hold an Error object.
+	test('$input.all().length returns 1 for an item that holds an Error', () => {
+		const errorItem = { json: { error: new Error('boom') }, pairedItem: { item: 0 } };
+		const items = [errorItem] as unknown as Array<ReturnType<typeof makeItem>>;
+		const data = runDataFor(items);
+		const expr = '={{ $input.all().length }}';
+
+		expect(nativeOutcome(expr, { data, items }).handled).toBe(true);
+		expect(evaluate(expr, false, data, items)).toBe(1);
+		expect(evaluate(expr, true, data, items)).toBe(1);
+	});
+
+	// CET-573: a Data Table row filter resolves `{{ ($('Node').first().json.count || -1) }}`
+	// over a node output that can hold an Error object.
+	test.each([
+		['at the item root', { json: { count: 3 }, error: new Error('boom') }],
+		['under json.error', { json: { count: 3, error: new Error('boom') } }],
+	])('a node reference with a || fallback over an Error %s matches the engine', (_, source) => {
+		const items = [{ ...source, pairedItem: { item: 0 } }] as unknown as Array<
+			ReturnType<typeof makeItem>
+		>;
+		const data = runDataFor(items);
+		const expr = "={{ ($('Source').first().json.count || -1) }}";
+
+		expect(nativeOutcome(expr, { data, items }).handled).toBe(true);
+		expect(evaluate(expr, false, data, items)).toBe(3);
+		expect(evaluate(expr, true, data, items)).toBe(3);
+	});
+
+	// CET-574: a declarative node reads a parameter through `$parameter`, and that
+	// parameter resolves `{{ ($('Node').first().json.name ?? 'fallback') }}` in a nested
+	// evaluation over a node output that can hold an Error object.
+	test.each([
+		['at the item root', { json: { name: 'Acme' }, error: new Error('boom') }],
+		['under json.error', { json: { name: 'Acme', error: new Error('boom') } }],
+	])(
+		'a nested $parameter read with a ?? fallback over an Error %s matches the engine',
+		(_, source) => {
+			const items = [{ ...source, pairedItem: { item: 0 } }] as unknown as Array<
+				ReturnType<typeof makeItem>
+			>;
+			const data = runDataFor(items);
+			const { parameters } = workflow.getNode('Current')!;
+			parameters.nested = "={{ ($('Source').first().json.name ?? 'fallback') }}";
+			try {
+				expect(nativeOutcome('={{ $parameter.nested }}', { data, items }).handled).toBe(true);
+				expect(evaluate('={{ $parameter.nested }}', false, data, items)).toBe('Acme');
+				expect(evaluate('={{ $parameter.nested }}', true, data, items)).toBe('Acme');
+			} finally {
+				delete parameters.nested;
+			}
+		},
+	);
 
 	// extendSyntax rewrites calls to extension-named methods into extend()
 	// dispatch; native evaluation calls natives directly, so its allowlist

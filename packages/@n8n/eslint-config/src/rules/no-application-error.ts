@@ -14,7 +14,6 @@ const ALLOWED_FILES = [
 	'workflow-execute.ts',
 	'type-validation.ts',
 	// Tests covering the shim / legacy-error handling
-	'application-error.test.ts',
 	'error-reporter.test.ts',
 	'workflow-execute-node-error-reporting.test.ts',
 ];

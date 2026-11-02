@@ -1,4 +1,6 @@
+import type { AgentTaskCancellationState } from '@n8n/api-types';
 import type {
+	AgentPlanSnapshotDto,
 	AgentApproval,
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
@@ -864,8 +866,7 @@ export const listAttachableSkills = async (
 	const { data } = await makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
 		attachableTo: agentId,
 	});
-	const targetRank = (skill: SkillListItem) =>
-		skill.scope === 'instance' ? 2 : skill.agentId ? 1 : 0;
+	const targetRank = (skill: SkillListItem) => (skill.scope === 'instance' ? 1 : 0);
 	const byTargetThenName = (left: SkillListItem, right: SkillListItem) =>
 		targetRank(left) - targetRank(right) || left.name.localeCompare(right.name);
 	return data.sort(byTargetThenName);
@@ -1097,15 +1098,19 @@ export const deleteSystemAgentThread = async (
 	);
 };
 
-/** Builds the download/thumbnail URL for a chat attachment on either channel. */
+/**
+ * Builds the download/thumbnail URL for a chat attachment on either channel.
+ * Give `threadId` for a sub-agent session: its files belong to the root agent.
+ */
 export const getChatAttachmentUrl = (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	attachmentId: string,
 	channel: AgentChatChannel = 'chat',
+	threadId?: string,
 ): string =>
-	`${agentChatBaseUrl(context, projectId, agentId, channel)}/attachments/${encodeURIComponent(attachmentId)}`;
+	`${agentChatBaseUrl(context, projectId, agentId, channel)}/attachments/${encodeURIComponent(attachmentId)}${threadId ? `?threadId=${encodeURIComponent(threadId)}` : ''}`;
 
 export const getTestChatMessages = async (
 	context: IRestApiContext,
@@ -1142,6 +1147,7 @@ export const cancelAgentChatRun = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/runs/${encodeURIComponent(runId)}`,
+		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1157,6 +1163,7 @@ export const cancelAgentChatExecution = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
+		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1208,3 +1215,28 @@ export const getAgentWriteLock = async (
 		`/projects/${projectId}/agents/v2/${agentId}/collaboration/write-lock`,
 	);
 };
+
+export const getAgentTaskCancellation = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentTaskCancellationState | null> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/task-cancellation`,
+	);
+
+export const getAgentPlan = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	channel: AgentChatChannel = 'chat',
+): Promise<AgentPlanSnapshotDto | null> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/plan`,
+	);

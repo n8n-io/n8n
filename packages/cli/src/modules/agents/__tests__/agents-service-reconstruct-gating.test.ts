@@ -1111,8 +1111,10 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			);
 			expect(getInjectedToolNames()).toEqual(expect.arrayContaining(planToolNames));
 			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
+			const eagerToolNames = builtAgent.nativeToolDeferral.mock.calls[0][0].eagerToolNames;
+			expect(eagerToolNames.includes('background_jobs')).toBe(backgroundTasksEnabled);
 			if (backgroundTasksEnabled) {
-				expect(getInjectedToolNames()).toContain('check_background_jobs');
+				expect(getInjectedToolNames()).toContain('background_jobs');
 				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);
 				const provider = builtAgent.volatileInstructionsProvider.mock.calls[0][0];
 				wakeService.getBackgroundUpdates.mockResolvedValue('Background result');
@@ -1165,11 +1167,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 });
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — background job tools gating', () => {
-	const BACKGROUND_TOOL_NAMES = [
-		'resume_background_jobs',
-		'check_background_jobs',
-		'cancel_background_job',
-	];
+	const BACKGROUND_TOOL_NAMES = ['background_jobs'];
 	const subAgents = { agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }] };
 
 	beforeEach(() => {
@@ -1232,6 +1230,63 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			getInjectedToolNames().filter((name) => name === DELEGATE_SUB_AGENT_TOOL_NAME),
 		).toHaveLength(1);
 	});
+
+	it.each([
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: false, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: true, allowPlanTools: false, planToolsEnabled: true, expected: false },
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: false, expected: false },
+	])(
+		'validates plan tasks in every run that has plan tools: %j',
+		async ({ previewChat, allowPlanTools, planToolsEnabled, expected }) => {
+			Container.get(AgentsConfig).backgroundTasksEnabled = true;
+			Container.get(AgentsConfig).planToolsEnabled = planToolsEnabled;
+			Container.set(AgentPlanService, mock<AgentPlanService>());
+
+			const backgroundRunner = mock<SubAgentBackgroundRunner>();
+			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+			Container.set(SubAgentBackgroundRunner, backgroundRunner);
+
+			try {
+				await makeReconstructionService().reconstructFromAgentEntity(
+					storedRunSource(makeAgentEntity()),
+					mock<CredentialProvider>(),
+					'test',
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					undefined,
+					{ previewChat, allowPlanTools },
+				);
+
+				const delegate = getInjectedDelegateTool();
+
+				if (!delegate?.handler) throw new Error('Expected delegation tool');
+
+				await delegate.handler(
+					{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+					{
+						persistence: {
+							threadId: 'thread-1',
+							resourceId: 'resource-1',
+							hostMetadata: encodeAgentSandboxHostMetadata({
+								projectId: 'project-1',
+								principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+							}),
+						},
+					},
+				);
+
+				expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+					expect.objectContaining({ validatePlanTask: expected }),
+					expect.any(Object),
+				);
+			} finally {
+				Container.get(AgentsConfig).planToolsEnabled = false;
+			}
+		},
+	);
 
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;

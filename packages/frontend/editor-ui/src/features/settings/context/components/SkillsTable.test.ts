@@ -31,8 +31,6 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		projectId: null,
 		projectName: null,
 		projectType: null,
-		agentId: null,
-		agentName: null,
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
@@ -42,6 +40,8 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		canEdit: true,
 		canDelete: true,
 		canStopSyncing: false,
+		syncState: null,
+		canCheckForUpdates: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -113,7 +113,6 @@ describe('SkillsTable', () => {
 				projectType: 'personal',
 			}),
 		],
-		['FirstClassDarwin only', skill({ scope: 'agent', agentName: 'FirstClassDarwin' })],
 	])('labels the scope "%s"', (label, row) => {
 		const { getByTestId } = render([row]);
 
@@ -335,6 +334,52 @@ describe('SkillsTable', () => {
 
 		expect(emitted('stopSyncing')).toEqual([[row]]);
 	});
+
+	it('emits checkForUpdates for a synced skill the user may check', async () => {
+		const row = skill({ source: 'github', canEdit: false, canCheckForUpdates: true });
+		const { getByTestId, emitted } = render([row]);
+
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-checkForUpdates"]')).toHaveTextContent(
+				'Check for updates',
+			),
+		);
+		await userEvent.click(document.querySelector('[data-test-id="action-checkForUpdates"]')!);
+
+		expect(emitted('checkForUpdates')).toEqual([[row]]);
+	});
+
+	it('offers no Check for updates for a skill the user may not check', async () => {
+		const { getByTestId } = render([skill({ source: 'github', canEdit: false })]);
+
+		await openActions(getByTestId('skills-table'));
+
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
+		);
+		expect(
+			document.querySelector('[data-test-id="action-checkForUpdates"]'),
+		).not.toBeInTheDocument();
+	});
+
+	it.each([
+		{ syncState: 'update_available' as const, text: 'Update available' },
+		{ syncState: 'update_blocked' as const, text: 'Update blocked' },
+	])('shows $text on a synced skill whose source has an update', ({ syncState, text }) => {
+		const { getByTestId } = render([skill({ source: 'github', syncState })]);
+
+		expect(getByTestId(`skill-sync-badge-${syncState}`)).toHaveTextContent(text);
+	});
+
+	it.each([{ syncState: 'up_to_date' as const }, { syncState: null }])(
+		'shows no sync badge for sync state $syncState',
+		({ syncState }) => {
+			const { queryByTestId } = render([skill({ syncState })]);
+
+			expect(queryByTestId(/skill-sync-badge/)).toBeNull();
+		},
+	);
 
 	it('emits download for any skill, also one the user cannot change', async () => {
 		const row = skill({ canEdit: false, canDelete: false });

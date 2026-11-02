@@ -274,7 +274,11 @@ export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
 	return lines.length > 0 ? lines.join('\n') : '(no tool calls in any turn)';
 }
 
-// workflow_builder_build_workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
+/** The MCP server's tools that build a workflow — the MCP path's counterpart of
+ *  workflow_builder_build_workflow. */
+const MCP_BUILD_TOOL_NAMES = new Set(['create_workflow_from_code', 'update_workflow']);
+
+// Build calls per turn that FAILED (errored, or success:false / non-empty errors) —
 // error-forced rebuilds, which generalise across prompts better than the raw call count.
 export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
 	return transcript.map(
@@ -282,7 +286,8 @@ export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
 			turn.steps.filter((step) => {
 				if (
 					step.kind !== 'tool-call' ||
-					resolveBuilderToolName(step.toolName) !== BUILD_WORKFLOW_TOOL_NAME
+					(resolveBuilderToolName(step.toolName) !== BUILD_WORKFLOW_TOOL_NAME &&
+						!MCP_BUILD_TOOL_NAMES.has(step.toolName))
 				) {
 					return false;
 				}

@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import type { ProjectRepository, User } from '@n8n/db';
+import type { OperationContext, ProjectRepository, TransactionRunner, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -15,6 +15,7 @@ import type { PromotionEnvironment } from '../database/entities/promotion-enviro
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import type { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
+import type { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
 import { PromotionEnvironmentsService } from '../promotion-environments.service';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -35,6 +36,11 @@ describe('PromotionEnvironmentsService', () => {
 	const projectRepository = mock<ProjectRepository>();
 	const providersService = mock<PromotionProvidersService>();
 	const gitService = mock<PromotionsGitService>();
+	const reviewRepository = mock<PromotionReviewRepository>();
+	const txRunner = mock<TransactionRunner>({
+		run: async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) =>
+			await fn(ctx),
+	});
 	const eventService = mock<EventService>();
 	const actor = mock<User>({ id: 'user-1' });
 	const logger = mock<Logger>();
@@ -82,6 +88,7 @@ describe('PromotionEnvironmentsService', () => {
 		userHasScopesMock.mockResolvedValue(true);
 		providersService.getEntity.mockResolvedValue(provider());
 		environmentRepository.findByIdWithProvider.mockResolvedValue(environment());
+		reviewRepository.closeOpenByEnvironmentId.mockResolvedValue(0);
 
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-environments-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
@@ -92,6 +99,8 @@ describe('PromotionEnvironmentsService', () => {
 			providersService,
 			gitService,
 			workingDirectory,
+			reviewRepository,
+			txRunner,
 			logger,
 			eventService,
 		);
@@ -129,6 +138,27 @@ describe('PromotionEnvironmentsService', () => {
 
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
+
+	it.each(['update', 'delete'] as const)(
+		'emits no event when closing the reviews fails during an environment %s',
+		async (operation) => {
+			const error = new Error('Review close failed');
+			environmentRepository.updateEnvironment.mockResolvedValue(true);
+			reviewRepository.closeOpenByEnvironmentId.mockRejectedValueOnce(error);
+
+			const result =
+				operation === 'update'
+					? service.update(
+							ENVIRONMENT_ID,
+							{ remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } },
+							actor,
+						)
+					: service.delete(ENVIRONMENT_ID, actor);
+
+			await expect(result).rejects.toThrow(error);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		},
+	);
 
 	it('emits no event for an update that changes nothing', async () => {
 		environmentRepository.updateEnvironment.mockResolvedValue(true);

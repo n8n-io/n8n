@@ -20,7 +20,10 @@ import type { MigrationFindingSync } from '../../database/entities/migration-fin
 import type { MigrationFindingSyncRepository } from '../../database/repositories/migration-finding-sync.repository';
 import type { MigrationFindingRepository } from '../../database/repositories/migration-finding.repository';
 import type { MigrationWorkflowOwnerRepository } from '../../database/repositories/migration-workflow-owner.repository';
-import type { MigrationOwnerSuggestionService } from '../../owners/migration-owner-suggestion.service';
+import type {
+	EligibleUsers,
+	MigrationOwnerSuggestionService,
+} from '../../owners/migration-owner-suggestion.service';
 import type { IBreakingChangeRule } from '../../types';
 import type { MigrationFindingHit } from '../migration-finding-diff';
 import {
@@ -85,6 +88,8 @@ function findingRow(
 	return { id, targetVersion: TARGET_VERSION, ruleId, workflowId, status } as MigrationFinding;
 }
 
+const eligibleUsers: EligibleUsers = { byId: new Map(), idsByName: new Map() };
+
 describe('MigrationFindingSyncService', () => {
 	let breakingChangeService: MockProxy<BreakingChangeService>;
 	let ruleRegistry: MockProxy<RuleRegistry>;
@@ -127,6 +132,7 @@ describe('MigrationFindingSyncService', () => {
 		findingRepository.listForWorkflows.mockResolvedValue([]);
 		findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([]);
 		ownerSuggestionService.suggestOwners.mockResolvedValue([]);
+		ownerSuggestionService.loadEligibleUsers.mockResolvedValue(eligibleUsers);
 		breakingChangeService.detect.mockResolvedValue(detectionResult([]));
 
 		service = new MigrationFindingSyncService(
@@ -539,7 +545,10 @@ describe('MigrationFindingSyncService', () => {
 				['wf-0000', 'wf-0001', 'wf-0002'],
 				expect.anything(),
 			);
-			expect(ownerSuggestionService.suggestOwners).toHaveBeenCalledWith(['wf-0000', 'wf-0002']);
+			expect(ownerSuggestionService.suggestOwners).toHaveBeenCalledWith(
+				['wf-0000', 'wf-0002'],
+				eligibleUsers,
+			);
 			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledWith(
 				['wf-0000', 'wf-0001', 'wf-0002'],
 				[{ workflowId: 'wf-0000', userId: 'user-1' }],
@@ -553,11 +562,28 @@ describe('MigrationFindingSyncService', () => {
 			await service.sync(TARGET_VERSION);
 
 			expect(ownerSuggestionService.suggestOwners).not.toHaveBeenCalled();
+			expect(ownerSuggestionService.loadEligibleUsers).not.toHaveBeenCalled();
 			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledWith(
 				['wf-0000', 'wf-0001'],
 				[],
 				expect.anything(),
 			);
+		});
+
+		it('loads the users once for all batches of a sync', async () => {
+			givenWorkflows(250);
+			findingRepository.listWorkflowIdsWithUnresolvedFindings.mockImplementation(
+				async (_version, ids) => ids.slice(0, 1),
+			);
+
+			await service.sync(TARGET_VERSION);
+			await service.sync(TARGET_VERSION);
+
+			expect(ownerSuggestionService.suggestOwners).toHaveBeenCalledTimes(6);
+			expect(ownerSuggestionService.loadEligibleUsers).toHaveBeenCalledTimes(2);
+			for (const [, users] of ownerSuggestionService.suggestOwners.mock.calls) {
+				expect(users).toBe(eligibleUsers);
+			}
 		});
 
 		it('refreshes owners once per batch, after the findings of that batch were written', async () => {

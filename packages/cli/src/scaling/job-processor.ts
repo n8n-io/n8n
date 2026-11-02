@@ -577,6 +577,7 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
+			...(run.data.resultData.failedBeforeStart && { failedBeforeStart: true }),
 			nodeTimeSavedMinutes: sumNodeTimeSavedMinutes(run.data.resultData.runData),
 		};
 	}

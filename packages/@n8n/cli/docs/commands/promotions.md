@@ -255,6 +255,8 @@ n8n-cli promotion-environment delete env-1
 `update` takes `name`, `providerId`, `remote`, `settings`, or a combination. The
 direction and the scope cannot change. `settings` replaces the whole saved
 settings and must match the direction, so send every setting you want to keep.
+A new provider type or repository closes the open promotion reviews of the
+environment in n8n. Their merge requests stay open on the Git host.
 
 ```bash
 echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true}}' \
@@ -262,7 +264,8 @@ echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnProm
 ```
 
 `delete` also removes the project links and the local checkout. The provider
-stays. Nothing in Git changes.
+stays. Nothing in the Git repository changes. The open promotion reviews of the
+environment close in n8n. Their merge requests stay open on the Git host.
 
 ## `promotion-environment connect` / `disconnect`
 

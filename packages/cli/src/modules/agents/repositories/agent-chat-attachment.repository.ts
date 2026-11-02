@@ -104,6 +104,17 @@ export class AgentChatAttachmentRepository {
 		return await this.table.managerFor(ctx).findBy(AgentChatAttachment, { threadId, ...scope });
 	}
 
+	/** Files of one delegation tree that one thread made. */
+	async findCreatedByThread(
+		createdByThreadId: string,
+		scope: { projectId: string; threadId: string },
+		ctx: OperationContext,
+	): Promise<AgentChatAttachment[]> {
+		return await this.table
+			.managerFor(ctx)
+			.findBy(AgentChatAttachment, { createdByThreadId, ...scope });
+	}
+
 	async findByIds(ids: string[], ctx: OperationContext): Promise<AgentChatAttachment[]> {
 		return await this.table.managerFor(ctx).findBy(AgentChatAttachment, { id: In(ids) });
 	}

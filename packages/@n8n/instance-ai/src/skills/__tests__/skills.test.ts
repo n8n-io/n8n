@@ -138,6 +138,7 @@ describe('Instance AI skills', () => {
 
 		expect(topLevel.sort()).toEqual([
 			'agent-builder',
+			'app-builder',
 			'data-table-manager',
 			'debugging-executions',
 			'instance-awareness',
@@ -219,10 +220,23 @@ describe('Instance AI skills', () => {
 		expect(dataTableManager).toMatchObject({
 			name: 'data-table-manager',
 			platforms: ['daytona'],
-			recommendedTools: ['data_tables', 'parse-file'],
+			recommendedTools: [
+				'list_data_tables',
+				'get_data_table_schema',
+				'query_data_table',
+				'create_data_table',
+				'delete_data_table',
+				'add_data_table_column',
+				'delete_data_table_column',
+				'rename_data_table_column',
+				'insert_data_table_rows',
+				'update_data_table_rows',
+				'delete_data_table_rows',
+				'parse-file',
+			],
 		});
 		expect(dataTableManager?.description).toContain(
-			'Load before calling data_tables or parse-file',
+			'Load before calling the data table tools or parse-file',
 		);
 		expect(dataTableManager?.description).toContain('what data tables do I have?');
 		expect(dataTableManager?.description).toContain(
@@ -257,7 +271,12 @@ describe('Instance AI skills', () => {
 		expect(configEvals).toMatchObject({
 			name: 'config-evals',
 			platforms: ['daytona'],
-			recommendedTools: ['eval-config', 'data_tables'],
+			recommendedTools: [
+				'eval-config',
+				'list_data_tables',
+				'create_data_table',
+				'insert_data_table_rows',
+			],
 			parents: ['workflow-builder'],
 		});
 
@@ -408,13 +427,19 @@ describe('Instance AI skills', () => {
 			'get_node_types',
 			'get_node_parameter_options',
 			'execute_node',
-			'data_tables',
+			'list_data_tables',
+			'get_data_table_schema',
+			'query_data_table',
+			'create_data_table',
 			'list_credentials',
 			'search_credential_types',
 			'setup_credentials',
 			'test_credential',
 			'workflow_builder_verify_built_workflow',
-			'workflow_builder_executions',
+			'list_executions',
+			'get_execution',
+			'run_workflow',
+			'debug_execution',
 		]);
 		expect(skill?.description).toContain('Load before calling workflow_builder_build_workflow');
 		expect(skill?.description).not.toContain('Default path');
@@ -501,7 +526,7 @@ describe('Instance AI skills', () => {
 		const flattened = loaded?.instructions.replace(/\s+/g, ' ');
 		expect(flattened).toContain('executionIntent: "one-off"');
 		expect(flattened).toContain('not required and never the completion criterion');
-		expect(flattened).toContain('get-node-output');
+		expect(flattened).toContain('get_execution_node_output');
 		expect(flattened).toContain('keep the workflow for future reuse or delete');
 	});
 
@@ -603,16 +628,20 @@ describe('Instance AI skills', () => {
 		const skill = source.registry.skills.find((entry) => entry.name === 'debugging-executions');
 
 		expect(skill?.recommendedTools).toEqual([
-			'workflow_builder_executions',
+			'list_executions',
+			'get_execution',
+			'run_workflow',
+			'run_workflow_step',
+			'debug_execution',
+			'get_execution_node_output',
+			'get_resolved_node_parameters',
 			'get_workflow',
 			'get_workflow_as_code',
 		]);
 
 		const loaded = await source.loadSkill('debugging-executions');
-		expect(loaded?.instructions).toContain('workflow_builder_executions(action="debug")');
-		expect(loaded?.instructions).toContain(
-			'workflow_builder_executions(action="get-resolved-node-parameters", executionId, nodeName)',
-		);
+		expect(loaded?.instructions).toContain('debug_execution');
+		expect(loaded?.instructions).toContain('get_resolved_node_parameters(executionId, nodeName)');
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');

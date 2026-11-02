@@ -43,7 +43,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
-export { InstanceAiThreadTabsRequestDto } from './instance-ai/instance-ai-thread-tabs-request.dto';
+export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -721,6 +721,11 @@ export {
 	type PublicApiRateLimitSettings,
 	type PublicApiRateLimitSettingsResponse,
 } from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
+export {
+	RateLimitSettingsPublicDto,
+	RateLimitSettingsQueryPublicDto,
+	UpdateRateLimitSettingsPublicDto,
+} from './public-api-rate-limit-settings/rate-limit-settings-public.dto';
 
 export {
 	PromotionChangesDto,
