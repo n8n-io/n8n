@@ -18,18 +18,16 @@ describe('post-build script', () => {
 
 		runPostBuild(runCommand);
 
-		const scripts = runCommand.mock.calls.map(([file, [script]]) => {
+		const calls = runCommand.mock.calls.map(([file, [script, ...args], options]) => {
 			expect(file).toBe(process.execPath);
-			return path.relative(packageDir, script);
-		});
-		expect(scripts).toEqual([
-			path.join('scripts', 'copy-nodes-json.js'),
-			expect.stringMatching(/tsc-alias/),
-			path.join('..', 'core', 'bin', 'generate-metadata'),
-		]);
-		for (const [, , options] of runCommand.mock.calls) {
 			expect(options.cwd).toBe(packageDir);
-		}
+			return [path.relative(packageDir, script), ...args];
+		});
+		expect(calls).toEqual([
+			[path.join('scripts', 'copy-nodes-json.js'), '.'],
+			[expect.stringMatching(/tsc-alias/), '-p', 'tsconfig.build.cjs.json'],
+			[path.join('..', 'core', 'bin', 'generate-metadata')],
+		]);
 	});
 
 	it('does not generate metadata when alias rewriting fails', () => {
