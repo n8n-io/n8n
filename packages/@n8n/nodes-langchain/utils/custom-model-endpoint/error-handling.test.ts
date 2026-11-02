@@ -144,9 +144,9 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 				)) as typeof fetch;
 
 		const drain = async (chunks: string[], secrets: string[]) => {
-			const response = await wrapCustomModelEndpointErrorFetch(streaming(chunks), { secrets })(
-				BASE_URL,
-			);
+			const response = await wrapCustomModelEndpointErrorFetch(streaming(chunks), {
+				secrets: () => secrets,
+			})(BASE_URL);
 			const reader = response.body!.getReader();
 			const decoder = new TextDecoder();
 			const seen: string[] = [];

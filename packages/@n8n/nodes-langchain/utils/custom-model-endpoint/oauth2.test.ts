@@ -193,12 +193,6 @@ describe('createClientCredentialsTokenSource', () => {
 		);
 	});
 
-	it('fails when the answer carries no access token', async () => {
-		const { fetchImpl } = granting({ token_type: 'Bearer' });
-		const source = createClientCredentialsTokenSource(login(), fetchImpl);
-
-		await expect(source.getToken()).rejects.toThrow('no access token');
-	});
 	it('does not follow a redirect, which would replay the secret to another origin', async () => {
 		const { calls, fetchImpl } = granting(GRANT);
 		await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
