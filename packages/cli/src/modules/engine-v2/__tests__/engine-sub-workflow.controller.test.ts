@@ -45,21 +45,7 @@ describe('EngineSubWorkflowController', () => {
 		vi.mocked(service.resolve).mockResolvedValue(resolved);
 	});
 
-	it('answers 200 with the resolved sub-workflow', async () => {
-		const res = newResponse();
-
-		await controller.resolveSubWorkflow(newRequest(), res);
-
-		expect(res.status).toHaveBeenCalledExactlyOnceWith(200);
-		expect(res.json).toHaveBeenCalledExactlyOnceWith(resolved);
-	});
-
-	it('hands the validated body to the service', async () => {
-		await controller.resolveSubWorkflow(newRequest(), newResponse());
-
-		expect(service.resolve).toHaveBeenCalledExactlyOnceWith(resolveRequest);
-	});
-
+	// The happy path runs through the real server in the integration test.
 	it.each([
 		['a body without a workflow id', { ...resolveRequest, workflowId: undefined }],
 		[

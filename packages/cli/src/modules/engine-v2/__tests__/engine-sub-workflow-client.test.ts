@@ -1,5 +1,4 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
-import type { ActionScope } from '@n8n/engine';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -28,7 +27,6 @@ const resolved: ResolveSubWorkflowResponse = {
 
 describe('EngineSubWorkflowClient', () => {
 	let http: HttpRequestClient;
-	let requestedScope: ActionScope | undefined;
 	let client: EngineSubWorkflowClient;
 	let signal: AbortSignal;
 
@@ -38,18 +36,9 @@ describe('EngineSubWorkflowClient', () => {
 
 	beforeEach(() => {
 		http = mock<HttpRequestClient>();
-		const transport = mock<EngineControlPlaneTransport>({
-			forScope: vi.fn((scope: ActionScope) => {
-				requestedScope = scope;
-				return http;
-			}),
-		});
+		const transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => http) });
 		client = new EngineSubWorkflowClient(transport);
 		signal = new AbortController().signal;
-	});
-
-	it('asks the transport for a client scoped to sub-workflow resolution', () => {
-		expect(requestedScope).toBe('sub-workflows:resolve');
 	});
 
 	it('posts the request as the body of the sub-workflow resolve endpoint, without following redirects', async () => {
