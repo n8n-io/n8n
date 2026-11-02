@@ -32,6 +32,10 @@ export class AgentChatAttachmentRepository {
 		this.table = new AgentChatAttachmentTable(dataSource, transactionRunner);
 	}
 
+	async findByProject(projectId: string, ctx: OperationContext): Promise<AgentChatAttachment[]> {
+		return await this.table.managerFor(ctx).findBy(AgentChatAttachment, { projectId });
+	}
+
 	async saveInboundAttachment(
 		params: InboundAttachment,
 		ctx: OperationContext,

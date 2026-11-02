@@ -329,6 +329,10 @@ export class AgentChatAttachmentService {
 		await this.deleteAttachments(await this.repository.findByAgent(agentId, {}), { agentId });
 	}
 
+	async deleteByProject(projectId: string): Promise<void> {
+		await this.deleteAttachments(await this.repository.findByProject(projectId, {}), { projectId });
+	}
+
 	/**
 	 * Deletes the files an agent received from one channel before `before`, in
 	 * batches, so a large backlog does not load into memory at once. Deletes

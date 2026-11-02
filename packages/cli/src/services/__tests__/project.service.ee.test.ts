@@ -29,6 +29,7 @@ import { ProjectService } from '../project.service.ee';
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
+import { AgentProjectCleanupService } from '@/modules/agents/agent-project-cleanup.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentTestChatService } from '@/modules/agents/agent-test-chat.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
@@ -989,25 +990,17 @@ describe('ProjectService', () => {
 
 		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			Object.defineProperty(projectService, 'agentRepository', {
+			Object.defineProperty(projectService, 'agentProjectCleanupService', {
 				configurable: true,
-				get: async () => agentRepository,
-			});
-			Object.defineProperty(projectService, 'agentKnowledgeService', {
-				configurable: true,
-				get: async () => agentKnowledgeService,
-			});
-			Object.defineProperty(projectService, 'agentTestChatService', {
-				configurable: true,
-				get: async () => agentTestChatService,
-			});
-			Object.defineProperty(projectService, 'agentExecutionService', {
-				configurable: true,
-				get: async () => agentExecutionService,
-			});
-			Object.defineProperty(projectService, 'agentChatAttachmentService', {
-				configurable: true,
-				get: async () => agentChatAttachmentService,
+				get: async () =>
+					new AgentProjectCleanupService(
+						agentRepository,
+						agentKnowledgeService,
+						agentExecutionService,
+						agentChatAttachmentService,
+						agentTestChatService,
+						logger,
+					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
@@ -1205,25 +1198,17 @@ describe('ProjectService', () => {
 
 		it('destroys agent sandboxes even when knowledge file cleanup fails', async () => {
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			Object.defineProperty(projectService, 'agentRepository', {
+			Object.defineProperty(projectService, 'agentProjectCleanupService', {
 				configurable: true,
-				get: async () => agentRepository,
-			});
-			Object.defineProperty(projectService, 'agentKnowledgeService', {
-				configurable: true,
-				get: async () => agentKnowledgeService,
-			});
-			Object.defineProperty(projectService, 'agentTestChatService', {
-				configurable: true,
-				get: async () => agentTestChatService,
-			});
-			Object.defineProperty(projectService, 'agentExecutionService', {
-				configurable: true,
-				get: async () => agentExecutionService,
-			});
-			Object.defineProperty(projectService, 'agentChatAttachmentService', {
-				configurable: true,
-				get: async () => agentChatAttachmentService,
+				get: async () =>
+					new AgentProjectCleanupService(
+						agentRepository,
+						agentKnowledgeService,
+						agentExecutionService,
+						agentChatAttachmentService,
+						agentTestChatService,
+						logger,
+					),
 			});
 			projectRepository.findOneWithUserRoles.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);

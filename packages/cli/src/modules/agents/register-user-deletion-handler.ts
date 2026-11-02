@@ -1,6 +1,9 @@
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { AgentProjectCleanupService } from './agent-project-cleanup.service';
+import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentMemoryEntryRepository } from './repositories/agent-memory-entry.repository';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import {
@@ -9,7 +12,7 @@ import {
 	systemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 
-/** Stop recall of a deleted user's private memories. Keep sessions and trace evidence. */
+/** Remove personal-project data. Keep session evidence in surviving projects. */
 export function registerUserDeletionHandler() {
 	Container.get(OwnershipTransferHandlerRegistry).register({
 		resource: 'agent-user-memory',
@@ -25,6 +28,20 @@ export function registerUserDeletionHandler() {
 				],
 				{},
 			);
+			const project =
+				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+			const threads = Container.get(AgentExecutionThreadRepository);
+			for (const session of await threads.findOwnedSystemAgentSessions(userId)) {
+				if (session.projectId === project.id) {
+					await Container.get(SystemAgentExecutionService).destroyThreadWorkspace(
+						session.agentId,
+						session.id,
+						userId,
+					);
+				}
+			}
+			await Container.get(AgentProjectCleanupService).cleanupProject(project.id);
+			await threads.shareUserSessionHistory(userId);
 		},
 	});
 }

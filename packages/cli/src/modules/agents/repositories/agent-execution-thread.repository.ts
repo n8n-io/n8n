@@ -97,6 +97,22 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		super(AgentExecutionThread, dataSource.manager, transactionRunner);
 	}
 
+	/** Keep project-agent sessions readable after their user is removed. */
+	async shareUserSessionHistory(userId: string): Promise<void> {
+		const threads = await this.find({
+			select: { id: true },
+			where: { ownerId: userId, accessScope: 'user', agent: { scope: 'project' } },
+		});
+		for (const batch of chunk(threads, CHECKPOINT_BATCH_SIZE)) {
+			await this.update({ id: In(batch.map(({ id }) => id)) }, { accessScope: 'project' });
+		}
+	}
+
+	async deleteCheckpointsForThreads(threadIds: string[]): Promise<void> {
+		if (threadIds.length === 0) return;
+		await this.manager.delete(AgentCheckpoint, { threadId: In(threadIds) });
+	}
+
 	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
 		const manager = this.managerFor(ctx);
 		return await manager.findOne(AgentExecutionThread, {

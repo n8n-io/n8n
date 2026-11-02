@@ -801,7 +801,9 @@ export class AgentExecutionService {
 		)) {
 			const memory = this.n8nMemory.getImplementation(agentId);
 			for (const batch of chunk(threads, AgentExecutionService.logDeletionBatchSize)) {
-				await memory.deleteThreads(batch.map((thread) => thread.id));
+				const threadIds = batch.map((thread) => thread.id);
+				await memory.deleteThreads(threadIds);
+				await this.agentExecutionThreadRepository.deleteCheckpointsForThreads(threadIds);
 			}
 		}
 	}
