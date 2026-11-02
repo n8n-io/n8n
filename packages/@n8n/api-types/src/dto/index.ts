@@ -813,6 +813,7 @@ export {
 	PromotionEnvironmentProjectListPublicDto,
 	PromotionEnvironmentProjectPublicDto,
 	PromotionEnvironmentPublicDto,
+	PromotionMissingProjectListPublicDto,
 	UpdatePromotionEnvironmentDto,
 	promotionEnvironmentRemoteSchema,
 	promotionDirectionSchema,
