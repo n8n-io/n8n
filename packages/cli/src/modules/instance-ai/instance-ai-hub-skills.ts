@@ -108,15 +108,16 @@ function createDeferredHubSource(
 	const source: RuntimeSkillSource = {
 		...builtIns,
 		registry: mergedRegistry(),
-		dynamicCatalog: {
-			skillIds: entries.map(({ id }) => id),
-			notice:
-				summaries === null
-					? HUB_UNAVAILABLE_NOTICE
-					: entries.length > 0
-						? 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If multiple available skills match the request and the intended skill is unclear, ask which skill to use.'
-						: undefined,
-		},
+		dynamicCatalog:
+			entries.length > 0 || summaries === null
+				? {
+						skillIds: entries.map(({ id }) => id),
+						notice:
+							summaries === null
+								? HUB_UNAVAILABLE_NOTICE
+								: 'Hub skill labels include their scope. Paths under .n8n/skills/hub are virtual skill identifiers, not workspace files. Load by exact skillId. Read references with load_skill and a relative filePath from linkedFiles. If multiple available skills match the request and the intended skill is unclear, ask which skill to use.',
+					}
+				: undefined,
 		shouldAppendSkillUpdates: (id) =>
 			id.startsWith(HUB_SKILL_ID_PREFIX) &&
 			!builtIns.registry.skills.some((entry) => entry.id === id),

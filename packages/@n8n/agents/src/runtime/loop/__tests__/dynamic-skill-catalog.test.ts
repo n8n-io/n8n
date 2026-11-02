@@ -1,5 +1,5 @@
 import { Agent } from '../../../sdk/agent';
-import { isRuntimeSkillCatalog } from '../../../sdk/message';
+import { isRuntimeSkillCatalog, isRuntimeSkillUpdate } from '../../../sdk/message';
 import {
 	createRuntimeSkillSource,
 	extendRuntimeSkillSource,
@@ -321,6 +321,25 @@ describe('dynamic skill catalogues', () => {
 		expect(list.messages().filter(isRuntimeSkillCatalog)).toHaveLength(2);
 		const removed = await prompt(await config(createRuntimeSkillSource([builtIn])), list);
 		expect(JSON.stringify(removed.messages.at(-1))).toContain('No dynamic skills are available.');
+	});
+
+	it('clears a removed catalogue even when no listed skill was loaded', async () => {
+		const list = input();
+		await prompt(await config(source()), list);
+		const removed = createRuntimeSkillSource([builtIn]);
+		const activeSkills = new ActiveSkills(removed, 'catalog-test');
+		await activeSkills.restore(list);
+
+		const runtime = await config(removed);
+		const result = await prompt(runtime, list, activeSkills);
+
+		expect(list.activeSkillIds).toEqual([]);
+		expect(activeSkills.takeUpdates()).toEqual([]);
+		expect(list.messages().some(isRuntimeSkillUpdate)).toBe(false);
+		expect(list.messages().filter(isRuntimeSkillCatalog)).toHaveLength(2);
+		expect(JSON.stringify(result.messages.at(-1))).toContain('No dynamic skills are available.');
+		await prompt(runtime, list, activeSkills);
+		expect(list.messages().filter(isRuntimeSkillCatalog)).toHaveLength(2);
 	});
 
 	it('preserves dynamic placement when sources are extended, prepared, or filtered', async () => {
