@@ -7,7 +7,7 @@ import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';

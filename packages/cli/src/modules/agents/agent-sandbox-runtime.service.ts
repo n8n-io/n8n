@@ -19,9 +19,9 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
+import { OperationalError } from '@n8n/errors';
 import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { OperationalError } from 'n8n-workflow';
 import { v5 as uuidv5 } from 'uuid';
 
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';

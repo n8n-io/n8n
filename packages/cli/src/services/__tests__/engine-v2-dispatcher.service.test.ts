@@ -1,5 +1,5 @@
 import { UUID_V7_PATTERN } from '@n8n/constants';
-import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
+import { ConflictError, NotFoundError, NotImplementedError, UserError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -11,7 +11,7 @@ import type {
 	StartNodeData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, UserError } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';

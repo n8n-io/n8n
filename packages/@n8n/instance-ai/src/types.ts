@@ -20,6 +20,8 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	AppBinding,
+	AppBindingsResponse,
 	AppBuildResponse,
 	AppListResponse,
 	AppResponse,
@@ -1296,7 +1298,12 @@ export interface InstanceAiDataTableService {
 }
 
 export interface InstanceAiAppService {
-	createApp(input: { name: string; namespace: string; id?: string }): Promise<AppResponse>;
+	createApp(input: {
+		name: string;
+		namespace: string;
+		visibility?: AppResponse['visibility'];
+		id?: string;
+	}): Promise<AppResponse>;
 	listApps(query: { name?: string }): Promise<AppListResponse>;
 	getApp(appId: string): Promise<AppResponse>;
 	findApp(appId: string): Promise<AppResponse | undefined>;
@@ -1308,6 +1315,16 @@ export interface InstanceAiAppService {
 		archive: Buffer,
 		label: string | null,
 	): Promise<AppBuildResponse>;
+	/** The bindings of the draft version, with the TypeScript declarations that describe them. */
+	getBindings(appId: string): Promise<AppBindingsResponse & { types: string }>;
+	/** Saves the full binding list as a new version on top of `baseVersionId`. */
+	setBindings(
+		appId: string,
+		baseVersionId: string | null,
+		bindings: AppBinding[],
+	): Promise<AppBindingsResponse & { types: string }>;
+	/** The `@n8n/app-sdk` package of this instance as a gzip tar archive. */
+	exportSdk(): Promise<Buffer>;
 }
 
 // ── Evaluation configs (config-based evals) ──────────────────────────────────

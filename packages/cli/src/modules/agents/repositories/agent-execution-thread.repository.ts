@@ -18,7 +18,8 @@ import {
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
@@ -509,6 +510,14 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			{ title },
 		);
 		return result.affected === 1;
+	}
+
+	/**
+	 * Store a generated title and emoji on a thread that has no title yet. A
+	 * title that the user set before the generated one arrived stays.
+	 */
+	async setGeneratedTitle(threadId: string, title: string, emoji: string | null): Promise<void> {
+		await this.update({ id: threadId, title: IsNull() }, { title, ...(emoji && { emoji }) });
 	}
 
 	/**

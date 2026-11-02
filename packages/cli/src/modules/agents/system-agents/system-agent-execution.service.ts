@@ -8,10 +8,9 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
 import { FileNotFoundError } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { buffer as streamToBuffer } from 'node:stream/consumers';
 
@@ -311,13 +310,17 @@ export class SystemAgentExecutionService {
 		return thread;
 	}
 
+	/**
+	 * Rename a thread, move it to another project, or both. The user must be able to
+	 * use the thread, and to use the target project of a move.
+	 */
 	async updateThread(
 		agentId: string,
 		user: User,
 		threadId: string,
 		changes: { title?: string; projectId?: string },
 	): Promise<AgentExecutionThread> {
-		const thread = await this.getThread(agentId, user, threadId);
+		const thread = await this.getUsableThread(agentId, user, threadId);
 		const { title, projectId } = changes;
 		const moving = projectId !== undefined && projectId !== thread.projectId;
 		if (moving) await this.assertCanUse(agentId, user, projectId);

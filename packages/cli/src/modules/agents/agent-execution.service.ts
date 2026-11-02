@@ -14,9 +14,8 @@ import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
@@ -686,10 +685,11 @@ export class AgentExecutionService {
 					memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
 						? memoryThread.metadata.emoji
 						: null;
-				await this.agentExecutionThreadRepository.update(threadId, {
-					title: memoryThread.title,
-					...(emoji && { emoji }),
-				});
+				await this.agentExecutionThreadRepository.setGeneratedTitle(
+					threadId,
+					memoryThread.title,
+					emoji,
+				);
 			}
 		} catch {
 			// Memory thread may not exist (agent without memory configured) — ignore
