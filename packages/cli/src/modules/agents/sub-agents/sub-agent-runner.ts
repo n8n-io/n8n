@@ -26,6 +26,7 @@ import {
 import type {
 	AgentBudgetNotice,
 	AgentPlanTaskRef,
+	AgentToolOutputFile,
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSource,
@@ -41,6 +42,7 @@ import { v4 as uuid } from 'uuid';
 
 import type { AgentRunTelemetryType } from '@/interfaces';
 
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { StartExecutionParams } from '../agent-execution.service';
 import {
 	AgentExecutionRepository,
@@ -146,6 +148,10 @@ export interface SubAgentRunResult {
 	result: GenerateResult;
 	/** Opaque, checkpoint-safe host context required to reconstruct this child exactly. */
 	resumeContext?: JSONValue;
+	/** Files that the child made. The parent can read them. */
+	files?: AgentToolOutputFile[];
+	/** Set when the files of the child could not be listed. */
+	filesError?: string;
 }
 
 type SubAgentResumeRequest = Pick<
@@ -189,6 +195,7 @@ export class SubAgentRunner {
 		private readonly toolApprovalService: AgentToolApprovalService,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly usageRelay: SystemAgentUsageRelay,
+		private readonly attachmentService: AgentChatAttachmentService,
 	) {}
 
 	async run(
@@ -412,6 +419,18 @@ export class SubAgentRunner {
 				},
 			);
 			context.abortSignal?.throwIfAborted();
+			// The child thread exists now, so the grant can check that it is a sub-agent of the parent.
+			if (operation.type === 'run' && operation.request.fileIds?.length) {
+				const { parentThreadId } = operation.request;
+				if (!parentThreadId) {
+					throw new UserError('Files can only be passed to sub-agents in a conversation');
+				}
+				await this.attachmentService.grantToSubAgent(operation.request.fileIds, {
+					projectId: context.projectId,
+					parentThreadId,
+					childThreadId: threadId,
+				});
+			}
 			executionStarted = operation.type === 'run';
 			let resultStream: StreamResult;
 
@@ -497,12 +516,19 @@ export class SubAgentRunner {
 				}
 			}
 
+			const returned = await this.returnFilesToParent(
+				operation.request.parentThreadId,
+				threadId,
+				context.projectId,
+			);
+
 			return {
 				taskPath: operation.taskPath,
 				threadId,
 				status,
 				result,
 				...(suspended ? { resumeContext: createResumeContext(runtimeSource.source) } : {}),
+				...returned,
 			};
 		} catch (error) {
 			executionError = error;
@@ -551,6 +577,32 @@ export class SubAgentRunner {
 					});
 				});
 			}
+		}
+	}
+
+	/**
+	 * The child already ran. A file lookup error must not lose its answer, so
+	 * log the error and tell the parent that the files are missing.
+	 */
+	private async returnFilesToParent(
+		parentThreadId: string | undefined,
+		childThreadId: string,
+		projectId: string,
+	): Promise<Pick<SubAgentRunResult, 'files' | 'filesError'>> {
+		if (!parentThreadId) return {};
+		try {
+			const files = await this.attachmentService.returnToParent({
+				projectId,
+				parentThreadId,
+				childThreadId,
+			});
+			return files.length > 0 ? { files } : {};
+		} catch (error) {
+			this.logger.warn('Failed to return sub-agent files to the parent', {
+				childThreadId,
+				error,
+			});
+			return { filesError: 'The files of the sub-agent could not be listed' };
 		}
 	}
 

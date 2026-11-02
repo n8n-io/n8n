@@ -95,6 +95,7 @@ import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
+import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import type { SystemAgentUsageRelay } from '@/modules/agents/system-agents/system-agent-usage-relay';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -507,6 +508,7 @@ describe('AgentExecutionRepository', () => {
 					storage,
 					Container.get(AgentMessageRepository),
 					Container.get(AgentPlanRepository),
+					mock<AgentFileBridge>(),
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
@@ -518,11 +520,13 @@ describe('AgentExecutionRepository', () => {
 						mock<AgentToolApprovalService>(),
 						repository,
 						mock<SystemAgentUsageRelay>(),
+						mock<AgentChatAttachmentService>({ returnToParent: async () => [] }),
 					),
 					service,
 					mockLogger(),
 					jobs,
 					workspaceService,
+					mock<AgentChatAttachmentService>(),
 				);
 				return { service, runner };
 			};

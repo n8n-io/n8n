@@ -2247,6 +2247,59 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant[1].hostEvents).toBeUndefined();
 	});
 
+	it('keeps host events sent before the first step on the message of that step', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', key: 'turn', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'reasoning-start', id: 'r-1' },
+			{ type: 'reasoning-delta', id: 'r-1', delta: 'Plan the reply.' },
+			{ type: 'reasoning-end', id: 'r-1' },
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant).toHaveLength(1);
+		expect(assistant[0].content).toBe('hello');
+		expect(assistant[0].thinkingSegments).toEqual([
+			expect.objectContaining({ content: 'Plan the reply.' }),
+		]);
+		expect(assistant[0].hostEvents).toEqual([
+			expect.objectContaining({ name: 'test.prepared', payload: { step: 0 } }),
+		]);
+	});
+
+	it('starts a new message at the next step after a message with step output', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-1', delta: 'Step one' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-2', delta: 'Step two' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant.map(({ content }) => content)).toEqual(['Step one', 'Step two']);
+		expect(assistant[0].hostEvents).toHaveLength(1);
+		expect(assistant[1].hostEvents).toBeUndefined();
+	});
+
 	it('keeps a message with only host events when the turn reports an error', async () => {
 		const events: AgentSseEvent[] = [
 			{ type: 'host-event', name: 'test.notice', payload: 1 },

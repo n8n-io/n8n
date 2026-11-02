@@ -296,6 +296,7 @@ provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 		props.agentId,
 		attachmentId,
 		props.channel,
+		props.continueSessionId,
 	),
 );
 

@@ -14,8 +14,6 @@ const listItem: SkillListItem = {
 	projectId: 'project-1',
 	projectName: 'Marketing',
 	projectType: 'team',
-	agentId: null,
-	agentName: null,
 	availableToAssistant: false,
 	source: 'ui',
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
