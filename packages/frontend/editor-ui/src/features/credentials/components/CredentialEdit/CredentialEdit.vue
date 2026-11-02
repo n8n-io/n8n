@@ -837,13 +837,25 @@ function onDescriptionEdit(text: string) {
 
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
+const policyProjectId = computed(
+	() => currentCredential.value?.homeProject?.id ?? homeProject.value?.id,
+);
+
+const projectBeforeEdit = typeAvailabilityPoliciesStore.requestedProjectId;
+
 watch(
-	() => homeProject.value?.id,
+	policyProjectId,
 	(projectId) => {
 		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
 	},
 	{ immediate: true },
 );
+
+onBeforeUnmount(() => {
+	if (projectBeforeEdit && projectBeforeEdit !== policyProjectId.value) {
+		void typeAvailabilityPoliciesStore.fetchForProject(projectBeforeEdit);
+	}
+});
 
 const { restriction: credentialTypeRestriction } = useCredentialTypeRestriction(
 	() => credentialTypeName.value,

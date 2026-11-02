@@ -7,6 +7,7 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
 import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -2838,7 +2839,7 @@ describe('CredentialEdit', () => {
 });
 
 describe('CredentialEdit - restricted credential types', () => {
-	const RESTRICTED_TYPE: ICredentialType = {
+	const OPEN_AI_TYPE: ICredentialType = {
 		name: 'openAiApi',
 		displayName: 'OpenAI',
 		properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
@@ -2868,7 +2869,7 @@ describe('CredentialEdit - restricted credential types', () => {
 			},
 		});
 		const credentialsStore = mockedStore(useCredentialsStore);
-		credentialsStore.state.credentialTypes = { [RESTRICTED_TYPE.name]: RESTRICTED_TYPE };
+		credentialsStore.state.credentialTypes = { [OPEN_AI_TYPE.name]: OPEN_AI_TYPE };
 		credentialsStore.getNewCredentialName.mockResolvedValue('OpenAI account');
 		return { pinia, credentialsStore };
 	};
@@ -2879,7 +2880,7 @@ describe('CredentialEdit - restricted credential types', () => {
 		credentialsStore.getCredentialData.mockResolvedValue({
 			id: 'cred-1',
 			name: 'OpenAI account',
-			type: RESTRICTED_TYPE.name,
+			type: OPEN_AI_TYPE.name,
 			data: {},
 			isManaged: false,
 			sharedWithProjects: [],
@@ -2904,7 +2905,7 @@ describe('CredentialEdit - restricted credential types', () => {
 		mockRestrictedCredentialTypes({});
 
 		const { queryByTestId, findByTestId } = renderComponent({
-			props: { activeId: RESTRICTED_TYPE.name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			props: { activeId: OPEN_AI_TYPE.name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
 			pinia,
 		});
 		await findByTestId('node-credentials-config-container');
