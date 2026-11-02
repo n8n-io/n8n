@@ -793,7 +793,8 @@ describe('sub-workflows', () => {
 	it('starts no sub-execution for a run the node failed, even with continueOnFail', async () => {
 		const { graph, executor, resolveSubWorkflow } = executorWith('test.callsSubWorkflowThenFails');
 		const subject = graph.nodes.find((node) => node.id === 'n');
-		(subject?.config as { continueOnFail?: boolean }).continueOnFail = true;
+		expect(subject).toBeDefined();
+		(subject!.config as { continueOnFail?: boolean }).continueOnFail = true;
 
 		const result = await executor.execute(stepRequest(graph, 'n', input));
 
