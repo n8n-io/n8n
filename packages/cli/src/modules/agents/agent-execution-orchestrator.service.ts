@@ -164,6 +164,8 @@ export interface ExecuteForN8nChatPublishedConfig
 		ChatExecutionCallbacks {
 	user: User;
 	abortSignal?: AbortSignal;
+	pauseReport?: boolean;
+	hideUserMessageFromTranscript?: boolean;
 }
 
 export interface ResumeForChatConfig extends ChatExecutionCallbacks {
@@ -870,6 +872,8 @@ export class AgentExecutionOrchestratorService {
 					sandboxPrincipalHash: setup.sandboxPrincipalHash,
 					sessionMode,
 					abortSignal,
+					pauseReport: config.pauseReport,
+					hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 					onExecutionStarted: config.onExecutionStarted,
 					onExecutionRecorded: config.onExecutionRecorded,
 				});
