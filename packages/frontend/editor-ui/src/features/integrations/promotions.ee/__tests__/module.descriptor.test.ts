@@ -1,13 +1,21 @@
+import { VIEWS } from '@n8n/frontend-constants/views';
+import {
+	capabilities,
+	capabilityRegistry,
+	type EnvironmentsSettings,
+} from '@n8n/frontend-module-sdk';
 import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 
-import { VIEWS } from '@/app/constants';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { PromotionsModule } from '../module.descriptor';
-import { PROMOTION_PREVIEW_VIEWS, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
+import {
+	PROMOTION_PREVIEW_VIEWS,
+	PROMOTIONS_SETTINGS_SCOPES,
+	PROMOTIONS_SETTINGS_VIEW,
+} from '../promotions.constants';
 
 const stub = { render: () => null };
 
@@ -47,12 +55,39 @@ const setup = ({
 }: { activeModules?: string[]; environmentsVersion?: 'v1' | 'v2'; scopes?: Scope[] } = {}) => {
 	createTestingPinia({ stubActions: false });
 
-	const settingsStore = useSettingsStore();
-	settingsStore.settings.activeModules = activeModules;
-	useSourceControlStore().preferences.environmentsVersion = environmentsVersion;
+	capabilityRegistry.provide(
+		capabilities.environmentsSettings,
+		mock<EnvironmentsSettings>({
+			isPromotionsEnabled: () =>
+				activeModules.includes('promotions') && environmentsVersion === 'v2',
+		}),
+	);
 	// Project scopes stay empty, as in the app, where the frontend does not load them.
 	useRBACStore().setGlobalScopes(scopes);
 };
+
+afterEach(() => {
+	capabilityRegistry.clear();
+});
+
+describe('PromotionsModule settings link', () => {
+	const link = () => PromotionsModule.settingsPages?.find(({ id }) => id === 'settings-promotions');
+
+	it('is available when promotions are enabled and the user can manage them', () => {
+		setup({ scopes: [...PROMOTIONS_SETTINGS_SCOPES] });
+
+		expect(link()?.available).toBe(true);
+	});
+
+	it.each([
+		['the instance uses v1', { environmentsVersion: 'v1' as const }],
+		['the user lacks a settings scope', { scopes: PROMOTIONS_SETTINGS_SCOPES.slice(1) }],
+	])('is not available when %s', (_, options) => {
+		setup({ scopes: [...PROMOTIONS_SETTINGS_SCOPES], ...options });
+
+		expect(link()?.available).toBe(false);
+	});
+});
 
 describe('PromotionsModule settings route', () => {
 	it('opens settings when promotions are enabled', async () => {

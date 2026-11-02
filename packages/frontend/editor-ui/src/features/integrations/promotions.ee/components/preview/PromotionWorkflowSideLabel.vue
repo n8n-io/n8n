@@ -18,6 +18,19 @@ const i18n = useI18n();
 
 <style module lang="scss">
 .badge {
-	composes: sourceBadge from '../../../../workflows/workflowDiff/workflowDiff.module.scss';
+	// The source badge of the editor's workflow diff. The module cannot import the editor styles.
+	position: absolute;
+	top: var(--spacing--xs);
+	left: var(--spacing--xs);
+	z-index: 1;
+	border-radius: var(--radius--3xs);
+	border: var(--border-width) solid var(--color--foreground--tint-1);
+	background: var(--color--foreground--tint-2);
+	display: flex;
+	height: 30px;
+	padding: 0 var(--spacing--xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
+	align-self: stretch;
 }
 </style>

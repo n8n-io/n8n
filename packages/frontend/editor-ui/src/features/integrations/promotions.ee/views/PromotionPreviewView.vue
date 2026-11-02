@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PromotionDirection } from '@n8n/api-types';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import {
 	N8nButton,
 	N8nCallout,
@@ -13,15 +14,14 @@ import {
 	N8nText,
 	useResizablePanel,
 } from '@n8n/design-system';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, toRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-
-import { VIEWS } from '@/app/constants';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
@@ -57,10 +57,12 @@ const props = defineProps<{ projectId: string; direction: PromotionDirection }>(
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
-const projectsStore = useProjectsStore();
+const projectContext = capabilityRegistry.use(capabilities.projectContext);
 const rbacStore = useRBACStore();
 const rootStore = useRootStore();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 
 const projectId = toRef(props, 'projectId');
 const direction = toRef(props, 'direction');
@@ -104,8 +106,8 @@ const details = usePromotionResourceDetails(
 );
 
 const projectName = computed(() =>
-	projectsStore.currentProject?.id === props.projectId
-		? projectsStore.currentProject.name
+	projectContext.currentProject()?.id === props.projectId
+		? projectContext.currentProject()?.name
 		: preview.value?.resources.find(
 				(resource) => resource.type === 'project' && resource.id === props.projectId,
 			)?.name,
@@ -181,7 +183,7 @@ const projectRoute = computed(() => ({
 }));
 const backLabel = computed(() =>
 	i18n.baseText('promotions.preview.back', {
-		interpolate: { project: projectsStore.currentProject?.name ?? '' },
+		interpolate: { project: projectContext.currentProject()?.name ?? '' },
 	}),
 );
 

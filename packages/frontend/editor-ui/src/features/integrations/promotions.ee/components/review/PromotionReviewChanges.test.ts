@@ -1,10 +1,8 @@
 import type { PromotionReviewChanges as ReviewChanges } from '@n8n/api-types';
+import { createComponentRenderer, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-
-import { createComponentRenderer } from '@/__tests__/render';
-import { waitAllPromises } from '@/__tests__/utils';
 
 import { billingPreview } from '../../__tests__/preview.fixtures';
 import * as api from '../../promotions.api';

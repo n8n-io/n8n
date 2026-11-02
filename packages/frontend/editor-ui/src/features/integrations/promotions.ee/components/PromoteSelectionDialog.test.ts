@@ -1,7 +1,7 @@
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
-import { createComponentRenderer } from '@/__tests__/render';
 import PromoteSelectionDialog from './PromoteSelectionDialog.vue';
 
 const renderComponent = createComponentRenderer(PromoteSelectionDialog, {

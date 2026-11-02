@@ -1,18 +1,20 @@
 import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import { useMessage } from '@n8n/design-system';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
-import { promoteProjectSelection } from '../promotions.api';
+import {
+	applyProjectSelection,
+	continueApplyProjectSelection,
+	promoteProjectSelection,
+} from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 import type { ApplyCheckResult } from '../promotions.types';
-import { applyProjectSelection, continueApplyProjectSelection } from '../promotionsSettings.api';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
 export type OperationRequest = {
@@ -94,7 +96,7 @@ export function usePromotionOperation(
 						cancelButtonText: i18n.baseText('promotions.operation.close'),
 					},
 				);
-		return answer === MODAL_CONFIRM;
+		return answer === 'confirm';
 	}
 
 	async function leave() {

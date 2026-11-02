@@ -4,51 +4,48 @@ vi.mock('@n8n/stores/settings.store', () => ({
 import { effectScope, reactive, nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { mock } from 'vitest-mock-extended';
-import { ResponseError } from '@n8n/rest-api-client';
+import {
+	capabilities,
+	capabilityRegistry,
+	type CredentialEditorOptions,
+	type ProjectContext,
+	type ResourceEditors,
+	type VariableEditorOptions,
+} from '@n8n/frontend-module-sdk';
+import {
+	createPublicCredential,
+	createPublicProject,
+	getProject,
+	ResponseError,
+	type Project,
+} from '@n8n/rest-api-client';
 import type { CredentialPublicDto, CreatedProjectPublicDto } from '@n8n/api-types';
-import type { NewCredentialsModal } from '@/Interface';
-import type { Project } from '@/features/collaboration/projects/projects.types';
-import type { VariableModalOptions } from '@/features/settings/environments.ee/environments.types';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
-import { createPublicProject } from '@/features/collaboration/projects/projects.api';
-import { createPublicCredential } from '@/features/credentials/credentials.api';
 import { usePromotionBindingCreation } from './usePromotionBindingCreation';
 import { blocked, credential, variable } from '../__tests__/bindings.fixtures';
 
-const stores = vi.hoisted(() => ({
-	projects: {
-		fetchProject: vi.fn(),
-		getMyProjects: vi.fn(),
-		canCreateProjects: false,
-		hasTeamProjectQuota: true,
-		hasPermissionToCreateProjects: true,
-	},
-	credentials: { fetchCredentialTypes: vi.fn(), getCredentialTypeByName: vi.fn() },
-	environments: { fetchAllVariables: vi.fn(), createVariable: vi.fn() },
-	ui: {
-		modalsById: {} as Record<string, { open: boolean }>,
-		openNewCredential: vi.fn(),
-		openModalWithData: vi.fn(),
-		closeModal: vi.fn(),
-	},
+const editorOpen = reactive({ credential: false, variable: false });
+const editors = {
+	hasCredentialType: vi.fn<ResourceEditors['hasCredentialType']>(),
+	loadVariables: vi.fn<ResourceEditors['loadVariables']>(),
+	createVariable: vi.fn<ResourceEditors['createVariable']>(),
+	openCredentialEditor: vi.fn<ResourceEditors['openCredentialEditor']>(),
+	openVariableEditor: vi.fn<ResourceEditors['openVariableEditor']>(),
+	isEditorOpen: (editor: 'credential' | 'variable') => editorOpen[editor],
+	closeEditor: vi.fn<ResourceEditors['closeEditor']>(),
+};
+const projectContext = mock<ProjectContext>({ hasTeamProjectQuota: () => true });
+
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getProject: vi.fn(),
+	createPublicProject: vi.fn(),
+	createPublicCredential: vi.fn(),
 }));
-vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => stores.ui }));
-vi.mock('@/features/collaboration/projects/projects.store', () => ({
-	useProjectsStore: () => stores.projects,
-}));
-vi.mock('@/features/credentials/credentials.store', () => ({
-	useCredentialsStore: () => stores.credentials,
-}));
-vi.mock('@/features/settings/environments.ee/environments.store', () => ({
-	useEnvironmentsStore: () => stores.environments,
-}));
+vi.mock('@n8n/stores/rbac.store', () => ({ useRBACStore: () => ({ hasScope: () => true }) }));
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' } }),
+	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' }, restApiContext: {} }),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
-vi.mock('@/features/collaboration/projects/projects.api', () => ({ createPublicProject: vi.fn() }));
-vi.mock('@/features/credentials/credentials.api', () => ({ createPublicCredential: vi.fn() }));
 
 const project = mock<Project>({
 	id: credential.ownerProject.id,
@@ -69,8 +66,8 @@ const missingProject = {
 	customTelemetryTags: [{ key: 'team', value: 'example' }],
 };
 const scopes: ReturnType<typeof effectScope>[] = [];
-let credentialOptions: NewCredentialsModal;
-let variableOptions: VariableModalOptions;
+let credentialOptions: CredentialEditorOptions;
+let variableOptions: VariableEditorOptions;
 
 function setup(missingProjects = false) {
 	const scope = effectScope();
@@ -87,24 +84,27 @@ function setup(missingProjects = false) {
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	stores.ui.modalsById = reactive({
-		[CREDENTIAL_EDIT_MODAL_KEY]: { open: false },
-		[VARIABLE_MODAL_KEY]: { open: false },
+	editorOpen.credential = false;
+	editorOpen.variable = false;
+	capabilityRegistry.provide(capabilities.resourceEditors, editors);
+	capabilityRegistry.provide(capabilities.projectContext, projectContext);
+	editors.openCredentialEditor.mockImplementation((_type, options) => {
+		credentialOptions = options;
+		editorOpen.credential = true;
 	});
-	stores.ui.openNewCredential.mockImplementation((...args) => {
-		credentialOptions = args[7];
-		stores.ui.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+	editors.openVariableEditor.mockImplementation((options) => {
+		variableOptions = options;
+		editorOpen.variable = true;
 	});
-	stores.ui.openModalWithData.mockImplementation(({ name, data }) => {
-		variableOptions = data;
-		stores.ui.modalsById[name].open = true;
-	});
-	stores.credentials.getCredentialTypeByName.mockReturnValue({ name: credential.credentialType });
-	stores.projects.fetchProject.mockResolvedValue(project);
+	editors.hasCredentialType.mockResolvedValue(true);
+	vi.mocked(getProject).mockResolvedValue(project);
 	vi.mocked(createPublicProject).mockResolvedValue(projectResponse);
 	vi.mocked(createPublicCredential).mockResolvedValue(saved);
 });
-afterEach(() => scopes.splice(0).forEach((scope) => scope.stop()));
+afterEach(() => {
+	scopes.splice(0).forEach((scope) => scope.stop());
+	capabilityRegistry.clear();
+});
 
 it('keeps a created project after a failed credential save and resolves on closure', async () => {
 	const adapter = setup(true);
@@ -134,8 +134,8 @@ it('keeps a created project after a failed credential save and resolves on closu
 	expect(complete).not.toHaveBeenCalled();
 	await credentialOptions.createCredential!(details, project.id);
 	expect(createPublicProject).toHaveBeenCalledTimes(1);
-	expect(stores.projects.fetchProject).toHaveBeenCalledTimes(2);
-	expect(stores.projects.getMyProjects).toHaveBeenCalledTimes(2);
+	expect(getProject).toHaveBeenCalledTimes(2);
+	expect(projectContext.getMyProjects).toHaveBeenCalledTimes(2);
 	expect(createPublicCredential).toHaveBeenLastCalledWith(
 		{ baseUrl: '/custom/api/v1' },
 		{
@@ -149,7 +149,7 @@ it('keeps a created project after a failed credential save and resolves on closu
 		},
 	);
 	expect(complete).not.toHaveBeenCalled();
-	stores.ui.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = false;
+	editorOpen.credential = false;
 	await pending;
 	expect(complete).toHaveBeenCalledWith({
 		kind: 'credential',
@@ -165,7 +165,7 @@ it('retries a project read without creating the project again', async () => {
 	const adapter = setup(true);
 	const pending = adapter.createBinding(credential);
 	await flushPromises();
-	stores.projects.getMyProjects.mockRejectedValueOnce(new Error('Refresh failed'));
+	projectContext.getMyProjects.mockRejectedValueOnce(new Error('Refresh failed'));
 	const details = { id: '', name: credential.name, type: credential.credentialType, data: {} };
 	await expect(credentialOptions.createCredential!(details, project.id)).rejects.toThrow(
 		'Refresh failed',
@@ -173,7 +173,7 @@ it('retries a project read without creating the project again', async () => {
 	expect(createPublicCredential).not.toHaveBeenCalled();
 	await credentialOptions.createCredential!(details, project.id);
 	expect(createPublicProject).toHaveBeenCalledTimes(1);
-	stores.ui.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = false;
+	editorOpen.credential = false;
 	await pending;
 });
 
@@ -188,27 +188,25 @@ it('reads an occupied project without claiming it was created', async () => {
 		{ id: '', name: credential.name, type: credential.credentialType, data: {} },
 		project.id,
 	);
-	expect(stores.projects.fetchProject).toHaveBeenCalledWith(project.id);
+	expect(getProject).toHaveBeenCalledWith({}, project.id);
 	expect(adapter.onProjectCreated).not.toHaveBeenCalled();
 	expect(adapter.createdProjects.value).toEqual([]);
-	stores.ui.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = false;
+	editorOpen.credential = false;
 	await pending;
 });
 
 it('does not create a project after a denied lookup', async () => {
-	stores.projects.fetchProject.mockRejectedValue(
-		new ResponseError('Denied', { httpStatusCode: 403 }),
-	);
+	vi.mocked(getProject).mockRejectedValue(new ResponseError('Denied', { httpStatusCode: 403 }));
 	await expect(setup().createBinding(credential)).rejects.toThrow('Denied');
 	expect(createPublicProject).not.toHaveBeenCalled();
-	expect(stores.ui.openNewCredential).not.toHaveBeenCalled();
+	expect(editors.openCredentialEditor).not.toHaveBeenCalled();
 });
 
 it.each([null, 'owner-team'])('creates a variable in its required scope: %s', async (projectId) => {
 	const binding = projectId
 		? { ...variable, scope: { kind: 'project' as const, project: credential.ownerProject } }
 		: variable;
-	stores.environments.createVariable.mockResolvedValue({
+	editors.createVariable.mockResolvedValue({
 		id: 'variable-id',
 		key: variable.name,
 		value: '',
@@ -223,12 +221,12 @@ it.each([null, 'owner-team'])('creates a variable in its required scope: %s', as
 		allowOnProtectedInstance: true,
 	});
 	await variableOptions.onCreate!({ key: variable.name, value: '' });
-	expect(stores.environments.createVariable).toHaveBeenCalledWith({
+	expect(editors.createVariable).toHaveBeenCalledWith({
 		key: variable.name,
 		value: '',
 		projectId,
 	});
-	stores.ui.modalsById[VARIABLE_MODAL_KEY].open = false;
+	editorOpen.variable = false;
 	expect(await pending).toEqual({
 		kind: 'variable',
 		id: 'variable-id',
@@ -245,18 +243,18 @@ it('blocks concurrent editors and ignores callbacks after closure', async () => 
 	await expect(adapter.createBinding(variable)).rejects.toThrow();
 	const staleCreate = credentialOptions.createCredential!;
 	const staleInitializeError = credentialOptions.onInitializeError!;
-	stores.ui.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = false;
+	editorOpen.credential = false;
 	expect(await first).toBeNull();
 	const second = adapter.createBinding(variable);
 	await flushPromises();
 	staleInitializeError(new Error('Old editor failed'));
-	expect(stores.ui.closeModal).not.toHaveBeenCalled();
+	expect(editors.closeEditor).not.toHaveBeenCalled();
 	await expect(
 		staleCreate({ id: '', name: 'Stale', type: credential.credentialType, data: {} }, project.id),
 	).rejects.toThrow();
 	expect(createPublicCredential).not.toHaveBeenCalled();
 	adapter.scope.stop();
 	expect(await second).toBeNull();
-	stores.ui.modalsById[VARIABLE_MODAL_KEY].open = false;
+	editorOpen.variable = false;
 	await nextTick();
 });

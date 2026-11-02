@@ -1,9 +1,9 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import { createComponentRenderer } from '@/__tests__/render';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import PromoteInstanceDialog from './PromoteInstanceDialog.vue';
 

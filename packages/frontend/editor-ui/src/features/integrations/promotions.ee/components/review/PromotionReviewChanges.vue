@@ -10,9 +10,8 @@ import {
 import type { PromotionChangesState, SlotPromotionChangesProps } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import dateformat from 'dateformat';
 import { computed, provide, ref, shallowRef, watch } from 'vue';
-
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import { usePromotionResourceDetails } from '../../composables/usePromotionResourceDetails';
 import { indexBlockers } from '../../promotionOperation';
@@ -81,10 +80,16 @@ async function load() {
 const outcome = computed(() =>
 	changes.value?.warnings.includes('commitsUnavailable') ? changes.value.outcome : null,
 );
+// The date format of the editor: the year shows only when it is not the current year.
+function toDisplayDate(value: string) {
+	const sameYear = new Date(value).getFullYear() === new Date().getFullYear();
+	return dateformat(value, sameYear ? 'mmm d' : 'mmm d, yyyy');
+}
+
 const outcomeDescription = computed(() => {
 	if (!outcome.value) return undefined;
 	const { state, at, by } = outcome.value;
-	const date = at ? convertToDisplayDate(at).date : null;
+	const date = at ? toDisplayDate(at) : null;
 	if (by && date) {
 		return i18n.baseText(`promotions.review.outcome.${state}.description`, {
 			interpolate: { user: by, date },

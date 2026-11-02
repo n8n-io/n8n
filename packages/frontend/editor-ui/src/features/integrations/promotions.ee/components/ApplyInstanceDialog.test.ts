@@ -1,12 +1,19 @@
+import {
+	capabilities,
+	capabilityRegistry,
+	type ProjectContext,
+	type ResourceEditors,
+} from '@n8n/frontend-module-sdk';
+import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { mock } from 'vitest-mock-extended';
 import { defineComponent, h } from 'vue';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { applied, blocked, credential, variable } from '../__tests__/bindings.fixtures';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import ApplyInstanceDialog from './ApplyInstanceDialog.vue';
@@ -34,10 +41,19 @@ const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
 	},
 });
 
+let projectContext: ProjectContext;
+
 describe('ApplyInstanceDialog', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();
+		projectContext = mock<ProjectContext>();
+		capabilityRegistry.provide(capabilities.projectContext, projectContext);
+		capabilityRegistry.provide(capabilities.resourceEditors, mock<ResourceEditors>());
+	});
+
+	afterEach(() => {
+		capabilityRegistry.clear();
 	});
 
 	it('submits the body form from the footer button', async () => {
@@ -144,38 +160,35 @@ describe('ApplyInstanceDialog', () => {
 
 	it('reloads the project list after a successful apply', async () => {
 		api.applyPromotion.mockResolvedValue(applied);
-		const projectsStore = useProjectsStore();
 		const { findByTestId } = renderComponent();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 
-		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
-		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(projectContext.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectContext.getProjectsCount).toHaveBeenCalledTimes(1);
 		// This user cannot list every project, so the full list is not loaded.
-		expect(projectsStore.getAllProjects).not.toHaveBeenCalled();
+		expect(projectContext.getAllProjects).not.toHaveBeenCalled();
 	});
 
 	it('also reloads all projects when the user can list them', async () => {
 		api.applyPromotion.mockResolvedValue(applied);
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.globalProjectPermissions = { list: true };
+		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['project:list'] });
 		const { findByTestId } = renderComponent();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 
-		await waitFor(() => expect(projectsStore.getAllProjects).toHaveBeenCalledTimes(1));
-		expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(projectContext.getAllProjects).toHaveBeenCalledTimes(1));
+		expect(projectContext.getMyProjects).toHaveBeenCalledTimes(1);
 	});
 
 	it('reports success when the project list cannot be reloaded', async () => {
 		api.applyPromotion.mockResolvedValue(applied);
-		const projectsStore = useProjectsStore();
-		vi.mocked(projectsStore.getMyProjects).mockRejectedValue(new Error('network'));
+		vi.mocked(projectContext.getMyProjects).mockRejectedValue(new Error('network'));
 		const { findByTestId, emitted } = renderComponent();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 
-		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
+		await waitFor(() => expect(projectContext.getMyProjects).toHaveBeenCalled());
 		expect(mockShowError).not.toHaveBeenCalled();
 		expect(mockShowMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'Instance updated' }),
@@ -185,7 +198,6 @@ describe('ApplyInstanceDialog', () => {
 
 	it('continues the whole instance and reloads the project list after the binding flow applies', async () => {
 		api.applyPromotion.mockResolvedValue(blocked({ missingBindings: [credential] }));
-		const projectsStore = useProjectsStore();
 		const { findByTestId, emitted } = renderComponent({
 			global: {
 				stubs: {
@@ -220,8 +232,8 @@ describe('ApplyInstanceDialog', () => {
 		const flow = await findByTestId('stub-applied');
 		await userEvent.click(flow);
 
-		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
-		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(projectContext.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectContext.getProjectsCount).toHaveBeenCalledTimes(1);
 		// The toast counts the projects that the binding flow created as created.
 		expect(mockShowMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -327,19 +339,17 @@ describe('ApplyInstanceDialog', () => {
 	it('reloads the project list when the apply fails', async () => {
 		// A failed apply can still have created or deleted projects.
 		api.applyPromotion.mockRejectedValueOnce(new Error('import failed'));
-		const projectsStore = useProjectsStore();
 		const { findByTestId } = renderComponent();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 
-		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
-		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(projectContext.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectContext.getProjectsCount).toHaveBeenCalledTimes(1);
 	});
 
 	it('reloads the project list when the binding flow closes without applying', async () => {
 		// A failed Continue keeps the flow open; the user then closes it.
 		api.applyPromotion.mockResolvedValue(blocked({ missingBindings: [credential] }));
-		const projectsStore = useProjectsStore();
 		const { findByTestId, emitted } = renderComponent({
 			global: {
 				stubs: {
@@ -360,8 +370,8 @@ describe('ApplyInstanceDialog', () => {
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 		await userEvent.click(await findByTestId('stub-close'));
 
-		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
-		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		await waitFor(() => expect(projectContext.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectContext.getProjectsCount).toHaveBeenCalledTimes(1);
 		expect(emitted('update:open')).toEqual([[false]]);
 	});
 });

@@ -1,19 +1,25 @@
-import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
+import { INBOX_VIEW } from '@n8n/frontend-constants/inbox';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import {
+	capabilities,
+	capabilityRegistry,
+	componentRegistry,
+	type ProjectContext,
+} from '@n8n/frontend-module-sdk';
+import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
 import userEvent from '@testing-library/user-event';
 import { render as renderToast, waitFor, within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-
 import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
 import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
+import { registerDiffSlotStubs } from '../__tests__/slots';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
@@ -36,13 +42,19 @@ vi.mock('../components/preview/PromotionWorkflowDiff.vue', () => ({
 	},
 }));
 vi.mock('../promotionsSettings.api');
-// The projects store loads the project of the route on its own.
-vi.mock('@/features/collaboration/projects/projects.api');
+// The outcome reads the project after an apply.
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getProject: vi.fn(),
+}));
 // The editors are modals of the app. The test answers for them.
 vi.mock('../composables/usePromotionBindingCreation', () => ({
 	usePromotionBindingCreation: () => ({ createBinding, updateCheck: vi.fn() }),
 }));
-vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+vi.mock('@n8n/design-system', async () => ({
+	...(await vi.importActual<object>('@n8n/design-system')),
+	useMessage: () => ({ confirm }),
+}));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError: vi.fn() }),
 }));
@@ -179,6 +191,19 @@ const answerWorkflowDetails = () =>
 			missingKeys: [],
 		}));
 
+beforeEach(() => {
+	registerDiffSlotStubs();
+	capabilityRegistry.provide(
+		capabilities.projectContext,
+		mock<ProjectContext>({ currentProject: () => null }),
+	);
+});
+
+afterEach(() => {
+	componentRegistry.clear();
+	capabilityRegistry.clear();
+});
+
 describe('PromotionPreviewView', () => {
 	it.each(['promote', 'apply'] as const)(
 		'shows the selected change count and omits zero for %s',
@@ -269,7 +294,7 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(previewWithCheck());
 		vi.mocked(api.getPromotionResourceDetails).mockReset();
 		vi.mocked(api.getPromotionResourceDetails).mockResolvedValue({ details: [], missingKeys: [] });
-		confirm.mockResolvedValue(MODAL_CONFIRM);
+		confirm.mockResolvedValue('confirm');
 	});
 
 	it('should keep the selection while the user inspects cards', async () => {
@@ -701,7 +726,7 @@ describe('PromotionPreviewView', () => {
 		);
 		let answer: (value: string) => void = () => {};
 		confirm.mockReturnValue(new Promise((resolve) => (answer = resolve)));
-		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue(applied);
+		vi.mocked(api.applyProjectSelection).mockResolvedValue(applied);
 
 		const { getAllByTestId, getByTestId } = await renderApply();
 		const blocked = treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
@@ -712,12 +737,12 @@ describe('PromotionPreviewView', () => {
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 		await userEvent.click(getByTestId('promotion-preview-submit'));
-		answer(MODAL_CONFIRM);
+		answer('confirm');
 		await waitAllPromises();
 
 		expect(confirm).toHaveBeenCalledTimes(1);
-		expect(settingsApi.applyProjectSelection).toHaveBeenCalledTimes(1);
-		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+		expect(api.applyProjectSelection).toHaveBeenCalledTimes(1);
+		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
@@ -735,12 +760,12 @@ describe('PromotionPreviewView', () => {
 			),
 		);
 		const { environmentId, git } = check();
-		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
+		vi.mocked(api.applyProjectSelection).mockResolvedValue({
 			environmentId,
 			git,
 			status: 'source-changed',
 		});
-		vi.mocked(settingsApi.continueApplyProjectSelection).mockResolvedValue(applied);
+		vi.mocked(api.continueApplyProjectSelection).mockResolvedValue(applied);
 
 		const { getAllByTestId, getByTestId } = await renderApply();
 		const submit = getByTestId('promotion-preview-submit');
@@ -749,7 +774,7 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox'));
 		await userEvent.click(submit);
 
-		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
@@ -763,16 +788,12 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		await userEvent.click(submit);
 
-		expect(settingsApi.continueApplyProjectSelection).toHaveBeenCalledWith(
-			expect.anything(),
-			'p1',
-			{
-				workflowIds: ['w1', 'w3', 'w4'],
-				expectedSource,
-				expectedPreviewRevision: REVISION,
-				confirmDestructiveChanges: true,
-			},
-		);
+		expect(api.continueApplyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w3', 'w4'],
+			expectedSource,
+			expectedPreviewRevision: REVISION,
+			confirmDestructiveChanges: true,
+		});
 		// The confirmation says what the apply removes.
 		expect(confirm).toHaveBeenLastCalledWith(
 			expect.stringContaining("can't be restored"),
@@ -783,7 +804,7 @@ describe('PromotionPreviewView', () => {
 
 	it('should say why when this instance changed after the page loaded', async () => {
 		const { environmentId, git } = check();
-		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue({
+		vi.mocked(api.applyProjectSelection).mockResolvedValue({
 			environmentId,
 			git,
 			status: 'preview-changed',
@@ -868,7 +889,7 @@ describe('PromotionPreviewView', () => {
 					: resource,
 			),
 		});
-		vi.mocked(settingsApi.applyProjectSelection).mockResolvedValue(applied);
+		vi.mocked(api.applyProjectSelection).mockResolvedValue(applied);
 
 		const { getAllByTestId, getByTestId } = await renderApply();
 		const moved = treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox');
@@ -878,7 +899,7 @@ describe('PromotionPreviewView', () => {
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 
-		expect(settingsApi.applyProjectSelection).toHaveBeenCalledWith(
+		expect(api.applyProjectSelection).toHaveBeenCalledWith(
 			expect.anything(),
 			'p1',
 			expect.objectContaining({ workflowIds: expect.arrayContaining(['w2']) }),
@@ -886,7 +907,7 @@ describe('PromotionPreviewView', () => {
 	});
 
 	it('should tell users whether to retry, resolve a conflict or check the changes after a failed apply', async () => {
-		vi.mocked(settingsApi.applyProjectSelection)
+		vi.mocked(api.applyProjectSelection)
 			.mockRejectedValueOnce(new ResponseError('Too many requests', { httpStatusCode: 429 }))
 			.mockRejectedValueOnce(
 				new ResponseError('Import blocked: 1 issue(s) must be resolved', { httpStatusCode: 409 }),

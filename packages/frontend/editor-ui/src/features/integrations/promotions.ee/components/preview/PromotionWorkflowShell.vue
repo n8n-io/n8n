@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { N8nButton, N8nText } from '@n8n/design-system';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-
-import WorkflowDiffPlaceholder from '@/features/workflows/workflowDiff/WorkflowDiffPlaceholder.vue';
+import { computed } from 'vue';
 
 import type { WorkflowShellStatus } from '../../promotionPreview.workflow';
 import PromotionWorkflowSideLabel from './PromotionWorkflowSideLabel.vue';
@@ -13,11 +13,16 @@ defineProps<{
 }>();
 const emit = defineEmits<{ activate: []; retry: []; refresh: [] }>();
 const i18n = useI18n();
+const WorkflowDiffPlaceholder = computed(() => componentRegistry.get('workflow-diff-placeholder'));
 </script>
 
 <template>
 	<!-- The real diff follows a loading state, so the illustration would only flash. -->
-	<WorkflowDiffPlaceholder :hide-illustration="status === 'loading'">
+	<component
+		:is="WorkflowDiffPlaceholder"
+		v-if="WorkflowDiffPlaceholder"
+		:hide-illustration="status === 'loading'"
+	>
 		<template #sourceLabel>
 			<PromotionWorkflowSideLabel side="before" />
 		</template>
@@ -57,5 +62,5 @@ const i18n = useI18n();
 		<N8nText v-else color="text-light">
 			{{ i18n.baseText('promotions.preview.card.unreadable') }}
 		</N8nText>
-	</WorkflowDiffPlaceholder>
+	</component>
 </template>

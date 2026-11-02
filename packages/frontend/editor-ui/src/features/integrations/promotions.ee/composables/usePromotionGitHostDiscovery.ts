@@ -1,11 +1,11 @@
 import type { PromotionRepository } from '@n8n/api-types';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDebounceFn } from '@vueuse/core';
 import { onScopeDispose, ref, watch } from 'vue';
 
-import { DEBOUNCE_TIME } from '@/app/constants';
 import { fetchPromotionBranches, fetchPromotionRepositories } from '../promotionsSettings.api';
 
 type DiscoveryContext = {

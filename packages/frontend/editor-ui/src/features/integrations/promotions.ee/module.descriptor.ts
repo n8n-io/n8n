@@ -1,10 +1,10 @@
 import type { PromotionDirection } from '@n8n/api-types';
-import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { capabilities, capabilityRegistry, defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router';
 
-import { VIEWS } from '@/app/constants';
-import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import {
 	PROMOTION_PREVIEW_VIEWS,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
@@ -17,9 +17,11 @@ const SettingsView = async () => await import('./views/PromotionsSettingsView.vu
 const EnvironmentView = async () => await import('./views/PromotionEnvironmentView.vue');
 const PreviewView = async () => await import('./views/PromotionPreviewView.vue');
 
+const isPromotionsEnabled = () =>
+	capabilityRegistry.use(capabilities.environmentsSettings).isPromotionsEnabled();
+
 // Module routes skip custom middleware, so the gate runs here.
-const requirePromotionsEnabled = () =>
-	usePromotionsEnabled().isEnabled.value || { name: VIEWS.SOURCE_CONTROL };
+const requirePromotionsEnabled = () => isPromotionsEnabled() || { name: VIEWS.SOURCE_CONTROL };
 
 /** A project page that shows the changes before the user promotes or applies them. */
 const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
@@ -39,7 +41,7 @@ const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
 	beforeEnter: () => {
 		const scope = direction === 'promote' ? 'promotions:promote' : 'promotions:apply';
 		const allowed =
-			usePromotionsEnabled().isEnabled.value &&
+			isPromotionsEnabled() &&
 			useRBACStore().hasScope(['promotions:read', scope], {}, { mode: 'allOf' });
 		return allowed || { name: VIEWS.HOMEPAGE };
 	},
@@ -50,6 +52,27 @@ export const PromotionsModule = defineFrontendModule({
 	name: 'Promotions',
 	description: 'Promote workflow changes between environments',
 	icon: 'upload',
+	settingsPages: [
+		{
+			id: 'settings-promotions',
+			order: 20,
+			section: 'operations',
+			icon: 'git-branch',
+			get label() {
+				return useI18n().baseText('settings.promotions.title');
+			},
+			position: 'top',
+			route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
+			preview: true,
+			// The same checks as the settings route.
+			get available() {
+				return (
+					isPromotionsEnabled() &&
+					useRBACStore().hasScope([...PROMOTIONS_SETTINGS_SCOPES], {}, { mode: 'allOf' })
+				);
+			},
+		},
+	],
 	routes: [
 		{
 			path: 'promotions',

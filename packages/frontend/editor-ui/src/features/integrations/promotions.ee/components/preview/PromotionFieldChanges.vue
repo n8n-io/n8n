@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import type { PromotionDirection } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
-
-import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
 import {
 	PromotionAbsentSideLabelsKey,
@@ -20,6 +19,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const CodeDiff = computed(() => componentRegistry.get('code-diff'));
 const absentLabels = inject(PromotionAbsentSideLabelsKey, undefined);
 
 // Before is the branch for promote, and this instance for apply.
@@ -81,7 +81,12 @@ const sides = computed(() =>
 			<N8nText step="2xs" bold color="text-base">
 				{{ i18n.baseText('promotions.preview.field.data') }}
 			</N8nText>
-			<NodeDiff :old-string="dataChange.before ?? ''" :new-string="dataChange.after ?? ''" />
+			<component
+				:is="CodeDiff"
+				v-if="CodeDiff"
+				:old-string="dataChange.before ?? ''"
+				:new-string="dataChange.after ?? ''"
+			/>
 		</div>
 	</div>
 </template>

@@ -4,6 +4,7 @@ import {
 	promotionDirectionSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -21,6 +22,7 @@ import {
 	N8nText,
 	useMessage,
 } from '@n8n/design-system';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -29,10 +31,7 @@ import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from
 import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
-import { MODAL_CONFIRM } from '@/app/constants';
-import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
@@ -57,14 +56,14 @@ const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canConnect, connect } = usePromotionCheckout();
 const {
 	busy: switchBusy,
 	canSwitchBack,
 	switchTo: switchEnvironmentsVersion,
-} = useEnvironmentsVersionSwitch();
+} = capabilityRegistry.use(capabilities.environmentsSettings).useVersionSwitch();
 const {
 	busy: protectionBusy,
 	isProtected,
@@ -127,7 +126,7 @@ async function remove(environment: PromotionEnvironment) {
 			showClose: true,
 		},
 	);
-	if (confirmed !== MODAL_CONFIRM) return;
+	if (confirmed !== 'confirm') return;
 
 	const context = rootStore.publicApiContext;
 	busy.set(environment.id, 'remove');
@@ -286,8 +285,6 @@ async function remove(environment: PromotionEnvironment) {
 </template>
 
 <style lang="scss" module>
-@use '@/app/css/variables' as *;
-
 .layout {
 	container-type: inline-size;
 	padding-top: 0;
@@ -297,7 +294,8 @@ async function remove(environment: PromotionEnvironment) {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 
-	@container (max-width: #{$breakpoint-2xs}) {
+	// The editor's $breakpoint-2xs. The module cannot import the editor styles.
+	@container (max-width: 600px) {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
@@ -309,7 +307,8 @@ async function remove(environment: PromotionEnvironment) {
 	& + & {
 		border-inline-start: var(--border-width, 1px) solid var(--border-color--subtle);
 
-		@container (max-width: #{$breakpoint-2xs}) {
+		// The editor's $breakpoint-2xs. The module cannot import the editor styles.
+		@container (max-width: 600px) {
 			border-inline-start: none;
 			border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
 		}

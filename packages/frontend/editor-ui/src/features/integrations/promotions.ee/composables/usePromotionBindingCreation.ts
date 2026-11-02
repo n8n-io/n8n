@@ -1,21 +1,24 @@
-import { useSettingsStore } from '@n8n/stores/settings.store';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { useToast } from '@n8n/composables/useToast';
-import { computed, onScopeDispose, shallowRef, watch } from 'vue';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	capabilities,
+	capabilityRegistry,
+	type ResourceEditorDestination,
+	type ResourceEditorKind,
+	type VariableEditorOptions,
+} from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
-import { ResponseError } from '@n8n/rest-api-client';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
-import { createPublicProject } from '@/features/collaboration/projects/projects.api';
-import { createPublicCredential } from '@/features/credentials/credentials.api';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
-import type { VariableModalOptions } from '@/features/settings/environments.ee/environments.types';
+import { getResourcePermissions } from '@n8n/permissions';
+import {
+	createPublicCredential,
+	createPublicProject,
+	getProject,
+	ResponseError,
+} from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onScopeDispose, shallowRef, watch } from 'vue';
+
 import type {
 	BlockedApplyResult,
 	CreatedPromotionBinding,
@@ -38,11 +41,10 @@ export function usePromotionBindingCreation(
 	result: BlockedApplyResult,
 	onProjectCreated: (project: CreatedPromotionProject) => void,
 ) {
-	const uiStore = useUIStore();
 	const rootStore = useRootStore();
-	const projectsStore = useProjectsStore();
-	const credentialsStore = useCredentialsStore();
-	const environmentsStore = useEnvironmentsStore();
+	const editors = capabilityRegistry.use(capabilities.resourceEditors);
+	const projectContext = capabilityRegistry.use(capabilities.projectContext);
+	const rbacStore = useRBACStore();
 	const i18n = useI18n();
 	const settingsStore = useSettingsStore();
 	const toast = useToast();
@@ -60,8 +62,8 @@ export function usePromotionBindingCreation(
 	let finish: (() => void) | undefined;
 
 	async function loadProject(id: string) {
-		const project = await projectsStore.fetchProject(id);
-		await projectsStore.getMyProjects();
+		const project = await getProject(rootStore.restApiContext, id);
+		await projectContext.getMyProjects();
 		return project;
 	}
 
@@ -110,7 +112,7 @@ export function usePromotionBindingCreation(
 				id: project.id,
 				name: missing.name,
 				permissions: {
-					create: projectsStore.hasTeamProjectQuota && projectsStore.hasPermissionToCreateProjects,
+					create: projectContext.hasTeamProjectQuota() && rbacStore.hasScope('project:create'),
 				},
 			},
 			notice: () => {
@@ -127,16 +129,15 @@ export function usePromotionBindingCreation(
 
 	async function assertEditorAvailable(binding: MissingPromotionBinding) {
 		if (binding.kind === 'credential') {
-			await credentialsStore.fetchCredentialTypes(false);
-			if (!credentialsStore.getCredentialTypeByName(binding.credentialType)) {
+			if (!(await editors.hasCredentialType(binding.credentialType))) {
 				throw new Error(i18n.baseText('credentialEdit.typeUnavailable'));
 			}
 			return;
 		}
-		if (!settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
+		if (!settingsStore.isEnterpriseFeatureEnabled.variables) {
 			throw new Error(i18n.baseText('promotions.bindings.variablesUnavailable'));
 		}
-		await environmentsStore.fetchAllVariables();
+		await editors.loadVariables();
 	}
 
 	function openCredentialEditor(
@@ -144,48 +145,39 @@ export function usePromotionBindingCreation(
 		setup: EditorSetup,
 		session: EditorSession,
 	) {
-		uiStore.openNewCredential(
-			binding.credentialType,
-			false,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				...setup,
-				initialName: binding.name,
-				initialData: binding.expressionData,
-				appendToBody: true,
-				hideAskAssistant: true,
-				usageScope: 'project',
-				onInitializeError: session.fail,
-				createCredential: async (details, projectId) => {
-					session.checkActive();
-					await ensureProject(projectId, 'credential');
-					session.checkActive();
-					const credential = await createPublicCredential(rootStore.publicApiContext, {
-						id: binding.sourceId,
-						name: details.name,
-						description: details.description,
-						type: binding.credentialType,
-						data: details.data ?? {},
-						projectId,
-						isResolvable: false,
-					});
-					session.checkActive();
-					session.save({
-						kind: 'credential',
-						sourceId: binding.sourceId,
-						id: credential.id,
-						name: credential.name,
-						credentialType: credential.type,
-						projectId,
-					});
-					return credential.id;
-				},
+		editors.openCredentialEditor(binding.credentialType, {
+			...setup,
+			initialName: binding.name,
+			initialData: binding.expressionData,
+			appendToBody: true,
+			hideAskAssistant: true,
+			usageScope: 'project',
+			onInitializeError: session.fail,
+			createCredential: async (details, projectId) => {
+				session.checkActive();
+				await ensureProject(projectId, 'credential');
+				session.checkActive();
+				const credential = await createPublicCredential(rootStore.publicApiContext, {
+					id: binding.sourceId,
+					name: details.name,
+					description: details.description,
+					type: binding.credentialType,
+					data: details.data ?? {},
+					projectId,
+					isResolvable: false,
+				});
+				session.checkActive();
+				session.save({
+					kind: 'credential',
+					sourceId: binding.sourceId,
+					id: credential.id,
+					name: credential.name,
+					credentialType: credential.type,
+					projectId,
+				});
+				return credential.id;
 			},
-		);
+		});
 	}
 
 	function openVariableEditor(
@@ -194,9 +186,8 @@ export function usePromotionBindingCreation(
 		session: EditorSession,
 	) {
 		const project = bindingProject(binding);
-		const options: VariableModalOptions = {
+		const options: VariableEditorOptions = {
 			...setup,
-			mode: 'new',
 			initialValues: { key: binding.name, value: '' },
 			fixedKey: true,
 			projectId: project?.id ?? null,
@@ -206,7 +197,7 @@ export function usePromotionBindingCreation(
 				session.checkActive();
 				if (project) await ensureProject(project.id, 'projectVariable');
 				session.checkActive();
-				const variable = await environmentsStore.createVariable({
+				const variable = await editors.createVariable({
 					key: binding.name,
 					value: values.value,
 					projectId: project?.id ?? null,
@@ -223,7 +214,7 @@ export function usePromotionBindingCreation(
 				return variable;
 			},
 		};
-		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: options });
+		editors.openVariableEditor(options);
 	}
 
 	const createBinding: CreatePromotionBinding = async (binding) => {
@@ -233,9 +224,8 @@ export function usePromotionBindingCreation(
 			const setup = await prepareDestination(bindingProject(binding));
 			await assertEditorAvailable(binding);
 			if (disposed) return null;
-			const modalName =
-				binding.kind === 'credential' ? CREDENTIAL_EDIT_MODAL_KEY : VARIABLE_MODAL_KEY;
-			if (uiStore.modalsById[modalName]?.open)
+			const editor: ResourceEditorKind = binding.kind;
+			if (editors.isEditorOpen(editor))
 				throw new Error(i18n.baseText('promotions.bindings.editorBusy'));
 			return await new Promise<CreatedPromotionBinding | null>((resolve, reject) => {
 				let saved: CreatedPromotionBinding | null = null;
@@ -251,7 +241,7 @@ export function usePromotionBindingCreation(
 				};
 				finish = () => {
 					settle();
-					uiStore.closeModal(modalName);
+					editors.closeEditor(editor);
 				};
 				const session: EditorSession = {
 					checkActive: () => {
@@ -264,14 +254,14 @@ export function usePromotionBindingCreation(
 					fail: (error) => {
 						if (settled || disposed) return;
 						settle(error);
-						uiStore.closeModal(modalName);
+						editors.closeEditor(editor);
 					},
 				};
 				try {
 					if (binding.kind === 'credential') openCredentialEditor(binding, setup, session);
 					else openVariableEditor(binding, setup, session);
 					stopWatching = watch(
-						() => uiStore.modalsById[modalName]?.open,
+						() => editors.isEditorOpen(editor),
 						(open) => {
 							if (!open) settle();
 						},

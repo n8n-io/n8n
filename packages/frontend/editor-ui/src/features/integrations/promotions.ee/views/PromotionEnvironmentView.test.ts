@@ -1,4 +1,5 @@
 import type { PromotionRepository } from '@n8n/api-types';
+import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
@@ -7,9 +8,6 @@ import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
-import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
@@ -283,7 +281,7 @@ describe('PromotionEnvironmentView', () => {
 			});
 			api.fetchPromotionBranches.mockResolvedValue({ data: [], nextCursor: null });
 			api.updatePromotionEnvironment.mockResolvedValue(applyEnvironment());
-			mockConfirm.mockResolvedValueOnce(MODAL_CANCEL).mockResolvedValueOnce(MODAL_CONFIRM);
+			mockConfirm.mockResolvedValueOnce('cancel').mockResolvedValueOnce('confirm');
 			await renderAt('/edit/environment-apply');
 
 			const repositorySelect = await screen.findByTestId('promotion-environment-repository-select');

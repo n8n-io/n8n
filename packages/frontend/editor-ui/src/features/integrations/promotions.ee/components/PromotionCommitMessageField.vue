@@ -4,7 +4,7 @@ import { N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
 
-import CharacterCount from '@/app/components/CharacterCount.vue';
+import PromotionCharacterCount from './PromotionCharacterCount.vue';
 
 defineProps<{ disabled?: boolean }>();
 
@@ -33,7 +33,7 @@ defineExpose({ focus: () => input.value?.focus() });
 			:placeholder="i18n.baseText('promotions.commitMessage.placeholder')"
 			data-test-id="promote-commit-message"
 		/>
-		<CharacterCount
+		<PromotionCharacterCount
 			:value="commitMessage"
 			:max="PROMOTION_COMMIT_MESSAGE_MAX_LENGTH"
 			data-test-id="promote-commit-message-character-count"

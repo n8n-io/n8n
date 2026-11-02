@@ -1,9 +1,7 @@
 import type {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
-	ApplySelectionDto,
 	ContinueApplyPackageDto,
-	ContinueApplySelectionDto,
 	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
 	ListPromotionEnvironmentsQueryDto,
@@ -208,31 +206,5 @@ export const continueApplyPromotion = async (
 		context,
 		'POST',
 		`${promotionsApiRoot}/environments/${environmentId}/apply/continue`,
-		payload,
-	);
-
-/** Applies only the chosen workflows into the destination project. */
-export const applyProjectSelection = async (
-	context: PublicApiContext,
-	projectId: string,
-	payload: ApplySelectionDto,
-): Promise<ApplyPackageResultDto> =>
-	await makePublicApiRequest(
-		context,
-		'POST',
-		`${promotionsApiRoot}/projects/${projectId}/apply`,
-		payload,
-	);
-
-/** Resumes a selective apply that paused on unresolved bindings, once they are created. */
-export const continueApplyProjectSelection = async (
-	context: PublicApiContext,
-	projectId: string,
-	payload: ContinueApplySelectionDto,
-): Promise<ApplyPackageResultDto> =>
-	await makePublicApiRequest(
-		context,
-		'POST',
-		`${promotionsApiRoot}/projects/${projectId}/apply/continue`,
 		payload,
 	);

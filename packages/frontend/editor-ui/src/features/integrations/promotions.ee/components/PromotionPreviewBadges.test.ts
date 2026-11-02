@@ -1,20 +1,21 @@
+import { VIEWS } from '@n8n/frontend-constants/views';
+import {
+	capabilities,
+	capabilityRegistry,
+	type EnvironmentsSettings,
+	type ProjectContext,
+} from '@n8n/frontend-module-sdk';
+import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
+import { ProjectTypes, type Project } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import type { PromotionPreview } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 import { waitFor } from '@testing-library/vue';
+import { reactive } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { IUser } from '@n8n/rest-api-client';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { VIEWS } from '@/app/constants';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import { billingPreview } from '../__tests__/preview.fixtures';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
@@ -35,6 +36,27 @@ const router = createRouter({
 	],
 });
 
+const createTestProject = (data: Partial<Project>): Project => ({
+	id: 'p1',
+	name: 'Billing',
+	icon: { type: 'icon', value: 'folder' },
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-01T00:00:00.000Z',
+	type: ProjectTypes.Team,
+	relations: [],
+	scopes: [],
+	rolesManaged: false,
+	...data,
+});
+
+// What the shell shows. The capability stubs read it.
+const shell = reactive({
+	promotionsEnabled: true,
+	currentProject: null as Project | null,
+	currentProjectId: undefined as string | undefined,
+});
+let projectContext: ProjectContext;
+
 // The stub shows where the badge links to.
 const renderComponent = createComponentRenderer(PromotionPreviewBadges, {
 	global: {
@@ -54,12 +76,18 @@ describe('PromotionPreviewBadges', () => {
 		await router.isReady();
 		createTestingPinia();
 		invalidateInstancePromotionConnection();
-		const settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isModuleActive.mockReturnValue(true);
-		mockedStore(useSourceControlStore).preferences.environmentsVersion = 'v2';
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
-		projectsStore.currentProjectId = 'p1';
+		shell.promotionsEnabled = true;
+		shell.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
+		shell.currentProjectId = 'p1';
+		projectContext = mock<ProjectContext>({
+			currentProject: () => shell.currentProject,
+			currentProjectId: () => shell.currentProjectId,
+		});
+		capabilityRegistry.provide(capabilities.projectContext, projectContext);
+		capabilityRegistry.provide(
+			capabilities.environmentsSettings,
+			mock<EnvironmentsSettings>({ isPromotionsEnabled: () => shell.promotionsEnabled }),
+		);
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview());
 		mockedStore(useUsersStore).currentUser = mock<IUser>({
 			globalScopes: [
@@ -75,6 +103,9 @@ describe('PromotionPreviewBadges', () => {
 		] as unknown as settingsApi.PromotionEnvironmentSummary[]);
 	});
 
+	afterEach(() => {
+		capabilityRegistry.clear();
+	});
 	it.each([
 		{ name: 'Production', count: 2, label: 'Promote 2 changes to Production' },
 		{ name: 'Staging', count: 1, label: 'Promote 1 change to Staging' },
@@ -182,14 +213,13 @@ describe('PromotionPreviewBadges', () => {
 	it.each(['feature', 'export', 'list', 'read', 'personal'] as const)(
 		'should not load changes without the %s requirement',
 		async (requirement) => {
-			const projects = mockedStore(useProjectsStore);
 			const users = mockedStore(useUsersStore);
 			if (requirement === 'feature') {
-				mockedStore(useSettingsStore).isModuleActive.mockReturnValue(false);
+				shell.promotionsEnabled = false;
 			} else if (requirement === 'export') {
-				projects.currentProject = createTestProject({ id: 'p1', scopes: [] });
+				shell.currentProject = createTestProject({ id: 'p1', scopes: [] });
 			} else if (requirement === 'personal') {
-				projects.currentProject = createTestProject({
+				shell.currentProject = createTestProject({
 					id: 'p1',
 					type: ProjectTypes.Personal,
 					scopes: ['project:export'],
@@ -301,7 +331,7 @@ describe('PromotionPreviewBadges', () => {
 		const project = createTestProject({ id: 'p1', name: 'Renamed' });
 		promotionEventBus.emit('applied', { projectId: 'p1', project });
 		await waitAllPromises();
-		expect(mockedStore(useProjectsStore).setCurrentProject).toHaveBeenCalledWith(project);
+		expect(projectContext.setCurrentProject).toHaveBeenCalledWith(project);
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 		expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', 'promote');
 		expect(api.getPromotionPreview).toHaveBeenCalledWith(expect.anything(), 'p1', 'apply');
@@ -323,14 +353,14 @@ describe('PromotionPreviewBadges', () => {
 		const { findByTestId } = renderComponent();
 		await findByTestId('promotion-preview-badge-apply');
 		await router.push('/p2');
-		mockedStore(useProjectsStore).currentProjectId = 'p2';
+		shell.currentProjectId = 'p2';
 		promotionEventBus.emit('applied', {
 			projectId: 'p1',
 			project: createTestProject({ id: 'p1', name: 'Renamed' }),
 		});
 		promotionEventBus.emit('projectRemoved', { projectId: 'p1' });
 		await waitAllPromises();
-		expect(mockedStore(useProjectsStore).setCurrentProject).not.toHaveBeenCalled();
+		expect(projectContext.setCurrentProject).not.toHaveBeenCalled();
 		expect(router.currentRoute.value.params.projectId).toBe('p2');
 	});
 
@@ -339,7 +369,7 @@ describe('PromotionPreviewBadges', () => {
 		const { queryByTestId, getByTestId } = renderComponent();
 		await waitAllPromises();
 		expect(queryByTestId('promotion-preview-badges')).not.toBeInTheDocument();
-		mockedStore(useProjectsStore).currentProject = createTestProject({
+		shell.currentProject = createTestProject({
 			id: 'p2',
 			scopes: ['project:export'],
 		});

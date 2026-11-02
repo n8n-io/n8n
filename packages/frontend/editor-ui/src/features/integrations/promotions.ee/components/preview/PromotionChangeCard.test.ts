@@ -3,12 +3,13 @@ import type {
 	PromotionResource,
 	PromotionResourceDetail,
 } from '@n8n/api-types';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
-import { createComponentRenderer } from '@/__tests__/render';
-
 import { billingPreview, billingResources, resource } from '../../__tests__/preview.fixtures';
+import { registerDiffSlotStubs } from '../../__tests__/slots';
 import { buildSelectionGraph } from '../../promotionPreview.selection';
 import PromotionChangeCard from './PromotionChangeCard.vue';
 
@@ -178,6 +179,14 @@ const cases: Case[] = [
 		shows: ['This resource changed after the preview loaded.'],
 	},
 ];
+
+beforeEach(() => {
+	registerDiffSlotStubs();
+});
+
+afterEach(() => {
+	componentRegistry.clear();
+});
 
 describe('PromotionChangeCard', () => {
 	it.each(cases)(

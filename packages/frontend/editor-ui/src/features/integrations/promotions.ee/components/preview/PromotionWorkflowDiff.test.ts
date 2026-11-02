@@ -3,36 +3,45 @@ import type {
 	PromotionResourceDetail,
 	SerializedWorkflow,
 } from '@n8n/api-types';
-import { STORES } from '@n8n/stores';
-import { createTestingPinia } from '@pinia/testing';
+import {
+	capabilities,
+	capabilityRegistry,
+	componentRegistry,
+	type SlotWorkflowDiffProps,
+	type SlotWorkflowDiffSnapshot,
+} from '@n8n/frontend-module-sdk';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { waitFor } from '@testing-library/vue';
 import { defineComponent } from 'vue';
-
-import { createComponentRenderer } from '@/__tests__/render';
-import type { IWorkflowDb } from '@/Interface';
 
 import { billingPreview, resource } from '../../__tests__/preview.fixtures';
 import { buildSelectionGraph } from '../../promotionPreview.selection';
 import PromotionWorkflowDiff from './PromotionWorkflowDiff.vue';
 
-type DiffProps = { sourceWorkflow?: IWorkflowDb; targetWorkflow?: IWorkflowDb };
-const { captured } = vi.hoisted(() => ({
-	captured: { props: undefined as DiffProps | undefined },
-}));
-// The component loads the diff view lazily, so the mock must look like an ES module.
-vi.mock('@/features/workflows/workflowDiff/WorkflowDiffView.vue', () => ({
-	__esModule: true,
-	default: defineComponent({
-		props: ['sourceWorkflow', 'targetWorkflow'],
-		setup(props) {
-			captured.props = props as DiffProps;
-		},
-		template: `<div>
-			<div data-test-id="source"><slot name="sourceLabel" /><slot v-if="!sourceWorkflow" name="sourceEmptyText" /></div>
-			<div data-test-id="target"><slot name="targetLabel" /><slot v-if="!targetWorkflow" name="targetEmptyText" /></div>
-		</div>`,
-	}),
-}));
+const captured: { props?: SlotWorkflowDiffProps } = {};
+const WorkflowDiffStub = defineComponent({
+	props: ['workflowId', 'workflowName', 'sourceSnapshot', 'targetSnapshot'],
+	setup(props) {
+		captured.props = props as SlotWorkflowDiffProps;
+	},
+	template: `<div>
+		<div data-test-id="source"><slot name="sourceLabel" /><slot v-if="!sourceSnapshot" name="sourceEmptyText" /></div>
+		<div data-test-id="target"><slot name="targetLabel" /><slot v-if="!targetSnapshot" name="targetEmptyText" /></div>
+	</div>`,
+});
+
+beforeEach(() => {
+	componentRegistry.register('workflow-diff', WorkflowDiffStub);
+	capabilityRegistry.provide(capabilities.tagNames, {
+		load: async () => {},
+		nameOf: (id) => ({ g7: 'archive' })[id],
+	});
+});
+
+afterEach(() => {
+	componentRegistry.clear();
+	capabilityRegistry.clear();
+});
 
 const renderComponent = createComponentRenderer(PromotionWorkflowDiff);
 
@@ -67,11 +76,7 @@ async function render(
 	preview = billingPreview(),
 ) {
 	captured.props = undefined;
-	const pinia = createTestingPinia({
-		initialState: { [STORES.TAGS]: { tagsById: { g7: { id: 'g7', name: 'archive' } } } },
-	});
 	const result = renderComponent({
-		pinia,
 		props: {
 			...props,
 			resourceKey: 'workflow:w1',
@@ -121,8 +126,8 @@ describe('PromotionWorkflowDiff', () => {
 		async ({ direction, before, after, source, target }) => {
 			const { getByTestId } = await render({ detail: detail(before, after), direction });
 
-			expect(captured.props?.sourceWorkflow?.name).toBe(before?.name);
-			expect(captured.props?.targetWorkflow?.name).toBe(after?.name);
+			expect(captured.props?.sourceSnapshot?.workflowName).toBe(before?.name);
+			expect(captured.props?.targetSnapshot?.workflowName).toBe(after?.name);
 			for (const text of source) expect(getByTestId('source')).toHaveTextContent(text);
 			for (const text of target) expect(getByTestId('target')).toHaveTextContent(text);
 		},
@@ -150,9 +155,9 @@ describe('PromotionWorkflowDiff', () => {
 			preview,
 		);
 
-		const names = (workflow: IWorkflowDb | undefined) =>
-			workflow?.tags?.map((tag) => (typeof tag === 'string' ? tag : tag.name));
-		expect(names(captured.props?.sourceWorkflow)).toEqual(['archive', 'finance']);
-		expect(names(captured.props?.targetWorkflow)).toEqual(['accounting', 'archive']);
+		const names = (snapshot: SlotWorkflowDiffSnapshot | undefined) =>
+			snapshot?.tags?.map((tag) => tag.name);
+		expect(names(captured.props?.sourceSnapshot)).toEqual(['finance', 'archive']);
+		expect(names(captured.props?.targetSnapshot)).toEqual(['archive', 'accounting']);
 	});
 });
