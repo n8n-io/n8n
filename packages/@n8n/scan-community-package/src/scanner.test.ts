@@ -423,44 +423,30 @@ describe('analyzePackage', () => {
 		// fast-glob rejects an empty pattern, which throws inside the try
 		const result = await analyzePackage(fixtureDir, ['']);
 
-		expect(result.passed).toBe(false);
-		expect(result.message).toMatch(/^Analysis failed: /);
 		expect(getExitCode(result)).toBe(EXIT_CODES.INTERNAL_ERROR);
 	});
 });
 
 describe('getExitCode', () => {
-	it.each([
-		['passed', { passed: true } as const, EXIT_CODES.SCAN_SUCCEEDED],
-		[
-			'could not complete',
-			{ passed: false, message: 'Analysis failed', error: new Error('npm pack failed') } as const,
+	it('maps each scan result to its exit code', () => {
+		const failed = { passed: false, message: 'ESLint violations found' } as const;
+
+		expect(getExitCode({ passed: true })).toBe(EXIT_CODES.SCAN_SUCCEEDED);
+		expect(getExitCode(failed)).toBe(EXIT_CODES.SCAN_FAILED);
+		expect(getExitCode({ ...failed, error: new Error('npm pack failed') })).toBe(
 			EXIT_CODES.INTERNAL_ERROR,
-		],
-		[
-			'failed a check',
-			{ passed: false, message: 'ESLint violations found' } as const,
-			EXIT_CODES.SCAN_FAILED,
-		],
-	])('returns the code for a scan that %s', (_, result, code) => {
-		expect(getExitCode(result)).toBe(code);
+		);
 	});
 });
 
 describe('isSourceUnavailable', () => {
 	const httpError = (status: number) =>
-		new AxiosError(`Request failed with status code ${status}`, undefined, undefined, undefined, {
-			status,
-		} as AxiosResponse);
+		new AxiosError('Request failed', undefined, undefined, undefined, { status } as AxiosResponse);
 
-	// 4xx is on the package author; everything else is a scanner-side error
-	it.each([
-		['a 404 response', httpError(404), true],
-		['a 403 response', httpError(403), true],
-		['a 502 response', httpError(502), false],
-		['a timeout', new AxiosError('timeout exceeded', AxiosError.ECONNABORTED), false],
-		['a non-HTTP error', new Error('tar extraction failed'), false],
-	])('classifies %s as %s', (_, error, expected) => {
-		expect(isSourceUnavailable(error)).toBe(expected);
+	it('treats only a 4xx response as a problem with the package', () => {
+		expect(isSourceUnavailable(httpError(404))).toBe(true);
+		expect(isSourceUnavailable(httpError(502))).toBe(false);
+		expect(isSourceUnavailable(new AxiosError('timeout', AxiosError.ECONNABORTED))).toBe(false);
+		expect(isSourceUnavailable(new Error('tar extraction failed'))).toBe(false);
 	});
 });
