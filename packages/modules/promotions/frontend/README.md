@@ -20,11 +20,9 @@ yet. Turbo builds them first; the bare pnpm form does not.
 
 ## Import rules
 
-- Depend on foundation and platform packages only (`@n8n/design-system`,
-  `@n8n/stores`, `@n8n/composables`, `@n8n/i18n`, `@n8n/rest-api-client`,
-  `@n8n/api-types`, `@n8n/permissions`, `n8n-workflow`,
-  `@n8n/frontend-module-sdk`). Never import another
-  `@n8n/frontend-module-*`, and never import `@/…` from the shell.
+- Depend only on the packages that the guide lists in "Imports and boundaries".
+  Never import another `@n8n/frontend-module-*`, and never import `@/…` from
+  the shell.
 - `@n8n/stores` and `@n8n/composables` are **subpath-only** — import
   `@n8n/stores/settings.store`, not `@n8n/stores`.
 - The no-cross-module rule is currently a convention: the shared tsconfig base
