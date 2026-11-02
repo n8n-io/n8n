@@ -92,6 +92,9 @@ const extensions = computed(() => {
 	const baseExtensions = [
 		sqlWithN8nLanguageSupport(),
 		expressionCloseBrackets(),
+		// Keep history in both configurations so the undo stack survives a
+		// read-only toggle. `undo`/`redo` are no-ops while the state is read-only.
+		history(),
 		codeEditorTheme({
 			isReadOnly: props.isReadOnly,
 			maxHeight: props.fullscreen ? '100%' : '40vh',
@@ -104,7 +107,6 @@ const extensions = computed(() => {
 
 	if (!props.isReadOnly) {
 		return baseExtensions.concat([
-			history(),
 			Prec.highest(keymap.of(editorKeymap)),
 			n8nAutocompletion(),
 			indentOnInput(),
@@ -130,7 +132,9 @@ const {
 	editorValue: () => props.modelValue,
 	extensions,
 	skipSegments: ['Statement', 'CompositeIdentifier', 'Parens', 'Brackets'],
-	isReadOnly: props.isReadOnly,
+	// Pass as a getter so the read-only compartment reconfigures when the prop
+	// toggles at runtime (e.g. when a collaboration write lock is released)
+	isReadOnly: () => props.isReadOnly,
 	targetNodeParameterContext: props.targetNodeParameterContext,
 	onChange: () => {
 		emit('update:model-value', readEditorValue());
