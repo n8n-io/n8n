@@ -175,4 +175,109 @@ describe('createCustomModelEndpointAuthFetch', () => {
 			expect(seen).toEqual([BASE_URL, 'https://gateway.example.com/v2/chat']);
 		});
 	});
+
+	describe('an OAuth2 client credentials login', () => {
+		const TOKEN_URL = 'https://login.example.com/oauth2/token';
+		const oauth2 = endpointWith({
+			type: 'oauth2',
+			tokenUrl: TOKEN_URL,
+			clientId: 'client-1',
+			clientSecret: 'cs-9f2a71c4ab',
+			scope: '',
+			sendCredentialsIn: 'header',
+		});
+
+		function routedFetch(gatewayStatuses: number[]) {
+			const calls: Array<{ url: string; headers: Headers }> = [];
+			const statuses = [...gatewayStatuses];
+			let issued = 0;
+			const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = input instanceof Request ? input.url : input.toString();
+				calls.push({ url, headers: new Headers(init?.headers ?? {}) });
+				if (url === TOKEN_URL) {
+					issued += 1;
+					return new Response(JSON.stringify({ access_token: `tok-${issued}`, expires_in: 3600 }), {
+						status: 200,
+					});
+				}
+				return new Response('{}', { status: statuses.shift() ?? 200 });
+			};
+			return { calls, fetchImpl: fetchImpl as unknown as typeof fetch };
+		}
+
+		const gatewayCalls = (calls: Array<{ url: string; headers: Headers }>) =>
+			calls.filter((c) => c.url !== TOKEN_URL);
+
+		it('sends the token it fetched from the login server', async () => {
+			const { calls, fetchImpl } = routedFetch([200]);
+			const authFetch = createCustomModelEndpointAuthFetch(
+				ctx,
+				{},
+				{
+					endpoint: oauth2,
+					egressFilter: allowAll,
+					baseFetch: fetchImpl,
+				},
+			);
+
+			await authFetch(BASE_URL);
+
+			expect(gatewayCalls(calls)[0].headers.get('authorization')).toBe('Bearer tok-1');
+		});
+
+		it('fetches a new token once when the gateway rejects the old one', async () => {
+			const { calls, fetchImpl } = routedFetch([401, 200]);
+			const authFetch = createCustomModelEndpointAuthFetch(
+				ctx,
+				{},
+				{
+					endpoint: oauth2,
+					egressFilter: allowAll,
+					baseFetch: fetchImpl,
+				},
+			);
+
+			const response = await authFetch(BASE_URL);
+
+			expect(response.status).toBe(200);
+			expect(gatewayCalls(calls).map((c) => c.headers.get('authorization'))).toEqual([
+				'Bearer tok-1',
+				'Bearer tok-2',
+			]);
+		});
+
+		it('gives up after the second rejection rather than looping', async () => {
+			const { calls, fetchImpl } = routedFetch([401, 401]);
+			const authFetch = createCustomModelEndpointAuthFetch(
+				ctx,
+				{},
+				{
+					endpoint: oauth2,
+					egressFilter: allowAll,
+					baseFetch: fetchImpl,
+				},
+			);
+
+			const response = await authFetch(BASE_URL);
+
+			expect(response.status).toBe(401);
+			expect(gatewayCalls(calls)).toHaveLength(2);
+		});
+
+		it('fails before reaching the gateway when the login server is not an allowed domain', async () => {
+			const { calls, fetchImpl } = routedFetch([200]);
+			const authFetch = createCustomModelEndpointAuthFetch(
+				ctx,
+				restrictedTo('gateway.example.com'),
+				{
+					endpoint: oauth2,
+					egressFilter: allowAll,
+					baseFetch: fetchImpl,
+				},
+			);
+
+			await expect(authFetch(BASE_URL)).rejects.toThrow('Domain not allowed');
+			expect(gatewayCalls(calls)).toHaveLength(0);
+		});
+	});
 });

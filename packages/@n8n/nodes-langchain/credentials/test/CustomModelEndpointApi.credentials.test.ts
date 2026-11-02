@@ -24,9 +24,9 @@ describe('CustomModelEndpointApi Credential', () => {
 			expect(findProperty('url')).toMatchObject({ required: true, default: '' });
 		});
 
-		const loginMethods = ['bearer', 'header', 'basic', 'none'] as const;
+		const loginMethods = ['bearer', 'header', 'basic', 'oauth2', 'none'] as const;
 
-		it('offers four login methods', () => {
+		it('offers five login methods', () => {
 			const options = (findProperty('authentication')?.options ?? []) as INodePropertyOptions[];
 
 			expect(options.map(({ value }) => value)).toEqual(loginMethods);
