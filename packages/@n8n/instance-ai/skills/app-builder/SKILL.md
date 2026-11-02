@@ -97,5 +97,5 @@ the right `appId`.
 ## Publishing and access
 
 You cannot publish apps. Tell the user to publish with the Publish button of
-the app. A new app is visible to the members of its project. The user can
-change this in the app settings.
+the app. The app uses the visibility that the user approved in the blueprint.
+The user can change it in the app settings.
