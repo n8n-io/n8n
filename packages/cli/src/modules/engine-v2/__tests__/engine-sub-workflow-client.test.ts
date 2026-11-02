@@ -12,7 +12,12 @@ import type {
 const request: ResolveSubWorkflowRequest = {
 	workflowId: 'wf-sub',
 	executionId: '01a03900-0000-7000-8000-000000000001',
-	parent: { executionId: 'exec-1', workflowId: 'wf-parent', mode: 'manual' },
+	parent: {
+		executionId: '01a03900-0000-7000-8000-00000000000a',
+		workflowId: 'wf-parent',
+		mode: 'manual',
+		node: { id: 'call', name: 'Call', type: 'n8n-nodes-base.executeWorkflow', typeVersion: 1 },
+	},
 	context: { userId: 'user-1' },
 	items: [{ json: { a: 1 } }],
 };
@@ -65,6 +70,14 @@ describe('EngineSubWorkflowClient', () => {
 
 		await expect(refusal).rejects.toThrow(UserError);
 		await expect(refusal).rejects.toThrow('The sub-workflow limits which workflows can call it');
+	});
+
+	it('carries the hint of a refusal as the error description', async () => {
+		respondWith(403, { code: 403, message: 'Denied', hint: 'Update the sub-workflow settings.' });
+
+		await expect(client.resolve(request, signal)).rejects.toMatchObject({
+			description: 'Update the sub-workflow settings.',
+		});
 	});
 
 	it('reports a refusal without a message by its status', async () => {

@@ -14,7 +14,12 @@ import type { EngineSubWorkflowService } from '../engine-sub-workflow.service';
 const resolveRequest: ResolveSubWorkflowRequest = {
 	workflowId: 'wf-sub',
 	executionId: '01a03900-0000-7000-8000-000000000001',
-	parent: { executionId: 'exec-1', workflowId: 'wf-parent', mode: 'manual' },
+	parent: {
+		executionId: '01a03900-0000-7000-8000-00000000000a',
+		workflowId: 'wf-parent',
+		mode: 'manual',
+		node: { id: 'call', name: 'Call', type: 'n8n-nodes-base.executeWorkflow', typeVersion: 1 },
+	},
 	context: { userId: 'user-1', projectId: 'project-1' },
 	items: [{ json: { a: 1 } }],
 };
@@ -51,6 +56,14 @@ describe('EngineSubWorkflowController', () => {
 		[
 			'a body whose execution id is not a uuid',
 			{ ...resolveRequest, executionId: 'sub-execution' },
+		],
+		[
+			'a body whose parent execution id is not a uuid',
+			{ ...resolveRequest, parent: { ...resolveRequest.parent, executionId: 'exec-1' } },
+		],
+		[
+			'a body without the calling node',
+			{ ...resolveRequest, parent: { ...resolveRequest.parent, node: undefined } },
 		],
 		[
 			'a body with an unknown mode',

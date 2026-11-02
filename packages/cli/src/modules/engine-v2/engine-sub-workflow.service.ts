@@ -40,8 +40,8 @@ import type {
 } from './engine-sub-workflow.contract';
 
 /** Get the node that called this sub-workflow, for policy checks. */
-function toCallerNode(node: ResolveSubWorkflowRequest['parent']['node']): INode | undefined {
-	return node ? { ...node, position: [0, 0], parameters: {} } : undefined;
+function toCallerNode(node: ResolveSubWorkflowRequest['parent']['node']): INode {
+	return { ...node, position: [0, 0], parameters: {} };
 }
 
 /**
@@ -94,10 +94,7 @@ export class EngineSubWorkflowService {
 		workflowId: string,
 		parent: ResolveSubWorkflowRequest['parent'],
 	): Promise<IWorkflowBase> {
-		const exists = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			select: ['id'],
-		});
+		const exists = await this.workflowRepository.exists({ where: { id: workflowId } });
 		if (!exists) throw new NotFoundError(`Workflow "${workflowId}" does not exist`);
 
 		const info = { id: workflowId };
@@ -179,7 +176,7 @@ export class EngineSubWorkflowService {
 			name: subWorkflowData.name,
 			nodes: subWorkflowData.nodes,
 			connections: subWorkflowData.connections,
-			active: false,
+			active: subWorkflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			settings: subWorkflowData.settings,
 		});

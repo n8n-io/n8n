@@ -1,3 +1,4 @@
+import { jsonObjectSchema, triggerOutputsSchema, workflowGraphSchema } from '@n8n/engine';
 import type { TriggerOutputs, WorkflowDocument, WorkflowGraph } from '@n8n/engine';
 import { isRecord } from '@n8n/utils/is-record';
 import { WorkflowExecuteModeList } from 'n8n-workflow';
@@ -17,19 +18,17 @@ export const resolveSubWorkflowRequestSchema = z.object({
 	executionId: z.string().uuid(),
 	parent: z.object({
 		/** An engine execution id. No control plane execution row exists for it. */
-		executionId: z.string().min(1),
+		executionId: z.string().uuid(),
 		workflowId: z.string().min(1),
 		/** The v1 mode: a manual or chat run calls the draft, any other the published version. */
 		mode: z.enum(WorkflowExecuteModeList),
 		/** The node that calls the sub-workflow, named in a policy denial. */
-		node: z
-			.object({
-				id: z.string(),
-				name: z.string(),
-				type: z.string(),
-				typeVersion: z.number(),
-			})
-			.optional(),
+		node: z.object({
+			id: z.string(),
+			name: z.string(),
+			type: z.string(),
+			typeVersion: z.number(),
+		}),
 	}),
 	/** Who the parent runs for. Both are unknown until the host supplies them at start. */
 	context: z.object({
@@ -52,17 +51,16 @@ export interface ResolveSubWorkflowResponse {
 	returnLastRunOnly: boolean;
 }
 
+/** The response as the engine's start route would accept it. */
+const resolveSubWorkflowResponseSchema = z.object({
+	workflowId: z.string().min(1),
+	graph: workflowGraphSchema,
+	workflow: jsonObjectSchema,
+	triggerOutputs: triggerOutputsSchema.nullable(),
+	returnLastRunOnly: z.boolean(),
+});
+
 /** Narrows a parsed response body. The client trusts nothing else about it. */
 export function isResolveSubWorkflowResponse(body: unknown): body is ResolveSubWorkflowResponse {
-	if (!isRecord(body)) return false;
-	const { workflowId, graph, workflow, triggerOutputs, returnLastRunOnly } = body;
-	return (
-		typeof workflowId === 'string' &&
-		isRecord(graph) &&
-		Array.isArray(graph.nodes) &&
-		Array.isArray(graph.edges) &&
-		isRecord(workflow) &&
-		(triggerOutputs === null || Array.isArray(triggerOutputs)) &&
-		typeof returnLastRunOnly === 'boolean'
-	);
+	return resolveSubWorkflowResponseSchema.safeParse(body).success;
 }
