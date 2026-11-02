@@ -221,6 +221,12 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		await expect(resolve(request(workflow.id))).rejects.toThrow(/Execute Workflow Trigger/);
 	});
 
+	it('refuses a sub-workflow whose trigger is disabled', async () => {
+		const workflow = await subWorkflow({ nodes: [{ ...triggerNode, disabled: true }, setNode] });
+
+		await expect(resolve(request(workflow.id))).rejects.toThrow(/is disabled/);
+	});
+
 	it('refuses an unknown workflow id', async () => {
 		await expect(resolve(request('missing'))).rejects.toThrow(/does not exist/);
 	});

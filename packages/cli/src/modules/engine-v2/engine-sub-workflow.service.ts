@@ -147,14 +147,22 @@ export class EngineSubWorkflowService {
 	}
 
 	private findTrigger(subWorkflowData: IWorkflowBase): INode {
+		let trigger: INode;
 		try {
-			return findSubworkflowStart(subWorkflowData.nodes);
+			trigger = findSubworkflowStart(subWorkflowData.nodes);
 		} catch (error) {
 			if (error instanceof SubworkflowOperationError) {
 				throw new BadRequestError(`${error.message}: ${error.description}`);
 			}
 			throw error;
 		}
+		// The finder does not skip disabled nodes, and the converter drops them from the graph.
+		if (trigger.disabled) {
+			throw new BadRequestError(
+				`The trigger "${trigger.name}" of sub-workflow "${subWorkflowData.name}" is disabled`,
+			);
+		}
+		return trigger;
 	}
 
 	/**
