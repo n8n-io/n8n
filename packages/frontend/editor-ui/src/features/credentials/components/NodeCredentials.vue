@@ -251,7 +251,7 @@ const canCreateCredentials = computed(
 
 /** A policy that blocks a credential type also blocks creating credentials of it. */
 function canCreateCredentialType(credentialType: string): boolean {
-	return canCreateCredentials.value && !getCredentialTypeRestriction(credentialType);
+	return !!canCreateCredentials.value && !getCredentialTypeRestriction(credentialType);
 }
 
 const isContactAdminOpen = ref(false);
@@ -1492,7 +1492,16 @@ function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !getQuickConnectCredentialType(type);
+	return (
+		!isCredentialExisting(type) &&
+		(!getQuickConnectCredentialType(type) || isQuickConnectRestricted(type))
+	);
+}
+
+// A policy-blocked quick-connect type falls back to the standard picker, which explains the block.
+function isQuickConnectRestricted(type: INodeCredentialDescription): boolean {
+	const quickConnectType = getQuickConnectCredentialType(type);
+	return !!quickConnectType && !!getCredentialTypeRestriction(quickConnectType);
 }
 
 // Empty-slot layouts, only when the type has no stored credentials and isn't on
@@ -1506,7 +1515,7 @@ function showQuickConnectSlot(
 		options.length === 0 &&
 		!getUnlistedSelected(type.name) &&
 		showQuickConnectEmptyState(type) &&
-		!getCredentialTypeRestriction(getQuickConnectCredentialType(type) ?? type.name) &&
+		!isQuickConnectRestricted(type) &&
 		!isAiGatewayManagedCredentials(type.name)
 	);
 }
@@ -1657,7 +1666,10 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						:service-name="getServiceName(getQuickConnectCredentialType(type) ?? type.name)"
 						@click="onQuickConnectSignIn(getQuickConnectCredentialType(type) ?? type.name)"
 					/>
-					<span v-if="canManuallySetUpCredential(type.name)" :class="$style.setupManuallyContainer">
+					<span
+						v-if="canManuallySetUpCredential(type.name) && canCreateCredentialType(type.name)"
+						:class="$style.setupManuallyContainer"
+					>
 						<N8nText size="small" :class="$style.setupManuallyOr">
 							{{ i18n.baseText('nodeCredentials.quickConnect.or') }}
 						</N8nText>

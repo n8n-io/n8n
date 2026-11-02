@@ -64,7 +64,10 @@ const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 // The new credential goes to this project, so its policy decides which types are usable.
 const targetProjectId = projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
 const projectBehindModal = typeAvailabilityPoliciesStore.loadedProjectId;
-if (targetProjectId) void typeAvailabilityPoliciesStore.fetchForProject(targetProjectId);
+// Until it loads, the store reports every type as available, so the list waits for it.
+const policyLoad = targetProjectId
+	? typeAvailabilityPoliciesStore.fetchForProject(targetProjectId).catch(() => {})
+	: Promise.resolve();
 
 onBeforeUnmount(() => {
 	if (projectBehindModal && projectBehindModal !== targetProjectId) {
@@ -76,6 +79,7 @@ onMounted(async () => {
 	try {
 		await credentialsStore.fetchCredentialTypes(false);
 	} catch (e) {}
+	await policyLoad;
 
 	loading.value = false;
 

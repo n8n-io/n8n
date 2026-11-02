@@ -239,7 +239,10 @@ test.describe(
 				await n8n.credentials.addResource.credential();
 				await n8n.credentials.searchCredentialTypes('slack');
 
-				const blocked = n8n.credentials.getCredentialTypeOptions().last();
+				// Slack OAuth2 matches the search too and stays allowed, so it must come first.
+				const options = n8n.credentials.getCredentialTypeOptions();
+				await expect(options.first()).not.toHaveClass(/is-disabled/);
+				const blocked = options.last();
 				await expect(blocked).toContainText(SLACK_CREDENTIAL.displayName);
 				await expect(blocked).toContainText('Restricted in this project');
 				await expect(blocked).toHaveClass(/is-disabled/);

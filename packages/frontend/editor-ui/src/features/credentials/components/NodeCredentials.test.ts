@@ -1230,6 +1230,23 @@ describe('NodeCredentials', () => {
 			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 		});
 
+		it('falls back to the standard empty state when a policy blocks the quick-connect type', () => {
+			setupQuickConnectStores();
+			mockRestrictedCredentialTypes({ slackOAuth2Api: 'instance' });
+
+			ndvStore.activeNode = slackNode;
+
+			renderComponent(
+				{ props: { node: slackNode, overrideCredType: 'slackOAuth2Api' } },
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
+			const emptyState = screen.getByTestId('node-credentials-empty-state');
+			expect(within(emptyState).getByRole('button')).toBeDisabled();
+			expect(screen.getByTestId('node-credentials-type-restricted')).toBeInTheDocument();
+		});
+
 		it('should also show quick-connect-empty-state in standalone mode (NODE-5115)', () => {
 			setupQuickConnectStores();
 

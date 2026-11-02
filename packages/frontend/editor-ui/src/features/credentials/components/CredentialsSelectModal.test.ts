@@ -40,7 +40,9 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp', () =
 
 vi.mock('@/app/components/Modal.vue', () => ({
 	default: {
-		template: '<div><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+		props: { loading: { type: Boolean, default: false } },
+		template:
+			'<div><slot name="header" /><slot v-if="!loading" name="content" /><slot name="footer" /></div>',
 	},
 }));
 
@@ -117,6 +119,12 @@ function mountModal() {
 	return mount(CredentialsSelectModal);
 }
 
+async function mountLoaded() {
+	const wrapper = mountModal();
+	await flushPromises();
+	return wrapper;
+}
+
 function names(wrapper: ReturnType<typeof mountModal>) {
 	return wrapper
 		.findAll('[data-test-id="new-credential-type-select-option"]')
@@ -165,10 +173,28 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 		expect(policies.fetchForProject).toHaveBeenLastCalledWith('workflow-project');
 	});
 
-	it('lists usable types first, then blocked types, then types whose nodes are blocked', () => {
+	it('keeps the list hidden until the project policy loads', async () => {
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = { id: 'team-1' } as Project;
+		const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+		let finishLoad = () => {};
+		policies.fetchForProject = vi.fn(
+			async () => await new Promise<void>((resolve) => (finishLoad = resolve)),
+		);
+
+		const wrapper = mountModal();
+		await flushPromises();
+		expect(names(wrapper)).toEqual([]);
+
+		finishLoad();
+		await flushPromises();
+		expect(names(wrapper)).toContain('slackApi');
+	});
+
+	it('lists usable types first, then blocked types, then types whose nodes are blocked', async () => {
 		mockRestrictedCredentialTypes({ airtableApi: 'instance' });
 		mockRestrictedNodeTypes({ 'n8n-nodes-base.mailjet': 'instance' });
-		const wrapper = mountModal();
+		const wrapper = await mountLoaded();
 
 		expect(names(wrapper)).toEqual(['slackApi', 'zoomApi', 'airtableApi', 'mailjetEmailApi']);
 		expect(option(wrapper, 'airtableApi').attributes('data-disabled')).toBe('true');
@@ -176,10 +202,10 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 		expect(option(wrapper, 'slackApi').attributes('data-disabled')).toBe('false');
 	});
 
-	it('keeps the focus in the search input on a press on a blocked type only', () => {
+	it('keeps the focus in the search input on a press on a blocked type only', async () => {
 		mockRestrictedCredentialTypes({ airtableApi: 'instance' });
 		mockRestrictedNodeTypes({ 'n8n-nodes-base.mailjet': 'instance' });
-		const wrapper = mountModal();
+		const wrapper = await mountLoaded();
 
 		const blocked = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
 		option(wrapper, 'airtableApi').element.dispatchEvent(blocked);
@@ -193,7 +219,7 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 	it('ignores a blocked type that the select still reports, and lets a type with blocked nodes through', async () => {
 		mockRestrictedCredentialTypes({ airtableApi: 'instance' });
 		mockRestrictedNodeTypes({ 'n8n-nodes-base.mailjet': 'instance' });
-		const wrapper = mountModal();
+		const wrapper = await mountLoaded();
 
 		await select(wrapper, 'airtableApi');
 		expect(continueButton(wrapper).props('disabled')).toBe(true);
@@ -216,7 +242,7 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 
 	it('explains a blocked type with its scope and a credential popover', async () => {
 		mockRestrictedCredentialTypes({ airtableApi: 'project' });
-		const wrapper = mountModal();
+		const wrapper = await mountLoaded();
 		await openList(wrapper);
 
 		expect(option(wrapper, 'airtableApi').text()).toContain(
@@ -234,7 +260,7 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 
 	it('explains a type whose nodes are blocked, naming the nodes, and asks their admin', async () => {
 		mockRestrictedNodeTypes({ 'n8n-nodes-base.mailjet': 'instance' });
-		const wrapper = mountModal();
+		const wrapper = await mountLoaded();
 		await openList(wrapper);
 
 		expect(option(wrapper, 'mailjetEmailApi').text()).toContain(
