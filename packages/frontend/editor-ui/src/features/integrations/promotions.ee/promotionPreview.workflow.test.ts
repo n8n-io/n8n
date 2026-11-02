@@ -33,7 +33,7 @@ const workflow = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkfl
 });
 
 describe('toPromotionDiffSide', () => {
-	it('should keep the content of each side and list the tags of both sides in the same order', () => {
+	it('should keep the content of each side and name its tags', () => {
 		const detail: PromotionResourceDetail = {
 			key: 'workflow:w1',
 			type: 'workflow',
@@ -50,17 +50,16 @@ describe('toPromotionDiffSide', () => {
 		const before = toPromotionDiffSide(detail, 'before', tagName);
 		const after = toPromotionDiffSide(detail, 'after', tagName);
 
-		const tags = [
-			{ id: 'g2', name: 'billing' },
-			{ id: 'g1', name: 'finance' },
-		];
 		expect(before).toMatchObject({
 			kind: 'content',
 			content: {
 				workflowName: 'Reconcile invoices',
 				versionId: 'promotion-before-blob-before',
 				settings: { executionOrder: 'v0' },
-				tags,
+				tags: [
+					{ id: 'g2', name: 'billing' },
+					{ id: 'g1', name: 'finance' },
+				],
 			},
 		});
 		expect(after).toEqual({
@@ -72,7 +71,10 @@ describe('toPromotionDiffSide', () => {
 				connections: workflow().connections,
 				nodeGroups: workflow().nodeGroups,
 				settings: { executionOrder: 'v1' },
-				tags,
+				tags: [
+					{ id: 'g1', name: 'finance' },
+					{ id: 'g2', name: 'billing' },
+				],
 				isArchived: false,
 			},
 		});

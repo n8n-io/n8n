@@ -32,10 +32,7 @@ export function toPromotionDiffSide(
 			connections: workflow.connections as IConnections,
 			nodeGroups: workflow.nodeGroups,
 			settings: workflow.settings as IWorkflowSettings | undefined,
-			// The diff compares tags in order, so sorting keeps the order out of the diff.
-			tags: (workflow.tagIds ?? [])
-				.map((id) => ({ id, name: tagName(id) }))
-				.sort((a, b) => a.name.localeCompare(b.name)),
+			tags: (workflow.tagIds ?? []).map((id) => ({ id, name: tagName(id) })),
 			isArchived: workflow.isArchived,
 		},
 	};

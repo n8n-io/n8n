@@ -157,7 +157,7 @@ describe('PromotionWorkflowDiff', () => {
 
 		const names = (snapshot: SlotWorkflowDiffSnapshot | undefined) =>
 			snapshot?.tags?.map((tag) => tag.name);
-		expect(names(captured.props?.sourceSnapshot)).toEqual(['archive', 'finance']);
-		expect(names(captured.props?.targetSnapshot)).toEqual(['accounting', 'archive']);
+		expect(names(captured.props?.sourceSnapshot)).toEqual(['finance', 'archive']);
+		expect(names(captured.props?.targetSnapshot)).toEqual(['archive', 'accounting']);
 	});
 });
