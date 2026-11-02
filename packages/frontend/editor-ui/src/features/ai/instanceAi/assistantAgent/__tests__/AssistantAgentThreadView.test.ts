@@ -1013,7 +1013,7 @@ describe('AssistantAgentThreadView', () => {
 			expect(store.pendingComposerAttachments).toEqual([]);
 			expect(composerAttachments.value).toEqual([
 				{
-					chip: { id: 'element:app-1', label: 'button: "Save"', icon: 'mouse-pointer' },
+					chip: { id: 'element', label: 'button: "Save"', icon: 'mouse-pointer' },
 					clientContextPatch: { attachments: [element()] },
 				},
 			]);
@@ -1041,8 +1041,22 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(composerAttachments.value.map(({ chip }) => chip.id)).toEqual([
 				'nodes:wf-1',
-				'element:app-1',
+				'element',
 			]);
+		});
+
+		it('keeps one element, and follows it to the app of the latest pick', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+			store.stageElement(element());
+			await flushPromises();
+
+			store.stageElement(element({ appId: 'app-2', tagName: 'h1', text: 'Title' }));
+			await flushPromises();
+
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual(['h1: "Title"']);
+			expect(store.hasComposerElementFor('app-1')).toBe(false);
+			expect(store.hasComposerElementFor('app-2')).toBe(true);
 		});
 
 		it('tells the store which app has an element in the composer, until the chip is gone', async () => {

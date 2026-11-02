@@ -89,10 +89,8 @@ const INSPECTOR_SOURCE = String.raw`function (editorOrigin, messageSource) {
 		return hit.closest(INTERACTIVE) || hit;
 	}
 
-	function post(message) {
-		var payload = { source: messageSource };
-		for (var key in message) payload[key] = message[key];
-		window.parent.postMessage(payload, editorOrigin);
+	function post(type, element) {
+		window.parent.postMessage({ source: messageSource, type: type, element: element }, editorOrigin);
 	}
 
 	function identifies(selector, element) {
@@ -148,7 +146,7 @@ const INSPECTOR_SOURCE = String.raw`function (editorOrigin, messageSource) {
 			selectedObserver = new ResizeObserver(refresh);
 			selectedObserver.observe(element);
 		}
-		post({ type: 'inspect:selected', element: describeElement(element) });
+		post('inspect:selected', describeElement(element));
 		disable();
 	}
 
@@ -161,7 +159,7 @@ const INSPECTOR_SOURCE = String.raw`function (editorOrigin, messageSource) {
 		if (event.key === 'Escape') {
 			swallow(event);
 			disable();
-			post({ type: 'inspect:cancelled' });
+			post('inspect:cancelled');
 		} else if (event.key === 'Enter' || event.key === ' ') {
 			swallow(event);
 			pick(hovered);

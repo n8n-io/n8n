@@ -209,6 +209,18 @@ describe('inspector script', () => {
 		expect(appInspectorEventSchema.safeParse(posted[0]).success).toBe(true);
 	});
 
+	it('reports the pick even when the app adds properties to Object.prototype', async () => {
+		const { window, posted, send, hover, flush } = setup();
+		window.eval('Object.prototype.source = "other"; Object.prototype.type = "other"');
+
+		send('inspect:enable');
+		hover();
+		window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+		await flush();
+
+		expect(posted.map(({ type }) => type)).toEqual(['inspect:selected']);
+	});
+
 	it('lets the app handle clicks again after a pick', () => {
 		const { window, button, send, hover } = setup();
 		const appClick = vi.fn();
