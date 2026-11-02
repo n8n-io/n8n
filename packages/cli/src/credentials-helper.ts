@@ -393,6 +393,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return this.credentialTypes.getSupportedNodes(credentialType).includes(nodeType);
 	}
 
+	/** Whether the credential type offers Automatic OAuth mode (dynamic client registration). */
+	supportsDynamicClientRegistration(type: string): boolean {
+		return !!this.credentialTypes.getByName(type)?.dynamicClientRegistration;
+	}
+
 	/**
 	 * Returns all the properties of the credentials with the given name
 	 */
@@ -757,7 +762,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		managedVersion?: number,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
-		const { dynamicClientRegistration } = this.credentialTypes.getByName(type);
+		const dynamicClientRegistration = this.supportsDynamicClientRegistration(type);
 
 		// The credential type owns hidden OAuth endpoint/flow fields. Drop stored values so
 		// applyOverwrite (admin overwrite) and getNodeParameters (type default) fill them.

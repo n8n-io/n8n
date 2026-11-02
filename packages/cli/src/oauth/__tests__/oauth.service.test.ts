@@ -3023,6 +3023,91 @@ describe('OauthService', () => {
 		});
 	});
 
+	describe('generateAOauth2AuthUri with DCR scopes', () => {
+		const registerWithScopes = async ({
+			supportsDynamicClientRegistration,
+		}: {
+			supportsDynamicClientRegistration: boolean;
+		}) => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return {
+					code: { getUri: vi.fn().mockReturnValue({ toString: () => 'https://todoist.com/auth' }) },
+				} as any;
+			});
+			const pkceChallenge = await import('pkce-challenge');
+			vi.mocked(pkceChallenge.default).mockResolvedValue({
+				code_verifier: 'code_verifier',
+				code_challenge: 'code_challenge',
+			});
+			credentialsHelper.supportsDynamicClientRegistration.mockReturnValue(
+				supportsDynamicClientRegistration,
+			);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'Scope',
+					name: 'scope',
+					type: 'hidden',
+					default: 'data:read_write,data:delete',
+				},
+			]);
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'todoistOAuth2Api' });
+			vi.spyOn(service, 'getNewConnectionCredentials').mockResolvedValue({
+				oauthCredentials: {
+					serverUrl: 'https://todoist.com',
+					useDynamicClientRegistration: true,
+				} as OAuth2CredentialData,
+			});
+			vi.mocked(httpClientMock.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://todoist.com/oauth/authorize',
+					token_endpoint: 'https://todoist.com/oauth/access_token',
+					registration_endpoint: 'https://todoist.com/oauth/register',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['none'],
+					code_challenge_methods_supported: ['S256'],
+					scopes_supported: ['data:read', 'data:read_write', 'data:delete', 'project:delete'],
+				},
+			} as any);
+			vi.mocked(httpClientMock.post).mockResolvedValue({
+				data: { client_id: 'registered-client-id' },
+			} as any);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+		};
+
+		it('requests the scope that a credential type with Automatic mode declares', async () => {
+			await registerWithScopes({ supportsDynamicClientRegistration: true });
+
+			expect(httpClientMock.post).toHaveBeenCalledWith(
+				'https://todoist.com/oauth/register',
+				expect.objectContaining({ scope: 'data:read_write data:delete' }),
+			);
+			expect(service.encryptAndSaveData).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ scope: 'data:read_write,data:delete' }),
+				expect.anything(),
+			);
+		});
+
+		it('requests the advertised scopes for other credential types, such as MCP', async () => {
+			await registerWithScopes({ supportsDynamicClientRegistration: false });
+
+			expect(httpClientMock.post).toHaveBeenCalledWith(
+				'https://todoist.com/oauth/register',
+				expect.objectContaining({
+					scope: 'data:read data:read_write data:delete project:delete',
+				}),
+			);
+		});
+	});
+
 	describe('generateAOauth2AuthUri with DCR and RFC 8414 compliance', () => {
 		it('should insert .well-known between host and path per RFC 8414', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
