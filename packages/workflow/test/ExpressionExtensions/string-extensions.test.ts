@@ -306,6 +306,12 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "MAILTO:john.doe@example.com".extractDomain() }}')).toEqual(
 				'example.com',
 			);
+			expect(
+				evaluate('={{ "mailto:john.doe@example.com?subject=Hi".extractDomain() }}'),
+			).toEqual('example.com');
+			expect(evaluate('={{ "https://user:pass@example.com/path".extractDomain() }}')).toEqual(
+				'example.com',
+			);
 		});
 
 		test('.toDateTime should work on a variety of formats', () => {

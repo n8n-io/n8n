@@ -24,7 +24,7 @@ const CURRENCY_REGEXP =
 	/(\u004c\u0065\u006b|\u060b|\u0024|\u0192|\u20bc|\u0042\u0072|\u0042\u005a\u0024|\u0024\u0062|\u004b\u004d|\u0050|\u043b\u0432|\u0052\u0024|\u17db|\u00a5|\u20a1|\u006b\u006e|\u20b1|\u004b\u010d|\u006b\u0072|\u0052\u0044\u0024|\u00a3|\u20ac|\u00a2|\u0051|\u004c|\u0046\u0074|\u20b9|\u0052\u0070|\ufdfc|\u20aa|\u004a\u0024|\u20a9|\u20ad|\u0434\u0435\u043d|\u0052\u004d|\u20a8|\u20ae|\u004d\u0054|\u0043\u0024|\u20a6|\u0042\u002f\u002e|\u0047\u0073|\u0053\u002f\u002e|\u007a\u0142|\u006c\u0065\u0069|\u20bd|\u0414\u0438\u043d\u002e|\u0053|\u0052|\u0043\u0048\u0046|\u004e\u0054\u0024|\u0e3f|\u0054\u0054\u0024|\u20ba|\u20b4|\u0024\u0055|\u0042\u0073|\u20ab|\u005a\u0024)/gu;
 
 const DOMAIN_EXTRACT_REGEXP =
-	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?(?:[^\s@\/?#]+@)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 const DOMAIN_REGEXP =
 	/^(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
@@ -36,7 +36,8 @@ const EMAIL_REGEXP =
 // or after other text (`x,me@example.com`) is not an email.
 const EMAIL_REGEXP_EXACT = new RegExp(`^(?:${EMAIL_REGEXP.source})$`);
 
-const MAILTO_PREFIX_REGEXP = /^mailto:/i;
+// A mailto: link is read up to its first recipient: `mailto:a@b.com?subject=Hi` has the address `a@b.com`.
+const MAILTO_ADDRESS_REGEXP = /^mailto:([^?#,]*)/i;
 
 const URL_REGEXP_EXACT =
 	/^(?:(?:https?|ftp):\/\/)(?:www\.)?((?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?=([^\s]+#.*)?)#?[^\s]*$/i;
@@ -348,7 +349,8 @@ function extractEmail(value: string) {
 }
 
 function extractDomain(value: string) {
-	const address = value.replace(MAILTO_PREFIX_REGEXP, '');
+	const mailto = MAILTO_ADDRESS_REGEXP.exec(value);
+	const address = mailto ? mailto[1] : value;
 	if (isEmail(address)) {
 		const matched = EMAIL_REGEXP.exec(address);
 		// This shouldn't happen
