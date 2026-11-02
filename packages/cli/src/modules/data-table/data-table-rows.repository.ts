@@ -1,5 +1,5 @@
 import { DataTableFilter, ListDataTableContentQueryDto } from '@n8n/api-types';
-import { withTransaction } from '@n8n/db';
+import { BaseRepository, type OperationContext, TransactionRunner, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	DataSource,
@@ -26,6 +26,7 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import {
 	escapeLikeSpecials,
@@ -142,9 +143,26 @@ function getConditionAndParams(
 	throw new Error(`Unsupported filter condition: ${filter.condition}`);
 }
 
+/**
+ * Rows live in one user table per data table, so there is no entity of their own.
+ * The table exists only to resolve the manager of an `OperationContext`.
+ */
+class DataTableRowsTable extends BaseRepository<DataTable> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(DataTable, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
 export class DataTableRowsRepository {
-	constructor(private dataSource: DataSource) {}
+	private readonly table: DataTableRowsTable;
+
+	constructor(
+		private dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+	) {
+		this.table = new DataTableRowsTable(dataSource, transactionRunner);
+	}
 
 	async insertRowsBulk(
 		table: DataTableUserTableName,
@@ -152,6 +170,7 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			let insertedRows = 0;
 
@@ -221,6 +240,7 @@ export class DataTableRowsRepository {
 		returnType: T,
 		trx?: EntityManager,
 	): Promise<DataTableInsertRowsResult> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const inserted: Array<Pick<DataTableRowReturn, 'id'>> = [];
 			const dbType = this.dataSource.options.type;
@@ -308,6 +328,7 @@ export class DataTableRowsRepository {
 		returnData: boolean = false,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = dbType === 'postgres';
@@ -423,6 +444,7 @@ export class DataTableRowsRepository {
 		dryRun: boolean = false,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = !dryRun && dbType === 'postgres';
@@ -484,6 +506,7 @@ export class DataTableRowsRepository {
 	}
 
 	async clearRows(dataTableId: string, trx?: EntityManager): Promise<{ deletedCount: number }> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const result = await em.createQueryBuilder().delete().from(table).execute();
@@ -498,6 +521,7 @@ export class DataTableRowsRepository {
 		idsOnly: T,
 		trx?: EntityManager,
 	): Promise<T extends true ? Array<Pick<DataTableRowReturn, 'id'>> : DataTableRowReturn[]> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const selectColumns = idsOnly ? 'id' : '*';
@@ -564,9 +588,9 @@ export class DataTableRowsRepository {
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
 		columns: DataTableColumn[],
-		trx?: EntityManager,
+		ctx: OperationContext,
 	) {
-		const em = trx ?? this.dataSource.manager;
+		const em = this.table.managerFor(ctx);
 
 		const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
 		const data: DataTableRowsReturn = await query.select('*').getRawMany();

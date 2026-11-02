@@ -1,5 +1,10 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { AgentJsonConfigBaseSchema, AgentModelSchema } from '@n8n/api-types';
+import {
+	AgentJsonConfigBaseSchema,
+	AgentModelSchema,
+	EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS,
+	EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH,
+} from '@n8n/api-types';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 
@@ -9,6 +14,10 @@ const BuilderPromptMemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
 	credential: z.string().trim().min(1),
 });
+
+const BuilderPromptGuidanceTopicsSchema = z
+	.array(z.string().trim().min(1).max(EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH))
+	.max(EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS);
 
 const BuilderPromptMemoryConfigSchema = z.object({
 	enabled: z.boolean(),
@@ -34,6 +43,12 @@ const BuilderPromptMemoryConfigSchema = z.object({
 				reflectorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 				topK: z.number().int().min(1).max(100).optional(),
 				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
+				guidance: z
+					.object({
+						include: BuilderPromptGuidanceTopicsSchema.optional(),
+						exclude: BuilderPromptGuidanceTopicsSchema.optional(),
+					})
+					.optional(),
 			}),
 		])
 		.optional(),
@@ -48,21 +63,20 @@ export function getConfigRulesSection(): string {
 #### Agent Config Rules
 
 - \`model\` must be "provider/model-name", or \`""\` while LLM setup is pending.
-- A non-empty \`credential\` must be the id returned by \`resolve_llm\`.
+- A non-empty \`credential\` must be the id returned by \`agent_builder_resolve_llm\`.
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- For OpenAI and Anthropic models, always include
-  \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
-  never be disabled, even if the user asks. Omit \`config.promptCaching\`
-  entirely for every other provider. For Anthropic only, you may set
-  \`config.promptCaching.anthropic.ttl\` to \`"5m"\` or \`"1h"\` (default
-  \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
-  sub-config.
+- The server sets \`config.promptCaching\` for every model that supports it, and
+  it cannot be disabled. Do not write it, except to tune the cache duration for
+  Anthropic models and routed Claude models (OpenRouter, Google Vertex,
+  Microsoft Foundry) when the user asks. Then write the full object, for example
+  \`config.promptCaching: { "enabled": true, "anthropic": { "ttl": "5m" } }\`
+  (\`"5m"\` or \`"1h"\`, default \`"1h"\`).
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
 - Fresh agents need real \`instructions\` before config is written. \`model\`
   may be \`""\` and \`credential\` omitted in a draft while LLM setup is
-  pending; fill both from a \`resolve_llm\` result before publishing.`;
+  pending; fill both from a \`agent_builder_resolve_llm\` result before publishing.`;
 }
 
 export function getSchemaReferenceSection(): string {

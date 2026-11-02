@@ -16,7 +16,7 @@ import {
 import type { DataTableInfo, DataTablesSizeData } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableDDLService } from './data-table-ddl.service';
+import { DataTableDDLService } from './persistence/data-table-ddl';
 import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
@@ -35,6 +35,32 @@ export class DataTableRepository extends Repository<DataTable> {
 		super(DataTable, dataSource.manager);
 	}
 
+	async findWithColumnsByIds(ids: string[]): Promise<DataTable[]> {
+		if (ids.length === 0) return [];
+		return await this.find({ where: { id: In(ids) }, relations: { columns: true } });
+	}
+
+	async findNamesInProject(
+		projectId: string,
+		names: string[],
+	): Promise<Pick<DataTable, 'id' | 'name'>[]> {
+		if (names.length === 0) return [];
+		return await this.find({ select: ['id', 'name'], where: { projectId, name: In(names) } });
+	}
+
+	async findWithProjectsByIds(ids: string[], projectIds?: string[]): Promise<DataTable[]> {
+		if (ids.length === 0 || projectIds?.length === 0) return [];
+		return await this.find({
+			where: { id: In(ids), ...(projectIds ? { projectId: In(projectIds) } : {}) },
+			relations: { columns: true, project: true },
+		});
+	}
+
+	async findProjectIdForScope(dataTableId: string): Promise<string | null> {
+		const table = await this.findOne({ where: { id: dataTableId }, select: ['projectId'] });
+		return table?.projectId ?? null;
+	}
+
 	/**
 	 * Updates the updatedAt timestamp for a data table without modifying any other fields.
 	 * This is used to track when the table's content (rows/columns) has changed.
@@ -43,6 +69,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	 * update failures don't affect the primary data operations.
 	 */
 	async touchUpdatedAt(dataTableId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.manager, trx, async (em) => {
 			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
 		}).catch((error) => {
@@ -56,7 +83,9 @@ export class DataTableRepository extends Repository<DataTable> {
 		columns: DataTableCreateColumnSchema[],
 		trx?: EntityManager,
 		explicitId?: string,
+		explicitColumnIds?: Array<string | undefined>,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
 				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
@@ -85,6 +114,7 @@ export class DataTableRepository extends Repository<DataTable> {
 			// insert columns
 			const columnEntities = columns.map((col, index) =>
 				em.create(DataTableColumn, {
+					id: explicitColumnIds?.[index],
 					dataTableId,
 					name: col.name,
 					type: col.type,
@@ -113,6 +143,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTable(dataTableId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.delete(DataTable, { id: dataTableId });
 			await this.ddlService.dropTable(dataTableId, em);
@@ -127,6 +158,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	) {
 		if (fromProjectId === toProjectId) return false;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
 
@@ -163,6 +195,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableByProjectId(projectId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId });
 
@@ -177,6 +210,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableAll(trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, {});
 

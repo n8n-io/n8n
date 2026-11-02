@@ -167,6 +167,19 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
+				displayName: 'Prompt Caching',
+				name: 'promptCaching',
+				type: 'options',
+				default: 'disabled',
+				description:
+					'Whether to cache the prompt so that repeat calls are cheaper and faster. Do not enable for one-off calls: in this case writing the cache costs more than it saves. The value sets how long cached content stays valid before it has to be written again. <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank">Learn more</a>.',
+				options: [
+					{ name: 'Disabled', value: 'disabled' },
+					{ name: '5 Minutes', value: '5m' },
+					{ name: '1 Hour', value: '1h' },
+				],
+			},
+			{
 				displayName: 'Code Execution',
 				name: 'codeExecution',
 				type: 'boolean',
@@ -270,6 +283,18 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName:
+			'Cache reads and writes are billed at different rates than regular input tokens, so reported prompt/total tokens are only an approximation of actual billable usage',
+		name: 'promptCachingNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				'/options.promptCaching': ['5m', '1h'],
+			},
+		},
+	},
 ];
 
 const displayOptions = {
@@ -283,6 +308,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 interface MessageOptions {
 	includeMergedResponse?: boolean;
+	promptCaching?: 'disabled' | '5m' | '1h';
 	codeExecution?: boolean;
 	webSearch?: boolean;
 	allowedDomains?: string;
@@ -346,6 +372,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		temperature: options.temperature,
 		top_p: options.topP,
 		top_k: options.topK,
+		...(options.promptCaching && options.promptCaching !== 'disabled'
+			? { cache_control: { type: 'ephemeral', ttl: options.promptCaching } }
+			: {}),
 	};
 
 	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
@@ -354,11 +383,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	})) as MessagesResponse;
 
 	const captureUsage = () => {
-		const usage = (response as unknown as Record<string, unknown>).usage as
-			| { input_tokens: number; output_tokens: number }
-			| undefined;
+		const usage = response.usage;
 		if (usage) {
-			accumulateTokenUsage(this, usage.input_tokens, usage.output_tokens);
+			// Cached tokens are reported outside input_tokens, so they have to be added
+			// back in or enabling caching would look like a drop in token usage.
+			const inputTokens =
+				usage.input_tokens +
+				(usage.cache_creation_input_tokens ?? 0) +
+				(usage.cache_read_input_tokens ?? 0);
+			accumulateTokenUsage(this, inputTokens, usage.output_tokens);
 		}
 	};
 

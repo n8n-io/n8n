@@ -1,11 +1,14 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import { vi } from 'vitest';
 import { useProjectsStore } from './projects.store';
 import * as projectsApi from './projects.api';
 import type { Project, ProjectListItem, ProjectType } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import type { ProjectRole, Scope } from '@n8n/permissions';
+import type { FrontendSettings } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 type MockRoute = {
 	params: Record<string, string>;
@@ -337,5 +340,34 @@ describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
 		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
 		expect(store.currentProject).toBeNull();
 		expect(store.projectNavActiveId).toBe('shared');
+	});
+
+	it('clears the workflow project context when opening Reviews', async () => {
+		const store = makeStore();
+		store.currentProject = makeProject('team-1');
+		await store.setProjectNavActiveIdByWorkflowHomeProject(store.currentProject);
+
+		route.path = '/inbox';
+		await nextTick();
+
+		expect(store.projectNavActiveId).toBe('inbox');
+		expect(store.currentProject).toBeNull();
+	});
+});
+
+describe('useProjectsStore.hasTeamProjectQuota', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('keeps team project quota available on a protected instance', () => {
+		useSettingsStore().settings = {
+			enterprise: { projects: { team: { limit: 1 } } },
+		} as FrontendSettings;
+		useSourceControlStore().setPreferences({ branchReadOnly: true });
+		const store = useProjectsStore();
+
+		expect(store.hasTeamProjectQuota).toBe(true);
+		expect(store.canCreateProjects).toBe(false);
 	});
 });

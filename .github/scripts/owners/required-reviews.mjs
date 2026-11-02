@@ -1,15 +1,16 @@
 /**
  * Required-review enforcement for OWNERS entries marked `required`.
  *
- * Computes the teams whose approval the changeset needs (per OWNERS)
+ * Computes the teams whose approval the non-test changes need (per OWNERS)
  * and reports the verdict as a "Required Reviews" commit status on the PR
  * head SHA. A ruleset that lists this status as a required check blocks the
  * merge until a member of each required team has approved the PR. Merge-queue
  * runs do not reach this script: the workflow reports success on the queue
  * head directly, because entering the queue already required a green status.
  *
- * Every base branch is enforced unless the PR matches a route in
- * REQUIRED_REVIEW_EXEMPTIONS; an exempt PR reports success without evaluation.
+ * Every base branch is enforced unless the PR matches a trusted exemption.
+ * Exemptions include configured routes and an authorized large-scale-change
+ * label. An exempt PR reports success without approval evaluation.
  *
  * The job itself always succeeds when the evaluation runs; the commit status
  * carries the verdict. The status is set to pending before the evaluation
@@ -20,15 +21,19 @@
 import {
 	getChangedFiles,
 	getEventFromGithubEventPath,
+	getPrEvents,
 	getPrReviews,
 	getPullRequestById,
 	isTeamMember,
 	listOpenPullRequestsByHead,
+	readPrLabels,
 	setCommitStatus,
 } from '../github-helpers.mjs';
 import { parseOwnersFile, resolveRequiredTeams, teamHandleToSlug } from './owners.mjs';
 
 export const STATUS_CONTEXT = 'Required Reviews';
+export const LARGE_SCALE_CHANGE_LABEL = 'large-scale-change';
+export const LARGE_SCALE_CHANGES_TEAM = 'large-scale-changes';
 
 /**
  * PR routes that skip the evaluation. Each entry is `<head> -> <base>` or
@@ -161,6 +166,32 @@ export function collectApprovers(reviews) {
 }
 
 /**
+ * Return the team member who applied the active large-scale-change label.
+ * The current membership check makes the exemption expire when the actor
+ * leaves the team.
+ *
+ * @param { number } pullRequestNumber
+ * @param {{ labels?: Array<string | { name: string }> }} pullRequest
+ * @returns { Promise<string | undefined> }
+ */
+export async function findLargeScaleChangeExemption(pullRequestNumber, pullRequest) {
+	if (!readPrLabels(pullRequest).includes(LARGE_SCALE_CHANGE_LABEL)) return undefined;
+
+	const labelEvents = (await getPrEvents(pullRequestNumber)).filter(
+		(event) =>
+			['labeled', 'unlabeled'].includes(event.event) &&
+			event.label?.name === LARGE_SCALE_CHANGE_LABEL,
+	);
+	const latestEvent = labelEvents.at(-1);
+	if (latestEvent?.event !== 'labeled') return undefined;
+
+	const actor = latestEvent.actor?.login;
+	if (!actor) return undefined;
+
+	return (await isTeamMember(LARGE_SCALE_CHANGES_TEAM, actor)) ? actor : undefined;
+}
+
+/**
  * @param { string[] } missingTeams Team handles without an approving member.
  * @param { number } requiredCount Total number of required teams.
  * @returns {{ state: 'success' | 'pending', description: string }}
@@ -258,9 +289,20 @@ export async function run() {
 	let status;
 	try {
 		const exemption = findExemption(pullRequest);
+		const largeScaleChangeActor = exemption
+			? undefined
+			: await findLargeScaleChangeExemption(pullRequestNumber, pullRequest);
 		if (exemption) {
 			console.log(`PR #${pullRequestNumber} matches exempt route "${exemption.source}"; skipping the evaluation.`);
 			status = { state: 'success', description: `Exempt route: ${exemption.source}` };
+		} else if (largeScaleChangeActor) {
+			console.log(
+				`PR #${pullRequestNumber} has an authorized ${LARGE_SCALE_CHANGE_LABEL} label from ${largeScaleChangeActor}; skipping the evaluation.`,
+			);
+			status = {
+				state: 'success',
+				description: `Large-scale change exemption by @${largeScaleChangeActor}`,
+			};
 		} else {
 			status = await evaluateRequiredReviews(pullRequestNumber);
 		}

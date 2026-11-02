@@ -1,4 +1,5 @@
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import type { McpToolPermissions } from '@n8n/api-types';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 
 type ToolsListSource = InferTelemetryProps<
@@ -8,10 +9,6 @@ type ToolsListSource = InferTelemetryProps<
 type McpSettingsSource = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.INSTANCE_AI.MCP_SETTINGS_OPENED
 >['source'];
-
-type McpToolInclusionMode = InferTelemetryProps<
-	typeof TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_FILTER_SETTINGS_UPDATED
->['inclusion_mode'];
 
 export function useInstanceAiMcpTelemetry() {
 	const telemetry = useTelemetry();
@@ -45,10 +42,12 @@ export function useInstanceAiMcpTelemetry() {
 				server_slug: serverSlug,
 			});
 		},
-		trackToolFilterSettingsUpdated(serverSlug: string, inclusionMode: McpToolInclusionMode) {
-			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_FILTER_SETTINGS_UPDATED, {
+		trackToolPermissionsUpdated(serverSlug: string, permissions: McpToolPermissions) {
+			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.MCP_TOOL_PERMISSIONS_UPDATED, {
 				server_slug: serverSlug,
-				inclusion_mode: inclusionMode,
+				read_permission: permissions.categories.read,
+				write_permission: permissions.categories.write,
+				tool_override_count: Object.keys(permissions.tools ?? {}).length,
 			});
 		},
 	};

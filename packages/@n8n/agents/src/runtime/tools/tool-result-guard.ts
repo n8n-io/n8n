@@ -1,10 +1,9 @@
-import { isRecord } from '@n8n/utils/is-record';
+import { MAX_AGENT_FILE_SIZE_BYTES } from '@n8n/api-types';
 import { toJsonValue } from '@n8n/utils/json/to-json-value';
 
-import type { AgentDbMessage, AgentMessage, MessageContent } from '../../types/sdk/message';
+import type { AgentMessage } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 import {
-	isToolResultPath,
 	storeToolResult,
 	type ToolResultKind,
 	type ToolResultStorageScope,
@@ -12,6 +11,11 @@ import {
 import type { WorkspaceFilesystem } from '../../workspace/types';
 import { isContentToolResultOutput, type ContentToolResultOutput } from '../model/messages';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
+
+export {
+	EXPIRED_OFFLOADED_TOOL_RESULT,
+	sanitizeOffloadedToolResultsForMemory,
+} from '../memory/tool-result-memory';
 
 export const MAX_MODEL_TOOL_RESULT_TOKENS = 50_000;
 // BPE tokens cannot exceed UTF-8 bytes; reserve room for provider message framing.
@@ -40,14 +44,6 @@ interface OffloadedToolResult extends JSONObject {
 	message: string;
 }
 
-export const EXPIRED_OFFLOADED_TOOL_RESULT = {
-	_offloaded: true,
-	expired: true,
-	message: 'The stored tool result expired with its originating run.',
-} satisfies JSONObject;
-
-const EXPIRED_OFFLOADED_TOOL_RESULT_JSON = JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT);
-
 export interface ToolResultGuardStorage extends ToolResultStorageScope {
 	filesystem: WorkspaceFilesystem;
 	/** Invoked after a result was successfully offloaded to the workspace filesystem. */
@@ -72,16 +68,41 @@ export async function guardToolResultForModel(
 	}
 
 	const historyOutput = toJsonValue(output);
-	const serialized = JSON.stringify(historyOutput);
+	const unchanged = { historyOutput, wireOutput: output, truncated: false, offloaded: false };
+	return await guardSerialized(
+		JSON.stringify(historyOutput),
+		unchanged,
+		tokenCounter,
+		storage,
+		kind,
+	);
+}
 
-	if (isClearlyWithinTokenLimit(serialized)) {
-		return { historyOutput, wireOutput: output, truncated: false, offloaded: false };
-	}
+/** Guards a result that the caller already serialized, without another JSON encoding layer. */
+export async function guardSerializedToolResultForModel(
+	serialized: string,
+	tokenCounter: TokenCounter = estimateObservationTokens,
+): Promise<GuardedToolResult> {
+	const unchanged = {
+		historyOutput: serialized,
+		wireOutput: serialized,
+		truncated: false,
+		offloaded: false,
+	};
+	return await guardSerialized(serialized, unchanged, tokenCounter, undefined, 'result');
+}
+
+async function guardSerialized(
+	serialized: string,
+	unchanged: GuardedToolResult,
+	tokenCounter: TokenCounter,
+	storage: ToolResultGuardStorage | undefined,
+	kind: ToolResultKind,
+): Promise<GuardedToolResult> {
+	if (isClearlyWithinTokenLimit(serialized)) return unchanged;
 
 	const tokenCount = await tokenCounter(serialized);
-	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) {
-		return { historyOutput, wireOutput: output, truncated: false, offloaded: false };
-	}
+	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) return unchanged;
 
 	const offloaded = await tryOffloadResult(serialized, tokenCount, kind, storage);
 	if (offloaded) {
@@ -108,7 +129,7 @@ async function guardContentToolResultForModel(
 	storage: ToolResultGuardStorage | undefined,
 	kind: ToolResultKind,
 ): Promise<GuardedToolResult> {
-	const textParts = output.value.filter((part) => part.type === 'text');
+	const textParts = output.value.filter((part) => 'text' in part);
 	const historyOutput = toJsonValue(output);
 	if (textParts.length === 0) {
 		return { historyOutput, wireOutput: output, truncated: false, offloaded: false };
@@ -120,14 +141,7 @@ async function guardContentToolResultForModel(
 	}
 
 	const replacement = JSON.stringify(guardedText.historyOutput);
-	let replacedText = false;
-	const value = output.value.flatMap((part): ContentToolResultOutput['value'] => {
-		if (part.type !== 'text') return [part];
-		if (replacedText) return [];
-
-		replacedText = true;
-		return [{ ...part, text: replacement }];
-	});
+	const value = replaceTextParts(output.value, replacement);
 	const wireOutput: ContentToolResultOutput = { ...output, value };
 
 	return {
@@ -161,72 +175,18 @@ export async function guardToolMessageForModel(
 	if (!guarded.truncated && !guarded.offloaded) return message;
 
 	const replacement = JSON.stringify(guarded.historyOutput);
-	let replacedText = false;
-	const content = message.content.flatMap((block): MessageContent[] => {
-		if (block.type !== 'text') return [block];
-		if (replacedText) return [];
-
-		replacedText = true;
-		return [{ ...block, text: replacement }];
-	});
+	const content = replaceTextParts(message.content, replacement);
 
 	return { ...message, content };
 }
 
-function isOffloadedToolResult(value: unknown): boolean {
-	return (
-		isRecord(value) &&
-		value._offloaded === true &&
-		typeof value.path === 'string' &&
-		isToolResultPath(value.path)
-	);
-}
-
-function isSerializedOffloadedToolResult(value: string): boolean {
-	try {
-		const parsed: unknown = JSON.parse(value);
-		return isOffloadedToolResult(parsed);
-	} catch {
-		return false;
-	}
-}
-
-export function sanitizeOffloadedToolResultsForMemory(
-	messages: AgentDbMessage[],
-): AgentDbMessage[] {
-	return messages.map((message) => {
-		if (!('content' in message)) return { ...message };
-
-		const content = message.content.map((block): MessageContent => {
-			if (block.type === 'tool-call') {
-				if (block.state === 'resolved' && isOffloadedToolResult(block.output)) {
-					return { ...block, output: { ...EXPIRED_OFFLOADED_TOOL_RESULT } };
-				}
-				if (block.state === 'resolved' && isContentToolResultOutput(block.output)) {
-					return {
-						...block,
-						output: toJsonValue({
-							type: 'content',
-							value: block.output.value.map((part) =>
-								part.type === 'text' && isSerializedOffloadedToolResult(part.text)
-									? { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON }
-									: part,
-							),
-						}),
-					};
-				}
-				if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
-					return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
-				}
-			}
-
-			if (block.type === 'text' && isSerializedOffloadedToolResult(block.text)) {
-				return { ...block, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
-			}
-
-			return { ...block };
-		});
-		return { ...message, content };
+function replaceTextParts<T extends { type: string }>(parts: T[], replacement: string): T[] {
+	let replacedText = false;
+	return parts.flatMap((part) => {
+		if (part.type !== 'text') return [part];
+		if (replacedText) return [];
+		replacedText = true;
+		return [{ ...part, text: replacement }];
 	});
 }
 
@@ -237,6 +197,7 @@ async function tryOffloadResult(
 	storage?: ToolResultGuardStorage,
 ): Promise<OffloadedToolResult | undefined> {
 	if (!storage || storage.filesystem.readOnly === true) return undefined;
+	if (Buffer.byteLength(serialized, 'utf8') > MAX_AGENT_FILE_SIZE_BYTES) return undefined;
 
 	try {
 		const path = await storeToolResult(storage.filesystem, storage, kind, serialized);

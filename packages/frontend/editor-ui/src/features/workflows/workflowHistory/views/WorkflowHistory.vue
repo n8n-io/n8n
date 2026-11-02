@@ -625,7 +625,7 @@ watchEffect(async () => {
 				{{ publishedWorkflow?.name }}
 			</N8nHeading>
 			<span v-if="publishedWorkflow?.isArchived">
-				<N8nBadge class="ml-s" theme="tertiary" bold data-test-id="workflow-archived-tag">
+				<N8nBadge class="ml-s" variant="outline" data-test-id="workflow-archived-tag">
 					{{ i18n.baseText('workflows.item.archived') }}
 				</N8nBadge>
 			</span>
@@ -664,7 +664,9 @@ watchEffect(async () => {
 				@load-more="loadMore"
 				@upgrade="onUpgrade"
 			/>
+			<!-- Keep pagination state scoped to one workflow. -->
 			<WorkflowPublishTimelineContent
+				:key="workflowId"
 				v-if="canRender && activeTab === 'publishTimeline'"
 				:workflow-id="workflowId"
 				:selected-version-id="versionId"

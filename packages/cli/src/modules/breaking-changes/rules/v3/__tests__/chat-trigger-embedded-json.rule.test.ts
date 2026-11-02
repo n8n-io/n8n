@@ -93,4 +93,10 @@ describe('ChatTriggerEmbeddedJsonRule', () => {
 			expect(recommendations[0].action).toContain('embedded chat');
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report an executionsFail impact for embedded chats that cannot read the new frames', () => {
+			expect(rule.getMetadata().impact).toBe('executionsFail');
+		});
+	});
 });

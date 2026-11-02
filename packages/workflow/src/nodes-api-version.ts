@@ -1,54 +1,53 @@
 import { N8N_NODES_API_VERSION } from '@n8n/constants';
+import { formatNodesApiLevel, parseNodesApiLevel } from '@n8n/utils/nodes-api-level';
 
-export { N8N_NODES_API_VERSION };
+export { N8N_NODES_API_VERSION, formatNodesApiLevel, parseNodesApiLevel };
 
 /** Minimal package.json shape needed to check node API compatibility. */
 export interface NodesApiVersionPackageJson {
 	n8n?: {
-		/**
-		 * Node-authoring API level the package requires. Absent in legacy
-		 * packages, which are treated as requiring level 1.
-		 */
 		n8nNodesApiVersion?: unknown;
 	};
 }
 
 export type NodesApiVersionCheck =
+	| { compatible: true }
 	| {
-			compatible: true;
-			/** Effective required API level; 1 for packages without metadata. */
-			version: number;
+			compatible: false;
+			reason: 'malformed';
+			declared: unknown;
 	  }
 	| {
 			compatible: false;
-			reason: 'malformed' | 'unsupported';
-			/** The declared value, as read from package.json. */
+			reason: 'unsupported';
 			declared: unknown;
+			/** As `<major>.<minor>`, for messages and metadata. */
+			required: string;
 	  };
 
-/**
- * Read a community package's declared node-authoring API level and check it
- * against the level this runtime supports (`required <= N8N_NODES_API_VERSION`).
- *
- * Missing `n8n.n8nNodesApiVersion` means a legacy package and resolves to
- * level 1. Malformed values (non-integer, non-positive, non-number) are
- * reported as incompatible — the runtime cannot distinguish an old package
- * from a corrupt or hostile one if both fall back to legacy.
- */
+function supportedLevel() {
+	const level = parseNodesApiLevel(N8N_NODES_API_VERSION);
+	if (level === null)
+		throw new Error(`N8N_NODES_API_VERSION is not a level: ${N8N_NODES_API_VERSION}`);
+	return level;
+}
+
+// A missing declaration is a legacy package at level 1. A malformed one is
+// incompatible: the runtime cannot tell an old package from a corrupt one.
 export function checkNodesApiVersion(pkgJson: NodesApiVersionPackageJson): NodesApiVersionCheck {
 	const declared = pkgJson?.n8n?.n8nNodesApiVersion;
 
-	if (declared === undefined) {
-		return { compatible: true, version: 1 };
-	}
+	if (declared === undefined) return { compatible: true };
 
-	if (typeof declared !== 'number' || !Number.isInteger(declared) || declared < 1) {
-		return { compatible: false, reason: 'malformed', declared };
-	}
+	const required = parseNodesApiLevel(declared);
+	if (required === null) return { compatible: false, reason: 'malformed', declared };
 
-	if (declared <= N8N_NODES_API_VERSION) {
-		return { compatible: true, version: declared };
-	}
+	if (required.compare(supportedLevel()) <= 0) return { compatible: true };
 
-	return { compatible: false, reason: 'unsupported', declared };
+	return {
+		compatible: false,
+		reason: 'unsupported',
+		declared,
+		required: formatNodesApiLevel(required),
+	};
 }

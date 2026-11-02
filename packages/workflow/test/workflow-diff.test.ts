@@ -24,6 +24,7 @@ import {
 	type DiffableWorkflow,
 	type DiffMetaData,
 	type DiffRule,
+	type WorkflowDiffBase,
 } from '../src/workflow-diff';
 
 describe('NodeDiffStatus', () => {
@@ -911,6 +912,19 @@ describe('groupWorkflows', () => {
 					expect(rule(prev, next, wcs, metaData)).toBe(false);
 				});
 
+				it('should apply the smallest threshold to a workflow size of zero when that threshold is zero', () => {
+					const mapping = new Map([
+						[0, 60000],
+						[1000, 600000],
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:00:30Z'));
+
+					expect(rule(prev, next, wcs, createMetaData(0))).toBe(true);
+				});
+
 				it('should apply the correct time threshold for workflow size', () => {
 					const mapping = new Map([
 						[1000, 60000], // 1000 chars -> 1 min
@@ -1388,5 +1402,111 @@ describe('hasCredentialChanges', () => {
 
 		// When a node is deleted, it's not considered a credential change
 		expect(result).toBe(false);
+	});
+});
+
+describe('groupWorkflows with the trim rule', () => {
+	const MINUTE_MS = 60 * 1_000;
+
+	// The rule exactly as the workflow history trim task configures it.
+	const trimRule = RULES.makeMergeDependingOnSizeRule(
+		new Map([
+			[0, MINUTE_MS],
+			[100, 10 * MINUTE_MS],
+			[1000, 120 * MINUTE_MS],
+			[5000, 300 * MINUTE_MS],
+			[10000, 600 * MINUTE_MS],
+		]),
+	);
+
+	type Version = WorkflowDiffBase & { versionId: string; authors: string };
+	type VersionOptions = { size?: 'small' | 'large'; authors?: string };
+
+	const version = (
+		versionId: string,
+		seconds: number,
+		{ size = 'small', authors = 'Test User' }: VersionOptions = {},
+	) =>
+		mock<Version>({
+			versionId,
+			createdAt: new Date(seconds * 1_000),
+			nodes: [{ id: 'n', name: 'n', parameters: { a: size === 'large' ? 'x'.repeat(200) : 'x' } }],
+			connections: {},
+			name: null,
+			authors,
+		});
+
+	const trim = (versions: Version[]) =>
+		groupWorkflows(versions, [trimRule], [SKIP_RULES.skipDifferentUsers], {
+			workflowSizeScore: true,
+		}).remaining.map((v) => v.versionId);
+
+	const survivorsOf = (versions: Version[]) => {
+		const kept = trim(versions);
+		return versions.filter((v) => kept.includes(v.versionId));
+	};
+
+	it('keeps a version whose gap to the kept neighbour equals the bucket, merges one a millisecond short', () => {
+		expect(trim([version('v0', 0), version('v1', 60)])).toEqual(['v0', 'v1']);
+		expect(trim([version('v0', 0.001), version('v1', 60)])).toEqual(['v1']);
+	});
+
+	it('measures the gap to the kept neighbour, not to a merged one', () => {
+		expect(trim([version('v0', 0), version('v1', 50), version('v2', 100)])).toEqual(['v0', 'v2']);
+	});
+
+	it('takes the size score from the newest version', () => {
+		// The middle version is large. The newest is small, so the bucket is one minute.
+		const versions = [
+			version('v0', 0, { size: 'large' }),
+			version('v1', 300, { size: 'large' }),
+			version('v2', 600),
+		];
+
+		expect(trim(versions)).toEqual(['v0', 'v1', 'v2']);
+	});
+
+	it('removes nothing from the survivors of a pass, mixed sizes', () => {
+		const versions = [
+			version('v0', 0),
+			version('v1', 100),
+			version('v2', 200, { size: 'large' }),
+			version('v3', 280),
+			version('v4', 300),
+			version('v5', 380),
+			version('v6', 400),
+		];
+		const once = trim(versions);
+
+		expect(once).toEqual(['v0', 'v1', 'v2', 'v4', 'v6']);
+		expect(trim(survivorsOf(versions))).toEqual(once);
+	});
+
+	it('widens the bucket when the newest version is large', () => {
+		// A score above 100 keeps one version per ten minutes.
+		const versions = [version('v0', 1), version('v1', 300), version('v2', 600, { size: 'large' })];
+
+		expect(trim(versions)).toEqual(['v2']);
+	});
+
+	it('trims a workflow whose newest version has no nodes', () => {
+		const versions = [version('v0', 0, { size: 'large' }), version('v1', 30), version('v2', 60)];
+		versions[2].nodes = [];
+
+		expect(trim(versions)).toEqual(['v0', 'v2']);
+	});
+
+	it('removes nothing from the survivors of a pass, two authors', () => {
+		const versions = [
+			version('v0', 0),
+			version('v1', 20),
+			version('v2', 40, { authors: 'other' }),
+			version('v3', 50, { authors: 'other' }),
+			version('v4', 70),
+		];
+		const once = trim(versions);
+
+		expect(once).toEqual(['v1', 'v3', 'v4']);
+		expect(trim(survivorsOf(versions))).toEqual(once);
 	});
 });

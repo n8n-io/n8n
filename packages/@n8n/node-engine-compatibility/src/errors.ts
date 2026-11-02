@@ -86,3 +86,32 @@ export class EngineRequestNotSupportedError extends UserError {
 		);
 	}
 }
+
+/**
+ * A wait that engine v2 cannot end yet. Engine v2 has no sub-workflow steps
+ * and no step-bound resume requests.
+ */
+export class UnsupportedWaitError extends UserError {
+	constructor(nodeName: string, waitsFor: 'a sub-execution' | 'an approval') {
+		super(
+			waitsFor === 'a sub-execution'
+				? `Node "${nodeName}" waits for a sub-workflow that is itself waiting, and engine v2 cannot end that wait yet.`
+				: `Node "${nodeName}" sends a message and waits, and engine v2 cannot end that wait yet.`,
+		);
+	}
+}
+
+export class UnendingWaitError extends UserError {
+	constructor(nodeName: string) {
+		super(
+			`Node "${nodeName}" waits with no time limit and does not accept a resume request, so nothing can end the wait`,
+		);
+	}
+}
+
+/** The node asked to wait until a value that is not a date, so no deadline can be declared. */
+export class InvalidWaitDateError extends UserError {
+	constructor(nodeName: string) {
+		super(`Node "${nodeName}" asked to wait until a date that is not valid`);
+	}
+}

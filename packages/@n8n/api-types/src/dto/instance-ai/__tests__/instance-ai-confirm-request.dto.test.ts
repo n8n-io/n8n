@@ -32,8 +32,6 @@ describe('InstanceAiConfirmRequestDto', () => {
 				{ kind: 'approval', approved: true, scope: 'session' },
 			],
 			['approval approve with once scope', { kind: 'approval', approved: true, scope: 'once' }],
-			// InstanceAiConfirmationPanel: handlePlanDeny (hard-reject the plan)
-			['planDeny', { kind: 'planDeny' }],
 			// InstanceAiConfirmationPanel: handleQuestionsSubmit
 			[
 				'questions with mixed answers',

@@ -137,9 +137,13 @@ const KAFKA_CHECK = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
 	'../.github/scripts/docker/kafka-native-smoke-check.mjs',
 );
-const EXPECTED_PNPM_VERSION = (await fs.readJson(
-	path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../package.json'),
-)).packageManager.replace('pnpm@', '');
+const EDIT_IMAGE_CHECK = path.resolve(
+	path.dirname(fileURLToPath(import.meta.url)),
+	'../.github/scripts/docker/edit-image-native-smoke-check.mjs',
+);
+const EXPECTED_PNPM_VERSION = (
+	await fs.readJson(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../package.json'))
+).packageManager.replace('pnpm@', '');
 
 async function runKafkaBindingCheck() {
 	const name = 'kafka native binding loads in image';
@@ -147,6 +151,19 @@ async function runKafkaBindingCheck() {
 		await $({
 			timeout: TIMEOUT,
 		})`docker run --rm --entrypoint node -v ${`${KAFKA_CHECK}:/tmp/kafka-check.mjs:ro`} ${IMAGE} /tmp/kafka-check.mjs`;
+		echo(chalk.green(`✓ ${name}`));
+		return true;
+	} catch (err) {
+		return reportFailure(name, err);
+	}
+}
+
+async function runEditImageBindingCheck() {
+	const name = 'Edit Image native bindings load in image';
+	try {
+		await $({
+			timeout: TIMEOUT,
+		})`docker run --rm --entrypoint node -v ${`${EDIT_IMAGE_CHECK}:/tmp/edit-image-check.mjs:ro`} ${IMAGE} /tmp/edit-image-check.mjs`;
 		echo(chalk.green(`✓ ${name}`));
 		return true;
 	} catch (err) {
@@ -258,6 +275,7 @@ const ok = (
 		...invocations.map(run),
 		runWorkspaceDedupCheck(),
 		runKafkaBindingCheck(),
+		runEditImageBindingCheck(),
 		...RUNNERS_IMAGES.map(runRunnersInterpreterCheck),
 		// The distroless image ships no shell or pnpm; only the standard image is extendable.
 		...RUNNERS_IMAGES.filter((image) => !image.endsWith('-distroless')).map(runRunnersPnpmCheck),

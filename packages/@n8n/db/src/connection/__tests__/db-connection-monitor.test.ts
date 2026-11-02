@@ -6,7 +6,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type TimersPromises from 'timers/promises';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 import type { Mock, MockedFunction } from 'vitest';
-import { mock, mockDeep } from 'vitest-mock-extended';
+import { mock, mockDeep, type MockProxy } from 'vitest-mock-extended';
 
 import { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
@@ -34,11 +34,12 @@ describe('DbConnectionMonitor', () => {
 		connectionAcquisitionTimeoutMs: 30_000,
 	});
 	const logger = mock<Logger>();
-	const dbConnectionMetrics = mock<DbConnectionMetrics>();
+	let dbConnectionMetrics: MockProxy<DbConnectionMetrics>;
 	const dataSource = mockDeep<DataSource>({ options: { type: 'postgres' } });
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		dbConnectionMetrics = mock<DbConnectionMetrics>();
 		// Default: never resolves, so query wins the ping timeout race and
 		// recovery backoff stays suspended unless a test overrides it.
 		mockedSetTimeoutP.mockImplementation(async () => await new Promise(() => {}));
@@ -57,19 +58,43 @@ describe('DbConnectionMonitor', () => {
 		// Mock pg pool and client used by the Postgres ping path.
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const poolClient: { query: Mock; release: Mock } = { query: vi.fn(), release: vi.fn() };
-		const pool = { connect: vi.fn() };
+		const pool = { connect: vi.fn(), options: { host: 'db.example', max: 2 } };
+		// Mock pg client the monitor opens outside the pool to tell a broken pool from a stalled server.
+		const probeClient: { connect: Mock; query: Mock; end: Mock; on: Mock } = {
+			connect: vi.fn(),
+			query: vi.fn(),
+			end: vi.fn(),
+			on: vi.fn(),
+		};
+		const postgres = {
+			Client: vi.fn(function () {
+				return probeClient;
+			}),
+		};
 
 		beforeEach(() => {
 			pool.connect.mockResolvedValue(poolClient);
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			poolClient.query.mockResolvedValue([{ '1': 1 }]);
 			poolClient.release.mockReturnValue(undefined);
+			probeClient.connect.mockResolvedValue(probeClient);
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			probeClient.query.mockResolvedValue([{ '1': 1 }]);
+			probeClient.end.mockResolvedValue(undefined);
+			postgres.Client.mockImplementation(function () {
+				return probeClient;
+			});
 			(
 				dataSource as unknown as {
-					driver: { master: typeof pool; obtainMasterConnection: () => Promise<unknown> };
+					driver: {
+						master: typeof pool;
+						postgres: typeof postgres;
+						obtainMasterConnection: () => Promise<unknown>;
+					};
 				}
 			).driver = {
 				master: pool,
+				postgres,
 				obtainMasterConnection: vi.fn().mockResolvedValue(undefined),
 			};
 			// Prevent runaway timer cascades: `pingIntervalSeconds` defaults to 0 in the mock,
@@ -179,6 +204,26 @@ describe('DbConnectionMonitor', () => {
 
 			// Client was destroyed (release with error) rather than returned to the pool.
 			expect(poolClient.release).toHaveBeenCalledWith(expect.any(Error));
+		});
+
+		it('should count a ping as successful when the reply is pending I/O as the timeout fires', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			// @ts-expect-error private property
+			monitor.connected = true;
+			// The reply is delivered on the next I/O turn, as after an event-loop stall.
+			poolClient.query.mockImplementation(
+				async () => await new Promise((resolve) => setImmediate(() => resolve([]))),
+			);
+			mockedSetTimeoutP
+				.mockImplementationOnce(async () => await new Promise(() => {}))
+				.mockResolvedValueOnce(undefined);
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(onConnectedChange).not.toHaveBeenCalled();
+			expect(poolClient.release).toHaveBeenCalledWith();
 		});
 
 		it('should destroy the pool client when query creation throws', async () => {
@@ -393,6 +438,164 @@ describe('DbConnectionMonitor', () => {
 			await monitor.ping();
 
 			expect(recoverSpy).toHaveBeenCalledTimes(1);
+			// The probe is built the way pg-pool builds its own clients, so it reaches the same server.
+			expect(postgres.Client).toHaveBeenCalledWith(pool.options);
+			expect(probeClient.query).toHaveBeenCalledWith('SELECT 1');
+			expect(probeClient.end).toHaveBeenCalledTimes(3);
+		});
+
+		it('should not count a ping failure towards recovery when a connection outside the pool fails too', async () => {
+			// A stalled or unreachable server fails the pooled ping and the probe alike. Rebuilding
+			// the pool cannot fix the server and would abort every in-flight query, so the
+			// failure must not move the counter, however many times it repeats.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			poolClient.query.mockRejectedValue(new Error('Database connection timed out'));
+			probeClient.connect.mockRejectedValue(new Error('connect ECONNREFUSED'));
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			for (let i = 0; i < 4; i++) {
+				// @ts-expect-error private property
+				await monitor.ping();
+			}
+
+			expect(recoverSpy).not.toHaveBeenCalled();
+			// @ts-expect-error private property
+			expect(monitor.consecutiveFailures).toBe(0);
+			// Readiness still tracks the failure.
+			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+			expect(logger.warn).toHaveBeenLastCalledWith(
+				expect.stringContaining(
+					'Database ping failed (not counted, database unreachable, 0/3): Database connection timed out',
+				),
+			);
+			expect(probeClient.end).toHaveBeenCalledTimes(4);
+		});
+
+		it('should not count a ping that got no pooled connection and should not probe', async () => {
+			// Every pooled connection is busy with other queries, so the ping waits for a free one
+			// and times out. The database may be healthy, and a rebuild would abort those queries.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			pool.connect.mockReturnValue(new Promise(() => {}));
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			for (let i = 0; i < 4; i++) {
+				// @ts-expect-error private property
+				await monitor.ping();
+			}
+
+			expect(recoverSpy).not.toHaveBeenCalled();
+			// @ts-expect-error private property
+			expect(monitor.consecutiveFailures).toBe(0);
+			expect(postgres.Client).not.toHaveBeenCalled();
+			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+			expect(logger.warn).toHaveBeenLastCalledWith(
+				expect.stringContaining(
+					'Database ping failed (not counted, no pooled connection free, 0/3): No pooled connection available for the ping: Database connection timed out',
+				),
+			);
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should treat a pool.connect() rejection as a connection error, not as a busy pool', async () => {
+			// pg-pool rejects fast when it cannot open a connection (refused, failed auth, server at
+			// max connections). That says nothing about busy slots, so the probe decides as usual.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			const connectError = new Error('connect ECONNREFUSED');
+			pool.connect.mockRejectedValue(connectError);
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(errorReporter.error).toHaveBeenCalledWith(connectError);
+			expect(postgres.Client).toHaveBeenCalledOnce();
+			// The probe answered, so the failure counts.
+			// @ts-expect-error private property
+			expect(monitor.consecutiveFailures).toBe(1);
+			expect(recoverSpy).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenLastCalledWith(
+				expect.stringContaining('Database ping failed (1/3): connect ECONNREFUSED'),
+			);
+		});
+
+		it('should bound the probe outside the pool by the ping timeout', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			poolClient.query.mockRejectedValue(new Error('Database connection timed out'));
+			// The probe never answers; the ping timeout must win the race.
+			probeClient.connect.mockReturnValue(new Promise(() => {}));
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(mockedSetTimeoutP).toHaveBeenCalledWith(5_000, undefined, expect.anything());
+			expect(recoverSpy).not.toHaveBeenCalled();
+			// @ts-expect-error private property
+			expect(monitor.consecutiveFailures).toBe(0);
+			// The hung client is ended so its socket does not leak.
+			expect(probeClient.end).toHaveBeenCalledOnce();
+		});
+
+		it('should resume counting once the connection outside the pool answers again', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			poolClient.query.mockRejectedValue(new Error('pool poisoned'));
+			probeClient.connect
+				.mockRejectedValueOnce(new Error('connect ECONNREFUSED'))
+				.mockResolvedValue(probeClient);
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			for (let i = 0; i < 4; i++) {
+				// @ts-expect-error private property
+				await monitor.ping();
+			}
+
+			// Ping 1 is not counted (server down); pings 2 to 4 are (server back, pool still broken).
+			expect(recoverSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should keep counting ping failures when the driver cannot open a connection outside the pool', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			poolClient.query.mockRejectedValue(new Error('pool poisoned'));
+			(dataSource as unknown as { driver: { postgres: unknown } }).driver.postgres = undefined;
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await monitor.ping();
+			// @ts-expect-error private property
+			await monitor.ping();
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(recoverSpy).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Cannot probe the database outside the pool'),
+			);
 		});
 
 		it('should not trigger recovery for non-Postgres datasources after consecutive failures', async () => {
@@ -579,6 +782,9 @@ describe('DbConnectionMonitor', () => {
 
 			expect(dataSource.destroy).toHaveBeenCalled();
 			expect(dataSource.initialize).toHaveBeenCalled();
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenCalledExactlyOnceWith(
+				'success',
+			);
 			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
 			// @ts-expect-error private property
 			expect(monitor.consecutiveFailures).toBe(0);
@@ -625,6 +831,7 @@ describe('DbConnectionMonitor', () => {
 
 			expect(sqliteDataSource.destroy).not.toHaveBeenCalled();
 			expect(sqliteDataSource.initialize).not.toHaveBeenCalled();
+			expect(dbConnectionMetrics.recoveryAttemptObserver).not.toHaveBeenCalled();
 		});
 
 		it('should back off between failed recovery attempts and eventually succeed', async () => {
@@ -645,6 +852,10 @@ describe('DbConnectionMonitor', () => {
 			await monitor.recoverDataSource();
 
 			expect(dataSource.initialize).toHaveBeenCalledTimes(3);
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenCalledTimes(3);
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenNthCalledWith(1, 'failure');
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenNthCalledWith(2, 'failure');
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenNthCalledWith(3, 'success');
 			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
 			// First backoff = 1000ms (1s * 2^0); second = 2000ms (1s * 2^1).
 			expect(mockedSetTimeoutP).toHaveBeenNthCalledWith(
@@ -682,6 +893,43 @@ describe('DbConnectionMonitor', () => {
 
 			expect(errorReporter.error).toHaveBeenCalledWith(firstError);
 			expect(errorReporter.error).toHaveBeenCalledWith(secondError);
+		});
+
+		it('should complete recovery when its metrics observer throws', async () => {
+			const metricsError = new Error('metrics unavailable');
+			const observer = vi.fn(() => {
+				throw metricsError;
+			});
+			dbConnectionMetrics.recoveryAttemptObserver = observer;
+			dataSource.initialize
+				.mockRejectedValueOnce(new Error('still down'))
+				.mockResolvedValueOnce(dataSource);
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+
+			await monitor['recoverDataSource']();
+
+			expect(dataSource.initialize).toHaveBeenCalledTimes(2);
+			expect(observer.mock.calls).toEqual([['failure'], ['success']]);
+			expect(errorReporter.error).toHaveBeenCalledWith(metricsError);
+			expect(monitor['recovering']).toBe(false);
+		});
+
+		it('should recover without a metrics observer', async () => {
+			const metrics = new DbConnectionMetrics();
+			const unobservedMonitor = new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+				metrics,
+			);
+			dataSource.initialize.mockResolvedValueOnce(dataSource);
+
+			await unobservedMonitor['recoverDataSource']();
+
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(unobservedMonitor['recovering']).toBe(false);
 		});
 
 		it('should cap exponential backoff at the configured maximum', async () => {
@@ -824,6 +1072,9 @@ describe('DbConnectionMonitor', () => {
 
 			// AbortError is swallowed; the loop exits on the next iteration without retrying.
 			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(dbConnectionMetrics.recoveryAttemptObserver).toHaveBeenCalledExactlyOnceWith(
+				'failure',
+			);
 			// @ts-expect-error private property
 			expect(monitor.recovering).toBe(false);
 		});
@@ -916,6 +1167,7 @@ describe('DbConnectionMonitor', () => {
 			expect(stopResolved).toBe(true);
 			// The post-destroy `if (this.stopped) break;` prevents reinitialization.
 			expect(dataSource.initialize).not.toHaveBeenCalled();
+			expect(dbConnectionMetrics.recoveryAttemptObserver).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1565,6 +1817,28 @@ describe('DbConnectionMonitor', () => {
 	});
 
 	describe('setConnected', () => {
+		it('should count each disconnection once until the connection recovers', () => {
+			monitor['setConnected'](false);
+			monitor['setConnected'](false);
+			expect(dbConnectionMetrics.disconnectionObserver).toHaveBeenCalledTimes(1);
+
+			monitor['setConnected'](true);
+			monitor['setConnected'](false);
+			expect(dbConnectionMetrics.disconnectionObserver).toHaveBeenCalledTimes(2);
+		});
+
+		it('should update the connection state when the disconnection observer throws', () => {
+			const metricsError = new Error('metrics unavailable');
+			dbConnectionMetrics.disconnectionObserver = vi.fn(() => {
+				throw metricsError;
+			});
+
+			expect(() => monitor['setConnected'](false)).not.toThrow();
+
+			expect(onConnectedChange).toHaveBeenCalledWith(false);
+			expect(errorReporter.error).toHaveBeenCalledWith(metricsError);
+		});
+
 		it('should only fire onConnectedChange on a transition', () => {
 			// @ts-expect-error private property
 			monitor.connected = true;

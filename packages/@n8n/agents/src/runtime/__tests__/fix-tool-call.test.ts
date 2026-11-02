@@ -61,6 +61,14 @@ describe('fixToolCall — early-exit guards', () => {
 		expect(result).toBeNull();
 	});
 
+	it('returns null for AI_NoSuchToolError when the name is not a former tool name', async () => {
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ toolName: 'unknown_tool' }), error: makeNoSuchToolError() },
+			new Map([['get_environment', makeTool()]]),
+		);
+		expect(result).toBeNull();
+	});
+
 	it('returns null when toolCall.providerExecuted is true', async () => {
 		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
 		const result = await fixToolCall(
@@ -190,6 +198,29 @@ describe('fixToolCall — successful repair', () => {
 			toolMap,
 		);
 		expect(result).toMatchObject({ type: 'tool-call', input: '{}' });
+	});
+
+	it('renames a call to a former tool name to the current tool name', async () => {
+		const tool = makeTool({ name: 'workflow_builder_workflows', legacyNames: ['workflows'] });
+		const toolMap = new Map([
+			['workflow_builder_workflows', tool],
+			['workflows', tool],
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ toolName: 'workflows', input: '{"action":"list"}' }),
+				error: makeNoSuchToolError(),
+			},
+			toolMap,
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: 'workflow_builder_workflows',
+			input: '{"action":"list"}',
+			providerExecuted: false,
+			dynamic: false,
+		});
 	});
 
 	it('preserves dynamic flag from the original tool call', async () => {

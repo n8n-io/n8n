@@ -378,6 +378,15 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(error.context.itemIndex).toBe(3);
 	});
 
+	it('treats a user without an ID as not found', async () => {
+		setRows('jane@example.com');
+		apiRequest.mockResolvedValue({ displayName: 'Ghost' });
+
+		await expect(resolveMentions.call(ctx, 0)).rejects.toThrow(
+			'Could not find the user for mention 1',
+		);
+	});
+
 	// Graph resolves /users/{id} by object id or principal name only. Guests always have a
 	// different `mail`, so By Email has to fall back or it 404s on the address people actually know.
 	it('falls back to a mail lookup when the address is not a principal name', async () => {

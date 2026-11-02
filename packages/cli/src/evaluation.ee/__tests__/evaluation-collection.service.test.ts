@@ -20,8 +20,7 @@ import { OperationalError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
@@ -876,7 +875,7 @@ describe('EvaluationCollectionService', () => {
 			// Descending by createdAt, as the query returns them. wfv-a's latest
 			// run failed but an earlier one completed → the completed one is
 			// surfaced. wfv-b has only a failed run → no reusable run.
-			testRunRepo.find.mockResolvedValueOnce([
+			testRunRepo.findByConfigAndVersions.mockResolvedValueOnce([
 				makeTestRun({
 					id: 'tr-a-fail',
 					workflowVersionId: 'wfv-a',
@@ -924,7 +923,7 @@ describe('EvaluationCollectionService', () => {
 			workflowHistoryRepo.find.mockResolvedValueOnce(versions);
 			// Single bulk lookup, descending by createdAt — service picks the
 			// first row per `workflowVersionId` it sees, which is the latest.
-			testRunRepo.find.mockResolvedValueOnce([
+			testRunRepo.findByConfigAndVersions.mockResolvedValueOnce([
 				makeTestRun({ id: 'tr-a', workflowVersionId: 'wfv-a', metrics: { acc: 0.9 } }),
 				makeTestRun({ id: 'tr-b', workflowVersionId: 'wfv-b', metrics: { acc: 0.5 } }),
 			]);
@@ -958,7 +957,7 @@ describe('EvaluationCollectionService', () => {
 			// correctness is a 1–5 metric → /5; tokens/executionTime are operational
 			// and excluded, so avgScore is the correctness score alone rather than a
 			// token-dominated mean in the thousands.
-			testRunRepo.find.mockResolvedValueOnce([
+			testRunRepo.findByConfigAndVersions.mockResolvedValueOnce([
 				makeTestRun({
 					id: 'tr-a',
 					workflowVersionId: 'wfv-a',
@@ -999,7 +998,7 @@ describe('EvaluationCollectionService', () => {
 			// runs" elsewhere, not in the versions picker — the current-draft
 			// row stays `lastRun: null` regardless.
 			workflowHistoryRepo.find.mockResolvedValueOnce([]);
-			testRunRepo.find.mockResolvedValueOnce([
+			testRunRepo.findByConfigAndVersions.mockResolvedValueOnce([
 				makeTestRun({ id: 'tr-legacy', workflowVersionId: null, metrics: { acc: 0.95 } }),
 			]);
 
@@ -1019,16 +1018,16 @@ describe('EvaluationCollectionService', () => {
 				}),
 			);
 			workflowHistoryRepo.find.mockResolvedValueOnce(history);
-			testRunRepo.find.mockResolvedValueOnce([]);
+			testRunRepo.findByConfigAndVersions.mockResolvedValueOnce([]);
 
 			await service.getEvalVersions('wf-1', 'cfg-1');
 
-			expect(testRunRepo.find).toHaveBeenCalledTimes(1);
+			expect(testRunRepo.findByConfigAndVersions).toHaveBeenCalledTimes(1);
 		});
 
 		it('loads history with a metadata-only column selection (skips nodes/connections JSON)', async () => {
 			workflowHistoryRepo.find.mockResolvedValueOnce([]);
-			testRunRepo.find.mockResolvedValueOnce([]);
+			testRunRepo.findByConfigAndVersions.mockResolvedValueOnce([]);
 
 			await service.getEvalVersions('wf-1', 'cfg-1');
 
@@ -1065,7 +1064,7 @@ describe('EvaluationCollectionService', () => {
 					createdAt: new Date('2026-04-03'),
 				}),
 			]);
-			testRunRepo.find.mockResolvedValueOnce([]);
+			testRunRepo.findByConfigAndVersions.mockResolvedValueOnce([]);
 			publishedVersionRepo.findOneBy.mockResolvedValueOnce(
 				mock<WorkflowPublishedVersion>({ publishedVersionId: 'wfv-pub' }),
 			);

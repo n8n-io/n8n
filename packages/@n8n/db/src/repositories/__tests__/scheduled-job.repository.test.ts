@@ -28,8 +28,10 @@ const newJob = (name: string): NewScheduledJob => ({
 	fireAt: null,
 	nextRunAt: CLOCK,
 	maxAttempts: 5,
+	timeoutSeconds: 300,
 	misfirePolicy: 'coalesce',
 	misfireGraceSeconds: 60,
+	concurrencyLimit: null,
 });
 
 /** A row as the post-insert read-back returns it: id, name and the owner it belongs to. */
@@ -113,6 +115,43 @@ describe('ScheduledJobRepository', () => {
 		it('is a no-op with no owner ids', async () => {
 			expect(await repository.findPayloadsByOwnerIds('system-task', [])).toEqual([]);
 			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findScheduleStatesByOwnerType', () => {
+		it('reads the owner id, schedule state and last dispatch of every job owners of one kind hold', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				{
+					ownerId: 'a',
+					enabled: true,
+					nextRunAt: CLOCK,
+					orphanedAt: null,
+					lastDispatchedAt: CLOCK,
+				} as ScheduledJob,
+			]);
+
+			const result = await repository.findScheduleStatesByOwnerType('system-task');
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task' },
+				select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt', 'lastDispatchedAt'],
+			});
+			expect(result).toEqual([
+				{ ownerId: 'a', runnable: true, nextRunAt: CLOCK, lastDispatchedAt: CLOCK },
+			]);
+		});
+
+		it.each([
+			['disabled', { enabled: false, orphanedAt: null }],
+			['quarantined', { enabled: true, orphanedAt: CLOCK }],
+		])('marks a %s job not runnable', async (_, state) => {
+			entityManager.find.mockResolvedValueOnce([
+				{ ownerId: 'a', nextRunAt: CLOCK, lastDispatchedAt: null, ...state } as ScheduledJob,
+			]);
+
+			const [result] = await repository.findScheduleStatesByOwnerType('system-task');
+
+			expect(result.runnable).toBe(false);
 		});
 	});
 
@@ -416,8 +455,10 @@ describe('ScheduledJobRepository', () => {
 				fireAt: null,
 				nextRunAt: CLOCK,
 				maxAttempts: 3,
+				timeoutSeconds: 600,
 				misfirePolicy: 'skip',
 				misfireGraceSeconds: 120,
+				concurrencyLimit: 2,
 			};
 
 			await repository.updateDefinition(entityManager, 10, update);

@@ -19,8 +19,7 @@ import {
 } from '@azure/msal-node';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { AuthError, InternalServerError } from '@n8n/errors';
 
 interface AzureAdUserProfile {
 	email: string;

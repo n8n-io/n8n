@@ -1,19 +1,22 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, UrlService, RoleService, JwtService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { PublicUser } from '@n8n/db';
+import type { Person, PublicUser } from '@n8n/db';
 import {
 	AuthIdentity,
 	Project,
 	ProjectRelation,
 	User,
 	UserRepository,
+	PersonRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	Not,
 	In,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -29,25 +32,20 @@ import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
-import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
-import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
+import { isSamlOrOidcLoginEnabled, isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
 export const CHANGE_ROLE_ERROR_MESSAGES = {
@@ -57,6 +55,12 @@ export const CHANGE_ROLE_ERROR_MESSAGES = {
 	CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
 	INSTANCE_ROLES_MANAGED: 'Instance roles are managed automatically and cannot be changed manually',
 } as const;
+
+export const INVITE_ROLE_MANAGED_MESSAGE =
+	'Instance roles are managed by single sign-on. Invite users with the member role.';
+
+/** The system as the actor of a user deletion that no user asked for. */
+export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
 
 @Service()
 export class UserService {
@@ -77,13 +81,16 @@ export class UserService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly personRepository: PersonRepository,
+		private readonly scimSwitchReader: ScimSwitchReader,
 	) {}
 
-	async update(userId: string, data: Partial<User>) {
-		const user = await this.userRepository.findOneBy({ id: userId });
+	/** Updates the profile or password of a person. A service account id is a no-op. */
+	async update(userId: string, data: Partial<Person>) {
+		const person = await this.personRepository.findById(userId);
 
-		if (user) {
-			await this.userRepository.save({ ...user, ...data }, { transaction: true });
+		if (person) {
+			await this.personRepository.save(Object.assign(person, data));
 		}
 
 		return;
@@ -117,11 +124,10 @@ export class UserService {
 		await this.userRepository.save(user);
 	}
 
-	async findUserWithAuthIdentities(userId: string): Promise<User> {
-		return await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: ['role', 'authIdentities'],
-		});
+	async findUserWithAuthIdentities(userId: string): Promise<Person> {
+		const person = await this.personRepository.findByIdWithAuthIdentities(userId);
+		if (!person) throw new NotFoundError('User not found');
+		return person;
 	}
 
 	/**
@@ -129,12 +135,11 @@ export class UserService {
 	 * These users should not be able to change their profile information.
 	 */
 	async findSsoIdentity(userId: string): Promise<AuthIdentity | undefined> {
-		const user = await this.userRepository.findOne({
-			where: { id: userId },
-			relations: ['authIdentities'],
-		});
+		const person = await this.personRepository.findByIdWithAuthIdentities(userId);
 
-		const ssoIdentity = user?.authIdentities?.find((identity) => identity.providerType !== 'email');
+		const ssoIdentity = person?.authIdentities?.find(
+			(identity) => identity.providerType !== 'email',
+		);
 
 		return ssoIdentity;
 	}
@@ -211,19 +216,17 @@ export class UserService {
 
 		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
 
+		// Invites pass under SAML or OIDC only while SCIM is on. The accept page
+		// rejects invite links under SSO, and the invitee signs in through the
+		// identity provider, which links the invite by email. So the email links
+		// to the sign-in page, and the response has no link to copy.
+		const signInThroughSso = isSsoCurrentAuthenticationMethod();
+
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				// Always use JWT-based tamper-proof invite links
-				const token = this.jwtService.sign(
-					{
-						inviterId: owner.id,
-						inviteeId: id,
-					},
-					{
-						expiresIn: '90d',
-					},
-				);
-				const inviteAcceptUrl = `${domain}/signup?token=${token}`;
+				const inviteAcceptUrl = signInThroughSso
+					? `${domain}/signin`
+					: this.createInviteAcceptUrl(domain, owner.id, id);
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -252,7 +255,7 @@ export class UserService {
 					// Only include the invite URL in the response if
 					// the users configuration allows it
 					// and the email was not sent (to allow manual copy-paste)
-					if (!inviteLinksEmailOnly && !result.emailSent) {
+					if (!signInThroughSso && !inviteLinksEmailOnly && !result.emailSent) {
 						invitedUser.user.inviteAcceptUrl = inviteAcceptUrl;
 					}
 
@@ -282,6 +285,12 @@ export class UserService {
 				return invitedUser;
 			}),
 		);
+	}
+
+	/** JWT-based, so that the invite link cannot be changed. */
+	private createInviteAcceptUrl(domain: string, inviterId: string, inviteeId: string) {
+		const token = this.jwtService.sign('invite', { inviterId, inviteeId }, { expiresIn: '90d' });
+		return `${domain}/signup?token=${token}`;
 	}
 
 	async inviteUsers(owner: User, invitations: Invitation[]) {
@@ -457,7 +466,10 @@ export class UserService {
 		token: string,
 	): Promise<{ inviterId: string; inviteeId: string }> {
 		try {
-			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
+			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(
+				'invite',
+				token,
+			);
 			if (!decoded.inviterId || !decoded.inviteeId) {
 				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
 				throw new BadRequestError('Invalid invite URL');
@@ -517,7 +529,13 @@ export class UserService {
 	async inviteUser(inviter: User, invitations: Invitation[]) {
 		if (invitations.length === 0) return [];
 
-		if (isSsoCurrentAuthenticationMethod()) {
+		// While SCIM is on, admins can invite the people that the identity provider
+		// does not provision. They sign in through SAML or OIDC, which links the
+		// invite by email. SCIM needs SAML or OIDC, so LDAP keeps the block.
+		if (
+			isSsoCurrentAuthenticationMethod() &&
+			!(isSamlOrOidcLoginEnabled() && (await this.scimSwitchReader.isEnabled()))
+		) {
 			this.logger.debug(
 				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
@@ -526,6 +544,9 @@ export class UserService {
 			);
 		}
 
+		await this.assertInviteRolesAreNotManaged(invitations);
+
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
@@ -541,6 +562,7 @@ export class UserService {
 		}
 
 		const attributes = invitations.map(({ email, role }) => {
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
 				throw new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
@@ -556,11 +578,24 @@ export class UserService {
 		return usersInvited;
 	}
 
-	async deleteUser(actor: User, idToDelete: string, transferId?: string) {
-		if (actor.id === idToDelete) {
+	/**
+	 * Delete a user. With `transferId`, the work of the user moves to that
+	 * project first. Without it, the work is deleted with the user.
+	 *
+	 * The actor is a user, or the system for a deletion that no user asked for,
+	 * such as a SCIM deletion from the identity provider.
+	 */
+	async deleteUser(actor: User | SystemDeletionActor, idToDelete: string, transferId?: string) {
+		// A user also has a `kind` (person or service), so test the value.
+		const systemActor = actor.kind === 'system' ? actor : null;
+		const actorUser = actor.kind === 'system' ? null : actor;
+		const policyActor: PolicyActor =
+			actor.kind === 'system' ? actor : { kind: 'user', user: actor };
+
+		if (actorUser?.id === idToDelete) {
 			this.logger.debug(
 				'Request to delete a user failed because it attempted to delete the requesting user',
-				{ userId: actor.id },
+				{ userId: actorUser.id },
 			);
 			throw new BadRequestError('Cannot delete your own user');
 		}
@@ -589,6 +624,7 @@ export class UserService {
 
 		let transfereeId;
 		let transfereeProject: Project | null = null;
+		const ownershipTransferService = await this.getOwnershipTransferService();
 
 		if (transferId) {
 			transfereeProject = await this.projectService.findProject(transferId);
@@ -599,11 +635,17 @@ export class UserService {
 				);
 			}
 
-			const transferee = await this.userRepository.findOneByProjectIdOrFail(transfereeProject.id);
+			// A team project can have no members, and it can still take the work.
+			// The `user-deleted` event then has no `migrationUserId`.
+			const transferee = await this.userRepository.findOneByProjectId(transfereeProject.id);
 
-			transfereeId = transferee.id;
+			transfereeId = transferee?.id;
 
-			const ownershipTransferService = await this.getOwnershipTransferService();
+			await ownershipTransferService.enforceTransferPolicy(
+				personalProjectToDelete.id,
+				transfereeProject.id,
+				policyActor,
+			);
 			await ownershipTransferService.transferAllResources(
 				[personalProjectToDelete.id],
 				transfereeProject.id,
@@ -637,9 +679,13 @@ export class UserService {
 		// user tables) before the project is removed, so they are not orphaned by
 		// the FK cascade. The transfer case is handled by the transfer above.
 		if (!transfereeProject) {
-			const ownershipTransferService = await this.getOwnershipTransferService();
 			await ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
 		}
+
+		// Private module resources (e.g. system agent sessions) belong to the
+		// user, not to a project. Delete them also on transfer, and before the
+		// delete transaction, which sets their owner column to null.
+		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
 
 		await this.getManager().transaction(async (trx) => {
 			await trx.delete(AuthIdentity, { userId: userToDelete.id });
@@ -648,7 +694,9 @@ export class UserService {
 		});
 
 		this.eventService.emit('user-deleted', {
-			user: actor,
+			// No user acts in a system deletion, so the event names the system.
+			user: actorUser,
+			...(systemActor && { source: systemActor.reason }),
 			publicApi: false,
 			targetUserOldStatus: userToDelete.isPending ? 'invited' : 'active',
 			targetUserId: idToDelete,
@@ -701,6 +749,20 @@ export class UserService {
 		});
 
 		return { success: true };
+	}
+
+	/**
+	 * While SAML or OIDC assigns the instance roles, an admin cannot change a
+	 * global role by hand. An invite must not set such a role either, so it
+	 * can invite only members. The SSO sign-in then applies the mapped role.
+	 */
+	private async assertInviteRolesAreNotManaged(invitations: Invitation[]) {
+		if (invitations.every(({ role }) => role === GLOBAL_MEMBER_ROLE.slug)) return;
+
+		const provisioningService = await this.getProvisioningService();
+		if (await provisioningService.isInstanceRoleManaged()) {
+			throw new ForbiddenError(INVITE_ROLE_MANAGED_MESSAGE);
+		}
 	}
 
 	/** Lazy: these services import `UserService`, so a static import would be a value-import cycle. */

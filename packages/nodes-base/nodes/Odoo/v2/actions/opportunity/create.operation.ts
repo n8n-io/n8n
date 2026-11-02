@@ -5,6 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { createDateFieldFormatter } from '../../helpers/schema';
 import { odooApiRequest } from '../../transport';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -45,6 +46,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const formatDateFields = createDateFieldFormatter(this);
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -56,6 +58,8 @@ export async function execute(
 			} else {
 				fields = this.getNodeParameter('fieldsToSend.value', i, {}) as IDataObject;
 			}
+
+			fields = await formatDateFields('crm.lead', fields);
 
 			const result = (await odooApiRequest.call(this, 'crm.lead', 'create', {
 				vals_list: [fields],

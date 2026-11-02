@@ -82,6 +82,7 @@ describe('execution start (integration)', () => {
 		const startExecution = new StartExecutionService(
 			new AllowAllAdmittance(),
 			executionStore,
+			stepStore,
 			orchestrationQueue,
 		);
 
@@ -102,7 +103,7 @@ describe('execution start (integration)', () => {
 			workflow: {},
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
 			executionId: generateId(),
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
 		});
 		await ready;
 
@@ -146,10 +147,12 @@ describe('execution start (integration)', () => {
 			workflowId: 'wf-2',
 			status: 'queued',
 			mode: 'production',
-			graph,
+			graph: { ...graph, seeded: [] },
 			workflow: {},
 			triggerOutputs: null,
-			callerContext: {},
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.

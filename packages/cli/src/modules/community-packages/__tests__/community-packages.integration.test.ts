@@ -7,7 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { N8N_NODES_API_VERSION } from 'n8n-workflow';
+import { N8N_NODES_API_VERSION, parseNodesApiLevel } from 'n8n-workflow';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'path';
@@ -135,7 +135,15 @@ describe('GET /community-packages', () => {
 
 		await authAgent.get('/community-packages').expect(200);
 
-		const args = [['outdated', '--json'], { doNotHandleError: true, cwd: expect.any(String) }];
+		const args = [
+			['outdated', '--json'],
+			{
+				doNotHandleError: true,
+				cwd: expect.any(String),
+				registry: 'https://registry.npmjs.org',
+				authToken: undefined,
+			},
+		];
 
 		expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(...args);
 	});
@@ -249,6 +257,8 @@ describe('PATCH /community-packages', () => {
 	});
 
 	test('should reject if package is not installed', async () => {
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+
 		const {
 			body: { message },
 		} = await authAgent.patch('/community-packages').send({ name: mockPackageName() }).expect(400);
@@ -295,9 +305,10 @@ describe('node API compatibility at startup', () => {
 	});
 
 	test('boots with an incompatible package on disk and registers no loader for it', async () => {
+		const { major, minor } = parseNodesApiLevel(N8N_NODES_API_VERSION)!;
 		writePackage('n8n-nodes-future', {
 			nodes: ['dist/nodes/Future.node.js'],
-			n8nNodesApiVersion: N8N_NODES_API_VERSION + 1,
+			n8nNodesApiVersion: `${major}.${minor + 1}`,
 		});
 		writePackage('n8n-nodes-good');
 

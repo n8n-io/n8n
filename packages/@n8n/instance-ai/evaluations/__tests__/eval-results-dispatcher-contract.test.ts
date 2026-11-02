@@ -1,4 +1,4 @@
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiEvalExecutionResult, InstanceAiEvalLlmUsage } from '@n8n/api-types';
 import { mkdtempSync, readFileSync } from 'fs';
 import { jsonParse } from 'n8n-workflow';
 import { tmpdir } from 'os';
@@ -6,6 +6,9 @@ import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
 import { AGENT_ARTIFACT_CASE_CAP_BYTES } from '../harness/artifacts/agent-artifact';
+import type { RoutingCase } from '../routing/cases';
+import { writeRoutingEvalResults, type RoutingTrial } from '../routing/eval-results';
+import { casePasses } from '../routing/grade';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type {
@@ -133,6 +136,8 @@ function iteration2(): WorkflowTestCaseResult {
 interface DispatcherView {
 	experimentName?: string;
 	testCases: Array<{
+		testCaseFile?: string;
+		status?: string;
 		buildSuccessCount: number;
 		workflowJson?: { id: string };
 		agentArtifact?: Record<string, unknown>;
@@ -148,10 +153,12 @@ interface DispatcherView {
 			expectation: string;
 			pass: boolean;
 			reason: string;
+			incomplete?: boolean;
 			attribution?: string;
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
 		buildTurnsPerRun?: Array<number | null>;
+		harnessUsagePerRun: Array<InstanceAiEvalLlmUsage[] | null>;
 		transcriptPerRun: Array<TranscriptTurn[] | null>;
 		buildErrorPerRun: Array<string | null>;
 		threadIds: Array<string | null>;
@@ -391,6 +398,38 @@ describe('eval-results.json — dispatcher contract', () => {
 		);
 	});
 
+	it('serializes the harness model usage of each iteration, null when it was not measured', () => {
+		const judgeUsage: InstanceAiEvalLlmUsage = {
+			agent: 'eval-checklist-verifier',
+			model: 'anthropic/claude-sonnet-4-6',
+			calls: 3,
+			uncachedInputTokens: 41_000,
+			cacheReadTokens: 12_000,
+			cacheWriteTokens: 4_000,
+			outputTokens: 2_500,
+		};
+		const evaluation = aggregateResults(
+			[[{ ...iteration1(), harnessUsage: [judgeUsage] }], [iteration2()]],
+			2,
+		);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const { jsonPath } = writeEvalResults(
+			evaluation,
+			1234,
+			dir,
+			'exp-dispatcher-contract',
+			undefined,
+			undefined,
+			new Map([[testCase, 'daily-digest']]),
+			undefined,
+			undefined,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		// LangTracer prices these per model. A null run is "not measured", never "free".
+		expect(report.testCases[0].harnessUsagePerRun).toEqual([[judgeUsage], null]);
+	});
+
 	it('serializes per-iteration `claude` build spend when a run recorded it', () => {
 		const evaluation = aggregateResults(
 			[[{ ...iteration1(), buildCostUsd: 0.31, buildTurns: 5 }], [iteration2()]],
@@ -413,5 +452,140 @@ describe('eval-results.json — dispatcher contract', () => {
 		const tc = report.testCases[0];
 		expect(tc.buildCostUsdPerRun).toEqual([0.31, null]);
 		expect(tc.buildTurnsPerRun).toEqual([5, null]);
+	});
+});
+
+describe('eval-results.json — dispatcher contract (routing)', () => {
+	const routingCase: RoutingCase = {
+		id: 'route-agent-support-inbox',
+		userMessage: 'Answer our support inbox.',
+		bucket: 'agent',
+		accepts: ['agent', 'clarify:agent'],
+		after: ['agent'],
+		clarity: 'hidden',
+	};
+
+	it('writes one test case per routing case and one verdict per trial', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const jsonPath = writeRoutingEvalResults(
+			dir,
+			[
+				{
+					routingCase,
+					trials: [
+						{
+							resolution: {
+								route: 'agent',
+								evidence: 'build-agent call',
+								judgeReason: 'It builds an Agent.',
+							},
+							passed: true,
+							turn: { streamStatus: 'stopped-on-route' },
+						},
+						{
+							resolution: { route: 'workflow', evidence: 'build-workflow call' },
+							passed: false,
+							turn: { streamStatus: 'stopped-on-route' },
+						},
+						{
+							resolution: { route: 'none', evidence: 'end of turn (timed-out), judge failed' },
+							passed: false,
+							turn: { streamStatus: 'timed-out', runError: 'Run timed out' },
+						},
+					],
+				},
+			],
+			3,
+			1234,
+		);
+		const report = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8'));
+
+		expect(report.testCases).toHaveLength(1);
+		const tc = report.testCases[0];
+		expect(tc.testCaseFile).toBe('route-agent-support-inbox');
+		expect(tc.status).toBe('verified');
+		expect(tc.totalRuns).toBe(3);
+		// The same text that LangTracer stores for the case. The trial without a route is not evaluated.
+		const expectation = 'Routes to one of: agent, clarify:agent';
+		expect(tc.buildExpectations).toEqual([
+			expect.objectContaining({ expectation, passCount: 1, evaluatedCount: 2 }),
+		]);
+		expect(tc.buildExpectationResultsPerRun).toEqual([
+			[
+				{
+					expectation,
+					pass: true,
+					reason: 'Route agent from build-agent call. Judge: It builds an Agent.',
+				},
+			],
+			[
+				{
+					expectation,
+					pass: false,
+					reason: 'Route workflow from build-workflow call.',
+					attribution: 'builder_issue',
+				},
+			],
+			[
+				{
+					expectation,
+					pass: false,
+					reason:
+						'Not graded: no route from end of turn (timed-out), judge failed (Run timed out).',
+					incomplete: true,
+					attribution: 'timeout',
+				},
+			],
+		]);
+	});
+
+	it('marks a case with no graded trial as not verified', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const jsonPath = writeRoutingEvalResults(
+			dir,
+			[
+				{
+					routingCase,
+					trials: [
+						{
+							resolution: {
+								route: 'none',
+								evidence: 'end of turn (completed), judge failed',
+								judgeError: 'judge overloaded',
+							},
+							passed: false,
+							turn: { streamStatus: 'completed' },
+						},
+					],
+				},
+			],
+			1,
+			1234,
+		);
+		const tc = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8')).testCases[0];
+
+		expect(tc.status).toBe('notVerified');
+		expect(tc.buildExpectationResultsPerRun[0]?.[0]).toMatchObject({
+			incomplete: true,
+			attribution: 'verification_gap',
+		});
+	});
+
+	it('gives LangTracer the counts for the verdict that the CLI prints', () => {
+		const graded = (passed: boolean): RoutingTrial => ({
+			resolution: { route: passed ? 'agent' : 'workflow', evidence: 'build call' },
+			passed,
+			turn: { streamStatus: 'stopped-on-route' },
+		});
+		const trials = [true, true, true, false, false].map(graded);
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-contract-'));
+		const jsonPath = writeRoutingEvalResults(dir, [{ routingCase, trials }], 5, 1234);
+		const [counts] = jsonParse<DispatcherView>(readFileSync(jsonPath, 'utf8')).testCases[0]
+			.buildExpectations;
+
+		// The dispatcher's `foldBuildExpectations` passes an expectation on a strict majority of evaluated runs.
+		expect(counts).toMatchObject({ passCount: 3, evaluatedCount: 5 });
+		expect(counts.passCount * 2 > counts.evaluatedCount).toBe(true);
+		expect(casePasses(trials)).toBe(true);
 	});
 });

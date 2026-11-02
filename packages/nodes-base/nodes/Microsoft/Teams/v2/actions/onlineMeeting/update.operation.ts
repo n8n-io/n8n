@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	type IDataObject,
 	type INodeProperties,
@@ -7,6 +8,7 @@ import {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { resolveAttendees, updateAttendeesField } from './attendees';
 import { resolveMeetingId } from './meetingLocator';
 import { applyMeetingSettings, withMeetingSettings } from './meetingSettings';
 import { meetingHint, meetingRequest, meetingsPath, toGraphUtc } from './shared';
@@ -46,9 +48,20 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. Quarterly Sync',
 				description: 'The subject of the meeting',
 			},
+			updateAttendeesField,
+			{
+				displayName: 'Remove All Attendees',
+				name: 'removeAllAttendees',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to remove every attendee from the meeting. The organizer stays.',
+			},
 		]),
 	},
 ];
+
+const hasAttendeeRows = (field: unknown) =>
+	isRecord(field) && Array.isArray(field.attendee) && field.attendee.length > 0;
 
 const displayOptions = {
 	show: {
@@ -85,6 +98,28 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		body.endDateTime = toGraphUtc.call(this, updateFields.endDateTime, 'End Time');
 	}
 	applyMeetingSettings(body, updateFields);
+
+	// The two collection editors disagree on what deleting the last row leaves behind (`{}` or
+	// `{ attendee: [] }`), so an empty list must not be a destructive signal: only rows replace the
+	// roster, and Remove All Attendees is the explicit way to clear it. The conflict is checked
+	// before the lookups so it costs no request.
+	const removeAll = updateFields.removeAllAttendees === true;
+	if (removeAll && hasAttendeeRows(updateFields.attendees)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Remove All Attendees cannot be combined with Attendees',
+			{
+				description:
+					'Turn off Remove All Attendees to send a new list, or remove the Attendees field to clear the meeting.',
+			},
+		);
+	}
+	const attendees = await resolveAttendees.call(this, i, updateFields.attendees);
+	if (removeAll) {
+		body.participants = { attendees: [] };
+	} else if (attendees.length) {
+		body.participants = { attendees };
+	}
 
 	if (Object.keys(body).length === 0) {
 		throw new NodeOperationError(this.getNode(), 'No fields are set to update', {

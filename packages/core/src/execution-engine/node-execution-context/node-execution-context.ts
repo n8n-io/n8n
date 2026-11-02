@@ -115,6 +115,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
 			const entry: NodeTypeAndVersion = {
+				id: node.id,
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
@@ -148,6 +149,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
 			const entry: NodeTypeAndVersion = {
+				id: node.id,
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
@@ -272,6 +274,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
+		if (this.instanceSettings.instanceType === 'engine') {
+			throw new UserError('Engine v2 does not support signed resume URLs yet');
+		}
+
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
 		if (typeof executionId !== 'string') {

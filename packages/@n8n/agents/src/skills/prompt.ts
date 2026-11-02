@@ -8,14 +8,22 @@ export function renderSkillCatalogPrompt(
 	registry: RuntimeSkillRegistry,
 	options: RenderSkillCatalogOptions = {},
 ): string {
-	if (registry.skills.length === 0) return '';
+	const topLevel = registry.skills.filter((skill) => !skill.parents);
+	if (topLevel.length === 0) return '';
+	const hasReferences = topLevel.length < registry.skills.length;
 
-	const catalog = registry.skills
+	const catalog = topLevel
 		.map((skill) =>
 			[
-				`- name: ${promptString(skill.name)}`,
-				`  description: ${promptString(skill.description)}`,
-				`  id: ${promptString(skill.id)}`,
+				// Folder skills derive the id from the name, so the name adds nothing.
+				// Generated ids need the name to be readable.
+				...(skill.name === skill.id
+					? [`- id: ${promptString(skill.id)}`, `  description: ${promptString(skill.description)}`]
+					: [
+							`- name: ${promptString(skill.name)}`,
+							`  description: ${promptString(skill.description)}`,
+							`  id: ${promptString(skill.id)}`,
+						]),
 				...(skill.category ? [`  category: ${promptString(skill.category)}`] : []),
 				...(skill.recommendedTools?.length
 					? [`  recommendedTools: ${promptStringArray(skill.recommendedTools)}`]
@@ -35,7 +43,12 @@ ${catalog}
 When deciding whether to load a skill:
 - Match the user's request against the skill name and description.
 - If one skill clearly matches, call load_skill once with \`{ "skillId": "<id>" }\`, then follow the returned instructions.
-- If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.
+- If a loaded skill references a supporting file, call load_skill with \`{ "skillId": "<id>", "filePath": "<relative path>" }\`.${
+		hasReferences
+			? `
+- A loaded skill can list references with a description of when each applies. Load a reference with \`{ "skillId": "<reference id>" }\` only when its description matches the current step.`
+			: ''
+	}
 - If the relevant skill was already loaded for this request, do not call load_skill again.
 - If no skill clearly matches, do not call load_skill.
 - Do not load a skill just because it is listed here.`;

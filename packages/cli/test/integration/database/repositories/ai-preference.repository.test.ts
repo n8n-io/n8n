@@ -100,4 +100,29 @@ describe('AiPreferenceRepository', () => {
 			expect(rows.map((row) => row.id).sort()).toEqual([instanceId, ownId].sort());
 		});
 	});
+
+	describe('existsForTargetWithContent', () => {
+		it('is true for an exact match in the scope and false otherwise', async () => {
+			await insertPreference({ content: 'Keep replies short.', userId: member.id });
+
+			const target = { scope: 'user' as const, userId: member.id };
+			expect(await repository.existsForTargetWithContent(target, 'Keep replies short.')).toBe(true);
+			expect(await repository.existsForTargetWithContent(target, 'Keep replies long.')).toBe(false);
+			expect(
+				await repository.existsForTargetWithContent({ scope: 'instance' }, 'Keep replies short.'),
+			).toBe(false);
+		});
+
+		it('ignores the excluded row', async () => {
+			const id = await insertPreference({ content: 'Keep replies short.', userId: member.id });
+
+			expect(
+				await repository.existsForTargetWithContent(
+					{ scope: 'user', userId: member.id },
+					'Keep replies short.',
+					id,
+				),
+			).toBe(false);
+		});
+	});
 });

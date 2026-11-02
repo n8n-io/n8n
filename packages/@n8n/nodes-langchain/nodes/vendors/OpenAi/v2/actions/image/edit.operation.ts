@@ -9,6 +9,8 @@ import type {
 import { updateDisplayOptions } from 'n8n-workflow';
 
 import { getBinaryDataFile } from '../../../helpers/binary-data';
+import type { ImageResponse } from '../../../helpers/interfaces';
+import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -686,7 +688,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = (await apiRequest.call(this, 'POST', '/images/edits', {
 		option: { formData },
 		headers: formData.getHeaders(),
-	})) as IDataObject;
+	})) as ImageResponse;
+
+	accumulateImageTokenUsage(this, response.usage);
 
 	const returnData: INodeExecutionData[] = [];
 

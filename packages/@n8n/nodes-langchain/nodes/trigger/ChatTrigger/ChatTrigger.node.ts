@@ -2,6 +2,10 @@ import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
 import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
+	DEFAULT_TRUSTED_SOURCE_ID,
+	listRedirectLoginTrustedSources,
+} from 'n8n-nodes-base/dist/utils/trusted-source';
+import {
 	Node,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -31,6 +35,7 @@ import { Container } from '@n8n/di';
 
 import { buildChatShellViewModel, connectBarText } from './connect-panel';
 import { cssVariables } from './constants';
+import { ChatTriggerAuthorizationError } from './error';
 import {
 	establishChatSessionIdentity,
 	handleChatTokenRefresh,
@@ -139,7 +144,7 @@ const respondNodesResponseMode = {
 };
 
 const responseModeBuilderHint =
-	"'streaming' (preferred for Agent-backed chats): the connected Agent streams its reply to the widget directly — no extra wiring. Place logging or side-effects on a PARALLEL branch off the trigger or Agent, never inline after the Agent. 'lastNode': the last-executed node's output is sent to the widget — that node MUST emit `{ output: '<reply text>' }` (typically the Agent itself, or a Set node re-shaping data). NEVER terminate the chain with a Data Table insert, HTTP Request, or other side-effect node — their output is not a chat reply and the widget will error. 'responseNodes' / 'responseNode': requires explicit response nodes inside the flow (`@n8n/n8n-nodes-langchain.chat` for chat-hub mode, `n8n-nodes-base.respondToWebhook` for webhook mode).";
+	"'streaming' (preferred for Agent-backed chats): the connected Agent streams its reply to the widget directly — no extra wiring. Place logging or side-effects on a PARALLEL branch off the trigger or Agent, never inline after the Agent. 'lastNode': the last-executed node's output is sent to the widget — that node MUST emit `{ output: '<reply text>' }` (typically the Agent itself, or a Set node re-shaping data). NEVER terminate the chain with a Data Table insert, HTTP Request, or other side-effect node — their output is not a chat reply and the widget will error. 'responseNodes': requires one or more `@n8n/n8n-nodes-langchain.chat` nodes inside the flow (hosted and embedded mode). 'responseNode': requires a `n8n-nodes-base.respondToWebhook` node.";
 
 const commonOptionsFields: INodeProperties[] = [
 	// CORS parameters are only valid for when chat is used in hosted or webhook mode
@@ -291,6 +296,12 @@ ${cssVariables}
 ];
 
 export class ChatTrigger extends Node {
+	methods = {
+		loadOptions: {
+			listTrustedSources: listRedirectLoginTrustedSources,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
@@ -507,6 +518,24 @@ export class ChatTrigger extends Node {
 				},
 				description:
 					'Whether the triggering user must also have permission to execute the workflow in the project it belongs to',
+			},
+			{
+				displayName: 'Trusted Source Name or ID',
+				name: 'trustedSource',
+				type: 'options',
+				typeOptions: { loadOptionsMethod: 'listTrustedSources' },
+				default: DEFAULT_TRUSTED_SOURCE_ID,
+				displayOptions: {
+					show: {
+						authentication: ['n8nUserAuth'],
+						mode: ['hostedChat'],
+						public: [true],
+					},
+				},
+				// The resolvers read the raw value without an execution context, so it must be static.
+				noDataExpression: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description: 'The identity provider the visitor signs in with',
 			},
 			{
 				...includeUserInOutputOption,
@@ -808,7 +837,12 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, streamingResponseMode, respondToWebhookResponseMode],
+						options: [
+							lastNodeResponseMode,
+							streamingResponseMode,
+							respondToWebhookResponseMode,
+							respondNodesResponseMode,
+						],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [false] } },
@@ -818,7 +852,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [streamingResponseMode, lastNodeResponseMode],
+						options: [streamingResponseMode, lastNodeResponseMode, respondNodesResponseMode],
 						default: 'streaming',
 						description: 'When and how to respond to the chat',
 						displayOptions: { show: { '/mode': ['webhook'], '/availableInChat': [true] } },
@@ -924,6 +958,12 @@ export class ChatTrigger extends Node {
 
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
+		// The GET `setup` route only serves the hosted chat page. Other modes have no handler for it.
+		if (ctx.getWebhookName() === 'setup' && nodeMode !== 'hostedChat') {
+			res.status(404).end();
+			return { noWebhookResponse: true };
+		}
+
 		// Only the editor's session-scoped canvas test route may execute a non-public chat
 		if (!isPublic && (mode !== 'test' || !ctx.isChatSessionTest())) {
 			res.status(404).end();
@@ -984,8 +1024,12 @@ export class ChatTrigger extends Node {
 					// Realm is scoped per webhook so browsers don't reuse cached credentials across chats sharing an origin
 					const webhookId = ctx.getNode().webhookId;
 					const realm = webhookId ? `Webhook ${webhookId}` : 'Webhook';
+					const challenge =
+						error instanceof ChatTriggerAuthorizationError && error.challenge
+							? error.challenge
+							: `Basic realm="${realm}"`;
 					res.writeHead((error as IDataObject).responseCode as number, {
-						'www-authenticate': `Basic realm="${realm}"`,
+						'www-authenticate': challenge,
 					});
 					res.end((error as IDataObject).message as string);
 					return { noWebhookResponse: true };
@@ -1098,6 +1142,10 @@ export class ChatTrigger extends Node {
 					// By header as well as by the iframe's attribute, so the document has no
 					// origin even if the attribute is ever stripped.
 					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
+				} else {
+					// The webhook route sandboxes every response. This page keeps its origin,
+					// because the widget keeps the session in `localStorage`.
+					res.removeHeader('Content-Security-Policy');
 				}
 
 				const page = createPage({

@@ -293,6 +293,22 @@ describe('resolveRequiredTeams', () => {
 		assert.equal(result.size, 0);
 	});
 
+	it('ignores test files whose winning entry is required', () => {
+		const result = resolveRequiredTeams(
+			new Set([
+				'.github/scripts/check.test.mjs',
+				'.github/workflows/__tests__/check.ts',
+				'.github/workflows/ci.yml',
+			]),
+			[
+				entry({ pattern: '.github/scripts/', team: '@n8n-io/qa-dx', required: true }),
+				entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true }),
+			],
+		);
+
+		assert.deepEqual(result.get('@n8n-io/qa-dx'), ['.github/workflows/ci.yml']);
+	});
+
 	it('a later non-required entry overrides an earlier required one', () => {
 		const result = resolveRequiredTeams(new Set(['db/migrations/1-init.ts']), [
 			entry({ pattern: 'db/', team: '@n8n-io/migrations-review', required: true }),

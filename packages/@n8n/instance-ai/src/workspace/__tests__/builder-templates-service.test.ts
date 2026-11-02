@@ -117,6 +117,7 @@ function makeOptions(
 		fetchTimeoutMs: 1_000,
 		// Keep retry tests fast; production default is much higher.
 		retryBackoffBaseMs: 1,
+		fetch: globalThis.fetch,
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 		...overrides,
 	};
@@ -158,6 +159,22 @@ describe('BuilderTemplatesService', () => {
 		expect(cachedEtag).toBe('"sha-1"');
 		const cachedSha = await fsp.readFile(path.join(cacheDir, 'templates.tar.gz.sha256'), 'utf-8');
 		expect(cachedSha).toBe(sha256Hex(state.archive));
+	});
+
+	it('downloads the archive and sha256 sidecar through the injected fetch', async () => {
+		const state = makeState();
+		const injectedFetch = installMockFetch(state);
+		const globalFetch = vi.fn();
+		globalThis.fetch = globalFetch as unknown as typeof globalThis.fetch;
+
+		const svc = new BuilderTemplatesService(
+			makeOptions(await makeTempDir(), { fetch: injectedFetch as unknown as typeof fetch }),
+		);
+		const bundle = await svc.getBundle();
+
+		expect(bundle.archive?.equals(state.archive)).toBe(true);
+		expect(injectedFetch).toHaveBeenCalledTimes(2);
+		expect(globalFetch).not.toHaveBeenCalled();
 	});
 
 	it('returns an empty bundle when the fetch fails and there is no disk cache', async () => {

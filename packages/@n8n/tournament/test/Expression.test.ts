@@ -14,4 +14,8 @@ describe('Expression', () => {
 			evaluator.execute('{{ import("").then(fs => fs.writeFileSync("/tmp/flag", "flag")) }}', {}),
 		).toThrow('Imports are not supported');
 	});
+
+	test('Should unescape every escaped closing bracket', () => {
+		expect(evaluator.execute('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}][1].a.b }}', {})).toBe(2);
+	});
 });

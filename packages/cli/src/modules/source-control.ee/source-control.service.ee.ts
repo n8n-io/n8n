@@ -1,5 +1,6 @@
 import type { PullWorkFolderRequestDto, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -9,9 +10,7 @@ import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { IWorkflowToImport } from '@/interfaces';
 
 import {
@@ -259,9 +258,12 @@ export class SourceControlService {
 				}
 			}
 		}
+		// A first connect moves the instance to Environments v1, also while the promotions flag is off.
+		const wasConnected = this.sourceControlPreferencesService.isSourceControlConnected();
 		await this.sourceControlPreferencesService.setPreferences({
 			branchName: getBranchesResult.currentBranch,
 			connected: true,
+			...(wasConnected ? {} : { environmentsVersion: 'v1' }),
 		});
 		return getBranchesResult;
 	}
@@ -584,10 +586,32 @@ export class SourceControlService {
 		// validates against the freshly imported credential state (e.g. a credential's
 		// resolvable/private status), instead of the stale local state.
 		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.importCredentialsFromWorkFolder(
-			credentialsToBeImported,
-			user.id,
+		const credentialImportResults =
+			await this.sourceControlImportService.importCredentialsFromWorkFolder(
+				credentialsToBeImported,
+				user.id,
+			);
+
+		// Add content-import policy violations to status result
+		const statusByCredentialId = new Map(
+			statusResult.filter((item) => item.type === 'credential').map((item) => [item.id, item]),
 		);
+
+		for (const { id, contentImportPolicy } of credentialImportResults) {
+			if (!contentImportPolicy) continue;
+
+			if (contentImportPolicy.violations.length) {
+				this.logger.warn(
+					`Skipped credential ${id}: ${contentImportPolicy.violations.length} policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
+				);
+			}
+
+			const statusItem = statusByCredentialId.get(id);
+			if (statusItem) {
+				statusItem.contentImportPolicy = contentImportPolicy;
+			}
+		}
 
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
 		const workflowImportResults =
@@ -615,6 +639,9 @@ export class SourceControlService {
 					`Skipped workflow ${id}: ${contentImportPolicy.violations.length} content-import policy violation(s)`,
 					{ violations: contentImportPolicy.violations },
 				);
+			} else {
+				// A pull writes the workflow directly, so no save event fires for it.
+				this.eventService.emit('workflow-imported', { workflowId: id });
 			}
 
 			if (contentImportPolicy && statusItem) {
@@ -682,7 +709,11 @@ export class SourceControlService {
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);
 
 		const projectsToBeDeleted = getDeletedResources(statusResult, 'project');
-		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(projectsToBeDeleted);
+		await this.sourceControlImportService.deleteTeamProjectsNotInWorkfolder(
+			user,
+			projectsToBeDeleted,
+			credentialsToBeImported,
+		);
 
 		// #region Tracking Information
 		this.eventService.emit(
@@ -700,7 +731,15 @@ export class SourceControlService {
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		return await this.workfolderMutex(async () => {
 			await this.sanityCheck();
-			return await this.sourceControlStatusService.getStatus(user, options);
+			const result = await this.sourceControlStatusService.getStatus(user, options);
+
+			// Only the preview pays for this; the pull enforces on its own status call.
+			if (options.direction === 'pull') {
+				const files = Array.isArray(result) ? result : result.sourceControlledFiles;
+				await this.sourceControlImportService.previewContentImportPolicy(files, user.id);
+			}
+
+			return result;
 		});
 	}
 

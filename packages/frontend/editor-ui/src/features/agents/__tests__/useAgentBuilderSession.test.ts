@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, reactive, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants/modals';
 
@@ -39,10 +41,6 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm }),
-}));
-
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError, showMessage }),
 }));
@@ -64,6 +62,13 @@ function createSession(routeBacked = ref(false)) {
 describe('useAgentBuilderSession', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setActivePinia(createPinia());
+		vi.spyOn(useUIStore(), 'openModalWithData').mockImplementation(({ data }) => {
+			void confirm(data).then((result: string) => {
+				const onResult = result === MODAL_CONFIRM ? data.onConfirm : data.onCancel;
+				if (typeof onResult === 'function') onResult();
+			});
+		});
 		route.query = {};
 		sessionsStore.threads = [];
 		sessionsStore.previewThreads = [];
@@ -177,11 +182,17 @@ describe('useAgentBuilderSession', () => {
 		route.query.continueSessionId = newSessionId;
 		await nextTick();
 		expect(session.currentSessionIsEphemeral.value).toBe(true);
+		expect(session.currentSessionIsLocallyMinted.value).toBe(true);
+		if (!newSessionId) throw new Error('Expected a new session ID');
+		session.markSessionCreated(newSessionId);
+		expect(session.currentSessionIsEphemeral.value).toBe(false);
+		expect(session.currentSessionIsLocallyMinted.value).toBe(true);
 
 		route.query.continueSessionId = 'history-session';
 		await nextTick();
 		expect(session.effectiveSessionId.value).toBe('history-session');
 		expect(session.currentSessionIsEphemeral.value).toBe(false);
+		expect(session.currentSessionIsLocallyMinted.value).toBe(false);
 	});
 
 	it('only clears the route session when route backing is enabled', () => {
@@ -255,13 +266,13 @@ describe('useAgentBuilderSession', () => {
 		await expect(session.deleteSession('thread-1')).resolves.toBe(true);
 
 		expect(confirm).toHaveBeenCalledExactlyOnceWith(
-			'agentSessions.deleteConfirm.message',
-			'agentSessions.deleteConfirm.headline',
-			{
-				type: 'warning',
+			expect.objectContaining({
+				title: 'agentSessions.deleteConfirm.headline',
+				description: 'agentSessions.deleteConfirm.message',
+				isDestructive: true,
 				confirmButtonText: 'agentSessions.deleteConfirm.confirmButtonText',
-				cancelButtonText: '',
-			},
+				cancelButtonText: 'generic.cancel',
+			}),
 		);
 		expect(sessionsStore.deleteThread).toHaveBeenCalledExactlyOnceWith(
 			'project-1',

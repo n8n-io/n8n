@@ -35,12 +35,16 @@ export const MCP_CLIENT_INFO_META_KEY = 'io.modelcontextprotocol/clientInfo';
  */
 export const MCP_DISCOVER_METHOD = 'server/discover';
 
+export { MCP_SKILLS_EXTENSION_FLAG } from '@n8n/api-types';
+
 /**
  * Message constants
  */
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
+export const MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE =
+	'This instance is protected. Use read-only operations or production workflow executions.';
 /** Telemetry-only: the handshake reached the SDK but it answered with an error. */
 export const HANDSHAKE_FAILED_ERROR_MESSAGE = 'MCP handshake failed';
 /** Telemetry-only: a `server/discover` with no protocol version to negotiate on. */
@@ -52,6 +56,9 @@ export const MISSING_PROTOCOL_VERSION_ERROR_MESSAGE =
  */
 export const LIST_N8N_GATEWAY_SERVICES_TOOL_NAME = 'list_n8n_gateway_services';
 export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
+export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
+export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
+export const MCP_UNDO_USER_PREFERENCE_TOOL_NAME = 'undo_user_preference';
 
 /**
  * Installs a vetted community package so its nodes become usable. Not in

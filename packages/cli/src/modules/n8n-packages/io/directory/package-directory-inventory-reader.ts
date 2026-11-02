@@ -1,3 +1,16 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	type SerializedFolder,
+	serializedDataTableSchema,
+	serializedFolderSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type { z } from 'zod';
@@ -7,27 +20,15 @@ import {
 	WorkflowSerializer,
 	type WorkflowPackageContent,
 } from '../../entities/workflow/workflow.serializer';
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-} from '../../spec/serialized/credential.schema';
-import { serializedProjectSchema } from '../../spec/serialized/project.schema';
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../../spec/serialized/variable.schema';
-import { serializedWorkflowSchema } from '../../spec/serialized/workflow.schema';
 import { PACKAGE_ENTITY_LAYOUT } from '../manifest-entry';
 import type { PackageReader } from '../package-reader';
 
 /** Listing and reads only. The inventory never needs a manifest. */
 export type PackageFileSource = Pick<PackageReader, 'listEntries' | 'readFile'>;
 
-export interface InventoryProject {
+export interface InventoryProject extends SerializedProject {
 	/** Directory that holds `project.json`. */
 	path: string;
-	id: string;
-	name: string;
 }
 
 export interface InventoryWorkflow {
@@ -36,6 +37,12 @@ export interface InventoryWorkflow {
 	id: string;
 	name: string;
 	content: WorkflowPackageContent;
+}
+
+export interface InventoryFolder {
+	path: string;
+	projectId: string;
+	folder: SerializedFolder;
 }
 
 export interface InventoryCredential {
@@ -52,27 +59,38 @@ export interface InventoryVariable {
 	variable: SerializedVariable;
 }
 
+export interface InventoryDataTable {
+	path: string;
+	dataTable: SerializedDataTable;
+}
+
 export interface PackageDirectoryInventory {
 	projects: InventoryProject[];
 	workflows: InventoryWorkflow[];
+	folders: InventoryFolder[];
 	credentials: InventoryCredential[];
 	variables: InventoryVariable[];
+	dataTables: InventoryDataTable[];
 }
 
-type EntityKind = 'projects' | 'workflows' | 'credentials' | 'variables';
+type EntityKind = 'projects' | 'workflows' | 'folders' | 'credentials' | 'variables' | 'dataTables';
 
 const KIND_BY_FILE_NAME: Record<string, EntityKind> = {
 	[PACKAGE_ENTITY_LAYOUT.projects.fileName]: 'projects',
 	[PACKAGE_ENTITY_LAYOUT.workflows.fileName]: 'workflows',
+	[PACKAGE_ENTITY_LAYOUT.folders.fileName]: 'folders',
 	[PACKAGE_ENTITY_LAYOUT.credentials.fileName]: 'credentials',
 	[PACKAGE_ENTITY_LAYOUT.variables.fileName]: 'variables',
+	[PACKAGE_ENTITY_LAYOUT.dataTables.fileName]: 'dataTables',
 };
 
 const LABELS: Record<EntityKind, string> = {
 	projects: 'project',
 	workflows: 'workflow',
+	folders: 'folder',
 	credentials: 'credential',
 	variables: 'variable',
+	dataTables: 'data table',
 };
 
 interface EntityFile {
@@ -85,10 +103,10 @@ interface EntityFile {
 }
 
 /**
- * Reads the projects, workflows, credentials and variables of a package from
- * its entity files. The directory layout decides which project a file belongs
- * to; the file content supplies every id and name. `manifest.json` and other
- * files are ignored.
+ * Reads the projects, workflows, folders, credentials, variables and data tables of a
+ * package from its entity files. The directory layout decides which project a
+ * file belongs to; the file content supplies every id and name.
+ * `manifest.json` and other files are ignored.
  */
 @Service()
 export class PackageDirectoryInventoryReader {
@@ -114,8 +132,10 @@ export class PackageDirectoryInventoryReader {
 		return {
 			projects,
 			workflows: await this.readWorkflows(source, files, projectIdOf),
+			folders: await this.readFolders(source, files, projectIdOf),
 			credentials: await this.readCredentials(source, files, projectIdOf),
 			variables: await this.readVariables(source, files, projectIdOf),
+			dataTables: await this.readDataTables(source, files, projectIdOf),
 		};
 	}
 
@@ -132,7 +152,7 @@ export class PackageDirectoryInventoryReader {
 			}
 			const project = await this.readEntity(source, file, serializedProjectSchema);
 			assertUnseen(seenIds, project.id, 'project id');
-			projects.push({ path: file.projectDir, id: project.id, name: project.name });
+			projects.push({ path: file.projectDir, ...project });
 		}
 
 		return projects;
@@ -165,6 +185,28 @@ export class PackageDirectoryInventoryReader {
 		}
 
 		return workflows;
+	}
+
+	private async readFolders(
+		source: PackageFileSource,
+		files: EntityFile[],
+		projectIdOf: (file: EntityFile) => string | null,
+	): Promise<InventoryFolder[]> {
+		const folders: InventoryFolder[] = [];
+		const seenIds = new Set<string>();
+
+		for (const file of files.filter((f) => f.kind === 'folders')) {
+			if (!isFolderLocation(file.segments)) throw unsupportedLocation(file);
+			const projectId = projectIdOf(file);
+			if (projectId === null) {
+				throw new UserError(`Package folder file at ${file.path} is not inside a project.`);
+			}
+			const folder = await this.readEntity(source, file, serializedFolderSchema);
+			assertUnseen(seenIds, folder.id, 'folder id');
+			folders.push({ path: file.path, projectId, folder });
+		}
+
+		return folders;
 	}
 
 	private async readCredentials(
@@ -207,6 +249,30 @@ export class PackageDirectoryInventoryReader {
 		}
 
 		return variables;
+	}
+
+	private async readDataTables(
+		source: PackageFileSource,
+		files: EntityFile[],
+		projectIdOf: (file: EntityFile) => string | null,
+	): Promise<InventoryDataTable[]> {
+		const dataTables: InventoryDataTable[] = [];
+		const seenIds = new Set<string>();
+		const seenColumnIds = new Set<string>();
+
+		for (const file of files.filter((f) => f.kind === 'dataTables')) {
+			if (!isCollectionLocation(file.segments, 'dataTables')) throw unsupportedLocation(file);
+			// Nothing reads the owner, but a project directory still needs its project file.
+			projectIdOf(file);
+			const dataTable = await this.readEntity(source, file, serializedDataTableSchema);
+			assertUnseen(seenIds, dataTable.id, 'data table id');
+			for (const { id } of dataTable.columns) {
+				if (id) assertUnseen(seenColumnIds, id, 'data table column id');
+			}
+			dataTables.push({ path: file.path, dataTable });
+		}
+
+		return dataTables;
 	}
 
 	private async readEntity<TSchema extends z.ZodTypeAny>(
@@ -255,16 +321,18 @@ function isCollectionLocation(segments: string[], kind: EntityKind): boolean {
 	return segments.length === 3 && segments[0] === PACKAGE_ENTITY_LAYOUT[kind].directory;
 }
 
-/** `workflows/<entry>/workflow.json`, optionally below one or more `folders/<entry>/` levels. */
+/** `workflows/<entry>/workflow.json`, at the root or under a `folders/<a>/<b>/…` chain of bare slugs. */
 function isWorkflowLocation(segments: string[]): boolean {
-	let start = 0;
-	while (
-		segments[start] === PACKAGE_ENTITY_LAYOUT.folders.directory &&
-		segments.length - start > 3
-	) {
-		start += 2;
-	}
-	return isCollectionLocation(segments.slice(start), 'workflows');
+	if (!isCollectionLocation(segments.slice(-3), 'workflows')) return false;
+	const container = segments.slice(0, -3);
+	if (container.length === 0) return true; // root workflow
+	// A folder chain needs a slug after `folders/`.
+	return container[0] === PACKAGE_ENTITY_LAYOUT.folders.directory && container.length >= 2;
+}
+
+/** `folders/<a>/folder.json`, or deeper under a `folders/<a>/<b>/…` chain of bare slugs. */
+function isFolderLocation(segments: string[]): boolean {
+	return segments.length >= 3 && segments[0] === PACKAGE_ENTITY_LAYOUT.folders.directory;
 }
 
 function unsupportedLocation(file: EntityFile): UserError {
@@ -273,7 +341,12 @@ function unsupportedLocation(file: EntityFile): UserError {
 	);
 }
 
-function assertUnseen(seen: Set<string>, key: string, label: string, displayKey = key): void {
+export function assertUnseen(
+	seen: Set<string>,
+	key: string,
+	label: string,
+	displayKey = key,
+): void {
 	if (seen.has(key)) throw new UserError(`Package contains a duplicate ${label}: ${displayKey}`);
 	seen.add(key);
 }

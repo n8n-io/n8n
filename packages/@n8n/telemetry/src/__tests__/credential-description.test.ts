@@ -2,6 +2,38 @@ import { TELEMETRY_EVENT } from '../index';
 import { getEventValidationError } from '../validate';
 
 describe('credential description telemetry', () => {
+	it('accepts a description update without secret properties', () => {
+		expect(
+			getEventValidationError(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
+				user_id: 'user-1',
+				credential_id: 'credential-1',
+				credential_type: 'postgres',
+				source: 'backend',
+				has_description: true,
+				description_length: 9,
+				is_private: false,
+			}),
+		).toBeNull();
+	});
+
+	it.each([
+		TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
+		TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+	])('accepts backend events without description metrics in $name', (event) => {
+		expect(
+			getEventValidationError(event, {
+				user_id: 'user-1',
+				credential_id: 'credential-1',
+				credential_type: 'postgres',
+				is_private: false,
+				uses_external_secrets: false,
+				jwe_enabled: false,
+				credential_supports_managed_auth: false,
+				credential_uses_managed_auth: false,
+			}),
+		).toBeNull();
+	});
+
 	it.each([
 		TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS,
 		TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,

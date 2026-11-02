@@ -149,6 +149,29 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	// Teams deep links carry the UPN percent-encoded. The validator decodes it, so the bind
+	// carries the plain UPN in the slash form the add-member docs show.
+	it('decodes a URL-copied UPN, so the bind carries the plain UPN', async () => {
+		setParams(addParams({ userId: 'jacob%40contoso.com', options: {} }));
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
+			'@odata.type': '#microsoft.graph.aadUserConversationMember',
+			'user@odata.bind': 'https://graph.microsoft.com/v1.0/users/jacob@contoso.com',
+			roles: ['owner'],
+		});
+	});
+
+	// A lone surrogate is never a valid Graph id; the validator rejects it with the node's own
+	// error instead of letting it reach the request.
+	it('rejects a lone surrogate in the user id before any request', async () => {
+		setParams(addParams({ userId: `${userId}\uD800`, options: {} }));
+
+		await expect(node.execute.call(ctx)).rejects.toThrow('The ID is not valid');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('uses the credential graphApiBaseUrl in user@odata.bind (sovereign cloud)', async () => {
 		ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
 		setParams(addParams({ options: {} }));

@@ -1,5 +1,16 @@
+import type { BaseChannel, BinaryOperator } from '@langchain/langgraph';
+import { BinaryOperatorAggregate } from '@langchain/langgraph';
+
 import type { TelemetryValidationStatus } from '../validation/types';
 import { WorkflowState } from '../workflow-state';
+
+/** Returns the reducer of a state field. The state spec types each field as a plain channel. */
+function getReducer<Value, Update>(channel: BaseChannel<Value, Update>) {
+	if (!(channel instanceof BinaryOperatorAggregate)) {
+		throw new Error('Expected a state field with a reducer');
+	}
+	return channel.operator as BinaryOperator<Value, Update>;
+}
 
 describe('WorkflowState.validationHistory reducer', () => {
 	// Helper to create TelemetryValidationStatus avoiding ESLint naming-convention warnings
@@ -14,7 +25,7 @@ describe('WorkflowState.validationHistory reducer', () => {
 	};
 
 	it('should append new validation history to existing history', () => {
-		const reducer = WorkflowState.spec.validationHistory.operator;
+		const reducer = getReducer(WorkflowState.spec.validationHistory);
 
 		const existingHistory: TelemetryValidationStatus[] = [
 			createValidationStatus([
@@ -45,7 +56,7 @@ describe('WorkflowState.validationHistory reducer', () => {
 	});
 
 	it('should handle empty existing history with new updates', () => {
-		const reducer = WorkflowState.spec.validationHistory.operator;
+		const reducer = getReducer(WorkflowState.spec.validationHistory);
 
 		const newHistory: TelemetryValidationStatus[] = [
 			createValidationStatus([
@@ -65,7 +76,7 @@ describe('WorkflowState.validationHistory reducer', () => {
 			x: TelemetryValidationStatus[],
 			y: TelemetryValidationStatus[] | undefined | null,
 		) => TelemetryValidationStatus[];
-		const reducer = WorkflowState.spec.validationHistory.operator as ReducerFn;
+		const reducer = getReducer(WorkflowState.spec.validationHistory) as ReducerFn;
 
 		let history: TelemetryValidationStatus[] = [];
 
@@ -102,7 +113,7 @@ describe('WorkflowState.validationHistory reducer', () => {
 
 describe('WorkflowState.techniqueCategories reducer', () => {
 	it('should append new technique categories to existing categories', () => {
-		const reducer = WorkflowState.spec.techniqueCategories.operator;
+		const reducer = getReducer(WorkflowState.spec.techniqueCategories);
 
 		const existingCategories = ['scraping', 'data-transformation'];
 		const newCategories = ['notifications', 'scheduling'];
@@ -115,7 +126,7 @@ describe('WorkflowState.techniqueCategories reducer', () => {
 
 	it('should return existing categories when update is undefined', () => {
 		type ReducerFn = (x: string[], y: string[] | undefined | null) => string[];
-		const reducer = WorkflowState.spec.techniqueCategories.operator as ReducerFn;
+		const reducer = getReducer(WorkflowState.spec.techniqueCategories) as ReducerFn;
 
 		const existingCategories = ['api-integration', 'webhook'];
 
@@ -126,7 +137,7 @@ describe('WorkflowState.techniqueCategories reducer', () => {
 	});
 
 	it('should handle empty existing categories with new updates', () => {
-		const reducer = WorkflowState.spec.techniqueCategories.operator;
+		const reducer = getReducer(WorkflowState.spec.techniqueCategories);
 
 		const newCategories = ['email-automation', 'file-processing'];
 

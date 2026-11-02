@@ -1,0 +1,207 @@
+import { describe, expect, it } from 'vitest';
+import { resolve } from 'node:path';
+
+import {
+	buildNpmInstallOverrides,
+	closureOf,
+	expectedNpmDuplicateReason,
+	findWorkspacePackageJsonFiles,
+	filesTriggerFullRun,
+	matchChangedFiles,
+	resolveTargets,
+} from './verify-npm-install.js';
+
+function attributedCopy(requiredBy: string | null, range: string | null) {
+	return {
+		version: '1.0.0',
+		path: 'node_modules/example',
+		requiredBy,
+		range,
+		section: requiredBy ? ('dependencies' as const) : null,
+		isWorkspace: false,
+		inPnpmStore: false,
+	};
+}
+
+describe('expectedNpmDuplicateReason', () => {
+	it('allows the exact known form-data origins', () => {
+		expect(
+			expectedNpmDuplicateReason({
+				name: 'form-data',
+				copies: [
+					attributedCopy(null, null),
+					attributedCopy('@getzep/zep-cloud', '4.0.0'),
+					attributedCopy('@getzep/zep-js', '4.0.0'),
+				],
+			}),
+		).toContain('Legacy Zep SDKs');
+	});
+
+	it('rejects an additional origin', () => {
+		expect(
+			expectedNpmDuplicateReason({
+				name: 'form-data',
+				copies: [
+					attributedCopy(null, null),
+					attributedCopy('@getzep/zep-cloud', '4.0.0'),
+					attributedCopy('@getzep/zep-js', '4.0.0'),
+					attributedCopy('new-package', '^4.0.0'),
+				],
+			}),
+		).toBeUndefined();
+	});
+
+	it('rejects a changed dependency range', () => {
+		expect(
+			expectedNpmDuplicateReason({
+				name: '@langchain/core',
+				copies: [
+					attributedCopy(null, null),
+					attributedCopy('langchain', '^0.1.60'),
+					attributedCopy('@langchain/textsplitters', '>0.2.0 <0.3.0'),
+				],
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe('buildNpmInstallOverrides', () => {
+	it('uses local tarballs and excludes Docker-only native bindings', () => {
+		expect(buildNpmInstallOverrides(['a'], { a: '/tmp/a.tgz' })).toMatchObject({
+			a: 'file:/tmp/a.tgz',
+			'@napi-rs/canvas-linux-arm64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/canvas-linux-x64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/image-linux-arm64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/image-linux-x64-musl': 'npm:empty-npm-package@1.0.0',
+		});
+	});
+});
+
+/** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
+function ws(name: string, deps: Array<[string, string]>) {
+	return {
+		relDir: `packages/${name}`,
+		info: {
+			filePath: `/x/${name}/package.json`,
+			packageName: name,
+			private: false,
+			deps: deps.map(([depName, section]) => ({
+				name: depName,
+				version: '',
+				line: 1,
+				usesCatalog: false,
+				section,
+			})),
+		},
+	};
+}
+
+const byName = new Map([
+	[
+		'a',
+		ws('a', [
+			['b', 'dependencies'],
+			['ext', 'dependencies'],
+		]),
+	],
+	['b', ws('b', [['c', 'peerDependencies']])],
+	['c', ws('c', [['d', 'optionalDependencies']])],
+	['d', ws('d', [])],
+	['solo', ws('solo', [['ext', 'dependencies']])],
+	['dev-only', ws('dev-only', [['a', 'devDependencies']])],
+]) as unknown as Parameters<typeof closureOf>[1];
+
+describe('findWorkspacePackageJsonFiles', () => {
+	it('excludes package fixtures that are not part of the pnpm workspace', () => {
+		const rootDir = resolve(process.cwd(), '../../../..');
+		const files = findWorkspacePackageJsonFiles(rootDir);
+
+		expect(files).toContain(resolve(rootDir, 'packages/quality/policy/code-health/package.json'));
+		expect(files).not.toContain(
+			resolve(
+				rootDir,
+				'packages/quality/testing/playwright/fixtures/community-packages/packages/n8n-nodes-compat-v1-1.0.0/package.json',
+			),
+		);
+	});
+});
+
+describe('closureOf', () => {
+	it('follows dependencies, peerDependencies and optionalDependencies transitively', () => {
+		expect(closureOf(['a'], byName).sort()).toEqual(['a', 'b', 'c', 'd']);
+	});
+
+	it('ignores non-workspace (external) deps', () => {
+		expect(closureOf(['solo'], byName).sort()).toEqual(['solo']);
+	});
+
+	it('does not follow devDependencies (they are not published)', () => {
+		expect(closureOf(['dev-only'], byName).sort()).toEqual(['dev-only']);
+	});
+
+	it('terminates on a dependency cycle', () => {
+		const cyclic = new Map([
+			['a', ws('a', [['b', 'dependencies']])],
+			['b', ws('b', [['a', 'dependencies']])],
+		]) as unknown as Parameters<typeof closureOf>[1];
+		expect(closureOf(['a'], cyclic).sort()).toEqual(['a', 'b']);
+	});
+});
+
+describe('matchChangedFiles', () => {
+	const dirs: Array<[string, string]> = [
+		['pkg', 'packages/@n8n/pkg/'],
+		['pkg-sub', 'packages/@n8n/pkg/sub/'],
+	];
+
+	it('maps a file to its owning package', () => {
+		expect(matchChangedFiles(['packages/@n8n/pkg/src/x.ts'], dirs)).toEqual(['pkg']);
+	});
+
+	it('prefers the longest matching prefix when packages nest', () => {
+		expect(matchChangedFiles(['packages/@n8n/pkg/sub/x.ts'], dirs)).toEqual(['pkg-sub']);
+	});
+
+	it('returns nothing for files outside any package', () => {
+		expect(matchChangedFiles(['README.md'], dirs)).toEqual([]);
+	});
+});
+
+describe('filesTriggerFullRun', () => {
+	it('escalates on the catalog / root manifest', () => {
+		expect(filesTriggerFullRun(['pnpm-workspace.yaml'])).toBe(true);
+		expect(filesTriggerFullRun(['package.json'])).toBe(true);
+	});
+
+	it('escalates on a change to the single-instance tool itself', () => {
+		expect(
+			filesTriggerFullRun(['packages/quality/policy/code-health/src/single-instance/libs.ts']),
+		).toBe(true);
+	});
+
+	it('does not escalate on an ordinary package source change', () => {
+		expect(filesTriggerFullRun(['packages/core/src/index.ts'])).toBe(false);
+	});
+});
+
+describe('resolveTargets', () => {
+	it('does not mistake --report-only for a package name', () => {
+		expect(resolveTargets(['a', '--report-only'], byName, '/x')).toEqual(['a']);
+	});
+
+	// Flag-only args must reach the usage error rather than silently verifying nothing.
+	it('resolves no targets when only flags are passed', () => {
+		expect(resolveTargets(['--report-only'], byName, '/x')).toEqual([]);
+	});
+
+	it('still expands --all alongside the flag', () => {
+		expect(resolveTargets(['--all', '--report-only'], byName, '/x')?.sort()).toEqual([
+			'a',
+			'b',
+			'c',
+			'd',
+			'dev-only',
+			'solo',
+		]);
+	});
+});

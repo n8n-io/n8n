@@ -33,6 +33,28 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						comment: 'Name and message of the error that failed this step.',
 					},
 					{
+						name: 'wait_declaration',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							'What the step waits for, as its executor declared it. The engine reads three things: the deadline, the outputs the step emits when that deadline fires, and whether a request may end the wait. It does not read what the wait is for: a webhook, a form and an approval all look the same to it.',
+					},
+					{
+						name: 'wait_till',
+						type: 'timestamptz',
+						precision: 3,
+						isNullable: true,
+						comment:
+							"The wait's deadline, lifted out of `wait_declaration` so the sweep can index it.",
+					},
+					{
+						name: 'resume_cause',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							"What ended the step's wait, recorded when it is resumed: a deadline, or a request. A request carries the outputs the node's resume path produced where the request arrived. The engine emits them and runs no node code.",
+					},
+					{
 						name: 'created_at',
 						type: 'timestamptz',
 						precision: 3,
@@ -61,6 +83,19 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 						columnNames: ['execution_id'],
 						where: "status = 'failed'",
 					},
+					// The sweep reads waiting rows only, so the index is partial.
+					{
+						name: 'idx_workflow_step_execution_wait_till',
+						columnNames: ['wait_till'],
+						where: "status = 'waiting'",
+					},
+					// For the live-status refresh, on every suspension and settlement.
+					// `status` in the key keeps its probes index-only; settled rows drop out.
+					{
+						name: 'idx_workflow_step_execution_unsettled',
+						columnNames: ['execution_id', 'status'],
+						where: "status IN ('queued', 'running', 'waiting')",
+					},
 				],
 				foreignKeys: [
 					{
@@ -74,7 +109,7 @@ export class CreateWorkflowStepExecution1784890100000 implements MigrationInterf
 					{
 						name: 'chk_workflow_step_execution_status',
 						expression:
-							"status IN ('queued', 'running', 'completed', 'failed', 'skipped', 'cancelled')",
+							"status IN ('queued', 'running', 'waiting', 'completed', 'failed', 'skipped', 'cancelled')",
 					},
 				],
 			}),

@@ -10,7 +10,7 @@ const UNATTRIBUTED_NOT_FOUND = /\b404\b|\bnot found\b/i;
 
 const DO_NOT_BLAME_THE_KEY =
 	'Do not ask the user to check, revoke, or regenerate their API key. ' +
-	'Call resolve_llm again for this provider to get a model the credential can ' +
+	'Call agent_builder_resolve_llm again for this provider to get a model the credential can ' +
 	'actually reach, write it to the config, and retry.';
 
 export interface CallAgentFailure {
@@ -43,7 +43,7 @@ export function describeCallAgentFailure(message: string): CallAgentFailure {
 				`${message} If this came from the model provider rather than one of the ` +
 				"agent's tools, the configured model is the likely cause — a provider " +
 				'returns 404 for a model it does not serve. Re-check the model id with ' +
-				'resolve_llm before suggesting anything about the credential or API key.',
+				'agent_builder_resolve_llm before suggesting anything about the credential or API key.',
 		};
 	}
 

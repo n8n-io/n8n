@@ -7,7 +7,7 @@ import { exportJWK, generateKeyPair } from 'jose';
 import type { JWK } from 'jose';
 import { Cipher } from 'n8n-core';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { OAuthJweKeyService } from '../oauth-jwe-key.service';
 import { JWE_KEY_ALGORITHMS, JWE_PRIVATE_KEY_TYPE } from '../oauth-jwe.constants';

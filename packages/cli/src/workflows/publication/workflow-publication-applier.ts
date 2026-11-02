@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { isNodeIdTooLong } from '@n8n/constants';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
@@ -15,19 +16,24 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UserError, type INode, type WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
-import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
+import {
+	formatFailedActivationError,
+	formatNodeFailures,
+} from '@/workflows/publication/format-node-failures';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import {
 	isTriggerLikeNodeType,
 	type WorkflowTriggerVersion,
@@ -40,7 +46,7 @@ import {
 	type TriggerOperationAbort,
 	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 /** A node whose type this instance cannot load, with the loader's error. */
 type UnresolvableNode = { node: INode; error: Error };
@@ -150,6 +156,9 @@ export class WorkflowPublicationApplier {
 	): Promise<PublicationResult> {
 		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
 		if (healSkip !== null) return healSkip;
+
+		const oversized = this.rejectOversizedTriggerNodeIds(workflow, newVersion);
+		if (oversized !== null) return oversized;
 
 		const unrunnable = await this.handleUnrunnableVersion(
 			workflow,
@@ -441,17 +450,13 @@ export class WorkflowPublicationApplier {
 		workflow: WorkflowEntity,
 		newVersion: WorkflowHistory,
 	): Promise<PublicationResult | null> {
-		if (!this.policyEnforcementService.hasChecksFor('workflowPublish')) return null;
-
-		// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is not
-		// a passed one, so a failed lookup fails the publication.
-		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
-
 		try {
-			await this.policyEnforcementService.enforceWorkflowPublish({
-				workflow: { id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
-				projectId: project.id,
-			});
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: workflow.id, name: workflow.name, nodes: newVersion.nodes },
+				{ kind: 'system', reason: 'publication' },
+			);
 
 			return null;
 		} catch (e) {
@@ -613,13 +618,14 @@ export class WorkflowPublicationApplier {
 	 * Combines multiple per trigger failures into a single error.
 	 */
 	private toActivationError(failures: TriggerActivationFailure[]): Error {
+		// The lone error keeps its class: the reporter checks it for a policy refusal.
 		if (failures.length === 1) return failures[0].error;
 
-		const detail = formatNodeFailures(
-			failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		return new Error(
+			formatFailedActivationError(
+				failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+			),
 		);
-
-		return new Error(`Triggers failed to activate: ${detail}`);
 	}
 
 	/**
@@ -702,6 +708,44 @@ export class WorkflowPublicationApplier {
 		});
 
 		return { type: 'skipped', reason: published.published ? 'node-ids-healed' : 'superseded' };
+	}
+
+	/**
+	 * Fails a version whose trigger node ids cannot be stored in status rows. This
+	 * runs before trigger changes, so the old version keeps running. Fitting ids
+	 * get failed rows to prevent reconciliation retries.
+	 */
+	private rejectOversizedTriggerNodeIds(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): PublicationResult | null {
+		const { runnable, unresolvable } = this.partitionByResolvability(newVersion);
+		const enabledTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const oversized = [...enabledTriggerNodes, ...unresolvable.map(({ node }) => node)].filter(
+			(node) => isNodeIdTooLong(node.id),
+		);
+		if (oversized.length === 0) return null;
+
+		this.logger.warn('Published version carries trigger node ids that are too long', {
+			workflowId: workflow.id,
+			versionId: newVersion.versionId,
+			nodeNames: oversized.map((node) => node.name),
+		});
+
+		const error = new TriggerNodeIdTooLongError(oversized);
+		const storable = enabledTriggerNodes.filter((node) => !isNodeIdTooLong(node.id));
+		return {
+			type: 'failed',
+			error,
+			triggerStatuses: this.buildTriggerStatuses(
+				storable,
+				this.workflowTriggerActivator.getTriggerKinds(storable),
+				{
+					activated: [],
+					failures: storable.map((node) => ({ nodeId: node.id, nodeName: node.name, error })),
+				},
+			),
+		};
 	}
 
 	private isTriggerLikeNode(node: INode): boolean {

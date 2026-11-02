@@ -27,3 +27,13 @@ export interface WorkflowSetupApplyPayload {
 }
 
 export type TerminalState = 'applying' | 'applied' | 'partial' | 'deferred';
+
+/**
+ * How the parent settled the card's answer. `failed` opens the wizard again,
+ * with the user's selections. `result` is the setup tool result, when the
+ * parent has one.
+ */
+export interface WorkflowSetupOutcome {
+	state: TerminalState | 'failed';
+	result?: Record<string, unknown>;
+}

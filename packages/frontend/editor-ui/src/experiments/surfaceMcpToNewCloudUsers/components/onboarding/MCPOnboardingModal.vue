@@ -4,9 +4,11 @@ import { useToast } from '@n8n/composables/useToast';
 import SurfaceMcpBridgeGraphic from '@/experiments/surfaceMcpToNewCloudUsers/components/SurfaceMcpBridgeGraphic.vue';
 import { SURFACE_MCP_ONBOARDING_MODAL_KEY } from '@/experiments/surfaceMcpToNewCloudUsers/constants';
 import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
-import MCPAccessToggle from '@/features/ai/mcpAccess/components/McpAccessToggle.vue';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import {
+	McpAccessToggle as MCPAccessToggle,
+	MCP_SETTINGS_VIEW,
+	useMCPStore,
+} from '@n8n/frontend-module-mcp';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -519,7 +521,7 @@ onBeforeUnmount(() => {
 .headerTitle {
 	margin: 0;
 	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: var(--letter-spacing--tight);
 	color: var(--text-color);
 }
@@ -576,7 +578,7 @@ onBeforeUnmount(() => {
 	border: 1px solid var(--border-color--strong);
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 1;
 	flex-shrink: 0;
 	transition:
@@ -594,7 +596,7 @@ onBeforeUnmount(() => {
 .sectionTitle {
 	margin: 0;
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	letter-spacing: var(--letter-spacing--tight);
 	color: var(--text-color);
 }

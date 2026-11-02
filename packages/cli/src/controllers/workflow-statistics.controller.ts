@@ -4,7 +4,7 @@ import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Get, Middleware, RestController } from '@n8n/decorators';
 import { Response, NextFunction } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { IWorkflowStatisticsDataLoaded } from '@/interfaces';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 

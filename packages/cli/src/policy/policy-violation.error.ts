@@ -1,5 +1,5 @@
 import type { PolicyViolation } from '@n8n/decorators';
-import { UserError } from 'n8n-workflow';
+import { hasPolicyRefusalMarker, UserError } from 'n8n-workflow';
 
 /** `enforce*` only throws when something objected, so an empty list is a bug, not a case. */
 export type NonEmptyViolations = [PolicyViolation, ...PolicyViolation[]];
@@ -18,7 +18,7 @@ function summarize(violations: NonEmptyViolations): string {
  * Thrown by every `enforce*` method when a policy blocks an action.
  *
  * `UserError` so the execution path treats a blocked run as non-retryable, plus the
- * `httpStatusCode`/`errorCode` pair `classifyHttpError` looks for so `meta` — and with it the
+ * `httpStatusCode`/`errorCode` pair `classifyRestError` looks for so `meta` — and with it the
  * violations — reaches the REST body. Extending `ResponseError` would lose the first.
  */
 export class PolicyViolationError extends UserError {
@@ -61,14 +61,20 @@ export class PolicyViolationError extends UserError {
  * is needed, e.g. to read {@link PolicyViolationError.violations}.
  */
 export function isPolicyRefusal(error: unknown): boolean {
-	if (error instanceof PolicyViolationError) return true;
+	return error instanceof PolicyViolationError || hasPolicyRefusalMarker(error);
+}
 
-	// `hasOwn`, not `in`: the marker is an own property by contract, and an inherited
-	// one would let an unrelated error suppress cleanup and retries.
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		Object.hasOwn(error, 'isPolicyRefusal') &&
-		(error as { isPolicyRefusal?: unknown }).isPolicyRefusal === true
-	);
+/** Bounds the `cause` walk, so a cyclic chain cannot loop. */
+const MAX_CAUSE_DEPTH = 5;
+
+/** The violations of a refusal, also when a node error wraps it as its `cause`. */
+export function findPolicyViolations(error: unknown): NonEmptyViolations | undefined {
+	let current = error;
+	for (let depth = 0; depth < MAX_CAUSE_DEPTH && current instanceof Error; depth++) {
+		if (current instanceof PolicyViolationError && hasViolations(current.violations)) {
+			return current.violations;
+		}
+		current = current.cause;
+	}
+	return undefined;
 }

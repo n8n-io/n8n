@@ -36,6 +36,7 @@ export class ChatHubMessageRepository extends BaseRepository<ChatHubMessage> {
 			throw new UnexpectedError('Session ID is required and must be a string value');
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.insert(ChatHubMessage, message);
 			await this.chatSessionRepository.updateChatSession(

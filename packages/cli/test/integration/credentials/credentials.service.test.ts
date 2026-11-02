@@ -7,7 +7,7 @@ import {
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';

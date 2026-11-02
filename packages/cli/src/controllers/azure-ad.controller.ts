@@ -6,11 +6,9 @@ import { Get, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { AzureAdService } from '@/auth/azure-ad.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import { EventService, UrlService } from '@n8n/backend-services';
+import { AuthError, BadRequestError } from '@n8n/errors';
 import type { AuthlessRequest } from '@/requests';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { UrlService } from '@/services/url.service';
 import { issueCookie } from '@/auth/jwt';
 import { sendErrorResponse } from '@/response-helper';
 

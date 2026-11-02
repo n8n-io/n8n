@@ -1,17 +1,19 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
-import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
-	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
-
 	async init() {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
+
+		// The skills module starts before this module. Tell it which agents use skills.
+		const { registerSkillUsage } = await import('./register-skill-usage.js');
+		registerSkillUsage();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
@@ -20,13 +22,18 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
+		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
+		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
+		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
 		await import('./agent-slack-integrations.controller.js');
+		await import('./agent-teams-integrations.controller.js');
+		await import('./agent-whatsapp-integrations.controller.js');
 		await import('./agent-vector-stores.controller.js');
 		await import('./agent-tasks.controller.js');
 		await import('./agent-sandbox.controller.js');
@@ -40,6 +47,9 @@ export class AgentsModule implements ModuleInterface {
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
+
+		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
+		registerUserDeletionHandler();
 
 		// Register blob backends for agent execution logs and knowledge files.
 		// The fs backend is always available; s3/az reuse the clients base-command
@@ -71,6 +81,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository.js');
 		Container.get(AgentHistoryRepository);
 
+		const { AgentBudgetSpendRepository } = await import(
+			'./repositories/agent-budget-spend.repository.js'
+		);
+		Container.get(AgentBudgetSpendRepository);
+
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime.js');
@@ -83,16 +98,30 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/slack/slack-integration.js'
 		);
 		const { TelegramIntegration } = await import(
-			'./integrations/platforms/telegram-integration.js'
+			'./integrations/platforms/telegram/telegram-integration.js'
 		);
-		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
-		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
-		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { LinearIntegration } = await import(
+			'./integrations/platforms/linear/linear-integration.js'
+		);
+		const { DiscordIntegration } = await import(
+			'./integrations/platforms/discord/discord-integration.js'
+		);
+		const { WhatsAppIntegration } = await import(
+			'./integrations/platforms/whatsapp/whatsapp-integration.js'
+		);
+		const { TeamsIntegration } = await import(
+			'./integrations/platforms/teams/teams-integration.js'
+		);
+		const { N8nChatIntegration } = await import(
+			'./integrations/platforms/n8n-chat/n8n-chat-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(WhatsAppIntegration));
+		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
@@ -117,6 +146,10 @@ export class AgentsModule implements ModuleInterface {
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			const { AgentMessageQueueConsumer } = await import(
+				'./agent-message-queue-consumer.service.js'
+			);
+			Container.get(AgentMessageQueueConsumer).start();
 			// Loaded for its pubsub decorator
 			await import('./background/agent-background-job.service.js');
 			await import('./background/agent-wake.service.js');
@@ -124,19 +157,11 @@ export class AgentsModule implements ModuleInterface {
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
-			const sweep = () => {
-				void Container.get(AgentInterruptedExecutionSweeper)
-					.sweep()
-					.catch((error: unknown) => {
-						logger.error('[Agents] Interrupted execution sweep failed', { error });
-					});
-			};
-			sweep();
-			this.interruptedExecutionSweepTimer = setInterval(
-				sweep,
-				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
-			);
-			this.interruptedExecutionSweepTimer.unref();
+			void Container.get(AgentInterruptedExecutionSweeper)
+				.sweep()
+				.catch((error: unknown) => {
+					logger.error('[Agents] Interrupted execution sweep failed', { error });
+				});
 		}
 
 		// Workers never receive inbound platform events: no webhook route, no polling
@@ -193,26 +218,41 @@ export class AgentsModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
-		return [AgentCheckpointPruningTask];
-	}
+		const { AgentInterruptedExecutionSweepTask } = await import(
+			'./agent-interrupted-execution-sweep.task.js'
+		);
+		const { AgentChannelMediaRetentionTask } = await import(
+			'./agent-channel-media-retention.task.js'
+		);
 
-	@OnShutdown()
-	async shutdown() {
-		if (this.interruptedExecutionSweepTimer) {
-			clearInterval(this.interruptedExecutionSweepTimer);
+		const tasks: SystemTaskClass[] = [
+			AgentCheckpointPruningTask,
+			AgentInterruptedExecutionSweepTask,
+			AgentChannelMediaRetentionTask,
+		];
+
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (Container.get(GlobalConfig).diagnostics.enabled) {
+			const { AgentKnowledgeSnapshotTask } = await import('./agent-knowledge-snapshot.task.js');
+			tasks.push(AgentKnowledgeSnapshotTask);
 		}
+
+		return tasks;
 	}
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
-		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
+		const { KnowledgeAvailabilityService } = await import(
+			'@/modules/knowledge/knowledge-availability.service.js'
+		);
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
-			enabled: true,
+			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
-			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
+			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
 		};
 	}
@@ -221,15 +261,24 @@ export class AgentsModule implements ModuleInterface {
 		const { Agent } = await import('./entities/agent.entity.js');
 		const { AgentFile } = await import('./entities/agent-file.entity.js');
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
+		const { AgentFileGrant } = await import('./entities/agent-file-grant.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
 		const { AgentChannelStatus } = await import('./entities/agent-channel-status.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
+		const { AgentExecutionMessageLink } = await import(
+			'./entities/agent-execution-message-link.entity.js'
+		);
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
+		const { AgentThreadGrant } = await import('./entities/agent-thread-grant.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
+		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
+		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
+		const { AgentPublishHistory } = await import('./entities/agent-publish-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -239,6 +288,10 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
+		const { AgentBudgetSpend } = await import('./entities/agent-budget-spend.entity.js');
+		const { AgentBudgetAppliedCall } = await import(
+			'./entities/agent-budget-applied-call.entity.js'
+		);
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity.js');
 		const { AgentObservationCursorEntity } = await import(
@@ -257,25 +310,38 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
 		);
+		const { AgentSkillDependency } = await import('./entities/agent-skill-dependency.entity.js');
+		const { AgentVersionSkillDependency } = await import(
+			'./entities/agent-version-skill-dependency.entity.js'
+		);
 
 		return [
 			Agent,
 			AgentFile,
 			AgentChatAttachment,
+			AgentFileGrant,
 			AgentChatSubscription,
 			AgentChannelStatus,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
 			AgentMessageEntity,
+			AgentExecutionMessageLink,
 			AgentExecutionThread,
+			AgentThreadGrant,
 			AgentExecution,
+			AgentMessageQueue,
 			AgentBackgroundJob,
+			AgentPlan,
+			AgentPlanHistory,
 			AgentHistory,
+			AgentPublishHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
+			AgentBudgetSpend,
+			AgentBudgetAppliedCall,
 			AgentTaskSnapshot,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
@@ -284,6 +350,8 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
+			AgentSkillDependency,
+			AgentVersionSkillDependency,
 		];
 	}
 

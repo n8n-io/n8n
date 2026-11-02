@@ -4,10 +4,12 @@ import type {
 	WorkflowRepository,
 	CredentialsRepository,
 	SettingsRepository,
-	UserRepository,
+	Person,
+	PersonRepository,
 	User,
 	Role,
 } from '@n8n/db';
+import type { Repository } from '@n8n/typeorm';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -35,11 +37,16 @@ const { validHookPath } = vi.hoisted(() => {
 	return { validHookPath: p as string };
 });
 
+vi.mock('/path/to/non-existent-hook.js', () => {
+	throw new Error('File not found');
+});
+
 describe('ExternalHooks', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
 	const globalConfig = mock<GlobalConfig>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
+	const personCollection = mock<Repository<Person>>();
 	const settingsRepository = mock<SettingsRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -53,11 +60,12 @@ describe('ExternalHooks', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		globalConfig.externalHooks.files = [];
+		personRepository.forCloudHooks.mockReturnValue(personCollection);
 		externalHooks = new ExternalHooks(
 			logger,
 			errorReporter,
 			globalConfig,
-			userRepository,
+			personRepository,
 			settingsRepository,
 			credentialsRepository,
 			workflowRepository,
@@ -66,7 +74,6 @@ describe('ExternalHooks', () => {
 
 	describe('init()', () => {
 		it('should not load hooks if no external hook files are configured', async () => {
-			// @ts-expect-error private method
 			const loadHooksSpy = vi.spyOn(externalHooks, 'loadHooks');
 			await externalHooks.init();
 			expect(loadHooksSpy).not.toHaveBeenCalled();
@@ -74,10 +81,6 @@ describe('ExternalHooks', () => {
 
 		it('should throw an error if hook file cannot be loaded', async () => {
 			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
-
-			vi.mock('/path/to/non-existent-hook.js', () => {
-				throw new Error('File not found');
-			});
 
 			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});
@@ -113,7 +116,7 @@ describe('ExternalHooks', () => {
 			const hookInvocationContext = hookFn.mock.instances[0] as Record<string, unknown>;
 			expect(hookInvocationContext).toHaveProperty('dbCollections');
 			expect(hookInvocationContext.dbCollections).toEqual({
-				User: userRepository,
+				User: personCollection,
 				Settings: settingsRepository,
 				Credentials: credentialsRepository,
 				Workflow: workflowRepository,

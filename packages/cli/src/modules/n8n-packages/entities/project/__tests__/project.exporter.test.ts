@@ -2,7 +2,7 @@ import type { Project, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import type { FolderFinderService } from '@/services/folder-finder.service';
+import type { FolderFinderService } from '@n8n/backend-services';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -13,6 +13,7 @@ import {
 	PackageEntityNotFoundError,
 } from '../../package-export.errors';
 import type { WorkflowExporter } from '../../workflow/workflow.exporter';
+import { ProjectShellExporter } from '../project-shell.exporter';
 import { ProjectExporter } from '../project.exporter';
 import { ProjectSerializer } from '../project.serializer';
 
@@ -76,7 +77,7 @@ function makeExporter({
 
 	const exporter = new ProjectExporter(
 		projectService,
-		new ProjectSerializer(),
+		new ProjectShellExporter(new ProjectSerializer()),
 		folderFinder,
 		workflowFinder,
 		folderExporter,
@@ -103,7 +104,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -126,7 +127,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer: new CapturingWriter(),
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: true,
 		});
 
@@ -146,7 +147,7 @@ describe('ProjectExporter', () => {
 				projectIds: [project.id],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toThrow('1 project(s) not found or not accessible. Export aborted.');
@@ -163,7 +164,7 @@ describe('ProjectExporter', () => {
 				projectIds: ['missing'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
@@ -180,7 +181,7 @@ describe('ProjectExporter', () => {
 				projectIds: ['denied-1'],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			}),
 		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
@@ -196,7 +197,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -237,7 +238,7 @@ describe('ProjectExporter', () => {
 			projectIds: [newerProject.id, olderProject.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 
@@ -274,12 +275,24 @@ describe('ProjectExporter', () => {
 			folderExporter.export.mockResolvedValue({
 				entries: [{ id: 'f1', name: 'F1', target: 'projects/billing/folders/f1' }],
 				workflowEntries: [
-					{ id: 'w-in-f1', name: 'In F1', target: 'projects/billing/folders/f1/workflows/x' },
+					{
+						id: 'w-in-f1',
+						name: 'In F1',
+						target: 'projects/billing/folders/f1/workflows/x',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w-root', name: 'Root', target: 'projects/billing/workflows/root' }],
+				entries: [
+					{
+						id: 'w-root',
+						name: 'Root',
+						target: 'projects/billing/workflows/root',
+						isArchived: false,
+					},
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -289,7 +302,7 @@ describe('ProjectExporter', () => {
 				workflowIds: ['w-root', 'w-in-f1'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			});
 
@@ -311,7 +324,9 @@ describe('ProjectExporter', () => {
 			});
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w1']);
 			workflowExporter.export.mockResolvedValue({
-				entries: [{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1' }],
+				entries: [
+					{ id: 'w1', name: 'W1', target: 'projects/billing/workflows/w1', isArchived: false },
+				],
 				requirements: emptyRequirements,
 			});
 
@@ -322,7 +337,7 @@ describe('ProjectExporter', () => {
 					workflowIds: ['w1', 'w-elsewhere'],
 					writer: new CapturingWriter(),
 					includeTags: true,
-					workflowVersionPolicy: 'latest',
+					versionPolicy: 'latest',
 					includeArchivedWorkflows: false,
 				}),
 			).rejects.toMatchObject({
@@ -345,7 +360,12 @@ describe('ProjectExporter', () => {
 			workflowFinder.findAllWorkflowIdsForUser.mockResolvedValue(['w-published', 'w-unpublished']);
 			workflowExporter.export.mockResolvedValue({
 				entries: [
-					{ id: 'w-published', name: 'Published', target: 'projects/billing/workflows/pub' },
+					{
+						id: 'w-published',
+						name: 'Published',
+						target: 'projects/billing/workflows/pub',
+						isArchived: false,
+					},
 				],
 				requirements: emptyRequirements,
 			});
@@ -356,7 +376,7 @@ describe('ProjectExporter', () => {
 				workflowIds: ['w-published', 'w-unpublished'],
 				writer: new CapturingWriter(),
 				includeTags: true,
-				workflowVersionPolicy: 'ignore-unpublished',
+				versionPolicy: 'ignore-unpublished',
 				includeArchivedWorkflows: false,
 			});
 
@@ -378,7 +398,7 @@ describe('ProjectExporter', () => {
 				workflowIds: [],
 				writer,
 				includeTags: true,
-				workflowVersionPolicy: 'latest',
+				versionPolicy: 'latest',
 				includeArchivedWorkflows: false,
 			});
 
@@ -403,7 +423,7 @@ describe('ProjectExporter', () => {
 			projectIds: [project.id],
 			writer,
 			includeTags: true,
-			workflowVersionPolicy: 'latest',
+			versionPolicy: 'latest',
 			includeArchivedWorkflows: false,
 		});
 

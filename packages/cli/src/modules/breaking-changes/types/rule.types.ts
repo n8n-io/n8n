@@ -1,7 +1,7 @@
 import type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeRecommendation,
-	BreakingChangeRuleSeverity,
+	BreakingChangeRuleImpact,
 	BreakingChangeVersion,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
@@ -26,7 +26,8 @@ export interface BreakingChangeRuleMetadata {
 	title: string;
 	description: string;
 	category: BreakingChangeCategory;
-	severity: BreakingChangeRuleSeverity;
+	/** What happens if the user does not fix this breaking change. */
+	impact: BreakingChangeRuleImpact;
 	documentationUrl?: string;
 }
 
@@ -35,6 +36,19 @@ export interface IBreakingChangeInstanceRule {
 	getMetadata(): BreakingChangeRuleMetadata;
 	detect(): Promise<InstanceDetectionReport>;
 }
+
+/**
+ * Data that lives for one scan, so a rule loads it once and not once per workflow.
+ * It has one typed field for each need. Make it generic when more rules need a cache.
+ */
+export interface WorkflowScanContext {
+	/** Slack API credential ID to whether its signature secret is missing. */
+	slackSignatureSecretMissing: Map<string, boolean>;
+}
+
+export const createWorkflowScanContext = (): WorkflowScanContext => ({
+	slackSignatureSecretMissing: new Map(),
+});
 
 export interface IBreakingChangeWorkflowRule {
 	id: string;
@@ -46,6 +60,7 @@ export interface IBreakingChangeWorkflowRule {
 	detectWorkflow(
 		workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
+		context?: WorkflowScanContext,
 	): Promise<WorkflowDetectionReport>;
 }
 
@@ -89,3 +104,14 @@ export type IBreakingChangeRule =
 	| IBreakingChangeInstanceRule
 	| IBreakingChangeWorkflowRule
 	| IBreakingChangeBatchWorkflowRule;
+
+/** The rule kinds that produce per-workflow findings. */
+export type WorkflowLevelRule = IBreakingChangeWorkflowRule | IBreakingChangeBatchWorkflowRule;
+
+export function isWorkflowLevelRule(rule: IBreakingChangeRule): rule is WorkflowLevelRule {
+	return 'detectWorkflow' in rule || 'collectWorkflowData' in rule;
+}
+
+export function isInstanceRule(rule: IBreakingChangeRule): rule is IBreakingChangeInstanceRule {
+	return 'detect' in rule;
+}

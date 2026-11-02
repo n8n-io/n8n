@@ -5,6 +5,7 @@ import { waitFor } from '@testing-library/vue';
 import { VIEWS } from '@/app/constants';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { GLOBAL_ADMIN_SCOPES } from '@n8n/permissions';
 import InstanceRoleView from './InstanceRoleView.vue';
 import {
 	BASELINE_INSTANCE_SCOPES,
@@ -178,6 +179,34 @@ describe('InstanceRoleView', () => {
 			});
 		});
 
+		it('ticks Credentials "Manage" when starting from the real Admin preset', async () => {
+			// Before the credential group existed, setPreset's ALL_INSTANCE_SCOPES filter
+			// silently dropped all 12 credential scopes, so "Start from Admin" produced a
+			// role that could not see credentials at all. It now ticks Credentials Manage.
+			rolesStore.processedInstanceRoles = [
+				{ ...mockSystemRole, scopes: [...GLOBAL_ADMIN_SCOPES] },
+			] as typeof rolesStore.processedInstanceRoles;
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+					'false',
+				),
+			);
+
+			await userEvent.click(getByTestId('role-preset-global:admin'));
+
+			await waitFor(() =>
+				expect(getByTestId('scope-option-credential-manage').getAttribute('aria-checked')).toBe(
+					'true',
+				),
+			);
+			// The lower rungs render as implied, not as independent selections.
+			expect(getByTestId('scope-option-credential-view')).toBeDisabled();
+			expect(getByTestId('scope-option-credential-use')).toBeDisabled();
+		});
+
 		it('populates scopes from a system-role preset', async () => {
 			const { getByTestId } = renderComponent();
 
@@ -267,6 +296,45 @@ describe('InstanceRoleView', () => {
 			await waitFor(() =>
 				expect(getByTestId('role-preset-global:member').getAttribute('aria-pressed')).toBe('true'),
 			);
+		});
+	});
+
+	describe('Loading', () => {
+		it('shows the name and description of a role the roles list already holds before the fetch resolves', async () => {
+			// Never resolves: everything asserted below comes from the store, not the fetch.
+			rolesStore.fetchRoleBySlug.mockReturnValue(new Promise(() => {}));
+			rolesStore.roles.global = [mockCustomRole];
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput, descriptionInput } = getFormElements(container);
+				expect(nameInput.value).toBe('Support');
+				expect(descriptionInput.value).toBe('A custom instance role');
+			});
+			expect(getByRole('heading', { level: 1 })).toHaveTextContent('Role "Support"');
+		});
+
+		it('replaces the cached role with the fetched one and keeps the form clean', async () => {
+			rolesStore.roles.global = [mockCustomRole];
+			rolesStore.fetchRoleBySlug.mockResolvedValue({ ...mockCustomRole, displayName: 'Helpdesk' });
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => expect(getFormElements(container).nameInput.value).toBe('Helpdesk'));
+			expect(getByRole('button', { name: 'Save' })).toBeDisabled();
+		});
+
+		it('empties the form when the fetch fails, even for a cached role', async () => {
+			rolesStore.roles.global = [mockCustomRole];
+			const error = new Error('boom');
+			rolesStore.fetchRoleBySlug.mockRejectedValue(error);
+
+			const { container, queryByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(error, 'Error fetching role'));
+			expect(getFormElements(container).nameInput.value).toBe('');
+			expect(queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
 		});
 	});
 

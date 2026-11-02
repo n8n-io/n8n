@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -15,6 +17,7 @@ import type {
 	AgentMessage,
 	ContentCustom,
 	ContentFile,
+	ContentFileWithRef,
 	ContentReasoning,
 	ContentReasoningFile,
 	ContentText,
@@ -22,6 +25,7 @@ import type {
 	Message,
 	MessageContent,
 } from '../../types/sdk/message';
+import { isFileRefPart, toolOutputFileParts } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
 
 // Used across all message roles; AssistantContent omits user images and tool approval responses.
@@ -160,7 +164,7 @@ function normalizeReasoningFileData(
  * `providerOptions` values win.
  */
 function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const additions: Record<string, JSONObject> = {};
+	const additions: ProviderOptions = {};
 
 	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
 		const replayKeys = quirks.reasoningReplayKeys;
@@ -193,6 +197,10 @@ function formatFileSize(bytes: number): string {
  * agent can hand the file to a tool that can process it.
  */
 export function fileMetadataText(block: ContentFile): string {
+	return `[${fileLabel(block)} — not directly viewable by this model]`;
+}
+
+function fileLabel(block: ContentFile): string {
 	const name = block.fileRef?.fileName ?? 'file';
 	const details = [
 		block.mediaType,
@@ -201,13 +209,26 @@ export function fileMetadataText(block: ContentFile): string {
 		.filter((part): part is string => part !== undefined)
 		.join(', ');
 	const id = block.fileRef?.id;
-	return `[File attachment "${name}"${details ? ` (${details})` : ''}${
-		id ? `, fileId: ${id}` : ''
-	} — not directly viewable by this model]`;
+	return `File attachment "${name}"${details ? ` (${details})` : ''}${id ? `, fileId: ${id}` : ''}`;
+}
+
+/**
+ * Convert a user content block. A stored file that is sent as bytes gets a
+ * label before it, so the model learns its fileId and can pass it to a tool.
+ */
+function toUserAiContent(block: MessageContent): Array<AiContentPart | undefined> {
+	const part = toAiContent(block);
+	if (part?.type === 'file' && isFile(block) && block.fileRef) {
+		return [{ type: 'text', text: `[${fileLabel(block)}.]` }, part];
+	}
+	return [part];
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
-function toAiContent(block: MessageContent): AiContentPart | undefined {
+function toAiContent(
+	block: MessageContent,
+	replayReasoningText = false,
+): AiContentPart | undefined {
 	let base: AiContentPart | undefined;
 	if (isText(block)) {
 		base = { type: 'text', text: block.text };
@@ -251,7 +272,11 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		const providerOptions = isReasoning(block)
 			? toReasoningProviderOptions(block)
 			: block.providerOptions;
-		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+		if (
+			isReasoning(block) &&
+			!replayReasoningText &&
+			!hasReplayableReasoningProviderOptions(providerOptions)
+		) {
 			return undefined;
 		}
 
@@ -264,17 +289,57 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 	return base;
 }
 
+/**
+ * Text for a file in a tool output that has no loaded bytes, for example when
+ * it is outside the hydration budget or its bytes are gone. The model may
+ * never have seen the file, so the text only states that it is not attached.
+ * Keep it stable, so the prompt prefix stays cached.
+ */
+function detachedFileText(part: ContentFileWithRef): string {
+	const name = part.fileRef.fileName ?? 'file';
+	return `[File "${name}" (fileId: ${part.fileRef.id}) is not attached now.]`;
+}
+
+/**
+ * Map file parts with a `fileRef` in a tool output to AI SDK parts. A loaded
+ * file becomes a file part, and a part without data becomes a short text.
+ */
+function toModelContentOutput(output: ContentToolResultOutput): ContentToolResultOutput {
+	if (toolOutputFileParts(output).length === 0) return output;
+	return {
+		...output,
+		value: output.value.map((part) => {
+			const candidate: unknown = part;
+			if (!isFileRefPart(candidate)) return part;
+			// Keep provider options, the same as `toAiContent` does for user files.
+			const options = candidate.providerOptions && { providerOptions: candidate.providerOptions };
+			if (candidate.data === undefined) {
+				return { type: 'text', text: detachedFileText(candidate), ...options };
+			}
+			return {
+				type: 'file',
+				data: { type: 'data', data: candidate.data },
+				mediaType: candidate.mediaType ?? 'application/octet-stream',
+				...(candidate.fileRef.fileName ? { filename: candidate.fileRef.fileName } : {}),
+				...options,
+			};
+		}),
+	};
+}
+
 /** Build an AI SDK ToolResultPart from a resolved/rejected ContentToolCall. */
 function toolCallToResultPart(
 	block: ContentToolCall & { state: 'resolved' | 'rejected' },
+	toolCallId: string,
 ): ToolResultPart {
 	if (block.state === 'resolved') {
 		return {
 			type: 'tool-result',
-			toolCallId: block.toolCallId,
+			toolCallId,
 			toolName: block.toolName,
+			...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 			output: isContentToolResultOutput(block.output)
-				? block.output
+				? toModelContentOutput(block.output)
 				: { type: 'json', value: block.output },
 		};
 	}
@@ -285,8 +350,9 @@ function toolCallToResultPart(
 		// from error-json; error-text is dropped with a warning.
 		return {
 			type: 'tool-result',
-			toolCallId: block.toolCallId,
+			toolCallId,
 			toolName: block.toolName,
+			...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 			output: block.providerExecuted
 				? { type: 'error-json', value: errorValue }
 				: { type: 'error-text', value: errorValue },
@@ -294,10 +360,22 @@ function toolCallToResultPart(
 	}
 	return {
 		type: 'tool-result',
-		toolCallId: block.toolCallId,
+		toolCallId,
 		toolName: block.toolName,
+		...(block.resultProviderOptions && { providerOptions: block.resultProviderOptions }),
 		output: { type: 'error-json', value: errorValue as JSONValue },
 	};
+}
+
+function replayableToolCallId(id: unknown, messageIndex: number, blockIndex: number): string {
+	if (typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id)) return id;
+
+	// Keep stored IDs intact. Repair only the model request and its matching result.
+	const digest = createHash('sha256')
+		.update(`${messageIndex}:${blockIndex}:${String(id)}`)
+		.digest('hex')
+		.slice(0, 32);
+	return `n8n_${digest}`;
 }
 
 /** Convert a single AI SDK content part to an n8n MessageContent block. */
@@ -381,7 +459,11 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
  * Pending tool-call blocks are silently skipped (defense-in-depth; the strip
  * step should already have removed them before forLlm() calls toAiMessages).
  */
-function toAiMessageList(msg: Message): ModelMessage[] {
+function toAiMessageList(
+	msg: Message,
+	messageIndex: number,
+	replayReasoningText = false,
+): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
 			const text = msg.content
@@ -394,7 +476,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 
 		case 'user': {
 			const parts = msg.content
-				.map(toAiContent)
+				.flatMap((block) => toUserAiContent(block))
 				.filter((p): p is TextPart | FilePart => p?.type === 'text' || p?.type === 'file');
 			const base: ModelMessage = { role: 'user', content: parts };
 			return [msg.providerOptions ? { ...base, providerOptions: msg.providerOptions } : base];
@@ -404,7 +486,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 			const assistantParts: AiContentPart[] = [];
 			const resultMessages: ModelMessage[] = [];
 
-			for (const block of msg.content) {
+			for (const [blockIndex, block] of msg.content.entries()) {
 				if (block.type === 'tool-call') {
 					if (!('state' in block)) {
 						// Legacy DB block - skip it
@@ -414,10 +496,11 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						// Skip pending blocks — defense-in-depth (strip step removes them first)
 						continue;
 					}
+					const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
 					// Emit tool-call part (without result fields)
 					const toolCallPart: ToolCallPart = {
 						type: 'tool-call',
-						toolCallId: block.toolCallId,
+						toolCallId,
 						toolName: block.toolName,
 						input: toToolInputObject(block.input),
 						providerExecuted: block.providerExecuted,
@@ -432,11 +515,11 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 					});
 					// Emit corresponding tool-result message immediately after. A
 					// provider-executed result belongs in the assistant message itself.
-					const resultPart = toolCallToResultPart(block);
+					const resultPart = toolCallToResultPart(block, toolCallId);
 					if (block.providerExecuted) assistantParts.push(resultPart);
 					else resultMessages.push({ role: 'tool', content: [resultPart] });
 				} else {
-					const part = toAiContent(block);
+					const part = toAiContent(block, replayReasoningText);
 					if (part) assistantParts.push(part);
 				}
 			}
@@ -470,9 +553,20 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 	}
 }
 
-/** Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText. */
-export function toAiMessages(messages: Message[]): ModelMessage[] {
-	const modelMessages = messages.flatMap(toAiMessageList);
+/**
+ * Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText.
+ * `providerId` is the provider the request targets; it enables replay quirks
+ * that cannot be derived from the blocks themselves (see
+ * `PROVIDER_QUIRKS[provider].replayReasoningText`).
+ */
+export function toAiMessages(messages: Message[], providerId?: string): ModelMessage[] {
+	const replayReasoningText =
+		providerId !== undefined && (getProviderQuirks(providerId).replayReasoningText ?? false);
+	// Text replay covers only the current tool chain: the messages after the last user message.
+	const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user');
+	const modelMessages = messages.flatMap((message, index) =>
+		toAiMessageList(message, index, replayReasoningText && index > lastUserIndex),
+	);
 	const result: ModelMessage[] = [];
 
 	for (const [index, message] of modelMessages.entries()) {
@@ -516,12 +610,13 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 			if (part.type !== 'tool-result') continue;
 			const block = toolCallIndex.get(part.toolCallId);
 			if (!block) continue; // orphan — drop
+			if (part.providerOptions) block.resultProviderOptions = part.providerOptions;
 
 			const { output } = part;
 			if (output.type === 'json' || output.type === 'text') {
 				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 				mutableBlock.state = 'resolved';
-				mutableBlock.output = output.value;
+				mutableBlock.output = output.value as JSONValue;
 			} else if (output.type === 'content') {
 				const mutableBlock = block as Extract<ContentToolCall, { state: 'resolved' }>;
 				mutableBlock.state = 'resolved';
@@ -589,7 +684,9 @@ export function fromAiFinishReason(reason: AiFinishReason): FinishReason {
 			return 'tool-calls';
 		case 'error':
 			return 'error';
+		// `interrupted`: the stream ended without a completion signal. Providers reported `other` for this before.
 		case 'other':
+		case 'interrupted':
 			return 'other';
 	}
 }

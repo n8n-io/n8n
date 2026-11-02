@@ -17,6 +17,11 @@ export interface JobAdvance {
 	lastFiredAt: Date | null;
 }
 
+/** The schedule state of one job and the time of its newest dispatch. */
+export type JobScheduleState = Pick<ScheduledJob, 'ownerId' | 'nextRunAt' | 'lastDispatchedAt'> & {
+	runnable: boolean;
+};
+
 /** A job row to insert; remaining bookkeeping columns take their schema defaults. */
 export type NewScheduledJob = Pick<
 	ScheduledJob,
@@ -35,8 +40,10 @@ export type NewScheduledJob = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
+	| 'concurrencyLimit'
 >;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */
@@ -51,8 +58,10 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
+	| 'concurrencyLimit'
 >;
 
 @Service()
@@ -152,6 +161,23 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		ownerType: string,
 	): Promise<Array<Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>>> {
 		return await this.find({ where: { ownerType }, select: ['id', 'ownerId', 'payload'] });
+	}
+
+	/**
+	 * The owner id and schedule state of every job owners of one kind hold.
+	 * A job is runnable when the scheduler will claim it: enabled and not quarantined.
+	 */
+	async findScheduleStatesByOwnerType(ownerType: string): Promise<JobScheduleState[]> {
+		const rows = await this.find({
+			where: { ownerType },
+			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt', 'lastDispatchedAt'],
+		});
+		return rows.map(({ ownerId, enabled, nextRunAt, orphanedAt, lastDispatchedAt }) => ({
+			ownerId,
+			nextRunAt,
+			runnable: enabled && orphanedAt === null,
+			lastDispatchedAt,
+		}));
 	}
 
 	/**
@@ -268,7 +294,14 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	async updateRunOptions(
 		manager: EntityManager,
 		ids: number[],
-		update: Pick<ScheduledJob, 'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds'>,
+		update: Pick<
+			ScheduledJob,
+			| 'maxAttempts'
+			| 'timeoutSeconds'
+			| 'misfirePolicy'
+			| 'misfireGraceSeconds'
+			| 'concurrencyLimit'
+		>,
 	): Promise<void> {
 		if (ids.length === 0) return;
 		await manager.update(ScheduledJob, ids, update);

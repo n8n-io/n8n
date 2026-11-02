@@ -7,7 +7,6 @@ import {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { throwIfChatMemberUnsupported } from './sharedGuard';
 import { chatMemberRLC, chatRLC } from '../../descriptions';
 import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 
@@ -27,9 +26,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/chat-delete-members?view=graph-rest-1.0
-
-	// The chat picker cannot list chats app-only; fail before any request.
-	throwIfChatMemberUnsupported.call(this);
 
 	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 	const membershipId = this.getNodeParameter('membershipId', i, '', {

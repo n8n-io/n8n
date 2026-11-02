@@ -1,5 +1,7 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
+import { isSet } from './shared';
+
 const lobbyBypassScope: INodeProperties = {
 	displayName: 'Lobby Bypass Scope',
 	name: 'lobbyBypassScope',
@@ -99,6 +101,12 @@ const meetingSettingsProperties: readonly INodeProperties[] = [
 				name: 'Organizer',
 				value: 'organizer',
 			},
+			{
+				name: 'Specific People',
+				value: 'roleIsPresenter',
+				description:
+					'Only the attendees whose Role is Presenter. Add them under Attendees with the role set to Presenter.',
+			},
 		],
 		default: 'everyone',
 		description: 'Who can present in the meeting',
@@ -119,8 +127,6 @@ const meetingSettingsProperties: readonly INodeProperties[] = [
 		description: 'Whether to record the meeting automatically',
 	},
 ];
-
-const isSet = (value: unknown) => value !== undefined && value !== null && value !== '';
 
 export function applyMeetingSettings(body: IDataObject, settings: IDataObject): void {
 	for (const { name } of meetingSettingsProperties) {

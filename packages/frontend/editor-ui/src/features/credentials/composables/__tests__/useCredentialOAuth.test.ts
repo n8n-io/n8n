@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useCredentialOAuth } from '../useCredentialOAuth';
 import { OAUTH_FLOW_TIMEOUT } from '../oauthCallback';
 import { useCredentialsStore } from '../../credentials.store';
@@ -270,6 +272,29 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.state.credentialTypes.slackOAuth2Api = {
 				...slackOAuth2Api,
 				__overwrittenProperties: ['someOtherProp'],
+			};
+
+			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
+			expect(canOAuthCredentialQuickConnect('slackOAuth2Api')).toBe(false);
+		});
+
+		// Jira's shape: the instance supplies the OAuth app, but the Site URL stays
+		// the user's to fill, so only the one-click path is lost.
+		it('should return false when a required property beyond the client pair is not overwritten', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				properties: [
+					...slackOAuth2Api.properties,
+					{
+						displayName: 'Site URL',
+						name: 'domain',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
 			};
 
 			const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
@@ -852,7 +877,7 @@ describe('useCredentialOAuth', () => {
 			mockShowMessage.mockClear();
 			mockPopup = { closed: false, close: vi.fn(), focus: vi.fn(), location: { href: '' } };
 			MockBroadcastChannel.silent = false;
-			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue();
+			mockedStore(useCredentialsStore).deleteCredential.mockResolvedValue(true);
 			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
@@ -918,7 +943,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -941,7 +966,7 @@ describe('useCredentialOAuth', () => {
 				},
 				'workflow-project',
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				workflowId: 'setup-workflow',
@@ -949,6 +974,37 @@ describe('useCredentialOAuth', () => {
 			expect(mockTrack).toHaveBeenCalledWith(
 				'User saved credentials',
 				expect.objectContaining({ workflow_id: 'setup-workflow' }),
+			);
+		});
+
+		it('includes the description when the flag is enabled', async () => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			usePostHog().overrides = { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: true } };
+
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				description: 'Use for production alerts',
+			});
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ description: 'Use for production alerts' }),
+				undefined,
+				undefined,
+				{ skipStoreUpdate: true, pendingAuthorization: true },
+			);
+		});
+
+		it.each([false, undefined])('omits the description when the flag is %s', async (flag) => {
+			const credentialsStore = setupSuccessfulOAuthFlow();
+			usePostHog().overrides =
+				flag === undefined ? {} : { [CREDENTIAL_DESCRIPTIONS_FLAG]: { value: flag } };
+
+			await useCredentialOAuth().createAndAuthorize('slackOAuth2Api', undefined, {
+				description: 'Use for production alerts',
+			});
+
+			expect(credentialsStore.createNewCredential).toHaveBeenCalledOnce();
+			expect(credentialsStore.createNewCredential.mock.calls[0][0]).not.toHaveProperty(
+				'description',
 			);
 		});
 
@@ -981,7 +1037,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -1242,6 +1298,31 @@ describe('useCredentialOAuth', () => {
 				vi.useRealTimers();
 			}
 		});
+
+		it.each(['success', 'error', 'cancel'])(
+			'reuses an existing credential after %s without deleting it',
+			async (outcome) => {
+				const store = setupSuccessfulOAuthFlow();
+				store.fetchUsableCredentials.mockResolvedValue([]);
+				MockBroadcastChannel.failOauth = outcome === 'error';
+				MockBroadcastChannel.silent = outcome === 'cancel';
+				vi.useFakeTimers();
+				try {
+					const oauth = useCredentialOAuth();
+					const result = oauth.authorizeExistingCredential(createdCredential, { workflowId: 'wf' });
+					await vi.advanceTimersByTimeAsync(100);
+					if (outcome === 'cancel') oauth.cancelAuthorize();
+					await expect(result).resolves.toEqual(outcome === 'success' ? createdCredential : null);
+					expect(store.oAuth2Authorize).toHaveBeenCalledWith(createdCredential);
+					expect(store.createNewCredential).not.toHaveBeenCalled();
+					expect(store.deleteCredential).not.toHaveBeenCalled();
+					if (outcome === 'success')
+						expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: 'wf' });
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 
 		it('should track "User saved credentials" after OAuth completes, not before', async () => {
 			setupSuccessfulOAuthFlow();
