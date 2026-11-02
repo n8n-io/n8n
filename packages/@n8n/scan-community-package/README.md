@@ -18,6 +18,37 @@ $ npx @n8n/scan-community-package @SCOPE/n8n-nodes-PACKAGE@beta
 
 Without a version, the scanner checks the `latest` dist-tag.
 
+To get the result as JSON, add `--output` with a file path. The scanner still prints its progress to the terminal:
+
+```
+$ npx @n8n/scan-community-package n8n-nodes-PACKAGE --output scan-result.json
+```
+
+The file has this shape:
+
+```json
+{
+  "package": "n8n-nodes-PACKAGE",
+  "version": "1.2.3",
+  "status": "failed",
+  "message": "ESLint violations found",
+  "findings": [
+    {
+      "file": "nodes/Example/Example.node.ts",
+      "line": 12,
+      "column": 3,
+      "rule": "no-console",
+      "message": "Unexpected console statement.",
+      "origin": "source"
+    }
+  ]
+}
+```
+
+- `status` is `passed`, `failed` or `error`. It matches the [exit code](#exit-codes).
+- `message` gives the reason when the package did not pass.
+- `findings` lists the ESLint errors. `origin` tells if the file is in the attested source repository (`source`) or in the npm tarball (`package`). `file` is relative to that location.
+
 ### What it checks
 
 The scanner runs these steps in sequence. It stops at the first step that fails.
