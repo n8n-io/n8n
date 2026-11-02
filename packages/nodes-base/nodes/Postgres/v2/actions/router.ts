@@ -10,7 +10,7 @@ import type {
 	PostgresNodeOptions,
 	QueriesRunner,
 } from '../helpers/interfaces';
-import { configureQueryRunner } from '../helpers/utils';
+import { configureQueryRunner, parsePostgresError, prepareErrorItem } from '../helpers/utils';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
@@ -25,37 +25,43 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	options.nodeVersion = node.typeVersion;
 	options.operation = operation;
 
-	const { db, pgp } = await configurePostgres.call(this, credentials, options);
+	try {
+		const { db, pgp } = await configurePostgres.call(this, credentials, options);
 
-	const runQueries: QueriesRunner = configureQueryRunner.call(
-		this,
-		this.getNode(),
-		this.continueOnFail(),
-		pgp,
-		db,
-	);
+		const runQueries: QueriesRunner = configureQueryRunner.call(
+			this,
+			this.getNode(),
+			this.continueOnFail(),
+			pgp,
+			db,
+		);
 
-	const postgresNodeData = {
-		resource,
-		operation,
-	} as PostgresType;
+		const postgresNodeData = {
+			resource,
+			operation,
+		} as PostgresType;
 
-	switch (postgresNodeData.resource) {
-		case 'database':
-			returnData = await database[postgresNodeData.operation].execute.call(
-				this,
-				runQueries,
-				items,
-				options,
-				db,
-				pgp,
-			);
-			break;
-		default:
-			throw new NodeOperationError(
-				this.getNode(),
-				`The operation "${operation}" is not supported!`,
-			);
+		switch (postgresNodeData.resource) {
+			case 'database':
+				returnData = await database[postgresNodeData.operation].execute.call(
+					this,
+					runQueries,
+					items,
+					options,
+					db,
+					pgp,
+				);
+				break;
+			default:
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
+		}
+	} catch (err) {
+		if (!this.continueOnFail()) throw err;
+		const error = parsePostgresError(node, err, []);
+		return [items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index))];
 	}
 
 	addExecutionHints(this, node, items, operation, node.executeOnce);
