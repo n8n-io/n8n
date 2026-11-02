@@ -6147,6 +6147,7 @@ describe('TelemetryEventRelay', () => {
 			surfaces: ['public-api', 'instance-mcp'],
 			identity_subject: 'binding',
 			link_by_email: 'verified-only',
+			provision_human: 'jit',
 			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		};

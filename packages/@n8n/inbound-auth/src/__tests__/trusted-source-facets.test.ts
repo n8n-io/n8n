@@ -119,6 +119,7 @@ describe('toTrustedSourceTelemetryFacets', () => {
 			surfaces: ['public-api', 'trigger'],
 			identity_subject: 'binding',
 			link_by_email: 'any',
+			provision_human: 'jit',
 			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		});
