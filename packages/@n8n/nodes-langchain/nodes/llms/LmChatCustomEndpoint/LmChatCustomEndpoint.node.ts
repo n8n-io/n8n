@@ -5,7 +5,6 @@ import {
 	N8nLlmTracing,
 } from '@n8n/ai-utilities';
 import {
-	jsonParse,
 	NodeConnectionTypes,
 	type IDataObject,
 	type INodeType,
@@ -13,6 +12,8 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { parseExtraBody } from '../shared/extra-body';
 
 import { n8nContextHeaders } from '@utils/custom-model-endpoint/context-headers';
 import {
@@ -45,31 +46,28 @@ interface Options {
 
 const RETRYABLE = new Set([408, 429]);
 
-function shouldRetry(status: number | undefined): boolean {
-	return status !== undefined && (RETRYABLE.has(status) || status >= 500);
+function shouldRetry(status: number): boolean {
+	return RETRYABLE.has(status) || status >= 500;
 }
 
 function modelKwargsFor(
+	ctx: ISupplyDataFunctions,
 	options: Options,
-	extraBody: string,
+	extraBody: unknown,
 	itemIndex: number,
 ): Record<string, unknown> | undefined {
 	const kwargs: Record<string, unknown> = {};
 	if (options.seed !== undefined) kwargs.seed = options.seed;
-	if (options.maxCompletionTokens !== undefined) {
-		kwargs.max_completion_tokens = options.maxCompletionTokens;
-	}
 
-	if (extraBody.trim()) {
-		Object.assign(
-			kwargs,
-			jsonParse<Record<string, unknown>>(extraBody, {
-				errorMessage: `Extra Body on item ${itemIndex} is not valid JSON`,
-			}),
-		);
-	}
+	const hasExtraBody = typeof extraBody === 'string' ? extraBody.trim() !== '' : Boolean(extraBody);
+	if (hasExtraBody) Object.assign(kwargs, parseExtraBody(ctx, extraBody, itemIndex));
 
 	return Object.keys(kwargs).length > 0 ? kwargs : undefined;
+}
+
+/** The fields default to -1, which the gateway would read as a real limit. */
+function limitOrUnset(value: number | undefined): number | undefined {
+	return value !== undefined && value > 0 ? value : undefined;
 }
 
 export class LmChatCustomEndpoint implements INodeType {
@@ -137,12 +135,17 @@ export class LmChatCustomEndpoint implements INodeType {
 			true,
 		) as boolean;
 		const headerRows = this.getNodeParameter('headers.header', itemIndex, []) as IDataObject[];
-		const extraBody = this.getNodeParameter('extraBody', itemIndex, '') as string;
+		const extraBody: unknown = this.getNodeParameter('extraBody', itemIndex, '');
 
 		const requestHeaders = {
 			...(sendContextHeaders ? n8nContextHeaders(this) : {}),
 			...toHeaderRecord(
-				Object.fromEntries(headerRows.map(({ name, value }) => [String(name ?? ''), value])),
+				Object.fromEntries(
+					headerRows.flatMap(({ name, value }) => {
+						const headerName = String(name ?? '').trim();
+						return headerName ? [[headerName, value]] : [];
+					}),
+				),
 			),
 		};
 
@@ -158,7 +161,8 @@ export class LmChatCustomEndpoint implements INodeType {
 				apiKey: 'custom-model-endpoint',
 				model,
 				configuration,
-				maxTokens: options.maxTokens,
+				maxTokens: limitOrUnset(options.maxTokens),
+				maxCompletionTokens: limitOrUnset(options.maxCompletionTokens),
 				frequencyPenalty: options.frequencyPenalty,
 				presencePenalty: options.presencePenalty,
 				temperature: options.temperature,
@@ -166,11 +170,13 @@ export class LmChatCustomEndpoint implements INodeType {
 				stop: options.stop ? options.stop.split(',').map((item) => item.trim()) : undefined,
 				timeout: options.timeout,
 				maxRetries: options.maxRetries ?? 2,
-				modelKwargs: modelKwargsFor(options, extraBody, itemIndex),
+				modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex),
 				callbacks: [new N8nLlmTracing(this)],
 				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: unknown) => {
-					const status = (error as { status?: number }).status;
-					if (!shouldRetry(status)) throw error;
+					const { status } = error as { status?: number };
+					// A connection error or a timeout carries no status, and the default
+					// handler already knows which of those are worth another attempt
+					if (status !== undefined && !shouldRetry(status)) throw error;
 				}),
 			}),
 		};

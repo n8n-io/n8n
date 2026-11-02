@@ -1,12 +1,11 @@
 import type { ClientOptions } from '@langchain/openai';
-import { aiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
 import type { ICredentialDataDecryptedObject, INode } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
-import { createCustomModelEndpointAuthFetch } from './auth-fetch';
+import { createCustomModelEndpointAuthFetch, createEndpointBaseFetch } from './auth-fetch';
 import { readCustomModelEndpointCredential, readOpenAiCredential } from './credential-data';
-import { endpointSecrets, wrapCustomModelEndpointErrorFetch } from './error-handling';
+import { wrapCustomModelEndpointErrorFetch } from './error-handling';
 import type { EndpointCredential } from './types';
 
 export const CUSTOM_MODEL_ENDPOINT_CREDENTIAL = 'customModelEndpointApi';
@@ -35,9 +34,10 @@ export function readEndpointCredential(
 }
 
 /**
- * The OpenAI-client transport both nodes share: the gateway's own base URL, a
- * fetch that carries the credential and reshapes the gateway's errors, and a
- * dispatcher that honours the proxy and egress policy.
+ * The transport both nodes share: the gateway's own base URL, and one fetch that
+ * carries the credential, reshapes the gateway's errors, and honours the proxy
+ * and egress policy. Every hop goes through it, the OAuth2 token request and the
+ * model list included, so none of them can reach the network unpinned.
  */
 export function createCustomModelEndpointConfig(
 	ctx: CustomModelEndpointFetchContext,
@@ -51,10 +51,10 @@ export function createCustomModelEndpointConfig(
 	const endpoint = readEndpointCredential(options.credentialType, credential);
 	const egressFilter = ctx.helpers.getSecureEgressFilter();
 
-	const authFetch = createCustomModelEndpointAuthFetch(ctx, credential, {
+	const transport = createCustomModelEndpointAuthFetch(ctx, credential, {
 		endpoint,
 		egressFilter,
-		baseFetch: aiClientFetch,
+		baseFetch: createEndpointBaseFetch(egressFilter, options.timeout),
 		requestHeaders: options.requestHeaders,
 	});
 
@@ -62,16 +62,7 @@ export function createCustomModelEndpointConfig(
 		endpoint,
 		configuration: {
 			baseURL: endpoint.baseUrl,
-			fetch: wrapCustomModelEndpointErrorFetch(authFetch, {
-				secrets: endpointSecrets(endpoint),
-			}),
-			fetchOptions: {
-				dispatcher: getProxyAgent(
-					endpoint.baseUrl,
-					{ headersTimeout: options.timeout, bodyTimeout: options.timeout },
-					egressFilter,
-				),
-			},
+			fetch: wrapCustomModelEndpointErrorFetch(transport.fetch, { secrets: transport.secrets }),
 		},
 	};
 }

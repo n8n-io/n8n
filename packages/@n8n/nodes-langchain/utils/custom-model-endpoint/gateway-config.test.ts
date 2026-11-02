@@ -1,4 +1,9 @@
-import type { ICredentialDataDecryptedObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	INode,
+	ISupplyDataFunctions,
+	NodeEgressFilter,
+} from 'n8n-workflow';
 
 // The dispatcher needs the instance SSRF module, which a unit test does not stand up
 vi.mock('@n8n/ai-utilities', async (importOriginal) => ({
@@ -91,20 +96,59 @@ describe('readEndpointCredential', () => {
 });
 
 describe('createCustomModelEndpointConfig', () => {
-	const ctx = {
-		getNode: () => nodeWith({ [CUSTOM_MODEL_ENDPOINT_CREDENTIAL]: {} }),
-		helpers: { getSecureEgressFilter: () => ({ validateUrl: async () => ({ ok: true }) }) },
-	} as unknown as ISupplyDataFunctions;
+	const contextWith = (egressFilter: Partial<NodeEgressFilter>) =>
+		({
+			getNode: () => nodeWith({ [CUSTOM_MODEL_ENDPOINT_CREDENTIAL]: {} }),
+			helpers: { getSecureEgressFilter: () => egressFilter },
+		}) as unknown as ISupplyDataFunctions;
 
-	it('points the client at the credential base URL and gives it a fetch of our own', () => {
+	const allowAll = () => ({
+		validateUrl: vi.fn(async () => ({ ok: true })),
+		createSecureLookup: () => undefined,
+	});
+
+	it('points the client at the credential base URL', () => {
 		const { configuration, endpoint } = createCustomModelEndpointConfig(
-			ctx,
+			contextWith(allowAll()),
 			{ url: 'https://gateway.example.com/v1', authentication: 'none' },
 			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
 		);
 
 		expect(configuration.baseURL).toBe('https://gateway.example.com/v1');
-		expect(typeof configuration.fetch).toBe('function');
 		expect(endpoint.login.type).toBe('none');
+	});
+
+	it('checks the target against the egress filter before the request leaves', async () => {
+		const egressFilter = allowAll();
+		const { configuration } = createCustomModelEndpointConfig(
+			contextWith(egressFilter),
+			{ url: 'https://gateway.example.com/v1', authentication: 'none' },
+			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
+		);
+
+		await expect(
+			configuration.fetch?.('https://gateway.example.com/v1/chat/completions'),
+		).rejects.toThrow();
+
+		expect(egressFilter.validateUrl).toHaveBeenCalledWith(
+			'https://gateway.example.com/v1/chat/completions',
+		);
+	});
+
+	it('refuses a target the egress filter rejects', async () => {
+		const blocked = new Error('Blocked by SSRF policy');
+		const egressFilter = {
+			validateUrl: vi.fn(async () => ({ ok: false, error: blocked })),
+			createSecureLookup: () => undefined,
+		};
+		const { configuration } = createCustomModelEndpointConfig(
+			contextWith(egressFilter),
+			{ url: 'https://gateway.example.com/v1', authentication: 'none' },
+			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
+		);
+
+		await expect(configuration.fetch?.('https://gateway.example.com/v1/models')).rejects.toThrow(
+			'Blocked by SSRF policy',
+		);
 	});
 });
