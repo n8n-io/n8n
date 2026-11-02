@@ -1,7 +1,8 @@
 import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { isPerson, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
@@ -24,9 +25,10 @@ export class FreeAiCreditsService {
 		private readonly userService: UserService,
 	) {}
 
-	/** Whether this user can claim free OpenAI credits right now. */
+	/** Whether this user can claim free OpenAI credits right now. The claim is stored in a person's settings. */
 	isEligible(user: User): boolean {
 		return (
+			isPerson(user) &&
 			this.licenseState.isAiCreditsLicensed() &&
 			!!this.globalConfig.aiAssistant.baseUrl &&
 			!(this.globalConfig.aiGateway.enabled && this.licenseState.isAiGatewayLicensed()) &&
@@ -36,7 +38,10 @@ export class FreeAiCreditsService {
 
 	/** Claims free credits: provisions the managed openAiApi credential and marks the user as claimed. */
 	async claim(user: User, projectId?: string) {
-		const aiCredits = await this.aiService.createFreeAiCredits(user);
+		// The claim is stored in a person's settings, so reject a service account before anything is provisioned.
+		if (!isPerson(user)) throw new ForbiddenError('Only a person can claim free AI credits');
+
+		const aiCredits = await this.aiService.createFreeAiCredits(user.toIUser());
 
 		const credential = await this.credentialsService.createManagedCredential(
 			{

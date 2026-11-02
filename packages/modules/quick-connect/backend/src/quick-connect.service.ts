@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { isPerson, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import type {
 	IQuickConnectHandler,
@@ -30,6 +30,10 @@ export class QuickConnectService {
 		const handler = this.handlers.get(quickConnectType);
 		if (!handler) {
 			throw new BadRequestError(`Quick connect handler not configured for: ${quickConnectType}`);
+		}
+		// The third party creates the account from the email, and only a person has one.
+		if (!isPerson(user)) {
+			throw new ForbiddenError('Only a person can use quick connect');
 		}
 
 		try {

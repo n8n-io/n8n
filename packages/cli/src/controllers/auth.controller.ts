@@ -6,8 +6,15 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
-import type { User, PublicUser, AuthProviderType } from '@n8n/db';
-import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE, PersonRepository } from '@n8n/db';
+import type { Person, PublicUser, AuthProviderType } from '@n8n/db';
+import {
+	UserRepository,
+	AuthenticatedRequest,
+	GLOBAL_OWNER_ROLE,
+	isPerson,
+	PersonRepository,
+	accountSummary,
+} from '@n8n/db';
 import {
 	Body,
 	createBodyKeyedRateLimiter,
@@ -82,29 +89,29 @@ export class AuthController {
 			throw new InternalServerError('Email authentication method not available');
 		}
 
-		const preliminaryUser = await emailHandler.handleLogin(emailOrLdapLoginId, password);
-		this.validateSsoRestrictions(preliminaryUser, emailOrLdapLoginId);
+		const preliminaryPerson = await emailHandler.handleLogin(emailOrLdapLoginId, password);
+		this.validateSsoRestrictions(preliminaryPerson, emailOrLdapLoginId);
 
-		const { user, usedAuthenticationMethod } = await this.authenticateWithPassword(
+		const { person, usedAuthenticationMethod } = await this.authenticateWithPassword(
 			currentAuthenticationMethod,
 			emailOrLdapLoginId,
 			password,
-			preliminaryUser,
+			preliminaryPerson,
 		);
 
-		await this.validateMfa(user, mfaCode, mfaRecoveryCode);
+		await this.validateMfa(person, mfaCode, mfaRecoveryCode);
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		this.authService.issueCookie(res, person, person.mfaEnabled, req.browserId);
 
 		this.eventService.emit('user-logged-in', {
-			user,
+			user: person,
 			authenticationMethod: usedAuthenticationMethod,
 		});
 
-		return await this.userService.toPublic(user, {
+		return await this.userService.toPublic(person, {
 			posthog: this.postHog,
 			withScopes: true,
-			mfaAuthenticated: user.mfaEnabled,
+			mfaAuthenticated: person.mfaEnabled,
 		});
 	}
 
@@ -114,11 +121,11 @@ export class AuthController {
 		}
 	}
 
-	private validateSsoRestrictions(preliminaryUser: User | undefined, userEmail: string): void {
+	private validateSsoRestrictions(preliminaryPerson: Person | undefined, userEmail: string): void {
 		const shouldBlockSsoUser =
 			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
-			preliminaryUser?.role.slug !== GLOBAL_OWNER_ROLE.slug &&
-			!preliminaryUser?.settings?.allowSSOManualLogin;
+			preliminaryPerson?.role.slug !== GLOBAL_OWNER_ROLE.slug &&
+			!preliminaryPerson?.settings?.allowSSOManualLogin;
 
 		if (shouldBlockSsoUser) {
 			this.eventService.emit('user-login-failed', {
@@ -134,24 +141,24 @@ export class AuthController {
 		getCurrentAuthenticationMethod: AuthProviderType,
 		emailOrLdapLoginId: string,
 		password: string,
-		preliminaryUser: User | undefined,
-	): Promise<{ user: User; usedAuthenticationMethod: AuthProviderType }> {
-		let user = preliminaryUser;
+		preliminaryPerson: Person | undefined,
+	): Promise<{ person: Person; usedAuthenticationMethod: AuthProviderType }> {
+		let person = preliminaryPerson;
 		let usedAuthenticationMethod: AuthProviderType = 'email';
 
 		const shouldTryAlternativeAuth =
 			getCurrentAuthenticationMethod !== 'email' &&
-			preliminaryUser?.role.slug !== GLOBAL_OWNER_ROLE.slug;
+			preliminaryPerson?.role.slug !== GLOBAL_OWNER_ROLE.slug;
 
 		if (shouldTryAlternativeAuth) {
 			const authHandler = this.authHandlerRegistry.get(getCurrentAuthenticationMethod, 'password');
 			if (authHandler) {
-				user = await authHandler.handleLogin(emailOrLdapLoginId, password);
+				person = await authHandler.handleLogin(emailOrLdapLoginId, password);
 				usedAuthenticationMethod = getCurrentAuthenticationMethod;
 			}
 		}
 
-		if (!user) {
+		if (!person) {
 			this.eventService.emit('user-login-failed', {
 				authenticationMethod: usedAuthenticationMethod,
 				userEmail: emailOrLdapLoginId,
@@ -160,15 +167,15 @@ export class AuthController {
 			throw new AuthError('Wrong username or password. Do you have caps lock on?');
 		}
 
-		return { user, usedAuthenticationMethod };
+		return { person, usedAuthenticationMethod };
 	}
 
 	private async validateMfa(
-		user: User,
+		person: Person,
 		mfaCode: string | undefined,
 		mfaRecoveryCode: string | undefined,
 	): Promise<void> {
-		if (!user.mfaEnabled) {
+		if (!person.mfaEnabled) {
 			return;
 		}
 
@@ -177,7 +184,7 @@ export class AuthController {
 		}
 
 		const isMfaCodeOrMfaRecoveryCodeValid = await this.mfaService.validateMfa(
-			user.id,
+			person.id,
 			mfaCode,
 			mfaRecoveryCode,
 		);
@@ -268,7 +275,8 @@ export class AuthController {
 			throw new BadRequestError('The invitation was likely either deleted or already claimed');
 		}
 
-		if (!inviter.email) {
+		// A person who has not set up their account cannot invite. A service account has no email.
+		if (isPerson(inviter) && !inviter.email) {
 			this.logger.error(
 				'Request to resolve signup token failed because inviter does not exist or is not set up',
 				{
@@ -280,7 +288,7 @@ export class AuthController {
 
 		this.eventService.emit('user-invite-email-click', { inviter, invitee });
 
-		const { firstName, lastName } = inviter;
+		const { firstName, lastName } = accountSummary(inviter);
 		return { inviter: { firstName, lastName } };
 	}
 

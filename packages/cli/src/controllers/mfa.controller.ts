@@ -1,6 +1,6 @@
 import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { AuthenticatedRequest, PersonRepository } from '@n8n/db';
+import { AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
 import {
 	createUserKeyedRateLimiter,
 	Get,
@@ -15,6 +15,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { MFA } from '@/requests';
+import { toUserLike } from '@/utils/to-user-like';
 
 @RestController('/mfa')
 export class MFAController {
@@ -47,13 +48,7 @@ export class MFAController {
 		await this.mfaService.enforceMFA(req.body.enforce);
 
 		this.eventService.emit('instance-policies-updated', {
-			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
-			},
+			user: toUserLike(req.user),
 			settingName: '2fa_enforcement',
 			value: req.body.enforce,
 		});
@@ -73,6 +68,10 @@ export class MFAController {
 		allowSkipMFA: true,
 	})
 	async getQRCode(req: AuthenticatedRequest) {
+		if (!isPerson(req.user)) {
+			throw new ForbiddenError('Only a person can set up two-factor authentication');
+		}
+
 		const { email, id, mfaEnabled } = req.user;
 
 		if (mfaEnabled)
@@ -116,6 +115,10 @@ export class MFAController {
 		keyedRateLimit: createUserKeyedRateLimiter({}),
 	})
 	async activateMFA(req: MFA.Activate, res: Response) {
+		if (!isPerson(req.user)) {
+			throw new ForbiddenError('Only a person can set up two-factor authentication');
+		}
+
 		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
 
@@ -140,13 +143,7 @@ export class MFAController {
 		const updatedPerson = await this.mfaService.enableMfa(id);
 
 		this.eventService.emit('user-mfa-enabled', {
-			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
-			},
+			user: toUserLike(req.user),
 		});
 
 		this.authService.issueCookie(res, updatedPerson, verified, req.browserId);
@@ -178,13 +175,7 @@ export class MFAController {
 		}
 
 		this.eventService.emit('user-mfa-disabled', {
-			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
-			},
+			user: toUserLike(req.user),
 			disableMethod: mfaCodeDefined ? 'mfaCode' : 'recoveryCode',
 		});
 

@@ -12,7 +12,7 @@ import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, AuthIdentity, Project, ProjectRelation, User } from '../entities';
+import { ApiKey, AuthIdentity, Person, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EligibleAccountsQuery = {
@@ -135,8 +135,9 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
-	async findByEmailWithRole(email: string): Promise<User | null> {
-		return await this.findOne({
+	/** Only a person has an email. */
+	async findByEmailWithRole(email: string): Promise<Person | null> {
+		return await this.manager.findOne(Person, {
 			where: { email },
 			relations: ['role'],
 		});
@@ -186,7 +187,7 @@ export class UserRepository extends BaseRepository<User> {
 	 * "shell" owner that first boot creates matches neither condition.
 	 */
 	async hasClaimedInstanceOwner(): Promise<boolean> {
-		return await this.exists({
+		return await this.manager.exists(Person, {
 			where: [
 				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
 				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
@@ -204,7 +205,7 @@ export class UserRepository extends BaseRepository<User> {
 	}
 
 	async findManyByEmail(emails: string[]) {
-		return await this.find({
+		return await this.manager.find(Person, {
 			where: { email: In(emails) },
 			select: ['email', 'password', 'id'],
 		});
@@ -230,40 +231,41 @@ export class UserRepository extends BaseRepository<User> {
 		);
 	}
 
+	/** Creates a person and their personal project. */
 	async createUserWithProject(
-		user: DeepPartial<User>,
+		person: DeepPartial<Person>,
 		transactionManager?: EntityManager,
-	): Promise<{ user: User; project: Project }> {
+	): Promise<{ user: Person; project: Project }> {
 		const createInner = async (entityManager: EntityManager) => {
-			const newUser = entityManager.create(User, user);
-			const savedUser = await entityManager.save<User>(newUser);
-			const userWithRole = await entityManager.findOne(User, {
-				where: { id: savedUser.id },
+			const newPerson = entityManager.create(Person, person);
+			const savedPerson = await entityManager.save<Person>(newPerson);
+			const personWithRole = await entityManager.findOne(Person, {
+				where: { id: savedPerson.id },
 				relations: ['role'],
 			});
-			if (!userWithRole) throw new Error('Failed to create user!');
+			if (!personWithRole) throw new Error('Failed to create user!');
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
-					name: userWithRole.createPersonalProjectName(),
-					creatorId: savedUser.id,
+					name: personWithRole.createPersonalProjectName(),
+					creatorId: savedPerson.id,
 				}),
 			);
 
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
-					userId: savedUser.id,
+					userId: savedPerson.id,
 					role: {
 						slug:
-							userWithRole.role.slug !== 'global:chatUser'
+							personWithRole.role.slug !== 'global:chatUser'
 								? PROJECT_OWNER_ROLE_SLUG
 								: PROJECT_VIEWER_ROLE_SLUG,
 					},
 				}),
 			);
 
-			return { user: userWithRole, project: savedProject };
+			return { user: personWithRole, project: savedProject };
 		};
 		if (transactionManager) {
 			return await createInner(transactionManager);
@@ -370,7 +372,9 @@ export class UserRepository extends BaseRepository<User> {
 			if (!select.includes('id')) {
 				select.unshift('id'); // Ensure id is always selected
 			}
-			queryBuilder.select(select.map((field) => `user.${field}`));
+			// TypeORM picks `Person` or `ServiceAccount` from `kind`. Without it, the
+			// row loads as a bare `User` and drops the person columns.
+			queryBuilder.select([...select.map((field) => `user.${field}`), 'user.kind']);
 		}
 		return queryBuilder;
 	}
