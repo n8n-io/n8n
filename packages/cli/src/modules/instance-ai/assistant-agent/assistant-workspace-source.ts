@@ -13,6 +13,7 @@ import type {
 	SystemAgentWorkspaceSource,
 } from '@/modules/agents/system-agents/system-agent.types';
 import { AiService } from '@/services/ai.service';
+import { Telemetry } from '@/telemetry';
 
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
@@ -53,6 +54,7 @@ export class AssistantSandboxWorkspaceSource
 		aiService: AiService,
 		private readonly settingsService: InstanceAiSettingsService,
 		adapterService: InstanceAiAdapterService,
+		telemetry: Telemetry,
 	) {
 		this.sandboxService = new InstanceAiSandboxService({
 			config: globalConfig.instanceAi,
@@ -68,6 +70,7 @@ export class AssistantSandboxWorkspaceSource
 			getTemplatesService: () => adapterService.getTemplatesService(),
 			// A v1 thread can have the same id, so the sandbox identity needs its own base name.
 			identityScheme: 'assistant',
+			telemetry,
 		});
 	}
 
