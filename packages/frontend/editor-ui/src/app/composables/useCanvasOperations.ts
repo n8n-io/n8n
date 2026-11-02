@@ -1973,8 +1973,9 @@ export function useCanvasOperations() {
 	}
 
 	/**
-	 * Gets the size of a node as the canvas renders it. Placement does not read the
-	 * measured size, because nodes that are not mounted yet have no measurement.
+	 * Gets the size of a node as the canvas renders it, from its ports. Placement does
+	 * not read the Vue Flow size, because nodes that are not mounted yet have none.
+	 * An agent card uses its measured height when it has one, else AGENT_NODE_SIZE.
 	 * A node that is not in the workflow yet evaluates its port expressions in a
 	 * workflow of its own, so `$parameter` cannot read another node with the same name.
 	 */

@@ -1158,7 +1158,16 @@ describe('computeNodeDisplaySize', () => {
 	const { Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever } =
 		NodeConnectionTypes;
 
-	function displaySize(inputTypes: NodeConnectionType[], outputTypes: NodeConnectionType[]) {
+	type NodeKind = { configuration: boolean; configurable: boolean };
+	const plain: NodeKind = { configuration: false, configurable: false };
+	const configurable: NodeKind = { configuration: false, configurable: true };
+	const configurableConfiguration: NodeKind = { configuration: true, configurable: true };
+
+	function displaySize(
+		inputTypes: NodeConnectionType[],
+		outputTypes: NodeConnectionType[],
+		kind: NodeKind,
+	) {
 		const toPorts = (types: NodeConnectionType[]) => types.map((type, index) => ({ type, index }));
 		const renderData = createEmptyCanvasRenderData();
 		renderData.nodeInputsByNodeId.set(
@@ -1169,33 +1178,63 @@ describe('computeNodeDisplaySize', () => {
 			'node',
 			computed(() => toPorts(outputTypes)),
 		);
-		const options = {
-			configuration: outputTypes.some((type) => type !== Main),
-			configurable: inputTypes.some((type) => type !== Main),
-			trigger: false,
-		};
 
-		return computeNodeDisplaySize('node', options, renderData, false);
+		return computeNodeDisplaySize('node', { ...kind, trigger: false }, renderData, false);
 	}
 
-	it.each<[string, NodeConnectionType[], NodeConnectionType[]]>([
-		['a default node', [Main], [Main]],
-		['an AI Agent', [Main, AiLanguageModel, AiMemory, AiTool], [Main]],
+	it.each<
+		[
+			string,
+			NodeConnectionType[],
+			NodeConnectionType[],
+			NodeKind,
+			{ width: number; height: number },
+		]
+	>([
+		['a default node', [Main], [Main], plain, { width: 96, height: 96 }],
+		[
+			'an AI Agent',
+			[Main, AiLanguageModel, AiMemory, AiTool],
+			[Main],
+			configurable,
+			{ width: 224, height: 96 },
+		],
 		[
 			'a node with five ports',
 			[Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever],
 			[Main],
+			configurable,
+			{ width: 272, height: 96 },
 		],
-		['a node with four main inputs', [Main, Main, Main, Main], [Main]],
-		['a HITL tool', [AiTool], [AiTool]],
+		[
+			'a node with four main inputs',
+			[Main, Main, Main, Main],
+			[Main],
+			plain,
+			{ width: 96, height: 160 },
+		],
+		['a HITL tool', [AiTool], [AiTool], configurableConfiguration, { width: 240, height: 80 }],
 		[
 			'an AI Agent Tool with an output parser',
 			[AiLanguageModel, AiMemory, AiTool, AiOutputParser],
 			[AiTool],
+			configurableConfiguration,
+			{ width: 240, height: 80 },
 		],
-	])('should give the same size as getNodeSizeFromPorts for %s', (_, inputTypes, outputTypes) => {
-		expect(displaySize(inputTypes, outputTypes)).toEqual(
-			getNodeSizeFromPorts(inputTypes, outputTypes),
-		);
+	])(
+		'should give %s the same size as getNodeSizeFromPorts',
+		(_, inputTypes, outputTypes, kind, expectedSize) => {
+			expect(displaySize(inputTypes, outputTypes, kind)).toEqual(expectedSize);
+			expect(getNodeSizeFromPorts(inputTypes, outputTypes)).toEqual(expectedSize);
+		},
+	);
+
+	it('should read the node kind from the render options, not from the ports', () => {
+		expect(displaySize([Main, AiLanguageModel], [Main], plain)).toEqual({ width: 96, height: 96 });
+		expect(displaySize([Main], [Main], configurable)).toEqual({ width: 224, height: 96 });
+		// The non-main output is not a port, also when the options mark the node as configurable only
+		expect(
+			displaySize([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool], configurable),
+		).toEqual({ width: 224, height: 96 });
 	});
 });
