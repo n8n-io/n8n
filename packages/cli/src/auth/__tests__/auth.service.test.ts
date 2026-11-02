@@ -1003,6 +1003,32 @@ describe('AuthService', () => {
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
+		it('should skip browserId check for system agent chat attachment GET requests', async () => {
+			personRepository.findByIdWithRole.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/agents/system',
+				route: { path: '/:agentId/chat/attachments/:attachmentId' },
+			});
+
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for other system agent routes', async () => {
+			personRepository.findByIdWithRole.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/rest/agents/system',
+				route: { path: '/:agentId/chat/:threadId/messages' },
+			});
+
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
+		});
+
 		it('should not skip browserId check for other project-scoped agent routes', async () => {
 			personRepository.findByIdWithRole.mockResolvedValue(user);
 			const req = mock<AuthenticatedRequest>({

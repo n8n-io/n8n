@@ -449,6 +449,14 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		};
 	}
 
+	function clearOverwrittenProperties() {
+		const overwritten = credentialType.value?.__overwrittenProperties;
+		if (!overwritten?.length) return;
+		credentialData.value = Object.fromEntries(
+			Object.entries(credentialData.value).filter(([key]) => !overwritten.includes(key)),
+		);
+	}
+
 	/**
 	 * Source-controlled credentials can arrive with empty-string parameters that
 	 * break FE type checks — strip them.
@@ -703,6 +711,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		usesExternalSecrets,
 		setCredentialPropertyDefaults,
 		resetCredentialData,
+		clearOverwrittenProperties,
 		loadCurrentCredential,
 		initialize,
 		getChangedSharedFields,

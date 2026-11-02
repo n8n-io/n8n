@@ -1,3 +1,19 @@
+diff --git a/lib/getters.js b/lib/getters.js
+index af381de5e2a9a86017ac3855eaec5fdbfbf36dc6..2644f69066e752b9b74b78a2ce2843685f2b27cc 100644
+--- a/lib/getters.js
++++ b/lib/getters.js
+@@ -40,6 +40,11 @@ module.exports = function(Queue) {
+         case 'active':
+         case 'wait':
+         case 'paused':
++          // n8n patch: a job in claiming has not started, so a read of waiting jobs
++          // includes it. Counts keep one result for each type, so they do not.
++          if (type === 'wait' && !count) {
++            callback(this.toKey('claiming'), 'lrange');
++          }
+           return callback(key, count ? 'llen' : 'lrange');
+       }
+     });
 diff --git a/lib/job.js b/lib/job.js
 index 1642d3fb35cbd64b553291660fc63bae2e7f2ef5..3301e3fbc7296f545b65331dad1f12c820267e0d 100644
 --- a/lib/job.js

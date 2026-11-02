@@ -44,6 +44,36 @@ it('does not let a pending read replace a completed action', async () => {
 	expect(store.loading).toBe(false);
 });
 
+it('shows a refreshed result only after its callback finishes', async () => {
+	const store = useSelfHealingResultStore();
+	await store.select(resultSelection);
+	vi.mocked(api.fetchSelfHealingResult).mockResolvedValueOnce(result({ reviewState: 'applied' }));
+	const handoff = createDeferredPromise();
+	const beforeShow = vi.fn(async () => await handoff.promise);
+	const loading = store.refreshDetail(beforeShow);
+	await vi.waitFor(() => expect(beforeShow).toHaveBeenCalledOnce());
+	expect(store.detail?.reviewState).toBe('open');
+	expect(store.loading).toBe(true);
+	handoff.resolve();
+	await loading;
+	expect(store.detail?.reviewState).toBe('applied');
+	expect(store.loading).toBe(false);
+});
+
+it('skips the callback for a refresh replaced by another selection', async () => {
+	const store = useSelfHealingResultStore();
+	await store.select(resultSelection);
+	const request = createDeferredPromise<SelfHealingResultDetail>();
+	vi.mocked(api.fetchSelfHealingResult).mockReturnValueOnce(request.promise);
+	const beforeShow = vi.fn(async () => {});
+	const loading = store.refreshDetail(beforeShow);
+	await store.select({ ...resultSelection, id: 'other' });
+	request.resolve(result({ reviewState: 'applied' }));
+	await loading;
+	expect(beforeShow).not.toHaveBeenCalled();
+	expect(store.detail?.resultId).toBe('other');
+});
+
 it.each([403, 404])('clears saved detail when a read returns %s', async (httpStatusCode) => {
 	const store = useSelfHealingResultStore();
 	await store.select(resultSelection);

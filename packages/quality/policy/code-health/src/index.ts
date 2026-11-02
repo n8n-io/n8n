@@ -56,6 +56,7 @@ const defaultRuleSettings: RuleSettingsMap = {
 				'Catalysts',
 				'Core Application',
 				'Core Execution',
+				'Governance & Observability',
 				'Nodes',
 			],
 		},

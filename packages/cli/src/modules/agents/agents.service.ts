@@ -80,6 +80,7 @@ import { createAgentCredentialProvider } from './utils/agent-credential-provider
 import type {
 	CompleteAgentDefinition,
 	AgentDefinitionMetadata,
+	AgentSkillWriter,
 	PlannedAgentDestinations,
 } from './utils/agent-definition';
 import { buildAgentMutationEvent } from './agent-modification-telemetry.service';
@@ -93,6 +94,7 @@ type CreateAgentOptions =
 			user: User;
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
+			writeSkills?: AgentSkillWriter;
 	  };
 
 type DraftAgentCreateOptions = {
@@ -424,16 +426,11 @@ export class AgentsService {
 				if (isUniqueConstraintError(error)) throw new ConflictError('Agent already exists');
 				throw error;
 			}
-			const imported = await this.agentSkillRefs.importDraftSkills(
-				agent,
-				skillRefs,
-				definition.skills,
-				user.id,
-				ctx,
-			);
+			await options.writeSkills?.(ctx);
+			const savedRefs = await this.agentSkillRefs.replaceAllDraftRefs(agent, skillRefs, ctx);
 			await this.agentTaskRepository.replaceForAgent(id, definition.tasks, ctx);
 			await this.definitionService.captureVersion(agent, user, ctx);
-			return imported;
+			return savedRefs;
 		});
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(

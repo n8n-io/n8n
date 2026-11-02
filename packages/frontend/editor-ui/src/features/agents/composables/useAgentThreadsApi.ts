@@ -6,6 +6,7 @@ import type {
 	AgentSessionOrigin,
 	AgentSessionStatus,
 	AgentSessionStopResponse,
+	AgentThreadMemoryDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -114,6 +115,7 @@ export interface AgentExecution {
 export interface ThreadDetail {
 	thread: AgentExecutionThread;
 	executions: AgentExecution[];
+	memory?: AgentThreadMemoryDto;
 }
 
 export interface ThreadsPage {

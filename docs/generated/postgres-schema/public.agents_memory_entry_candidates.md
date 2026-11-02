@@ -23,7 +23,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_agents_memory_entry_candidates_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'completed'::character varying, 'failed'::character varying])::text[]))) |
+| CHK_agents_memory_entry_candidates_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'completed'::character varying, 'failed'::character varying, 'deleted'::character varying])::text[]))) |
 | FK_5123f71435736664d2676084a85 | FOREIGN KEY | FOREIGN KEY ("resourceId") REFERENCES agents_resources(id) ON DELETE CASCADE |
 | FK_ac7ada75df7cc8ced228921d5a9 | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agents_threads(id) ON DELETE CASCADE |
 | FK_b3d0f5fe54565580bc1f5febb6e | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |

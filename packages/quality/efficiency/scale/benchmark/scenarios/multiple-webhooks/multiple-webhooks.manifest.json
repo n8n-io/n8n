@@ -16,5 +16,6 @@
 			"multiple-webhooks10.json"
 		]
 	},
-	"scriptPath": "multiple-webhooks.script.js"
+	"scriptPath": "multiple-webhooks.script.js",
+	"supportedEngines": ["v1", "v2"]
 }

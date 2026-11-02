@@ -117,6 +117,8 @@ export interface DataTableImportPlan {
 	updates: DataTableUpdate[];
 	/** Matched tables that differ only in column ids or column positions. Applied like updates, but counted as matched. */
 	columnAlignments: SerializedDataTable[];
+	/** Package ids of the matched tables that the import uses as they are. */
+	matched: string[];
 	failures: DataTableResolutionFailure[];
 	/** Requirements resolved to an existing compatible table, used as-is. Carried for telemetry. */
 	matchedCount: number;

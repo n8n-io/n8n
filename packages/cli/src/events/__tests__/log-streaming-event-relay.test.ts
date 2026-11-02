@@ -870,6 +870,24 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('names the system and the deleted user on a `user-deleted` event without a user', () => {
+			const event: RelayEventMap['user-deleted'] = {
+				user: null,
+				source: 'scim',
+				targetUserOldStatus: 'active',
+				publicApi: false,
+				migrationStrategy: 'delete_data',
+				targetUserId: '456',
+			};
+
+			eventService.emit('user-deleted', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.deleted',
+				payload: { userId: null, source: 'scim', targetUserId: '456' },
+			});
+		});
+
 		it('should log on `user-invited` event', () => {
 			const event: RelayEventMap['user-invited'] = {
 				user: {
@@ -3663,5 +3681,47 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it.each([
+			['trusted-source-created', 'n8n.audit.trusted-source.created'],
+			['trusted-source-updated', 'n8n.audit.trusted-source.updated'],
+		] as const)(
+			'keeps the config facets of `%s` out of the audit payload',
+			(eventName, auditEventName) => {
+				eventService.emit(eventName, {
+					user: {
+						id: 'user-1',
+						email: 'owner@n8n.io',
+						firstName: 'Own',
+						lastName: 'Er',
+						role: { slug: 'global:owner' },
+					},
+					sourceId: 'source-1',
+					issuer: 'https://idp.example.com',
+					facets: {
+						discoveryMode: 'auto',
+						clientKind: null,
+						surfaces: ['public-api'],
+						identitySubject: 'binding',
+						linkByEmail: 'verified-only',
+						provisionHuman: 'off',
+						roleMappingMode: 'off',
+					},
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: auditEventName,
+					payload: {
+						userId: 'user-1',
+						_email: 'owner@n8n.io',
+						_firstName: 'Own',
+						_lastName: 'Er',
+						globalRole: 'global:owner',
+						sourceId: 'source-1',
+						issuer: 'https://idp.example.com',
+					},
+				});
+			},
+		);
 	});
 });

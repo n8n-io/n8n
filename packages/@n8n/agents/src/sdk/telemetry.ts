@@ -2,6 +2,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Tracer } from '@opentelemetry/api';
 import type { Telemetry as AiSdkTelemetry } from 'ai';
 
+import { ensureContextManager } from './context-manager';
 import { createMetadataEnrichedTracer } from './metadata-enriched-tracer';
 import type {
 	AttributeValue,
@@ -171,6 +172,7 @@ async function createOtlpTracer(endpoint: string): Promise<{
 		SimpleSpanProcessor: new (exporter: unknown) => unknown;
 	};
 
+	await ensureContextManager();
 	const exporter = new OTLPTraceExporter({ url: endpoint });
 	const provider = new NodeTracerProvider({
 		spanProcessors: [new SimpleSpanProcessor(exporter)],

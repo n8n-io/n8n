@@ -13,6 +13,7 @@ import {
 	lookUpAssistantThreadRuntime,
 	type AssistantThreadRuntime,
 } from './assistantAgent/assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from './assistantAgent/assistantAgentThreads.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadView from './InstanceAiThreadView.vue';
@@ -28,6 +29,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const agentThreadsStore = useAssistantAgentThreadsStore();
 
 const runtime = ref<AssistantThreadRuntime | undefined>(
 	knownAssistantThreadRuntime(props.threadId, {
@@ -40,11 +42,16 @@ const lookupFailed = ref(false);
 async function lookUpRuntime(): Promise<void> {
 	lookupFailed.value = false;
 	try {
-		runtime.value = await lookUpAssistantThreadRuntime(
-			props.threadId,
-			async (threadId) =>
-				await getSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId),
-		);
+		runtime.value = await lookUpAssistantThreadRuntime(props.threadId, async (threadId) => {
+			const thread = await getSystemAgentThread(
+				rootStore.restApiContext,
+				ASSISTANT_AGENT_ID,
+				threadId,
+			);
+			// The lists show the thread too, so the thread view does not request it again.
+			agentThreadsStore.addOpenedThread(thread);
+			return thread;
+		});
 	} catch {
 		// The thread can still be an Assistant agent thread, so do not guess a runtime.
 		lookupFailed.value = true;

@@ -233,6 +233,41 @@ describe('externalSecretsStore', () => {
 
 	describe('secretsAsObject', () => {
 		it.each(['secrets', 'projectSecrets'] as const)(
+			'should keep literal and nested keys distinct in %s for preview and autocomplete',
+			(scope) => {
+				setModuleSettings({ forProjects: true });
+				const store = useExternalSecretsStore();
+				store.state[scope] = {
+					vault: [
+						"kv.testing['test.1']",
+						'kv.testing.test.1',
+						'kv.testing.control',
+						"kv.testing['test[1]']",
+						"['kv.with.dot'].testing.control",
+					],
+					aws: ["['test.1']"],
+					onePassword: ["['app.production']['test.1']"],
+				};
+
+				expect(store.secretsAsObject).toEqual({
+					vault: {
+						kv: {
+							testing: {
+								'test.1': '*********',
+								test: { '1': '*********' },
+								control: '*********',
+								'test[1]': '*********',
+							},
+						},
+						'kv.with.dot': { testing: { control: '*********' } },
+					},
+					aws: { 'test.1': '*********' },
+					onePassword: { 'app.production': { 'test.1': '*********' } },
+				});
+			},
+		);
+
+		it.each(['secrets', 'projectSecrets'] as const)(
 			'should expose masked 1Password fields from %s for preview and autocomplete',
 			(scope) => {
 				setModuleSettings({ forProjects: true });

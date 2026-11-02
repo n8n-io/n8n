@@ -1,10 +1,12 @@
 import { reactive, watch } from 'vue';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	DATA_TABLE_TOOL_NAMES,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
+	getDataTableCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -15,8 +17,10 @@ import type {
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 
+import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
+
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill' | 'app';
 	id: string;
 	name: string;
 	createdAt?: string;
@@ -170,7 +174,7 @@ const ARTIFACT_TOOLS = new Set<string>([
 	...WORKFLOW_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
-	SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
+	...DATA_TABLE_TOOL_NAMES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -189,16 +193,18 @@ const WORKFLOW_READ_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.VALIDATE_WORKFLOW,
 	WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOW_VERSIONS,
 ]);
-const DATA_TABLE_READ_ACTIONS = new Set(['schema', 'query']);
+const DATA_TABLE_READ_ACTIONS = new Set<string>(['schema', 'query']);
+
+function isDataTableReadCall(tc: InstanceAiToolCallState): boolean {
+	const action = getDataTableCallAction(tc.toolName, tc.args?.action);
+	return action !== undefined && DATA_TABLE_READ_ACTIONS.has(action);
+}
 
 /** Origin for whatever a tool call registers, judged by what the call did, not by its result shape. */
 function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
 	if (WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)))
 		return 'fetched';
-	const action = optionalString(tc.args?.action);
-	if (!action) return 'built';
-	if (tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES && DATA_TABLE_READ_ACTIONS.has(action))
-		return 'fetched';
+	if (isDataTableReadCall(tc)) return 'fetched';
 	return 'built';
 }
 function entryFromAgentBuilderTarget(
@@ -244,8 +250,32 @@ function extractFromAgentBuilderResult(tc: InstanceAiToolCallState, col: Collect
 	recordProduced(col, entry);
 }
 
+/**
+ * Skills hub results: a successful `skills` create or update. A list or get only
+ * reads the skill, so it does not register an artifact.
+ */
+function extractFromSkillsResult(tc: InstanceAiToolCallState, col: Collections): void {
+	const skill = getSkillArtifactFromToolCall(tc);
+	if (!skill) return;
+	const existing = col.produced.get(skill.skillId);
+	recordProduced(col, {
+		type: 'skill',
+		id: skill.skillId,
+		name: skill.name ?? existing?.name ?? 'Untitled',
+	});
+}
+
+/** Apps results: a successful `apps` create or commit. Reads and opens do not count. */
+function extractFromAppsResult(tc: InstanceAiToolCallState, col: Collections): void {
+	const app = getAppArtifactFromToolCall(tc);
+	if (!app) return;
+	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
+}
+
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
+	extractFromSkillsResult(tc, col);
+	extractFromAppsResult(tc, col);
 	const isFormerWorkflowsCall = isFormerWorkflowsTool(tc.toolName);
 	if (
 		!isFormerWorkflowsCall &&
@@ -395,11 +425,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			optionalString(result.dataTableName) ??
 			existing?.name ??
 			result.dataTableId;
-		const dataTableAction = optionalString(tc.args?.action);
-		const isReadOnlyLookup =
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
-			dataTableAction !== undefined &&
-			DATA_TABLE_READ_ACTIONS.has(dataTableAction);
+		const isReadOnlyLookup = isDataTableReadCall(tc);
 		recordProduced(
 			col,
 			{

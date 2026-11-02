@@ -35,13 +35,17 @@ describe('AgentChannelStatusReporter', () => {
 
 			await reporter.recordConnected(ref);
 
-			expect(repository.saveOwn).toHaveBeenCalledWith(ref, {
-				status: 'connected',
-				errorMessage: null,
-				attempts: 0,
-				backoffUntil: null,
-				expiresAt: expect.any(Date),
-			});
+			expect(repository.saveOwn).toHaveBeenCalledWith(
+				ref,
+				{
+					status: 'connected',
+					errorMessage: null,
+					attempts: 0,
+					backoffUntil: null,
+					expiresAt: expect.any(Date),
+				},
+				{},
+			);
 		});
 
 		it('records a failure with its cause and a retry deadline', async () => {
@@ -204,7 +208,7 @@ describe('AgentChannelStatusReporter', () => {
 
 			await reporter.refreshLease(ref);
 
-			expect(repository.refreshOwnLease).toHaveBeenCalledWith(ref, expect.any(Date));
+			expect(repository.refreshOwnLease).toHaveBeenCalledWith(ref, expect.any(Date), {});
 			expect(repository.saveOwn).not.toHaveBeenCalled();
 		});
 	});

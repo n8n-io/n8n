@@ -151,6 +151,9 @@ export class AuthService {
 			new RegExp(
 				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/(?:n8n-)?chat/attachments/:attachmentId$`,
 			),
+
+			// System agent chat attachments (the Assistant agent) render via <img> tags too.
+			`/${restEndpoint}/agents/system/:agentId/chat/attachments/:attachmentId`,
 		];
 	}
 

@@ -19,6 +19,7 @@ vi.mock('../attachments/parse-file.tool', () => ({
 
 vi.mock('../credentials.tool', () => ({
 	createListCredentialsTool: vi.fn(() => ({ id: 'list_credentials' })),
+	createUpdateCredentialDescriptionTool: vi.fn(() => ({ id: 'update_credential_description' })),
 	createSearchCredentialTypesTool: vi.fn(() => ({ id: 'search_credential_types' })),
 	createSetupCredentialsTool: vi.fn(() => ({ id: 'setup_credentials' })),
 	createTestCredentialTool: vi.fn(() => ({ id: 'test_credential' })),
@@ -26,9 +27,8 @@ vi.mock('../credentials.tool', () => ({
 }));
 
 vi.mock('../data-tables.tool', () => ({
-	DATA_TABLES_TOOL_ID: 'data_tables',
-	createDataTablesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `data_tables-${scope}` : 'data_tables',
+	createDataTableTool: vi.fn((_context: unknown, action: string) => ({
+		id: `data-table:${action}`,
 	})),
 }));
 
@@ -37,7 +37,9 @@ vi.mock('../agent-context.tool', () => ({
 }));
 
 vi.mock('../executions.tool', () => ({
-	createExecutionsTool: vi.fn(() => ({ id: 'workflow_builder_executions' })),
+	createExecutionTool: vi.fn((_context: unknown, action: string) => ({
+		id: `execution:${action}`,
+	})),
 }));
 
 vi.mock('../nodes.tool', () => ({
@@ -48,7 +50,7 @@ vi.mock('../nodes.tool', () => ({
 }));
 
 vi.mock('../search-models.tool', () => ({
-	createSearchModelsTool: vi.fn(() => ({ id: 'workflow_builder_search_models' })),
+	createSearchModelsTool: vi.fn(() => ({ id: 'search_models' })),
 }));
 
 vi.mock('../n8n-docs.tool', () => ({
@@ -84,8 +86,8 @@ vi.mock('../research.tool', () => ({
 }));
 
 vi.mock('../shared/ask-user.tool', () => ({
-	ASK_USER_TOOL_ID: 'workflow_builder_ask_user',
-	createAskUserTool: vi.fn(() => ({ id: 'workflow_builder_ask_user' })),
+	ASK_USER_TOOL_ID: 'ask_user',
+	createAskUserTool: vi.fn(() => ({ id: 'ask_user' })),
 }));
 
 vi.mock('../task-control.tool', () => ({
@@ -107,7 +109,9 @@ vi.mock('../workflows.tool', () => ({
 }));
 
 vi.mock('../workspace.tool', () => ({
-	createWorkspaceTool: vi.fn(() => ({ id: 'workspace' })),
+	createWorkspaceActionTool: vi.fn((_context: unknown, action: string) => ({
+		id: `workspace:${action}`,
+	})),
 }));
 
 vi.mock('../create-tools-from-mcp-server', () => ({
@@ -147,26 +151,43 @@ describe('domain tool construction', () => {
 			validate_workflow: { id: 'workflow:validate' },
 			publish_workflow: { id: 'workflow:publish' },
 			unpublish_workflow: { id: 'workflow:unpublish' },
-			workflow_builder_executions: { id: 'workflow_builder_executions' },
+			list_executions: { id: 'execution:list' },
+			run_workflow: { id: 'execution:run' },
+			get_resolved_node_parameters: { id: 'execution:get-resolved-node-parameters' },
 			list_credentials: { id: 'list_credentials' },
 			search_credential_types: { id: 'search_credential_types' },
 			setup_credentials: { id: 'setup_credentials' },
 			test_credential: { id: 'test_credential' },
 			delete_credential: { id: 'delete_credential' },
-			data_tables: { id: 'data_tables' },
-			workspace: { id: 'workspace' },
+			list_data_tables: { id: 'data-table:list' },
+			query_data_table: { id: 'data-table:query' },
+			delete_data_table_rows: { id: 'data-table:delete-rows' },
+			list_projects: { id: 'workspace:list-projects' },
+			list_tags: { id: 'workspace:list-tags' },
+			tag_workflow: { id: 'workspace:tag-workflow' },
+			cleanup_test_executions: { id: 'workspace:cleanup-test-executions' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
 			search_nodes: { id: 'search_nodes' },
 			get_node_types: { id: 'get_node_types' },
 			get_node_parameter_options: { id: 'get_node_parameter_options' },
 			execute_node: { id: 'execute_node' },
-			workflow_builder_search_models: { id: 'workflow_builder_search_models' },
-			workflow_builder_ask_user: { id: 'workflow_builder_ask_user' },
+			search_models: { id: 'search_models' },
+			ask_user: { id: 'ask_user' },
 			workflow_builder_build_workflow: { id: 'workflow_builder_build_workflow' },
 		});
 		expect(orchestratorTools.has('workflow_builder_workflows')).toBe(false);
 		expect(orchestratorTools.has('workflows')).toBe(false);
+		expect(orchestratorTools.has('workspace')).toBe(false);
+		// This context has no folder support, so no folder tools.
+		for (const name of [
+			'list_folders',
+			'create_folder',
+			'delete_folder',
+			'move_workflow_to_folder',
+		]) {
+			expect(orchestratorTools.has(name)).toBe(false);
+		}
 		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
@@ -179,7 +200,7 @@ describe('domain tool construction', () => {
 			createExecuteNodeTool,
 		} = await import('../nodes.tool.js');
 		const { createSearchModelsTool } = await import('../search-models.tool.js');
-		const { createDataTablesTool } = await import('../data-tables.tool.js');
+		const { createDataTableTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowTool).toHaveBeenCalledWith(context, 'list');
 		// Version and node-usage tools need host methods this context does not provide.
 		expect(orchestratorTools.has('list_workflow_versions')).toBe(false);
@@ -189,14 +210,34 @@ describe('domain tool construction', () => {
 		expect(createGetNodeParameterOptionsTool).toHaveBeenCalledWith(context);
 		expect(createExecuteNodeTool).toHaveBeenCalledWith(context);
 		expect(createSearchModelsTool).toHaveBeenCalledOnce();
-		expect(createDataTablesTool).toHaveBeenCalledWith(context);
+		expect(createDataTableTool).toHaveBeenCalledWith(context, 'list');
+		expect(createDataTableTool).toHaveBeenCalledWith(context, 'delete-rows');
+		expect(orchestratorTools.has('data_tables')).toBe(false);
+		expect(orchestratorTools.has('workflow_builder_executions')).toBe(false);
+	});
+
+	it('registers the folder tools when the workspace service supports folders', () => {
+		const context = makeContext({
+			workspaceService: {
+				listFolders: vi.fn(),
+			} as unknown as InstanceAiContext['workspaceService'],
+		});
+
+		expect(Object.fromEntries(createOrchestratorDomainTools(context))).toMatchObject({
+			list_projects: { id: 'workspace:list-projects' },
+			list_tags: { id: 'workspace:list-tags' },
+			tag_workflow: { id: 'workspace:tag-workflow' },
+			cleanup_test_executions: { id: 'workspace:cleanup-test-executions' },
+			list_folders: { id: 'workspace:list-folders' },
+			create_folder: { id: 'workspace:create-folder' },
+			delete_folder: { id: 'workspace:delete-folder' },
+			move_workflow_to_folder: { id: 'workspace:move-workflow-to-folder' },
+		});
 	});
 
 	it('never defers model catalog search behind search_tools', () => {
-		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain(
-			'workflow_builder_search_models',
-		);
-		expect(ALWAYS_LOADED_TOOL_NAMES.has('workflow_builder_search_models')).toBe(true);
+		expect(getActiveOrchestratorDomainToolNames(makeContext())).toContain('search_models');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('search_models')).toBe(true);
 	});
 
 	it('does not include local MCP server tools in orchestrator domain tools', () => {
@@ -364,3 +405,15 @@ describe('domain tool construction', () => {
 		expect(withSession.has('get-session')).toBe(true);
 	});
 });
+
+it.each([true, false, undefined])(
+	'gates description updates when the flag is %s',
+	(credentialDescriptionsEnabled) => {
+		const context = mock<InstanceAiContext>({
+			credentialDescriptionsEnabled,
+			currentUserAttachments: [],
+		});
+		const names = getActiveOrchestratorDomainToolNames(context);
+		expect(names.has('update_credential_description')).toBe(credentialDescriptionsEnabled === true);
+	},
+);

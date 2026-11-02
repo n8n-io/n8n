@@ -58,7 +58,7 @@ function handleSelectMenuItem(selected: string) {
 			<N8nIconButton
 				variant="ghost"
 				icon="pop-out"
-				size="small"
+				size="xsmall"
 				icon-size="medium"
 				:aria-label="popOutButtonText"
 				@click.stop="emit('popOut')"
@@ -69,7 +69,8 @@ function handleSelectMenuItem(selected: string) {
 			data-test-id="logs-panel-actions"
 			icon-size="small"
 			activator-icon="ellipsis"
-			activator-size="small"
+			activator-size="xsmall"
+			activator-icon-size="medium"
 			:items="menuItems"
 			:teleported="false /* for pop-out window */"
 			:modal="!isInPopOut"
@@ -84,7 +85,7 @@ function handleSelectMenuItem(selected: string) {
 		>
 			<N8nIconButton
 				variant="ghost"
-				size="small"
+				size="xsmall"
 				icon-size="medium"
 				:icon="isOpen ? 'chevron-down' : 'chevron-up'"
 				:aria-label="toggleButtonText"
@@ -97,9 +98,10 @@ function handleSelectMenuItem(selected: string) {
 <style lang="scss" module>
 .container {
 	display: flex;
+	gap: var(--spacing--4xs);
 }
 
 .container button:hover {
-	background-color: var(--color--background);
+	background-color: var(--background--hover);
 }
 </style>

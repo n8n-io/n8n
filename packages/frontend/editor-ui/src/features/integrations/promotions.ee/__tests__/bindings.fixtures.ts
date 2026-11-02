@@ -63,20 +63,18 @@ export const savedCredential: Extract<CreatedPromotionBinding, { kind: 'credenti
 	projectId: credential.ownerProject.id,
 };
 
-export function blocked(
-	preflight: Partial<BlockedApplyResult['preflight']> = {},
-): BlockedApplyResult {
+export function blocked(check: Partial<BlockedApplyResult['check']> = {}): BlockedApplyResult {
 	return {
 		status: 'blocked',
 		environmentId: 'environment-id',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
-		preflight: {
+		check: {
 			missingProjects: [],
 			missingBindings: [credential],
 			accessRequirements: [],
 			conflicts: [],
 			warnings: [],
-			...preflight,
+			...check,
 		},
 	};
 }

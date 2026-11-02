@@ -40,7 +40,11 @@ test.describe(
 
 		test('runs the next manual execution on the engine the settings saved @engine:v2', async ({
 			n8n,
+			canvasRuns,
 		}) => {
+			// The v1 step runs the legacy engine on purpose.
+			canvasRuns.allowLegacyRuns();
+
 			const { id: workflowId } = await n8n.api.workflows.createWorkflow({
 				name: `Engine type ${nanoid()}`,
 				nodes,

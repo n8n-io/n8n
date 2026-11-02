@@ -439,6 +439,22 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(items[0]).toMatchObject({ kind: 'skill', skillName: 'Triage' });
 	});
 
+	it.each([
+		['recall_memory', true, 200, { kind: 'memory', memoryAction: 'recall' }],
+		['flag_memory', true, 200, { kind: 'memory', memoryAction: 'flag' }],
+		['flag_memory', false, 200, { kind: 'tool', memoryAction: undefined }],
+		['recall_memory', true, 0, { kind: 'tool', memoryAction: undefined }],
+	] as const)(
+		'maps a %s call with success %s and endTime %s',
+		(name, success, endTime, expected) => {
+			const items = flattenExecutionsToTimelineItems([
+				withTimeline([toolCallEvent({ name, success, endTime })]),
+			]);
+
+			expect(items[0]).toMatchObject(expected);
+		},
+	);
+
 	it('carries attachments on the user item', () => {
 		const items = flattenExecutionsToTimelineItems([
 			exec({ userMessage: 'look at this', attachments: [attachment] }),

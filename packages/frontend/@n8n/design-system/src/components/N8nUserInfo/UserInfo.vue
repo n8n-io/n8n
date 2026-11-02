@@ -17,10 +17,13 @@ export interface UsersInfoProps {
 	settings?: object;
 	isSamlLoginEnabled?: boolean;
 	mfaEnabled?: boolean;
+	/** Hide the avatar and show only the name and email. */
+	hideAvatar?: boolean;
 }
 
 const props = withDefaults(defineProps<UsersInfoProps>(), {
 	disabled: false,
+	hideAvatar: false,
 });
 
 const { t } = useI18n();
@@ -36,7 +39,7 @@ const classes = computed(
 
 <template>
 	<div :class="classes">
-		<div :class="$style.avatarContainer">
+		<div v-if="!hideAvatar" :class="$style.avatarContainer" data-test-id="user-avatar">
 			<N8nAvatar :first-name="firstName" :last-name="lastName" />
 		</div>
 
@@ -64,6 +67,7 @@ const classes = computed(
 <style lang="scss" module>
 .container {
 	display: inline-flex;
+	gap: var(--spacing--xs);
 	overflow: hidden;
 }
 
@@ -79,14 +83,12 @@ const classes = computed(
 	display: inline-flex;
 	flex-direction: column;
 	justify-content: center;
-	margin-left: var(--spacing--xs);
 }
 
 .pendingUser {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	margin-left: var(--spacing--xs);
 }
 
 .pendingBadge {

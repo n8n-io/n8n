@@ -633,12 +633,6 @@ export class LoadNodesAndCredentials {
 
 			types.credentials = types.credentials.concat(processedCredentials);
 
-			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in loaderKnown.credentials) {
-				const credentialType = loader.getCredential(credentialTypeName);
-				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
-			}
-
 			for (const type in loaderKnown.nodes) {
 				const { className, sourcePath } = loaderKnown.nodes[type];
 				known.nodes[`${packageName}.${type}`] = {
@@ -748,6 +742,7 @@ export class LoadNodesAndCredentials {
 		for (const loader of Object.values(this.loaders)) {
 			if (credentialType in loader.known.credentials) {
 				const loaded = loader.getCredential(credentialType);
+				loaded.type.properties = injectDomainRestrictionFields(loaded.type);
 				loadedCredentials[credentialType] = loaded;
 			}
 		}

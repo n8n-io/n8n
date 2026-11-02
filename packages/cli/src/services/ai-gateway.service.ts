@@ -10,7 +10,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
@@ -112,7 +112,7 @@ export class AiGatewayService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly credentialTypes: CredentialTypes,
@@ -671,9 +671,10 @@ export class AiGatewayService {
 
 	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
-		const [licenseCert, user] = await Promise.all([
+		// A service account has no email or name, so the gateway gets neither.
+		const [licenseCert, person] = await Promise.all([
 			this.license.loadCertStr(),
-			this.userRepository.findOneBy({ id: userId }),
+			this.personRepository.findById(userId),
 		]);
 
 		const { token, expiresIn } = await this.gatewayRequest<GatewayTokenResponse>(
@@ -683,9 +684,9 @@ export class AiGatewayService {
 				headers: this.buildGatewayCredentialsHeaders(userId),
 				body: {
 					licenseCert,
-					...(user?.email && { userEmail: user.email }),
-					...(user && {
-						userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+					...(person?.email && { userEmail: person.email }),
+					...(person && {
+						userName: [person.firstName, person.lastName].filter(Boolean).join(' ') || undefined,
 					}),
 					instanceUrl: this.urlService.getInstanceBaseUrl(),
 				},

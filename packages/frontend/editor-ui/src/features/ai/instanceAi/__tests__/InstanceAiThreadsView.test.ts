@@ -23,11 +23,22 @@ const store = reactive({
 });
 
 const agentThreadsStore = reactive({ deletedThreadIds: new Set<string>(), deleteThread: vi.fn() });
+const assistantAgentThreadsStore = reactive({
+	deletedThreadIds: new Set<string>(),
+	deleteThread: vi.fn(),
+	remember: vi.fn(),
+});
+const settingsStore = reactive({ isAssistantAgentEnabled: false });
 
 vi.mock('../instanceAi.store', () => ({ useInstanceAiStore: () => store }));
 vi.mock('@/features/agents/n8nChatPage/n8nChatThreads.store', () => ({
 	useAgentN8nChatThreadsStore: () => agentThreadsStore,
 }));
+vi.mock('../assistantAgent/assistantAgentThreads.store', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useAssistantAgentThreadsStore: () => assistantAgentThreadsStore,
+}));
+vi.mock('../instanceAiSettings.store', () => ({ useInstanceAiSettingsStore: () => settingsStore }));
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 // Flag off by default, matching production until the 125_agents_n8n_chat experiment
@@ -38,8 +49,10 @@ vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
 }));
 
 const listN8nChatThreadsMock = vi.fn().mockResolvedValue({ data: [], nextCursor: null });
+const listSystemAgentThreadsMock = vi.fn().mockResolvedValue({ data: [], nextCursor: null });
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
+	listSystemAgentThreads: (...args: unknown[]) => listSystemAgentThreadsMock(...args),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'push-1' } }),
@@ -193,6 +206,64 @@ describe('InstanceAiThreadsView', () => {
 			expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
 		});
 		wrapper.unmount();
+	});
+
+	describe('with the Assistant agent on', () => {
+		const agentThread = {
+			id: 'aa1',
+			title: 'Agent runtime chat',
+			updatedAt: '2026-01-03T00:00:00.000Z',
+			projectId: 'project-1',
+		};
+
+		beforeEach(() => {
+			settingsStore.isAssistantAgentEnabled = true;
+			store.threadHistory.threads = [
+				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+			];
+			store.threadHistory.hasMore = false;
+			listSystemAgentThreadsMock.mockResolvedValue({ data: [agentThread], nextCursor: null });
+		});
+
+		afterEach(() => {
+			settingsStore.isAssistantAgentEnabled = false;
+			listSystemAgentThreadsMock.mockResolvedValue({ data: [], nextCursor: null });
+		});
+
+		it('merges Assistant agent threads into the list by updatedAt', async () => {
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const rows = wrapper.findAll('[data-test-id="instance-ai-history-thread"]');
+			expect(rows.map((row) => row.text())).toEqual([
+				expect.stringContaining('Agent runtime chat'),
+				expect.stringContaining('Assistant chat'),
+			]);
+			expect(listSystemAgentThreadsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				'assistant',
+				expect.objectContaining({ limit: 30 }),
+			);
+		});
+
+		it('deletes an Assistant agent thread through its own store', async () => {
+			assistantAgentThreadsStore.deleteThread.mockImplementation(async (thread: { id: string }) => {
+				assistantAgentThreadsStore.deletedThreadIds.add(thread.id);
+				return true;
+			});
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			const [agentDropdown] = wrapper.findAllComponents({ name: 'ActionDropdown' });
+			agentDropdown.vm.$emit('select', 'delete');
+			await nextTick();
+			await nextTick();
+
+			expect(assistantAgentThreadsStore.deleteThread).toHaveBeenCalledWith(agentThread);
+			expect(store.deleteThread).not.toHaveBeenCalled();
+			expect(agentThreadsStore.deleteThread).not.toHaveBeenCalled();
+			expect(wrapper.findAll('[data-test-id="instance-ai-history-thread"]')).toHaveLength(1);
+		});
 	});
 
 	describe('with the n8n Chat flag on', () => {

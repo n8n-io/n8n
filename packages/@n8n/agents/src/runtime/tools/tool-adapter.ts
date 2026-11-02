@@ -193,14 +193,6 @@ function createSuspendHandler(
 	};
 }
 
-/**
- * Check if a tool has suspend/resume schemas (i.e. is interruptible).
- */
-export function isInterruptible(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
-	const builtTool = toolMap.get(toolName);
-	return !!builtTool?.suspendSchema;
-}
-
 // A tool name cannot contain this character, so the key never shadows a real name.
 const LEGACY_ACTION_KEY_SEPARATOR = '\u0000';
 

@@ -24,6 +24,9 @@ export interface ProtectedResourceResolver {
 	 */
 	readonly scopes: string[];
 
+	/** Matches the URL shape before resolving the resource from storage. */
+	matchesVirtualClientUrl?(url: string): boolean;
+
 	/**
 	 * Resolve a resource by its canonical URL, or `undefined` if this resolver
 	 * owns no such resource. The input is pre-normalized (trailing slash
@@ -73,6 +76,10 @@ export class ProtectedResourceRegistry {
 
 	registerResolver(resolver: ProtectedResourceResolver) {
 		this.resolvers.add(resolver);
+	}
+
+	matchesVirtualClientUrl(url: string): boolean {
+		return [...this.resolvers].some((resolver) => resolver.matchesVirtualClientUrl?.(url));
 	}
 
 	getById(id: string): ProtectedResource | undefined {
