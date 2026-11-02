@@ -18,7 +18,9 @@ describe('DataTableColumnRepository', () => {
 	let mockEntityManager: Mocked<EntityManager>;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], {
+			'data-table': async () => await import('../data-table.module.js'),
+		});
 	});
 
 	beforeEach(() => {
@@ -26,13 +28,13 @@ describe('DataTableColumnRepository', () => {
 		mockEntityManager = mock<EntityManager>({
 			connection: {
 				options: { type: 'postgres' },
-			} as any,
+			} as DataSource,
 		});
 
-		// Mock the transaction method to execute the callback immediately
+		// Mock the transaction method to execute the runInTransaction immediately
 		(mockEntityManager.transaction as Mock) = vi.fn(
-			async (callback: (em: EntityManager) => Promise<any>) => {
-				return await callback(mockEntityManager);
+			async (runInTransaction: (em: EntityManager) => Promise<unknown>) => {
+				return await runInTransaction(mockEntityManager);
 			},
 		);
 
@@ -87,7 +89,7 @@ describe('DataTableColumnRepository', () => {
 				const newName = 'unique_name';
 
 				mockEntityManager.existsBy.mockResolvedValue(false);
-				mockEntityManager.update.mockResolvedValue({ affected: 1 } as any);
+				mockEntityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 				Object.defineProperty(mockEntityManager, 'connection', {
 					value: {
 						options: { type: 'postgres' },
@@ -154,7 +156,7 @@ describe('DataTableColumnRepository', () => {
 				const newName = 'new_valid_name';
 
 				mockEntityManager.existsBy.mockResolvedValue(false);
-				mockEntityManager.update.mockResolvedValue({ affected: 1 } as any);
+				mockEntityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 				Object.defineProperty(mockEntityManager, 'connection', {
 					value: {
 						options: { type: 'postgres' },
@@ -192,7 +194,7 @@ describe('DataTableColumnRepository', () => {
 
 				for (const dbType of dbTypes) {
 					mockEntityManager.existsBy.mockResolvedValue(false);
-					mockEntityManager.update.mockResolvedValue({ affected: 1 } as any);
+					mockEntityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 					Object.defineProperty(mockEntityManager, 'connection', {
 						value: {
 							options: { type: dbType },

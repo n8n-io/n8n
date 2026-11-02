@@ -13,13 +13,15 @@ import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { createUser } from '@test-integration/db/users';
+import { createUser } from './fixtures/users';
 
 import { DataTableAggregateService } from '../data-table-aggregate.service';
 import { DataTableService } from '../data-table.service';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], {
+		'data-table': async () => await import('../data-table.module.js'),
+	});
 	await testDb.init();
 });
 
