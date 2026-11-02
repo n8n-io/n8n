@@ -24,7 +24,7 @@ import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
-import { getReplyAttachments } from './replyFiles';
+import { newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
 import type {
 	AgentsChatHostEvent,
@@ -374,7 +374,7 @@ export function convertDbMessages(
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
 				toolCalls.push(toolCall);
-				attachments.push(...getReplyAttachments(toolCall));
+				attachments.push(...newReplyAttachments(attachments, toolCall));
 				if (msg.executionStatus === 'cancelled') continue;
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
