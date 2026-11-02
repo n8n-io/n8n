@@ -102,6 +102,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_PROVIDER')
 	sandboxProvider: string = 'n8n-sandbox';
 
+	/**
+	 * Sandbox provider that the n8n Assistant uses when the primary provider is unavailable. One of
+	 * `n8n-sandbox`, `daytona`. n8n ignores it when it matches `N8N_INSTANCE_AI_SANDBOX_PROVIDER` or
+	 * when its connection isn't configured, and uses only the primary provider when it's unset.
+	 */
+	@Env('N8N_INSTANCE_AI_SANDBOX_FALLBACK_PROVIDER')
+	sandboxFallbackProvider: string = '';
+
 	/** Daytona API URL (e.g. "http://localhost:3000/api"). */
 	@Env('DAYTONA_API_URL')
 	daytonaApiUrl: string = '';

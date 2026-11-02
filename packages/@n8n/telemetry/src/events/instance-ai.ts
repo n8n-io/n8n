@@ -641,6 +641,24 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	AI_ASSISTANT_SANDBOX_FAILED_OVER: {
+		name: 'AI Assistant sandbox failed over',
+		description:
+			'The n8n Assistant created a thread sandbox on the fallback provider because the primary provider was unavailable (network failure, timeout, 5xx or 429), or because its circuit was open after earlier failures. Fires once per sandbox creation that succeeded on the fallback provider. Requires N8N_INSTANCE_AI_SANDBOX_FALLBACK_PROVIDER.',
+		properties: z.object({
+			from_provider: z.string().describe('Primary sandbox provider that was skipped or failed'),
+			to_provider: z.string().describe('Fallback sandbox provider that created the sandbox'),
+			failure_class: z
+				.string()
+				.nullable()
+				.describe(
+					'Short failure label of the primary provider, for example DaytonaError:502 or ECONNREFUSED. Null when the primary was skipped',
+				),
+			circuit_open: z
+				.boolean()
+				.describe('The primary was skipped without a request because its circuit was open'),
+		}),
+	},
 	AI_ASSISTANT_SETUP_COMPLETED: {
 		name: 'AI Assistant setup completed',
 		description:

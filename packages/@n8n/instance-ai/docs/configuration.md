@@ -84,6 +84,7 @@ without search results. `research(action="fetch-url")` still works.
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_SANDBOX_ENABLED` | boolean | `false` | Enable sandbox-backed workflow building. When false, workflow builder capability is unavailable. |
 | `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `n8n-sandbox` | Sandbox provider: `n8n-sandbox` for the n8n sandbox service, or `daytona` for the Daytona provider. On self-hosted, a provider selected in Instance AI settings takes precedence. |
+| `N8N_INSTANCE_AI_SANDBOX_FALLBACK_PROVIDER` | string | `''` | Provider for new thread sandboxes when the primary provider is unavailable (network failure, timeout, 5xx or 429). Ignored when it equals the primary provider or is not configured. See [Sandboxing](sandboxing.md#provider-fallback). |
 | `DAYTONA_API_URL` | string | `''` | Daytona API URL (e.g. `https://app.daytona.io/api`). Required when provider is `daytona`. |
 | `DAYTONA_API_KEY` | string | `''` | Daytona API key for authentication. Required when provider is `daytona`. |
 | `N8N_SANDBOX_SERVICE_URL` | string | `''` | n8n sandbox service URL. Required when provider is `n8n-sandbox`. |

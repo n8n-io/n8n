@@ -1,6 +1,13 @@
 import { createHash } from 'node:crypto';
 
-import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
+import {
+	getSandboxFailureClass,
+	isSandboxProvider,
+	isSandboxProviderUnavailableError,
+	SandboxAcquisitionError,
+	SandboxProviderHealth,
+	type SandboxProvider,
+} from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -19,11 +26,13 @@ import {
 	type VerifiedWorkspaceBundles,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
+import type { Telemetry } from '@/telemetry';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
@@ -38,6 +47,10 @@ export type RuntimeSandboxEntry = {
 	userId: string;
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
+	/** Provider that created the sandbox. The thread keeps it until it needs a new sandbox. */
+	provider: SandboxProvider;
+	/** Primary provider, when the sandbox was created on the fallback provider instead. */
+	failedOverFrom?: SandboxProvider;
 	configFingerprint: string;
 	/** Prebaked bundles already verified in this sandbox, shared across runs. */
 	verifiedBundles: VerifiedWorkspaceBundles;
@@ -47,7 +60,21 @@ export type RuntimeSandboxEntry = {
 	cleanupTimer?: ReturnType<typeof setTimeout>;
 };
 
-type SandboxCacheState = { fingerprint: string; config?: SandboxConfig };
+/** A provider config, or the error that its resolution raised. */
+type ProviderConfigResult =
+	| { provider: SandboxProvider; config: SandboxConfig }
+	| { provider: SandboxProvider; error: unknown };
+
+type SandboxCacheState = {
+	fingerprint: string;
+	/** Resolved configs in provider order. Unset in proxy mode, which resolves them at creation. */
+	results?: ProviderConfigResult[];
+};
+
+type StartedSandbox = {
+	sandbox: RuntimeSandboxEntry['sandbox'];
+	workspace: RuntimeSandboxEntry['workspace'];
+};
 
 function sandboxConfigFingerprint(config: object): string {
 	return createHash('sha256').update(JSON.stringify(config)).digest('hex');
@@ -178,6 +205,9 @@ export type InstanceAiSandboxServiceOptions = {
 		threadId: string,
 		userId?: string,
 	) => Promise<{ userId: string; proxyConfig?: ServiceProxyConfig }>;
+	telemetry?: Pick<Telemetry, 'track'>;
+	/** Health of each provider. Inject a shared instance to share circuit state between services. */
+	providerHealth?: SandboxProviderHealth;
 };
 
 /**
@@ -192,6 +222,10 @@ export type InstanceAiSandboxServiceOptions = {
  * entries so the map cannot grow without bound; the provider reclaims the
  * remote sandbox itself (Daytona auto-stop, sandbox-service idle reaping), so
  * an idle eviction never destroys live work.
+ *
+ * When a fallback provider is configured, a new sandbox goes to the fallback
+ * provider if the primary provider is unavailable. A cached thread keeps the
+ * provider of its sandbox until it needs a new sandbox.
  */
 export class InstanceAiSandboxService {
 	/**
@@ -209,7 +243,14 @@ export class InstanceAiSandboxService {
 
 	private cacheGeneration = 0;
 
-	constructor(private readonly options: InstanceAiSandboxServiceOptions) {}
+	private readonly providerHealth: SandboxProviderHealth;
+
+	/** Warnings already logged, so a setup problem is logged once and not on every turn. */
+	private readonly loggedWarnings = new Set<string>();
+
+	constructor(private readonly options: InstanceAiSandboxServiceOptions) {
+		this.providerHealth = options.providerHealth ?? new SandboxProviderHealth();
+	}
 
 	private get logger(): Logger {
 		return this.options.logger;
@@ -219,10 +260,38 @@ export class InstanceAiSandboxService {
 		return this.options.config;
 	}
 
+	/** Providers to try for a new sandbox, the primary first. */
+	getProviderChain(): SandboxProvider[] {
+		const primary = normalizeSandboxProvider(this.instanceAiConfig.sandboxProvider);
+		const fallback = this.instanceAiConfig.sandboxFallbackProvider?.trim();
+		if (!fallback) return [primary];
+		if (!isSandboxProvider(fallback)) {
+			this.warnOnce(`invalid-fallback:${fallback}`, 'Ignoring unknown sandbox fallback provider', {
+				fallbackProvider: fallback,
+			});
+			return [primary];
+		}
+		if (fallback === primary) {
+			this.warnOnce(
+				`same-fallback:${fallback}`,
+				'Ignoring sandbox fallback provider because it is also the primary provider',
+				{ provider: primary },
+			);
+			return [primary];
+		}
+		return [primary, fallback];
+	}
+
+	/** Environment config of the primary provider. */
 	getSandboxConfigFromEnv(): SandboxConfig {
+		return this.getProviderConfigFromEnv(
+			normalizeSandboxProvider(this.instanceAiConfig.sandboxProvider),
+		);
+	}
+
+	private getProviderConfigFromEnv(provider: SandboxProvider): SandboxConfig {
 		const {
 			sandboxEnabled,
-			sandboxProvider,
 			daytonaApiUrl,
 			daytonaApiKey,
 			n8nSandboxServiceUrl,
@@ -237,7 +306,6 @@ export class InstanceAiSandboxService {
 			sandboxAutoDeleteMinutes,
 			daytonaTokenRefreshSkewMs,
 		} = this.instanceAiConfig;
-		const provider = normalizeSandboxProvider(sandboxProvider);
 		if (!sandboxEnabled) {
 			return {
 				enabled: false,
@@ -277,8 +345,29 @@ export class InstanceAiSandboxService {
 		};
 	}
 
+	/**
+	 * Resolve the config of the primary provider. When it cannot be resolved because a
+	 * service is unavailable, resolve the fallback provider instead.
+	 */
 	async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
-		const base = this.getSandboxConfigFromEnv();
+		const [primary, ...fallbacks] = this.getProviderChain();
+		try {
+			return await this.resolveProviderConfig(primary, user);
+		} catch (error) {
+			if (fallbacks.length === 0 || !isSandboxProviderUnavailableError(error)) throw error;
+			for (const fallback of fallbacks) {
+				const result = await this.tryResolveProviderConfig(fallback, user);
+				if ('config' in result) return result.config;
+			}
+			throw error;
+		}
+	}
+
+	private async resolveProviderConfig(
+		provider: SandboxProvider,
+		user: User,
+	): Promise<SandboxConfig> {
+		const base = this.getProviderConfigFromEnv(provider);
 		if (!base.enabled) return base;
 		if (base.provider === 'daytona') {
 			// If AI assistant service is available, route Daytona calls through its sandbox proxy
@@ -334,6 +423,17 @@ export class InstanceAiSandboxService {
 		};
 	}
 
+	private async tryResolveProviderConfig(
+		provider: SandboxProvider,
+		user: User,
+	): Promise<ProviderConfigResult> {
+		try {
+			return { provider, config: await this.resolveProviderConfig(provider, user) };
+		} catch (error) {
+			return { provider, error };
+		}
+	}
+
 	async getOrCreateWorkspaceEntry(
 		threadId: string,
 		user: User,
@@ -348,6 +448,7 @@ export class InstanceAiSandboxService {
 						outcome: entry ? outcome : 'disabled',
 						sandboxId: entry?.sandbox.id,
 						provider: entry?.sandbox.provider,
+						failedOver: Boolean(entry?.failedOverFrom),
 					},
 				}),
 			},
@@ -415,8 +516,29 @@ export class InstanceAiSandboxService {
 		context: InstanceAiContext,
 	): Promise<RuntimeSandboxEntry | undefined> {
 		const entry = await this.getOrCreateWorkspaceEntry(threadId, user);
-		if (entry) await this.ensureWorkspaceSetup(entry, context);
+		if (!entry) return entry;
+		try {
+			await this.ensureWorkspaceSetup(entry, context);
+		} catch (error) {
+			this.dropEntryOfUnavailableProvider(threadId, entry, error);
+			throw error;
+		}
 		return entry;
+	}
+
+	/**
+	 * When the provider of a cached sandbox goes down after acquisition, drop the cache
+	 * entry so that the next acquisition can use the fallback provider. The remote
+	 * sandbox stays, and a later acquisition can reattach to it.
+	 */
+	private dropEntryOfUnavailableProvider(
+		threadId: string,
+		entry: RuntimeSandboxEntry,
+		error: unknown,
+	): void {
+		if (this.getProviderChain().length < 2 || !isSandboxProviderUnavailableError(error)) return;
+		this.recordProviderHealth(entry.provider, error);
+		this.evictSandboxEntry(threadId, entry, 'provider_unavailable');
 	}
 
 	private async ensureWorkspaceSetup(
@@ -450,15 +572,101 @@ export class InstanceAiSandboxService {
 		await entry.setupPromise;
 	}
 
+	/**
+	 * Create the sandbox on the first provider of the chain that works. The next provider
+	 * is tried only when a provider is unavailable (network failure, timeout, 5xx, 429)
+	 * or its circuit is open. Other failures, such as authentication or configuration
+	 * errors, fail the acquisition so that the operator sees them.
+	 */
 	private async createWorkspaceEntry(
 		threadId: string,
 		user: User,
 		cacheState: SandboxCacheState,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const config = withThreadScopedSandboxIdentity(
-			cacheState.config ?? (await this.resolveSandboxConfig(user)),
-			threadId,
-		);
+		const chain = this.getProviderChain();
+		const [primary] = chain;
+		const useHealth = chain.length > 1;
+		let firstError: { error: unknown } | undefined;
+		let primaryFailure: { failureClass: string | null; circuitOpen: boolean } | undefined;
+
+		for (const [index, provider] of chain.entries()) {
+			const isLast = index === chain.length - 1;
+			// The last provider is always tried, so an open circuit never blocks every provider.
+			if (useHealth && !isLast && !this.providerHealth.isAvailable(provider)) {
+				if (provider === primary) primaryFailure = { failureClass: null, circuitOpen: true };
+				continue;
+			}
+
+			let started: StartedSandbox | undefined;
+			try {
+				const config = await this.getProviderConfig(provider, user, cacheState);
+				if (!config.enabled) return undefined;
+				started = await this.startWorkspace(threadId, config);
+			} catch (error) {
+				const unavailable = isSandboxProviderUnavailableError(error);
+				if (useHealth) this.recordProviderHealth(provider, unavailable ? error : undefined);
+				firstError ??= { error };
+				if (!unavailable || isLast) {
+					if (firstError.error !== error) {
+						this.logger.warn('The sandbox fallback provider also failed', {
+							threadId,
+							provider,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+					throw this.toAcquisitionFailure(firstError.error);
+				}
+				const failureClass = getSandboxFailureClass(error);
+				if (provider === primary) primaryFailure = { failureClass, circuitOpen: false };
+				this.logger.warn('Sandbox provider is unavailable, trying the next provider', {
+					threadId,
+					provider,
+					nextProvider: chain[index + 1],
+					failureClass,
+				});
+				continue;
+			}
+
+			if (!started) return undefined;
+			if (useHealth) this.providerHealth.recordAvailable(provider);
+			const failedOverFrom = provider === primary ? undefined : primary;
+			if (failedOverFrom) this.reportFailover(threadId, failedOverFrom, provider, primaryFailure);
+
+			const entry: RuntimeSandboxEntry = {
+				userId: user.id,
+				sandbox: started.sandbox,
+				workspace: started.workspace,
+				provider,
+				failedOverFrom,
+				configFingerprint: cacheState.fingerprint,
+				verifiedBundles: new Map(),
+				setupComplete: false,
+				setupPromise: undefined,
+				expiresAt: this.nextSandboxExpiry(),
+			};
+			return entry;
+		}
+
+		throw new UnexpectedError('No sandbox provider was tried');
+	}
+
+	private async getProviderConfig(
+		provider: SandboxProvider,
+		user: User,
+		cacheState: SandboxCacheState,
+	): Promise<SandboxConfig> {
+		const cached = cacheState.results?.find((result) => result.provider === provider);
+		if (!cached) return await this.resolveProviderConfig(provider, user);
+		if ('error' in cached) throw cached.error;
+		return cached.config;
+	}
+
+	/** Create and start the sandbox of one provider. Cleans up when the start fails. */
+	private async startWorkspace(
+		threadId: string,
+		providerConfig: SandboxConfig,
+	): Promise<StartedSandbox | undefined> {
+		const config = withThreadScopedSandboxIdentity(providerConfig, threadId);
 		if (!config.enabled) return undefined;
 
 		const sandbox = await createSandbox(config, {
@@ -485,43 +693,121 @@ export class InstanceAiSandboxService {
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
 			}
-			// Only the generic transient wrap is downgraded to a non-reported warning.
-			// Classified subclasses (name conflict, sandbox not ready) keep their identity
-			// so they stay visible in Sentry as distinct issues.
-			if (
-				error instanceof SandboxAcquisitionError &&
-				error.constructor === SandboxAcquisitionError
-			) {
-				throw new OperationalError(error.message, { cause: error });
-			}
 			throw error;
 		}
+		return { sandbox, workspace };
+	}
 
-		const entry: RuntimeSandboxEntry = {
-			userId: user.id,
-			sandbox,
-			workspace,
-			configFingerprint: cacheState.fingerprint,
-			verifiedBundles: new Map(),
-			setupComplete: false,
-			setupPromise: undefined,
-			expiresAt: this.nextSandboxExpiry(),
-		};
-		return entry;
+	private toAcquisitionFailure(error: unknown): unknown {
+		// Only the generic transient wrap is downgraded to a non-reported warning.
+		// Classified subclasses (name conflict, sandbox not ready) keep their identity
+		// so they stay visible in Sentry as distinct issues.
+		if (error instanceof SandboxAcquisitionError && error.constructor === SandboxAcquisitionError) {
+			return new OperationalError(error.message, { cause: error });
+		}
+		return error;
+	}
+
+	/** Pass the error when the provider was unavailable, or nothing when it answered. */
+	private recordProviderHealth(provider: SandboxProvider, unavailableError?: unknown): void {
+		if (unavailableError === undefined) {
+			this.providerHealth.recordAvailable(provider);
+			return;
+		}
+		if (!this.providerHealth.recordUnavailable(provider)) return;
+		this.logger.warn('Sandbox provider is unavailable. New sandboxes skip it for a while', {
+			provider,
+			failureClass: getSandboxFailureClass(unavailableError),
+		});
+		this.options.errorReporter.warn(
+			new OperationalError(`Sandbox provider "${provider}" is unavailable`, {
+				cause: unavailableError,
+			}),
+		);
+	}
+
+	private reportFailover(
+		threadId: string,
+		from: SandboxProvider,
+		to: SandboxProvider,
+		primaryFailure: { failureClass: string | null; circuitOpen: boolean } | undefined,
+	): void {
+		this.logger.warn('Created the thread sandbox on the fallback provider', {
+			threadId,
+			fromProvider: from,
+			toProvider: to,
+			failureClass: primaryFailure?.failureClass ?? undefined,
+			circuitOpen: primaryFailure?.circuitOpen ?? false,
+		});
+		this.options.telemetry?.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_SANDBOX_FAILED_OVER, {
+			from_provider: from,
+			to_provider: to,
+			failure_class: primaryFailure?.failureClass ?? null,
+			circuit_open: primaryFailure?.circuitOpen ?? false,
+		});
 	}
 
 	private async resolveSandboxCacheState(user: User): Promise<SandboxCacheState> {
+		const [primary, ...fallbacks] = this.getProviderChain();
 		if (this.options.aiService.isProxyEnabled()) {
 			return {
 				fingerprint: sandboxConfigFingerprint({
 					mode: 'proxy',
-					config: this.getSandboxConfigFromEnv(),
+					config: this.getProviderConfigFromEnv(primary),
+					fallbacks: fallbacks.map((provider) => this.getFallbackConfigFromEnv(provider)),
 				}),
 			};
 		}
 
-		const config = await this.resolveSandboxConfig(user);
-		return { config, fingerprint: sandboxConfigFingerprint(config) };
+		if (fallbacks.length === 0) {
+			const config = await this.resolveProviderConfig(primary, user);
+			return {
+				results: [{ provider: primary, config }],
+				fingerprint: sandboxConfigFingerprint([config]),
+			};
+		}
+
+		const results = await Promise.all(
+			[primary, ...fallbacks].map(
+				async (provider) => await this.tryResolveProviderConfig(provider, user),
+			),
+		);
+		for (const result of results.slice(1)) {
+			if ('error' in result) {
+				this.warnOnce(
+					`fallback-config:${result.provider}`,
+					'The sandbox fallback provider is not configured, so it is not used',
+					{
+						provider: result.provider,
+						error: result.error instanceof Error ? result.error.message : String(result.error),
+					},
+				);
+			}
+		}
+		return {
+			results,
+			fingerprint: sandboxConfigFingerprint(
+				results.map((result) =>
+					'config' in result
+						? result.config
+						: { provider: result.provider, error: String(result.error) },
+				),
+			),
+		};
+	}
+
+	private getFallbackConfigFromEnv(provider: SandboxProvider): object {
+		try {
+			return this.getProviderConfigFromEnv(provider);
+		} catch (error) {
+			return { provider, error: error instanceof Error ? error.message : String(error) };
+		}
+	}
+
+	private warnOnce(key: string, message: string, meta: Record<string, unknown>): void {
+		if (this.loggedWarnings.has(key)) return;
+		this.loggedWarnings.add(key);
+		this.logger.warn(message, meta);
 	}
 
 	invalidateCachedWorkspaces(): void {
@@ -596,8 +882,9 @@ export class InstanceAiSandboxService {
 	 * Delete the remote sandbox for a thread with no cache entry (after a
 	 * restart or an idle eviction). Only the n8n-sandbox provider supports
 	 * this: its id is recomputable from the thread id, and a delete for an id
-	 * that never existed is a cheap 404. Daytona is left to its own
-	 * auto-stop/auto-delete lifecycle.
+	 * that never existed is a cheap 404. This also applies when n8n-sandbox is
+	 * the fallback provider, because the thread may have failed over to it.
+	 * Daytona is left to its own auto-stop/auto-delete lifecycle.
 	 */
 	private async destroyUncachedSandbox(
 		threadId: string,
@@ -605,10 +892,7 @@ export class InstanceAiSandboxService {
 		userId?: string,
 	): Promise<void> {
 		try {
-			if (
-				!this.instanceAiConfig.sandboxEnabled ||
-				normalizeSandboxProvider(this.instanceAiConfig.sandboxProvider) !== 'n8n-sandbox'
-			)
+			if (!this.instanceAiConfig.sandboxEnabled || !this.getProviderChain().includes('n8n-sandbox'))
 				return;
 
 			await withSandboxLifecycleTrace(
@@ -616,7 +900,7 @@ export class InstanceAiSandboxService {
 				'destroy',
 				{ reason, cached: false },
 				async () => {
-					const base = this.getSandboxConfigFromEnv();
+					const base = this.getProviderConfigFromEnv('n8n-sandbox');
 					if (!base.enabled || base.provider !== 'n8n-sandbox') return;
 
 					const settings = await this.options.settingsService.resolveN8nSandboxConfig();
