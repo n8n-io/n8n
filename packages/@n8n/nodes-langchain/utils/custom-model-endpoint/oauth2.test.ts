@@ -35,7 +35,7 @@ const granting = (body: Record<string, unknown>, status = 200) => {
 	return { calls, fetchImpl: fetchImpl as unknown as typeof fetch };
 };
 
-const GRANT = { access_token: 'tok-abc', expires_in: 3600, token_type: 'Bearer' };
+const GRANT = { access_token: 'tok-abc-9f2a71c4', expires_in: 3600, token_type: 'Bearer' };
 
 describe('createClientCredentialsTokenSource', () => {
 	it('asks the login server for a token and returns it', async () => {
@@ -43,7 +43,7 @@ describe('createClientCredentialsTokenSource', () => {
 
 		const token = await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
 
-		expect(token).toBe('tok-abc');
+		expect(token).toBe('tok-abc-9f2a71c4');
 		expect(calls[0].url).toBe(TOKEN_URL);
 		expect(calls[0].body.get('grant_type')).toBe('client_credentials');
 	});
@@ -139,12 +139,18 @@ describe('createClientCredentialsTokenSource', () => {
 			'did not answer with JSON',
 		);
 	});
-	it('fails when the answer carries no access token', async () => {
-		const { fetchImpl } = granting({ token_type: 'Bearer' });
-		const source = createClientCredentialsTokenSource(login(), fetchImpl);
 
-		await expect(source.getToken()).rejects.toThrow('no access token');
+	it.each([
+		['the field is missing', { token_type: 'Bearer' }],
+		['the field is empty', { access_token: '' }],
+	])('fails when %s', async (_name, grant) => {
+		const { fetchImpl } = granting(grant);
+
+		await expect(createClientCredentialsTokenSource(login(), fetchImpl).getToken()).rejects.toThrow(
+			'no access token',
+		);
 	});
+
 	it('does not follow a redirect, which would replay the secret to another origin', async () => {
 		const { calls, fetchImpl } = granting(GRANT);
 		await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
