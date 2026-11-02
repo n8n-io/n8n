@@ -6,6 +6,7 @@ import {
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import { skillContentHash, type SkillContent } from './skill-content-hash';
@@ -244,4 +245,23 @@ export const importableSkillSchema = agentSkillSchema
 export function storedContentOf(content: SkillContent): SkillContent {
 	const parsed = importableSkillSchema.safeParse(contentToAgentSkill(content));
 	return parsed.success ? toSkillContent(parsed.data, content.frontmatter) : content;
+}
+
+/**
+ * The content that a link stores as JSON, such as a pending update, read back. Null for a
+ * value without the shape of a skill, such as the update of a SKILL.md that n8n cannot parse.
+ */
+export function storedContentFrom(value: unknown): SkillContent | null {
+	if (!isRecord(value)) return null;
+	const { name, description, instructions, frontmatter, files } = value;
+	if (typeof name !== 'string' || typeof description !== 'string') return null;
+	if (typeof instructions !== 'string' || !Array.isArray(files)) return null;
+	const readFiles = files.flatMap((file: unknown) =>
+		isRecord(file) && typeof file.path === 'string' && typeof file.content === 'string'
+			? [{ path: file.path, content: file.content }]
+			: [],
+	);
+	// The frontmatter was stored from parsed YAML, so a record is a frontmatter.
+	const readFrontmatter: SkillFrontmatter | null = isRecord(frontmatter) ? frontmatter : null;
+	return { name, description, instructions, frontmatter: readFrontmatter, files: readFiles };
 }

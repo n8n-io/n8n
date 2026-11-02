@@ -1117,6 +1117,133 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().syncedFrom).toEqual(syncedFrom);
 		});
 
+		describe('Sources tab and reviews', () => {
+			const UpdatesStub = {
+				name: 'SkillSourceUpdatesDialog',
+				props: ['open', 'sourceId'],
+				emits: ['update:open', 'review', 'changed'],
+				template: `<div v-if="open" data-test-id="updates-stub">{{ sourceId }}</div>`,
+			};
+			const ReviewStub = {
+				name: 'SkillUpdateReviewDialog',
+				props: ['open', 'skillId'],
+				emits: ['update:open', 'changed', 'stopSyncing'],
+				template: `<div v-if="open" data-test-id="review-stub">{{ skillId }}<button data-test-id="review-stub-stop" @click="$emit('stopSyncing', skillId)" /></div>`,
+			};
+			const source = {
+				id: 'src-1',
+				type: 'github' as const,
+				label: 'acme/skills',
+				ref: 'main',
+				path: '',
+				webUrl: 'https://github.com/acme/skills',
+				projectId: null,
+				projectName: null,
+				projectType: null,
+				skillCount: 2,
+				updatesAvailable: 1,
+				updatesBlocked: 0,
+				lastCheckedAt: null,
+				canReview: true,
+			};
+
+			const renderWithStubs = () =>
+				renderView({
+					global: {
+						stubs: { SkillSourceUpdatesDialog: UpdatesStub, SkillUpdateReviewDialog: ReviewStub },
+					},
+				});
+
+			it('shows no tabs when the flag is off', () => {
+				const { queryByTestId } = renderView();
+
+				expect(queryByTestId('skills-tabs')).toBeNull();
+			});
+
+			it('lists the sources on the Sources tab and opens the updates of one', async () => {
+				enableSkillSync();
+				skillsStore.fetchSources.mockImplementation(async () => {
+					skillsStore.sources = [source];
+					return [source];
+				});
+				const { getByTestId, getByText, findByTestId } = renderWithStubs();
+
+				await userEvent.click(getByText('Sources'));
+				await waitFor(() => expect(skillsStore.fetchSources).toHaveBeenCalled());
+				await userEvent.click(await findByTestId('skill-source-label'));
+
+				expect(getByTestId('updates-stub')).toHaveTextContent('src-1');
+			});
+
+			it('opens the review from the badge of a skill with an update', async () => {
+				enableSkillSync();
+				skillsStore.skills = [skill({ source: 'github', syncState: 'update_available' })];
+				skillsStore.count = 1;
+				const { findByTestId, getByTestId } = renderWithStubs();
+
+				await userEvent.click(await findByTestId('skill-sync-badge-update_available'));
+
+				expect(getByTestId('review-stub')).toHaveTextContent('s1');
+			});
+
+			it('stops syncing from the review with the same confirmation, and closes it', async () => {
+				enableSkillSync();
+				skillsStore.skills = [
+					skill({ source: 'github', syncState: 'update_available', canStopSyncing: true }),
+				];
+				skillsStore.count = 1;
+				skillsStore.stopSyncingSkill.mockResolvedValue(undefined);
+				const { findByTestId, getByTestId, queryByTestId } = renderWithStubs();
+
+				await userEvent.click(await findByTestId('skill-sync-badge-update_available'));
+				await userEvent.click(getByTestId('review-stub-stop'));
+
+				await waitFor(() => expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1'));
+				expect(confirmMock).toHaveBeenCalledWith(
+					expect.stringContaining('You cannot undo this.'),
+					'Stop syncing research-search?',
+					expect.anything(),
+				);
+				await waitFor(() => expect(queryByTestId('review-stub')).toBeNull());
+			});
+
+			it('checks a source from the Sources tab and reloads both lists', async () => {
+				enableSkillSync();
+				skillsStore.fetchSources.mockImplementation(async () => {
+					skillsStore.sources = [source];
+					return [source];
+				});
+				skillsStore.checkSource.mockResolvedValue({
+					label: 'acme/skills',
+					updatesFound: 1,
+					throttled: false,
+					lastCheckedAt: '2026-10-29T12:00:00.000Z',
+				});
+				const { getByText, findByTestId } = renderWithStubs();
+
+				await userEvent.click(getByText('Sources'));
+				await userEvent.click(
+					(await findByTestId('skill-source-actions')).querySelector('button')!,
+				);
+				await waitFor(() =>
+					expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+				);
+				skillsStore.fetchSkills.mockClear();
+				skillsStore.fetchSources.mockClear();
+				await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
+
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
+				expect(skillsStore.checkSource).toHaveBeenCalledWith('src-1');
+				expect(showMessageMock).toHaveBeenCalledWith(
+					expect.objectContaining({
+						title: 'Checked acme/skills',
+						message: '1 skill has an update.',
+					}),
+				);
+			});
+		});
+
 		describe('check for updates', () => {
 			async function clickCheck() {
 				skillsStore.skills = [

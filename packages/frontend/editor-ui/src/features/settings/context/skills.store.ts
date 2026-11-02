@@ -1,4 +1,7 @@
 import type {
+	AcceptSkillUpdatesDto,
+	ReviewSkillUpdateDto,
+	SkillSourceListItem,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -113,8 +116,51 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.checkSkillForUpdates(rootStore.restApiContext, id);
 	}
 
+	const sources = ref<SkillSourceListItem[]>([]);
+	let latestSourcesRead = 0;
+
+	/** The sources that the user can see, for the Sources tab. A newer read wins, as for skills. */
+	async function fetchSources() {
+		const read = ++latestSourcesRead;
+		const response = await api.listSkillSources(rootStore.restApiContext);
+		if (read === latestSourcesRead) sources.value = response;
+		return response;
+	}
+
+	async function checkSource(sourceId: string) {
+		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchSourceUpdates(sourceId: string) {
+		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
+	}
+
+	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillUpdatesDto) {
+		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
+	}
+
+	async function fetchSkillUpdate(skillId: string) {
+		return await api.getSkillUpdate(rootStore.restApiContext, skillId);
+	}
+
+	async function acceptSkillUpdate(skillId: string, payload: ReviewSkillUpdateDto) {
+		return await api.acceptSkillUpdate(rootStore.restApiContext, skillId, payload);
+	}
+
+	async function skipSkillUpdate(skillId: string, payload: ReviewSkillUpdateDto) {
+		await api.skipSkillUpdate(rootStore.restApiContext, skillId, payload);
+	}
+
 	return {
 		skills,
+		sources,
+		fetchSources,
+		checkSource,
+		fetchSourceUpdates,
+		acceptSourceUpdates,
+		fetchSkillUpdate,
+		acceptSkillUpdate,
+		skipSkillUpdate,
 		count,
 		loading,
 		fetchSkills,

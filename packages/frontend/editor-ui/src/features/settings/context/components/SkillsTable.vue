@@ -26,6 +26,7 @@ type SkillAction =
 	| 'timeline'
 	| 'compare'
 	| 'download'
+	| 'reviewUpdate'
 	| 'checkForUpdates'
 	| 'stopSyncing'
 	| 'delete';
@@ -55,6 +56,7 @@ const emit = defineEmits<{
 	timeline: [skill: SkillListItem];
 	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
+	reviewUpdate: [skill: SkillListItem];
 	checkForUpdates: [skill: SkillListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
@@ -97,6 +99,16 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
 		},
+		// A synced skill whose source has an update. A user who cannot review reads it.
+		...(hasUpdate(skill)
+			? [
+					{
+						value: 'reviewUpdate' as const,
+						label: i18n.baseText('settings.context.skills.actions.reviewUpdate'),
+						icon: 'list-checks' as const,
+					},
+				]
+			: []),
 		// Only a synced skill that the user may change. It checks the whole source.
 		...(skill.canCheckForUpdates
 			? [
@@ -133,10 +145,14 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else if (action === 'timeline') emit('timeline', skill);
 	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
+	else if (action === 'reviewUpdate') emit('reviewUpdate', skill);
 	else if (action === 'checkForUpdates') emit('checkForUpdates', skill);
 	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
 }
+
+const hasUpdate = (skill: SkillListItem) =>
+	skill.syncState === 'update_available' || skill.syncState === 'update_blocked';
 
 /** The badge of a synced skill whose source has new content that waits for review. */
 const SYNC_BADGES = {
@@ -225,7 +241,9 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						<N8nTooltip v-if="syncBadgeOf(item)" :content="syncBadgeOf(item)?.tooltip">
 							<N8nBadge
 								:variant="syncBadgeOf(item)?.variant"
+								clickable
 								:data-test-id="`skill-sync-badge-${item.syncState}`"
+								@click.stop="emit('reviewUpdate', item)"
 							>
 								{{ syncBadgeOf(item)?.label }}
 							</N8nBadge>

@@ -39,6 +39,10 @@ type FlaggedSkillProps = InferTelemetryProps<
 
 type StoppedSyncProps = InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC>;
 
+type ReviewedUpdateProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE
+>;
+
 type UpdateFoundProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND
 >;
@@ -171,6 +175,16 @@ export class SkillsTelemetry {
 	async updateFound(props: UpdateFoundProps) {
 		await this.safely(async () => {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND, props);
+		});
+	}
+
+	/** One accept or skip of an update, also a failed one. Update all sends one per skill. */
+	async reviewedUpdate(props: Omit<ReviewedUpdateProps, 'user_id'>, userId: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE, {
+				user_id: userId,
+				...props,
+			});
 		});
 	}
 
