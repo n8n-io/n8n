@@ -213,8 +213,11 @@ defineSlots<{
 		chips: AgentChatComposerChip[];
 		removeChip: (id: string) => void;
 	}) => unknown;
-	/** Controls at the start of the composer footer. */
-	'footer-start'?: () => unknown;
+	/**
+	 * Controls at the start of the composer footer. `disabled` is true while the
+	 * composer does not take input, as for the built-in attach button.
+	 */
+	'footer-start'?: (props: { disabled: boolean }) => unknown;
 	'composer-start'?: () => unknown;
 	/** Controls at the end of the composer footer, next to the send button. */
 	'composer-actions'?: () => unknown;
@@ -824,6 +827,8 @@ const hasDraft = computed(
 	() => inputText.value.trim().length > 0 || attachedFiles.value.length > 0,
 );
 const isPreparingToSend = ref(false);
+/** The composer takes no input while a send starts or a queued message moves back into it. */
+const isComposerBlocked = computed(() => isPreparingToSend.value || !!editingQueueId.value);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
@@ -1680,7 +1685,7 @@ onBeforeUnmount(() => {
 					:show-attach-button="false"
 					:accepted-mime-types="acceptedMimeTypes"
 					:can-submit="!isSubmissionBlocked && hasDraft"
-					:disabled="isPreparingToSend || !!editingQueueId"
+					:disabled="isComposerBlocked"
 					data-testid="chat-input"
 					@submit="onSubmit"
 					@stop="stopGenerating"
@@ -1768,13 +1773,13 @@ onBeforeUnmount(() => {
 								variant="ghost"
 								:icon="attachButtonIcon"
 								icon-size="large"
-								:disabled="isPreparingToSend || !!editingQueueId"
+								:disabled="isComposerBlocked"
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
 								data-test-id="chat-input-attach-button"
 								@click.stop="chatInput?.openFilePicker()"
 							/>
 						</N8nTooltip>
-						<slot name="footer-start" />
+						<slot name="footer-start" :disabled="isComposerBlocked" />
 					</template>
 					<template v-if="$slots['composer-actions']" #right-actions>
 						<slot name="composer-actions" />

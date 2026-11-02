@@ -4349,6 +4349,35 @@ describe('AgentChatPanel', () => {
 				);
 				expect(wrapper.find('[data-testid="host-footer"]').exists()).toBe(true);
 			});
+
+			it('disables the footer-start controls while a queued message moves back into the composer', async () => {
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'original',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				const removal = createDeferredPromise<string>();
+				removeQueuedMessageMock.mockReturnValueOnce(removal.promise);
+				const wrapper = mountPanel({}, undefined, {
+					'footer-start': (props) =>
+						h('button', { 'data-testid': 'host-menu', disabled: props.disabled }),
+				});
+				const hostMenu = () => wrapper.get('[data-testid="host-menu"]').element;
+
+				expect(hostMenu()).toHaveProperty('disabled', false);
+
+				await wrapper.get('[aria-label="generic.edit"]').trigger('click');
+				await flushPromises();
+				expect(hostMenu()).toHaveProperty('disabled', true);
+
+				removal.resolve('removed');
+				await flushPromises();
+				expect(hostMenu()).toHaveProperty('disabled', false);
+				wrapper.unmount();
+			});
 		});
 
 		describe('props', () => {
