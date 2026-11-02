@@ -420,6 +420,10 @@ jobs:
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
 
+      # Line-level selection reads the commit the impact map was built from.
+      - name: Fetch impact map commit
+        run: node packages/quality/testing/playwright/scripts/fetch-impact-map-commit.mjs
+
       - name: Generate shard matrix
         id: generate-matrix
         env:
