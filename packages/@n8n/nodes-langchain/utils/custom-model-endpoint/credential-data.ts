@@ -60,11 +60,11 @@ export type OpenAiCredentialData = {
 
 /** So a workflow already reaching a gateway through the OpenAI node keeps its credential. */
 export function readOpenAiCredential(data: OpenAiCredentialData): EndpointCredential {
-	const custom =
+	const custom: Record<string, string> =
 		data.header && data.headerName?.trim()
 			? { [data.headerName.trim()]: data.headerValue ?? '' }
 			: {};
-	const organization = data.organizationId?.trim()
+	const organization: Record<string, string> = data.organizationId?.trim()
 		? { 'OpenAI-Organization': data.organizationId.trim() }
 		: {};
 
