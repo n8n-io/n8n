@@ -20,17 +20,15 @@ export function supplySubExecutionResult(
 }
 
 /**
- * The sub-execution's result as the node receives it: every terminal step's items,
- * concatenated per output slot in the order the sub-execution reported them.
+ * Convert the result of the sub-execution into the appropriate output - the
+ * results of the terminal branches, concatenated.
  *
- * An item's own paired-item mark points into the sub-execution, at the input of the
- * node that produced it, and nothing here can follow it back to the sub-execution's
- * trigger. The marks are dropped, so the node pairs each item with its own
- * input by index instead.
+ * TODO(CET-617): trace paired items appropriately. For now, we fall back to
+ * per-index, so this breaks if the number of items differs from input to output.
  *
- * The last-run-only option keeps the last pass of each terminal node. v1 keeps
- * the last pass of the one node that ran last, so the two differ for a sub-execution
- * with several terminal branches, as the whole result does.
+ * TODO(CET-618): apply the child trigger's own "Items to Return" setting
+ * (triggers before 1.2 default to the last run only). Only the caller's
+ * option is applied today.
  */
 export function toSubWorkflowOutput(
 	result: SubExecutionResult,
