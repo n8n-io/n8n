@@ -87,7 +87,8 @@ export class LmChatOpenAi implements INodeType {
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
-		description: 'For advanced usage with an AI chain',
+		description:
+			'Run GPT models, with optional Responses API for web search, file search, and code execution',
 		defaults: {
 			name: 'OpenAI Chat Model',
 		},
