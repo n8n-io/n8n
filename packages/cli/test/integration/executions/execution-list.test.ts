@@ -6,7 +6,14 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { ExecutionSummaries, User } from '@n8n/db';
-import { ExecutionListRepository, ExecutionRepository, SharedWorkflowRepository } from '@n8n/db';
+import {
+	ExecutionListRepository,
+	ExecutionRepository,
+	SharedWorkflowRepository,
+	TransactionRunner,
+	WorkflowEntity,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ExecutionListItem } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
@@ -151,16 +158,83 @@ describe('editor execution visibility', () => {
 			workflowBooleanSettings: [{ key: 'availableInMCP', value: true }],
 		};
 		const workflows = Container.get(ExecutionListRepository);
-		expect(await workflows.findWorkflowIdsForExecutionList(query)).toEqual([workflow.id]);
-		expect(await workflows.findWorkflowIdsForExecutionList({ ...query, isArchived: true })).toEqual(
+		expect(await workflows.findWorkflowIdsForExecutionList(query, {})).toEqual([workflow.id]);
+		expect(
+			await workflows.findWorkflowIdsForExecutionList({ ...query, isArchived: true }, {}),
+		).toEqual([]);
+		expect(
+			await workflows.findWorkflowIdsForExecutionList(
+				{
+					...query,
+					workflowBooleanSettings: [{ key: 'availableInMCP', value: false }],
+				},
+				{},
+			),
+		).toEqual([]);
+	});
+});
+
+describe('execution list workflow reads', () => {
+	it('returns only the requested workflow ids and names', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createWorkflow({}, owner);
+
+		const workflows = Container.get(ExecutionListRepository);
+
+		expect(await workflows.findNamesForExecutionList([workflow.id, 'missing'], {})).toEqual([
+			{ id: workflow.id, name: workflow.name },
+		]);
+		expect(await workflows.findNamesForExecutionList([], {})).toEqual([]);
+		expect(await workflows.findNamesForExecutionList(['missing'], {})).toEqual([]);
+	});
+
+	it('returns no workflow ids without visibility options', async () => {
+		await createWorkflow({}, owner);
+		const workflows = Container.get(ExecutionListRepository);
+		const query: ExecutionSummaries.RangeQuery = { kind: 'range', range: { limit: 2 } };
+
+		expect(await workflows.findWorkflowIdsForExecutionList(query, {})).toEqual([]);
+		expect(await workflows.findWorkflowIdsForExecutionList({ ...query, user: owner }, {})).toEqual(
 			[],
 		);
-		expect(
-			await workflows.findWorkflowIdsForExecutionList({
-				...query,
-				workflowBooleanSettings: [{ key: 'availableInMCP', value: false }],
+	});
+
+	it('reads workflow ids and names through the transaction carried by ctx', async () => {
+		const workflow = await createWorkflow({ isArchived: true }, owner);
+		const sharingOptions =
+			await Container.get(ExecutionListService).buildSharingOptions('workflow:read');
+		const workflows = Container.get(ExecutionListRepository);
+		const query: ExecutionSummaries.RangeQuery = {
+			kind: 'range',
+			range: { limit: 2 },
+			user: owner,
+			sharingOptions,
+			workflowId: workflow.id,
+			isArchived: false,
+		};
+		const updatedName = 'Workflow renamed in transaction';
+		const rollback = new Error('Roll back workflow changes');
+
+		expect(await workflows.findWorkflowIdsForExecutionList(query, {})).toEqual([]);
+
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				await Container.get(WorkflowRepository)
+					.managerFor(ctx)
+					.update(WorkflowEntity, workflow.id, { isArchived: false, name: updatedName });
+
+				expect(await workflows.findWorkflowIdsForExecutionList(query, ctx)).toEqual([workflow.id]);
+				expect(await workflows.findNamesForExecutionList([workflow.id], ctx)).toEqual([
+					{ id: workflow.id, name: updatedName },
+				]);
+				throw rollback;
 			}),
-		).toEqual([]);
+		).rejects.toBe(rollback);
+
+		expect(await workflows.findWorkflowIdsForExecutionList(query, {})).toEqual([]);
+		expect(await workflows.findNamesForExecutionList([workflow.id], {})).toEqual([
+			{ id: workflow.id, name: workflow.name },
+		]);
 	});
 });
 

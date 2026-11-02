@@ -275,7 +275,7 @@ export class AgentBackgroundJobService {
 	/**
 	 * Store the binary output as files of the parent thread. Use the same nodes
 	 * as the job result: all nodes for a job that a stop request paused, else the last node. The job keeps the file list,
-	 * so the wake message and check_background_jobs can show the file IDs.
+	 * so the wake message and the background jobs check can show the file IDs.
 	 * The job also keeps the files that were too large to store, so the model
 	 * knows that they are missing. Each list is null when it is empty.
 	 * A storage error must not block the settle, so it logs and returns no files.

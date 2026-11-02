@@ -87,7 +87,7 @@ export const delegateSubAgentModeInputSchema = delegateSubAgentInputSchema.exten
 	planTask: planTaskRefSchema
 		.optional()
 		.describe(
-			'For background work in a plan, use the plan ID and leaf task ID from the latest plan snapshot. Children inherit their task.',
+			'For background work in a plan: planId is the plan ID and planTaskId is the id of a leaf task from the latest plan snapshot. Children inherit their task.',
 		),
 	mode: z
 		.enum(['foreground', 'background'])

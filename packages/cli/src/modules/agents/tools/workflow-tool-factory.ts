@@ -927,7 +927,7 @@ async function backgroundWaitingExecution(
 			jobId,
 			note:
 				`The "${reference.workflowName}" workflow is paused at a Wait node and now runs as background job ${jobId}.${continuesAt}` +
-				' Use check_background_jobs for the result and cancel_background_job to stop it. Do not start it again.',
+				' Use background_jobs with action "check" for the result and action "cancel" to stop it. Do not start it again.',
 		};
 	} catch (error) {
 		// A closed plan or a finished task rejects the job. The inline wait handles that case.
@@ -979,7 +979,7 @@ async function settleOutcomeUnknown(
 		jobId,
 		note: claimed
 			? EXECUTION_OUTCOME_UNKNOWN_ERROR
-			: `This run already settled as background job ${jobId} — use check_background_jobs for its outcome.`,
+			: `This run already settled as background job ${jobId} — use background_jobs with action "check" for its outcome.`,
 	};
 }
 
