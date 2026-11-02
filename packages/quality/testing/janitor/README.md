@@ -251,8 +251,9 @@ janitor test-run --full-task=test:unit --scoped-task=test:unit:changed \
 ```
 
 **Bailout triggers (force ALL packages):** root `package.json`, and
-`pnpm-lock.yaml` when `LOCKFILE_IMPACTED_PACKAGES` is not set. With it, a
-lockfile change forces only the packages whose resolved dependencies changed.
+`pnpm-lock.yaml` when `LOCKFILE_IMPACTED_PACKAGES` is empty or `ALL` (impact
+unknown). With a package list (or `NONE`), a lockfile change forces only the
+packages whose resolved dependencies changed.
 
 **Empty `CHANGED_FILES` means "no signal → run everything", not "nothing
 changed".** A `null`/empty value resolves to all packages (`affected-packages`)
@@ -309,7 +310,10 @@ dependencies. Anything else throws, so a typo cannot silently re-widen CI.
 **Global triggers force a full workspace run.** A lockfile or root-manifest
 change can affect any package, so it forces a full run everywhere. Scoping to
 "files in this package" would find nothing and emit `SKIP` on every package — a
-silent false green.
+silent false green. The lockfile is the exception when
+`LOCKFILE_IMPACTED_PACKAGES` lists the impacted packages (see the bailout
+triggers above). When the value is empty or `ALL`, the lockfile stays a global
+trigger.
 
 **Sink packages force a full run in their dependents.** An edit to a sink
 package (`packages/@n8n/db`, `packages/workflow`, `packages/core`,

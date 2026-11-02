@@ -142,4 +142,14 @@ describe('test-run', () => {
 			],
 		]);
 	});
+
+	it('runs the full task without --only when the dry run fails and there is no scoped task', () => {
+		const { run, deps: d } = deps({}, {});
+		d.dryRun.mockImplementation(() => {
+			throw new Error('turbo failed');
+		});
+
+		runTestRun(parseTestRunArgs(['--full-task=test:unit', '--filter=n8n', '--only']), d);
+		expect(run.mock.calls).toEqual([['test:unit', [], ['--filter=n8n'], []]]);
+	});
 });

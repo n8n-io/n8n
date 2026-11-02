@@ -151,7 +151,9 @@ export function runTestRun(args: TestRunArgs, deps: TestRunDeps): number {
 		// Without a plan, run what the job ran before: the scoped task if it has
 		// one (janitor still scopes each package), else the full task.
 		deps.log(`[janitor:test-run] could not plan (${(error as Error).message}), running unplanned`);
-		return deps.run(args.scopedTask ?? args.fullTask, args.turboFlags, args.filters, args.taskArgs);
+		return args.scopedTask
+			? deps.run(args.scopedTask, args.turboFlags, args.filters, args.taskArgs)
+			: deps.run(args.fullTask, fullFlags, args.filters, args.taskArgs);
 	}
 	deps.log(formatPlan(plan));
 
