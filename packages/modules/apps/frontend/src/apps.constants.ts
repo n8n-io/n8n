@@ -3,6 +3,7 @@ import type { ListAppsQueryDto } from '@n8n/api-types';
 export const APPS_LIST_VIEW = 'AppsListView';
 export const PROJECT_APPS = 'ProjectApps';
 export const APP_DETAIL_VIEW = 'AppDetailView';
+export const PENDING_APP_ID_STATE = 'instanceAiPendingAppId';
 
 export type AppViewTab = 'preview' | 'configure';
 

@@ -17,6 +17,18 @@ function guardProjectRoute(permission: 'canList' | 'canRead'): NavigationGuard {
 		};
 }
 
+const guardAppDetailRoute: NavigationGuard = (to) => {
+	if (typeof to.params.projectId === 'string') {
+		const permissions = getAppPermissions(to.params.projectId);
+		// A pending App uses this route before there is an App to read.
+		if (permissions.canRead || permissions.canCreate) return true;
+	}
+	return {
+		name: VIEWS.PROJECTS_WORKFLOWS,
+		params: { projectId: to.params.projectId },
+	};
+};
+
 export const AppsModule = defineFrontendModule({
 	id: 'apps',
 	name: 'Apps',
@@ -41,7 +53,7 @@ export const AppsModule = defineFrontendModule({
 			path: 'apps/:appId',
 			component: AppDetailView,
 			meta: { projectRoute: true, middleware: ['authenticated', 'custom'] },
-			beforeEnter: guardProjectRoute('canRead'),
+			beforeEnter: guardAppDetailRoute,
 		},
 	],
 	projectTabs: {

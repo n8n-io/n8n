@@ -28,7 +28,8 @@ export type ModuleComponentSlot =
 	| 'promotion-changes'
 	| 'project-header'
 	| 'insights-summary'
-	| 'resources-list-layout';
+	| 'resources-list-layout'
+	| 'instance-ai-app-chat';
 
 /**
  * The `v-model` value of the `project-filter` slot. `null` means "all projects".
@@ -78,11 +79,21 @@ export type SlotProjectHeaderMainButton =
 	| 'dataTable'
 	| 'variable'
 	| 'agent'
+	| 'app'
 	| 'selfHealing';
 
 export type SlotProjectHeaderProps = {
 	hasActiveCallouts?: boolean;
 	mainButton?: SlotProjectHeaderMainButton;
+};
+
+/** The App context passed to the shell-owned n8n Assistant panel. */
+export type SlotInstanceAiAppChatProps = {
+	projectId: string;
+	appId: string;
+	appName?: string;
+	pending?: boolean;
+	threadId?: string;
 };
 
 /** The search and filter values of the `resources-list-layout` slot. */

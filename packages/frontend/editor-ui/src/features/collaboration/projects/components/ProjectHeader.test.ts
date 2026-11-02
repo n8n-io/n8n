@@ -21,6 +21,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
+import { APP_DETAIL_VIEW, PENDING_APP_ID_STATE } from '@n8n/frontend-module-apps';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -70,6 +71,7 @@ const ProjectCreateResourceStub = {
 			<button data-test-id="action-workflow" @click="$emit('action', 'workflow')">Workflow</button>
 			<button data-test-id="action-dataTable" @click="$emit('action', 'dataTable')">Data Table</button>
 			<button data-test-id="action-agent" @click="$emit('action', 'agent')">Agent</button>
+			<button data-test-id="action-app" @click="$emit('action', 'app')">App</button>
 			<div data-test-id="add-resource-actions" >
 				<button v-for="action in $props.actions" :key="action.value" :data-test-id="'menu-' + action.value"></button>
 			</div>
@@ -683,6 +685,26 @@ describe('ProjectHeader', () => {
 	});
 
 	describe('mainButton prop', () => {
+		it('creates an app when app is the main action', async () => {
+			settingsStore.isAppsEnabled = true;
+			const project = createTestProject({ scopes: ['app:create'] });
+			projectsStore.currentProject = project;
+			projectsStore.personalProject = project;
+			const randomUuid = vi
+				.spyOn(crypto, 'randomUUID')
+				.mockReturnValue('11111111-1111-4111-8111-111111111111');
+			const { getByTestId } = renderComponent({ props: { mainButton: 'app' } });
+
+			await userEvent.click(getByTestId('add-resource-app'));
+
+			expect(mockPush).toHaveBeenCalledWith({
+				name: APP_DETAIL_VIEW,
+				params: { projectId: project.id, appId: '11111111-1111-4111-8111-111111111111' },
+				state: { [PENDING_APP_ID_STATE]: '11111111-1111-4111-8111-111111111111' },
+			});
+			randomUuid.mockRestore();
+		});
+
 		it('should render workflow button as main by default', () => {
 			const project = createTestProject({
 				scopes: ['workflow:create'],
