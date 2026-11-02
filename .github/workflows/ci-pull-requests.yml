@@ -40,6 +40,7 @@ jobs:
           || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
+      lint_base: ${{ steps.lint-base.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
@@ -56,6 +57,15 @@ jobs:
       - name: Capture commit SHA for cache consistency
         id: commit-sha
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Lint compares the checked-out commit against this base. On a PR it is the
+      # first parent of the merge commit. A merge group can hold more than one PR,
+      # so it uses the queue base.
+      - name: Resolve lint base
+        id: lint-base
+        env:
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        run: echo "sha=${MERGE_GROUP_BASE_SHA:-$(git rev-parse HEAD^1)}" >> "$GITHUB_OUTPUT"
 
       - name: Check for relevant changes
         uses: ./.github/actions/ci-filter
@@ -339,6 +349,7 @@ jobs:
     needs: [install-and-build, format-check]
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
+      affectedBase: ${{ needs.install-and-build.outputs.lint_base }}
 
   check-packaging:
     name: Check packaging

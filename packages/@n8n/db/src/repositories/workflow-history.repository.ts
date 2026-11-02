@@ -79,6 +79,19 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		});
 	}
 
+	/** The nodes of the given versions. A version that no longer exists is absent. */
+	async findNodesByVersionIds(
+		versionIds: string[],
+	): Promise<Array<Pick<WorkflowHistory, 'versionId' | 'nodes'>>> {
+		const versions: Array<Pick<WorkflowHistory, 'versionId' | 'nodes'>> = [];
+		for (const chunk of chunkIds(versionIds)) {
+			versions.push(
+				...(await this.find({ select: ['versionId', 'nodes'], where: { versionId: In(chunk) } })),
+			);
+		}
+		return versions;
+	}
+
 	async findVersionSummaries(
 		workflowId: string,
 		versionIds: string[],

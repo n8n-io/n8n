@@ -2,6 +2,7 @@ import {
 	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
@@ -16,6 +17,7 @@ import type {
 } from '@/modules/instance-ai/instance-context.service';
 
 import { createExecution } from '@test-integration/db/executions';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember } from '@test-integration/db/users';
 
 /** Instance AI: bound to the thread's own project. */
@@ -810,6 +812,77 @@ describe('InstanceContextService', () => {
 
 			expect(await service.list({ user, scope: mcp(false), limit: 20 })).toEqual([]);
 			expect(await service.list({ user, scope: mcp(), limit: 20 })).toHaveLength(1);
+		});
+	});
+
+	/**
+	 * The token flag only narrows a token. The run leg must also follow the caller's real
+	 * `execution:read` on each project, as the executions API and the conversation surface do.
+	 * A custom project role can grant `workflow:read` without it.
+	 */
+	describe('the MCP run leg', () => {
+		const baseScopes = ['workflow:read', 'workflow:list', 'project:read', 'project:list'];
+
+		/** A token with no tool allowlist, which grants the run leg by default. */
+		const mcpFor = (projectId?: string): InstanceContextScope => ({
+			surface: 'mcp',
+			credentialGranted: false,
+			executionGranted: true,
+			...(projectId ? { projectId } : {}),
+		});
+
+		async function seedProjectWithRole(scopeSlugs: string[]) {
+			const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'project' });
+			const member = await createMember();
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, role.slug);
+
+			const workflow = await createWorkflow(
+				{ name: 'Invoice sync', settings: { availableInMCP: true } },
+				teamProject,
+			);
+			const failed = await createExecution({ status: 'error', stoppedAt: recently() }, workflow);
+
+			return { member, teamProject, workflow, failed };
+		}
+
+		it.each([
+			['across every readable project', false],
+			['for a named project', true],
+		])(
+			'omits run summaries %s when the caller lacks execution:read',
+			async (_label, namesProject) => {
+				const { member, teamProject, failed } = await seedProjectWithRole(baseScopes);
+
+				const built = await service.buildBlock({
+					enabled: true,
+					user: member,
+					scope: mcpFor(namesProject ? teamProject.id : undefined),
+					cursor: null,
+				});
+
+				const block = blockOf(built);
+				// The inventory leg rides on `workflow:read`, so the block is still built.
+				expect(block).toContain('Invoice sync');
+				// The run leg is execution data and needs `execution:read`.
+				expect(block).not.toContain('ran 1×');
+				expect(block).not.toContain(`execution:${failed.id}`);
+			},
+		);
+
+		it('still shows run summaries when the role also grants execution:read', async () => {
+			const { member, failed } = await seedProjectWithRole([...baseScopes, 'execution:read']);
+
+			const built = await service.buildBlock({
+				enabled: true,
+				user: member,
+				scope: mcpFor(),
+				cursor: null,
+			});
+
+			const block = blockOf(built);
+			expect(block).toContain('ran 1×, 1 failed');
+			expect(block).toContain(`execution:${failed.id}`);
 		});
 	});
 

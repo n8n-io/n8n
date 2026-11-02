@@ -1,4 +1,4 @@
-import type { InstanceAiThreadTabsState } from '@n8n/api-types';
+import type { AssistantThreadTabsState } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -21,7 +21,7 @@ export class InstanceAiThreadTabsRepository extends BaseRepository<InstanceAiThr
 	async saveState(
 		threadId: string,
 		userId: string,
-		state: InstanceAiThreadTabsState,
+		state: AssistantThreadTabsState,
 	): Promise<void> {
 		await this.upsert({ threadId, userId, state, updatedAt: new Date() }, ['threadId', 'userId']);
 	}
@@ -33,7 +33,7 @@ export class InstanceAiThreadTabsRepository extends BaseRepository<InstanceAiThr
 	async updateState(
 		threadId: string,
 		userId: string,
-		update: (stored: unknown) => InstanceAiThreadTabsState | null,
+		update: (stored: unknown) => AssistantThreadTabsState | null,
 	): Promise<void> {
 		await this.runInTransaction({}, async (manager) => {
 			const repository = manager.getRepository(InstanceAiThreadTabs);

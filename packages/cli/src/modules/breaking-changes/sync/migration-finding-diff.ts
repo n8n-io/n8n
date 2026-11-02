@@ -16,7 +16,13 @@ export interface MigrationFindingDiffInput {
 	targetVersion: BreakingChangeVersion;
 	/** The workflows in this batch. Hits and rows for other workflows are ignored. */
 	workflowIds: string[];
+	/** Hits in the latest version of each workflow. */
 	hits: MigrationFindingHit[];
+	/**
+	 * Hits in the published version, for workflows whose latest version is ahead of
+	 * it. A workflow absent here has nothing published, or the same version published.
+	 */
+	publishedHits?: MigrationFindingHit[];
 	existing: MigrationFinding[];
 	/**
 	 * Pairs this run did not decide: the rule check threw, or the rule is out of
@@ -29,6 +35,7 @@ export interface MigrationFindingDiffInput {
 export interface MigrationFindingDiff {
 	toInsert: NewMigrationFinding[];
 	toMarkFixed: MigrationFindingId[];
+	toMarkFixedUnpublished: MigrationFindingId[];
 	toReopen: MigrationFindingId[];
 }
 
@@ -39,28 +46,39 @@ const hitKey = (ruleId: string, workflowId: string) => `${ruleId}\u0000${workflo
 
 /**
  * Compares the scan hits for one batch of workflows with the stored findings.
- * Only `open`, `notified`, `wont_fix` and `fixed` rows take part. An `open`,
- * `notified` or `wont_fix` row without a hit is marked fixed, so a won't fix
- * choice does not outlive the issue. A `fixed` row with a hit is reopened. Rows
- * in any other status stay as they are. A pair listed in `unknown` is never
- * inserted, marked fixed, or reopened: a missing hit there means the pair was
- * not decided, not that the workflow is clean. The other rules on the same
- * workflow are handled as usual.
+ * A hit in the latest version means the finding is open: a new pair is inserted,
+ * and a `fixed` or `fixed_unpublished` row is reopened. Without that hit, the
+ * finding is `fixed_unpublished` while the published version still has the hit,
+ * and `fixed` otherwise. A `wont_fix` row stays as it is while the published
+ * version has the hit, and becomes `fixed` once no version has it, so a won't
+ * fix choice does not outlive the issue. A pair that only the published version
+ * hits is inserted as `fixed_unpublished`. A pair listed in `unknown` is never
+ * inserted or changed: a missing hit there means the pair was not decided, not
+ * that the workflow is clean. The other rules on the same workflow are handled as usual.
  */
-const RESOLVABLE_STATUSES = new Set<MigrationFindingStatus>(['open', 'notified', 'wont_fix']);
+const RESOLVED_STATUSES = new Set<MigrationFindingStatus>(['fixed', 'fixed_unpublished']);
 
 export function diffMigrationFindings(input: MigrationFindingDiffInput): MigrationFindingDiff {
-	const { targetVersion, hits, existing, unknown = [] } = input;
+	const { targetVersion, hits, publishedHits = [], existing, unknown = [] } = input;
 	const batchWorkflowIds = new Set(input.workflowIds);
 
 	const unknownKeys = new Set(unknown.map((pair) => hitKey(pair.ruleId, pair.workflowId)));
 
-	const hitKeys = new Set<string>();
-	for (const hit of hits) {
-		if (batchWorkflowIds.has(hit.workflowId)) hitKeys.add(hitKey(hit.ruleId, hit.workflowId));
-	}
+	const keysInBatch = (pairs: MigrationFindingHit[]) =>
+		new Set(
+			pairs
+				.filter((pair) => batchWorkflowIds.has(pair.workflowId))
+				.map((pair) => hitKey(pair.ruleId, pair.workflowId)),
+		);
+	const hitKeys = keysInBatch(hits);
+	const publishedHitKeys = keysInBatch(publishedHits);
 
-	const diff: MigrationFindingDiff = { toInsert: [], toMarkFixed: [], toReopen: [] };
+	const diff: MigrationFindingDiff = {
+		toInsert: [],
+		toMarkFixed: [],
+		toMarkFixedUnpublished: [],
+		toReopen: [],
+	};
 	const seenKeys = new Set<string>();
 
 	for (const row of existing) {
@@ -69,18 +87,31 @@ export function diffMigrationFindings(input: MigrationFindingDiffInput): Migrati
 		const key = hitKey(row.ruleId, row.workflowId);
 		seenKeys.add(key);
 		if (unknownKeys.has(key)) continue;
-		const isHit = hitKeys.has(key);
 
-		if (RESOLVABLE_STATUSES.has(row.status) && !isHit) diff.toMarkFixed.push(row.id);
-		if (row.status === 'fixed' && isHit) diff.toReopen.push(row.id);
+		if (hitKeys.has(key)) {
+			if (RESOLVED_STATUSES.has(row.status)) diff.toReopen.push(row.id);
+		} else if (publishedHitKeys.has(key)) {
+			if (row.status !== 'fixed_unpublished' && row.status !== 'wont_fix') {
+				diff.toMarkFixedUnpublished.push(row.id);
+			}
+		} else if (row.status !== 'fixed') {
+			diff.toMarkFixed.push(row.id);
+		}
 	}
 
-	for (const hit of hits) {
+	for (const hit of [...hits, ...publishedHits]) {
 		const key = hitKey(hit.ruleId, hit.workflowId);
-		if (!hitKeys.has(key) || seenKeys.has(key) || unknownKeys.has(key)) continue;
+		if (!batchWorkflowIds.has(hit.workflowId) || seenKeys.has(key) || unknownKeys.has(key)) {
+			continue;
+		}
 
 		seenKeys.add(key);
-		diff.toInsert.push({ targetVersion, ruleId: hit.ruleId, workflowId: hit.workflowId });
+		diff.toInsert.push({
+			targetVersion,
+			ruleId: hit.ruleId,
+			workflowId: hit.workflowId,
+			status: hitKeys.has(key) ? 'open' : 'fixed_unpublished',
+		});
 	}
 
 	return diff;

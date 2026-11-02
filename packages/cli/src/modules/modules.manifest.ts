@@ -15,4 +15,5 @@ export const packagedModules: PackagedModules = {
 		Container.set(AppSandboxSettings, { resolve: resolveAppSandboxConfig });
 		return await import('@n8n/backend-module-apps/module');
 	},
+	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
 };

@@ -13,7 +13,7 @@ import { ForbiddenError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';

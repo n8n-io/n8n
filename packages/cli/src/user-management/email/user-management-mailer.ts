@@ -2,7 +2,7 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
-import { PersonRepository } from '@n8n/db';
+import { accountFirstName, PersonRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
 import { existsSync } from 'fs';
@@ -387,7 +387,7 @@ export class UserManagementMailer {
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
 			}),
-			subjectBuilder: () => `${sharer.firstName} has shared an n8n workflow with you`,
+			subjectBuilder: () => `${accountFirstName(sharer)} has shared an n8n workflow with you`,
 			messageType: 'Workflow shared',
 		});
 	}
@@ -412,7 +412,7 @@ export class UserManagementMailer {
 				credentialsName,
 				credentialsListUrl: `${baseUrl}/home/credentials`,
 			}),
-			subjectBuilder: () => `${sharer.firstName} has shared an n8n credential with you`,
+			subjectBuilder: () => `${accountFirstName(sharer)} has shared an n8n credential with you`,
 			messageType: 'Credentials shared',
 		});
 	}
@@ -450,7 +450,7 @@ export class UserManagementMailer {
 				projectName: project.name,
 				projectUrl: `${baseUrl}/projects/${project.id}`,
 			}),
-			subjectBuilder: () => `${sharer.firstName} has invited you to a project`,
+			subjectBuilder: () => `${accountFirstName(sharer)} has invited you to a project`,
 			messageType: 'Project shared',
 		});
 	}

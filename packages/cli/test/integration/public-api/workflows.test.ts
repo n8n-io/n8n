@@ -10,7 +10,7 @@ import {
 	linkUserToProject,
 	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig, NodesConfig } from '@n8n/config';
+import { EngineConfig, GlobalConfig, NodesConfig } from '@n8n/config';
 import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import {
 	WorkflowRepository,
@@ -2271,6 +2271,7 @@ describe('POST /workflows', () => {
 	});
 
 	test('should create workflow', async () => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			nodes: [
@@ -2375,6 +2376,7 @@ describe('POST /workflows', () => {
 		{ key: 'engineType', value: 'v2' },
 		{ key: 'credentialResolverId', value: 'some-resolver-id' },
 	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const payload = {
 			...mockPostWorkflowPayload(),
 			settings: {
