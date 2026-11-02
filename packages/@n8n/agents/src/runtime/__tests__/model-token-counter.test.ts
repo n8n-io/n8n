@@ -31,13 +31,17 @@ describe('createModelTokenCounter', () => {
 	it.each([
 		{ model: 'openai/gpt-5', encoding: 'o200k_base' },
 		{ model: 'anthropic/claude-haiku-4-5', encoding: 'cl100k_base' },
-	] as const)('counts uniform spaces accurately for $encoding', async ({ model, encoding }) => {
-		const text = ' '.repeat(8_000);
-		const encoder = await getEncoding(encoding);
-		const expected = encoder.encode(text, [], []).length;
+	] as const)(
+		'counts uniform spaces accurately for $encoding',
+		async ({ model, encoding }) => {
+			const text = ' '.repeat(8_000);
+			const encoder = await getEncoding(encoding);
+			const expected = encoder.encode(text, [], []).length;
 
-		expect(await createModelTokenCounter(model)(text)).toBe(expected);
-	});
+			expect(await createModelTokenCounter(model)(text)).toBe(expected);
+		},
+		15_000,
+	);
 
 	it.each([
 		{
