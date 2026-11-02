@@ -42,9 +42,8 @@ function makePlan(
 	};
 }
 
-const enterprise = makePlan('enterprise', 'Enterprise', -2, true);
 // Shaped like production: neither product carries `terms`.
-const unmarkedEnterprise = makePlan('enterprise', 'Enterprise', -2, undefined);
+const enterprise = makePlan('enterprise', 'Enterprise', -2, undefined);
 const registeredCommunity = makePlan('registered-community', 'Registered Community', -1, undefined);
 
 /** Mocks the active entitlements and the SDK's merged feature value, where the newest entitlement wins. */
@@ -318,7 +317,7 @@ describe('License', () => {
 			expect(license.isEnterprisePlan()).toBe(false);
 		});
 
-		it('returns true for an Enterprise main plan with a newer Registered Community entitlement', () => {
+		it('returns true for Enterprise with a newer Registered Community entitlement', () => {
 			mockEntitlements(license, [enterprise, registeredCommunity]);
 
 			expect(license.isEnterprisePlan()).toBe(true);
@@ -326,38 +325,59 @@ describe('License', () => {
 	});
 
 	describe('getPlanName', () => {
-		it('uses the main plan over a newer entitlement that is not a main plan', () => {
+		it('uses the paid plan over a newer Registered Community entitlement', () => {
 			mockEntitlements(license, [enterprise, registeredCommunity]);
 
 			expect(license.getPlanName()).toBe('Enterprise');
 		});
 
-		it('uses the newest main plan when there are several', () => {
-			const business = makePlan('business', 'Business', -3, true);
-			mockEntitlements(license, [business, enterprise]);
+		it('uses the newest paid plan when there are several', () => {
+			const business = makePlan('business', 'Business', -3, undefined);
+			mockEntitlements(license, [business, enterprise, registeredCommunity]);
 
 			expect(license.getPlanName()).toBe('Enterprise');
 		});
 
-		it('uses the only entitlement', () => {
+		it('uses a newer unmarked paid plan over an older marked main plan', () => {
+			const startup = makePlan('startup', 'Startup', -3, true);
+			mockEntitlements(license, [startup, enterprise, registeredCommunity]);
+
+			expect(license.getPlanName()).toBe('Enterprise');
+		});
+
+		it('uses the only entitlement when it is marked as a main plan', () => {
 			mockEntitlements(license, [makePlan('business', 'Business', -1, true)]);
 
 			expect(license.getPlanName()).toBe('Business');
 		});
 
-		it('falls back to the merged plan name when there is no main plan', () => {
+		it('matches Registered Community regardless of case', () => {
+			const lowercase = makePlan('rc', 'registered community', -1, undefined);
+			mockEntitlements(license, [enterprise, lowercase]);
+
+			expect(license.getPlanName()).toBe('Enterprise');
+		});
+
+		it('ignores a newer add-on that is explicitly not a main plan', () => {
+			const ldapBeta = makePlan('ldap-beta', 'LDAP beta', -1, false);
+			mockEntitlements(license, [enterprise, ldapBeta]);
+
+			expect(license.getPlanName()).toBe('Enterprise');
+		});
+
+		it('skips an entitlement that names no plan', () => {
+			mockEntitlements(license, [makePlan('unnamed', undefined, -2, true), registeredCommunity]);
+
+			expect(license.getPlanName()).toBe('Registered Community');
+		});
+
+		it('falls back to the merged plan name when only Registered Community is active', () => {
 			mockEntitlements(license, [registeredCommunity]);
 
 			expect(license.getPlanName()).toBe('Registered Community');
 		});
 
-		it('falls back to the merged plan name when the main plan has no plan name', () => {
-			mockEntitlements(license, [makePlan('main', undefined, -2, true), registeredCommunity]);
-
-			expect(license.getPlanName()).toBe('Registered Community');
-		});
-
-		it('prefers the main plan feature override', () => {
+		it('prefers the feature override of the plan entitlement', () => {
 			const overridden = { ...enterprise, featureOverrides: { planName: 'Enterprise Trial' } };
 			mockEntitlements(license, [overridden, registeredCommunity]);
 
@@ -382,36 +402,6 @@ describe('License', () => {
 
 			expect(license.getPlanName()).toBe('Community');
 			expect(license.isEnterprisePlan()).toBe(false);
-		});
-
-		describe('when no product is marked as a main plan', () => {
-			it('uses the paid plan over a newer Registered Community entitlement', () => {
-				mockEntitlements(license, [unmarkedEnterprise, registeredCommunity]);
-
-				expect(license.getPlanName()).toBe('Enterprise');
-				expect(license.isEnterprisePlan()).toBe(true);
-			});
-
-			it('uses the newest paid plan when there are several', () => {
-				const business = makePlan('business', 'Business', -3, undefined);
-				mockEntitlements(license, [business, unmarkedEnterprise, registeredCommunity]);
-
-				expect(license.getPlanName()).toBe('Enterprise');
-			});
-
-			it('matches Registered Community regardless of case', () => {
-				const lowercase = makePlan('rc', 'registered community', -1, undefined);
-				mockEntitlements(license, [unmarkedEnterprise, lowercase]);
-
-				expect(license.getPlanName()).toBe('Enterprise');
-			});
-
-			it('ignores a newer add-on that is explicitly not a main plan', () => {
-				const ldapBeta = makePlan('ldap-beta', 'LDAP beta', -1, false);
-				mockEntitlements(license, [unmarkedEnterprise, ldapBeta]);
-
-				expect(license.getPlanName()).toBe('Enterprise');
-			});
 		});
 
 		describe('plan name mismatch log', () => {
@@ -446,17 +436,6 @@ describe('License', () => {
 						planEntitlementId: 'enterprise',
 						overridingEntitlementIds: ['registered-community'],
 					},
-				);
-			});
-
-			it('logs when the plan comes from the fallback', () => {
-				mockEntitlements(license, [unmarkedEnterprise, registeredCommunity]);
-
-				license.getPlanName();
-
-				expect(logger.info).toHaveBeenCalledWith(
-					'License has another active entitlement that names a different plan',
-					expect.objectContaining({ planName: 'Enterprise', planEntitlementId: 'enterprise' }),
 				);
 			});
 

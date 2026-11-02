@@ -472,7 +472,9 @@ export class License implements LicenseProvider {
 
 		entitlements.sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime());
 
-		return entitlements.find((entitlement) => isMainPlanFlag(entitlement));
+		return entitlements.find(
+			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
+		);
 	}
 
 	getConsumerId() {
@@ -534,18 +536,16 @@ export class License implements LicenseProvider {
 	}
 
 	/**
-	 * The main plan if there is one. Sales-led products such as Enterprise and Business are not
-	 * marked as main plans, so otherwise the newest entitlement that names a plan and is not an add-on.
+	 * The newest entitlement that names a plan and is not an add-on. Sales-led products such as
+	 * Enterprise are not marked as main plans, so a marked plan must not outrank a newer unmarked one.
 	 */
 	private getPlanEntitlement(): TEntitlement | undefined {
-		const mainPlan = this.getMainPlan();
-		if (mainPlan) return mainPlan;
-
 		return this.getCurrentEntitlements()
 			.filter((entitlement) => {
 				const planName = entitlementPlanName(entitlement);
 				return (
 					planName !== undefined &&
+					// TODO(LIC-230): Drop the name check once sales-led products are marked as main plans.
 					planName.toLowerCase() !== REGISTERED_COMMUNITY_PLAN_NAME &&
 					isMainPlanFlag(entitlement) !== false
 				);
