@@ -13,6 +13,7 @@ model configuration, and model output.
 - `llm-output`
 - `model-discovery`
 - `node-catalog`
+- `refreshing-auth-fetch`
 - `text-editor`
 - `tokenizer`
 - `web-search`

@@ -19,6 +19,8 @@ import {
 	type SharedWorkflowRepository,
 	type TagRepository,
 	type WorkflowTagMappingRepository,
+	type Person,
+	type PersonRepository,
 	User,
 	type UserRepository,
 	WorkflowEntity,
@@ -30,6 +32,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
+import { mockServiceAccount } from '@test/mock-objects';
 
 vi.mock('node:fs/promises');
 import type { Mock } from 'vitest';
@@ -72,6 +75,7 @@ describe('SourceControlImportService', () => {
 	const tagRepository = mock<TagRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const credentialsRepositoryManager = mock<EntityManager>();
 	const credentialsRepository = mock<CredentialsRepository>({
 		manager: credentialsRepositoryManager,
@@ -124,6 +128,7 @@ describe('SourceControlImportService', () => {
 		sharedWorkflowRepository,
 		sharedCredentialsRepository,
 		userRepository,
+		personRepository,
 		variablesRepository,
 		workflowRepository,
 		workflowTagMappingRepository,
@@ -609,6 +614,37 @@ describe('SourceControlImportService', () => {
 				expect.any(Object),
 			);
 			expect(result).toEqual([{ id: 'wf2', name: '/mock/wf2.json' }]);
+		});
+
+		it('should name a service account by its name in the history authors', async () => {
+			const candidates = [mock<SourceControlledFile>({ file: '/mock/wf1.json', id: 'wf1' })];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsertImportedContent.mockResolvedValue('wf1');
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'wf1',
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					versionId: 'v1',
+				}),
+			);
+			userRepository.findOne.mockResolvedValue(mockServiceAccount({ id: 'service-1' }));
+			workflowHistoryService.findVersion.mockResolvedValue(null);
+
+			await service.importWorkflowFromWorkFolder(candidates, 'service-1');
+
+			expect(workflowHistoryService.saveVersion).toHaveBeenCalledWith(
+				'import by Deploy bot',
+				expect.anything(),
+				'wf1',
+			);
 		});
 
 		it('should set new workflows as inactive', async () => {
@@ -4408,7 +4444,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('resolves a known personal owner to their personal project', async () => {
-			userRepository.findOne.mockResolvedValue({ id: 'user1' } as any);
+			personRepository.findByEmail.mockResolvedValue(mock<Person>({ id: 'user1' }));
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'pp1' } as any);
 
 			await expect(
@@ -4421,7 +4457,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it("falls back to the pulling user's personal project for an unknown personal owner", async () => {
-			userRepository.findOne.mockResolvedValue(null);
+			personRepository.findByEmail.mockResolvedValue(null);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
 				id: 'pp-puller',
 			} as any);

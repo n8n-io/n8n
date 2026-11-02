@@ -503,6 +503,11 @@ export class License implements LicenseProvider {
 		return this.getValue('planName') ?? 'Community';
 	}
 
+	/** Uses `getPlanName()` so that overrides of it, such as in E2E mode, also apply. */
+	isEnterprisePlan(): boolean {
+		return this.getPlanName() === 'Enterprise';
+	}
+
 	getExpiryDate(): Date | null {
 		try {
 			return this.manager?.getExpiryDate() ?? null;

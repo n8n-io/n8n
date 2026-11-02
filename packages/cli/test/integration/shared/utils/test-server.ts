@@ -5,6 +5,7 @@ import type { APIRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import type { Server } from 'node:http';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -50,10 +51,10 @@ function prefix(pathSegment: string) {
 
 const browserId = 'test-browser-id';
 function createAgent(
-	app: express.Application,
+	target: express.Application | Server,
 	options?: { auth: boolean; user?: User; noRest?: boolean },
 ) {
-	const agent = request.agent(app);
+	const agent = request.agent(target);
 
 	const withRestSegment = !options?.noRest;
 
@@ -75,7 +76,7 @@ const userDoesNotHaveApiKey = (user: User) => {
 };
 
 const publicApiAgent = (
-	app: express.Application,
+	target: express.Application | Server,
 	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
 ) => {
 	if (user && apiKey) {
@@ -88,15 +89,19 @@ const publicApiAgent = (
 
 	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
 
-	const agent = request.agent(app);
+	const agent = request.agent(target);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
 	if (!user && !apiKey) return agent;
 	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
 };
 
-const publicApiAgentWithCookie = (app: express.Application, user: User, version = 1) => {
-	const agent = request.agent(app);
+const publicApiAgentWithCookie = (
+	target: express.Application | Server,
+	user: User,
+	version = 1,
+) => {
+	const agent = request.agent(target);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
 	// browser-id is needed for session cookie auth
 	void agent.use(async (req: superagent.SuperAgentRequest) => {
@@ -114,6 +119,7 @@ export const setupTestServer = ({
 	quotas,
 	modules,
 	setupTimeout,
+	reuseServer,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -135,16 +141,18 @@ export const setupTestServer = ({
 	mockInstance(Push);
 	mockInstance(Telemetry);
 
+	const httpServer = app.listen(0);
+	const target = reuseServer ? httpServer : app;
 	const testServer: TestServer = {
 		app,
-		httpServer: app.listen(0),
-		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
-		authlessAgent: createAgent(app),
-		restlessAgent: createAgent(app, { auth: false, noRest: true }),
-		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
-		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
-		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
-		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user),
+		httpServer,
+		authAgentFor: (user: User) => createAgent(target, { auth: true, user }),
+		authlessAgent: createAgent(target),
+		restlessAgent: createAgent(target, { auth: false, noRest: true }),
+		publicApiAgentFor: (user) => publicApiAgent(target, { user }),
+		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(target, { apiKey }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(target, {}),
+		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(target, user),
 		license: new LicenseMocker(),
 	};
 

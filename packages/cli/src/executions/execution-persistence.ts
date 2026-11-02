@@ -459,22 +459,6 @@ export class ExecutionPersistence {
 	}
 
 	/**
-	 * Like {@link findMultipleExecutions}, but also returns the ids of executions whose data
-	 * bundle could not be read. The plain read drops those silently; callers that must act on
-	 * them (rather than skip them) use this.
-	 */
-	async findMultipleExecutionsWithUnreadable(
-		queryParams: FindManyOptions<ExecutionEntity>,
-	): Promise<{ executions: IExecutionResponse[]; unreadableIds: string[] }> {
-		const { executions, unreadableIds } = await this.readMultiple(queryParams, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		return { executions: executions as IExecutionResponse[], unreadableIds };
-	}
-
-	/**
 	 * Read entities together with their data bundles, reporting which entities had no readable
 	 * bundle. An id lands in `unreadableIds` only on permanent loss - a missing bundle or a
 	 * corrupt one - since transient store failures propagate as throws instead.
@@ -759,32 +743,20 @@ export class ExecutionPersistence {
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {
-			const executions = await this.executionRepository.find({
-				select: ['id', 'workflowId', 'storedAt'],
-				where: { workflowId },
-				take: ExecutionPersistence.bulkDeletionBatchSize,
-				withDeleted: true, // sweep soft-deleted executions too, or they'd be left to the FK cascade
-			});
-
-			if (executions.length === 0) return;
-
-			await this.hardDelete(
-				executions.map((execution) => ({
-					executionId: execution.id,
-					workflowId: execution.workflowId,
-					storedAt: execution.storedAt,
-				})),
+			// Soft-deleted executions are swept too, or they'd be left to the FK cascade.
+			const targets = await this.executionRepository.findForDeletionByWorkflowId(
+				workflowId,
+				ExecutionPersistence.bulkDeletionBatchSize,
 			);
+
+			if (targets.length === 0) return;
+
+			await this.hardDelete(targets);
 		}
 
 		// The loop may have converged exactly on its last allowed batch - only
 		// fail if executions actually remain.
-		const remaining = await this.executionRepository.find({
-			select: ['id'],
-			where: { workflowId },
-			take: 1,
-			withDeleted: true,
-		});
+		const remaining = await this.executionRepository.findForDeletionByWorkflowId(workflowId, 1);
 		if (remaining.length === 0) return;
 
 		throw new UnexpectedError(

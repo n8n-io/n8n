@@ -1,6 +1,8 @@
 import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
+import { buildWorkflowViaMcp } from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
+import { fetchAgentScenarioContext } from '../harness/agent-execution';
 import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import {
 	leakHaystackFor,
@@ -17,6 +19,8 @@ import {
 	type LaneState,
 } from '../run/build-orchestrator';
 import { LaneAllocator } from '../run/lane-allocator';
+import type { LaneUserPool } from '../run/lane-users';
+import { prepareMcpBuildSeed, type McpBuildSeed } from '../run/mcp-seed';
 import type { WorkflowTestCase } from '../types';
 
 // Characterization tests for the build phase extracted in TRUST-261: cache
@@ -55,6 +59,22 @@ vi.mock('../harness/credential-setup-checks', async (importOriginal) => ({
 
 vi.mock('../harness/artifacts/artifact-context', () => ({
 	resolveArtifactContext: vi.fn().mockResolvedValue('RESOLVED ARTIFACTS'),
+}));
+
+vi.mock('../cli/mcp-builder', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../cli/mcp-builder')>()),
+	buildWorkflowViaMcp: vi.fn(),
+	stageLaneMcpConfig: vi.fn().mockReturnValue('/tmp/mcp-config.json'),
+	unlinkStagedMcpConfig: vi.fn(),
+}));
+
+vi.mock('../run/mcp-seed', () => ({ prepareMcpBuildSeed: vi.fn() }));
+
+vi.mock('../run/lane-users', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../run/lane-users')>()),
+	provisionCaseBuildUser: vi
+		.fn()
+		.mockResolvedValue({ mcpApiKey: 'mcp-api-key', userId: 'member-user' }),
 }));
 
 vi.mock('../build-expectations/verifier', async (importOriginal) => {
@@ -758,6 +778,293 @@ describe('createBuildOrchestrator', () => {
 		await expect(deps.buildExpectationsByKey.get('0:case-a')).resolves.toEqual([
 			{ expectation: 'sends a digest', pass: true, reason: 'ok' },
 		]);
+	});
+});
+
+describe('MCP builds', () => {
+	it('grades an Agent from create_agent as the build, with no workflow', async () => {
+		const transcript = [{ userMessage: 'build a clinic chatbot', steps: [] }];
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: null,
+			agent: { id: 'agent-1', projectId: 'project-1' },
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			transcript,
+		});
+		const lane = makeLane(1, vi.fn());
+		lane.runner.buildUserPool = {} as LaneUserPool;
+		const deps = makeDeps([lane], {
+			args: { buildViaMcp: true, timeoutMs: 900_000, keepWorkflows: false } as CliArgs,
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(true);
+		expect(build.workflowId).toBeUndefined();
+		expect(build.artifactRefs).toEqual([{ type: 'agent', id: 'agent-1', projectId: 'project-1' }]);
+		expect(build.transcript).toBe(transcript);
+		expect(vi.mocked(fetchAgentScenarioContext)).toHaveBeenCalledWith(
+			lane.runner.client,
+			{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			expect.anything(),
+		);
+		expect(deps.agentContextByKey.has('0:case-a')).toBe(true);
+	});
+});
+
+describe('seeded MCP builds', () => {
+	const seeded = (overrides: Partial<McpBuildSeed> = {}): McpBuildSeed => ({
+		threadId: 'seed-thread',
+		conversation: [{ role: 'user', text: 'It broke again' }],
+		openingPrefix: 'EARLIER',
+		openingNote: '[attached workflow: Order sync]',
+		openingSuffix: 'TABLES',
+		transcriptPrefix: [{ userMessage: 'Build an order sync', steps: [], seeded: true }],
+		workflowIds: ['wf-seed'],
+		agentRefs: [],
+		scenarioTableIdsByName: { orders: 'dt-1' },
+		projectIds: ['project-1'],
+		...overrides,
+	});
+
+	const mcpLane = () => {
+		const lane = makeLane(1, vi.fn());
+		lane.runner.buildUserPool = {} as LaneUserPool;
+		Object.assign(lane.runner.client, {
+			getWorkflow: vi.fn().mockResolvedValue({ id: 'wf-seed', name: 'Order sync' }),
+		});
+		return lane;
+	};
+
+	const mcpDeps = (lane: LaneState) =>
+		makeDeps([lane], {
+			args: { buildViaMcp: true, timeoutMs: 900_000, keepWorkflows: false } as CliArgs,
+		});
+
+	it('hands the seed to claude and grades the seeded history with the live turns', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(seeded({ priorRunFailed: 'wf: boom' }));
+		const live = [{ userMessage: '[attached workflow: Order sync] It broke again', steps: [] }];
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: 'wf-seed',
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			transcript: live,
+		});
+		const seed = { mode: 'replay' as const, threadId: 'thread-1' };
+		const deps = mcpDeps(mcpLane());
+		deps.testCaseByFileSlug.set('case-a', baseCase({ seed }));
+		const orchestrator = createBuildOrchestrator(deps);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(prepareMcpBuildSeed)).toHaveBeenCalledWith(
+			expect.objectContaining({ seed, memberUserId: 'member-user' }),
+		);
+		expect(vi.mocked(buildWorkflowViaMcp)).toHaveBeenCalledWith(
+			expect.objectContaining({
+				conversation: [{ role: 'user', text: 'It broke again' }],
+				openingMessagePrefix: 'EARLIER',
+				openingNote: '[attached workflow: Order sync]',
+				openingMessageSuffix: 'TABLES',
+				seededWorkflowIds: ['wf-seed'],
+			}),
+		);
+		expect(build.success).toBe(true);
+		expect(build.transcript).toEqual([
+			{ userMessage: 'Build an order sync', steps: [], seeded: true },
+			...live,
+		]);
+		expect(build.seedThreadId).toBe('seed-thread');
+		expect(build.seededScenarioTableIdsByName).toEqual({ orders: 'dt-1' });
+		expect(build.createdProjectIds).toEqual(['project-1']);
+		expect(build.priorRunFailed).toBe('wf: boom');
+	});
+
+	it('does not grade a seeded Agent when the claude run failed', async () => {
+		const agentRef = { type: 'agent' as const, id: 'agent-seed', projectId: 'member-project' };
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(
+			seeded({ workflowIds: [], agentRefs: [agentRef] }),
+		);
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: null,
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			failureReason: 'error_during_execution',
+			transcript: [],
+		});
+		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(false);
+		expect(vi.mocked(buildWorkflowViaMcp)).toHaveBeenCalledWith(
+			expect.objectContaining({ seededAgentIds: ['agent-seed'] }),
+		);
+	});
+
+	it('keeps the seeded Agent ref when the conversation edited that Agent', async () => {
+		const agentRef = { type: 'agent' as const, id: 'agent-seed', projectId: 'member-project' };
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(
+			seeded({ workflowIds: [], agentRefs: [agentRef] }),
+		);
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: null,
+			agent: { id: 'agent-seed' },
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			transcript: [],
+		});
+		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.artifactRefs).toEqual([agentRef]);
+	});
+
+	it('carries a timeout from claude onto the build, so its verdicts stay out of the rate', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(undefined);
+		const timeout = { kind: 'conversation' as const, turn: 2, elapsedMs: 50 };
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: 'wf-seed',
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			transcript: [],
+			timeout,
+		});
+		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(true);
+		expect(build.timeout).toEqual(timeout);
+	});
+
+	it('records a timeout that saved nothing as a timeout, not as a builder failure', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(undefined);
+		const timeout = { kind: 'conversation' as const, turn: 2, elapsedMs: 50 };
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: null,
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			failureReason: 'timeout',
+			finished: false,
+			transcript: [],
+			timeout,
+		});
+		const deps = mcpDeps(mcpLane());
+		deps.testCaseByFileSlug.set('case-a', baseCase({ outcomeExpectations: ['sends a digest'] }));
+		const orchestrator = createBuildOrchestrator(deps);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(false);
+		expect(build.timeout).toEqual(timeout);
+	});
+
+	it('grades an answer-only case on the conversation when it ends without a workflow', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(undefined);
+		const transcript = [
+			{ userMessage: 'How do I paginate?', steps: [{ kind: 'agent-text' as const, text: 'Use…' }] },
+		];
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: null,
+			cost: 0.5,
+			turns: 1,
+			durationMs: 1000,
+			logFile: null,
+			failureReason: 'no-workflow: Use…',
+			finished: true,
+			transcript,
+		});
+		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(true);
+		expect(build.workflowJsons).toEqual([]);
+		expect(build.transcript).toBe(transcript);
+	});
+
+	it('still fails a case that expects a workflow when the conversation ends without one', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(undefined);
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: null,
+			cost: 0.5,
+			turns: 1,
+			durationMs: 1000,
+			logFile: null,
+			failureReason: 'no-workflow: Done.',
+			finished: true,
+			transcript: [],
+		});
+		const deps = mcpDeps(mcpLane());
+		deps.testCaseByFileSlug.set('case-a', baseCase({ outcomeExpectations: ['sends a digest'] }));
+		const orchestrator = createBuildOrchestrator(deps);
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(false);
+	});
+
+	it('runs the workflow checks on the turns that were sent', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockResolvedValue(undefined);
+		const transcript = [
+			{ userMessage: 'Build a digest', steps: [] },
+			{
+				userMessage: 'Use #alerts',
+				steps: [
+					{
+						kind: 'tool-call' as const,
+						toolName: 'create_workflow_from_code',
+						toolCallId: 't1',
+						error: 'Validation failed',
+					},
+				],
+			},
+		];
+		vi.mocked(buildWorkflowViaMcp).mockResolvedValue({
+			workflowId: 'wf-seed',
+			cost: 0.5,
+			turns: 3,
+			durationMs: 1000,
+			logFile: null,
+			transcript,
+		});
+		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
+
+		await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(vi.mocked(runWorkflowChecks)).toHaveBeenCalledWith(
+			expect.objectContaining({
+				prompt: 'Turn 1: Build a digest\n\nTurn 2: Use #alerts',
+				failedBuildsPerTurn: [0, 1],
+			}),
+		);
+	});
+
+	it('reports a seed that failed to restore as infra, before claude starts', async () => {
+		vi.mocked(prepareMcpBuildSeed).mockRejectedValue(new Error('restore failed'));
+		const orchestrator = createBuildOrchestrator(mcpDeps(mcpLane()));
+
+		const { build } = await orchestrator.getOrBuild(0, 'case-a');
+
+		expect(build.success).toBe(false);
+		expect(build.seedingFailed).toBe(true);
+		expect(build.error).toContain('restore failed');
+		expect(vi.mocked(buildWorkflowViaMcp)).not.toHaveBeenCalled();
 	});
 });
 

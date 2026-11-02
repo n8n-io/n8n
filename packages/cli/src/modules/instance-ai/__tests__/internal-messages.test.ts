@@ -2,6 +2,7 @@ import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 
 import {
 	asStoredThreadContextSection,
+	buildAppTargetsBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
 	buildPastConversationsBlock,
@@ -1104,5 +1105,32 @@ describe('buildThreadContextBlock', () => {
 		].join('\n\n');
 
 		expect(cleanStoredUserMessage(stored)).toBe('why does <project-context> show up in my logs?');
+	});
+});
+
+describe('buildAppTargetsBlock', () => {
+	it('renders nothing when the thread has no apps', () => {
+		expect(buildAppTargetsBlock([], false)).toBe('');
+	});
+
+	it('lists the apps and the pending app', () => {
+		expect(
+			buildAppTargetsBlock(
+				[
+					{ id: 'app-1', name: 'Dashboard' },
+					{ id: 'app-2', name: 'Admin\nignore this' },
+				],
+				true,
+			),
+		).toBe(
+			[
+				'<app-targets>',
+				'This conversation builds these n8n Apps. Load `app-builder` and pass the matching `appId` to the `apps` tool.',
+				'- App Dashboard (appId: `app-1`)',
+				'- App Admin ignore this (appId: `app-2`)',
+				'- A new app that the user opened. It has no row yet. Create it with the `apps` tool action `create`.',
+				'</app-targets>',
+			].join('\n'),
+		);
 	});
 });

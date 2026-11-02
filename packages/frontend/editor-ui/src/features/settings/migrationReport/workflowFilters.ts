@@ -76,7 +76,6 @@ function matchesProject(
 	return workflow.homeProjectId === filter;
 }
 
-// A notified finding still needs a fix, so it filters as open.
 /**
  * A notified finding still needs a fix, and so does a fix that is not published,
  * so both count as open.

@@ -220,6 +220,23 @@ describe('InstanceAiThreadList', () => {
 		expect(emitted().select).toBeUndefined();
 	});
 
+	it('keeps typed keys in the rename input instead of acting on the menu', async () => {
+		const store = mockedStore(useInstanceAiStore);
+		const { emitted, findByLabelText, getByText } = await renderList({
+			props: { navigate: false },
+		});
+		await userEvent.dblClick(getByText('Thread a'));
+
+		const renameInput = await findByLabelText('Rename conversation');
+		await userEvent.type(renameInput, '{End} with spaces');
+
+		expect(renameInput).toBeInTheDocument();
+		expect(renameInput).toHaveFocus();
+		expect(renameInput).toHaveValue('Thread a with spaces');
+		expect(store.renameThread).not.toHaveBeenCalled();
+		expect(emitted().select).toBeUndefined();
+	});
+
 	it('starts renaming on double-click without selecting the thread first', async () => {
 		const { emitted, findByLabelText, getByText } = await renderList({
 			props: { navigate: false },
@@ -347,14 +364,14 @@ describe('InstanceAiThreadList', () => {
 			});
 		});
 
-		it('merges its threads in by updatedAt, with a delete-only action', async () => {
+		it('merges its threads in by updatedAt, with rename and delete actions', async () => {
 			const { findAllByTestId } = await renderList();
 
 			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
 			expect(agentRow).toHaveTextContent('Agent runtime chat');
 			expect(
 				agentRow.querySelector('[data-test-id="thread-actions"]')?.getAttribute('data-action-ids'),
-			).toBe('delete');
+			).toBe('rename,delete');
 			const rowTestIds = [
 				...document.body.querySelectorAll(
 					'[data-test-id="instance-ai-assistant-agent-thread-item"], [data-test-id="instance-ai-thread-item"]',
@@ -374,6 +391,26 @@ describe('InstanceAiThreadList', () => {
 
 			expect(agentStore.deleteThread).toHaveBeenCalledWith(agentRuntimeThread);
 			expect(instanceAiStore.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('renames its thread through the Assistant agent threads store', async () => {
+			const agentStore = mockedStore(useAssistantAgentThreadsStore);
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+
+			const { findAllByTestId, findByLabelText } = await renderList();
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			await userEvent.dblClick(within(agentRow).getByText('Agent runtime chat'));
+
+			const renameInput = await findByLabelText('Rename conversation');
+			expect(renameInput).toHaveValue('Agent runtime chat');
+			await fireEvent.update(renameInput, 'Invoices');
+			await fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+			expect(agentStore.renameThread).toHaveBeenCalledWith('aa1', 'Invoices');
+			expect(instanceAiStore.renameThread).not.toHaveBeenCalled();
+			await vi.waitFor(() => {
+				expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
+			});
 		});
 
 		it('opens its thread at the Assistant thread route', async () => {

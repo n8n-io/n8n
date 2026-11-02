@@ -15,6 +15,7 @@ import { SelfHealingConfigurationService } from '../self-healing/self-healing-co
 import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
 
 import { AssistantAgentProvider } from '../assistant-agent/assistant-agent.provider';
+import { AssistantTurnTracer } from '../assistant-agent/assistant-turn-trace';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -29,12 +30,14 @@ const {
 	loadResultController,
 	loadConfigurationController,
 	loadEvalController,
+	loadAssistantAgentController,
 } = vi.hoisted(() => ({
 	loadSuggestionEventRelay: vi.fn(),
 	createSuggestionEventRelay: vi.fn(),
 	loadResultController: vi.fn(),
 	loadConfigurationController: vi.fn(),
 	loadEvalController: vi.fn(),
+	loadAssistantAgentController: vi.fn(),
 }));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
@@ -77,6 +80,10 @@ vi.mock('../self-healing/self-healing-configurations.controller', () => {
 	loadConfigurationController();
 	return {};
 });
+vi.mock('../assistant-agent/assistant-agent.controller', () => {
+	loadAssistantAgentController();
+	return {};
+});
 vi.mock('../eval/eval.controller', () => {
 	loadEvalController();
 	return {};
@@ -114,6 +121,7 @@ describe('InstanceAiModule.init', () => {
 		mockInstance(InstanceAiSetupTelemetryService);
 		mockInstance(InstanceAiEventRelay);
 		const runtime = mockInstance(InstanceAiService);
+		const tracer = mockInstance(AssistantTurnTracer);
 		const sweeper = mockInstance(InterruptedRunSweeper);
 		sweeper.sweep.mockResolvedValue();
 		const investigations = mockInstance(SelfHealingInvestigationService);
@@ -132,8 +140,35 @@ describe('InstanceAiModule.init', () => {
 			instanceSettings,
 			settings,
 			runtime,
+			tracer,
 		};
 	}
+
+	// The controller module is evaluated once in this file, so this test must run before
+	// any other test that registers the Assistant agent.
+	it('loads the Assistant agent routes only when the Assistant agent registers', async () => {
+		const { config, investigations } = setup();
+		mockInstance(SystemAgentRegistrationService).register.mockResolvedValue();
+		mockInstance(AssistantAgentProvider);
+		const modules = mockInstance(ModuleRegistry);
+		let eligibleModules = ['instance-ai', 'agents'];
+		Object.defineProperty(modules, 'eligibleModules', { get: () => eligibleModules });
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		expect(loadAssistantAgentController).not.toHaveBeenCalled();
+
+		config.assistantAgentEnabled = true;
+		eligibleModules = ['instance-ai'];
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+		expect(loadAssistantAgentController).not.toHaveBeenCalled();
+
+		eligibleModules = ['instance-ai', 'agents'];
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(3));
+		expect(loadAssistantAgentController).toHaveBeenCalledOnce();
+	});
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
 		const { config, sources, investigations, mutationHooks, configurations } = setup();
@@ -196,6 +231,60 @@ describe('InstanceAiModule.init', () => {
 			expect(loadConfigurationController).not.toHaveBeenCalled();
 		},
 	);
+
+	describe('shutdown with the Assistant agent', () => {
+		async function initModule(assistantAgentEnabled: boolean) {
+			const context = setup();
+			context.config.assistantAgentEnabled = assistantAgentEnabled;
+			mockInstance(SystemAgentRegistrationService).register.mockResolvedValue();
+			mockInstance(AssistantAgentProvider);
+			const modules = mockInstance(ModuleRegistry);
+			Object.defineProperty(modules, 'eligibleModules', {
+				get: () => ['instance-ai', 'agents'],
+			});
+			const module = new InstanceAiModule();
+			await module.init();
+			await vi.waitFor(() => expect(context.investigations.reconcile).toHaveBeenCalledOnce());
+			return { ...context, module };
+		}
+
+		it('closes the open Assistant agent traces before the service flushes the traces', async () => {
+			const { module, runtime, tracer } = await initModule(true);
+			const order: string[] = [];
+			tracer.finishOpenTraces.mockImplementation(async () => {
+				order.push('traces');
+			});
+			runtime.shutdown.mockImplementation(async () => {
+				order.push('service');
+			});
+
+			await module.shutdown();
+
+			expect(order).toEqual(['traces', 'service']);
+		});
+
+		it('does not touch the Assistant agent traces when the Assistant agent is off', async () => {
+			const { module, runtime, tracer } = await initModule(false);
+
+			await module.shutdown();
+
+			expect(tracer.finishOpenTraces).not.toHaveBeenCalled();
+			expect(runtime.shutdown).toHaveBeenCalledOnce();
+		});
+
+		it('shuts down the current runtime when closing the traces fails', async () => {
+			const { module, runtime, tracer, logger } = await initModule(true);
+			tracer.finishOpenTraces.mockRejectedValue(new Error('Exporter gone'));
+
+			await module.shutdown();
+
+			expect(runtime.shutdown).toHaveBeenCalledOnce();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to close the Assistant agent traces at shutdown',
+				expect.anything(),
+			);
+		});
+	});
 
 	it('registers the Assistant agent only when it is enabled and the agents module starts', async () => {
 		const { config, investigations } = setup();

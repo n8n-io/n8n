@@ -20,6 +20,9 @@ import type {
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
+	AppBuildResponse,
+	AppListResponse,
+	AppResponse,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListResponse,
@@ -1292,6 +1295,21 @@ export interface InstanceAiDataTableService {
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
+export interface InstanceAiAppService {
+	createApp(input: { name: string; namespace: string; id?: string }): Promise<AppResponse>;
+	listApps(query: { name?: string }): Promise<AppListResponse>;
+	getApp(appId: string): Promise<AppResponse>;
+	findApp(appId: string): Promise<AppResponse | undefined>;
+	/** The draft source as a gzip tar archive, with the version it is based on. */
+	exportDraft(appId: string): Promise<{ baseVersionId: string | null; archive: Buffer }>;
+	commit(
+		appId: string,
+		baseVersionId: string | null,
+		archive: Buffer,
+		label: string | null,
+	): Promise<AppBuildResponse>;
+}
+
 // ── Evaluation configs (config-based evals) ──────────────────────────────────
 
 /** Preset LLM-judge metrics supported by config-based evals — mirrors
@@ -1710,6 +1728,7 @@ export interface InstanceAiContext {
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
 	skillService?: InstanceAiSkillService;
+	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
 	 *  agent is built, which is also when its MCP tools are attached, so it always
 	 *  matches what this agent can actually call. */

@@ -92,7 +92,8 @@ export interface IWorkflowToImport
 	owner?:
 		| {
 				type: 'personal';
-				personalEmail: string;
+				/** Null when the owner has no email, for example a service account. */
+				personalEmail: string | null;
 		  }
 		| {
 				type: 'team';

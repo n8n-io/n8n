@@ -244,7 +244,7 @@ describe('Worker', () => {
 				mock<ConcurrencyControlService>(),
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
-				mock<InstanceSettings>({ instanceType: 'worker' }),
+				mock<InstanceSettings>({ instanceType: 'worker', isWorker: true }),
 				mock<UnsavedManualExecutionService>(),
 			);
 

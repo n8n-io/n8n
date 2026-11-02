@@ -100,6 +100,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
+			'agentSessions.status.cancelled': 'Canceled',
 			'agents.chat.plan.error.rejected':
 				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
@@ -167,6 +168,37 @@ function mountSteps(
 describe('AgentChatToolSteps', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+	});
+
+	it.each([
+		{ state: TOOL_CALL_STATE.CANCELLED, output: 'Tool call canceled' },
+		{
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Error: Tool call stopped by guardrail: tasks-cancelled',
+		},
+	])('shows canceled work without an error or repair action: $state', (cancellation) => {
+		const wrapper = mountSteps(
+			[{ tool: 'update_plan', toolCallId: 'tc-canceled', ...cancellation }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-summary"]').text()).toBe('Canceled');
+		expect(wrapper.find('[data-testid="tool-step-warning"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('keeps other guardrail refusals visible as tool errors', () => {
+		const error = 'Error: Tool call stopped by guardrail: tool.blocked';
+		const wrapper = mountSteps(
+			[{ tool: 'lookup', toolCallId: 'tc-error', state: TOOL_CALL_STATE.ERROR, output: error }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
 	});
 
 	it.each([
@@ -1012,5 +1044,35 @@ describe('AgentChatToolSteps — output files', () => {
 		expect(JSON.parse(lists[0].text())).toEqual([
 			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
 		]);
+	});
+
+	it('renders the files that a delegated sub-agent returned below the delegate step', () => {
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+						toolCallId: 'tc-delegate',
+						state: TOOL_CALL_STATE.DONE,
+						input: { subAgentId: 'inline', taskName: 'draw_chart' },
+						output: { status: 'completed', answer: 'Done', files: [file] },
+					},
+				],
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([file]);
 	});
 });
