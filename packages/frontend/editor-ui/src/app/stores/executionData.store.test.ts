@@ -26,7 +26,7 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { deepFreeze } from '@n8n/frontend-utils/objectUtils';
+import { deepFreeze } from '@n8n/utils/object/deep-freeze';
 
 function createTestExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
 	return createTestWorkflowExecutionResponse({

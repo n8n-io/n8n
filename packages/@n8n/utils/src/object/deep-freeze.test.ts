@@ -1,6 +1,14 @@
-import { reactive } from 'vue';
+import { deepFreeze } from './deep-freeze';
 
-import { deepFreeze } from './objectUtils';
+/** Wraps object children on read, as a Vue reactive proxy does. */
+function createWrappingProxy<T extends object>(target: T): T {
+	return new Proxy(target, {
+		get(object, key, receiver) {
+			const value: unknown = Reflect.get(object, key, receiver);
+			return value !== null && typeof value === 'object' ? createWrappingProxy(value) : value;
+		},
+	});
+}
 
 describe('deepFreeze', () => {
 	test('should freeze nested objects and arrays at every level', () => {
@@ -65,8 +73,8 @@ describe('deepFreeze', () => {
 		expect(() => deepFreeze({ bytes: new Uint8Array([1]) })).toThrow(TypeError);
 	});
 
-	test('should throw on a Vue reactive proxy with object children', () => {
-		expect(() => deepFreeze(reactive({ child: { a: 1 } }))).toThrow(TypeError);
+	test('should throw on a proxy that wraps its object children, like a Vue reactive proxy', () => {
+		expect(() => deepFreeze(createWrappingProxy({ child: { a: 1 } }))).toThrow(TypeError);
 	});
 
 	test('should not freeze the contents of a Map', () => {
