@@ -202,8 +202,8 @@ describe('useRunActivity, specific states', () => {
 			};
 			const expired = pending('ask_user', { inputType: 'questions', expired: true });
 
-			expect(activityOf([answered]).waiting).toBeUndefined();
-			expect(activityOf([expired]).waiting).toBeUndefined();
+			expect(activityOf([answered])?.waiting).toBeUndefined();
+			expect(activityOf([expired])?.waiting).toBeUndefined();
 		});
 	});
 });
@@ -253,7 +253,7 @@ describe('useRunActivity, long steps', () => {
 			toolCalls: [readTypes, call('workspace_write_file')],
 		});
 
-		expect(useRunActivity()([message(agent({ children: [child] }))], 0).detail).toBe(
+		expect(useRunActivity()([message(agent({ children: [child] }))], 0)?.detail).toBe(
 			'Configuring Gmail nodes',
 		);
 	});
@@ -316,7 +316,7 @@ describe('useRunActivity, reasoning', () => {
 			timeline: reasoningTimeline('Gmail can filter by label. More'),
 		});
 
-		expect(useRunActivity()([message(agent({ children: [child] }))]).detail).toBe(
+		expect(useRunActivity()([message(agent({ children: [child] }))])?.detail).toBe(
 			'Gmail can filter by label.',
 		);
 	});
