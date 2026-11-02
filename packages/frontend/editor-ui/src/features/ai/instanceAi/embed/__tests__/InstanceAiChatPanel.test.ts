@@ -4,11 +4,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises, mount } from '@vue/test-utils';
-import type { InstanceAiHandoffContext } from '@n8n/api-types';
+import type { InstanceAiHandoffContext, SystemAgentThreadSummary } from '@n8n/api-types';
 
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useInstanceAiStore } from '../../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
+import { forgetAssistantAgentThread } from '../../assistantAgent/assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from '../../assistantAgent/assistantAgentThreads.store';
 import { makeThread } from '../../__tests__/createThreadComponentRenderer';
 import {
 	clearPendingComposerDraft,
@@ -37,6 +40,15 @@ vi.mock('@n8n/composables/useToast', () => ({
 const buildingIds = ref(new Set<string>());
 vi.mock('../../composables/useBuildingArtifactIds', () => ({
 	useBuildingArtifactIds: () => computed(() => buildingIds.value),
+}));
+
+const { listSystemAgentThreadsMock, getSystemAgentThreadMock } = vi.hoisted(() => ({
+	listSystemAgentThreadsMock: vi.fn(),
+	getSystemAgentThreadMock: vi.fn(),
+}));
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listSystemAgentThreads: listSystemAgentThreadsMock,
+	getSystemAgentThread: getSystemAgentThreadMock,
 }));
 
 const useAgentMutationRefreshMock = vi.hoisted(() => vi.fn());
@@ -93,9 +105,25 @@ const InstanceAiConversationStub = defineComponent({
 	</div>`,
 });
 
+const agentApplyHandoffMock = vi.hoisted(() => vi.fn());
+
+const AssistantAgentPanelThreadStub = defineComponent({
+	name: 'AssistantAgentPanelThread',
+	props: ['threadId', 'subject', 'newSession', 'beforeSend'],
+	methods: {
+		focus: vi.fn(),
+		isDirty: () => false,
+		applyHandoff: agentApplyHandoffMock,
+		setPrefill: vi.fn(),
+		submitSuggestion: vi.fn(),
+	},
+	template: `<div data-test-id="agent-thread-stub" :data-thread-id="threadId" :data-new-session="String(newSession)" />`,
+});
+
 const panelStubs = {
 	InstanceAiViewHeader: InstanceAiViewHeaderStub,
 	InstanceAiConversation: InstanceAiConversationStub,
+	AssistantAgentPanelThread: AssistantAgentPanelThreadStub,
 };
 
 const renderPanel = createComponentRenderer(InstanceAiChatPanel, {
@@ -918,6 +946,130 @@ describe('InstanceAiChatPanel', () => {
 			await flushPromises();
 
 			expect(showError).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('on the Assistant agent', () => {
+		const agentTarget = { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } };
+
+		function agentThread(
+			id: string,
+			updatedAt: string,
+			agentId = 'agent-1',
+		): SystemAgentThreadSummary {
+			return {
+				id,
+				title: null,
+				updatedAt,
+				projectId: 'p1',
+				metadata: { instanceAiAgentBuilderTarget: { agentId, projectId: 'p1' } },
+			};
+		}
+
+		beforeEach(() => {
+			mockedStore(useInstanceAiSettingsStore).isAssistantAgentEnabled = true;
+			// The current runtime knows only its own threads.
+			store.getThreadMetadata.mockImplementation(
+				(threadId) => store.threads.find(({ id }) => id === threadId)?.metadata,
+			);
+			const threadsStore = mockedStore(useAssistantAgentThreadsStore);
+			threadsStore.addOpenedThread.mockImplementation((thread) => {
+				if (!threadsStore.openedThreads.some(({ id }) => id === thread.id)) {
+					threadsStore.openedThreads.push(thread);
+				}
+			});
+			threadsStore.loadThread.mockResolvedValue(undefined);
+			listSystemAgentThreadsMock.mockReset().mockResolvedValue({ data: [], nextCursor: null });
+			getSystemAgentThreadMock.mockReset();
+			agentApplyHandoffMock.mockClear();
+			for (const id of ['thread-2', 'aa-1', 'aa-9']) forgetAssistantAgentThread(id);
+		});
+
+		it('starts a new thread on the Assistant agent', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			expect(wrapper.emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			const thread = wrapper.get('[data-test-id="agent-thread-stub"]');
+			expect(thread.attributes('data-thread-id')).toBe('thread-2');
+			expect(thread.attributes('data-new-session')).toBe('true');
+			expect(wrapper.find('[data-test-id="conversation-stub"]').exists()).toBe(false);
+		});
+
+		it('resumes the newest thread of the subject across both runtimes', async () => {
+			store.threads = [
+				{
+					id: 't-match',
+					title: 'Old',
+					createdAt: '',
+					updatedAt: '2026-01-01',
+					metadata: agentTarget,
+				},
+			] as typeof store.threads;
+			listSystemAgentThreadsMock.mockResolvedValue({
+				data: [agentThread('aa-other', '2026-01-04', 'agent-2'), agentThread('aa-1', '2026-01-03')],
+				nextCursor: null,
+			});
+
+			const { emitted } = renderPanel({ props: { subject, launch } });
+			await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+
+			expect(emitted('update:threadId')?.[0]).toEqual(['aa-1']);
+			expect(store.syncThread).not.toHaveBeenCalled();
+		});
+
+		it('keeps a thread of the current runtime on the current runtime', async () => {
+			store.threads = [
+				{ id: 't-match', title: 'Old', createdAt: '', updatedAt: '', metadata: agentTarget },
+			] as typeof store.threads;
+
+			const { queryByTestId } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+			await vi.waitFor(() => expect(queryByTestId('conversation-stub')).not.toBeNull());
+
+			expect(queryByTestId('agent-thread-stub')).toBeNull();
+			expect(getSystemAgentThreadMock).not.toHaveBeenCalled();
+		});
+
+		it('opens an Assistant agent thread that the host gives', async () => {
+			getSystemAgentThreadMock.mockResolvedValue(agentThread('aa-9', '2026-01-03'));
+
+			const { queryByTestId } = renderPanel({ props: { subject, launch, threadId: 'aa-9' } });
+			await vi.waitFor(() => expect(queryByTestId('agent-thread-stub')).not.toBeNull());
+
+			expect(queryByTestId('agent-thread-stub')?.getAttribute('data-new-session')).toBe('false');
+			expect(queryByTestId('conversation-stub')).toBeNull();
+		});
+
+		const context: InstanceAiHandoffContext = {
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'preview-1',
+		};
+
+		it('stashes a queued hand-off on the new thread without a metadata write', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			expect(wrapper.vm.handoff(context)).toBe(true);
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+
+			expect(getPendingHandoffContext('thread-2')).toEqual(context);
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		});
+
+		it('sends a hand-off to the Assistant agent thread without a metadata write', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			expect(wrapper.vm.handoff(context)).toBe(true);
+
+			expect(agentApplyHandoffMock).toHaveBeenCalledWith(context, undefined);
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
 		});
 	});
 });
