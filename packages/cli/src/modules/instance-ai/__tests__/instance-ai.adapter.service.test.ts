@@ -9330,14 +9330,19 @@ describe('createContext: appService', () => {
 		const { apps } = mockAppsModule(true);
 		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
 
-		await context.appService?.createApp({ name: 'Todos', namespace: 'todos', id: APP_ID });
+		await context.appService?.createApp({
+			name: 'Todos',
+			namespace: 'todos',
+			visibility: 'public',
+			id: APP_ID,
+		});
 
 		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:create'], false, {
 			projectId: 'project-1',
 		});
 		expect(apps.createApp).toHaveBeenCalledWith(
 			'project-1',
-			{ name: 'Todos', namespace: 'todos', visibility: 'project' },
+			{ name: 'Todos', namespace: 'todos', visibility: 'public' },
 			{ id: APP_ID },
 		);
 	});

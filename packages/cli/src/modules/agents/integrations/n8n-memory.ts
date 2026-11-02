@@ -44,7 +44,8 @@ import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull, Like } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
 import { AgentMemoryEntryLockEntity } from '../entities/agent-memory-entry-lock.entity';
@@ -106,6 +107,17 @@ export class N8nMemory {
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
 	) {}
+
+	/** The metadata of the given threads, in one query. Threads without metadata are left out. */
+	async getThreadsMetadata(threadIds: string[]): Promise<Map<string, Record<string, unknown>>> {
+		const metadata = new Map<string, Record<string, unknown>>();
+		for (const row of await this.threadRepository.findMetadataByIds(threadIds)) {
+			if (!row.metadata) continue;
+			const parsed = jsonParse<unknown>(row.metadata, { fallbackValue: null });
+			if (isRecord(parsed)) metadata.set(row.id, parsed);
+		}
+		return metadata;
+	}
 
 	getImplementation(agentId: string) {
 		return new N8nMemoryImpl(
