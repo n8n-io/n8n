@@ -115,13 +115,15 @@ export type OauthFlowState = {
  * Validates the `iss` of an authorization response against the recorded issuer
  * (RFC 9207, MCP authorization spec). The comparison is exact, without normalization.
  * When no issuer is recorded, n8n cannot verify a present `iss`, so the result is `false`.
+ * Without a flow state, n8n cannot apply the issuer policy, so the result is `false`.
  */
 export function isAuthorizationResponseIssuerValid(
 	flowState: OauthFlowState | undefined,
 	iss: unknown,
 ): boolean {
-	if (iss === undefined) return !flowState?.issParameterRequired;
-	return iss === flowState?.issuer;
+	if (!flowState) return false;
+	if (iss === undefined) return !flowState.issParameterRequired;
+	return iss === flowState.issuer;
 }
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';

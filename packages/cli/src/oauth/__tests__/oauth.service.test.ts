@@ -1270,7 +1270,7 @@ describe('OauthService', () => {
 			['iss is absent and not required', { issuer }, undefined, true],
 			['iss is absent but required', { issuer, issParameterRequired: true }, undefined, false],
 			['iss is present but no issuer is recorded', {}, issuer, false],
-			['iss is absent and there is no flow state', undefined, undefined, true],
+			['iss is absent and there is no flow state', undefined, undefined, false],
 		])('returns the correct result when %s', (_, flowState, iss, expected) => {
 			expect(
 				isAuthorizationResponseIssuerValid(

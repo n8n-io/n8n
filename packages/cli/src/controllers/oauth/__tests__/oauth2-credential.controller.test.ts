@@ -175,6 +175,7 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('should render the error and its description when the authorization server refuses the request', async () => {
+			oauthService.peekCallbackFlowState.mockResolvedValueOnce({ csrfSecret: 'csrf-secret' });
 			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
 			errorReq.query = {
 				error: 'invalid_client',
@@ -193,9 +194,11 @@ describe('OAuth2CredentialController', () => {
 		});
 
 		it('should render only the error when the description is missing', async () => {
+			oauthService.peekCallbackFlowState.mockResolvedValueOnce({ csrfSecret: 'csrf-secret' });
 			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
 			errorReq.query = {
 				error: 'access_denied',
+				state: 'state',
 			} as OAuthRequest.OAuth2Credential.Callback['query'];
 
 			await controller.handleCallback(errorReq, res);
@@ -245,6 +248,23 @@ describe('OAuth2CredentialController', () => {
 				);
 			},
 		);
+
+		it('should hide the error details when the response has no known flow state', async () => {
+			oauthService.peekCallbackFlowState.mockResolvedValueOnce(undefined);
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'invalid_client',
+				error_description: 'Unknown client',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				undefined,
+			);
+		});
 
 		it('should hide the error details when the response carries an issuer', async () => {
 			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
