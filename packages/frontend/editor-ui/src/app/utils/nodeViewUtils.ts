@@ -628,8 +628,8 @@ export function calculateNodeSize(
 	mainInputCount: number,
 	mainOutputCount: number,
 	nonMainInputCount: number,
+	nonMainOutputCount: number,
 	isExperimentalNdvActive: boolean,
-	nonMainOutputCount = 0,
 ): { width: number; height: number } {
 	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
 	const height = DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
@@ -675,7 +675,7 @@ export function getNodeSizeFromPorts(
 		inputTypes.filter(isMain).length,
 		outputTypes.filter(isMain).length,
 		nonMainInputCount,
-		false,
 		nonMainOutputCount,
+		false,
 	);
 }

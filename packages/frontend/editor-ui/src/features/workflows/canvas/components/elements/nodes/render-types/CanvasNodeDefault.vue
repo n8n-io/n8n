@@ -128,8 +128,8 @@ const nodeSize = computed(() =>
 		mainInputs.value.length,
 		mainOutputs.value.length,
 		nonMainInputs.value.length,
-		isExperimentalNdvActive.value,
 		nonMainOutputs.value.length,
+		isExperimentalNdvActive.value,
 	),
 );
 

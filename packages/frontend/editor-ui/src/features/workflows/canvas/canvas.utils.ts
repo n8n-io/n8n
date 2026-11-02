@@ -68,8 +68,8 @@ export function computeNodeDisplaySize(
 		mainInputCount,
 		mainOutputCount,
 		nonMainInputCount,
-		isExperimentalNdvActive,
 		nonMainOutputCount,
+		isExperimentalNdvActive,
 	);
 }
 
