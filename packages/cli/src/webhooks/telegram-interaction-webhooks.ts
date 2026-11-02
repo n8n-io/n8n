@@ -1,6 +1,5 @@
 import { Service } from '@n8n/di';
-import type { ParsedHitlCallbackReference } from 'n8n-core';
-import { markTelegramInteractionRequest, parseHitlCallbackReference } from 'n8n-core';
+import { markTelegramInteractionRequest } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { HitlInteractionWebhooks } from './hitl-interaction-webhooks';
@@ -21,14 +20,12 @@ interface TelegramCallbackUpdate {
 export class TelegramInteractionWebhooks extends HitlInteractionWebhooks {
 	protected readonly platformNodeType = 'n8n-nodes-base.telegram';
 
-	protected async parseCallback(
-		req: WaitingWebhookRequest,
-	): Promise<ParsedHitlCallbackReference | null> {
+	protected async readReference(req: WaitingWebhookRequest): Promise<string> {
 		await req.readRawBody();
 		const update = jsonParse<TelegramCallbackUpdate>(req.rawBody?.toString() ?? '', {
 			fallbackValue: {},
 		});
-		return parseHitlCallbackReference(update.callback_query?.data ?? '');
+		return update.callback_query?.data ?? '';
 	}
 
 	/**

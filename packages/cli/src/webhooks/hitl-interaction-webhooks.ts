@@ -1,7 +1,7 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { ParsedHitlCallbackReference } from 'n8n-core';
-import { verifyHitlCallbackReference } from 'n8n-core';
+import { parseHitlCallbackReference, verifyHitlCallbackReference } from 'n8n-core';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import { WaitingWebhooks } from './waiting-webhooks';
@@ -21,7 +21,7 @@ type ValidationResult = { ok: true; value: ValidatedCallback } | { ok: false; st
  * Shared base for the fixed-URL HITL interaction webhook handlers (Slack, Telegram).
  * The Send and Wait reference travels in the request body (not the URL) and is verified
  * here via HMAC; the platform's own request-authenticity check happens downstream in that
- * node's webhook handler. Subclasses supply how to read the reference (`parseCallback`) and
+ * node's webhook handler. Subclasses supply how to read the reference (`readReference`) and
  * may mark the request before it resumes (`beforeResume`).
  */
 export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
@@ -35,10 +35,8 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		return ['POST'];
 	}
 
-	/** Parses the raw HTTP body into a typed callback reference, or null if malformed. */
-	protected abstract parseCallback(
-		req: WaitingWebhookRequest,
-	): Promise<ParsedHitlCallbackReference | null>;
+	/** Reads the callback reference from the raw HTTP body, or an empty string if it has none. */
+	protected abstract readReference(req: WaitingWebhookRequest): Promise<string>;
 
 	/** The node type this route is allowed to resume (e.g. 'n8n-nodes-base.slack'). */
 	protected abstract readonly platformNodeType: string;
@@ -102,7 +100,11 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 
 		if (req.method !== 'POST') return this.reject(res, 404);
 
-		const parsed: ParsedHitlCallbackReference | null = await this.parseCallback(req);
+		const reference = await this.readReference(req);
+		const stepId = this.dataPlane.readApprovalCallback(reference);
+		if (stepId) return await this.resumeEngineV2Callback(req, res, stepId, reference);
+
+		const parsed = parseHitlCallbackReference(reference);
 		if (!parsed) return this.handleUnrecognizedCallback(res);
 
 		const validated: ValidationResult = await this.validate(parsed);
@@ -119,6 +121,40 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 			lastNodeExecuted,
 			executionId,
 			suffix: nodeId,
+		});
+	}
+
+	/**
+	 * Resumes a wait on the engine v2 data plane. The callback names a step, and
+	 * the data plane verifies the callback and names the waiting node.
+	 */
+	private async resumeEngineV2Callback(
+		req: WaitingWebhookRequest,
+		res: express.Response,
+		stepId: string,
+		reference: string,
+	): Promise<IWebhookResponseCallbackData> {
+		const located = await this.dataPlane.locateResume({ id: stepId, token: reference });
+		// Like a v1 callback that fails its HMAC check, a bad callback answers 404.
+		if (!located.ok) return this.reject(res, located.status === 401 ? 404 : located.status);
+
+		const { execution: snapshot, target } = located.value;
+		// Replayed or late interaction: nothing left to resume.
+		if (target === null) return this.reject(res, 409);
+
+		const standIn = await this.buildEngineV2StandIn(snapshot, target.nodeId);
+		if (!standIn || standIn.node.type !== this.platformNodeType) return this.reject(res, 404);
+
+		this.beforeResume(req);
+
+		return await this.getWebhookExecutionData({
+			execution: standIn.execution,
+			req,
+			res,
+			lastNodeExecuted: standIn.node.name,
+			executionId: snapshot.id,
+			suffix: target.nodeId,
+			engineResume: { stepId: target.stepId, token: reference },
 		});
 	}
 }
