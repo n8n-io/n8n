@@ -89,7 +89,6 @@ erDiagram
 "self_healing_configuration_reviewer" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_investigation" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "self_healing_result" }o--|| "user" : "FOREIGN KEY (backgroundUserId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"self_healing_result" }o--o| "user" : "FOREIGN KEY (dismissedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "service_account_details" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "skill_source" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -441,6 +440,7 @@ erDiagram
   varchar enabledById FK
   INTEGER id
   BOOLEAN includeAllProjectMembers
+  BOOLEAN includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   datetime_3_ updatedAt
@@ -469,14 +469,12 @@ erDiagram
   datetime_3_ completedAt
   INTEGER configurationId FK
   datetime_3_ createdAt
-  datetime_3_ dismissedAt
-  varchar dismissedById FK
   varchar_36_ executionId
   varchar_36_ id PK
   varchar_16_ outcome
   varchar_36_ projectId FK
   TEXT report
-  varchar_36_ suggestionId FK
+  varchar_16_ reviewState
   TEXT summary
   datetime_3_ updatedAt
   TEXT usage
@@ -628,6 +626,7 @@ erDiagram
   TEXT payload
   varchar_36_ projectId FK
   varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK

@@ -1,6 +1,7 @@
 import type { WorkflowSuggestionBaseline, WorkflowSuggestionContent } from '@n8n/api-types';
 import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import {
+	type OperationContext,
 	type Project,
 	ProjectRepository,
 	TransactionRunner,
@@ -16,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
 
+import { createResult } from '../../self-healing/__tests__/support/result';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
@@ -26,6 +28,7 @@ let tx: TransactionRunner;
 let workflow: WorkflowEntity;
 let project: Project;
 let backgroundUser: User;
+let resultId: string;
 const baseline = (): WorkflowSuggestionBaseline => ({
 	workflowId: workflow.id,
 	projectId: project.id,
@@ -45,9 +48,11 @@ const payload = (): WorkflowSuggestionContent => ({
 	explanation: 'Fix the workflow.',
 	errorContext: null,
 });
+const insertPending = async (ctx: OperationContext, from = baseline()) =>
+	await suggestions.createPending(from, payload(), 'fix_ready', resultId, ctx);
 const saveProposal = async () =>
 	await tx.run({}, async (ctx) => {
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+		const suggestion = await insertPending(ctx);
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		return suggestion;
 	});
@@ -62,6 +67,7 @@ beforeEach(async () => {
 	backgroundUser = await createUser();
 	project = await createTeamProject();
 	workflow = await createWorkflow({}, project);
+	resultId = (await createResult(baseline())).id;
 });
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
@@ -94,7 +100,7 @@ it('allows a new proposal after the previous proposal closes', async () => {
 it('rolls back the suggestion and its activity when activity insertion fails', async () => {
 	await expect(
 		tx.run({}, async (ctx) => {
-			const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+			const suggestion = await insertPending(ctx);
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 		}),
@@ -107,7 +113,7 @@ it('joins the caller transaction and rolls back both rows if finalization fails'
 	await expect(
 		tx.run({}, async (ctx) => {
 			await tx.run(ctx, async (ctx) => {
-				const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+				const suggestion = await insertPending(ctx);
 				await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			});
 			throw new Error('Investigation completion failed.');
@@ -142,11 +148,7 @@ it.each([
 		expect(await suggestions.findOneBy({ id: suggestion.id })).toBeNull();
 		expect(await suggestions.getActivity(suggestion.id)).toHaveLength(0);
 		await expect(
-			tx.run(
-				{},
-				async (ctx) =>
-					await suggestions.createPending(originalBaseline, payload(), ctx, 'fix_ready'),
-			),
+			tx.run({}, async (ctx) => await insertPending(ctx, originalBaseline)),
 		).rejects.toThrow(/foreign key/i);
 		expect(await suggestions.count()).toBe(0);
 	},
@@ -160,7 +162,7 @@ it('leaves workflow and history unchanged and reads the current saved workflow',
 	await tx.run({}, async (ctx) => {
 		const currentWorkflow = await workflows.findByIdInContext(workflow.id, ctx);
 		expect(currentWorkflow?.versionId).toBe(before.versionId);
-		const suggestion = await suggestions.createPending(baseline(), payload(), ctx, 'fix_ready');
+		const suggestion = await insertPending(ctx);
 		await suggestions.appendSubmittedActivity(suggestion.id, ctx);
 	});
 	expect(await workflows.findOneByOrFail({ id: workflow.id })).toEqual(before);

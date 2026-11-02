@@ -213,7 +213,15 @@ export class WorkflowSuggestionService {
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
-	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
+	async hasPendingSuggestion(workflowId: string) {
+		return (await this.suggestions.getPendingForWorkflow(workflowId)) !== null;
+	}
+
+	async createSuggestion(
+		prepared: PreparedWorkflowSuggestion,
+		selfHealingResultId: string,
+		ctx: OperationContext = {},
+	) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
 		return await this.txRunner.run(ctx, async (ctx) => {
@@ -230,8 +238,9 @@ export class WorkflowSuggestionService {
 			const suggestion = await this.suggestions.createPending(
 				baseline,
 				payload,
-				ctx,
 				prepared.resultKind,
+				selfHealingResultId,
+				ctx,
 			);
 			await this.suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			return suggestion;
@@ -275,19 +284,41 @@ export class WorkflowSuggestionService {
 		if (suggestion.state !== 'pending' || (await this.matchesBaseline(suggestion, target))) {
 			return suggestion;
 		}
-		await this.suggestions.closePending(
-			suggestion,
-			'outdated',
-			{ author: 'system', actorId: null },
-			ctx,
-		);
+		await this.closeOutdatedResult(suggestion.selfHealingResultId, ctx);
 		return await this.suggestions.getSuggestion(suggestion.id, suggestion, ctx);
+	}
+
+	private async closeOutdatedResult(selfHealingResultId: string, ctx: OperationContext) {
+		for (const member of await this.suggestions.getForResult(selfHealingResultId, ctx)) {
+			await this.suggestions.closePending(
+				member,
+				'outdated',
+				{ author: 'system', actorId: null },
+				ctx,
+			);
+		}
+		await this.suggestions.closeResult(selfHealingResultId, 'outdated', ctx);
 	}
 
 	async reconcileWorkflow(workflowId: string) {
 		const pending = await this.suggestions.getPendingForWorkflow(workflowId);
 		if (pending)
 			await this.reconcilePending(pending.id, { workflowId, projectId: pending.projectId });
+	}
+
+	async getPendingResultId(workflowId: string) {
+		return (await this.suggestions.getPendingForWorkflow(workflowId))?.selfHealingResultId;
+	}
+
+	async closeResultOfDeletedMember(selfHealingResultId: string) {
+		await this.txRunner.run(
+			{},
+			async (ctx) => await this.closeOutdatedResult(selfHealingResultId, ctx),
+		);
+	}
+
+	async getForResult(selfHealingResultId: string, ctx: OperationContext = {}) {
+		return await this.suggestions.getForResult(selfHealingResultId, ctx);
 	}
 
 	private async requireProposalAccess(viewer: User, projectId: string, workflowId: string) {
@@ -308,12 +339,34 @@ export class WorkflowSuggestionService {
 			workflowId,
 			projectId,
 		});
-		const activity = await this.suggestions.getActivity(suggestionId);
+		return await this.toProposal(suggestion);
+	}
+
+	async getProposals(
+		viewer: User,
+		projectId: string,
+		suggestions: WorkflowSuggestion[],
+	): Promise<WorkflowSuggestionProposalDetail[]> {
+		if (suggestions.some((suggestion) => suggestion.projectId !== projectId)) {
+			throw new NotFoundError('Proposal not found.');
+		}
+		for (const { workflowId } of suggestions) {
+			await this.requireProposalAccess(viewer, projectId, workflowId);
+		}
+		return await Promise.all(
+			suggestions.map(async (suggestion) => await this.toProposal(suggestion)),
+		);
+	}
+
+	private async toProposal(
+		suggestion: WorkflowSuggestion,
+	): Promise<WorkflowSuggestionProposalDetail> {
+		const activity = await this.suggestions.getActivity(suggestion.id);
 		const { appliedVersionId, appliedChecksum, appliedAction, appliedActorId } = suggestion;
 		return {
-			suggestionId,
+			suggestionId: suggestion.id,
 			workflowId: suggestion.workflowId,
-			projectId,
+			projectId: suggestion.projectId,
 			backgroundUserId: suggestion.backgroundUserId,
 			expectedBaseline: suggestion.expectedBaseline,
 			state: suggestion.state,

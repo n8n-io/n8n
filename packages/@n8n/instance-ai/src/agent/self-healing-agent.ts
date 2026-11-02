@@ -39,10 +39,10 @@ export interface CreateSelfHealingAgentOptions {
 }
 
 const SOURCE_GUIDANCE =
-	'Read workflow source for context. Keep edits in the supplied self-healing candidate file. ' +
+	'Read workflow source for context. Edit only the prepared workflow files. ' +
 	'Use workspace_read_file and workspace_str_replace_file, then verify_candidate. ' +
-	'Reads of the target workflow return its captured baseline. ' +
-	'You can read other accessible workflows for context, including sub-workflows.';
+	'Reads of a prepared workflow return its captured baseline. ' +
+	'You can read other accessible workflows for context. Do not edit them.';
 
 function createSelfHealingTools(
 	context: InstanceAiContext,
@@ -110,7 +110,7 @@ export async function createSelfHealingAgent(
 		}) ?? tools;
 
 	const systemPrompt = [
-		'Investigate the supplied failed execution. Prepare one candidate workflow for review.',
+		'Investigate the supplied failed execution. Prepare candidate workflows for review.',
 		'Work without user interaction. Report blockers in the structured output.',
 		UNTRUSTED_CONTENT_DOCTRINE,
 		SELF_HEALING_PROMPT,

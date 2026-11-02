@@ -60,6 +60,7 @@ describe('SelfHealingInvestigationService', () => {
 		id: 1,
 		enabled: true,
 		enabledById: user.id,
+		includeSubWorkflows: false,
 	});
 	const service = new SelfHealingInvestigationService(
 		investigations,
@@ -86,6 +87,7 @@ describe('SelfHealingInvestigationService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		config.workflowSuggestionsEnabled = true;
+		configuration.includeSubWorkflows = false;
 		configurations.findForWorkflow.mockResolvedValue(configuration);
 		configurations.findForUpdate.mockResolvedValue(configuration);
 		configurationService.resolveActorOrPause.mockResolvedValue(user);
@@ -110,7 +112,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'could_not_fix',
 				summary: 'No fix found.',
 				report: 'The cause could not be determined.',
-				candidateFilePath: null,
+				candidateFilePaths: [],
 			},
 			usage: { credits: 2, turns: 3, durationSeconds: 10 },
 		};
@@ -160,6 +162,8 @@ describe('SelfHealingInvestigationService', () => {
 			{
 				user,
 				baseline,
+				configurationId: configuration.id,
+				includeSubWorkflows: false,
 				executionId: input.executionId,
 			},
 			expect.objectContaining({ threadId: investigation.threadId, runId: investigation.runId }),
@@ -174,13 +178,24 @@ describe('SelfHealingInvestigationService', () => {
 		);
 	});
 
+	it('passes the sub-workflow setting to the run', async () => {
+		configuration.includeSubWorkflows = true;
+
+		await startAndFinish();
+
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledWith(
+			expect.objectContaining({ includeSubWorkflows: true }),
+			expect.anything(),
+		);
+	});
+
 	it('normalizes final report text before storage', async () => {
 		const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
 		const output = {
 			outcome: 'needs_you' as const,
 			summary: `The response contained ${value}.`,
 			report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
-			candidateFilePath: null,
+			candidateFilePaths: [],
 		};
 		run.output = output;
 
@@ -190,7 +205,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'The response contained [REDACTED].',
 			report: 'Check the HTTP Request node. Authorization: [REDACTED]',
-			candidateFilePath: null,
+			candidateFilePaths: [],
 		});
 		expect(output.report).toContain(value);
 	});
@@ -221,21 +236,26 @@ describe('SelfHealingInvestigationService', () => {
 				outcome,
 				summary: 'Update the node.',
 				report: 'The node now uses the correct field.',
-				candidateFilePath: 'candidate.ts',
+				candidateFilePaths: ['candidate.ts'],
 			};
-			run.candidate = {
-				filePath: 'candidate.ts',
-				compile: vi.fn().mockResolvedValue({
-					success: true,
-					workflow: { nodes: [], connections: {} },
-					warnings: [],
-					credentialResolution: mock<CredentialResolutionResult>({ mockedCredentialTypes: [] }),
-				}),
-			};
+			run.candidates = [
+				{
+					filePath: 'candidate.ts',
+					baseline,
+					compile: vi.fn().mockResolvedValue({
+						success: true,
+						workflow: { nodes: [], connections: {} },
+						warnings: [],
+						credentialResolution: mock<CredentialResolutionResult>({
+							mockedCredentialsByNode: {},
+						}),
+					}),
+				},
+			];
 			await startAndFinish();
-			expect(results.complete.mock.calls[0]?.[0]?.candidate).toEqual({
-				graph: { nodes: [], connections: {} },
-			});
+			expect(results.complete.mock.calls[0]?.[0]?.candidates).toEqual([
+				{ baseline, graph: { nodes: [], connections: {} } },
+			]);
 		},
 	);
 
@@ -252,41 +272,44 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'fix_ready' as const,
 				summary: 'The workflow is fixed.',
 				report: 'The credential was created and verification passed.',
-				candidateFilePath: 'candidate.ts',
+				candidateFilePaths: ['candidate.ts'],
 			};
 			const graph = { nodes: [], connections: {} };
 			run.output = output;
-			run.candidate = {
-				filePath: output.candidateFilePath,
-				compile: vi.fn().mockResolvedValue({
-					success: true,
-					workflow: graph,
-					warnings: placeholders
-						? [
-								{
-									code: 'unresolved_placeholders',
-									message: 'Fill in the channel in "Send message".',
-								},
-							]
-						: [],
-					credentialResolution: mock<CredentialResolutionResult>({
-						mockedNodeNames: ['Fetch Order'],
-						mockedCredentialTypes: missing ? ['httpHeaderAuth'] : [],
-						mockedCredentialsByNode: missing
-							? { [`Fetch Order ${value}`]: ['httpHeaderAuth'] }
-							: {},
-						resolvedCredentialsByNode: missing
-							? {}
-							: { 'Fetch Order': [{ type: 'openAiApi', id: null, name: 'Gateway credits' }] },
+			run.candidates = [
+				{
+					filePath: 'candidate.ts',
+					baseline,
+					compile: vi.fn().mockResolvedValue({
+						success: true,
+						workflow: graph,
+						warnings: placeholders
+							? [
+									{
+										code: 'unresolved_placeholders',
+										message: 'Fill in the channel in "Send message".',
+									},
+								]
+							: [],
+						credentialResolution: mock<CredentialResolutionResult>({
+							mockedNodeNames: ['Fetch Order'],
+							mockedCredentialTypes: missing ? ['httpHeaderAuth'] : [],
+							mockedCredentialsByNode: missing
+								? { [`Fetch Order ${value}`]: ['httpHeaderAuth'] }
+								: {},
+							resolvedCredentialsByNode: missing
+								? {}
+								: { 'Fetch Order': [{ type: 'openAiApi', id: null, name: 'Gateway credits' }] },
+						}),
 					}),
-				}),
-			};
+				},
+			];
 
 			await startAndFinish();
 
 			const resultInput = results.complete.mock.calls[0]?.[0];
 			expect(resultInput?.output.outcome).toBe(outcome);
-			expect(resultInput?.candidate?.graph).toEqual(graph);
+			expect(resultInput?.candidates).toEqual([{ baseline, graph }]);
 			if (missing || placeholders) {
 				expect(resultInput?.output.summary).toContain('setup');
 				expect(resultInput?.output.summary).not.toBe(output.summary);
@@ -318,11 +341,99 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'Reconnect the credential.',
 			report: 'The credential needs to be reconnected.',
-			candidateFilePath: null,
+			candidateFilePaths: [],
 		};
 		await startAndFinish();
 		expect(results.complete.mock.calls[0]?.[0]?.output.outcome).toBe('needs_you');
-		expect(results.complete.mock.calls[0]?.[0]?.candidate).toBeUndefined();
+		expect(results.complete.mock.calls[0]?.[0]?.candidates).toBeUndefined();
+	});
+
+	describe('candidate groups', () => {
+		const subWorkflow = mock<WorkflowSuggestionBaseline>({
+			workflowId: 'sub-workflow',
+			original: { name: 'Calculate tax' },
+		});
+		const compiled = (name: string) => ({
+			success: true,
+			workflow: { nodes: [mock({ name })], connections: {} },
+			warnings: [],
+			credentialResolution: mock<CredentialResolutionResult>({
+				mockedCredentialsByNode: { [name]: ['httpHeaderAuth'] },
+			}),
+		});
+
+		beforeEach(() => {
+			run.output = {
+				outcome: 'fix_ready',
+				summary: 'Update the nodes.',
+				report: 'Both workflows now use the correct field.',
+				candidateFilePaths: ['candidate.ts', 'sub-workflow.ts'],
+			};
+			run.candidates = [
+				{
+					filePath: 'candidate.ts',
+					baseline,
+					compile: vi.fn().mockResolvedValue(compiled('Parent')),
+				},
+				{
+					filePath: 'sub-workflow.ts',
+					baseline: subWorkflow,
+					compile: vi.fn().mockResolvedValue(compiled('Child')),
+				},
+			];
+		});
+
+		it('saves a candidate for each changed workflow', async () => {
+			await startAndFinish();
+
+			const resultInput = results.complete.mock.calls[0]?.[0];
+			expect(resultInput?.candidates?.map((candidate) => candidate.baseline)).toEqual([
+				baseline,
+				subWorkflow,
+			]);
+			expect(resultInput?.output.outcome).toBe('needs_you');
+			expect(resultInput?.output.report).toContain('Connect credentials for Parent');
+			expect(resultInput?.output.report).toContain(
+				'Connect credentials for Child in "Calculate tax"',
+			);
+		});
+
+		it('omits an unchanged candidate and its missing setup', async () => {
+			const unchanged = compiled('Child');
+			run.candidates![1] = {
+				filePath: 'sub-workflow.ts',
+				baseline: mock<WorkflowSuggestionBaseline>({
+					workflowId: 'sub-workflow',
+					original: unchanged.workflow,
+				}),
+				compile: vi.fn().mockResolvedValue(unchanged),
+			};
+
+			await startAndFinish();
+
+			const resultInput = results.complete.mock.calls[0]?.[0];
+			expect(resultInput?.candidates?.map((candidate) => candidate.baseline)).toEqual([baseline]);
+			expect(resultInput?.output.report).toContain('Connect credentials for Parent');
+			expect(resultInput?.output.report).not.toContain('Connect credentials for Child');
+		});
+
+		it('creates no result when a candidate does not compile', async () => {
+			vi.mocked(run.candidates![1].compile).mockResolvedValue({
+				success: false,
+				reason: 'candidate_invalid',
+				errors: ['The node is invalid.'],
+			});
+
+			await expect(startAndFinish()).rejects.toThrow('The node is invalid.');
+			expect(results.complete).not.toHaveBeenCalled();
+		});
+
+		it('creates no result when a candidate file is unresolved', async () => {
+			delete run.candidates;
+
+			await expect(startAndFinish()).rejects.toThrow('The candidate files are unavailable.');
+			expect(results.complete).not.toHaveBeenCalled();
+		});
 	});
 
 	it.each(['cancelled', 'errored', 'suspended'] as const)(
@@ -333,12 +444,13 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'fix_ready',
 				summary: 'Candidate checked.',
 				report: 'Verification passed.',
-				candidateFilePath: 'candidate.workflow.ts',
+				candidateFilePaths: ['candidate.workflow.ts'],
 			};
-			run.candidate = { filePath: 'candidate.workflow.ts', compile: vi.fn() };
+			const compile = vi.fn();
+			run.candidates = [{ filePath: 'candidate.workflow.ts', baseline, compile }];
 			await startAndFinish();
 			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
-			expect(run.candidate?.compile).not.toHaveBeenCalled();
+			expect(compile).not.toHaveBeenCalled();
 			expect(results.complete).not.toHaveBeenCalled();
 			expect(configurationService.recheckAccess).not.toHaveBeenCalled();
 		},
