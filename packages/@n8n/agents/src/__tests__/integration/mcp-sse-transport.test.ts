@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startSseServer, TINY_PNG, type TestServer } from './mcp-server-helpers';
 import { McpConnection } from '../../runtime/mcp/mcp-connection';
-import type { ContentFile, ContentText, Message } from '../../types/sdk/message';
 import { isZodSchema } from '../../utils/zod';
 
 describe('McpConnection — SSE transport', () => {
@@ -164,14 +163,14 @@ describe('McpConnection — SSE transport', () => {
 			const echoTool = builtTools.find((t) => t.name === 'test_echo')!;
 
 			const mcpResult = await conn.callTool('echo', { message: 'text only' });
-			const message = echoTool.toMessage!(mcpResult);
+			const message = echoTool.toMessage?.(mcpResult);
 
 			expect(message).toBeUndefined();
 
 			await conn.disconnect();
 		});
 
-		it('toMessage returns a user message with file part for image results', async () => {
+		it('keeps image results in the tool output without an extra message', async () => {
 			const conn = new McpConnection({ name: 'test', url: server.url });
 			await conn.connect();
 
@@ -179,21 +178,15 @@ describe('McpConnection — SSE transport', () => {
 			const imageTool = builtTools.find((t) => t.name === 'test_image')!;
 
 			const mcpResult = await conn.callTool('image', { caption: 'my photo' });
-			const message = imageTool.toMessage!(mcpResult);
 
-			expect(message).toBeDefined();
-			const llmMessage = message as Message;
-			expect(llmMessage.role).toBe('assistant');
-
-			const content = llmMessage.content as Array<ContentText | ContentFile>;
-			const textPart = content.find((c): c is ContentText => c.type === 'text');
-			const filePart = content.find((c): c is ContentFile => c.type === 'file');
-
-			expect(textPart).toBeDefined();
-			expect(textPart!.text).toBe('my photo');
-			expect(filePart).toBeDefined();
-			expect(filePart!.mediaType).toBe('image/png');
-			expect(filePart!.data).toBe(TINY_PNG);
+			expect(imageTool.toMessage?.(mcpResult)).toBeUndefined();
+			expect(imageTool.toModelOutput?.(mcpResult)).toEqual({
+				type: 'content',
+				value: [
+					{ type: 'text', text: 'my photo' },
+					{ type: 'file', data: { type: 'data', data: TINY_PNG }, mediaType: 'image/png' },
+				],
+			});
 
 			await conn.disconnect();
 		});

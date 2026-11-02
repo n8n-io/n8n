@@ -15,7 +15,7 @@ function resolveTool() {
 }
 
 describe('McpToolResolver media output', () => {
-	it('converts mixed text and image output to native model and message content', async () => {
+	it('converts mixed text and image output to native model content without an extra message', async () => {
 		const result: McpCallToolResult = {
 			content: [
 				{ type: 'text', text: 'Current screenshot' },
@@ -32,16 +32,10 @@ describe('McpToolResolver media output', () => {
 				{ type: 'file', data: { type: 'data', data: 'base64-image' }, mediaType: 'image/png' },
 			],
 		});
-		expect(await tool.toMessage?.(result)).toEqual({
-			role: 'assistant',
-			content: [
-				{ type: 'text', text: 'Current screenshot' },
-				{ type: 'file', data: 'base64-image', mediaType: 'image/png' },
-			],
-		});
+		expect(await tool.toMessage?.(result)).toBeUndefined();
 	});
 
-	it('converts PDF resource output to native model and message content', async () => {
+	it('converts PDF resource output to native model content without an extra message', async () => {
 		const result: McpCallToolResult = {
 			content: [
 				{
@@ -62,9 +56,6 @@ describe('McpToolResolver media output', () => {
 				{ type: 'file', data: { type: 'data', data: 'base64-pdf' }, mediaType: 'application/pdf' },
 			],
 		});
-		expect(await tool.toMessage?.(result)).toEqual({
-			role: 'assistant',
-			content: [{ type: 'file', data: 'base64-pdf', mediaType: 'application/pdf' }],
-		});
+		expect(await tool.toMessage?.(result)).toBeUndefined();
 	});
 });
