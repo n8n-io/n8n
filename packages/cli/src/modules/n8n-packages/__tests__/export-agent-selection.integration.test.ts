@@ -379,7 +379,7 @@ it.each(['fail', 'reference-only', 'include-in-package'] as const)(
 		}
 		const { manifest } = await run;
 		expect(manifest.agents?.map(({ id }) => id)).toEqual(
-			policy === 'include-in-package' ? [parent.id, child.id].sort() : [parent.id],
+			policy === 'include-in-package' ? [parent.id, child.id] : [parent.id],
 		);
 		expect(manifest.workflows?.map(({ id }) => id) ?? []).toEqual(
 			policy === 'include-in-package' ? [workflow.id, nested.id].sort() : [],
