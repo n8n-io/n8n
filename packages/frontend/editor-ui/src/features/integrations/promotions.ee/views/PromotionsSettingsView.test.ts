@@ -199,33 +199,18 @@ describe('PromotionsSettingsView', () => {
 		},
 	);
 
-	it('offers no switch back while no v1 repository is connected', async () => {
-		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		useRBACStore().setGlobalScopes(['sourceControl:manage']);
-		const sourceControlStore = useSourceControlStore();
-		vi.mocked(getPreferences).mockResolvedValue({
-			...sourceControlStore.preferences,
-			connected: false,
-		});
-		renderView();
-
-		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
-		await waitFor(() => expect(toggle).toBeEnabled());
-		expect(screen.queryByTestId('promotions-switch-to-v1')).not.toBeInTheDocument();
-	});
-
-	it('switches the instance back to Environments v1 after confirmation', async () => {
+	it('switches an instance without a v1 repository back to Environments v1 after confirmation', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 		useRBACStore().setGlobalScopes(['sourceControl:manage']);
 		const sourceControlStore = useSourceControlStore();
 		vi.mocked(getPreferences).mockResolvedValue({
 			...sourceControlStore.preferences,
-			connected: true,
+			connected: false,
 		});
 		vi.mocked(updatePreferences).mockResolvedValue({
 			...sourceControlStore.preferences,
-			connected: true,
+			connected: false,
 			environmentsVersion: 'v1',
 		});
 		renderView();
