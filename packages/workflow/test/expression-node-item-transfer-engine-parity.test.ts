@@ -180,10 +180,26 @@ describe('Expression - $(node) item accessors with proxy item values (engine par
 			expect(evaluate(item, "={{ $('Previous').first().json.values.length }}")).toBe(3);
 		});
 
-		it.each([false, true])('returns every own data property (marker key: %s)', (markerKey) => {
-			const json = { ['__proto__']: { id: 42 }, id: 1, ...(markerKey ? { __isDate: true } : {}) };
-			const item = { json: new Proxy(json, {}) };
-			expect(evaluate(item, "={{ $('Previous').first().json }}")).toStrictEqual(json);
+		describe.each([false, true])('item contains an Error: %s', (withError) => {
+			it.each([
+				{ name: 'no marker', data: {} },
+				{ name: 'QuickJS date marker', data: { __isDate: true } },
+				{ name: 'host value marker', data: { __n8nType: 'HostValue', __value: 'user data' } },
+				{ name: 'escape marker', data: { __n8nEscaped: true, __value: 'user data' } },
+			])('returns every own data property with $name', ({ data }) => {
+				const json = {
+					['__proto__']: { id: 42 },
+					id: 1,
+					...data,
+					...(withError ? { error: new Error('sample') } : {}),
+				};
+				const item = { json: new Proxy({ ...json }, {}) };
+
+				const result = evaluate(item, "={{ $('Previous').first().json }}");
+
+				expect(result).toStrictEqual(json);
+				expect(Object.getOwnPropertyDescriptor(result, '__proto__')?.value).toEqual({ id: 42 });
+			});
 		});
 	});
 });
