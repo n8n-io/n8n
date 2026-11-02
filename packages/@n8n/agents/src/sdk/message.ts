@@ -33,6 +33,21 @@ export function isRuntimeSkillUpdate(
 export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 	return messages.flatMap((message): Message[] => {
 		if (isLlmMessage(message)) return [message];
+		if (isRuntimeSkillCatalog(message)) {
+			return [
+				{
+					...message,
+					type: 'llm',
+					role: 'user',
+					content: [
+						{
+							type: 'text',
+							text: `<system-reminder>\n${message.data.content}\n</system-reminder>`,
+						},
+					],
+				},
+			];
+		}
 		if (isRuntimeSkillUpdate(message)) {
 			// Some providers reject system-role messages after the conversation starts.
 			const content = [
@@ -53,4 +68,14 @@ export function filterLlmMessages(messages: AgentMessage[]): Message[] {
 		}
 		return [];
 	});
+}
+
+export function isRuntimeSkillCatalog<T extends AgentMessage>(
+	message: T,
+): message is T & { type: 'custom'; data: CustomAgentMessages['runtimeSkillCatalog'] } {
+	return (
+		message.type === 'custom' &&
+		'type' in message.data &&
+		message.data.type === 'n8n:runtime-skill-catalog'
+	);
 }
