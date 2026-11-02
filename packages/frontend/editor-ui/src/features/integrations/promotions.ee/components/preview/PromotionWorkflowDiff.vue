@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import type { PromotionDirection, PromotionResourceDetail } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
+import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, onMounted } from 'vue';
-
-import { useTagsStore } from '@/features/shared/tags/tags.store';
-import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
-import { toDiffWorkflow } from '@/features/workflows/workflowDiff/workflowDiff.utils';
 
 import { PromotionAbsentSideLabelsKey, type DetailSide } from '../../promotionPreview.content';
 import type { ResourceKey, SelectionGraph } from '../../promotionPreview.selection';
@@ -22,11 +19,12 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const absentLabels = inject(PromotionAbsentSideLabelsKey, undefined);
-const tagsStore = useTagsStore();
+const tagNames = capabilityRegistry.use(capabilities.tagNames);
+const WorkflowDiff = computed(() => componentRegistry.get('workflow-diff'));
 
 onMounted(async () => {
 	try {
-		await tagsStore.fetchAll();
+		await tagNames.load();
 	} catch {
 		// Without the instance tags, unchanged tags show their ids.
 	}
@@ -36,18 +34,20 @@ onMounted(async () => {
 function tagNameOf(side: DetailSide) {
 	return (id: string) => {
 		const resource = props.graph.resources.get(`tag:${id}`);
-		if (!resource) return tagsStore.tagsById[id]?.name ?? id;
+		if (!resource) return tagNames.nameOf(id) ?? id;
 		return side === 'before' ? (resource.previousName ?? resource.name) : resource.name;
 	};
 }
 
-function workflowOf(side: DetailSide) {
+function snapshotOf(side: DetailSide) {
 	const state = toPromotionDiffSide(props.detail, side, tagNameOf(side));
-	return state.kind === 'content' ? toDiffWorkflow(state.content) : undefined;
+	return state.kind === 'content' ? state.content : undefined;
 }
 
-const source = computed(() => workflowOf('before'));
-const target = computed(() => workflowOf('after'));
+const source = computed(() => snapshotOf('before'));
+const target = computed(() => snapshotOf('after'));
+// Both sides have the same id. A side with a different name sets its own.
+const workflow = computed(() => props.detail.after ?? props.detail.before);
 
 function emptyTextOf(side: DetailSide) {
 	return (
@@ -63,9 +63,13 @@ function emptyTextOf(side: DetailSide) {
 
 <template>
 	<div :class="$style.diff" data-test-id="promotion-preview-workflow-diff">
-		<WorkflowDiffView
-			:source-workflow="source"
-			:target-workflow="target"
+		<component
+			:is="WorkflowDiff"
+			v-if="WorkflowDiff"
+			:workflow-id="workflow?.id ?? resourceKey"
+			:workflow-name="workflow?.name ?? ''"
+			:source-snapshot="source"
+			:target-snapshot="target"
 			:canvas-id-prefix="resourceKey"
 			show-fullscreen-button
 			require-canvas-focus
@@ -83,7 +87,7 @@ function emptyTextOf(side: DetailSide) {
 			<template #targetEmptyText>
 				<N8nText size="small" color="text-base">{{ emptyTextOf('after') }}</N8nText>
 			</template>
-		</WorkflowDiffView>
+		</component>
 	</div>
 </template>
 

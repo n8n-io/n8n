@@ -57,7 +57,7 @@ describe('toPromotionDiffSide', () => {
 		expect(before).toMatchObject({
 			kind: 'content',
 			content: {
-				name: 'Reconcile invoices',
+				workflowName: 'Reconcile invoices',
 				versionId: 'promotion-before-blob-before',
 				settings: { executionOrder: 'v0' },
 				tags,
@@ -66,8 +66,7 @@ describe('toPromotionDiffSide', () => {
 		expect(after).toEqual({
 			kind: 'content',
 			content: {
-				id: 'w1',
-				name: 'Invoice reconciliation',
+				workflowName: 'Invoice reconciliation',
 				versionId: 'promotion-after-blob-after',
 				nodes: workflow().nodes,
 				connections: workflow().connections,

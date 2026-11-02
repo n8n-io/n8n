@@ -3,21 +3,20 @@ import type {
 	PromotionResource,
 	PromotionResourceDetail,
 } from '@n8n/api-types';
+import type { SlotWorkflowDiffSnapshot } from '@n8n/frontend-module-sdk';
 import type { IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
-
-import type { DiffWorkflowInput } from '@/features/workflows/workflowDiff/workflowDiff.utils';
 
 import { sideState, type DetailSide, type SideState } from './promotionPreview.content';
 import type { ResourceKey } from './promotionPreview.selection';
 
 type WorkflowDetail = Extract<PromotionResourceDetail, { type: 'workflow' }>;
 
-/** Turns one side of a workflow detail into the input of the shared diff viewer. */
+/** Turns one side of a workflow detail into a snapshot for the `workflow-diff` slot. */
 export function toPromotionDiffSide(
 	detail: WorkflowDetail,
 	side: DetailSide,
 	tagName: (id: string) => string,
-): SideState<DiffWorkflowInput> {
+): SideState<SlotWorkflowDiffSnapshot> {
 	const state = sideState(detail, side);
 	if (state.kind !== 'content') return state;
 
@@ -25,8 +24,7 @@ export function toPromotionDiffSide(
 	return {
 		kind: 'content',
 		content: {
-			id: workflow.id,
-			name: workflow.name,
+			workflowName: workflow.name,
 			// Both sides share the workflow id, so the version keeps their diff documents apart.
 			versionId: `promotion-${side}-${detail.revision[side] ?? ''}`,
 			// The package schema checks these only loosely, so they need a cast.

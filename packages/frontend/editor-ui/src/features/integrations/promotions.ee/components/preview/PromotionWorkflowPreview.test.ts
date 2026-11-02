@@ -1,9 +1,11 @@
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
 import { billingPreview } from '../../__tests__/preview.fixtures';
+import { registerDiffSlotStubs } from '../../__tests__/slots';
 import { buildSelectionGraph } from '../../promotionPreview.selection';
 import PromotionWorkflowPreview from './PromotionWorkflowPreview.vue';
 
@@ -20,6 +22,14 @@ const renderComponent = createComponentRenderer(PromotionWorkflowPreview, {
 		direction: 'promote',
 		graph: buildSelectionGraph(billingPreview(), 'promote'),
 	},
+});
+
+beforeEach(() => {
+	registerDiffSlotStubs();
+});
+
+afterEach(() => {
+	componentRegistry.clear();
 });
 
 describe('PromotionWorkflowPreview', () => {

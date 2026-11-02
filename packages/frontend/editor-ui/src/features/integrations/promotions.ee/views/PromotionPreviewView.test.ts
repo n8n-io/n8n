@@ -1,5 +1,6 @@
 import { INBOX_VIEW } from '@n8n/frontend-constants/inbox';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -12,6 +13,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
 import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
+import { registerDiffSlotStubs } from '../__tests__/slots';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
@@ -179,6 +181,14 @@ const answerWorkflowDetails = () =>
 				})),
 			missingKeys: [],
 		}));
+
+beforeEach(() => {
+	registerDiffSlotStubs();
+});
+
+afterEach(() => {
+	componentRegistry.clear();
+});
 
 describe('PromotionPreviewView', () => {
 	it.each(['promote', 'apply'] as const)(
