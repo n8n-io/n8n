@@ -180,7 +180,7 @@ describe('Publisher', () => {
 			'display-workflow-activation-error',
 			'display-workflow-publication-status',
 			'reload-public-api-rate-limit-settings',
-			'promotion-checkout-cleanup',
+			'promotion-environment-changed',
 		] as const)('should not debounce `%s`', async (command) => {
 			const publisher = new Publisher(
 				logger,
