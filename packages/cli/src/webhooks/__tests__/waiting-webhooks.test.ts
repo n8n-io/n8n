@@ -2199,6 +2199,70 @@ describe('WaitingWebhooks on an engine v2 execution', () => {
 		},
 	);
 
+	describe('a request to a step that already resumed', () => {
+		const sendAndWaitNode = {
+			...waitNode,
+			id: 'slack-id',
+			name: 'Slack',
+			type: 'n8n-nodes-base.slack',
+			parameters: { operation: SEND_AND_WAIT_OPERATION },
+		};
+		const settled = (status: ExecutionSnapshot['status']) =>
+			({
+				id: EXECUTION_ID,
+				status,
+				workflow: { nodes: [waitNode, sendAndWaitNode] },
+			}) as unknown as ExecutionSnapshot;
+		const toNode = (nodeId: string) => {
+			const req = request({ approved: 'true', [WAITING_TOKEN_QUERY_PARAM]: 't' });
+			req.params.suffix = nodeId;
+			return req;
+		};
+
+		it.each(['completed', 'failed', 'cancelled'] as const)(
+			'renders the no-action page for a send-and-wait node of a %s execution',
+			async (status) => {
+				dataPlane.locateResume.mockResolvedValue({
+					ok: true,
+					value: { execution: settled(status), target: null },
+				});
+				const res = response();
+
+				await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), res)).resolves.toEqual({
+					noWebhookResponse: true,
+				});
+
+				expect(res.render).toHaveBeenCalledWith('send-and-wait-no-action-required', {
+					isTestWebhook: false,
+				});
+			},
+		);
+
+		it('answers 409 for a send-and-wait node while the execution runs', async () => {
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: settled('running'), target: null },
+			});
+
+			await expect(waitingWebhooks.executeWebhook(toNode('slack-id'), response())).rejects.toThrow(
+				`The execution "${EXECUTION_ID}" is running already.`,
+			);
+		});
+
+		it('answers 409 for a node that does not send and wait', async () => {
+			dataPlane.locateResume.mockResolvedValue({
+				ok: true,
+				value: { execution: settled('completed'), target: null },
+			});
+			const res = response();
+
+			await expect(waitingWebhooks.executeWebhook(toNode('wait-id'), res)).rejects.toThrow(
+				`The execution "${EXECUTION_ID}" has finished already.`,
+			);
+			expect(res.render).not.toHaveBeenCalled();
+		});
+	});
+
 	it('runs the waiting node under its own execution id, with the step and token the data plane named', async () => {
 		const { executeWebhookSpy } = acceptResume();
 		const req = request({ [WAITING_TOKEN_QUERY_PARAM]: 'token' });

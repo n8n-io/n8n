@@ -28,7 +28,10 @@ import type {
 } from './webhook.types';
 
 import { BadRequestError, ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
-import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import {
+	asWorkflowSnapshot,
+	EngineV2ExecutionReader,
+} from '@/executions/engine-v2-execution-reader.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { isExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
@@ -158,12 +161,11 @@ export class WaitingWebhooks implements IWebhookManager {
 		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
 	}
 
-	private isSendAndWaitRequest(nodes: INodes, suffix: string | undefined) {
+	private isSendAndWaitRequest(nodes: INodes | INode[], suffix: string | undefined) {
 		return (
 			suffix &&
-			Object.keys(nodes).some(
-				(node) =>
-					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
+			Object.values(nodes).some(
+				(node) => node.id === suffix && node.parameters.operation === SEND_AND_WAIT_OPERATION,
 			)
 		);
 	}
@@ -481,7 +483,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		const statusResult = this.answerEngineV2Status({ snapshot, target, suffix, req, res });
 		if (statusResult) return statusResult;
 
-		if (target === null) return this.answerEngineV2WithoutTarget(executionId, snapshot, res);
+		if (target === null) {
+			return this.answerEngineV2WithoutTarget(executionId, snapshot, suffix, res);
+		}
 
 		const standIn = await this.buildEngineV2StandIn(snapshot, target.nodeId);
 		if (!standIn) throw new NotFoundError('Could not find node to process webhook.');
@@ -553,15 +557,25 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * No step accepts the request. A queued, running or waiting execution answers
 	 * "is running already": it has not reached its wait yet, or its wait ends
 	 * only at a deadline. A completed, failed or cancelled execution answers "has
-	 * finished already".
+	 * finished already", except for a send-and-wait node: as in v1, a second
+	 * click on its link renders a page that says no action is required.
 	 */
 	protected answerEngineV2WithoutTarget(
 		executionId: string,
 		snapshot: ExecutionSnapshot,
-		_res: express.Response,
+		suffix: string | undefined,
+		res: express.Response,
 	): IWebhookResponseCallbackData {
+		const live = isLiveSnapshot(snapshot);
+		const nodes = asWorkflowSnapshot(snapshot.workflow)?.nodes ?? [];
+		if (!live && this.isSendAndWaitRequest(nodes, suffix)) {
+			applyFormSandboxCSP(res);
+			res.render('send-and-wait-no-action-required', { isTestWebhook: false });
+			return { noWebhookResponse: true };
+		}
+
 		throw new ConflictError(
-			isLiveSnapshot(snapshot)
+			live
 				? `The execution "${executionId}" is running already.`
 				: `The execution "${executionId}" has finished already.`,
 		);
