@@ -16,6 +16,7 @@ export type Command =
 	| 'discover'
 	| 'distribute'
 	| 'affected-packages'
+	| 'lockfile-impact'
 	| 'scope'
 	| 'test-scoped'
 	| 'filter-shard'
@@ -83,6 +84,7 @@ const SUBCOMMANDS: Record<string, Command> = {
 	discover: 'discover',
 	distribute: 'distribute',
 	'affected-packages': 'affected-packages',
+	'lockfile-impact': 'lockfile-impact',
 	scope: 'scope',
 	'test-scoped': 'test-scoped',
 	'filter-shard': 'filter-shard',

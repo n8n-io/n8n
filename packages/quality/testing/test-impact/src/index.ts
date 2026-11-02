@@ -6,6 +6,7 @@
  * the Playwright fixture subpath land in later phases.
  */
 export * from './impact-map.js';
+export * from './lockfile-impact.js';
 export * from './shard-distributor.js';
 export * from './select.js';
 export * from './map-build.js';

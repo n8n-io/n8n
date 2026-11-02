@@ -91,7 +91,7 @@
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:unit": {
@@ -103,7 +103,7 @@
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:integration": {
@@ -115,7 +115,7 @@
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"watch": { "cache": false, "persistent": true },
