@@ -9399,6 +9399,35 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
+		it('should not make a node wider for several non-main outputs at the top', () => {
+			const codeNode = createTestNode({
+				id: 'code',
+				name: 'LangChain Code',
+				type: '@n8n/n8n-nodes-langchain.code',
+			}) as INodeUi;
+			vi.mocked(workflowDocumentStoreInstance.getNodeById).mockReturnValue(codeNode);
+
+			const { getNodePlacementSize } = useCanvasOperations();
+
+			expect(
+				getNodePlacementSize(
+					codeNode,
+					mockNodeTypeDescription({
+						name: codeNode.type,
+						inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiLanguageModel],
+						outputs: [
+							NodeConnectionTypes.AiLanguageModel,
+							NodeConnectionTypes.AiMemory,
+							NodeConnectionTypes.AiTool,
+							NodeConnectionTypes.AiRetriever,
+							NodeConnectionTypes.AiOutputParser,
+							NodeConnectionTypes.AiTool,
+						],
+					}),
+				),
+			).toEqual([240, 80]);
+		});
+
 		it.each([
 			['a sized sticky note', { width: 600, height: 400 }, [600, 400]],
 			['a sticky note without a size', {}, [240, 160]],

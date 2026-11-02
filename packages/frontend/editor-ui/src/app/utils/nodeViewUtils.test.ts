@@ -627,6 +627,15 @@ describe('getNodeSizeFromPorts', () => {
 			getNodeSizeFromPorts([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool]),
 		).toEqual({ width: 240, height: 80 });
 	});
+
+	it('should not make a node wider for several non-main outputs at the top', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel],
+				[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
+			),
+		).toEqual({ width: 240, height: 80 });
+	});
 });
 
 function createTestGraphNode(data: Partial<GraphNode> = {}): GraphNode {

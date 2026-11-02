@@ -1221,6 +1221,13 @@ describe('computeNodeDisplaySize', () => {
 			configurableConfiguration,
 			{ width: 240, height: 80 },
 		],
+		[
+			'a LangChain Code node with six AI outputs',
+			[Main, AiLanguageModel],
+			[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
+			configurableConfiguration,
+			{ width: 240, height: 80 },
+		],
 	])(
 		'should give %s the same size as getNodeSizeFromPorts',
 		(_, inputTypes, outputTypes, kind, expectedSize) => {

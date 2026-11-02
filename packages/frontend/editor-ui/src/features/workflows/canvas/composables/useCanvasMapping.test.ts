@@ -376,6 +376,52 @@ describe('useCanvasMapping — node display sizes', () => {
 
 		expect(nodeDisplaySizeById.value[agentTool.id]).toEqual({ width: 240, height: 80 });
 	});
+
+	it('does not make a node wider for several non-main outputs at the top', () => {
+		const codeNode = createTestNode({
+			id: 'code',
+			name: 'LangChain Code',
+			type: '@n8n/n8n-nodes-langchain.code',
+		}) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		const render: CanvasNodeData['render'] = {
+			type: CanvasNodeRenderType.Default,
+			options: { configurable: true, configuration: true },
+		};
+		rd.renderTypeByNodeId.set(
+			codeNode.id,
+			computed(() => render),
+		);
+		rd.nodeInputsByNodeId.set(
+			codeNode.id,
+			computed(() => [
+				{ type: NodeConnectionTypes.Main, index: 0 },
+				{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+			]),
+		);
+		rd.nodeOutputsByNodeId.set(
+			codeNode.id,
+			computed(() =>
+				[
+					NodeConnectionTypes.AiLanguageModel,
+					NodeConnectionTypes.AiMemory,
+					NodeConnectionTypes.AiTool,
+					NodeConnectionTypes.AiRetriever,
+					NodeConnectionTypes.AiOutputParser,
+					NodeConnectionTypes.AiTool,
+				].map((type, index) => ({ type, index })),
+			),
+		);
+
+		const { nodeDisplaySizeById } = useCanvasMapping({
+			nodes: ref([codeNode]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		// The canvas renders this node at 240 x 80, so its group frame uses the same size
+		expect(nodeDisplaySizeById.value[codeNode.id]).toEqual({ width: 240, height: 80 });
+	});
 });
 
 describe('useCanvasMapping — getNodeExecutionSnapshot', () => {

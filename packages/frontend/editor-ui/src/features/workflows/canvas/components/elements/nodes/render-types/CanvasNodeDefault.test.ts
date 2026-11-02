@@ -597,6 +597,49 @@ describe('CanvasNodeDefault', () => {
 
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
 		});
+
+		it.each([1, 4, 6])(
+			'should not make a node wider for %s non-main outputs at the top',
+			(outputCount) => {
+				renderNodeInputsMap.set(
+					'node',
+					computed(() => [
+						{ type: NodeConnectionTypes.Main, index: 0 },
+						{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+					]),
+				);
+				renderNodeOutputsMap.set(
+					'node',
+					computed(() =>
+						Array.from({ length: outputCount }, (_, index) => ({
+							type: NodeConnectionTypes.AiTool,
+							index,
+						})),
+					),
+				);
+
+				const { getByText } = renderComponent({
+					global: {
+						stubs,
+						provide: {
+							...createCanvasNodeProvide({
+								data: {
+									render: {
+										type: CanvasNodeRenderType.Default,
+										options: { configurable: true, configuration: true },
+									},
+								},
+							}),
+						},
+					},
+				});
+
+				expect(getByText('Test Node').closest('.node')).toHaveStyle({
+					'--canvas-node--width': '240px',
+					'--canvas-node--height': '80px',
+				});
+			},
+		);
 	});
 
 	describe('trigger', () => {
