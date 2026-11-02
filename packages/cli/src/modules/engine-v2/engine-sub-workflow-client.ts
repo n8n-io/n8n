@@ -16,11 +16,7 @@ function messageOf(body: unknown): string | undefined {
 	return isRecord(body) && typeof body.message === 'string' ? body.message : undefined;
 }
 
-/**
- * Asks the control plane server for the graph of a sub-workflow a step calls.
- * Over HTTP even in-process, so the data plane never reads the workflow
- * store or applies the caller policy itself.
- */
+/** Asks the control plane server for the graph of a sub-workflow a step calls. */
 @Service()
 export class EngineSubWorkflowClient {
 	private readonly http: HttpRequestClient;
@@ -30,9 +26,8 @@ export class EngineSubWorkflowClient {
 	}
 
 	/**
-	 * A refusal (4xx) is the caller's to fix, so it reaches the node with the
-	 * control plane's message. A 401 is the planes disagreeing on the secret or
-	 * the scope, and anything else is the platform's: both are operational.
+	 * Resolves the sub-workflow the request names: its graph, workflow document
+	 * and trigger outputs. `signal` aborts the request when the step is cancelled.
 	 */
 	async resolve(
 		request: ResolveSubWorkflowRequest,

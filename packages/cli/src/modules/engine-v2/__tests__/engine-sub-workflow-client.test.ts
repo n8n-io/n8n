@@ -41,10 +41,10 @@ describe('EngineSubWorkflowClient', () => {
 		signal = new AbortController().signal;
 	});
 
-	it('posts the request as the body of the sub-workflow resolve endpoint, without following redirects', async () => {
+	it('posts the request to the resolve endpoint without following redirects, and returns the resolved sub-workflow', async () => {
 		respondWith(200);
 
-		await client.resolve(request, signal);
+		await expect(client.resolve(request, signal)).resolves.toEqual(resolved);
 
 		expect(http.request).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -56,12 +56,6 @@ describe('EngineSubWorkflowClient', () => {
 				abortSignal: signal,
 			}),
 		);
-	});
-
-	it('returns the resolved sub-workflow of a 200', async () => {
-		respondWith(200);
-
-		await expect(client.resolve(request, signal)).resolves.toEqual(resolved);
 	});
 
 	it('reports a refusal to the node with the message the control plane gave', async () => {

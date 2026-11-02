@@ -21,11 +21,11 @@ import {
 } from './engine-v2.constants';
 
 /**
- * Receives lifecycle events from the data plane, and resolves credentials and
- * sub-workflows for it, and runs data table operations for it. It listens on
- * its own host and port, separate from the REST API server, so an operator can
- * restrict these internal routes to the network that the data plane uses
- * without touching the editor's routes.
+ * Provides services for the engine in the data plane: lifecycle events,
+ * credentials, data tables, and sub-workflow resolution. It listens on its own
+ * host and port, separate from the REST API server, so an operator can restrict
+ * these internal routes to the network that the data plane uses without
+ * touching the editor's routes.
  */
 @Service()
 export class EngineControlPlaneServer {
