@@ -56,6 +56,9 @@ interface GraphResponse {
 	body: unknown;
 }
 
+/** Bounds the walk over a business's system users. */
+const MAX_SYSTEM_USER_PAGES = 20;
+
 @Service()
 export class WhatsAppCredentialCheckService {
 	private readonly metaStatusCache = new LruCache<
@@ -332,22 +335,39 @@ export class WhatsAppCredentialCheckService {
 				...this.errorDetail(businesses),
 			});
 			for (const businessId of listedIds(businesses.body)) {
-				const users = await this.get(
-					`/${encodeURIComponent(businessId)}/system_users`,
-					accessToken,
-					{ fields: 'id,role', limit: '100', appsecret_proof: proof },
-				);
-				this.logger.debug('[WhatsAppCredentialCheck] Looked up the system user role', {
-					statusCode: users.statusCode,
-					...this.errorDetail(users),
-				});
-				if (users.statusCode !== 200 || !isRecord(users.body) || !Array.isArray(users.body.data)) {
-					continue;
+				let after: string | undefined;
+				for (let page = 0; page < MAX_SYSTEM_USER_PAGES; page++) {
+					const users = await this.get(
+						`/${encodeURIComponent(businessId)}/system_users`,
+						accessToken,
+						{
+							fields: 'id,role',
+							limit: '100',
+							...(after ? { after } : {}),
+							appsecret_proof: proof,
+						},
+					);
+					this.logger.debug('[WhatsAppCredentialCheck] Looked up the system user role', {
+						statusCode: users.statusCode,
+						...this.errorDetail(users),
+					});
+					if (
+						users.statusCode !== 200 ||
+						!isRecord(users.body) ||
+						!Array.isArray(users.body.data)
+					) {
+						break;
+					}
+					const self = users.body.data.find(
+						(entry: unknown) => stringProperty(entry, 'id') === systemUserId,
+					);
+					if (self) return stringProperty(self, 'role');
+					// Meta gives the cursor of the next page only when there is one.
+					const paging = users.body.paging;
+					const cursors = isRecord(paging) ? paging.cursors : undefined;
+					after = isRecord(paging) && paging.next ? stringProperty(cursors, 'after') : undefined;
+					if (!after) break;
 				}
-				const self = users.body.data.find(
-					(entry: unknown) => stringProperty(entry, 'id') === systemUserId,
-				);
-				if (self) return stringProperty(self, 'role');
 			}
 			return undefined;
 		} catch {

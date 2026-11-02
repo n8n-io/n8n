@@ -333,11 +333,22 @@ function restartWebhookCheck() {
 // Another credential can belong to another Meta app, and the handshake from the
 // previous app says nothing about the new one.
 let previousCredentialId = credentialId.value;
+let credentialCleared = false;
 watch(credentialId, (id) => {
-	if (!id) return;
+	if (!id) {
+		// Drop the old credential's result. The new run also makes any poll in flight stale.
+		clearTimeout(pollTimer);
+		webhookRun++;
+		webhookVerified.value = false;
+		webhookAppMismatch.value = false;
+		credentialCleared = props.mode === 'setup' && !!previousCredentialId;
+		return;
+	}
 	const previous = previousCredentialId;
 	previousCredentialId = id;
-	if (props.mode === 'setup' && previous && previous !== id) restartWebhookCheck();
+	const restart = credentialCleared || (!!previous && previous !== id);
+	credentialCleared = false;
+	if (props.mode === 'setup' && restart) restartWebhookCheck();
 });
 
 onMounted(() => {

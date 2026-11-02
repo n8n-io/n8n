@@ -45,7 +45,8 @@ type Route =
 	| 'profile'
 	| 'businesses'
 	| 'systemUsers'
-	| 'subscribedApps';
+	| 'subscribedApps'
+	| 'subscriptions';
 
 const ok = (body: unknown): GraphReply => ({ statusCode: 200, body });
 
@@ -55,6 +56,7 @@ function routeOf(url: string): Route {
 	if (url.endsWith('/businesses')) return 'businesses';
 	if (url.endsWith('/system_users')) return 'systemUsers';
 	if (url.endsWith('/subscribed_apps')) return 'subscribedApps';
+	if (url.endsWith('/subscriptions')) return 'subscriptions';
 	if (url.endsWith('/whatsapp_business_profile')) return 'profile';
 	return 'phone';
 }
@@ -79,6 +81,7 @@ describe('WhatsAppCredentialCheckService', () => {
 			businesses: async () => ok({ data: [{ id: 'business-1' }] }),
 			systemUsers: async () => ok({ data: [{ id: 'sys-1', role: 'ADMIN' }] }),
 			subscribedApps: async () => ok({ data: [] }),
+			subscriptions: async () => ok({ data: [] }),
 			profile: async () =>
 				ok({
 					data: [
@@ -137,6 +140,24 @@ describe('WhatsAppCredentialCheckService', () => {
 		replies.phoneNumbers = async () => ({ statusCode: 403, body: { error: { code: 10 } } });
 
 		expect(await check()).toEqual({ status: 'failed', reason: 'employeeSystemUser' });
+	});
+
+	it('finds an Employee system user on a later page of the business’s system users', async () => {
+		replies.debugToken = async () =>
+			ok({ data: { expires_at: 0, type: 'SYSTEM_USER', user_id: 'sys-1' } });
+		let calls = 0;
+		replies.systemUsers = async () => {
+			calls++;
+			return calls === 1
+				? ok({
+						data: [{ id: 'sys-2', role: 'ADMIN' }],
+						paging: { cursors: { after: 'cursor-1' }, next: 'https://graph.example.com/next' },
+					})
+				: ok({ data: [{ id: 'sys-1', role: 'EMPLOYEE' }] });
+		};
+
+		expect(await check()).toEqual({ status: 'failed', reason: 'employeeSystemUser' });
+		expect(calls).toBe(2);
 	});
 
 	describe('when Meta does not give the system user role', () => {
@@ -410,7 +431,7 @@ describe('WhatsAppCredentialCheckService', () => {
 			await service.isCallbackInOtherApp(user, PROJECT_ID, CREDENTIAL_ID, AGENT_ID);
 		const withSubscriptions = (data: unknown[]) => {
 			replies.debugToken = async () => ok({ data: { expires_at: 0, app_id: 'app-1' } });
-			replies.phone = async () => ok({ data });
+			replies.subscriptions = async () => ok({ data });
 		};
 
 		it('is false when the credential’s app holds this agent’s callback URL', async () => {
@@ -446,7 +467,7 @@ describe('WhatsAppCredentialCheckService', () => {
 
 		it('is false when Meta does not answer', async () => {
 			replies.debugToken = async () => ok({ data: { expires_at: 0, app_id: 'app-1' } });
-			replies.phone = async () => ({ statusCode: 500, body: {} });
+			replies.subscriptions = async () => ({ statusCode: 500, body: {} });
 
 			expect(await run()).toBe(false);
 		});

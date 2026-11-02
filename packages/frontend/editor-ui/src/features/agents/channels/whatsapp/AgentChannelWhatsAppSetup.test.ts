@@ -749,6 +749,8 @@ describe('AgentChannelWhatsAppSetup', () => {
 		it.each([
 			['incomplete', 'incomplete'],
 			['temporaryToken', 'temporary_token'],
+			['employeeSystemUser', 'employee_system_user'],
+			['insufficientAccess', 'insufficient_access'],
 			['mismatch', 'mismatch'],
 			['unreachable', 'unreachable'],
 		] as const)('tracks a %s credential as %s', async (reason, tracked) => {

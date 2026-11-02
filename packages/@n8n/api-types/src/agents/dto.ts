@@ -118,7 +118,7 @@ export class ListAgentsQueryDto extends Z.class({
 }) {}
 
 export class WhatsAppWebhookStatusQueryDto extends Z.class({
-	credentialId: z.string().optional(),
+	credentialId: z.string().min(1).optional(),
 }) {}
 
 export class ListAgentSessionsQueryDto extends Z.class({
