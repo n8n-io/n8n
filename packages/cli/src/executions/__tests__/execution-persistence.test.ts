@@ -1743,7 +1743,7 @@ describe('ExecutionPersistence', () => {
 			expect(findArg?.relations).toEqual(['metadata']);
 		});
 
-		it('should force-select routing and report fields when a caller-provided array `select` omits them', async () => {
+		it('should force-select routing fields when a caller-provided array `select` omits them', async () => {
 			const executionPersistence = createPersistenceService('db');
 			executionRepository.find.mockResolvedValue([]);
 
@@ -1753,17 +1753,10 @@ describe('ExecutionPersistence', () => {
 			);
 
 			const findArg = executionRepository.find.mock.calls[0][0];
-			expect(findArg?.select).toEqual([
-				'id',
-				'mode',
-				'workflowId',
-				'storedAt',
-				'status',
-				'createdAt',
-			]);
+			expect(findArg?.select).toEqual(['id', 'mode', 'workflowId', 'storedAt']);
 		});
 
-		it('should force-select routing and report fields when a caller-provided object `select` omits them', async () => {
+		it('should force-select routing fields when a caller-provided object `select` omits them', async () => {
 			const executionPersistence = createPersistenceService('db');
 			executionRepository.find.mockResolvedValue([]);
 
@@ -1773,14 +1766,7 @@ describe('ExecutionPersistence', () => {
 			);
 
 			const findArg = executionRepository.find.mock.calls[0][0];
-			expect(findArg?.select).toEqual({
-				mode: true,
-				id: true,
-				workflowId: true,
-				storedAt: true,
-				status: true,
-				createdAt: true,
-			});
+			expect(findArg?.select).toEqual({ mode: true, id: true, workflowId: true, storedAt: true });
 		});
 
 		it('should not touch `select` when the caller did not narrow columns', async () => {
