@@ -92,6 +92,11 @@ describe.each(['legacy', 'vm', 'quickjs'] as const)('vm2 output (%s engine)', (e
 			items,
 			'manual',
 			{},
+			{
+				node: workflow.getNode('Current')!,
+				data: { main: [items] },
+				source: { main: [{ previousNode: 'Routed' }] },
+			},
 		);
 
 	const runSandbox = async () =>
@@ -113,6 +118,21 @@ describe.each(['legacy', 'vm', 'quickjs'] as const)('vm2 output (%s engine)', (e
 		expect(evaluate(items, "={{ $('Routed').first().json.contacts[0].contact.email }}")).toBe(
 			'ada@example.com',
 		);
+	});
+
+	// Text templates that read Function output through a node reference
+	// (CET-607, CET-600).
+	it.each([
+		["=Report {{ $('Routed').first().json.customer.name }}.xlsx", 'Report Ada.xlsx'],
+		[
+			'={ "id": "{{ $(\'Routed\').item.json.customer.id }}", "email": "{{ $json.contacts[0].contact.email }}" }',
+			'{ "id": "42", "email": "ada@example.com" }',
+		],
+	])('reads sandbox data in the text template %s', async (expression, expected) => {
+		const items = (await runSandbox()).map((item) => ({ ...item, pairedItem: { item: 0 } }));
+		expect(types.isProxy(items[0].json.customer)).toBe(true);
+
+		expect(evaluate(items, expression)).toBe(expected);
 	});
 
 	it('returns the complete sandbox data with its dates', async () => {
