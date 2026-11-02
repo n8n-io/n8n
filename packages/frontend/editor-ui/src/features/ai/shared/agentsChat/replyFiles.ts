@@ -28,12 +28,24 @@ export function getReplyAttachments(
 	return toolCall.tool === N8N_CHAT_ACTION_TOOL_NAME ? readFiles(toolCall.output) : [];
 }
 
-/** Add the reply files of a tool call to the message. A file shows one time. */
+/** The reply files of a tool call that are not in `known` yet. Each file comes one time. */
+export function newReplyAttachments(
+	known: readonly ChatMessageAttachment[] | undefined,
+	toolCall: Pick<ToolCall, 'tool' | 'output'>,
+): ChatMessageAttachment[] {
+	const seen = new Set(known?.map((attachment) => attachment.fileId));
+	return getReplyAttachments(toolCall).filter((file) => {
+		if (seen.has(file.fileId)) return false;
+		seen.add(file.fileId);
+		return true;
+	});
+}
+
+/** Add the reply files of a tool call to the message. */
 export function addReplyAttachments(
 	message: Pick<ChatMessage, 'attachments'>,
 	toolCall: Pick<ToolCall, 'tool' | 'output'>,
 ): void {
-	const known = new Set(message.attachments?.map((attachment) => attachment.fileId));
-	const added = getReplyAttachments(toolCall).filter((file) => !known.has(file.fileId));
+	const added = newReplyAttachments(message.attachments, toolCall);
 	if (added.length > 0) message.attachments = [...(message.attachments ?? []), ...added];
 }

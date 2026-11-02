@@ -122,6 +122,30 @@ describe('convertDbMessages — reply files', () => {
 		expect(message.attachments).toEqual([file]);
 	});
 
+	it('shows a file one time when respond results repeat it', () => {
+		const respond = (toolCallId: string) => ({
+			type: 'tool-call' as const,
+			toolCallId,
+			toolName: 'chat_action',
+			input: {},
+			state: 'resolved' as const,
+			output: {
+				ok: true,
+				results: [
+					{ action: 'respond', result: { ok: true, files: [file] } },
+					{ action: 'respond', result: { ok: true, files: [file] } },
+				],
+			},
+		});
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{ id: 'm-1', role: 'assistant', content: [respond('tc-1'), respond('tc-2')] },
+		];
+
+		const [message] = convertDbMessages(dbMessages);
+
+		expect(message.attachments).toEqual([file]);
+	});
+
 	it('ignores the files of other tools', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{

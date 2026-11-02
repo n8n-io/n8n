@@ -2645,39 +2645,42 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].output).toBe(42);
 	});
 
-	it('shows the files of an n8n Chat respond on the assistant message', async () => {
-		const file = {
-			fileId: 'att-1',
-			fileName: 'report.pdf',
-			mimeType: 'application/pdf',
-			sizeBytes: 2048,
-		};
-		const events: AgentSseEvent[] = [
-			{ type: 'start-step' },
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-files',
-				toolName: 'chat_action',
-				input: { action: 'respond', input: { message: { text: 'Report' }, fileIds: ['att-1'] } },
-			},
-			{ type: 'finish-step' },
-			{
-				type: 'tool-result',
-				toolCallId: 'tc-files',
-				toolName: 'chat_action',
-				output: { ok: true, files: [file] },
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+	it.each(['chat', 'n8n-chat'] as const)(
+		'shows the files of a respond on the assistant message in the %s channel',
+		async (channel) => {
+			const file = {
+				fileId: 'att-1',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				sizeBytes: 2048,
+			};
+			const events: AgentSseEvent[] = [
+				{ type: 'start-step' },
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					input: { action: 'respond', input: { message: { text: 'Report' }, fileIds: ['att-1'] } },
+				},
+				{ type: 'finish-step' },
+				{
+					type: 'tool-result',
+					toolCallId: 'tc-files',
+					toolName: 'chat_action',
+					output: { ok: true, files: [file] },
+				},
+				{ type: 'done' },
+			];
+			globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
 
-		const hook = buildHook();
-		await hook.sendMessage('send the report');
-		await flushPromises();
-		await nextTick();
+			const hook = buildHook(undefined, { channel: ref(channel) });
+			await hook.sendMessage('send the report');
+			await flushPromises();
+			await nextTick();
 
-		expect(hook.messages.value[1].attachments).toEqual([file]);
-	});
+			expect(hook.messages.value[1].attachments).toEqual([file]);
+		},
+	);
 
 	it('marks cancellation tool results as cancelled instead of done', async () => {
 		const events: AgentSseEvent[] = [
