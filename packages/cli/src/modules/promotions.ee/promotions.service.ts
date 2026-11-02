@@ -330,6 +330,8 @@ export class PromotionsService {
 				stagePathspec: PACKAGE_SUBFOLDER,
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
+				// Staging and the commit take time, so check again just before the push.
+				beforePush: () => throwIfLockLost(signal),
 			});
 			pushed = { commitSha, counts: exportResult.counts, commitMessage };
 		} finally {
@@ -562,6 +564,8 @@ export class PromotionsService {
 				rollbackOnFailure: true,
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
+				// Staging and the commit take time, so check again just before the push.
+				beforePush: () => throwIfLockLost(signal),
 			});
 			pushed = { commitSha, counts, commitMessage };
 		} catch (error) {

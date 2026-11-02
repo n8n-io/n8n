@@ -278,6 +278,7 @@ export class PromotionsGitService {
 		stagePathspec,
 		onCheckoutRestored,
 		rollbackOnFailure = false,
+		beforePush,
 	}: GitOperation & {
 		/** Push to this new branch instead of the configured base branch. */
 		targetBranchName?: string;
@@ -288,6 +289,8 @@ export class PromotionsGitService {
 		/** Called only after the checkout returns to its base commit. */
 		onCheckoutRestored: () => Promise<void>;
 		rollbackOnFailure?: boolean;
+		/** Runs just before the push. A throw stops the push, and the usual recovery runs. */
+		beforePush?: () => void;
 	}): Promise<{ commitSha: string }> {
 		try {
 			return await this.lockCheckout(
@@ -310,6 +313,7 @@ export class PromotionsGitService {
 									commitMessage,
 									stagePathspec,
 									onCheckoutRestored,
+									beforePush,
 								});
 							}
 
@@ -329,6 +333,7 @@ export class PromotionsGitService {
 								await git.commit(commitMessage);
 								const commitSha = (await git.revparse(['HEAD'])).trim();
 
+								beforePush?.();
 								if (force) {
 									await git.push('origin', branchName, ['-f']);
 								} else {
@@ -496,12 +501,14 @@ export class PromotionsGitService {
 			commitMessage,
 			stagePathspec,
 			onCheckoutRestored,
+			beforePush,
 		}: {
 			branchName: string;
 			targetBranchName: string;
 			commitMessage: string;
 			stagePathspec: string;
 			onCheckoutRestored: () => Promise<void>;
+			beforePush?: () => void;
 		},
 	): Promise<{ commitSha: string }> {
 		const preCommitHead = (
@@ -515,6 +522,7 @@ export class PromotionsGitService {
 			await git.add(['--all', '--', stagePathspec]);
 			await git.commit(commitMessage);
 			const commitSha = (await git.revparse(['HEAD'])).trim();
+			beforePush?.();
 			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
 			return { commitSha };
 		} finally {

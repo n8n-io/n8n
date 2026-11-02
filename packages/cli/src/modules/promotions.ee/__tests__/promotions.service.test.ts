@@ -491,6 +491,25 @@ describe('PromotionsService', () => {
 			},
 		);
 
+		it('stops before the push when the lock is lost after the commit check', async () => {
+			const controller = new AbortController();
+			vi.spyOn(environmentLock, 'run').mockImplementation(
+				async (_environmentId, fn) => await fn(controller.signal),
+			);
+			gitService.commitAndPush.mockImplementation(async ({ beforePush }) => {
+				// The lease expires while Git stages and commits.
+				controller.abort();
+				beforePush?.();
+				return { commitSha: 'c'.repeat(40) };
+			});
+
+			await expect(
+				service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
+			).rejects.toThrow(PromotionLockLostError);
+
+			expect(runRepository.insertRun).not.toHaveBeenCalled();
+		});
+
 		describe('workflows on the branch that moved to another project', () => {
 			const manifest = {
 				projects: [{ id: 'p-billing', name: 'Billing', target: 'projects/billing' }],

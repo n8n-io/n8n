@@ -203,15 +203,20 @@ export class PromotionCheckoutCleanupService {
 		const { result, trashed } = await this.holdLocks(environmentIds, async (signals) => {
 			signals.forEach(throwIfLockLost);
 			const changed = await change();
-			const keptIds = environmentIds.filter((_, index) => signals[index].aborted);
+			const keptIds: string[] = [];
+			// Check each lock just before its removal, because a lease can expire during the change.
+			const trashed = await this.removeLocally(environmentIds, removal, (index) => {
+				if (!signals[index].aborted) return true;
+				keptIds.push(environmentIds[index]);
+				return false;
+			});
 			if (keptIds.length > 0) {
 				this.logger.warn(
 					'Kept the local promotion checkout because n8n lost its lock on the environment',
 					{ environmentIds: keptIds },
 				);
 			}
-			const removableIds = environmentIds.filter((_, index) => !signals[index].aborted);
-			return { result: changed, trashed: await this.removeLocally(removableIds, removal) };
+			return { result: changed, trashed };
 		});
 		await this.finish(trashed, environmentIds, reason);
 		return result;
@@ -249,30 +254,36 @@ export class PromotionCheckoutCleanupService {
 		await this.deleteTrash(await this.removeLocally(environmentIds, 'reset'));
 	}
 
-	/** Removes the descriptors and moves the folders to trash. Returns the trash folders. */
+	/**
+	 * Removes the descriptors and moves the folders to trash. Returns the trash folders.
+	 * `canRemove` runs just before each removal and skips an environment when it returns false.
+	 * The removals run one after the other, so each check sees the state just before its removal.
+	 */
 	private async removeLocally(
 		environmentIds: string[],
 		removal: 'purge' | 'reset',
+		canRemove: (index: number) => boolean = () => true,
 	): Promise<string[]> {
-		const trashed = await Promise.all(
-			environmentIds.map(async (environmentId) => {
-				try {
-					return removal === 'purge'
+		const trashed: string[] = [];
+		for (const [index, environmentId] of environmentIds.entries()) {
+			if (!canRemove(index)) continue;
+			try {
+				trashed.push(
+					...(removal === 'purge'
 						? await this.workingDirectory.purge(environmentId)
-						: await this.workingDirectory.resetCheckout(environmentId);
-				} catch (error) {
-					this.warn(
-						removal === 'purge'
-							? 'Failed to remove the local promotion checkout'
-							: 'Failed to reset the local promotion checkout',
-						{ environmentId },
-						error,
-					);
-					return [];
-				}
-			}),
-		);
-		return trashed.flat();
+						: await this.workingDirectory.resetCheckout(environmentId)),
+				);
+			} catch (error) {
+				this.warn(
+					removal === 'purge'
+						? 'Failed to remove the local promotion checkout'
+						: 'Failed to reset the local promotion checkout',
+					{ environmentId },
+					error,
+				);
+			}
+		}
+		return trashed;
 	}
 
 	private async deleteTrash(trashed: string[]) {

@@ -2888,6 +2888,34 @@ describe('Promotions in Public API', () => {
 			expect((await agent.get(`/promotions/environments/${id}`)).status).toBe(200);
 		});
 
+		it('returns 423 on Apply and Continue while another operation holds the lock', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createEnvironment(agent);
+			const held = createDeferredPromise();
+			const release = createDeferredPromise();
+			const holder = Container.get(PromotionEnvironmentLockService).run(id, async () => {
+				held.resolve();
+				await release.promise;
+			});
+			await held.promise;
+
+			try {
+				const responses = [
+					await agent.post(`/promotions/environments/${id}/apply`),
+					await agent.post(`/promotions/environments/${id}/apply/continue`).send(continueBody),
+				];
+				for (const response of responses) {
+					expect(response.status, JSON.stringify(response.body)).toBe(423);
+					expect(response.body.message).toBe(
+						'Another promotion operation is running for this environment. Try again when it finishes.',
+					);
+				}
+			} finally {
+				release.resolve();
+				await holder;
+			}
+		});
+
 		it('rejects Promote on an apply environment and Apply on a promote environment', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const applyId = await createEnvironment(agent);

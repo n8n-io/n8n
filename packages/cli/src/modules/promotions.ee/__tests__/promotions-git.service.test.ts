@@ -403,6 +403,55 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(result).toEqual({ commitSha: 'commit' });
 		});
 
+		it('runs the push check after the commit and just before the push', async () => {
+			const beforePush = vi.fn();
+
+			await call({ beforePush });
+
+			expect(beforePush).toHaveBeenCalledOnce();
+			expect(mockGit.commit.mock.invocationCallOrder[0]).toBeLessThan(
+				beforePush.mock.invocationCallOrder[0],
+			);
+			expect(beforePush.mock.invocationCallOrder[0]).toBeLessThan(
+				mockGit.push.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not push and rolls back the commit when the push check throws', async () => {
+			mockGit.raw.mockResolvedValueOnce('previous\n');
+			const stopped = new ServiceUnavailableError('stopped');
+
+			await expect(
+				call({
+					rollbackOnFailure: true,
+					beforePush: () => {
+						throw stopped;
+					},
+				}),
+			).rejects.toBe(stopped);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--mixed', 'previous']);
+		});
+
+		it('does not push a new branch and restores the base branch when the push check throws', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			const stopped = new ServiceUnavailableError('stopped');
+
+			await expect(
+				call({
+					targetBranchName: 'n8n-promotion/x',
+					beforePush: () => {
+						throw stopped;
+					},
+				}),
+			).rejects.toBe(stopped);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+			expect(onCheckoutRestored).toHaveBeenCalled();
+		});
+
 		it('restores the local base branch when a new branch push fails', async () => {
 			mockGit.raw.mockResolvedValueOnce('base\n');
 			mockGit.revparse.mockResolvedValueOnce('commit\n');

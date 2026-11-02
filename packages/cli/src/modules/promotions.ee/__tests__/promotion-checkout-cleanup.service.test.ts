@@ -291,6 +291,37 @@ describe('PromotionCheckoutCleanupService', () => {
 			expect(await isLockFree(DELETED_ID)).toBe(true);
 		});
 
+		it('keeps the checkout of an environment whose lock is lost during an earlier removal', async () => {
+			const first = await createCheckout(LIVE_ID);
+			const second = await createCheckout(DELETED_ID);
+			environmentRepository.findIdsWithRepositoryPathByProvider.mockResolvedValue([
+				LIVE_ID,
+				DELETED_ID,
+			]);
+			const controllers = new Map<string, AbortController>();
+			vi.spyOn(environmentLock, 'run').mockImplementation(async (environmentId, fn) => {
+				const controller = new AbortController();
+				controllers.set(environmentId, controller);
+				return await fn(controller.signal);
+			});
+			const resetCheckout = workingDirectory.resetCheckout.bind(workingDirectory);
+			vi.spyOn(workingDirectory, 'resetCheckout').mockImplementation(async (environmentId) => {
+				// The second lease expires while the first checkout is removed.
+				controllers.get(DELETED_ID)?.abort();
+				return await resetCheckout(environmentId);
+			});
+
+			await service.changeHostUrl('prov1', async () => {});
+
+			expect(await exists(first.repositoryFolder)).toBe(false);
+			expect(await exists(second.repositoryFolder)).toBe(true);
+			expect(await exists(second.descriptorFile)).toBe(true);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Kept the local promotion checkout because n8n lost its lock on the environment',
+				{ environmentIds: [DELETED_ID] },
+			);
+		});
+
 		it('releases the locks it holds and changes nothing when a later lock is busy', async () => {
 			const first = await createCheckout(LIVE_ID);
 			const second = await createCheckout(DELETED_ID);

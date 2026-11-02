@@ -13,20 +13,35 @@ import {
 
 const ENVIRONMENT_ID = 'env-1';
 
+type Holder = { held: Promise<void>; release: () => void; done: Promise<void> };
+
+/** Holders that a test started. `afterEach` frees them, so a failed assertion cannot leak a lock. */
+const holders: Holder[] = [];
+
 /** Resolves once the holder runs, and keeps the lock until `release` is called. */
 function holdLock(service: PromotionEnvironmentLockService, environmentId = ENVIRONMENT_ID) {
-	let release!: () => void;
+	let release: () => void = () => {};
 	let acquired!: () => void;
 	const held = new Promise<void>((resolve) => (acquired = resolve));
 	const done = service.run(environmentId, async () => {
 		acquired();
 		await new Promise<void>((resolve) => (release = resolve));
 	});
-	return { held, release: () => release(), done };
+	const holder: Holder = { held, release: () => release(), done };
+	holders.push(holder);
+	return holder;
 }
 
 describe('PromotionEnvironmentLockService', () => {
 	const service = new PromotionEnvironmentLockService(Container.get(LockService));
+
+	afterEach(async () => {
+		for (const holder of holders.splice(0)) {
+			await holder.held;
+			holder.release();
+			await holder.done;
+		}
+	});
 
 	it('builds the key from the environment ID', () => {
 		expect(promotionEnvironmentLockKey(ENVIRONMENT_ID)).toBe('promotion-environment:env-1');
