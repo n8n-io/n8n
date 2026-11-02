@@ -148,6 +148,11 @@ type WorkflowUpdateOptions = {
 	restoredFromVersionId?: string;
 	/** Fail the save instead of restoring when the user edits a node whose credential they have no access to. */
 	rejectReadOnlyNodeEdits?: boolean;
+	/**
+	 * Node fields the caller's payload never carries, for example fields its request schema strips.
+	 * The credential guard leaves them out when it compares a submitted node with the stored node.
+	 */
+	unsentNodeFields?: readonly string[];
 };
 
 type PreparedWorkflowUpdate = {
@@ -596,6 +601,7 @@ export class WorkflowService {
 			allowUnresolvedErrorWorkflow = false,
 			restoredFromVersionId,
 			rejectReadOnlyNodeEdits = false,
+			unsentNodeFields = [],
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -672,7 +678,7 @@ export class WorkflowService {
 				workflowId,
 				user,
 				restoredNodes,
-				{ rejectReadOnlyNodeEdits },
+				{ rejectReadOnlyNodeEdits, unsentNodeFields },
 			);
 		}
 

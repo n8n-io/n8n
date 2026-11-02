@@ -3996,6 +3996,48 @@ describe('PUT /workflows/:id', () => {
 			expect(httpNode?.position).toEqual([300, 150]);
 			expect(httpNode?.parameters?.url).toBe(originalUrl);
 		});
+
+		test('should keep a stored extendsCredential when the read-only credential node is sent without it', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const originalUrl = 'https://original.example.com';
+			const workflow = await createWorkflow(
+				{
+					nodes: [
+						triggerNode,
+						{
+							...httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+							extendsCredential: 'httpHeaderAuth',
+						},
+					],
+					connections: {},
+				},
+				owner,
+			);
+			await shareWorkflowWithUsers(workflow, [member]);
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+				name: workflow.name,
+				nodes: [
+					triggerNode,
+					httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+				],
+				connections: {},
+				settings: {},
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			const httpNode = storedAfterUpdate.nodes.find((node) => node.id === 'http-node');
+			expect(httpNode?.extendsCredential).toBe('httpHeaderAuth');
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
+		});
 	});
 
 	describe('parentFolderId placement', () => {

@@ -77,12 +77,6 @@ const INSPECTABLE_SUBWORKFLOW_SOURCES = new Set(['database', 'parameter']);
 /** Exclude allowed edits and temporary editor state from the definition comparison. */
 const FREELY_EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled', 'color', 'issues', 'status'];
 
-// Fields on a stored node that some callers DTOs do not support.
-// These must be stripped from stored nodes prior to comparison with update DTOs.
-const STORED_ONLY_NODE_FIELDS = [
-	'extendsCredential', // public API
-] as const;
-
 /** Tool and HITL tool variants use the same source rules as their base node. */
 function isWorkflowSelectorNode(node: INode): boolean {
 	if (typeof node.type !== 'string') return false;
@@ -103,6 +97,11 @@ export type CredentialGuardOptions = {
 	allowUninspectableSource?: boolean;
 	/** Fail the save when a read-only node has other edits to non-editable fields. */
 	rejectReadOnlyNodeEdits?: boolean;
+	/**
+	 * Node fields the caller's payload never carries, for example fields its request schema strips.
+	 * The credential guard leaves them out when it compares a submitted node with the stored node.
+	 */
+	unsentNodeFields?: readonly string[];
 };
 
 const EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled'] as const;
@@ -294,7 +293,7 @@ export class EnterpriseWorkflowService {
 		workflowId: string,
 		user: User,
 		restoredNodes: INode[] = [],
-		guardOptions: Pick<CredentialGuardOptions, 'rejectReadOnlyNodeEdits'> = {},
+		guardOptions: Pick<CredentialGuardOptions, 'rejectReadOnlyNodeEdits' | 'unsentNodeFields'> = {},
 	) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
@@ -485,17 +484,15 @@ export class EnterpriseWorkflowService {
 
 			const mustMatchStoredNode = blockedBySource || options.rejectReadOnlyNodeEdits;
 
-			// An absent stored-only field means the caller did not send it, so it is unchanged.
-			const sentStoredOnlyFieldChanged = STORED_ONLY_NODE_FIELDS.some(
-				(field) => node[field] !== undefined && !isEqual(node[field], previousNode[field]),
-			);
+			// The caller cannot send these fields, so the stored value would always look like a change.
+			const unsentNodeFields = options.unsentNodeFields ?? [];
 			const definitionChanged = !isEqual(
-				this.getNodeDefinition(node),
-				this.getNodeDefinition(previousNode),
+				this.getNodeDefinition(node, unsentNodeFields),
+				this.getNodeDefinition(previousNode, unsentNodeFields),
 			);
 
 			// Reject changes instead of silently discarding them when we restore the stored node.
-			if (mustMatchStoredNode && (sentStoredOnlyFieldChanged || definitionChanged)) {
+			if (mustMatchStoredNode && definitionChanged) {
 				if (blockedBySource) {
 					throw new UninspectableSubworkflowSourceError(node);
 				}
@@ -583,10 +580,13 @@ export class EnterpriseWorkflowService {
 	/**
 	 * Compare node behavior without treating editor formatting or allowed edits as changes.
 	 */
-	private getNodeDefinition(node: INode): Record<string, unknown> {
+	private getNodeDefinition(
+		node: INode,
+		unsentNodeFields: readonly string[] = [],
+	): Record<string, unknown> {
 		const definition: Record<string, unknown> = omit(node, [
 			...FREELY_EDITABLE_NODE_FIELDS,
-			...STORED_ONLY_NODE_FIELDS,
+			...unsentNodeFields,
 		]);
 		definition.parameters = this.getDisplayedParameters(node);
 
