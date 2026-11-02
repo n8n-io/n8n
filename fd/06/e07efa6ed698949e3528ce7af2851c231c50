@@ -5,18 +5,10 @@
   "base_commit_sha": "fd06e07efa6ed698949e3528ce7af2851c231c50",
   "prompts": {},
   "sessions": {
-    "s_2397c9db9d923f": {
+    "s_e99de54a53d3e4": {
       "agent_id": {
         "tool": "codex",
-        "id": "01a11062-0f35-7542-b063-84df367d8ec4",
-        "model": "gpt-6-astra"
-      },
-      "human_author": null
-    },
-    "s_71ad2034164515": {
-      "agent_id": {
-        "tool": "codex",
-        "id": "01a10d43-fdb2-7132-8573-764fd1bad9f7",
+        "id": "01a11e9d-276c-7820-8033-49b70e62dd41",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"

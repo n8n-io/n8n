@@ -1,0 +1,47 @@
+packages/cli/test/migration/1793612194540-remove-public-app-visibility.test.ts
+  s_4bcab537e8dd3b::t_2422fa8c0beb6b 1-116
+packages/modules/apps/backend/src/runtime/__tests__/app-runtime.controller.test.ts
+  s_4bcab537e8dd3b::t_5fa877abc81425 32
+  s_4bcab537e8dd3b::t_d232040fed3e5f 504-506,513,515,519
+  s_4bcab537e8dd3b::t_b5e0ff76b88a6b 507-512,514,516-518
+  s_4bcab537e8dd3b::t_969e5284edecae 370
+packages/@n8n/db/src/migrations/sqlite/1793612194540-RemovePublicAppVisibility.ts
+  s_4bcab537e8dd3b::t_13abc814b35d84 5
+  s_4bcab537e8dd3b::t_ba8207ba512904 1-4,6-9
+packages/modules/apps/backend/src/runtime/app-runtime.controller.ts
+  s_4bcab537e8dd3b::t_f550948dbbf876 49
+  s_4bcab537e8dd3b::t_adbfd8c9faf163 215-216
+  s_4bcab537e8dd3b::t_4239383162c206 205-206
+  s_4bcab537e8dd3b::t_2a33c00798053f 14
+  s_4bcab537e8dd3b::t_24aa74b642a45c 61-64
+packages/modules/apps/backend/src/auth/app-protected-resource.ts
+  s_4bcab537e8dd3b::t_1967d45b27a523 55
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_4bcab537e8dd3b::t_4e43234574f227 135-136
+packages/@n8n/db/src/migrations/common/1793612194540-RemovePublicAppVisibility.ts
+  s_4bcab537e8dd3b::t_9c7777b42c3392 4-12
+docs/generated/postgres-schema/public.app.md
+  s_4bcab537e8dd3b::t_1d0be6d041d085 21
+docs/generated/sqlite-schema/README.md
+  s_4bcab537e8dd3b::t_cc181886ef7e09 276-277
+docs/generated/sqlite-schema/app.md
+  s_4bcab537e8dd3b::t_0d24769307b668 9,32-33,35
+docs/generated/sqlite-schema/app_version.md
+  s_4bcab537e8dd3b::t_27121e5b8e427f 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3853baa5912c3cf6bca4c3c864fbab27e6d7a672",
+  "prompts": {},
+  "sessions": {
+    "s_4bcab537e8dd3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53408b8-c507-4016-9fc2-cf73b75fcf99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
