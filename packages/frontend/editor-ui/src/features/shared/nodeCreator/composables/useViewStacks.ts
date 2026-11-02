@@ -309,7 +309,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		};
 	});
 
-	const TOOL_SUBCATEGORY_ORDER = [
+	const TOOL_SUBCATEGORY_ORDER: string[] = [
 		AI_CATEGORY_OTHER_TOOLS,
 		AI_CATEGORY_MCP_NODES,
 		AI_CATEGORY_VECTOR_STORES,

@@ -2881,6 +2881,9 @@ importers:
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
