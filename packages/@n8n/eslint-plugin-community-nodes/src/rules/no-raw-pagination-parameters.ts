@@ -47,8 +47,15 @@ export const NoRawPaginationParametersRule = createRule({
 
 				const nameProperty = findObjectProperty(property, 'name');
 				const name = getStringLiteralValue(nameProperty?.value ?? null);
-				const type = getStringLiteralValue(findObjectProperty(property, 'type')?.value ?? null);
-				if (nameProperty && name && PAGINATION_NAMES.has(name) && type && type !== 'hidden') {
+				const typeProperty = findObjectProperty(property, 'type');
+				const type = getStringLiteralValue(typeProperty?.value ?? null);
+				if (
+					nameProperty &&
+					name &&
+					PAGINATION_NAMES.has(name) &&
+					typeProperty &&
+					type !== 'hidden'
+				) {
 					context.report({
 						node: nameProperty.value,
 						messageId: 'rawPaginationParameter',

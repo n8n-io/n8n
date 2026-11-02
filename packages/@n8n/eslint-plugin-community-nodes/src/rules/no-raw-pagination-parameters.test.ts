@@ -84,6 +84,24 @@ ruleTester.run('no-raw-pagination-parameters', NoRawPaginationParametersRule, {
 				{ displayName: 'Cursor', name: 'cursor', type: 'hidden', default: '' },
 			];`,
 		},
+		{
+			name: 'pagination names in option entries without a type',
+			filename: 'Test.node.ts',
+			code: createNodeCode(`{
+				displayName: 'Sort By', name: 'sortBy', type: 'options', default: 'offset',
+				options: [{ name: 'offset', value: 'offset' }, { name: 'cursor', value: 'cursor' }],
+			}`),
+		},
+		{
+			name: 'pagination name in a fixed collection group without a type',
+			filename: 'Test.node.ts',
+			code: createNodeCode(`{
+				displayName: 'Filters', name: 'filters', type: 'fixedCollection', default: {},
+				options: [{ name: 'cursor', displayName: 'Cursor', values: [
+					{ displayName: 'Status', name: 'status', type: 'string', default: '' },
+				] }],
+			}`),
+		},
 	],
 	invalid: [
 		...[
@@ -107,6 +125,23 @@ ruleTester.run('no-raw-pagination-parameters', NoRawPaginationParametersRule, {
 			];`,
 			errors: [{ messageId: 'rawPaginationParameter' as const, data: { name } }],
 		})),
+		{
+			name: 'pagination field with a const-asserted type',
+			filename: 'Description.ts',
+			code: `export const fields: INodeProperties[] = [
+				{ displayName: 'Offset', name: 'offset', type: 'number' as const, default: 0 },
+			];`,
+			errors: [{ messageId: 'rawPaginationParameter', data: { name: 'offset' } }],
+		},
+		{
+			name: 'pagination field with a type from a variable',
+			filename: 'Test.node.ts',
+			code: `const fieldType: INodeProperties['type'] = 'string';
+			${createNodeCode(`{
+				displayName: 'Cursor', name: 'cursor', type: fieldType, default: '',
+			}`)}`,
+			errors: [{ messageId: 'rawPaginationParameter', data: { name: 'cursor' } }],
+		},
 		{
 			name: 'pagination field in a fixed collection',
 			filename: 'Test.node.ts',
