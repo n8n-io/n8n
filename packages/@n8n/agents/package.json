@@ -128,6 +128,7 @@
     "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
+    "@microsoft/mxc-sdk": "catalog:",
     "@pinecone-database/pinecone": "catalog:",
     "@qdrant/js-client-rest": "catalog:",
     "@supabase/supabase-js": "catalog:",
@@ -135,6 +136,9 @@
     "zod": "catalog:"
   },
   "peerDependenciesMeta": {
+    "@microsoft/mxc-sdk": {
+      "optional": true
+    },
     "langsmith": {
       "optional": true
     },
@@ -161,6 +165,7 @@
     }
   },
   "devDependencies": {
+    "@microsoft/mxc-sdk": "catalog:",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
