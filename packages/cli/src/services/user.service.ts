@@ -2,7 +2,7 @@ import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, JwtService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { Person, PublicUser } from '@n8n/db';
+import type { AuthIdentity, Person, PublicUser } from '@n8n/db';
 import {
 	TransactionRunner,
 	Project,
