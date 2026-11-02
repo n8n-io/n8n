@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-workflow-builder",
-  "version": "0.2.6",
+  "version": "0.2.6-exp.g86c6a0b7",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
