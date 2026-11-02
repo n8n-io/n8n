@@ -1,84 +1,116 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from "n8n-workflow";
-import { mockDeep } from "vitest-mock-extended";
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
-import { ERPNext } from "../ERPNext.node";
+import { ERPNext } from '../ERPNext.node';
 
-describe("ERPNext", () => {
+describe('ERPNext', () => {
 	const node = new ERPNext();
-	const credentials = {
-		environment: "selfHosted",
-		domain: "https://erpnext.example.com",
-	};
+	const credentials = { environment: 'selfHosted', domain: 'https://erpnext.example.com' };
+	const docTypes = [
+		{ name: 'Service Product', encoded: 'Service%20Product' },
+		{ name: '50% Discount', encoded: '50%25%20Discount' },
+		{ name: 'Sales/Orders?#', encoded: 'Sales%2FOrders%3F%23' },
+		{ name: 'Customer', encoded: 'Customer' },
+	];
 
-	it.each(["Service Product", "Sales Invoice Item", "Customer"])(
-		"keeps the DocType value unchanged for %s",
-		async (name) => {
+	describe.each(docTypes)('$name', ({ name, encoded }) => {
+		async function loadDocType() {
 			const context = mockDeep<ILoadOptionsFunctions>();
 			context.getCredentials.mockResolvedValue(credentials);
 			context.helpers.requestWithAuthentication
 				.mockResolvedValueOnce({ data: [{ name }] })
 				.mockResolvedValueOnce({ data: [] });
-
 			const options = await node.methods.loadOptions.getDocTypes.call(context);
-
 			expect(options).toEqual([{ name, value: name }]);
-		},
-	);
+			return options[0].value;
+		}
 
-	it.each([false, true])(
-		"passes the selected DocType to the API and filters without encoding (returnAll=%s)",
-		async (returnAll) => {
-			const loadContext = mockDeep<ILoadOptionsFunctions>();
-			loadContext.getCredentials.mockResolvedValue(credentials);
-			loadContext.helpers.requestWithAuthentication
-				.mockResolvedValueOnce({ data: [{ name: "Service Product" }] })
-				.mockResolvedValueOnce({ data: [] });
-			const [docType] =
-				await node.methods.loadOptions.getDocTypes.call(loadContext);
+		it('keeps the option value unchanged', async () => {
+			await loadDocType();
+		});
 
-			const context = mockDeep<IExecuteFunctions>();
-			context.getCredentials.mockResolvedValue(credentials);
-			context.getInputData.mockReturnValue([{ json: {} }]);
-			context.getNodeParameter.mockImplementation((name) => {
-				switch (name) {
-					case "resource":
-						return "document";
-					case "operation":
-						return "getAll";
-					case "docType":
-						return docType.value;
-					case "returnAll":
-						return returnAll;
-					case "limit":
-						return 10;
-					case "options":
-						return {
-							filters: {
-								customProperty: [
-									{ field: "enabled", operator: "is", value: "1" },
-								],
-							},
-						};
-					default:
-						throw new Error(`Unexpected parameter: ${name}`);
-				}
-			});
-			context.helpers.requestWithAuthentication.mockResolvedValue({ data: [] });
-			context.helpers.returnJsonArray.mockReturnValue([]);
-			context.helpers.constructExecutionMetaData.mockReturnValue([]);
+		it.each(['getDocFilters', 'getDocFields'] as const)(
+			'encodes the DocType path for %s',
+			async (method) => {
+				const context = mockDeep<ILoadOptionsFunctions>();
+				context.getCredentials.mockResolvedValue(credentials);
+				context.getCurrentNodeParameter.mockReturnValue(await loadDocType());
+				context.helpers.requestWithAuthentication.mockResolvedValue({ data: { fields: [] } });
 
-			await node.execute.call(context);
+				await node.methods.loadOptions[method].call(context);
 
-			expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-				"erpNextApi",
-				expect.objectContaining({
-					method: "GET",
-					uri: "https://erpnext.example.com/api/resource/Service Product",
-					qs: expect.objectContaining({
-						filters: JSON.stringify([["Service Product", "enabled", "=", "1"]]),
+				expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+					'erpNextApi',
+					expect.objectContaining({
+						method: 'GET',
+						uri: `https://erpnext.example.com/api/resource/DocType/${encoded}`,
 					}),
-				}),
-			);
-		},
-	);
+				);
+			},
+		);
+
+		it.each([
+			{ operation: 'get', method: 'GET', suffix: '/test-document', returnAll: false },
+			{ operation: 'getAll', method: 'GET', suffix: '', returnAll: false },
+			{ operation: 'getAll', method: 'GET', suffix: '', returnAll: true },
+			{ operation: 'create', method: 'POST', suffix: '', returnAll: false },
+			{ operation: 'update', method: 'PUT', suffix: '/test-document', returnAll: false },
+			{ operation: 'delete', method: 'DELETE', suffix: '/test-document', returnAll: false },
+		])(
+			'encodes the path for $operation (returnAll=$returnAll)',
+			async ({ operation, method, suffix, returnAll }) => {
+				const docType = await loadDocType();
+				const context = mockDeep<IExecuteFunctions>();
+				context.getCredentials.mockResolvedValue(credentials);
+				context.getInputData.mockReturnValue([{ json: {} }]);
+				context.getNodeParameter.mockImplementation((parameter) => {
+					switch (parameter) {
+						case 'resource':
+							return 'document';
+						case 'operation':
+							return operation;
+						case 'docType':
+							return docType;
+						case 'documentName':
+							return 'test-document';
+						case 'returnAll':
+							return returnAll;
+						case 'limit':
+							return 10;
+						case 'properties':
+							return { customProperty: [{ field: 'enabled', value: '1' }] };
+						case 'options':
+							return {
+								filters: { customProperty: [{ field: 'enabled', operator: 'is', value: '1' }] },
+							};
+						default:
+							throw new Error(`Unexpected parameter: ${parameter}`);
+					}
+				});
+				context.helpers.requestWithAuthentication.mockResolvedValue({ data: [] });
+				context.helpers.returnJsonArray.mockReturnValue([]);
+				context.helpers.constructExecutionMetaData.mockReturnValue([]);
+
+				await node.execute.call(context);
+
+				expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+					'erpNextApi',
+					expect.objectContaining({
+						method,
+						uri: `https://erpnext.example.com/api/resource/${encoded}${suffix}`,
+					}),
+				);
+				if (operation === 'getAll') {
+					expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+						'erpNextApi',
+						expect.objectContaining({
+							qs: expect.objectContaining({
+								filters: JSON.stringify([[name, 'enabled', '=', '1']]),
+							}),
+						}),
+					);
+				}
+			},
+		);
+	});
 });

@@ -76,7 +76,7 @@ export class ERPNext implements INodeType {
 				const { data } = await erpNextApiRequest.call(
 					this,
 					'GET',
-					`/api/resource/DocType/${docType}`,
+					`/api/resource/DocType/${encodeURIComponent(docType)}`,
 					{},
 				);
 
@@ -95,7 +95,7 @@ export class ERPNext implements INodeType {
 				const { data } = await erpNextApiRequest.call(
 					this,
 					'GET',
-					`/api/resource/DocType/${docType}`,
+					`/api/resource/DocType/${encodeURIComponent(docType)}`,
 					{},
 				);
 
@@ -144,7 +144,7 @@ export class ERPNext implements INodeType {
 					responseData = await erpNextApiRequest.call(
 						this,
 						'GET',
-						`/api/resource/${docType}/${documentName}`,
+						`/api/resource/${encodeURIComponent(docType)}/${documentName}`,
 					);
 					responseData = responseData.data;
 				}
@@ -157,7 +157,7 @@ export class ERPNext implements INodeType {
 					// https://docs.frappe.io/framework/user/en/api/rest#listing-documents
 
 					const docType = this.getNodeParameter('docType', i) as string;
-					const endpoint = `/api/resource/${docType}`;
+					const endpoint = `/api/resource/${encodeURIComponent(docType)}`;
 
 					const { fields, filters } = this.getNodeParameter('options', i) as {
 						fields: string[];
@@ -228,7 +228,7 @@ export class ERPNext implements INodeType {
 					responseData = await erpNextApiRequest.call(
 						this,
 						'POST',
-						`/api/resource/${docType}`,
+						`/api/resource/${encodeURIComponent(docType)}`,
 						body,
 					);
 					responseData = responseData.data;
@@ -245,7 +245,7 @@ export class ERPNext implements INodeType {
 					responseData = await erpNextApiRequest.call(
 						this,
 						'DELETE',
-						`/api/resource/${docType}/${documentName}`,
+						`/api/resource/${encodeURIComponent(docType)}/${documentName}`,
 					);
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -274,7 +274,7 @@ export class ERPNext implements INodeType {
 					responseData = await erpNextApiRequest.call(
 						this,
 						'PUT',
-						`/api/resource/${docType}/${documentName}`,
+						`/api/resource/${encodeURIComponent(docType)}/${documentName}`,
 						body,
 					);
 					responseData = responseData.data;
