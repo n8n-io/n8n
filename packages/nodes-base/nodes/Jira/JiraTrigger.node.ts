@@ -8,7 +8,9 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import jwt from 'jsonwebtoken';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
+
+import { getAtlassianCloudId } from '@utils/atlassian';
 
 import {
 	allEvents,
@@ -24,10 +26,12 @@ import {
 } from './GenericFunctions';
 import type { JiraDynamicWebhook, JiraProject, JiraWebhook } from './types';
 
+const JWT_CLOCK_TOLERANCE_SECONDS = 5;
+
 /**
  * Verifies the signed token that Atlassian sends with every Cloud (OAuth2) dynamic-webhook
  * delivery. The token is a JWT signed with HS256 using the OAuth app client secret, with the
- * app client id as the issuer.
+ * app client id as the issuer and the delivering site's cloudId in the `context` claim.
  *
  * Returns a response that ends the request when the token is missing or invalid, or `undefined`
  * when the request is verified and processing should continue. Fails closed: any error rejects.
@@ -48,27 +52,70 @@ async function verifyCloudOAuth2Request(
 		return reject(401);
 	}
 
-	let credentials: { clientId?: string; clientSecret?: string } | undefined;
+	let credentials: { clientId?: string; clientSecret?: string; domain?: string } | undefined;
 	try {
-		credentials = await this.getCredentials<{ clientId?: string; clientSecret?: string }>(
-			'jiraSoftwareCloudOAuth2Api',
-		);
+		credentials = await this.getCredentials<{
+			clientId?: string;
+			clientSecret?: string;
+			domain?: string;
+		}>('jiraSoftwareCloudOAuth2Api');
 	} catch {}
 
-	const { clientId, clientSecret } = credentials ?? {};
+	const { clientId, clientSecret, domain } = credentials ?? {};
 
 	if (!clientId || !clientSecret) {
 		return reject(403);
 	}
 
+	let payload: JwtPayload;
 	try {
 		// Pin the algorithm so a token's own `alg` (e.g. `none`) is never trusted.
-		jwt.verify(token, clientSecret, {
+		const verified = jwt.verify(token, clientSecret, {
 			algorithms: ['HS256'],
 			issuer: clientId,
-			clockTolerance: 5,
+			clockTolerance: JWT_CLOCK_TOLERANCE_SECONDS,
 		});
+		if (typeof verified === 'string') {
+			return reject(403);
+		}
+		payload = verified;
 	} catch {
+		return reject(403);
+	}
+
+	// Reject a token issued in the future, beyond the clock-skew allowance.
+	const now = Math.floor(Date.now() / 1000);
+	if (typeof payload.iat === 'number' && payload.iat > now + JWT_CLOCK_TOLERANCE_SECONDS) {
+		return reject(403);
+	}
+
+	// Bind the delivery to the site this trigger is configured for, so a token validly
+	// signed by the same OAuth app but issued for another site is not accepted.
+	const tokenCloudId = (payload.context as { cloudId?: string } | undefined)?.cloudId;
+	if (typeof tokenCloudId !== 'string' || tokenCloudId === '') {
+		return reject(403);
+	}
+
+	const webhookData = this.getWorkflowStaticData('node');
+	let siteCloudId = webhookData.cloudId as string | undefined;
+	if (!siteCloudId) {
+		if (typeof domain !== 'string' || domain === '') {
+			return reject(403);
+		}
+		try {
+			siteCloudId = await getAtlassianCloudId.call(
+				this,
+				'jiraSoftwareCloudOAuth2Api',
+				domain,
+				'jira',
+			);
+		} catch {
+			return reject(403);
+		}
+		webhookData.cloudId = siteCloudId;
+	}
+
+	if (tokenCloudId !== siteCloudId) {
 		return reject(403);
 	}
 

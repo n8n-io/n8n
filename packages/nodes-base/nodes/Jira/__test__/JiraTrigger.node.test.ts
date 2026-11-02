@@ -1,3 +1,5 @@
+import type { IncomingHttpHeaders } from 'node:http';
+
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -438,7 +440,7 @@ describe('JiraTrigger', () => {
 			const clientId = 'oauth-client-id';
 			const clientSecret = 'oauth-client-secret';
 			webhookFns.getHeaderData.mockReturnValue({
-				authorization: `Bearer ${jwt.sign({ iss: clientId }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
+				authorization: `Bearer ${jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
 			});
 			webhookFns.getCredentials.mockResolvedValue({
 				domain,
@@ -473,10 +475,12 @@ describe('JiraTrigger', () => {
 		test('should skip refresh in handler when interval has not elapsed', async () => {
 			const trigger = new JiraTrigger();
 
+			const cloudId = 'test-cloud-id';
 			const freshData: IDataObject = {
 				webhookId: '4000',
 				endpoint: '/api/3/webhook',
 				lastRefreshed: Date.now(),
+				cloudId,
 			};
 
 			const webhookFns = mockDeep<IWebhookFunctions>();
@@ -492,7 +496,7 @@ describe('JiraTrigger', () => {
 			const clientId = 'oauth-client-id';
 			const clientSecret = 'oauth-client-secret';
 			webhookFns.getHeaderData.mockReturnValue({
-				authorization: `Bearer ${jwt.sign({ iss: clientId }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
+				authorization: `Bearer ${jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
 			});
 			webhookFns.getCredentials.mockResolvedValue({
 				clientId,
@@ -505,6 +509,46 @@ describe('JiraTrigger', () => {
 			await trigger.webhook.call(webhookFns);
 
 			expect(webhookFns.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		test('should not refresh the webhook when a delivery fails verification', async () => {
+			const trigger = new JiraTrigger();
+
+			// Stale enough that a verified delivery would trigger a refresh.
+			const staleData: IDataObject = {
+				webhookId: '5000',
+				endpoint: '/api/3/webhook',
+				lastRefreshed: Date.now() - OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS - 1,
+			};
+			const lastRefreshedBefore = staleData.lastRefreshed;
+
+			const webhookFns = mockDeep<IWebhookFunctions>();
+			webhookFns.getWorkflowStaticData.mockReturnValue(staleData);
+			webhookFns.getNode.mockReturnValue(mockJiraNode);
+			webhookFns.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'jiraVersion') return 'cloudOAuth2';
+				if (param === 'incomingAuthentication') return 'none';
+				return {};
+			});
+			webhookFns.getBodyData.mockReturnValue({});
+			webhookFns.getQueryData.mockReturnValue({});
+			// No Authorization header -> verification rejects before any refresh.
+			webhookFns.getHeaderData.mockReturnValue({});
+			webhookFns.getResponseObject.mockReturnValue({
+				status: vi.fn(() => ({ json: vi.fn() })),
+			} as unknown as ReturnType<IWebhookFunctions['getResponseObject']>);
+			webhookFns.getCredentials.mockResolvedValue({
+				domain: OAUTH2_DOMAIN,
+				clientId: 'oauth-client-id',
+				clientSecret: 'oauth-client-secret',
+			} as ICredentialDataDecryptedObject);
+
+			const result = await trigger.webhook.call(webhookFns);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(webhookFns.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			expect(webhookFns.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(staleData.lastRefreshed).toBe(lastRefreshedBefore);
 		});
 
 		test('should filter unsupported events when registering OAuth2 webhook', async () => {
@@ -868,27 +912,32 @@ describe('JiraTrigger', () => {
 	describe('Webhook request verification (Cloud OAuth2)', () => {
 		const clientId = 'oauth-client-id';
 		const clientSecret = 'oauth-client-secret';
+		const cloudId = 'site-cloud-id';
 		const credentials = { jiraSoftwareCloudOAuth2Api: { clientId, clientSecret } };
 		const node = { parameters: { jiraVersion: 'cloudOAuth2', authenticateWebhook: false } };
 		const event = { webhookEvent: 'jira:issue_created', issue: { key: 'TEST-1' } };
+
+		// The resolved site cloudId is memoized in static data, so verification needs no lookup.
+		const workflowStaticData: IDataObject = { cloudId };
 
 		const sign = (
 			payload: Record<string, unknown> = {},
 			secret: string = clientSecret,
 			options: jwt.SignOptions = {},
 		) =>
-			jwt.sign({ iss: clientId, sub: 'account-id', ...payload }, secret, {
+			jwt.sign({ iss: clientId, sub: 'account-id', context: { cloudId }, ...payload }, secret, {
 				algorithm: 'HS256',
 				expiresIn: '15m',
 				...options,
 			});
 
-		const callWebhook = async (headerData: Record<string, unknown>) =>
+		const callWebhook = async (headerData: IncomingHttpHeaders) =>
 			await testWebhookTriggerNode(JiraTrigger, {
 				node,
 				credentials,
 				bodyData: event,
 				headerData,
+				workflowStaticData,
 			});
 
 		test('should pass a request carrying a valid signed token through', async () => {
@@ -955,6 +1004,31 @@ describe('JiraTrigger', () => {
 
 		test('should reject an unsigned (alg none) token', async () => {
 			const token = jwt.sign({ iss: clientId }, '', { algorithm: 'none' });
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a token issued for a different site', async () => {
+			const token = sign({ context: { cloudId: 'another-site-cloud-id' } });
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a token without a site in its context', async () => {
+			const token = sign({ context: undefined });
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a token issued in the future', async () => {
+			const futureIat = Math.floor(Date.now() / 1000) + 600;
+			const token = sign({ iat: futureIat });
 			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
 
 			expect(response.status).toHaveBeenCalledWith(403);
