@@ -161,6 +161,7 @@ describe('InstanceAiMcpConnect', () => {
 			'User finished providing input',
 			expect.objectContaining({
 				type: 'mcp-connect',
+				runtime: 'instance-ai',
 				input_thread_id: 'input-1',
 				provided_inputs: [{ label: 'mcp-connect', options: ['brave'], option_chosen: ['brave'] }],
 				skipped_inputs: [],

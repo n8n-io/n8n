@@ -17,6 +17,26 @@ const signal: AgentBackgroundJobSignal = {
 };
 
 describe('AgentChatBackgroundJobSignal', () => {
+	it('renders the files of the jobs below the step', () => {
+		const file = { fileId: 'f-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		const wrapper = mount(AgentChatBackgroundJobSignal, {
+			props: {
+				signal: { tasks: [{ ...signal.tasks[0], files: [file] }, signal.tasks[1]] },
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template: '<div data-test-id="job-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+		expect(JSON.parse(wrapper.get('[data-test-id="job-files"]').text())).toEqual([file]);
+	});
+
 	it('uses the activity disclosure without loading animation and supports keyboard expansion', async () => {
 		const user = userEvent.setup();
 		const wrapper = mount(AgentChatBackgroundJobSignal, {

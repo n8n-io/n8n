@@ -2,9 +2,9 @@ import type { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings, User } from '@n8n/db';
-import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
+import { AuthIdentityRepository, SettingsRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { Client } from 'ldapts';
@@ -94,6 +94,7 @@ describe('LdapService', () => {
 		searchPageSize: 1,
 		searchTimeout: 6,
 		enforceEmailUniqueness: true,
+		linkExistingAccountsByEmail: true,
 	};
 
 	const settingsRepository = mockInstance(SettingsRepository);
@@ -260,6 +261,16 @@ describe('LdapService', () => {
 			await expect(ldapService.loadConfig()).rejects.toThrowError('LDAP configuration not found');
 		});
 
+		it('should default linkExistingAccountsByEmail to true when the stored configuration lacks it', async () => {
+			const { linkExistingAccountsByEmail: _, ...storedConfig } = ldapConfig;
+
+			const ldapService = createDefaultLdapService(storedConfig as LdapConfig);
+
+			const loaded = await ldapService.loadConfig();
+
+			expect(loaded.linkExistingAccountsByEmail).toBe(true);
+		});
+
 		it('should decipher the LDAP configuration admin password', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
@@ -383,6 +394,62 @@ describe('LdapService', () => {
 
 			// The placeholder must never be encrypted and stored as the real password.
 			expect(cipherMock.encryptV2).toHaveBeenCalledWith('realStoredPassword');
+		});
+
+		it('keeps the stored linkExistingAccountsByEmail value when the submitted configuration omits it', async () => {
+			mockSettingsRespositoryFindOneByOrFail({ ...ldapConfig, linkExistingAccountsByEmail: false });
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('fakePassword'),
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			const { linkExistingAccountsByEmail: _, ...submitted } = ldapConfig;
+
+			await ldapService.updateConfig(submitted);
+
+			expect(settingsRepository.update).toHaveBeenCalledWith(
+				{ key: LDAP_FEATURE_NAME },
+				expect.objectContaining({
+					value: expect.stringContaining('"linkExistingAccountsByEmail":false'),
+				}),
+			);
+		});
+
+		it('stores the submitted linkExistingAccountsByEmail value when it differs from the stored one', async () => {
+			mockSettingsRespositoryFindOneByOrFail({ ...ldapConfig, linkExistingAccountsByEmail: true });
+
+			const cipherMock = mock<Cipher>({
+				decryptV2: vi.fn().mockResolvedValue('fakePassword'),
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
+			});
+
+			config.set('userManagement.authenticationMethod', 'email');
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
+
+			await ldapService.updateConfig({ ...ldapConfig, linkExistingAccountsByEmail: false });
+
+			expect(settingsRepository.update).toHaveBeenCalledWith(
+				{ key: LDAP_FEATURE_NAME },
+				expect.objectContaining({
+					value: expect.stringContaining('"linkExistingAccountsByEmail":false'),
+				}),
+			);
 		});
 
 		it('should delete all ldap identities if login is disabled and ldap users exist', async () => {
@@ -695,6 +762,32 @@ describe('LdapService', () => {
 			});
 		});
 
+		it.each([
+			[ldapConfig.searchTimeout, ldapConfig.searchTimeout],
+			[0, LDAP_DEFAULT_CONFIGURATION.searchTimeout],
+			[-1, LDAP_DEFAULT_CONFIGURATION.searchTimeout],
+		])(
+			'should use a positive timeout for the client and search when searchTimeout is %s',
+			async (searchTimeout, expectedTimeout) => {
+				const ldapService = createDefaultLdapService({ ...ldapConfig, searchTimeout });
+				Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+				await ldapService.init();
+
+				await ldapService.searchWithAdminBinding('');
+
+				expect(Client).toHaveBeenCalledWith(
+					expect.objectContaining({
+						timeout: expectedTimeout * 1000,
+						connectTimeout: expectedTimeout * 1000,
+					}),
+				);
+				expect(Client.prototype.search).toHaveBeenCalledWith(
+					ldapConfig.baseDn,
+					expect.objectContaining({ timeLimit: expectedTimeout }),
+				);
+			},
+		);
+
 		it('should unbind client after search', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
@@ -717,6 +810,15 @@ describe('LdapService', () => {
 			await ldapService.init();
 			await ldapService.searchWithAdminBinding(filter);
 
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+
+		it('should unbind the client if search fails', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+			Client.prototype.search = vi.fn().mockRejectedValue(new Error('Search failed'));
+			await ldapService.init();
+
+			await expect(ldapService.searchWithAdminBinding('')).rejects.toThrow('Search failed');
 			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
 		});
 
@@ -764,6 +866,51 @@ describe('LdapService', () => {
 		});
 	});
 
+	describe('client cleanup', () => {
+		it.each(['startTLS', 'bind', 'search'] as const)(
+			'should keep the %s error when unbind also fails',
+			async (stage) => {
+				const logger = mockLogger();
+				const ldapService = new LdapService(
+					logger,
+					settingsRepository,
+					mock(),
+					mock(),
+					mock<LicenseState>(),
+				);
+				ldapService.setConfig({
+					...ldapConfig,
+					connectionSecurity: 'startTls',
+					synchronizationEnabled: false,
+				});
+				const operationError = new Error(`${stage} failed`);
+				const cleanupError = new Error('Unbind failed');
+				vi.mocked(Client.prototype[stage]).mockRejectedValueOnce(operationError);
+				vi.mocked(Client.prototype.unbind).mockRejectedValueOnce(cleanupError);
+
+				await expect(ldapService.searchWithAdminBinding('')).rejects.toBe(operationError);
+				expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+				expect(logger.debug).toHaveBeenCalledWith('LDAP - Failed to unbind client', {
+					error: cleanupError,
+				});
+			},
+		);
+
+		it('should return search entries when unbind fails after a successful search', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+			const searchEntries = [{ dn: 'uid=jdoe,ou=users,dc=example,dc=com' }];
+			vi.mocked(Client.prototype.search).mockResolvedValueOnce({
+				searchEntries,
+				searchReferences: [],
+			});
+			vi.mocked(Client.prototype.unbind).mockRejectedValueOnce(new Error('Unbind failed'));
+			await ldapService.init();
+
+			await expect(ldapService.searchWithAdminBinding('')).resolves.toEqual(searchEntries);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('validUser()', () => {
 		it('should throw expected error if no configuration has been set', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
@@ -801,6 +948,7 @@ describe('LdapService', () => {
 			await expect(ldapService.validUser(distinguishedName, password)).rejects.toThrowError(
 				'Error validating user against LDAP server',
 			);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
 		});
 
 		it('should unbind the client binding', async () => {
@@ -1133,6 +1281,8 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 			expect(Client).toHaveBeenCalledWith({
 				url: `ldap://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
 			});
 		});
 
@@ -1149,6 +1299,8 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 			expect(Client).toHaveBeenCalledWith({
 				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
 				tlsOptions: {
 					rejectUnauthorized: false,
 				},
@@ -1168,6 +1320,8 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 			expect(Client).toHaveBeenCalledWith({
 				url: `ldaps://${ldapConfig.connectionUrl}:${ldapConfig.connectionPort}`,
+				timeout: ldapConfig.searchTimeout * 1000,
+				connectTimeout: ldapConfig.searchTimeout * 1000,
 				tlsOptions: {
 					rejectUnauthorized: true,
 				},
@@ -1191,7 +1345,7 @@ describe('LdapService', () => {
 			});
 		});
 
-		it('should not create a new client if one has already been created', async () => {
+		it('should create and unbind a separate client for each connection test', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await ldapService.init();
@@ -1200,7 +1354,21 @@ describe('LdapService', () => {
 			expect(Client).toHaveBeenCalledTimes(1);
 
 			await ldapService.testConnection();
-			expect(Client).toHaveBeenCalledTimes(1);
+			expect(Client).toHaveBeenCalledTimes(2);
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(2);
+		});
+
+		it('should unbind the client if StartTLS fails', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				connectionSecurity: 'startTls',
+			});
+			Client.prototype.startTLS = vi.fn().mockRejectedValue(new Error('StartTLS failed'));
+			await ldapService.init();
+
+			await expect(ldapService.testConnection()).rejects.toThrow('StartTLS failed');
+			expect(Client.prototype.bind).not.toHaveBeenCalled();
+			expect(Client.prototype.unbind).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -1320,7 +1488,7 @@ describe('LdapService', () => {
 			await ldapService.runSync('live');
 
 			expect(processUsers).toHaveBeenCalledTimes(1);
-			expect(processUsers).toHaveBeenCalledWith(newDbUsers, updateDbUsers, deleteUsers);
+			expect(processUsers).toHaveBeenCalledWith(newDbUsers, updateDbUsers, deleteUsers, true);
 		});
 
 		it('should sync expected LDAP data when no errors', async () => {
@@ -1684,6 +1852,49 @@ describe('LdapService', () => {
 			expect(processUsers).toHaveBeenCalledTimes(1);
 			const [createArg] = (processUsers as Mock).mock.calls[0];
 			expect(createArg).toHaveLength(2);
+		});
+
+		it('should look up existing accounts in batches when linking by email is disabled', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				enforceEmailUniqueness: false,
+				linkExistingAccountsByEmail: false,
+			});
+
+			const searchEntries = Array.from({ length: 10_001 }, (_, index) => ({
+				dn: `uid=user${index},ou=users,dc=example,dc=com`,
+				cn: `User ${index}`,
+				givenName: 'User',
+				sn: `${index}`,
+				mail: `user${index}@example.com`,
+				uid: `user${index}`,
+			}));
+			const lastEmail = searchEntries[searchEntries.length - 1].mail;
+
+			const userRepository = mockInstance(UserRepository);
+			userRepository.findManyByEmail.mockImplementation(async (emails: string[]) =>
+				emails.filter((email) => email === lastEmail).map((email) => ({ email }) as User),
+			);
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			const lookedUpEmails = userRepository.findManyByEmail.mock.calls.flatMap(
+				([emails]) => emails,
+			);
+			expect(userRepository.findManyByEmail.mock.calls.length).toBeGreaterThan(1);
+			expect(lookedUpEmails).toHaveLength(searchEntries.length);
+			expect(new Set(lookedUpEmails).size).toBe(searchEntries.length);
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			const [createArg] = (processUsers as Mock).mock.calls[0];
+			expect(createArg).toHaveLength(searchEntries.length - 1);
+			expect(createArg.some(([, user]: [string, User]) => user.email === lastEmail)).toBe(false);
 		});
 	});
 

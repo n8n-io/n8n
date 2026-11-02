@@ -1,6 +1,10 @@
 import { UserError } from 'n8n-workflow';
 
-import { shouldIncludeAzureModel, listAzureOpenAiModels } from '../providers/azure';
+import {
+	AzureProjectNotFoundError,
+	shouldIncludeAzureModel,
+	listAzureOpenAiModels,
+} from '../providers/azure';
 
 function mockFetch(body: unknown, ok = true, status = 200) {
 	return vi.fn().mockResolvedValue({
@@ -62,8 +66,18 @@ describe('listAzureOpenAiModels', () => {
 		);
 		expect(calledHeaders(fetch)).toEqual({ 'api-key': 'key' });
 		expect(models).toEqual([
-			{ id: 'a-chat-model', name: 'a-chat-model (gpt-4o)' },
-			{ id: 'my-gpt4', name: 'my-gpt4 (gpt-4.1-nano)' },
+			{
+				id: 'a-chat-model',
+				name: 'a-chat-model (gpt-4o)',
+				modelFamily: 'openai',
+				modelName: 'gpt-4o',
+			},
+			{
+				id: 'my-gpt4',
+				name: 'my-gpt4 (gpt-4.1-nano)',
+				modelFamily: 'openai',
+				modelName: 'gpt-4.1-nano',
+			},
 		]);
 	});
 
@@ -94,7 +108,38 @@ describe('listAzureOpenAiModels', () => {
 			fetch,
 		});
 
-		expect(models).toEqual([{ id: 'my-gpt4', name: 'my-gpt4' }]);
+		expect(models).toEqual([{ id: 'my-gpt4', name: 'my-gpt4', modelFamily: 'openai' }]);
+	});
+
+	it('marks Claude deployments as the anthropic family', async () => {
+		const chat = { chat_completion: 'true' };
+		const body = {
+			value: [
+				{ name: 'gpt', modelName: 'gpt-4.1', modelPublisher: 'OpenAI', capabilities: chat },
+				{
+					name: 'claude',
+					modelName: 'claude-opus-4-1',
+					modelPublisher: 'Anthropic',
+					capabilities: chat,
+				},
+				{ name: 'claude-no-publisher', modelName: 'claude-sonnet-4-5', capabilities: chat },
+				{ name: 'llama', modelName: 'Llama-3.3-70B', modelPublisher: 'Meta', capabilities: chat },
+			],
+		};
+
+		const models = await listAzureOpenAiModels({
+			baseURL: 'https://my-resource.services.ai.azure.com',
+			project: 'my-project',
+			headers: {},
+			fetch: mockFetch(body),
+		});
+
+		expect(models.map(({ id, modelFamily }) => [id, modelFamily])).toEqual([
+			['claude', 'anthropic'],
+			['claude-no-publisher', 'anthropic'],
+			['gpt', 'openai'],
+			['llama', 'openai'],
+		]);
 	});
 
 	it('returns an empty list when the response has no value field', async () => {
@@ -156,6 +201,7 @@ describe('listAzureOpenAiModels', () => {
 				fetch,
 			}).catch((error: unknown) => error);
 
+			expect(error).toBeInstanceOf(AzureProjectNotFoundError);
 			expect(error).toBeInstanceOf(UserError);
 			expect(error).toMatchObject({
 				message: 'Project "no-such-project" was not found. Check the project name and try again.',

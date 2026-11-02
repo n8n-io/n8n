@@ -16,8 +16,8 @@ import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
+import { AgentDefinitionService } from './agent-definition.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
@@ -25,7 +25,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { knownTaskTimezone } from './scheduling/task-timezone';
-import { Agent } from './entities/agent.entity';
+import { isProjectAgent, type ProjectAgent } from './entities/agent.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import { isValidCronExpression } from './integrations/cron-validation';
@@ -83,6 +83,7 @@ export class AgentTaskService {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -90,6 +91,10 @@ export class AgentTaskService {
 	async list(agentId: string): Promise<AgentTaskDto[]> {
 		const tasks = await this.taskRepository.findByAgentId(agentId);
 		return tasks.map((task) => this.toDto(task));
+	}
+
+	async findImportIdOwners(taskIds: string[]): Promise<Array<Pick<AgentTask, 'id' | 'agentId'>>> {
+		return await this.taskRepository.findImportIdOwners(taskIds);
 	}
 
 	/**
@@ -140,21 +145,16 @@ export class AgentTaskService {
 		projectId: string,
 		dtos: CreateAgentTaskDto[],
 		context: AgentMutationTelemetryContext,
-	): Promise<{ tasks: AgentTaskDto[]; agent: Agent; skillRefs: AgentSkillRefs }> {
+	): Promise<{ tasks: AgentTaskDto[]; agent: ProjectAgent; skillRefs: AgentSkillRefs }> {
 		if (dtos.length === 0) {
 			throw new BadRequestError('At least one task is required');
 		}
 
-		for (const dto of dtos) {
-			this.assertValidCron(dto.cronExpression);
-			this.assertValidTimezone(dto.timezone);
-		}
-
+		this.validateTasks(dtos);
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
-		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
+		this.assertAgentHasConfig(agent.schema !== null);
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		const tasks = dtos.map((dto) => {
 			const taskId = generateAgentResourceId(
@@ -177,9 +177,10 @@ export class AgentTaskService {
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.saveDefinitions(tasks, ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
@@ -225,16 +226,16 @@ export class AgentTaskService {
 		if (!changed) return { task: this.toDto(task), changed: false };
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			markAgentDraftDirty(agent);
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			const [savedTask] = await this.taskRepository.saveDefinitions([task], ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 			return savedTask;
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
@@ -252,26 +253,26 @@ export class AgentTaskService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		if (agent.schema?.tasks) {
 			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
-			markAgentDraftDirty(agent);
 		}
+		markAgentDraftDirty(agent);
 
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.deleteForAgent(agentId, [taskId], ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
 		this.logger.debug('[AgentTaskService] Deleted task', { agentId, taskId });
 	}
 
-	private attachTaskRef(agent: Agent, taskId: string, enabled: boolean): void {
+	private attachTaskRef(agent: ProjectAgent, taskId: string, enabled: boolean): void {
 		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
 		agent.schema.tasks = [
 			...(agent.schema.tasks ?? []).filter((ref) => ref.id !== taskId),
@@ -317,7 +318,7 @@ export class AgentTaskService {
 			where: { id: agentId },
 			relations: { activeVersion: true },
 		});
-		if (!agent?.activeVersionId) {
+		if (!agent?.activeVersionId || !isProjectAgent(agent)) {
 			this.deregisterAgentTasks(agentId);
 			return;
 		}
@@ -355,10 +356,12 @@ export class AgentTaskService {
 		// nothing to rebuild on takeover.
 		if (this.durableJobRegistrar.isEnabled()) return;
 
-		const agents = await this.agentRepository.find({
-			where: { activeVersionId: Not(IsNull()) },
-			relations: { activeVersion: true },
-		});
+		const agents = (
+			await this.agentRepository.find({
+				where: { activeVersionId: Not(IsNull()) },
+				relations: { activeVersion: true },
+			})
+		).filter(isProjectAgent);
 		this.logger.debug('[AgentTaskService] Reconnecting published agents', { count: agents.length });
 		for (const agent of agents) {
 			try {
@@ -379,7 +382,7 @@ export class AgentTaskService {
 	}
 
 	/** Register the agent's published + enabled tasks; stop any that no longer qualify. */
-	private async reconcileAgent(agent: Agent): Promise<void> {
+	private async reconcileAgent(agent: ProjectAgent): Promise<void> {
 		// Only the leader owns task crons — a cron firing on multiple mains would
 		// run the agent twice per tick. Followers skip registration entirely; the
 		// leader applies the change via the `agent-tasks-changed` pubsub reconcile.
@@ -481,7 +484,7 @@ export class AgentTaskService {
 		const snapshot = agent?.activeVersionId
 			? await this.taskSnapshotRepository.findByVersionAndTaskId(agent.activeVersionId, taskId)
 			: null;
-		if (!agent?.activeVersionId || !snapshot?.enabled) {
+		if (!agent?.activeVersionId || !snapshot?.enabled || !isProjectAgent(agent)) {
 			this.logger.warn('[AgentTaskService] Task fired but is no longer published and enabled', {
 				taskId,
 				agentId,
@@ -529,7 +532,7 @@ export class AgentTaskService {
 		}, TASK_RUN_LOCK_RENEW_MS);
 	}
 
-	private async runTask(agent: Agent, snapshot: AgentTaskSnapshot): Promise<void> {
+	private async runTask(agent: ProjectAgent, snapshot: AgentTaskSnapshot): Promise<void> {
 		const { id: agentId, projectId } = agent;
 		const { taskId } = snapshot;
 		const { message, threadId } = this.buildTaskRunMessage(
@@ -621,7 +624,7 @@ export class AgentTaskService {
 	async runNow(agentId: string, taskId: string, user: User): Promise<void> {
 		const task = await this.getOrThrow(agentId, taskId);
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
-		if (!agent) {
+		if (!agent || !isProjectAgent(agent)) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
@@ -661,6 +664,19 @@ export class AgentTaskService {
 		return task;
 	}
 
+	validateTasks(tasks: Array<{ cronExpression: string; timezone?: string | null }>): void {
+		for (const task of tasks) this.validateTask(task);
+	}
+
+	assertAgentHasConfig(hasConfig: boolean): void {
+		if (!hasConfig) throw new BadRequestError('Agent has no config yet');
+	}
+
+	private validateTask(task: { cronExpression?: string; timezone?: string | null }): void {
+		if (task.cronExpression !== undefined) this.assertValidCron(task.cronExpression);
+		this.assertValidTimezone(task.timezone);
+	}
+
 	private assertValidCron(cronExpression: string): void {
 		if (!isValidCronExpression(cronExpression)) {
 			throw new BadRequestError('Invalid cron expression');
@@ -693,9 +709,9 @@ export class AgentTaskService {
 	}
 
 	private applyTaskUpdates(task: AgentTask, dto: UpdateAgentTaskDto): boolean {
+		this.validateTask(dto);
 		let changed = false;
 		if (dto.cronExpression !== undefined) {
-			this.assertValidCron(dto.cronExpression);
 			if (dto.cronExpression !== task.cronExpression) {
 				task.cronExpression = dto.cronExpression;
 				changed = true;
@@ -704,7 +720,6 @@ export class AgentTaskService {
 		// `null` resets to the instance timezone; omitting the field keeps the
 		// current one, so an older client can still update name/objective/cron.
 		if (dto.timezone !== undefined) {
-			this.assertValidTimezone(dto.timezone);
 			const timezone = dto.timezone ?? null;
 			if (timezone !== task.timezone) {
 				task.timezone = timezone;
@@ -724,7 +739,7 @@ export class AgentTaskService {
 	}
 
 	private async runScheduledTask(
-		agent: Agent,
+		agent: ProjectAgent,
 		snapshot: AgentTaskSnapshot,
 		lock: AgentTaskRunLockHandle,
 	): Promise<void> {

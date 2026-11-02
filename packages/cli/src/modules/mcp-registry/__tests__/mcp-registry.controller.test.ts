@@ -7,9 +7,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { McpConnectionDiscoveryService } from '../mcp-connection-discovery.service';
 import { McpRegistryController } from '../mcp-registry.controller';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryService } from '../registry/mcp-registry.service';
 import {
+	braveSearchAiGatewayMockServer,
 	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
 	linearMockServer,
 	notionMockServer,
 } from '../registry/mock-servers';
@@ -57,6 +61,41 @@ describe('McpRegistryController', () => {
 			// Internal transport URLs must not leak.
 			expect(notion).not.toHaveProperty('remotes');
 			expect(notion).not.toHaveProperty('origin');
+		});
+
+		it('lists Gateway credits on a paired server, hides its AI Gateway row, and keeps a gateway-only row', async () => {
+			service.getAll.mockResolvedValue(
+				pairAiGatewayServers(
+					[firecrawlMockServer, firecrawlAiGatewayMockServer, braveSearchAiGatewayMockServer],
+					() => true,
+				),
+			);
+
+			const result = await controller.listServers();
+
+			expect(result.map(({ slug, credentials }) => ({ slug, credentials }))).toEqual([
+				{
+					slug: 'firecrawl',
+					credentials: [
+						{ credentialType: 'firecrawlMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+						{
+							credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+							name: 'Gateway credits',
+							value: 'aiGateway',
+						},
+					],
+				},
+				{
+					slug: 'n8n-connect-brave-search',
+					credentials: [
+						{
+							credentialType: 'n8nConnectBraveSearchMcpAiGatewayApi',
+							name: 'Gateway credits',
+							value: 'aiGateway',
+						},
+					],
+				},
+			]);
 		});
 
 		it('marks a server whose URL is a template', async () => {

@@ -40,6 +40,7 @@ describe('NodeTypePoliciesPublicController route metadata', () => {
 				'createNodeTypePolicyDocument',
 				'deleteNodeTypePolicyDocument',
 				'getNodeTypeInstancePolicy',
+				'getNodeTypePolicyAttachments',
 				'getNodeTypePolicyDocument',
 				'getNodeTypeProjectPolicy',
 				'listNodeTypePolicyDocuments',
@@ -114,6 +115,9 @@ describe('NodeTypePoliciesPublicController with the module disabled', () => {
 		await expect(controller.getNodeTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
+		await expect(controller.getNodeTypePolicyAttachments(req, res, 'scope-id')).rejects.toThrow(
+			ServiceUnavailableError,
+		);
 		await expect(controller.deleteNodeTypePolicyDocument(req, res, 'policy-id')).rejects.toThrow(
 			ServiceUnavailableError,
 		);
@@ -157,7 +161,7 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		defaultAction: 'deny' as const,
 		version: 4,
 		rules,
-		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
+		warnings: [{ kind: 'shadowed' as const, ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
 
 	it('fails loudly instead of returning an extends rule, which no node type write accepts', async () => {
@@ -167,6 +171,35 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 		});
 
 		await expect(controller.getNodeTypeInstancePolicy()).rejects.toThrow(
+			'A node type policy holds an extends rule',
+		);
+	});
+
+	it('getNodeTypePolicyAttachments reads the node type scope and maps the response', async () => {
+		const result = {
+			attachments: [{ policyId: 'policy-id', rules, priority: 5, isFloor: true }],
+			version: 3,
+		};
+		service.getAttachments.mockResolvedValue(result);
+
+		expect(await controller.getNodeTypePolicyAttachments(req, res, 'scope-id')).toEqual(result);
+		expect(service.getAttachments).toHaveBeenCalledWith(NODE_TYPES_KIND, 'scope-id');
+	});
+
+	it('getNodeTypePolicyAttachments rejects an extends rule', async () => {
+		service.getAttachments.mockResolvedValue({
+			attachments: [
+				{
+					policyId: 'policy-id',
+					rules: [{ id: 'r1', action: 'deny', selector: { kind: 'extends', value: 'oAuth2Api' } }],
+					priority: 0,
+					isFloor: false,
+				},
+			],
+			version: 3,
+		});
+
+		await expect(controller.getNodeTypePolicyAttachments(req, res, 'scope-id')).rejects.toThrow(
 			'A node type policy holds an extends rule',
 		);
 	});

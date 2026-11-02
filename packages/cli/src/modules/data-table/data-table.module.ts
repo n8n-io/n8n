@@ -13,14 +13,16 @@ export class DataTableModule implements ModuleInterface {
 		const { DataTableService } = await import('./data-table.service.js');
 		await Container.get(DataTableService).start();
 
+		const { DataTableRepository } = await import('./data-table.repository.js');
+
 		Container.get<
 			OwnershipTransferHandlerRegistry<
-				Parameters<InstanceType<typeof DataTableService>['transferDataTablesByProjectId']>[2]
+				Parameters<InstanceType<typeof DataTableRepository>['transferDataTableByProjectId']>[2]
 			>
 		>(OwnershipTransferHandlerRegistry).register({
 			resource: 'data-table',
 			transferAll: async (fromProjectId, toProjectId, trx) => {
-				await Container.get(DataTableService).transferDataTablesByProjectId(
+				await Container.get(DataTableRepository).transferDataTableByProjectId(
 					fromProjectId,
 					toProjectId,
 					trx,

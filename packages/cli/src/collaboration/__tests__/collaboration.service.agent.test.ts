@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { User } from '@n8n/db';
 
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 
 import { CollaborationService } from '../collaboration.service';
 import type {
@@ -46,7 +46,7 @@ describe('CollaborationService — agent messages', () => {
 			toIUser: () => ({ id: 'user-1' }),
 		} as unknown as User);
 
-		agentRepository.findById.mockResolvedValue({ projectId: 'project-1' } as Agent);
+		agentRepository.findById.mockResolvedValue({ projectId: 'project-1' } as ProjectAgent);
 		agentRepository.getProjectIdById.mockResolvedValue('project-1');
 		agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
 

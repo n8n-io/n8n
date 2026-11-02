@@ -20,6 +20,13 @@ export interface ProviderQuirks {
 	reasoningReplayKeys?: string[];
 	/** Provider merges adjacent assistant messages into one; replayable reasoning may only survive on the last of them. */
 	mergesAdjacentAssistantMessages?: boolean;
+	/**
+	 * Provider replays reasoning from the part's text itself, with no
+	 * providerMetadata involved — keep reasoning blocks that carry no replayable
+	 * metadata on the current tool chain (after the last user message). Older
+	 * turns still drop them.
+	 */
+	replayReasoningText?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -174,7 +181,16 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	// custom/*: only forward an explicit effort — no provider-level default.
-	custom: reasoningEffortQuirk('custom'),
+	custom: {
+		...reasoningEffortQuirk('custom'),
+		// QUIRK(custom): OpenAI-compatible vendors return chain-of-thought as
+		// `reasoning_content` and expect it back within a tool-call chain
+		// (DeepSeek's thinking mode rejects the request without it).
+		// @ai-sdk/openai-compatible re-emits `reasoning_content` from replayed
+		// reasoning parts on its own, but attaches no providerMetadata to them, so
+		// the runtime keeps the parts by text alone, on the current tool chain only.
+		replayReasoningText: true,
+	},
 	moonshotai: reasoningEffortQuirk('moonshotai'),
 };
 

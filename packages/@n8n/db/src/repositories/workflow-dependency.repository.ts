@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 import {
 	DataSource,
 	EntityManager,
+	In,
 	IsNull,
 	LessThan,
 	LessThanOrEqual,
@@ -65,6 +66,35 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {
 		super(WorkflowDependency, dataSource.manager);
+	}
+
+	async findDependenciesForResources(
+		resourceIds: string[],
+		incomingTypes: Array<WorkflowDependency['dependencyType']>,
+		includeOutgoing: boolean,
+	): Promise<Array<Pick<WorkflowDependency, 'workflowId' | 'dependencyType' | 'dependencyKey'>>> {
+		return await this.find({
+			where: [
+				...(includeOutgoing
+					? [
+							{
+								workflowId: In(resourceIds),
+								dependencyType: In([
+									'credentialId',
+									'dataTableId',
+									'errorWorkflow',
+									'workflowCall',
+								]),
+							},
+						]
+					: []),
+				{
+					dependencyKey: In(resourceIds),
+					dependencyType: In(incomingTypes),
+				},
+			],
+			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+		});
 	}
 
 	/**
@@ -223,9 +253,16 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 		// The workflow version bound stops a stale request from replacing rows a
 		// newer workflow version wrote before this indexer version deployed.
+		const workflow = await tx.findOne(WorkflowEntity, {
+			select: { id: true, versionCounter: true },
+			where: { id: workflowId },
+		});
+		const isCurrentVersion = workflow?.versionCounter === dependencies.workflowVersionId;
 		const outdatedIndexResult = await tx.delete(WorkflowDependency, {
 			workflowId,
-			workflowVersionId: LessThanOrEqual(dependencies.workflowVersionId),
+			...(isCurrentVersion
+				? {}
+				: { workflowVersionId: LessThanOrEqual(dependencies.workflowVersionId) }),
 			indexVersionId: LessThan(WORKFLOW_DEPENDENCY_INDEX_VERSION),
 			publishedVersionId: publishedVersionCondition,
 		});

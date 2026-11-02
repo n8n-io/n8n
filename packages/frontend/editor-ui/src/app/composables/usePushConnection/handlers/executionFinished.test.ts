@@ -9,7 +9,12 @@ import {
 	refreshWalletAfterBilledRun,
 	type SimplifiedExecution,
 } from './executionFinished';
-import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IRunExecutionData,
+	ITaskData,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	createRunExecutionData,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -772,6 +777,36 @@ describe('executionFinished', () => {
 		expect(workflowExecutionStateStore.activeExecutionPinDataByNodeName).toEqual({
 			[nodeName]: [{ json: { source: 'verification-fixture' } }],
 		});
+	});
+
+	it('shows the error toast when the fetched execution crashed', async () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		mockShowMessage.mockClear();
+
+		const executionId = 'crashed-exec';
+		useWorkflowExecutionStateStore(documentId).setActiveExecutionId(executionId);
+		const error = { message: 'Workflow crashed', name: 'WorkflowCrashedError' } as ExecutionError;
+		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue({
+			id: executionId,
+			workflowId: '1',
+			finished: false,
+			mode: 'manual',
+			status: 'crashed',
+			startedAt: new Date(),
+			createdAt: new Date(),
+			workflowData: mock<IWorkflowDb>({ id: '1', nodes: [], connections: {} }),
+			data: createRunExecutionData({ resultData: { runData: {}, error } }),
+		});
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId, workflowId: '1', status: 'crashed' },
+			},
+			opts,
+		);
+
+		expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 	});
 
 	it('processes a late finish for the execution this document just stopped', async () => {

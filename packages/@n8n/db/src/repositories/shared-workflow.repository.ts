@@ -409,6 +409,8 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		user: User,
 		sharingOptions: {
 			scopes?: Scope[];
+			/** Scopes that grant access without a share. Defaults to workflow read. */
+			globalScopes?: Scope[];
 			projectRoles?: string[];
 			workflowRoles?: string[];
 			isPersonalProject?: boolean;
@@ -419,6 +421,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	): SelectQueryBuilder<any> {
 		const {
+			globalScopes,
 			projectRoles,
 			workflowRoles,
 			isPersonalProject,
@@ -451,10 +454,13 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
 				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
 				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-		} else if (!hasGlobalScope(user, 'workflow:read')) {
+		} else if (!hasGlobalScope(user, globalScopes ?? ['workflow:read'], { mode: 'allOf' })) {
 			// Standard sharing based on roles (global-scope users need no additional filtering)
 			if (!workflowRoles || !projectRoles) {
 				throw new Error('workflowRoles and projectRoles are required when not using special cases');
+			}
+			if (globalScopes && (workflowRoles.length === 0 || projectRoles.length === 0)) {
+				return subquery.where('1 = 0');
 			}
 
 			subquery

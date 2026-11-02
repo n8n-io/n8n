@@ -19,6 +19,14 @@ export const OTEL_ENV_VARS = {
 	productionExecutionsOnly: 'N8N_OTEL_TRACES_PRODUCTION_ONLY',
 } as const;
 
+export const CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR = 'N8N_OTEL_TRACES_CUSTOM_ATTRIBUTE_PREFIXES';
+
+export const DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES = {
+	project: 'n8n.project.custom.',
+	workflow: 'n8n.workflow.custom.',
+	node: 'n8n.node.custom.',
+} as const;
+
 export const OTEL_TEST_SPAN_NAME = 'n8n.test_trace';
 
 export const ATTR = {
@@ -37,7 +45,6 @@ export const ATTR = {
 	WORKFLOW_VERSION_ID: 'n8n.workflow.version_id',
 	WORKFLOW_NAME: 'n8n.workflow.name',
 	WORKFLOW_NODE_COUNT: 'n8n.workflow.node_count',
-	WORKFLOW_CUSTOM_PREFIX: 'n8n.workflow.custom.',
 
 	EXECUTION_ID: 'n8n.execution.id',
 	EXECUTION_MODE: 'n8n.execution.mode',
@@ -55,8 +62,8 @@ export const ATTR = {
 	NODE_ITEMS_INPUT: 'n8n.node.items.input',
 	NODE_ITEMS_OUTPUT: 'n8n.node.items.output',
 	NODE_TERMINATION_REASON: 'n8n.node.termination_reason',
-	PROJECT_CUSTOM_PREFIX: 'n8n.project.custom.',
-	NODE_CUSTOM_PREFIX: 'n8n.node.custom.',
 
 	CONTINUATION_REASON: 'n8n.continuation.reason',
 } as const;
+
+export const BUILT_IN_ATTRIBUTE_KEYS: ReadonlySet<string> = new Set(Object.values(ATTR));

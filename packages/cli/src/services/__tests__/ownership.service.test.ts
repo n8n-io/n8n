@@ -2,6 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowProjectService, type EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
+	isPerson,
+	isServiceAccount,
 	Project,
 	SharedWorkflow,
 	User,
@@ -22,7 +24,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { mockCredential, mockProject } from '@test/mock-objects';
+import { mockCredential, mockProject, mockServiceAccount } from '@test/mock-objects';
 
 import { CacheService } from '@n8n/backend-services';
 
@@ -70,6 +72,20 @@ describe('OwnershipService', () => {
 			expect(returnedProject).toBe(mockProject);
 		});
 
+		test('should ignore a cached project without an id and read the project from the database', async () => {
+			const mockProject = Object.assign(new Project(), { id: 'project-id' });
+			// A cached value without an id, as a lookup of the key `__proto__` used to return
+			cacheService.getHashValue.mockResolvedValueOnce({});
+			sharedWorkflowRepository.findOneOrFail.mockResolvedValueOnce(
+				Object.assign(new SharedWorkflow(), { role: 'workflow:owner', project: mockProject }),
+			);
+
+			const returnedProject = await ownershipService.getWorkflowProjectCached('some-workflow-id');
+
+			expect(returnedProject).toBe(mockProject);
+			expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalled();
+		});
+
 		test('should throw if no workflow owner project found', async () => {
 			sharedWorkflowRepository.findOneOrFail.mockRejectedValue(new Error());
 
@@ -104,6 +120,7 @@ describe('OwnershipService', () => {
 			const owner = await ownershipService.getPersonalProjectOwnerCached('some-project-id');
 
 			expect(owner).toBeNull();
+			expect(cacheService.setHash).not.toHaveBeenCalled();
 		});
 
 		test('should not use the repository if the owner was found in the cache', async () => {
@@ -162,6 +179,27 @@ describe('OwnershipService', () => {
 					['project-2', secondOwner],
 				]),
 			);
+		});
+	});
+
+	describe('reconstructUser()', () => {
+		it('rebuilds a cached person as a Person', () => {
+			const cached = ownershipService.copyUser(
+				Object.assign(new User(), { id: 'person-1', role: GLOBAL_OWNER_ROLE }),
+			);
+
+			const user = ownershipService.reconstructUser(structuredClone(cached));
+
+			expect(user && isPerson(user)).toBe(true);
+		});
+
+		it('rebuilds a cached service account as a ServiceAccount with its details', () => {
+			const cached = ownershipService.copyUser(mockServiceAccount({ role: GLOBAL_OWNER_ROLE }));
+
+			const user = ownershipService.reconstructUser(structuredClone(cached));
+
+			expect(user && isServiceAccount(user)).toBe(true);
+			expect(user && isServiceAccount(user) && user.details.name).toBe('Deploy bot');
 		});
 	});
 

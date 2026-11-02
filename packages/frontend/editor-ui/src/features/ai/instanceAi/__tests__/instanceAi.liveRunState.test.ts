@@ -72,7 +72,7 @@ describe('instanceAi.liveRunState', () => {
 						toolCalls: [
 							{
 								toolCallId: 'tc-1',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: {},
 								isLoading: true,
 								confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },
@@ -184,7 +184,6 @@ describe('instanceAi.liveRunState', () => {
 
 		test('does not re-arm on terminal confirm kinds', () => {
 			expect(shouldRearmRunAfterConfirm({ kind: 'domainAccessDeny' })).toBe(false);
-			expect(shouldRearmRunAfterConfirm({ kind: 'planDeny' })).toBe(false);
 		});
 	});
 });

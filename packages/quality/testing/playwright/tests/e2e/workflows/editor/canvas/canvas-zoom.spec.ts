@@ -20,7 +20,7 @@ const ZOOM_TOLERANCE = 0.2; // Acceptable variance for floating-point zoom compa
 test.describe(
 	'Canvas Zoom Functionality',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
@@ -116,19 +116,19 @@ test.describe(
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(2);
 
 			await n8n.canvas.selectAll();
-			await n8n.canvas.rightClickCanvas();
+			await n8n.canvas.rightClickNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 			await n8n.canvas.getContextMenuItem('toggle_activation').click();
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(0);
-			await n8n.canvas.rightClickCanvas();
+			await n8n.canvas.rightClickNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 			await n8n.canvas.getContextMenuItem('toggle_activation').click();
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(2);
 			await n8n.canvas.deselectAll();
 			await n8n.canvas.nodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
-			await n8n.canvas.rightClickCanvas();
+			await n8n.canvas.rightClickNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 			await n8n.canvas.getContextMenuItem('toggle_activation').click();
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(1);
 			await n8n.canvas.selectAll();
-			await n8n.canvas.rightClickCanvas();
+			await n8n.canvas.rightClickNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 			await n8n.canvas.getContextMenuItem('toggle_activation').click();
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(2);
 		});

@@ -267,12 +267,16 @@ describe('AgentSubAgentsModal', () => {
 	});
 
 	it('passes the agents and asset-specific copy to the shared picker', async () => {
+		const personalisation = {
+			icon: 'rocket',
+			gradient: { from: '#FF1500', to: '#FF6900', angle: 135, fromStop: 0, toStop: 100 },
+		};
 		const wrapper = mount(AgentSubAgentsModal, {
 			props: {
 				modalName: 'agentSubAgentsModal',
 				data: {
 					agents: [
-						{ id: 'agent-2', name: 'Billing Agent' },
+						{ id: 'agent-2', name: 'Billing Agent', personalisation },
 						{ id: 'agent-3', name: 'Research Agent' },
 					],
 					onConfirm: vi.fn(),
@@ -285,8 +289,17 @@ describe('AgentSubAgentsModal', () => {
 		expect(picker.props('emptyMessage')).toBe('No sub-agents available');
 		expect(picker.props('noResultsMessage')).toBe('No matching agents');
 		expect(picker.props('items')).toEqual([
-			expect.objectContaining({ agentId: 'agent-2', title: 'Billing Agent' }),
-			expect.objectContaining({ agentId: 'agent-3', title: 'Research Agent' }),
+			expect.objectContaining({
+				agentId: 'agent-2',
+				title: 'Billing Agent',
+				iconSource: { type: 'avatar', personalisation },
+			}),
+			expect.objectContaining({
+				agentId: 'agent-3',
+				title: 'Research Agent',
+				// No personalisation: the shared picker falls back to the generic row icon.
+				iconSource: undefined,
+			}),
 		]);
 
 		await wrapper.findAll('[data-testid="agent-sub-agents-modal-add"]')[1].trigger('click');

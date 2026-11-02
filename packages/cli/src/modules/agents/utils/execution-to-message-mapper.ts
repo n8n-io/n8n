@@ -16,6 +16,7 @@ type ExecutionTranscript = Pick<
 	| 'error'
 	| 'createdAt'
 	| 'inputMessages'
+	| 'stopReport'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -90,6 +91,7 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 		toolName: event.name,
 		toolCallId: event.toolCallId,
 		input: event.input,
+		...(event.canceled ? { canceled: true } : {}),
 		...(event.startTime > 0 ? { startTime: event.startTime } : {}),
 		...(event.endTime > 0 ? { endTime: event.endTime } : {}),
 		...(event.childTrace ? { childTrace: event.childTrace } : {}),
@@ -132,6 +134,13 @@ function assistantContentFromExecution(
 			});
 		} else if (event.type === 'tool-call') {
 			content.push(timelineToolCallToPart(event));
+		} else if (event.type === 'host-event') {
+			content.push({
+				type: 'host-event',
+				name: event.name,
+				...(event.key !== undefined ? { key: event.key } : {}),
+				payload: event.payload,
+			});
 		} else if (event.type === 'suspension') {
 			const suspendedToolCall = [...content]
 				.reverse()
@@ -239,11 +248,19 @@ function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPer
 		!isFatalSessionOutcomeError(execution.error, execution.timeline)
 			? execution.error
 			: undefined;
-	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
+
+	if (
+		execution.stopReport ||
+		backgroundJobSignal ||
+		assistantContent.length > 0 ||
+		executionError !== undefined ||
+		execution.status === 'cancelled'
+	) {
 		messages.push({
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
+			...(execution.stopReport ? { stopReport: true } : {}),
 			...(backgroundJobSignal ? { backgroundTaskSignal: backgroundJobSignal } : {}),
 			executionId: execution.id,
 			...(execution.status ? { executionStatus: execution.status } : {}),
@@ -296,8 +313,10 @@ export function executionsToMessagesDto(
 
 	return messages.filter(
 		(message) =>
+			message.stopReport ||
 			message.backgroundTaskSignal ||
 			message.content.length > 0 ||
-			message.executionError !== undefined,
+			message.executionError !== undefined ||
+			message.executionStatus === 'cancelled',
 	);
 }

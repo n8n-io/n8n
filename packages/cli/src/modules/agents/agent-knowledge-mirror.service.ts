@@ -213,10 +213,12 @@ export class AgentKnowledgeMirrorService {
 		}
 
 		const parsed = parseReadKnowledgeOutput(result.stdout, file, validatedRequest);
+
 		return {
 			file: file.file,
 			fileId: file.fileId,
 			displayName: file.displayName,
+			createdAt: file.createdAt,
 			ranges: parsed.ranges,
 			truncated: parsed.truncated,
 		};

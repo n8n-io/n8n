@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { AgentDbMessage, ContentToolCall } from '../../types/sdk/message';
 import type { BuiltTool } from '../../types/sdk/tool';
+import { callAction } from './tool-adapter';
 
 export const SEARCH_TOOLS_TOOL_NAME = 'search_tools';
 export const LOAD_TOOL_TOOL_NAME = 'load_tool';
@@ -88,6 +89,12 @@ export class DeferredToolManager {
 
 	private readonly loadedToolNames = new Set<string>();
 
+	/** Former tool names mapped to current ones, so older history still hydrates. */
+	private readonly currentNameByLegacyName = new Map<string, string>();
+
+	/** Former names of split tools, mapped by the call's `action` to the current tool name. */
+	private readonly currentNameByLegacyAction = new Map<string, Map<string, string>>();
+
 	/** Always-available tools, kept out of `toolsByName` so they stay unloadable. */
 	private readonly activeToolsByName = new Map<string, BuiltTool>();
 
@@ -114,6 +121,27 @@ export class DeferredToolManager {
 			this.activeToolsByName.set(tool.name, tool);
 		}
 
+		for (const tool of [...this.toolsByName.values(), ...this.activeToolsByName.values()]) {
+			for (const legacyName of tool.legacyNames ?? []) {
+				if (
+					this.toolsByName.has(legacyName) ||
+					this.activeToolsByName.has(legacyName) ||
+					this.currentNameByLegacyName.has(legacyName)
+				) {
+					continue;
+				}
+				this.currentNameByLegacyName.set(legacyName, tool.name);
+			}
+			for (const [legacyName, actions] of Object.entries(tool.legacyActions ?? {})) {
+				const byAction =
+					this.currentNameByLegacyAction.get(legacyName) ?? new Map<string, string>();
+				for (const action of actions) {
+					if (!byAction.has(action)) byAction.set(action, tool.name);
+				}
+				this.currentNameByLegacyAction.set(legacyName, byAction);
+			}
+		}
+
 		this.topK = options.topK ?? DEFAULT_TOP_K;
 		this.searchTool = this.createSearchTool();
 		this.loadTool = this.createLoadTool();
@@ -136,9 +164,16 @@ export class DeferredToolManager {
 		return [this.searchTool, this.loadTool];
 	}
 
-	/** A registered deferred tool, loaded or not. */
-	getTool(name: string): BuiltTool | undefined {
-		return this.toolsByName.get(name);
+	/**
+	 * A registered deferred tool, loaded or not. Resolves legacy names, and
+	 * resolves a former split tool by the call's `input.action`. A registered
+	 * current name wins over a legacy action, as in `resolveToolForCall`.
+	 */
+	getTool(name: string, input?: unknown): BuiltTool | undefined {
+		const action = this.toolsByName.has(name) ? undefined : callAction(input);
+		const byAction =
+			action === undefined ? undefined : this.currentNameByLegacyAction.get(name)?.get(action);
+		return this.toolsByName.get(byAction ?? this.resolveName(name));
 	}
 
 	getLoadedTools(): BuiltTool[] {
@@ -154,7 +189,8 @@ export class DeferredToolManager {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
 			for (const block of message.content) {
 				if (!this.isSuccessfulLoadToolCall(block)) continue;
-				const toolName = this.getLoadedToolNameFromOutput(block.output);
+				const loadedName = this.getLoadedToolNameFromOutput(block.output);
+				const toolName = loadedName && this.resolveName(loadedName);
 				if (toolName && this.toolsByName.has(toolName)) {
 					this.loadedToolNames.add(toolName);
 				}
@@ -211,7 +247,12 @@ export class DeferredToolManager {
 		};
 	}
 
-	load(toolName: string): LoadToolOutput {
+	private resolveName(name: string): string {
+		return this.currentNameByLegacyName.get(name) ?? name;
+	}
+
+	load(requestedName: string): LoadToolOutput {
+		const toolName = this.resolveName(requestedName);
 		const activeTool = this.activeToolsByName.get(toolName);
 		if (activeTool) {
 			return {

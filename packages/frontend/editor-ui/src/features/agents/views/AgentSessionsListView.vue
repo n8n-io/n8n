@@ -1,11 +1,16 @@
 <script lang="ts" setup>
-import { useMessage } from '@/app/composables/useMessage';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { useAgentSessionStop } from '@/features/agents/composables/useAgentSessionStop';
+import {
+	useAgentTelemetry,
+	type AgentSessionFilterName,
+} from '@/features/agents/composables/useAgentTelemetry';
 import type {
 	AgentExecutionThread,
 	AgentSessionFilters,
@@ -30,6 +35,13 @@ import { ElSkeletonItem } from 'element-plus';
 type TraceTarget = { agentId: string; threadId: string };
 type OriginPresentation = { icon: IconName; label: string };
 
+const sessionFilterFields: Array<[keyof AgentSessionFilters, AgentSessionFilterName]> = [
+	['status', 'status'],
+	['origin', 'origin'],
+	['startDate', 'start_date'],
+	['endDate', 'end_date'],
+];
+
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
@@ -50,13 +62,15 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
-const message = useMessage();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const sessionsStore = useAgentSessionsStore();
+const agentTelemetry = useAgentTelemetry();
 let disposed = false;
 let managesStoreLifecycle = false;
 
 const projectId = computed(() => props.projectId ?? (route.params.projectId as string));
 const agentId = computed(() => props.agentId ?? (route.params.agentId as string));
+const { canStop, stoppingSessionIds, stop: stopSession } = useAgentSessionStop(projectId, agentId);
 const hasActiveFilters = computed(() => {
 	const { status, origin, startDate, endDate } = sessionsStore.filters;
 	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
@@ -177,6 +191,15 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 
 function rowActions(thread: AgentExecutionThread): Array<ActionDropdownItem<string>> {
 	const actions: Array<ActionDropdownItem<string>> = [];
+	if (thread.status === 'running' && canStop.value) {
+		actions.push({
+			id: 'stop',
+			label: i18n.baseText('agentSessions.stop'),
+			icon: 'square',
+			variant: 'destructive',
+			disabled: stoppingSessionIds.value.has(thread.id),
+		});
+	}
 
 	if (thread.parentThreadId && thread.parentAgentId) {
 		actions.push({
@@ -209,6 +232,16 @@ function onViewTrace(target: TraceTarget) {
 }
 
 async function onAction(actionId: string, thread: AgentExecutionThread) {
+	if (actionId === 'stop') {
+		if (thread.status !== 'running') return;
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		if (await stopSession(thread.id)) {
+			await sessionsStore.refreshThreads(targetProjectId, targetAgentId);
+		}
+		return;
+	}
+
 	if (actionId === 'goToParentRun') {
 		if (!thread.parentAgentId || !thread.parentThreadId) return;
 		onViewTrace({
@@ -220,15 +253,13 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 
 	if (actionId !== 'delete') return;
 
-	const confirmed = await message.confirm(
-		i18n.baseText('agentSessions.deleteConfirm.message'),
-		i18n.baseText('agentSessions.deleteConfirm.headline'),
-		{
-			type: 'warning',
-			confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
-			cancelButtonText: '',
-		},
-	);
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('agentSessions.deleteConfirm.headline'),
+		description: i18n.baseText('agentSessions.deleteConfirm.message'),
+		isDestructive: true,
+		confirmButtonText: i18n.baseText('agentSessions.deleteConfirm.confirmButtonText'),
+		cancelButtonText: i18n.baseText('generic.cancel'),
+	});
 
 	if (confirmed !== MODAL_CONFIRM) return;
 
@@ -257,6 +288,14 @@ function onAutoRefreshChange(enabled: boolean) {
 }
 
 async function onFiltersChange(value: AgentSessionFilters) {
+	const filterNames = sessionFilterFields
+		.filter(
+			([field]) => JSON.stringify(sessionsStore.filters[field]) !== JSON.stringify(value[field]),
+		)
+		.map(([, name]) => name);
+	if (filterNames.length > 0) {
+		agentTelemetry.trackAppliedSessionFilter({ agentId: agentId.value, filterNames });
+	}
 	try {
 		await sessionsStore.setFilters(projectId.value, agentId.value, value);
 	} catch (error) {

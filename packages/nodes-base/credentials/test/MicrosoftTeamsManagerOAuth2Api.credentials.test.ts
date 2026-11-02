@@ -35,6 +35,8 @@ describe('MicrosoftTeamsManagerOAuth2Api Credential', () => {
 			expect.arrayContaining([
 				'offline_access',
 				'https://graph.microsoft.com/Application.ReadWrite.All',
+				'https://graph.microsoft.com/AppCatalog.ReadWrite.All',
+				'https://graph.microsoft.com/AppCatalog.Submit',
 			]),
 		);
 	});
@@ -56,15 +58,14 @@ describe('MicrosoftTeamsManagerOAuth2Api Credential', () => {
 	});
 
 	/**
-	 * The package is uploaded in the Teams client and n8n never looks for it
-	 * afterwards, so it asks for nothing over anyone's installed apps -- and no
-	 * catalogue write either.
+	 * n8n publishes the app to the organisation catalogue. It installs nothing
+	 * for anyone and never reads back what they have, so neither write nor read
+	 * over their apps is asked for.
 	 */
 	it("asks for nothing over the user's apps", () => {
 		const scope = String(defaultOf('scope'));
 
 		expect(scope).not.toContain('TeamsAppInstallation');
-		expect(scope).not.toContain('AppCatalog');
 	});
 
 	it('keeps a refresh token, without which the Azure token cannot be minted', () => {

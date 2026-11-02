@@ -19,6 +19,10 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 const CONTINUE_AS_METADATA_KEY = 'continueAs';
 const BOUND_THREADS_METADATA_KEY = 'boundThreads';
+const SENT_MESSAGES_METADATA_KEY = 'sentMessages';
+
+/** Older entries drop out, so the metadata of a busy thread stays small. */
+const MAX_SENT_MESSAGES_PER_THREAD = 50;
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
@@ -93,6 +97,34 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	async resolveSession(derivedThreadId: string): Promise<SessionBinding | null> {
 		const thread = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const value = this.parseMetadata(thread?.metadata)[CONTINUE_AS_METADATA_KEY];
+		return isSessionBinding(value) ? value : null;
+	}
+
+	async recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: SessionBinding,
+	): Promise<void> {
+		const existing = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const previous = this.parseMetadata(existing?.metadata)[SENT_MESSAGES_METADATA_KEY];
+		const entries = isRecord(previous) ? Object.entries(previous) : [];
+		const sentMessages = Object.fromEntries(
+			[...entries.filter(([id]) => id !== messageId), [messageId, origin]].slice(
+				-MAX_SENT_MESSAGES_PER_THREAD,
+			),
+		);
+		await this.writeMetadata(derivedThreadId, origin.resourceId, {
+			[SENT_MESSAGES_METADATA_KEY]: sentMessages,
+		});
+	}
+
+	async resolveSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+	): Promise<SessionBinding | null> {
+		const thread = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const sentMessages = this.parseMetadata(thread?.metadata)[SENT_MESSAGES_METADATA_KEY];
+		const value = isRecord(sentMessages) ? sentMessages[messageId] : undefined;
 		return isSessionBinding(value) ? value : null;
 	}
 

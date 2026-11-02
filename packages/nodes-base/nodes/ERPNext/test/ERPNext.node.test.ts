@@ -1,116 +1,137 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { ERPNext } from '../ERPNext.node';
+import * as GenericFunctions from '../GenericFunctions';
 
-describe('ERPNext', () => {
-	const node = new ERPNext();
-	const credentials = { environment: 'selfHosted', domain: 'https://erpnext.example.com' };
-	const docTypes = [
-		{ name: 'Service Product', encoded: 'Service%20Product' },
-		{ name: '50% Discount', encoded: '50%25%20Discount' },
-		{ name: 'Sales/Orders?#', encoded: 'Sales%2FOrders%3F%23' },
-		{ name: 'Customer', encoded: 'Customer' },
-	];
+describe('ERPNext > document: getAll', () => {
+	let node: ERPNext;
+	let mockExecuteFunctions: ReturnType<typeof mockDeep<IExecuteFunctions>>;
 
-	describe.each(docTypes)('$name', ({ name, encoded }) => {
-		async function loadDocType() {
-			const context = mockDeep<ILoadOptionsFunctions>();
-			context.getCredentials.mockResolvedValue(credentials);
-			context.helpers.requestWithAuthentication
-				.mockResolvedValueOnce({ data: [{ name }] })
-				.mockResolvedValueOnce({ data: [] });
-			const options = await node.methods.loadOptions.getDocTypes.call(context);
-			expect(options).toEqual([{ name, value: name }]);
-			return options[0].value;
-		}
-
-		it('keeps the option value unchanged', async () => {
-			await loadDocType();
+	const mockParameters = (options: IDataObject | ((itemIndex: number) => IDataObject)) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter, itemIndex) => {
+			switch (parameter) {
+				case 'resource':
+					return 'document';
+				case 'operation':
+					return 'getAll';
+				case 'docType':
+					return 'Customer';
+				case 'options':
+					return typeof options === 'function' ? options(itemIndex) : options;
+				case 'returnAll':
+					return false;
+				case 'limit':
+					return 10;
+				default:
+					return undefined;
+			}
 		});
+	};
 
-		it.each(['getDocFilters', 'getDocFields'] as const)(
-			'encodes the DocType path for %s',
-			async (method) => {
-				const context = mockDeep<ILoadOptionsFunctions>();
-				context.getCredentials.mockResolvedValue(credentials);
-				context.getCurrentNodeParameter.mockReturnValue(await loadDocType());
-				context.helpers.requestWithAuthentication.mockResolvedValue({ data: { fields: [] } });
+	beforeEach(() => {
+		node = new ERPNext();
+		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation(
+			(data: IDataObject | IDataObject[]) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+		);
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
+			(data: INodeExecutionData[]) => data,
+		);
+		vi.spyOn(GenericFunctions, 'erpNextApiRequest').mockResolvedValue({
+			data: [{ name: 'Customer A' }],
+		});
+	});
 
-				await node.methods.loadOptions[method].call(context);
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
 
-				expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-					'erpNextApi',
-					expect.objectContaining({
-						method: 'GET',
-						uri: `https://erpnext.example.com/api/resource/DocType/${encoded}`,
-					}),
-				);
-			},
+	it('should not send filters when the Filters collection is left empty', async () => {
+		mockParameters({ fields: ['name'], filters: {} });
+
+		const result = await node.execute.call(mockExecuteFunctions);
+
+		expect(result[0]).toEqual([{ json: { name: 'Customer A' } }]);
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ fields: JSON.stringify(['name']), limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not send fields or filters when both collections are left empty', async () => {
+		mockParameters({ fields: [], filters: { customProperty: [] } });
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not carry query options over from a previous item', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParameters((itemIndex) => (itemIndex === 0 ? { fields: ['name'] } : {}));
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ fields: JSON.stringify(['name']), limit_page_length: 10, limit_start: 0 },
+		);
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not carry filters over from a previous item', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParameters((itemIndex) =>
+			itemIndex === 0
+				? { filters: { customProperty: [{ field: 'first_name', operator: 'is', value: 'Jane' }] } }
+				: {},
 		);
 
-		it.each([
-			{ operation: 'get', method: 'GET', suffix: '/test-document', returnAll: false },
-			{ operation: 'getAll', method: 'GET', suffix: '', returnAll: false },
-			{ operation: 'getAll', method: 'GET', suffix: '', returnAll: true },
-			{ operation: 'create', method: 'POST', suffix: '', returnAll: false },
-			{ operation: 'update', method: 'PUT', suffix: '/test-document', returnAll: false },
-			{ operation: 'delete', method: 'DELETE', suffix: '/test-document', returnAll: false },
-		])(
-			'encodes the path for $operation (returnAll=$returnAll)',
-			async ({ operation, method, suffix, returnAll }) => {
-				const docType = await loadDocType();
-				const context = mockDeep<IExecuteFunctions>();
-				context.getCredentials.mockResolvedValue(credentials);
-				context.getInputData.mockReturnValue([{ json: {} }]);
-				context.getNodeParameter.mockImplementation((parameter) => {
-					switch (parameter) {
-						case 'resource':
-							return 'document';
-						case 'operation':
-							return operation;
-						case 'docType':
-							return docType;
-						case 'documentName':
-							return 'test-document';
-						case 'returnAll':
-							return returnAll;
-						case 'limit':
-							return 10;
-						case 'properties':
-							return { customProperty: [{ field: 'enabled', value: '1' }] };
-						case 'options':
-							return {
-								filters: { customProperty: [{ field: 'enabled', operator: 'is', value: '1' }] },
-							};
-						default:
-							throw new Error(`Unexpected parameter: ${parameter}`);
-					}
-				});
-				context.helpers.requestWithAuthentication.mockResolvedValue({ data: [] });
-				context.helpers.returnJsonArray.mockReturnValue([]);
-				context.helpers.constructExecutionMetaData.mockReturnValue([]);
+		await node.execute.call(mockExecuteFunctions);
 
-				await node.execute.call(context);
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
 
-				expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-					'erpNextApi',
-					expect.objectContaining({
-						method,
-						uri: `https://erpnext.example.com/api/resource/${encoded}${suffix}`,
-					}),
-				);
-				if (operation === 'getAll') {
-					expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
-						'erpNextApi',
-						expect.objectContaining({
-							qs: expect.objectContaining({
-								filters: JSON.stringify([[name, 'enabled', '=', '1']]),
-							}),
-						}),
-					);
-				}
-			},
+	it('should send filters when the Filters collection has entries', async () => {
+		mockParameters({
+			filters: { customProperty: [{ field: 'first_name', operator: 'is', value: 'Jane' }] },
+		});
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/resource/Customer',
+			{},
+			expect.objectContaining({
+				filters: JSON.stringify([['Customer', 'first_name', '=', 'Jane']]),
+			}),
 		);
 	});
 });

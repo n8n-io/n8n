@@ -1,0 +1,60 @@
+{
+	"name": "HTML display mode",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4b0c2f8e-1d3a-4c5e-9f71-2a6b8d0e3c11",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [220, 260]
+		},
+		{
+			"parameters": {
+				"jsCode": "return Array.from({ length: 30 }, (_, index) => ({ json: { name: `Item ${index + 1}` } }));"
+			},
+			"id": "8e2d4a61-7b9c-4f0e-a3d5-6c1b9e8f2a22",
+			"name": "Create items",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [440, 260]
+		},
+		{
+			"parameters": {
+				"html": "<h1>{{ $json.name }}</h1>"
+			},
+			"id": "c5f9e3b7-2a4d-4e8f-b6c0-9d3e1f7a5b33",
+			"name": "HTML",
+			"type": "n8n-nodes-base.html",
+			"typeVersion": 1.2,
+			"position": [660, 260]
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create items": {
+			"main": [
+				[
+					{
+						"node": "HTML",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

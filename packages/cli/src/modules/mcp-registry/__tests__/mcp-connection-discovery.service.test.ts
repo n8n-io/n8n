@@ -10,10 +10,13 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { McpConnectionDiscoveryService } from '../mcp-connection-discovery.service';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryService } from '../registry/mcp-registry.service';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
+import { firecrawlAiGatewayMockServer, firecrawlMockServer } from '../registry/mock-servers';
 
 const {
 	mcpClientCloseMock,
@@ -79,7 +82,7 @@ function makeServer(overrides: Partial<McpRegistryServer> = {}): McpRegistryServ
 }
 
 describe('McpConnectionDiscoveryService', () => {
-	const user = { id: 'user-1' } as User;
+	const user = { id: 'user-1', role: { slug: 'global:member', scopes: [] } } as unknown as User;
 	const credential = {
 		id: 'credential-1',
 		name: 'GitHub OAuth2',
@@ -95,6 +98,7 @@ describe('McpConnectionDiscoveryService', () => {
 		const credentialTypes = mock<CredentialTypes>();
 		const oauthService = mock<OauthService>();
 		const outboundHttp = mock<OutboundHttp>();
+		const aiGatewayService = mock<AiGatewayService>();
 		const service = new McpConnectionDiscoveryService(
 			logger,
 			registryService,
@@ -103,6 +107,7 @@ describe('McpConnectionDiscoveryService', () => {
 			credentialTypes,
 			oauthService,
 			outboundHttp,
+			aiGatewayService,
 		);
 
 		registryService.get.mockResolvedValue(makeServer());
@@ -122,7 +127,13 @@ describe('McpConnectionDiscoveryService', () => {
 		);
 		credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
 
-		return { service, registryService, credentialsFinderService, credentialsHelper };
+		return {
+			service,
+			registryService,
+			credentialsFinderService,
+			credentialsHelper,
+			aiGatewayService,
+		};
 	}
 
 	beforeEach(() => {
@@ -332,27 +343,143 @@ describe('McpConnectionDiscoveryService', () => {
 		expect(mcpClientListToolsMock).not.toHaveBeenCalled();
 	});
 
-	it('requires connect scope for resolvable credentials', async () => {
-		const { service, credentialsFinderService } = createService();
-		const resolvableCredential = mock<CredentialsEntity>({
-			id: credential.id,
-			name: credential.name,
-			type: credential.type,
-			shared: credential.shared,
-			isResolvable: true,
-		});
-		credentialsFinderService.findCredentialForUser
-			.mockResolvedValueOnce(resolvableCredential)
-			.mockResolvedValueOnce(null);
+	describe('credential use access', () => {
+		/** Simulates a user who can read the credential but does not hold `credential:connect`. */
+		function grantReadOnly(
+			credentialsFinderService: ReturnType<typeof createService>['credentialsFinderService'],
+			overrides: Partial<CredentialsEntity>,
+		) {
+			const readable = { ...credential, isGlobal: false, isResolvable: false, ...overrides };
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) =>
+					scopes.includes('credential:connect') ? null : (readable as CredentialsEntity),
+			);
+		}
 
-		await expect(
-			service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
-		).rejects.toBeInstanceOf(NotFoundError);
-		expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
-			2,
-			'credential-1',
-			user,
-			['credential:connect'],
+		it('uses a credential the user can connect', async () => {
+			const { service, credentialsFinderService } = createService();
+			mcpClientListToolsMock.mockResolvedValue([]);
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).resolves.toMatchObject({ status: 'connected' });
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'credential-1',
+				user,
+				['credential:connect'],
+			);
+		});
+
+		it('refuses a credential the user can only read', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, {});
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+			expect(mcpClientListToolsMock).not.toHaveBeenCalled();
+		});
+
+		it('refuses a resolvable credential the user can only read', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, { isGlobal: true, isResolvable: true });
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+
+		it('allows a static global credential with read access', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, { isGlobal: true });
+			mcpClientListToolsMock.mockResolvedValue([]);
+
+			await expect(
+				service.discover(user, { slug: 'git hub', credentialId: 'credential-1' }),
+			).resolves.toMatchObject({ status: 'connected' });
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalled();
+		});
+
+		it('allows a read credential when the instance role may use any credential', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, {});
+			mcpClientListToolsMock.mockResolvedValue([]);
+			const useAnyUser = {
+				...user,
+				role: { slug: 'custom:credential-user', scopes: [{ slug: 'credential:use' }] },
+			} as unknown as User;
+
+			await expect(
+				service.discover(useAnyUser, { slug: 'git hub', credentialId: 'credential-1' }),
+			).resolves.toMatchObject({ status: 'connected' });
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
+				1,
+				'credential-1',
+				useAnyUser,
+				['credential:connect'],
+			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
+				2,
+				'credential-1',
+				useAnyUser,
+				['credential:read'],
+			);
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalled();
+		});
+
+		it('refuses a resolvable credential when the instance role may use any credential', async () => {
+			const { service, credentialsFinderService, credentialsHelper } = createService();
+			grantReadOnly(credentialsFinderService, { isResolvable: true });
+			const useAnyUser = {
+				...user,
+				role: { slug: 'custom:credential-user', scopes: [{ slug: 'credential:use' }] },
+			} as unknown as User;
+
+			await expect(
+				service.discover(useAnyUser, { slug: 'git hub', credentialId: 'credential-1' }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		});
+	});
+
+	it('discovers a paired server with Gateway credits and returns an entry without a stored credential', async () => {
+		mcpClientListToolsMock.mockResolvedValue([
+			{
+				name: 'firecrawl_scrape',
+				mcpToolName: 'firecrawl_scrape',
+				mcpAnnotations: { readOnlyHint: true },
+			} as BuiltTool,
+		]);
+		const { service, registryService, credentialsFinderService, aiGatewayService } =
+			createService();
+		const [twin] = pairAiGatewayServers(
+			[firecrawlMockServer, firecrawlAiGatewayMockServer],
+			() => true,
 		);
+		registryService.get.mockResolvedValue(twin);
+		aiGatewayService.getSyntheticCredential.mockResolvedValue({ token: 'minted' });
+
+		const response = await service.discover(user, { slug: 'firecrawl', aiGateway: true });
+
+		expect(response).toStrictEqual({
+			status: 'connected',
+			connection: {
+				url: 'https://mcp.firecrawl.dev/mcp',
+				transport: 'streamableHttp',
+				authentication: 'none',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' },
+			},
+			tools: [{ name: 'firecrawl_scrape', category: 'read' }],
+		});
+		expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+			credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+			userId: 'user-1',
+		});
+		expect(mcpClientConfigs[0]?.[0]).toMatchObject({
+			url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl',
+		});
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 	});
 });

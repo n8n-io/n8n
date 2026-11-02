@@ -1,5 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
+import {
+	EventService,
+	InstanceWriteAccessService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -55,7 +59,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowRunner } from '@/workflow-runner';
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 @Service()
@@ -359,6 +363,10 @@ export class WorkflowExecutionService {
 		// For manual testing always set to not active
 		workflowData.active = false;
 		workflowData.activeVersionId = null;
+
+		// The pinData column is nullable, but the engine expects `undefined` for
+		// "no pinned data". A NULL fails the partial execution when it looks up pinned data.
+		workflowData.pinData ??= undefined;
 
 		// The UI can send runData alongside triggerToStartFrom, but a trigger
 		// means a full run, so stale runData must not demote it to a partial

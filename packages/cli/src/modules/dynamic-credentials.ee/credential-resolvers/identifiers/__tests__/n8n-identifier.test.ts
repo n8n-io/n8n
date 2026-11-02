@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { AuthError } from '@n8n/errors';
-import type { OAuthTokenVerifierProxy } from '@/services/oauth-token-verifier-proxy.service';
+import type { OAuthTokenVerifierProxy } from '@n8n/backend-services/auth';
 
 import {
 	carriesN8nIdentity,

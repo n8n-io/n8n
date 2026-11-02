@@ -123,16 +123,30 @@ describe('inferInputSchema — executeWorkflow', () => {
 		expect(schema.parse({ chatId: 'x' })).toEqual({ chatId: 'x' });
 	});
 
-	it('defaults to passthrough when inputSource is absent (legacy / imported triggers)', () => {
-		// Mirrors the runtime fallback `getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH)`:
-		// legacy node versions < 1.1 and imported triggers without a saved inputSource
-		// pass all input data through, so the inferred schema must stay open even if
-		// stale workflowInputs are present.
+	it.each([1.1, 1.2, 1.3])(
+		'uses declared fields when version %s omits inputSource',
+		(typeVersion) => {
+			const trigger = makeExecuteWorkflowTrigger({
+				workflowInputs: { values: [{ name: 'request' }] },
+			});
+			trigger.typeVersion = typeVersion;
+
+			const schema = inferInputSchema(trigger, 'executeWorkflow');
+			expect(listWorkflowInputFields(trigger)).toEqual([{ name: 'request' }]);
+			expect(zodSchemaToJsonSchema(schema)).toMatchObject({
+				properties: { request: { type: ['string', 'null'], description: 'request' } },
+			});
+			expect(schema.parse({ request: 123, extra: true })).toEqual({ request: '123' });
+		},
+	);
+
+	it('defaults to passthrough when a legacy trigger omits inputSource', () => {
 		const trigger = makeExecuteWorkflowTrigger({
 			workflowInputs: {
 				values: [{ name: 'chatId', type: 'string' }],
 			},
 		});
+		trigger.typeVersion = 1;
 
 		const schema = inferInputSchema(trigger, 'executeWorkflow');
 		expect(listWorkflowInputFields(trigger)).toEqual([]);

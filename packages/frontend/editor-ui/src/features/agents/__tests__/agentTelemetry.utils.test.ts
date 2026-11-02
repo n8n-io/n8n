@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -47,6 +47,16 @@ describe('buildAgentConfigFingerprint', () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['slack']);
 		expect(fp.config_version).toMatch(/^[0-9a-f]{16}$/);
 		expect(fp.instructions).toBe('do things');
+	});
+
+	it('keeps the same fingerprint when Web Crypto is unavailable', async () => {
+		const expected = await buildAgentConfigFingerprint(baseConfig, ['slack']);
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		try {
+			expect(await buildAgentConfigFingerprint(baseConfig, ['slack'])).toEqual(expected);
+		} finally {
+			vi.unstubAllGlobals();
+		}
 	});
 
 	it('sorts tools and triggers alphabetically', async () => {

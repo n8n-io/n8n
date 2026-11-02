@@ -15,7 +15,6 @@ const props = withDefaults(
 		// default because every other call site is detached, and an attached banner there
 		// renders as an inset box with squared-off bottom corners floating above the input.
 		variant?: 'attached' | 'standalone';
-		amountsHidden?: boolean;
 		/** Replaces the meter text. Used for the non-dismissible out-of-credits state. */
 		message?: string;
 		dismissible?: boolean;
@@ -34,9 +33,6 @@ const { isActive: isCloudUbbActive } = useCloudUbbActive();
 
 const bannerText = computed(() => {
 	if (props.message) return props.message;
-	if (props.amountsHidden) {
-		return i18n.baseText('aiAssistant.builder.creditBanner.limitReachedText');
-	}
 
 	const remaining = String(round2(props.creditsRemaining ?? 0));
 
@@ -61,14 +57,6 @@ const bannerText = computed(() => {
 	});
 });
 
-const ctaLabel = computed(() =>
-	i18n.baseText(
-		props.amountsHidden
-			? 'aiAssistant.builder.creditBanner.upgrade'
-			: 'aiAssistant.builder.creditBanner.getMore',
-	),
-);
-
 const getNextMonth = () => {
 	const now = new Date();
 	const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -90,18 +78,12 @@ const tooltipContent = computed(() => {
 		data-test-id="credit-warning-banner"
 	>
 		<div :class="$style.content">
-			<!-- The numeric variants are a meter reading, so clipping them costs nothing. This one is
-			the only signal the capped cohort gets on landing, so it wraps rather than truncates. -->
-			<span
-				:class="[$style.text, { [$style.wrapping]: props.amountsHidden || Boolean(props.message) }]"
-				>{{ bannerText }}</span
-			>
-			<N8nTooltip
-				v-if="!props.amountsHidden && !props.message"
-				:content="tooltipContent"
-				placement="top"
-				:show-after="300"
-			>
+			<!-- The numeric variants are a meter reading, so clipping them costs nothing. A custom
+			message is the whole signal, so it wraps rather than truncates. -->
+			<span :class="[$style.text, { [$style.wrapping]: Boolean(props.message) }]">{{
+				bannerText
+			}}</span>
+			<N8nTooltip v-if="!props.message" :content="tooltipContent" placement="top" :show-after="300">
 				<N8nIcon
 					icon="info"
 					size="small"
@@ -116,7 +98,7 @@ const tooltipContent = computed(() => {
 			data-test-id="credit-banner-get-more"
 			@click="emit('upgrade-click')"
 		>
-			{{ ctaLabel }}
+			{{ i18n.baseText('aiAssistant.builder.creditBanner.getMore') }}
 		</N8nButton>
 		<N8nIcon
 			v-if="props.dismissible"

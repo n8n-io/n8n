@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 
 import N8nUserSelect from '.';
 import { createComponentRenderer } from '../../__tests__/render';
@@ -15,7 +15,9 @@ const getRenderedOptions = async () => {
 
 const filterInput = async (filterText: string) => {
 	const input = screen.getByRole('combobox');
-	await userEvent.type(input, filterText);
+	await userEvent.click(input);
+	// Set the query in one input event. Per-character events repeat filtering and DOM updates.
+	await fireEvent.update(input, filterText);
 };
 
 const sampleUsers: IUser[] = [
@@ -141,35 +143,34 @@ describe('UserSelect', () => {
 		});
 	});
 
-	it('filters users by email (case-sensitive for filter term, if full name does not match)', async () => {
-		renderComponent({
-			props: {
-				users: sampleUsers,
-			},
-		});
+	it.each([
+		{ query: 'alice@example.com', expectedIds: ['u1'] },
+		{ query: 'Example.com', expectedIds: [] },
+		{ query: 'example.com', expectedIds: sampleUsers.map((user) => user.id) },
+	])(
+		'filters users by email with the case-sensitive query "$query"',
+		async ({ query, expectedIds }) => {
+			renderComponent({ props: { users: sampleUsers } });
 
-		await filterInput('alice@example.com');
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(1);
-			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
-		});
+			await filterInput(query);
 
-		await userEvent.click(document.body);
+			if (expectedIds.length === 0) {
+				await waitFor(() => {
+					expect(screen.getByText('No matching users')).toBeVisible();
+					expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+				});
+				return;
+			}
 
-		await filterInput('Example.com'); // Email part of filter is case-sensitive in the component's logic
-		await waitFor(() => {
-			expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-		});
-
-		await userEvent.click(document.body);
-
-		await filterInput('example.com'); // Matches all users with email containing 'example.com'
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(sampleUsers.length);
-		});
-	});
+			await waitFor(async () => {
+				const options = await getRenderedOptions();
+				expect(options).toHaveLength(expectedIds.length);
+				expect(Array.from(options, (option) => option.id)).toEqual(
+					expect.arrayContaining(expectedIds.map((id) => `user-select-option-id-${id}`)),
+				);
+			});
+		},
+	);
 
 	it('filters by full name and email and sorts by last name', async () => {
 		const specificUsers: IUser[] = [
@@ -444,10 +445,12 @@ describe('UserSelect', () => {
 	});
 
 	it('should show the avatar of the selected user when showAvatar is set', async () => {
-		const { getByTestId } = renderComponent({
-			props: { users: sampleUsers, modelValue: 'u1', showAvatar: true },
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
+			props: { users: sampleUsers, showAvatar: true },
 		});
 
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+		await rerender({ modelValue: 'u1' });
 		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
 	});
 

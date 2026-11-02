@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.44.0",
+  "version": "2.46.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -74,6 +74,8 @@
     "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/core": "2.10.0",
     "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "@sentry/node-native": "catalog:sentry",

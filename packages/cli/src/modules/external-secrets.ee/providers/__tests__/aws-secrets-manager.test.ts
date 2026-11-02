@@ -2,9 +2,10 @@ import type { Mock } from 'vitest';
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp, HttpTransport } from '@n8n/backend-network';
-import { mock } from 'vitest-mock-extended';
+import toPath from 'lodash/toPath';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
+import { mock } from 'vitest-mock-extended';
 
 import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
 
@@ -192,6 +193,22 @@ describe('AwsSecretsManager', () => {
 
 		expect(awsSecretsManager.getSecret('secret1')).toBe('value1');
 		expect(awsSecretsManager.getSecret('secret2')).toBe('value2');
+	});
+
+	it('should discover dotted secret names as literal keys', async () => {
+		context.settings = { region, authMethod: 'iamUser', accessKeyId, secretAccessKey };
+		await awsSecretsManager.init(context);
+		listSecretsSpy.mockImplementation(async () => ({ SecretList: [{ Name: 'test.1' }] }));
+		batchGetSpy.mockImplementation(async () => ({
+			SecretValues: [{ Name: 'test.1', SecretString: 'literal-value' }],
+		}));
+
+		await awsSecretsManager.update();
+
+		const [name] = awsSecretsManager.getSecretNames();
+		const path = toPath(name);
+		expect(path).toEqual(['test.1']);
+		expect(awsSecretsManager.getSecret(path[0])).toBe('literal-value');
 	});
 
 	it('should properly batch secret requests', async () => {

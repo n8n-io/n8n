@@ -1,3 +1,4 @@
+import { OutsideThreadProjectError } from '../../../errors/outside-thread-project.error';
 import { WorkflowEditorLockedError } from '../../../errors/workflow-editor-locked.error';
 import { WorkflowNotFoundError } from '../../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
@@ -12,7 +13,8 @@ describe('createSaveFailureRemediation', () => {
 			shouldEdit: true,
 			reason: 'workflow_modified_externally',
 		});
-		expect(remediation.guidance).toContain('get-as-code');
+		expect(remediation.guidance).not.toContain('get-as-code');
+		expect(remediation.guidance).toContain('get_workflow_as_code');
 		expect(remediation.guidance).toContain('status "conflict"');
 	});
 
@@ -38,6 +40,18 @@ describe('createSaveFailureRemediation', () => {
 			shouldEdit: false,
 			reason: 'workflow_locked_by_editor',
 		});
+	});
+
+	it('classifies the outside-project error by type, not by message text', () => {
+		const error = new OutsideThreadProjectError();
+		error.message = 'Workflow save failed';
+
+		expect(createSaveFailureRemediation(error, true)).toMatchObject({
+			reason: 'workflow_outside_thread_project',
+		});
+		expect(
+			createSaveFailureRemediation(new Error('Workflow save failed', { cause: error }), true),
+		).toMatchObject({ reason: 'workflow_outside_thread_project' });
 	});
 
 	it('returns bound_workflow_not_found for WorkflowNotFoundError', () => {
@@ -80,6 +94,6 @@ describe('createSaveFailureRemediation', () => {
 			reason: 'workflow_id_not_found',
 		});
 		expect(remediation.guidance).toContain('omit workflowId');
-		expect(remediation.guidance).toContain('workflows()');
+		expect(remediation.guidance).toContain('list_workflows');
 	});
 });

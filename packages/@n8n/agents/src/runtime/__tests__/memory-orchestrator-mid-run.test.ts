@@ -324,13 +324,16 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(JSON.stringify(visible[1])).toContain('y'.repeat(750));
 	});
 
-	it.each(['provider', 'cursor'] as const)(
+	it.each(['provider', 'commit'] as const)(
 		'defers a failed %s attempt until the next run',
 		async (failure) => {
 			const store = new InMemoryMemory();
 			const observe = vi.fn(async () => await Promise.resolve('* INFO Conversation reviewed.'));
 			if (failure === 'provider') observe.mockRejectedValueOnce(new Error('observer failed'));
-			else vi.spyOn(store, 'setCursor').mockRejectedValueOnce(new Error('cursor write failed'));
+			else
+				vi.spyOn(store, 'commitObservationLogBatch').mockRejectedValueOnce(
+					new Error('batch commit failed'),
+				);
 			const { orchestrator, tracker } = buildOrchestrator(store, {
 				observerThresholdTokens: 1000,
 				observe,
@@ -361,7 +364,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
 			]);
 			expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(
-				failure === 'cursor' ? 2 : 1,
+				1,
 			);
 			const cursor = await store.getCursor(THREAD_ID);
 			expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
@@ -931,5 +934,54 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 		await orchestrator.applyObservationMask(list, runOptions().persistence);
 		await orchestrator.persistTurnDelta(list, runOptions());
 		expect(saveSpy).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('MemoryOrchestrator budget estimate', () => {
+	it('does not count the bytes of a file in a tool output', async () => {
+		const counted: string[] = [];
+		const { orchestrator } = buildOrchestrator(
+			new InMemoryMemory(),
+			{ observerThresholdTokens: 100_000, observe: vi.fn(), observationLogTailLimit: 20 },
+			async (text) => {
+				counted.push(text);
+				return await Promise.resolve(text.length);
+			},
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('Read the image')]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'call-1',
+						toolName: 'read_binary_data',
+						input: { fileId: 'file-1' },
+						state: 'resolved',
+						output: {
+							type: 'content',
+							value: [
+								{ type: 'text', text: '{"fileId":"file-1"}' },
+								{
+									type: 'file',
+									mediaType: 'image/png',
+									fileRef: { id: 'file-1' },
+									data: new Uint8Array(10_000),
+								},
+							],
+						},
+					},
+				],
+			} as unknown as AgentMessage,
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		const text = counted.join('\n');
+		expect(text).toContain('file-1');
+		expect(text).not.toContain('"data"');
+		expect(text.length).toBeLessThan(1_000);
 	});
 });

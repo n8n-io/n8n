@@ -35,14 +35,17 @@ describe('WorkflowProjectService', () => {
 		});
 	});
 
-	it('loads the owner project when the cached value is malformed', async () => {
-		const project = { id: 'project-1' } as Project;
-		cacheService.getHashValue.mockResolvedValue('invalid' as never);
-		sharedWorkflowRepository.findOneOrFail.mockResolvedValue({ project } as never);
+	it.each(['invalid', {}])(
+		'loads the owner project when the cached value is malformed',
+		async (cached) => {
+			const project = { id: 'project-1' } as Project;
+			cacheService.getHashValue.mockResolvedValue(cached as never);
+			sharedWorkflowRepository.findOneOrFail.mockResolvedValue({ project } as never);
 
-		await expect(service.getWorkflowProjectCached('workflow-1')).resolves.toBe(project);
-		expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalledOnce();
-	});
+			await expect(service.getWorkflowProjectCached('workflow-1')).resolves.toBe(project);
+			expect(sharedWorkflowRepository.findOneOrFail).toHaveBeenCalledOnce();
+		},
+	);
 
 	it('sets the cached owner project', async () => {
 		const project = { id: 'project-1' } as Project;

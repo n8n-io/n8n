@@ -35,7 +35,7 @@ export function tryDeterministicConfirmationResponse(
 		return undefined;
 	}
 
-	// inputType=questions, text, plan-review, or default approval — LLM handles.
+	// inputType=questions, text, or default approval — LLM handles.
 	return undefined;
 }
 

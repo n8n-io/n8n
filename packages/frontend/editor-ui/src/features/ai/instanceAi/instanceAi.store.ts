@@ -28,7 +28,6 @@ import {
 	getInstanceAiCredits,
 	type InstanceAiThreadLaunchInput,
 } from './instanceAi.api';
-import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadHistory,
@@ -61,7 +60,6 @@ const emptyThreadHistory = (search = '') => ({
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
-	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
@@ -76,8 +74,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// No reset needed on thread switch — login/logout reloads the page.
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
-	/** Whether the pool has been locked by the activation cap. */
-	const quotaLocked = ref(false);
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
@@ -124,11 +120,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		runtimes.delete(threadId);
 	}
 
-	// --- Settings delegation ---
-	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
-	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
-	const activeDirectory = computed(() => gatewayDirectory.value);
-
 	// --- Computed credits ---
 	const creditsRemaining = computed(() => {
 		if (
@@ -157,15 +148,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
 	});
 
-	/**
-	 * Whether to warn about credits above the chat input: either the balance is running low, or the
-	 * pool has been locked outright. The two are mutually exclusive in practice — a cohort with a
-	 * masked balance can never read as "low" — so this is the single condition the views use.
-	 */
-	const showCreditWarning = computed(() => isLowCredits.value || quotaLocked.value);
-
 	/** Send is blocked. A positive low balance stays a dismissible warning. */
-	const isOutOfCredits = computed(() => quotaLocked.value || creditsRemaining.value === 0);
+	const isOutOfCredits = computed(() => creditsRemaining.value === 0);
 
 	// --- Credits push handling ---
 
@@ -176,13 +160,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function handleCreditsPush(data: InstanceAiCreditsPushData): void {
 		creditsQuota.value = data.creditsQuota;
 		creditsClaimed.value = data.creditsClaimed;
-		// Absent means "no opinion", not "unlocked". Only the lock itself reports this; a claim
-		// push carries no lock state, and claims can land after the lock — a background memory
-		// task or a fire-and-forget HITL segment claim from an earlier run — so treating absence
-		// as false would clear the warning the lock had just raised.
-		if (data.quotaLocked !== undefined) {
-			quotaLocked.value = data.quotaLocked;
-		}
 		// Per-message claims also carry the thread's running total — write it onto the
 		// matching thread so the credits dropdown updates live for the acting user.
 		const { creditsPerThread } = data;
@@ -199,7 +176,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			const result = await getInstanceAiCredits(rootStore.restApiContext);
 			creditsQuota.value = result.creditsQuota;
 			creditsClaimed.value = result.creditsClaimed;
-			quotaLocked.value = result.quotaLocked ?? false;
 		} catch {
 			// Non-critical — credits display is optional
 		}
@@ -481,14 +457,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsClaimed,
 
 		// Computed
-		isGatewayConnected,
-		gatewayDirectory,
-		activeDirectory,
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
-		quotaLocked,
-		showCreditWarning,
 		isOutOfCredits,
 
 		// Thread-list actions

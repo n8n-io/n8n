@@ -50,6 +50,8 @@ export class MessageEventBusDestinationSentry
 			transport: Sentry.makeNodeTransport,
 			integrations: Sentry.getDefaultIntegrations({}),
 			stackParser: Sentry.defaultStackParser,
+			attachStacktrace: false,
+			enableRuntimeChannelInjection: false,
 		});
 	}
 

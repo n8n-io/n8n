@@ -15,7 +15,6 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiConnectionUpdate,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	McpToolPermissions,
@@ -25,7 +24,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
+import { DbLock, DbLockService, SettingsRepository } from '@n8n/db';
 import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -45,16 +44,18 @@ import {
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
 import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
+import { License } from '@/license';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 	SandboxSettingsService,
 } from '@/services/sandbox-settings.service';
-import { UserService } from '@/services/user.service';
 
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
+import { withModelName } from './model-config-name';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
@@ -244,7 +245,6 @@ interface PersistedAdminSettings {
 	modelName?: string | null;
 	searchDisabled?: boolean;
 	n8nSandboxServiceUrl?: string | null;
-	localGatewayDisabled?: boolean;
 	browserUseEnabled?: boolean;
 }
 
@@ -284,8 +284,8 @@ export class InstanceAiSettingsService {
 
 	private sandboxProviderOverride?: InstanceAiSandboxProvider;
 
-	/** Whether n8n Agent is enabled for this instance. */
-	private enabled = true;
+	/** The saved on/off choice. Unset means the env var or the license plan decides. */
+	private enabled?: boolean;
 
 	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	private mcpAccessEnabled = true;
@@ -305,14 +305,14 @@ export class InstanceAiSettingsService {
 		globalConfig: GlobalConfig,
 		private readonly dbLockService: DbLockService,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly userRepository: UserRepository,
-		private readonly userService: UserService,
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly sandboxSettingsService: SandboxSettingsService,
 		private readonly eventService: EventService,
+		private readonly license: License,
+		private readonly threadRepository: InstanceAiThreadRepository,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -355,6 +355,29 @@ export class InstanceAiSettingsService {
 		if (sandboxStatus.unavailableReason) {
 			logger.warn(`Sandbox unavailable: ${sandboxStatus.unavailableReason}`);
 		}
+		await this.keepEnabledIfInUse();
+	}
+
+	/**
+	 * Runs at startup. Enterprise defaults to off, but an instance that already uses the
+	 * Assistant stays on.
+	 * Threads are deleted with their user, so save the choice instead of re-checking them.
+	 */
+	private async keepEnabledIfInUse(): Promise<void> {
+		if (this.enabled !== undefined || this.config.enabled !== undefined) return;
+		if (!this.license.isEnterprisePlan() || !(await this.threadRepository.exists())) return;
+		await this.withPersistedAdminSettings(async (ctx, persisted) => {
+			if (persisted.enabled === undefined) {
+				persisted.enabled = true;
+				await this.settingsRepository.upsertByKey(
+					ADMIN_SETTINGS_KEY,
+					JSON.stringify(persisted),
+					true,
+					ctx,
+				);
+			}
+			this.enabled = persisted.enabled;
+		});
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -429,7 +452,7 @@ export class InstanceAiSettingsService {
 				: c.sandboxProvider,
 		);
 		return {
-			enabled: this.enabled,
+			enabled: this.isInstanceAiEnabled(),
 			permissions: { ...this.permissions },
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
@@ -479,7 +502,6 @@ export class InstanceAiSettingsService {
 					url: Boolean(c.searxngUrl.trim()),
 				},
 			},
-			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
 	}
@@ -1055,27 +1077,7 @@ export class InstanceAiSettingsService {
 			credentialType,
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
-			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
 		};
-	}
-
-	async updateUserPreferences(
-		user: User,
-		update: InstanceAiUserPreferencesUpdateRequest,
-	): Promise<InstanceAiUserPreferencesResponse> {
-		this.rejectManagedFields(
-			update,
-			InstanceAiSettingsService.MANAGED_PREFERENCE_FIELDS,
-			this.deploymentLabel(),
-		);
-		const prefs: UserInstanceAiPreferences = { ...this.readUserPreferences(user) };
-		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
-		if (update.modelName !== undefined) prefs.modelName = update.modelName;
-		if (update.localGatewayDisabled !== undefined)
-			prefs.localGatewayDisabled = update.localGatewayDisabled;
-		await this.userService.updateSettings(user.id, { instanceAi: prefs });
-		user.settings = { ...(user.settings ?? {}), instanceAi: prefs };
-		return await this.getUserPreferences(user);
 	}
 
 	// ── Shared accessors ──────────────────────────────────────────────────
@@ -1262,37 +1264,13 @@ export class InstanceAiSettingsService {
 		return this.mcpAccessEnabled;
 	}
 
-	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
-	async isLocalGatewayDisabledForUser(userId: string): Promise<boolean> {
-		if (!this.enabled) return true;
-		if (this.config.localGatewayDisabled) return true;
-		const user = await this.userRepository.findOneBy({ id: userId });
-		if (!user) return true;
-		return this.readUserPreferences(user).localGatewayDisabled ?? false;
-	}
-
-	/** Whether the n8n Agent is enabled by the admin. */
+	/** Whether the n8n Agent is enabled for this instance. */
 	isAgentEnabled(): boolean {
-		return this.enabled;
-	}
-
-	/** Whether the local gateway is disabled globally by the admin. */
-	isLocalGatewayDisabled(): boolean {
-		return this.config.localGatewayDisabled;
+		return this.isInstanceAiEnabled();
 	}
 
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
-	}
-
-	/** Whether this instance is in the activation-capped trial cohort. */
-	isActivationCapped(): boolean {
-		return this.config.activationCapped;
-	}
-
-	/** How many assistant messages must precede the activation lock. `0` means activation alone. */
-	getActivationLockMessageThreshold(): number {
-		return this.config.activationLockMessageThreshold;
 	}
 
 	/** Whether workflow building can use the required sandbox workspace. */
@@ -1313,7 +1291,8 @@ export class InstanceAiSettingsService {
 
 	/** Whether Instance AI chat and main UI are enabled (settings always available when module loads). */
 	isInstanceAiEnabled(): boolean {
-		return this.enabled;
+		// Resolved on every read because the license plan can change at runtime.
+		return this.enabled ?? this.config.enabled ?? !this.license.isEnterprisePlan();
 	}
 
 	/** Public, detail-free setup state used to gate member-facing entry points. */
@@ -1356,6 +1335,11 @@ export class InstanceAiSettingsService {
 
 	getConfiguredModelId(): string {
 		return this.config.model.trim();
+	}
+
+	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
+	getConfiguredMemoryModelName(): string {
+		return this.config.memoryModel.trim();
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
@@ -1404,18 +1388,7 @@ export class InstanceAiSettingsService {
 	async resolveModelConfigForVerification(user: User, modelName?: string): Promise<ModelConfig> {
 		const config = await this.resolveModelConfig(user);
 		if (!modelName) return config;
-		if (typeof config === 'string') {
-			const provider = config.includes('/') ? config.slice(0, config.indexOf('/')) : 'custom';
-			return `${provider}/${modelName}`;
-		}
-		if ('id' in config && typeof config.id === 'string' && 'url' in config) {
-			const provider = config.id.includes('/')
-				? config.id.slice(0, config.id.indexOf('/'))
-				: 'custom';
-			const id: `${string}/${string}` = `${provider}/${modelName}`;
-			return { ...config, id };
-		}
-		return config;
+		return withModelName(config, modelName) ?? config;
 	}
 
 	buildModelConfigForConnection(
@@ -1498,6 +1471,7 @@ export class InstanceAiSettingsService {
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
 		return {
+			kind: 'endpoint',
 			id,
 			url: baseUrl,
 			...(apiKey ? { apiKey } : {}),
@@ -1527,12 +1501,6 @@ export class InstanceAiSettingsService {
 		'modelConnection',
 		'sandboxConnection',
 		'searchConnection',
-	];
-
-	/** User preference fields sourced from environment variables only. */
-	private static readonly MANAGED_PREFERENCE_FIELDS: readonly string[] = [
-		'credentialId',
-		'modelName',
 	];
 
 	private rejectEnvironmentManagedFields(update: InstanceAiAdminSettingsUpdateRequest): void {
@@ -1684,6 +1652,7 @@ export class InstanceAiSettingsService {
 
 		if (modelUrl) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: modelUrl,
 				...(modelApiKey ? { apiKey: modelApiKey } : {}),
@@ -1693,6 +1662,7 @@ export class InstanceAiSettingsService {
 
 		if (modelApiKey) {
 			return {
+				kind: 'endpoint',
 				id,
 				url: '',
 				apiKey: modelApiKey,
@@ -1728,6 +1698,7 @@ export class InstanceAiSettingsService {
 		const googleCredentials = this.config.vertexServiceAccountJson?.trim() || undefined;
 
 		return {
+			kind: 'vertex-anthropic',
 			id,
 			project: this.resolveVertexProjectId(),
 			location: this.resolveVertexLocation(),
@@ -1777,8 +1748,6 @@ export class InstanceAiSettingsService {
 			this.config.n8nSandboxServiceUrl =
 				this.environmentN8nSandboxServiceUrl || persisted.n8nSandboxServiceUrl || '';
 		}
-		if (persisted.localGatewayDisabled !== undefined)
-			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.browserUseEnabled !== undefined)
 			c.browserUseEnabled = persisted.browserUseEnabled;
 	}
@@ -1801,7 +1770,6 @@ export class InstanceAiSettingsService {
 			modelName: this.adminModelName,
 			searchDisabled: this.searchDisabled,
 			n8nSandboxServiceUrl: this.adminN8nSandboxServiceUrl,
-			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};
 	}

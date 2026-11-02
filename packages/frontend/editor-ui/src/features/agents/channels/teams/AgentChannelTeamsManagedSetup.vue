@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import type { AgentTeamsIntegrationSettings, TeamsManagedSetupState } from '@n8n/api-types';
 import {
+	N8nActionDropdown,
 	N8nButton,
+	N8nCallout,
+	N8nIcon,
 	N8nIconButton,
 	N8nInputLabel,
+	N8nLink,
 	N8nOption,
 	N8nSelect,
-	N8nSpinner,
 	N8nStepper,
 	N8nText,
 } from '@n8n/design-system';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
@@ -23,9 +27,20 @@ import CredentialsDropdown, {
 } from '@/features/credentials/components/CredentialPicker/CredentialsDropdown.vue';
 import { fetchTeamsAppPackage } from './api';
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
-import { availabilityFrom, TEAMS_PACKAGE_FILENAME, type TeamsAvailability } from './constants';
+import {
+	availabilityFrom,
+	entraApiPermissionsUrl,
+	permissionUseFor,
+	TEAMS_PACKAGE_FILENAME,
+	type TeamsAvailability,
+} from './constants';
 import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
+import AgentChannelTeamsOptionLabel from './AgentChannelTeamsOptionLabel.vue';
+import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
+import type { AgentChannelRestart } from '../types';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { useTeamsSetupRestart } from './useTeamsSetupRestart';
+import { useTeamsUploadInstruction } from './useTeamsUploadInstruction';
 
 const selectedCredentialId = defineModel<string>({ default: '' });
 
@@ -55,10 +70,16 @@ const emit = defineEmits<{
 	provisioned: [credentialId: string];
 	/** The user is finished here, whether or not Microsoft is. */
 	done: [];
+	/** The sign-in changed under a saved channel: remove it and start from the first step. */
+	restart: [restart: AgentChannelRestart];
 }>();
 
+const TEAMS_MANAGE_APPS_URL = 'https://admin.teams.microsoft.com/policies/manage-apps';
+
 const i18n = useI18n();
+const clipboard = useClipboard();
 const rootStore = useRootStore();
+const uploadInstruction = useTeamsUploadInstruction();
 
 const busy = ref<string | null>(null);
 const errorMessage = ref('');
@@ -71,6 +92,7 @@ const STEP_OF_ACTION: Record<string, string> = {
 	connect: 'connect',
 	'create-app': 'create-app',
 	'create-bot': 'create-bot',
+	publish: 'install',
 	download: 'install',
 };
 const errorStepId = ref('');
@@ -84,6 +106,8 @@ const subscriptionId = ref('');
 const subscriptionsChecked = ref(false);
 /** Only true while Azure is actually being asked, so the wait cannot outlive it. */
 const subscriptionsChecking = ref(false);
+/** Set once the approval request has been put on the clipboard. */
+const requestCopied = ref(false);
 const availability = ref<TeamsAvailability>(availabilityFrom());
 
 const selectedCredential = computed(() =>
@@ -101,7 +125,9 @@ const connected = computed(
 const provisionedApp = computed(() => props.runtime.provisionedApp.value);
 const provisionedBot = computed(() => props.runtime.provisionedBot.value);
 const subscriptions = computed(() => props.runtime.subscriptions.value);
+const catalogState = computed(() => props.runtime.catalogState.value);
 const botReady = computed(() => provisionedBot.value !== null);
+const published = computed(() => catalogState.value?.status === 'published');
 
 /** The agent's own name and blurb, which is how it appears in Teams. */
 const identityName = computed(
@@ -117,26 +143,132 @@ const identityDescription = computed(
 type InstallRoute = 'choose' | 'downloaded';
 
 const installRoute = ref<InstallRoute>('choose');
+/**
+ * Spelled out rather than built from the status, so the keys stay greppable
+ * and the unused-key tooling can see them.
+ */
+const CATALOG_STATE_TEXT = {
+	published: 'agents.channels.teams.managed.install.published',
+	submitted: 'agents.channels.teams.managed.install.submitted',
+	rejected: 'agents.channels.teams.managed.install.rejected',
+	unknown: 'agents.channels.teams.managed.install.unknown',
+} as const;
+
+/**
+ * Whether this setup has published yet. The catalogue is read when the step
+ * opens, and before a publish its "not listed" answer is just the truth about
+ * an app nobody published -- not something to report. Downloading the package
+ * does not count: a sideloaded app never enters the catalogue, so its silence
+ * about one says nothing about an upload that happened in Teams.
+ */
+const hasPublished = ref(false);
+
+/**
+ * The two routes are independent, so downloading the package once must not take
+ * publishing away. Publishing is offered once: a pending review cannot take
+ * another submission, and a published app is already in the catalog.
+ */
+const installMenuItems = computed(() => [
+	{
+		id: 'for-me',
+		testId: 'teams-install-download-package',
+		label: i18n.baseText(
+			installRoute.value === 'downloaded'
+				? 'agents.channels.teams.managed.install.downloadAgain'
+				: 'agents.channels.teams.managed.install.forMe',
+		),
+		description: i18n.baseText('agents.channels.teams.managed.install.forMeHint'),
+	},
+	{
+		id: 'publish',
+		testId: 'teams-publish',
+		label: i18n.baseText('agents.channels.teams.managed.install.publish'),
+		description: i18n.baseText('agents.channels.teams.managed.install.publishHintShort'),
+		disabled:
+			hasPublished.value || ['published', 'submitted'].includes(catalogState.value?.status ?? ''),
+	},
+]);
+
+const onInstallMenu = async (id: string) =>
+	id === 'publish' ? await publishApp() : await downloadPackage();
 
 /** What is running, for the status row the step shows in place of the menu. */
 const installProgress = computed(() => {
+	if (busy.value === 'publish')
+		return i18n.baseText('agents.channels.teams.managed.install.publishing');
 	if (busy.value === 'download')
 		return i18n.baseText('agents.channels.teams.managed.install.preparing');
 	return '';
 });
 
-const connectSummary = computed(() =>
-	selectedCredential.value?.organizationName
-		? i18n.baseText('agents.channels.teams.managed.connect.summary', {
-				interpolate: { organization: selectedCredential.value.organizationName },
-			})
-		: i18n.baseText('agents.channels.teams.managed.connect.summaryUnknown'),
+/**
+ * Publishing is the only finish n8n can see. A sideload happens in the Teams
+ * client, so that route ends on the step after this one instead.
+ */
+const installDone = computed(() => published.value);
+
+/** Without a consent link the instance has no address Entra accepts to return to. */
+const fileAccessUrl = computed(() => {
+	const app = provisionedApp.value;
+	if (!app) return '';
+	return app.fileAccessConsentUrl ?? entraApiPermissionsUrl(app.appId);
+});
+
+const organization = computed(
+	() => provisionedApp.value?.organizationName ?? selectedCredential.value?.organizationName ?? '',
 );
+
+const { items: fileAccessMenuItems, onSelect: onFileAccessMenu } = useTeamsFileAccessMenu({
+	url: fileAccessUrl,
+	organization,
+});
 
 const currentSettings = computed<AgentTeamsIntegrationSettings>(() => ({
 	...props.savedSettings,
 	...availability.value,
 }));
+
+/** True once there is a channel to come back to, so leaving loses nothing. */
+const persisted = ref(false);
+
+/**
+ * Leaving is allowed once there is something worth saving: a package handed
+ * over, or an app already in the catalogue. The second case is the one a
+ * re-run lands in -- Microsoft keeps the app through a disconnect, so nothing
+ * here writes the channel again, and without Done there is no way to bind the
+ * credential back to the agent at all.
+ */
+const canFinish = computed(() => persisted.value || published.value);
+
+/**
+ * A saved channel runs on the bot this sign-in made. Another sign-in would
+ * make a second bot beside it, so switching it sets the channel up again.
+ */
+const signInLocked = computed(() => persisted.value || props.channelConnected === true);
+const { confirmRestart } = useTeamsSetupRestart();
+
+// Under a saved channel the new sign-in is applied only once the host has
+// removed the channel, so a removal that fails leaves this setup as it was.
+async function selectSignIn(credentialId: string) {
+	if (credentialId === selectedCredentialId.value) return;
+	if (!signInLocked.value) {
+		selectedCredentialId.value = credentialId;
+		return;
+	}
+	if (await confirmRestart()) {
+		emit('restart', { credentialId: '', signInCredentialId: credentialId });
+	}
+}
+
+async function addSignIn() {
+	if (!signInLocked.value) {
+		await connect();
+		return;
+	}
+	if (!(await confirmRestart())) return;
+	const signedIn = await connect(undefined, { select: false });
+	if (signedIn) emit('restart', { credentialId: '', signInCredentialId: signedIn });
+}
 
 /**
  * Every step after the first runs on the sign-in, so a sign-in that has to be
@@ -153,84 +285,89 @@ const statusOf = computed<Record<string, 'complete' | 'active' | 'locked'>>(() =
 		'create-app': status(appDone, connected.value),
 		'create-bot': status(botReady.value, appDone && connected.value),
 		availability: botReady.value && connected.value ? ('active' as const) : ('locked' as const),
-		install: botReady.value && connected.value ? ('active' as const) : ('locked' as const),
+		install: status(installDone.value, botReady.value && connected.value),
+		'file-access': botReady.value && connected.value ? ('active' as const) : ('locked' as const),
 		// The upload happens in the Teams client, so this step never reports
 		// itself finished -- the user says when it is. Gated on the sign-in like
 		// the steps above: one that has to be redone locks them, and leaving
 		// this one actionable would read as the odd one out.
+		// Done saves through the modal, which writes only when `canFinish` holds,
+		// so the step unlocks on that and nothing else.
 		finish:
-			connected.value && (installRoute.value === 'downloaded' || props.channelConnected === true)
+			connected.value && (canFinish.value || props.channelConnected === true)
 				? ('active' as const)
 				: ('locked' as const),
 	};
 });
 
-const steps = computed(() => {
-	const status = statusOf.value;
-	return [
-		{
-			id: 'connect',
-			title: i18n.baseText('agents.channels.teams.managed.connect.title'),
-			description: i18n.baseText('agents.channels.teams.managed.connect.description'),
-		},
-		{
-			id: 'create-app',
-			title: i18n.baseText(
-				status['create-app'] === 'complete'
-					? 'agents.channels.teams.managed.createApp.titleDone'
-					: 'agents.channels.teams.managed.createApp.title',
-			),
-			description: i18n.baseText('agents.channels.teams.managed.createApp.description'),
-		},
-		{
-			id: 'create-bot',
-			title: i18n.baseText(
-				status['create-bot'] === 'complete'
-					? 'agents.channels.teams.managed.createBot.titleDone'
-					: 'agents.channels.teams.managed.createBot.title',
-			),
-			description: i18n.baseText('agents.channels.teams.managed.createBot.description'),
-		},
-		{
-			id: 'availability',
-			title: i18n.baseText('agents.channels.teams.setup.availability.title'),
-			description: i18n.baseText('agents.channels.teams.setup.availability.description'),
-		},
-		{
-			id: 'install',
-			title: i18n.baseText('agents.channels.teams.managed.install.title'),
-			description: i18n.baseText('agents.channels.teams.managed.install.description'),
-		},
-		{
-			id: 'finish',
-			title: i18n.baseText('agents.channels.teams.managed.finish.title'),
-			description: i18n.baseText('agents.channels.teams.managed.finish.description'),
-		},
-	];
+const awaitingCatalog = computed(() => installRoute.value !== 'downloaded' && published.value);
+
+const finishDescription = computed(() => {
+	if (statusOf.value.finish === 'locked')
+		return i18n.baseText(
+			reconnectRequired.value
+				? 'agents.channels.teams.managed.connect.lockedBySignIn'
+				: 'agents.channels.teams.managed.finish.locked',
+		);
+	if (awaitingCatalog.value) {
+		return organization.value
+			? i18n.baseText('agents.channels.teams.managed.finish.published', {
+					interpolate: { organization: organization.value },
+				})
+			: i18n.baseText('agents.channels.teams.managed.finish.publishedUnknown');
+	}
+	return uploadInstruction(availability.value);
 });
 
-// A sign-in that has to be redone blocks every one of them, and the usual
-// chain would point at a step that is already done. A sign-in not made yet
-// needs no such help: nothing is done, so the chain reads true.
-const lockedHints = computed<Record<string, string>>(() => {
-	if (reconnectRequired.value) {
-		const signIn = i18n.baseText('agents.channels.teams.managed.connect.lockedBySignIn');
-		return {
-			'create-app': signIn,
-			'create-bot': signIn,
-			availability: signIn,
-			install: signIn,
-			finish: signIn,
-		};
-	}
-	return {
-		'create-app': i18n.baseText('agents.channels.teams.managed.createApp.locked'),
-		'create-bot': i18n.baseText('agents.channels.teams.managed.createBot.locked'),
-		availability: i18n.baseText('agents.channels.teams.managed.availability.locked'),
-		install: i18n.baseText('agents.channels.teams.managed.install.locked'),
-		finish: i18n.baseText('agents.channels.teams.managed.finish.locked'),
-	};
-});
+const steps = computed(() => [
+	{
+		id: 'connect',
+		title: i18n.baseText('agents.channels.teams.managed.connect.title'),
+		description: i18n.baseText('agents.channels.teams.managed.connect.description'),
+	},
+	{
+		id: 'create-app',
+		title: i18n.baseText('agents.channels.teams.managed.createApp.title'),
+		description:
+			statusOf.value['create-app'] === 'complete'
+				? i18n.baseText('agents.channels.teams.managed.createApp.summary', {
+						interpolate: { organization: provisionedApp.value?.organizationName ?? '' },
+					})
+				: i18n.baseText('agents.channels.teams.managed.createApp.description'),
+	},
+	{
+		id: 'create-bot',
+		title: i18n.baseText('agents.channels.teams.managed.createBot.title'),
+		description:
+			statusOf.value['create-bot'] === 'complete'
+				? i18n.baseText('agents.channels.teams.managed.createBot.summary', {
+						interpolate: { botName: provisionedBot.value?.botName ?? '' },
+					})
+				: i18n.baseText('agents.channels.teams.managed.createBot.description'),
+	},
+	{
+		id: 'availability',
+		title: i18n.baseText('agents.channels.teams.setup.availability.title'),
+		description: i18n.baseText('agents.channels.teams.managed.availability.description'),
+	},
+	{
+		id: 'install',
+		title: i18n.baseText('agents.channels.teams.managed.install.title'),
+		description: i18n.baseText('agents.channels.teams.managed.install.description'),
+	},
+	{
+		id: 'file-access',
+		title: i18n.baseText('agents.channels.teams.managed.fileAccess.title'),
+		description: i18n.baseText(
+			`agents.channels.teams.managed.fileAccess.description.${permissionUseFor(availability.value)}`,
+		),
+	},
+	{
+		id: 'finish',
+		title: i18n.baseText('agents.channels.teams.managed.finish.title'),
+		description: finishDescription.value,
+	},
+]);
 
 watch(
 	() => props.setup.managerCredentials,
@@ -279,6 +416,11 @@ watch(
 			// has nothing to do with.
 			installRoute.value = 'choose';
 			persisted.value = false;
+			// The catalogue answer belongs to the tenant that gave it, and
+			// `refreshCatalogState` refuses to let an `unknown` read overwrite a
+			// known one -- so leaving it here does not just flicker, it sticks.
+			props.runtime.catalogState.value = null;
+			hasPublished.value = false;
 		}
 		if (isConnected && !subscriptionsChecked.value) void checkSubscriptions();
 	},
@@ -315,10 +457,16 @@ async function run(name: string, action: () => Promise<void>) {
  * credential first. The picker already names one whenever the project has any,
  * so passing it is what keeps a second sign-in from piling up beside it.
  */
-async function connect(credentialId?: string) {
+async function connect(
+	credentialId?: string,
+	options?: { select?: boolean },
+): Promise<string | null> {
+	let signedIn: string | null = null;
 	await run('connect', async () => {
-		connectFailed.value = !(await props.runtime.connectManagerCredential(credentialId));
+		signedIn = await props.runtime.connectManagerCredential(credentialId, options);
+		connectFailed.value = !signedIn;
 	});
+	return signedIn;
 }
 
 const provisionApp = async () =>
@@ -377,19 +525,29 @@ const provisionBot = async () =>
 		await props.runtime.provisionBot(subscriptionId.value);
 	});
 
-/** True once there is a channel to come back to, so leaving loses nothing. */
-const persisted = ref(false);
+/**
+ * Publishes, and stops there. Adding the app to someone's Teams is the step
+ * after, and the design keeps the two apart: publishing is a decision about
+ * the organisation, adding is one about your own account.
+ */
+const publishApp = async () =>
+	await run('publish', async () => {
+		// Only once it went through, and only for the account it went through for:
+		// set before, a refused publish leaves the catalogue's "not listed yet"
+		// sitting beside the error explaining why, and a reply the setup has moved
+		// on from would bind the channel for a tenant nobody published to.
+		if (!(await props.runtime.publishApp(currentSettings.value))) return;
+		hasPublished.value = true;
+		persistChannel();
+	});
 
 /**
  * Binds the provisioned credential to the agent, which is what starts it.
  *
- * The package route calls this once it has been handed over: the setup is
- * finished from n8n's side even though the upload happens in Teams. It does
- * not close the dialog, because the upload is still to come.
- *
- * The credential is re-announced first, because saving reads it from the
- * view's model and nothing else guarantees the view heard about it in this
- * session.
+ * Every route that puts the app in front of someone calls this -- publishing
+ * and the package alike -- because each finishes the setup on its own, and
+ * which of them a tenant allows is not ours to choose. None of them closes the
+ * dialog: another may still follow.
  */
 function persistChannel() {
 	emit('persist');
@@ -411,12 +569,6 @@ watch(
 
 // Read by the channel modal when it saves, so the availability chosen here is
 // what gets stored rather than the defaults.
-/**
- * Leaving is allowed once the channel is written, which handing the package
- * over does. The upload happens in the Teams client, so there is nothing
- * further for n8n to wait on.
- */
-const canFinish = computed(() => persisted.value);
 
 defineExpose({ currentSettings, keepOpenAfterConnect: true, canFinish });
 
@@ -426,6 +578,30 @@ let unmounted = false;
 onBeforeUnmount(() => {
 	unmounted = true;
 });
+
+/**
+ * Puts the whole request on the clipboard rather than on the screen: the user
+ * pastes it to whoever can approve it, and has nothing to compose or look up.
+ *
+ * The link is the Manage apps page, which is as deep as Microsoft goes — there
+ * is no URL for one pending app — so the app's name carries the rest. The
+ * administrator finds it under Pending approval.
+ */
+async function copyApprovalRequest() {
+	await clipboard.copy(
+		i18n.baseText('agents.channels.teams.managed.install.approvalRequest', {
+			interpolate: { app: provisionedApp.value?.appName ?? '', url: TEAMS_MANAGE_APPS_URL },
+		}),
+	);
+	requestCopied.value = true;
+}
+
+/** The person signing in is often not the admin who can approve n8n. */
+const { onSelect: onAdminConsentMenu } = useTeamsFileAccessMenu({
+	url: () => props.setup.adminConsentUrl ?? '',
+	organization: '',
+});
+const copyAdminConsentLink = async () => await onAdminConsentMenu('copy');
 
 /**
  * Hands the setup to the manual flow, for the walls this one cannot climb: a
@@ -478,9 +654,10 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
-							@credential-selected="selectedCredentialId = $event"
-							@new-credential="connect()"
+							@credential-selected="selectSignIn"
+							@new-credential="addSignIn"
 						/>
 						<N8nIconButton
 							v-if="credentialPermissions.update"
@@ -492,53 +669,6 @@ const downloadPackage = async () =>
 							@click="runtime.editManagerCredential(selectedCredentialId)"
 						/>
 					</div>
-					<N8nText size="small" color="text-light" data-testid="teams-manager-organization">
-						{{ connectSummary }}
-					</N8nText>
-				</div>
-
-				<div
-					v-else-if="step.id === 'create-app' && statusOf[step.id] === 'complete'"
-					:class="$style.stepContent"
-				>
-					<div :class="$style.summaryLine">
-						<N8nText size="small" color="text-light" data-testid="teams-app-summary">
-							{{
-								i18n.baseText('agents.channels.teams.managed.createApp.summary', {
-									interpolate: { organization: provisionedApp?.organizationName ?? '' },
-								})
-							}}
-						</N8nText>
-						<!--
-							Rendered through N8nText so it carries the same size class as the
-							line beside it. A hand-written font-size drifts from the token the
-							sibling uses, and lost to the anchor styling anyway.
-						-->
-						<N8nText
-							v-if="provisionedApp"
-							tag="a"
-							size="small"
-							:href="provisionedApp.entraAppUrl"
-							target="_blank"
-							rel="noopener noreferrer"
-							data-testid="teams-app-entra-link"
-						>
-							{{ i18n.baseText('agents.channels.teams.managed.createApp.viewInEntra') }}
-						</N8nText>
-					</div>
-				</div>
-
-				<div
-					v-else-if="step.id === 'create-bot' && statusOf[step.id] === 'complete'"
-					:class="$style.stepContent"
-				>
-					<N8nText size="small" color="text-light" data-testid="teams-bot-summary">
-						{{
-							i18n.baseText('agents.channels.teams.managed.createBot.summary', {
-								interpolate: { botName: provisionedBot?.botName ?? '' },
-							})
-						}}
-					</N8nText>
 				</div>
 
 				<div v-else-if="step.id === 'connect'" :class="$style.stepContent">
@@ -548,9 +678,10 @@ const downloadPackage = async () =>
 							:selected-credential-id="selectedCredentialId"
 							:permissions="credentialPermissions"
 							:loading="loading"
+							:disabled="busy !== null"
 							data-testid="teams-manager-credential-select"
-							@credential-selected="selectedCredentialId = $event"
-							@new-credential="connect()"
+							@credential-selected="selectSignIn"
+							@new-credential="addSignIn"
 						/>
 					</div>
 					<N8nText
@@ -564,7 +695,7 @@ const downloadPackage = async () =>
 					<N8nButton
 						variant="outline"
 						size="medium"
-						icon="teams"
+						icon="microsoft"
 						:loading="busy === 'connect'"
 						:disabled="loading || busy !== null"
 						data-testid="teams-manager-connect"
@@ -572,26 +703,21 @@ const downloadPackage = async () =>
 					>
 						{{ i18n.baseText('agents.channels.teams.managed.connect.button') }}
 					</N8nButton>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('agents.channels.teams.managed.connect.hint') }}
-					</N8nText>
 					<!--
 						The one prompt that covers Graph and Azure together. A sign-in cannot:
 						a code is redeemed for one resource at a time.
 					-->
-					<N8nButton
-						v-if="setup.adminConsentUrl"
-						:href="setup.adminConsentUrl"
-						tag="a"
-						target="_blank"
-						variant="ghost"
-						size="small"
-						data-testid="teams-admin-consent"
-					>
+					<N8nText v-if="setup.adminConsentUrl && !connectFailed" size="small" color="text-light">
 						{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsent') }}
-					</N8nButton>
-					<N8nText v-if="setup.adminConsentUrl" size="small" color="text-light">
-						{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsentHint') }}
+						<N8nLink
+							theme="text"
+							size="small"
+							underline
+							data-testid="teams-admin-consent"
+							@click="copyAdminConsentLink"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsentLink') }}
+						</N8nLink>
 					</N8nText>
 					<N8nText
 						v-if="connectFailed"
@@ -600,6 +726,16 @@ const downloadPackage = async () =>
 						data-testid="teams-manager-error"
 					>
 						{{ i18n.baseText('agents.channels.teams.managed.connect.failed') }}
+						<N8nLink
+							v-if="setup.adminConsentUrl"
+							theme="danger"
+							size="small"
+							underline
+							data-testid="teams-manager-error-admin-consent"
+							@click="copyAdminConsentLink"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.connect.adminConsentLink') }}
+						</N8nLink>
 					</N8nText>
 				</div>
 
@@ -607,12 +743,11 @@ const downloadPackage = async () =>
 					v-else-if="step.id === 'create-app' && statusOf[step.id] === 'active'"
 					:class="$style.stepContent"
 				>
-					<!-- Offered for the two walls this step can hit: no subscription for
-						the bot that comes next, and a tenant that will not let this account
-						register the app at all. -->
+					<!-- No subscription for the bot that comes next. A tenant that will not
+						let this account register the app links from the error instead. -->
 					<N8nButton
 						v-if="
-							(subscriptionsChecked && subscriptions.length === 0) || errorStepId === 'create-app'
+							subscriptionsChecked && subscriptions.length === 0 && errorStepId !== 'create-app'
 						"
 						variant="ghost"
 						size="small"
@@ -621,24 +756,26 @@ const downloadPackage = async () =>
 					>
 						{{ i18n.baseText('agents.channels.teams.managed.useOwnApp') }}
 					</N8nButton>
-					<N8nButton
-						variant="outline"
-						size="medium"
-						:loading="busy === 'create-app'"
-						:disabled="busy !== null"
-						data-testid="teams-create-app"
-						@click="provisionApp"
-					>
-						{{ i18n.baseText('agents.channels.teams.managed.createApp.button') }}
-					</N8nButton>
-					<N8nText
-						v-if="busy === 'create-app'"
-						size="small"
-						color="text-light"
-						data-testid="teams-create-app-progress"
-					>
-						{{ i18n.baseText('agents.channels.teams.managed.createApp.progress') }}
-					</N8nText>
+					<div :class="$style.actionWithProgress">
+						<N8nButton
+							variant="outline"
+							size="medium"
+							:loading="busy === 'create-app'"
+							:disabled="busy !== null"
+							data-testid="teams-create-app"
+							@click="provisionApp"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.createApp.button') }}
+						</N8nButton>
+						<N8nText
+							v-if="busy === 'create-app'"
+							size="small"
+							color="text-light"
+							data-testid="teams-create-app-progress"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.createApp.progress') }}
+						</N8nText>
+					</div>
 				</div>
 
 				<div
@@ -689,27 +826,26 @@ const downloadPackage = async () =>
 								/>
 							</N8nSelect>
 						</N8nInputLabel>
-						<N8nText size="small" color="text-light" data-testid="teams-bot-free-tier">
-							{{ i18n.baseText('agents.channels.teams.managed.createBot.freeTier') }}
-						</N8nText>
-						<N8nButton
-							variant="outline"
-							size="medium"
-							:loading="busy === 'create-bot'"
-							:disabled="busy !== null || !subscriptionId"
-							data-testid="teams-create-bot"
-							@click="provisionBot"
-						>
-							{{ i18n.baseText('agents.channels.teams.managed.createBot.create') }}
-						</N8nButton>
-						<N8nText
-							v-if="busy === 'create-bot'"
-							size="small"
-							color="text-light"
-							data-testid="teams-create-bot-progress"
-						>
-							{{ i18n.baseText('agents.channels.teams.managed.createBot.progress') }}
-						</N8nText>
+						<div :class="$style.actionWithProgress">
+							<N8nButton
+								variant="outline"
+								size="medium"
+								:loading="busy === 'create-bot'"
+								:disabled="busy !== null || !subscriptionId"
+								data-testid="teams-create-bot"
+								@click="provisionBot"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.createBot.create') }}
+							</N8nButton>
+							<N8nText
+								v-if="busy === 'create-bot'"
+								size="small"
+								color="text-light"
+								data-testid="teams-create-bot-progress"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.createBot.progress') }}
+							</N8nText>
+						</div>
 					</template>
 
 					<template v-else>
@@ -728,15 +864,17 @@ const downloadPackage = async () =>
 						</N8nInputLabel>
 						<N8nText size="small" color="danger" data-testid="teams-bot-no-subscription">
 							{{ i18n.baseText('agents.channels.teams.managed.createBot.noSubscription') }}
+							<N8nLink
+								theme="danger"
+								size="small"
+								underline
+								data-testid="teams-use-own-app-from-bot-step"
+								@click="useOwnMicrosoftAppForBot"
+								>{{
+									i18n.baseText('agents.channels.teams.managed.createBot.noSubscriptionLink')
+								}}</N8nLink
+							>{{ i18n.baseText('agents.channels.teams.managed.createBot.noSubscriptionAfter') }}
 						</N8nText>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							data-testid="teams-use-own-app-from-bot-step"
-							@click="useOwnMicrosoftAppForBot"
-						>
-							{{ i18n.baseText('agents.channels.teams.managed.useOwnApp') }}
-						</N8nButton>
 					</template>
 				</div>
 
@@ -744,11 +882,33 @@ const downloadPackage = async () =>
 					v-else-if="step.id === 'availability' && statusOf[step.id] === 'active'"
 					:class="$style.stepContent"
 				>
-					<AgentChannelTeamsAvailability v-model="availability" start-collapsed />
+					<AgentChannelTeamsAvailability v-model="availability" start-collapsed hide-file-access />
 				</div>
 
 				<div
-					v-else-if="step.id === 'install' && statusOf[step.id] === 'active'"
+					v-else-if="step.id === 'file-access' && statusOf[step.id] === 'active'"
+					:class="$style.stepContent"
+				>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('agents.channels.teams.managed.fileAccess.hint') }}
+					</N8nText>
+					<N8nActionDropdown
+						:items="fileAccessMenuItems"
+						placement="bottom-start"
+						:teleported="false"
+						@select="onFileAccessMenu"
+					>
+						<template #activator>
+							<N8nButton variant="outline" size="medium" data-testid="teams-file-access-menu">
+								{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
+								<N8nIcon icon="chevron-down" size="small" />
+							</N8nButton>
+						</template>
+					</N8nActionDropdown>
+				</div>
+
+				<div
+					v-else-if="step.id === 'install' && statusOf[step.id] !== 'locked'"
 					:class="$style.stepContent"
 				>
 					<N8nText
@@ -767,35 +927,100 @@ const downloadPackage = async () =>
 						ready
 					>
 						<template #action>
-							<N8nSpinner
+							<!-- Outside the menu: its trigger lays the button out as flex, which
+								pushes the loading spinner to the left edge. -->
+							<N8nButton
 								v-if="installProgress"
-								size="medium"
-								data-testid="teams-install-spinner"
-							/>
-							<N8nButton
-								v-else-if="installRoute === 'downloaded'"
-								variant="outline"
-								size="medium"
-								:loading="busy === 'download'"
-								:disabled="busy !== null"
-								data-testid="teams-install-download-package"
-								@click="downloadPackage"
-							>
-								{{ i18n.baseText('agents.channels.teams.managed.install.downloadAgain') }}
-							</N8nButton>
-							<N8nButton
-								v-else
 								variant="solid"
 								size="medium"
-								:loading="busy === 'download'"
-								:disabled="busy !== null"
-								data-testid="teams-install-download-package"
-								@click="downloadPackage"
+								loading
+								data-testid="teams-install-menu"
 							>
-								{{ i18n.baseText('agents.channels.teams.managed.install.forMe') }}
+								{{ i18n.baseText('agents.channels.teams.managed.install.menu') }}
+								<N8nIcon icon="chevron-down" size="small" />
 							</N8nButton>
+							<N8nActionDropdown
+								v-else
+								:items="installMenuItems"
+								placement="bottom-end"
+								:teleported="false"
+								@select="onInstallMenu"
+							>
+								<template #menuItem="item">
+									<AgentChannelTeamsOptionLabel
+										:label="item.label"
+										:description="item.description"
+										:disabled="item.disabled"
+									/>
+								</template>
+								<template #activator>
+									<N8nButton
+										variant="solid"
+										size="medium"
+										:disabled="busy !== null"
+										data-testid="teams-install-menu"
+									>
+										{{ i18n.baseText('agents.channels.teams.managed.install.menu') }}
+										<N8nIcon icon="chevron-down" size="small" />
+									</N8nButton>
+								</template>
+							</N8nActionDropdown>
 						</template>
 					</AgentChannelTeamsIdentityCard>
+
+					<!--
+						Nothing is said about the catalogue while a call to it is in
+						flight: what it last answered is about to be replaced, and
+						"Microsoft has not listed the app yet" beside a publish that is
+						still running reads as the answer to that publish.
+					-->
+					<template
+						v-if="
+							!installProgress &&
+							catalogState &&
+							(catalogState.status !== 'unknown' || hasPublished)
+						"
+					>
+						<!--
+							A review is a wall, not a status line: nobody can add the app
+							until someone acts. The state the user can do nothing about
+							stays quiet text.
+						-->
+						<N8nCallout
+							v-if="catalogState.status === 'submitted'"
+							theme="warning"
+							data-testid="teams-catalog-state"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.install.submitted') }}
+						</N8nCallout>
+						<N8nText v-else size="small" color="text-light" data-testid="teams-catalog-state">
+							{{ i18n.baseText(CATALOG_STATE_TEXT[catalogState.status]) }}
+						</N8nText>
+						<!-- Said here because the one-off fix is an administrator's to make. -->
+						<N8nText
+							v-if="catalogState.status === 'submitted'"
+							size="small"
+							color="text-light"
+							data-testid="teams-catalog-submitted-why"
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.install.submittedWhy') }}
+						</N8nText>
+						<N8nButton
+							v-if="catalogState.status === 'submitted'"
+							variant="ghost"
+							size="small"
+							data-testid="teams-copy-approval-request"
+							@click="copyApprovalRequest"
+						>
+							{{
+								i18n.baseText(
+									requestCopied
+										? 'agents.channels.teams.managed.install.approvalRequestCopied'
+										: 'agents.channels.teams.managed.install.copyApprovalRequest',
+								)
+							}}
+						</N8nButton>
+					</template>
 				</div>
 
 				<!--
@@ -803,27 +1028,100 @@ const downloadPackage = async () =>
 					user does there and then says they are finished with. n8n cannot
 					see the upload, so nothing here claims it happened.
 				-->
-				<div
-					v-else-if="step.id === 'finish' && statusOf[step.id] === 'active'"
-					:class="$style.stepContent"
-				>
-					<N8nText size="small" color="text-light" data-testid="teams-finish-instructions">
-						{{ i18n.baseText('agents.channels.teams.managed.install.downloaded') }}
-					</N8nText>
-					<N8nText size="small" color="text-light" data-testid="teams-finish-upload-blocked">
-						{{ i18n.baseText('agents.channels.teams.managed.install.noUploadOption') }}
-					</N8nText>
+				<div v-else-if="step.id === 'finish'" :class="$style.stepContent">
+					<template v-if="statusOf[step.id] === 'active'">
+						<N8nText
+							v-if="!awaitingCatalog"
+							size="small"
+							color="text-light"
+							data-testid="teams-finish-upload-hint"
+						>
+							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
+						</N8nText>
+						<!--
+							One sentence with the action inside it. A button here carries
+							its own padding, which pushes the line out of alignment with
+							the paragraph above and reads as a second block.
+						-->
+						<N8nText v-else size="small" color="text-light" data-testid="teams-finish-sooner">
+							{{ i18n.baseText('agents.channels.teams.managed.finish.soonerBefore') }}
+							<N8nLink
+								theme="text"
+								size="small"
+								underline
+								data-testid="teams-finish-download-package"
+								@click="downloadPackage"
+							>
+								{{ i18n.baseText('agents.channels.teams.managed.finish.soonerLink') }}
+							</N8nLink>
+							{{ i18n.baseText('agents.channels.teams.managed.finish.soonerAfter') }}
+						</N8nText>
+					</template>
+					<N8nButton
+						variant="outline"
+						size="medium"
+						:disabled="statusOf[step.id] !== 'active'"
+						:loading="loading"
+						data-testid="teams-managed-done"
+						@click="emit('done')"
+					>
+						{{ i18n.baseText('agents.channels.teams.setup.install.done') }}
+					</N8nButton>
 				</div>
 
 				<div
 					v-else-if="statusOf[step.id] === 'locked'"
-					:class="[$style.stepContent, $style.locked]"
-					inert
+					:class="$style.stepContent"
+					:data-testid="`teams-managed-preview-${step.id}`"
 				>
-					<!-- Greyed out rather than hidden, the way the manual setup marks a
-					     step nobody can start yet. -->
-					<N8nText size="small" color="text-light" :data-testid="`teams-managed-locked-${step.id}`">
-						{{ lockedHints[step.id] }}
+					<div :class="$style.preview" inert>
+						<N8nButton v-if="step.id === 'create-app'" variant="outline" size="medium" disabled>
+							{{ i18n.baseText('agents.channels.teams.managed.createApp.button') }}
+						</N8nButton>
+						<N8nButton
+							v-else-if="step.id === 'create-bot'"
+							variant="outline"
+							size="medium"
+							disabled
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.createBot.create') }}
+						</N8nButton>
+						<AgentChannelTeamsAvailability
+							v-else-if="step.id === 'availability'"
+							:model-value="availability"
+							start-collapsed
+							hide-file-access
+						/>
+						<N8nButton
+							v-else-if="step.id === 'file-access'"
+							variant="outline"
+							size="medium"
+							disabled
+						>
+							{{ i18n.baseText('agents.channels.teams.managed.fileAccess.button') }}
+							<N8nIcon icon="chevron-down" size="small" />
+						</N8nButton>
+						<AgentChannelTeamsIdentityCard
+							v-else-if="step.id === 'install'"
+							:name="identityName"
+							:description="identityDescription"
+							ready
+						>
+							<template #action>
+								<N8nButton variant="outline" size="medium" disabled>
+									{{ i18n.baseText('agents.channels.teams.managed.install.menu') }}
+									<N8nIcon icon="chevron-down" size="small" />
+								</N8nButton>
+							</template>
+						</AgentChannelTeamsIdentityCard>
+					</div>
+					<N8nText
+						v-if="reconnectRequired"
+						size="small"
+						color="text-light"
+						:data-testid="`teams-managed-locked-${step.id}`"
+					>
+						{{ i18n.baseText('agents.channels.teams.managed.connect.lockedBySignIn') }}
 					</N8nText>
 				</div>
 
@@ -837,6 +1135,16 @@ const downloadPackage = async () =>
 					:data-testid="`teams-managed-error-${step.id}`"
 				>
 					{{ errorMessage }}
+					<N8nLink
+						v-if="step.id === 'create-app'"
+						theme="danger"
+						size="small"
+						underline
+						data-testid="teams-use-own-app-from-app-step"
+						@click="useOwnMicrosoftApp"
+					>
+						{{ i18n.baseText('agents.channels.teams.managed.useOwnApp') }}
+					</N8nLink>
 				</N8nText>
 			</template>
 		</N8nStepper>
@@ -864,9 +1172,20 @@ const downloadPackage = async () =>
 	gap: var(--spacing--2xs);
 }
 
-.locked {
+.preview {
 	opacity: 0.45;
-	pointer-events: none;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	width: 100%;
+}
+
+/* The progress line sits beside the button and drops below it when narrow, as in the Assistant chat. */
+.actionWithProgress {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs) var(--spacing--sm);
 }
 
 .stepContent {
@@ -887,13 +1206,6 @@ const downloadPackage = async () =>
 
 .stepError {
 	padding-top: var(--spacing--2xs);
-}
-
-.summaryLine {
-	display: flex;
-	align-items: baseline;
-	flex-wrap: wrap;
-	gap: var(--spacing--4xs);
 }
 
 .field {

@@ -5,12 +5,14 @@ import { WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@n8n/backend-services';
+import { CredentialsFinderService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -57,6 +59,8 @@ describe('ExecuteNodeService', () => {
 	const activeExecutions = mockInstance(ActiveExecutions);
 	const executionPersistence = mockInstance(ExecutionPersistence);
 	const instanceSettings = mockInstance(InstanceSettings);
+	const executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);
+	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 	const deprecatedNodesValidationService = new DeprecatedNodesValidationService(
 		logger,
 		mock<NodesConfig>({ blockDeprecated: true }),
@@ -317,6 +321,94 @@ describe('ExecuteNodeService', () => {
 			});
 		});
 
+		it('refuses a credential the user cannot use, with the reason, before running', async () => {
+			credentialsPermissionChecker.check.mockRejectedValueOnce(
+				new UserError('Node "Node" uses the credential "Bot", which you cannot use', {
+					description: 'Ask its owner to share this credential with you.',
+				}),
+			);
+
+			const result = await service.run(user, baseRequest());
+
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+				'temp-wf-1',
+				[expect.objectContaining({ name: 'Node' })],
+				'user-1',
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				status: 'error',
+				error: {
+					message: 'Node "Node" uses the credential "Bot", which you cannot use',
+					description: 'Ask its owner to share this credential with you.',
+					refused: true,
+				},
+			});
+			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+		});
+
+		it('lets the runner decide when the credential check fails for another reason', async () => {
+			credentialsPermissionChecker.check.mockRejectedValueOnce(new Error('connection lost'));
+
+			await service.run(user, baseRequest());
+
+			expect(workflowRunner.run).toHaveBeenCalled();
+		});
+
+		it('reads the result back redacted for the user', async () => {
+			await service.run(user, baseRequest());
+
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				expect.anything(),
+				{ user },
+			);
+		});
+
+		it('reports a redacted run without its output', async () => {
+			executionRedactionServiceProxy.processExecution.mockImplementationOnce(async (execution) => {
+				execution.data.redactionInfo = {
+					isRedacted: true,
+					reason: 'workflow_redaction_policy',
+					canReveal: false,
+				};
+				return execution;
+			});
+
+			const result = await service.run(user, baseRequest());
+
+			expect(result).toEqual({
+				status: 'redacted',
+				failed: false,
+				reason: 'workflow_redaction_policy',
+			});
+		});
+
+		it('reports a failed redacted run with only the error type', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue({
+				status: 'error',
+				...successExecution([{ data: undefined }]),
+			} as never);
+			executionRedactionServiceProxy.processExecution.mockImplementationOnce(async (execution) => {
+				const [run] = execution.data.resultData.runData.Node;
+				run.redactedError = { type: 'NodeApiError', httpCode: '404' };
+				execution.data.redactionInfo = {
+					isRedacted: true,
+					reason: 'workflow_redaction_policy',
+					canReveal: false,
+				};
+				return execution;
+			});
+
+			const result = await service.run(user, baseRequest());
+
+			expect(result).toEqual({
+				status: 'redacted',
+				failed: true,
+				reason: 'workflow_redaction_policy',
+				error: { type: 'NodeApiError', httpCode: '404' },
+			});
+		});
+
 		it('returns an error result when the execution entered a wait state', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue({
 				status: 'waiting',
@@ -376,6 +468,19 @@ describe('ExecuteNodeService', () => {
 
 			expect(result).toEqual({ status: 'error', error: { message: 'launch failed' } });
 			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+		});
+
+		it('keeps the description of an n8n error that stops the launch', async () => {
+			workflowRunner.run.mockRejectedValueOnce(
+				new UserError('Workflow cannot run', { description: 'Enable the node first.' }),
+			);
+
+			const result = await service.run(user, baseRequest());
+
+			expect(result).toEqual({
+				status: 'error',
+				error: { message: 'Workflow cannot run', description: 'Enable the node first.' },
+			});
 		});
 
 		it('cancels the execution and reports a timeout when it never settles', async () => {

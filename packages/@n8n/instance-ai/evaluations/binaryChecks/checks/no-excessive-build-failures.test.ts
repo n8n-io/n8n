@@ -12,25 +12,28 @@ const wf: WorkflowResponse = {
 	connections: {},
 };
 
-const bw = (): TranscriptStep => ({ kind: 'tool-call', toolName: 'build-workflow' });
+const bw = (): TranscriptStep => ({
+	kind: 'tool-call',
+	toolName: 'workflow_builder_build_workflow',
+});
 const bwOk = (): TranscriptStep => ({
 	kind: 'tool-call',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	result: { success: true },
 });
 const bwFail = (): TranscriptStep => ({
 	kind: 'tool-call',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	result: { success: false, errors: ['nope'] },
 });
 const bwErr = (): TranscriptStep => ({
 	kind: 'tool-call',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	error: 'boom',
 });
 const approval = (): TranscriptStep => ({
 	kind: 'confirmation',
-	toolName: 'build-workflow',
+	toolName: 'workflow_builder_build_workflow',
 	resumeReason: 'approval',
 	approved: true,
 });
@@ -46,6 +49,23 @@ describe('failedBuildsPerTurn (the deterministic check signal)', () => {
 
 	it('does not count a successful build or an approval round-trip', () => {
 		expect(failedBuildsPerTurn([turn([bw(), approval()])])).toEqual([0]);
+	});
+
+	it('counts failed MCP builds, so the check has data on the MCP path', () => {
+		const mcpCall = (toolName: string, error?: string): TranscriptStep => ({
+			kind: 'tool-call',
+			toolName,
+			...(error ? { error } : { result: { workflowId: 'wf' } }),
+		});
+		expect(
+			failedBuildsPerTurn([
+				turn([
+					mcpCall('create_workflow_from_code', 'Validation failed'),
+					mcpCall('create_workflow_from_code'),
+					mcpCall('update_workflow', 'Unknown node'),
+				]),
+			]),
+		).toEqual([2]);
 	});
 
 	it('counts per turn', () => {

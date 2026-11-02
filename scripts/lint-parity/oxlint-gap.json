@@ -28,6 +28,34 @@
 		"impact": "Re-evaluate when the rule leaves nursery.",
 		"replacement": "Enable after the rule leaves nursery and parity remains clean."
 	},
+	"import/no-duplicates": {
+		"layer": "base",
+		"native": "import/no-duplicates",
+		"reason": "Oxlint reports separate type and value imports that import-x accepts in n8n-nodes-base.",
+		"impact": "The package keeps import-x/no-duplicates in its residual ESLint pass.",
+		"replacement": "Enable the native rule when its type-import behavior matches import-x."
+	},
+	"no-self-assign": {
+		"layer": "base",
+		"native": "no-self-assign",
+		"reason": "Oxlint reports assignments in n8n-nodes-base that ESLint accepts.",
+		"impact": "The package keeps no-self-assign in its residual ESLint pass.",
+		"replacement": "Enable the native rule after its diagnostics match ESLint."
+	},
+	"no-unsafe-optional-chaining": {
+		"layer": "base",
+		"native": "no-unsafe-optional-chaining",
+		"reason": "Oxlint reports optional-chain expressions in n8n-nodes-base that ESLint accepts.",
+		"impact": "The package keeps no-unsafe-optional-chaining in its residual ESLint pass.",
+		"replacement": "Enable the native rule after its diagnostics match ESLint."
+	},
+	"n8n-nodes-base/node-filename-against-convention": {
+		"layer": "nodes",
+		"native": null,
+		"reason": "The JS-plugin bridge supplies different filename context and reports valid supporting files in n8n-nodes-base.",
+		"impact": "The package keeps this rule in its residual ESLint pass.",
+		"replacement": "Move the rule after Oxlint supplies the same filename context as ESLint."
+	},
 	"typescript/consistent-type-imports": {
 		"layer": "base",
 		"native": "typescript/consistent-type-imports",
@@ -110,13 +138,6 @@
 		],
 		"impact": "An Oxlint-only frontend package would lose template and SFC-structure checks.",
 		"replacement": "Keep eslint-plugin-vue for .vue files, or replace these rules with a template-aware native linter."
-	},
-	"n8n-nodes-base/*": {
-		"layer": "nodes",
-		"native": null,
-		"reason": "The node and credential format rules come from eslint-plugin-n8n-nodes-base. They need a JS-plugin compatibility probe before they can be moved into the shared Oxlint layer.",
-		"impact": "An Oxlint-only nodes package would lose 82 node and 12 credential format checks.",
-		"replacement": "Verify the plugin through Oxlint's JS-plugin bridge, then translate its file-scoped rule tables."
 	},
 	"@n8n/design-system/require-teleported-tooltip-in-dropdown": {
 		"layer": "frontend",

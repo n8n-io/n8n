@@ -1,5 +1,5 @@
 import { stripHydratedFileData, type AgentDbMessage, type AgentMessage } from '@n8n/agents';
-import type { AgentMessageAuthor } from '@n8n/api-types';
+import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -90,6 +90,26 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			throw error;
 		}
 		return await manager.findOneByOrFail(AgentMessageEntity, { id: message.id });
+	}
+
+	/** Replaces the platform context of a stored message. The other origin fields stay. */
+	async updateIntegrationOrigin(
+		messageId: string,
+		integration: AgentMessageIntegrationOrigin,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.runInTransaction(ctx, async (manager) => {
+			const message = await manager.findOne(AgentMessageEntity, {
+				select: ['id', 'origin'],
+				where: { id: messageId },
+			});
+			if (!message?.origin?.integration) return;
+			await manager.update(
+				AgentMessageEntity,
+				{ id: messageId },
+				{ origin: { ...message.origin, integration } },
+			);
+		});
 	}
 
 	/** The caller holds the session lock so concurrent input cannot take the same position. */

@@ -1,5 +1,7 @@
 import type {
+	AgentTeamsIntegrationSettings,
 	TeamsAzureSubscription,
+	TeamsCatalogState,
 	TeamsAgentSetupState,
 	TeamsManagedSetupState,
 	TeamsProvisionedAppSummary,
@@ -13,15 +15,21 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-import type { AgentChannelRuntime, AgentChannelRuntimeContext } from '../types';
+import type {
+	AgentChannelRestart,
+	AgentChannelRuntime,
+	AgentChannelRuntimeContext,
+} from '../types';
 import {
 	createTeamsManagerCredential,
 	getTeamsAzureSubscriptions,
+	getTeamsCatalogState,
 	getTeamsManagedSetup,
 	getTeamsSetupState,
 	provisionTeamsApp,
 	provisionTeamsBot,
 	reportTeamsManualBotRoute,
+	publishTeamsApp,
 } from './api';
 
 const TEAMS_MANAGER_CREDENTIAL_TYPE = 'microsoftTeamsManagerOAuth2Api';
@@ -29,11 +37,21 @@ const TEAMS_MANAGER_CREDENTIAL_TYPE = 'microsoftTeamsManagerOAuth2Api';
 export type TeamsSetupKind = 'managed' | 'manual';
 
 export interface TeamsChannelRuntime extends AgentChannelRuntime {
+	reset: (restart: AgentChannelRestart) => void;
 	managedSetup: Ref<TeamsManagedSetupState>;
 	setupKind: Ref<TeamsSetupKind>;
+	/** The flow the next setup opens on, set by `reset`; without it the setup opens on the recommended one. */
+	nextSetupKind: Ref<TeamsSetupKind | null>;
 	/** Sign-in the recommended flow is currently provisioning with. */
 	managerCredentialId: Ref<string>;
-	connectManagerCredential: (credentialId?: string) => Promise<boolean>;
+	/**
+	 * Resolves to the credential that signed in, or null. `select: false` leaves
+	 * the current sign-in selected, for a caller that switches only later.
+	 */
+	connectManagerCredential: (
+		credentialId?: string,
+		options?: { select?: boolean },
+	) => Promise<string | null>;
 	editManagerCredential: (credentialId: string) => void;
 	/** What each provisioning step left behind, so a step can show its result. */
 	provisionedApp: Ref<TeamsProvisionedAppSummary | null>;
@@ -41,6 +59,8 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	botSetupState: Ref<TeamsAgentSetupState | null>;
 	provisionedBot: Ref<TeamsProvisionedBotSummary | null>;
 	subscriptions: Ref<TeamsAzureSubscription[]>;
+	catalogState: Ref<TeamsCatalogState | null>;
+	connectedCredentialId: Ref<string>;
 	/**
 	 * Each reports whether its reply was applied. A reply for an agent or a
 	 * sign-in the setup has moved on from is dropped, and a caller that read a
@@ -52,6 +72,8 @@ export interface TeamsChannelRuntime extends AgentChannelRuntime {
 	provisionBot: (subscriptionId: string) => Promise<boolean>;
 	/** Says the setup left the recommended flow to make the bot by hand. */
 	reportManualBotRoute: () => Promise<void>;
+	publishApp: (settings?: AgentTeamsIntegrationSettings) => Promise<boolean>;
+	refreshCatalogState: () => Promise<void>;
 }
 
 export function isTeamsChannelRuntime(
@@ -75,6 +97,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 
 	const managedSetup = ref<TeamsManagedSetupState>(emptyState());
 	const setupKind = ref<TeamsSetupKind>('managed');
+	const nextSetupKind = ref<TeamsSetupKind | null>(null);
 	const managerCredentialId = ref('');
 	// Starts false, not true: the channel modal builds a runtime for every
 	// registered platform but only calls `load()` for the ones in the catalog,
@@ -83,8 +106,11 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	const loading = ref(false);
 	const provisionedApp = ref<TeamsProvisionedAppSummary | null>(null);
 	const botSetupState = ref<TeamsAgentSetupState | null>(null);
+	// The modal keeps this runtime across agents, so the state says whose it is.
+	const botSetupStateFor = ref('');
 	const provisionedBot = ref<TeamsProvisionedBotSummary | null>(null);
 	const subscriptions = ref<TeamsAzureSubscription[]>([]);
+	const catalogState = ref<TeamsCatalogState | null>(null);
 
 	/** Every provisioning call needs a finished sign-in to act with. */
 	function requireManagerCredential(): string {
@@ -93,8 +119,24 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		return managerCredentialId.value;
 	}
 
+	/**
+	 * The channel's own credential, handed over by the settings view. A setup
+	 * reopened after it connected never ran the step that would have recorded
+	 * one, but the channel is bound to the very credential that step wrote.
+	 */
+	const connectedCredentialId = ref('');
+
+	/**
+	 * The settings view's credential wins: it is the one the save binds to the
+	 * agent, so publishing the one this session happened to register would put a
+	 * manifest in the catalogue naming a bot the channel does not use.
+	 */
+	function channelCredentialId(): string {
+		return connectedCredentialId.value || (provisionedApp.value?.credentialId ?? '');
+	}
+
 	function requireProvisionedCredential(): string {
-		const credentialId = provisionedApp.value?.credentialId;
+		const credentialId = channelCredentialId();
 		if (!credentialId)
 			throw new Error(i18n.baseText('agents.channels.teams.managed.errors.createAppFirst'));
 		return credentialId;
@@ -115,6 +157,24 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		const isCurrent = () =>
 			requestedFor === [context.projectId.value, context.agentId.value].join('|');
 		loading.value = true;
+		// Without a credential, so the install card has the agent's name before any
+		// app exists. Skipped once this agent has one: provisioning's read is for
+		// its credential. An agent not saved yet has nothing to read until the
+		// sign-in saves it and loads again.
+		if (botSetupStateFor.value !== requestedFor) {
+			botSetupState.value = null;
+			void getTeamsSetupState(
+				rootStore.restApiContext,
+				context.projectId.value,
+				context.agentId.value,
+			)
+				.then((state) => {
+					if (!isCurrent() || botSetupStateFor.value === requestedFor) return;
+					botSetupState.value = state;
+					botSetupStateFor.value = requestedFor;
+				})
+				.catch(() => {});
+		}
 		try {
 			const state = await getTeamsManagedSetup(
 				rootStore.restApiContext,
@@ -138,9 +198,18 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		// picker when the project already has one.
 		const connected = managedSetup.value.managerCredentials.find((item) => item.connected);
 		if (!managerCredentialId.value && connected) managerCredentialId.value = connected.id;
+
+		// What the catalogue says now, rather than what it said when this setup
+		// was last open. Publishing can take a day to take effect, so coming back
+		// later is the ordinary path, and until this the step only ever knew what
+		// it had done itself. Not awaited: the stepper reads without it.
+		if (managerCredentialId.value) void refreshCatalogState().catch(() => {});
 	}
 
-	async function connectManagerCredential(credentialId?: string): Promise<boolean> {
+	async function connectManagerCredential(
+		credentialId?: string,
+		{ select = true }: { select?: boolean } = {},
+	): Promise<string | null> {
 		await context.ensureAgentPersisted?.();
 		let id = credentialId;
 		let createdCredentialId: string | undefined;
@@ -179,10 +248,10 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 				? await credentialOAuth.authorizeNewCredential(credential, { abortOnPopupClose: true })
 				: await credentialOAuth.authorize(credential, undefined, { abortOnPopupClose: true });
 
-			if (!connected) return false;
-			managerCredentialId.value = id;
+			if (!connected) return null;
+			if (select) managerCredentialId.value = id;
 			await load();
-			return true;
+			return id;
 		} finally {
 			// Only for a credential the helper never saw -- the lookup above threw.
 			// Past that point the helper deletes it itself on every path that is
@@ -232,6 +301,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		);
 		if (readFor !== contextKey()) return false;
 		botSetupState.value = setupState;
+		botSetupStateFor.value = [context.projectId.value, context.agentId.value].join('|');
 		return true;
 	}
 
@@ -265,6 +335,56 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		return true;
 	}
 
+	async function publishApp(settings?: AgentTeamsIntegrationSettings): Promise<boolean> {
+		// The slowest call here -- it uploads the package -- so the most likely
+		// to land after the account or the agent moved on.
+		const requestedFor = contextKey();
+		const state = await publishTeamsApp(
+			rootStore.restApiContext,
+			context.projectId.value,
+			context.agentId.value,
+			{
+				managerCredentialId: requireManagerCredential(),
+				credentialId: requireProvisionedCredential(),
+				settings,
+			},
+		);
+		if (requestedFor !== contextKey()) return false;
+		catalogState.value = state;
+		return true;
+	}
+
+	async function refreshCatalogState() {
+		const askedWith = managerCredentialId.value;
+		if (!askedWith) return;
+		// `load()` fires this without awaiting it, and `load()` itself runs from
+		// three places -- so several reads can be in flight at once, each able to
+		// answer about a different tenant.
+		const requestedFor = contextKey();
+		const state = await getTeamsCatalogState(
+			rootStore.restApiContext,
+			context.projectId.value,
+			context.agentId.value,
+			askedWith,
+			channelCredentialId(),
+		);
+		if (requestedFor !== contextKey()) return;
+
+		// `unknown` means the catalogue could not answer, not that the app is
+		// gone -- and for minutes after a publish that is the only answer it
+		// gives. Letting it overwrite a state we watched Microsoft report sends
+		// the step back to offering a publish that has already happened, which
+		// Microsoft then refuses as a duplicate.
+		if (
+			state.status === 'unknown' &&
+			catalogState.value &&
+			catalogState.value.status !== 'unknown'
+		) {
+			return;
+		}
+		catalogState.value = state;
+	}
+
 	function editManagerCredential(credentialId: string) {
 		uiStore.openExistingCredential(credentialId, {
 			hideAskAssistant: true,
@@ -283,6 +403,21 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		} catch {}
 	}
 
+	// The sign-in is kept unless the user picked another: it belongs to the
+	// user, not to the setup being redone. A bot credential picked for the new
+	// setup already exists, so only the manual setup can use it.
+	function reset({ credentialId, signInCredentialId }: AgentChannelRestart) {
+		nextSetupKind.value = credentialId ? 'manual' : 'managed';
+		if (signInCredentialId) managerCredentialId.value = signInCredentialId;
+		provisionedApp.value = null;
+		botSetupState.value = null;
+		botSetupStateFor.value = '';
+		provisionedBot.value = null;
+		subscriptions.value = [];
+		catalogState.value = null;
+		connectedCredentialId.value = '';
+	}
+
 	watch(context.credentialModalOpen, (isOpen, wasOpen) => {
 		if (wasOpen && !isOpen) void load();
 	});
@@ -290,18 +425,24 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	return {
 		managedSetup,
 		setupKind,
+		nextSetupKind,
 		managerCredentialId,
 		loading: computed(() => loading.value),
 		load,
+		reset,
 		connectManagerCredential,
 		editManagerCredential,
 		provisionedApp,
 		botSetupState,
 		provisionedBot,
 		subscriptions,
+		catalogState,
+		connectedCredentialId,
 		provisionApp,
 		loadSubscriptions,
 		provisionBot,
 		reportManualBotRoute,
+		publishApp,
+		refreshCatalogState,
 	};
 }
