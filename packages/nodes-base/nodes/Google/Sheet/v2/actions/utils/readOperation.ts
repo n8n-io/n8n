@@ -19,6 +19,7 @@ export async function readSheet(
 	items: INodeExecutionData[],
 	rangeString?: string,
 	additionalOptions?: IDataObject,
+	skipMissingLookupColumns = false,
 ): Promise<INodeExecutionData[]> {
 	const options = this.getNodeParameter('options', itemIndex, {});
 	const outputFormattingOption =
@@ -96,6 +97,7 @@ export async function readSheet(
 			returnAllMatches,
 			nodeVersion,
 			combineFilters,
+			skipMissingColumns: skipMissingLookupColumns,
 		});
 	} else {
 		responseData = sheet.structureArrayDataByColumn(
