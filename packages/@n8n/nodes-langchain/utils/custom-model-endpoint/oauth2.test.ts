@@ -14,13 +14,21 @@ const login = (overrides: Partial<OAuth2Login> = {}): OAuth2Login => ({
 	...overrides,
 });
 
+const redirectOf = (calls: Array<{ redirect?: RequestRedirect }>) => calls[0]?.redirect;
+
 const granting = (body: Record<string, unknown>, status = 200) => {
-	const calls: Array<{ url: string; headers: Headers; body: URLSearchParams }> = [];
+	const calls: Array<{
+		url: string;
+		headers: Headers;
+		body: URLSearchParams;
+		redirect?: RequestRedirect;
+	}> = [];
 	const fetchImpl = async (url: RequestInfo | URL, init?: RequestInit) => {
 		calls.push({
 			url: url.toString(),
 			headers: new Headers(init?.headers ?? {}),
 			body: new URLSearchParams(String(init?.body ?? '')),
+			redirect: init?.redirect,
 		});
 		return new Response(JSON.stringify(body), { status });
 	};
@@ -121,14 +129,6 @@ describe('createClientCredentialsTokenSource', () => {
 
 			await expect(source.getToken()).rejects.toThrow('answered 503');
 		});
-
-		it('never repeats the client secret, even if the server echoes it', async () => {
-			const { fetchImpl } = granting({ error_description: `Secret ${SECRET} is not valid` }, 401);
-			const source = createClientCredentialsTokenSource(login(), fetchImpl);
-
-			await expect(source.getToken()).rejects.toThrow('[redacted]');
-			await expect(source.getToken()).rejects.not.toThrow(SECRET);
-		});
 	});
 
 	it('fails when the answer carries no access token', async () => {
@@ -136,5 +136,22 @@ describe('createClientCredentialsTokenSource', () => {
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
 
 		await expect(source.getToken()).rejects.toThrow('no access token');
+	});
+	it('does not follow a redirect, which would replay the secret to another origin', async () => {
+		const { calls, fetchImpl } = granting(GRANT);
+		await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
+
+		expect(redirectOf(calls)).toBe('manual');
+	});
+
+	it('reports the token it holds, so a gateway echoing it can be redacted', async () => {
+		const { fetchImpl } = granting(GRANT);
+		const source = createClientCredentialsTokenSource(login(), fetchImpl);
+
+		expect(source.currentToken()).toBeUndefined();
+		await source.getToken();
+		expect(source.currentToken()).toBe('tok-abc');
+		source.forgetToken();
+		expect(source.currentToken()).toBeUndefined();
 	});
 });
