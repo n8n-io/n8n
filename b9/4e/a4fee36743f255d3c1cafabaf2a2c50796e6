@@ -1,0 +1,28 @@
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_b59a134b988b21::t_c229941010a259 54-58
+  s_b59a134b988b21::t_91ddf14fcb2850 366-370
+packages/@n8n/expression-runtime/src/bridge/__tests__/isolated-vm-bridge.test.ts
+  s_b59a134b988b21::t_c229941010a259 106-129,131-141,147-150
+  s_b59a134b988b21::t_8c7347d2d52a1a 151-178
+  s_b59a134b988b21::t_0b1833ba5f53dd 130
+packages/@n8n/expression-runtime/src/bridge/__tests__/copy-proxies.test.ts
+  s_b59a134b988b21::t_c229941010a259 19,21-28
+packages/@n8n/expression-runtime/src/bridge/copy-proxies.ts
+  s_b59a134b988b21::t_c229941010a259 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b94ea4fee36743f255d3c1cafabaf2a2c50796e6",
+  "prompts": {},
+  "sessions": {
+    "s_b59a134b988b21": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19b8f-fc9a-7301-8cf0-e71308d4bbd8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
