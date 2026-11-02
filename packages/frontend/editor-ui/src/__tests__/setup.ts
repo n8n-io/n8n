@@ -3,8 +3,14 @@ import 'fake-indexeddb/auto';
 import 'core-js/proposals/set-methods-v2';
 import englishBaseText from '@n8n/i18n/locales/en.json';
 import { loadLanguage, type LocaleMessages } from '@n8n/i18n';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 // Not the `@/app/constants` barrel: it pulls the full `@n8n/api-types` graph into every test file.
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants/selectors';
+
+const createAppAssistantHandoff = () => ({
+	openApp: vi.fn().mockResolvedValue(false),
+	createApp: vi.fn().mockResolvedValue(undefined),
+});
 
 // Global stub for Reka UI Popover components used by N8nPopover.
 // Unlike Element+ popover which always renders content regardless of visibility,
@@ -134,6 +140,10 @@ if (!HTMLDialogElement.prototype.close) {
 
 // Create DOM containers for Element Plus components before each test
 beforeEach(() => {
+	if (!capabilityRegistry.has(capabilities.createAppAssistantHandoff)) {
+		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, createAppAssistantHandoff);
+	}
+
 	// Create app-grid container for toasts
 	const appGrid = document.createElement('div');
 	appGrid.id = 'app-grid';
