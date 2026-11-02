@@ -18,7 +18,7 @@ import { ForbiddenError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import {
 	AgentExecutionOrchestratorService,

@@ -4,13 +4,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { type DataTable, type DataTableService } from '@n8n/backend-module-data-table';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { DataTableImporter } from '../data-table-importer';
 import type { DataTableImportRequest } from '../data-table.types';
 import type { ImportContext } from '../../../n8n-packages.types';
 
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn(),
 }));
 

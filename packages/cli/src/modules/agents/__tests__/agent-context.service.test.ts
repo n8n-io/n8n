@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { AgentConfigService } from '../agent-config.service';
@@ -25,7 +25,10 @@ import type { ProjectAgent } from '../entities/agent.entity';
 import { AgentContextService } from '../agent-context.service';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 
 function makeService() {
 	const agentsService = mock<AgentsService>();

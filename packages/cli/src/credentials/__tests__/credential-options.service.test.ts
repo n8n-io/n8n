@@ -13,13 +13,16 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { getBase } from '@/workflow-execute-additional-data';
 
 import { CredentialOptionsService } from '../credential-options.service';
 import type { CredentialsService } from '../credentials.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@/workflow-execute-additional-data', () => ({ getBase: vi.fn() }));
 
 describe('CredentialOptionsService', () => {

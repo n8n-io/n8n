@@ -11,7 +11,7 @@ import {
 	pairDataTableColumns,
 } from '@n8n/backend-module-data-table';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { diffDataTableSchema } from './data-table-compat';
 import { matchTargetTable } from './data-table-matching-mode';

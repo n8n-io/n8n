@@ -9,7 +9,7 @@ import {
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,
 } from './internal-messages';
 import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 export type AgentTestHandoffResult = {
 	block: string;

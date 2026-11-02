@@ -19,7 +19,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
 
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 /** `integrationType` and execution `source` of turns that an app starts. */
 export const APP_AGENT_INTEGRATION_TYPE = 'app';

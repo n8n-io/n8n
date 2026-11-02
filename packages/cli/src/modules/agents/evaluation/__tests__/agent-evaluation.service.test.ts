@@ -4,7 +4,7 @@ import type { User } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import {
 	createAgentSkillRefsService,
@@ -14,7 +14,10 @@ import { Agent } from '../../entities/agent.entity';
 import { createAgentCredentialProvider } from '../../utils/agent-credential-provider';
 import { AgentEvaluationService } from '../agent-evaluation.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('../../utils/agent-credential-provider', () => ({
 	createAgentCredentialProvider: vi.fn(),
 }));

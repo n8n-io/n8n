@@ -1,12 +1,13 @@
-import { ModuleRegistry } from '@n8n/backend-common';
 import type { OperationContext, User } from '@n8n/db';
 import { ScopeAccessRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
-import { NotFoundError } from '@n8n/errors';
+import { CredentialsFinderService } from '../credentials/credentials-finder.service';
+import { RoleService } from '../services/role.service';
+import { ScopedResourceResolverRegistry } from './scoped-resource-resolver.registry';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
 	'credential:read',
@@ -128,23 +129,15 @@ export async function userHasScopes(
 	}
 
 	if (dataTableId) {
-		const moduleRegistry = Container.get(ModuleRegistry);
-		if (!moduleRegistry.isActive('data-table')) {
-			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
-		}
+		const resolver = Container.get(ScopedResourceResolverRegistry).get('dataTable');
+		const dataTableProjectId = await resolver?.findProjectId(dataTableId);
 
-		const { DataTableRepository } = await import('@n8n/backend-module-data-table');
-		const dataTable = await Container.get(DataTableRepository).findOne({
-			where: { id: dataTableId },
-			relations: ['project'],
-		});
-
-		if (!dataTable) {
+		if (!dataTableProjectId) {
 			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
 		}
 
 		// Data tables don't have resource-level roles, only project-level access
-		return userProjectIds.includes(dataTable.project.id);
+		return userProjectIds.includes(dataTableProjectId);
 	}
 
 	if (projectId) return userProjectIds.includes(projectId);

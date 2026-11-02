@@ -25,10 +25,8 @@ import type {
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, userHasScopes } from '@n8n/backend-services';
 import { type DataTableColumn, DataTableService } from '@n8n/backend-module-data-table';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 /** First-item `json` of a node's last run output, keyed by field name. */
 type FieldMap = IDataObject;

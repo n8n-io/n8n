@@ -22,7 +22,7 @@ import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@n8n/backend-module-data-table';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { generateFixSuggestion } from '../agent-eval-fix-suggestion';
 import { AgentEvalRunnerService } from '../agent-eval-runner.service';
@@ -47,7 +47,8 @@ vi.mock('@n8n/backend-module-data-table', () => ({
 vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 	EvalAgentExecutionService: class EvalAgentExecutionService {},
 }));
-vi.mock('@/permissions.ee/check-access', () => ({
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
 	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
 // The judging step's own collaborators — stubbed the same way

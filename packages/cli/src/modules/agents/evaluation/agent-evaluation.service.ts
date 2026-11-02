@@ -5,7 +5,7 @@ import type { User } from '@n8n/db';
 import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';

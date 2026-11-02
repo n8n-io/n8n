@@ -17,7 +17,7 @@ skipAuth: true      → no decorator + comment explaining alternate auth
 
 `@ProjectScope` succeeds if the user has the scope **globally OR in the project named in the URL**. `@GlobalScope` ignores project relations entirely.
 
-Both decorators come from `@n8n/decorators`. The middleware lives in `packages/cli/src/controller.registry.ts` (`createScopedMiddleware`) and resolves access via `userHasScopes` in `packages/cli/src/permissions.ee/check-access.ts`.
+Both decorators come from `@n8n/decorators`. The middleware lives in `packages/cli/src/controller.registry.ts` (`createScopedMiddleware`) and resolves access via `userHasScopes` in `packages/@n8n/backend-services/src/permissions.ee/check-access.ts`.
 
 ## Apply the decorator
 

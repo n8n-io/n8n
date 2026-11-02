@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 
 import type { SystemAgentProvider } from './system-agent.types';
 

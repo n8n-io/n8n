@@ -1,4 +1,7 @@
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 
 import type {
 	AgentSessionThread,
@@ -6,7 +9,7 @@ import type {
 } from '@/modules/agents/agent-context.contracts';
 import type { User } from '@n8n/db';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import { assertAgentTestHandoffScopes, resolveAgentTestHandoff } from '../agent-test-handoff';
 import {
 	AGENT_PREVIEW_CONTEXT_OPEN_TAG,

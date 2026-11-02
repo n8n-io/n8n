@@ -45,7 +45,7 @@ import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyCleared } from '@n8n/decorators';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -69,7 +69,10 @@ import type { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-g
 import { WorkflowService } from '@/workflows/workflow.service';
 import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
-vi.mock('@/permissions.ee/check-access');
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 vi.mock('@/workflow-helpers');
 vi.mock('@/generic-helpers');
 

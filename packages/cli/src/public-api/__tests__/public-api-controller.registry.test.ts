@@ -27,7 +27,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { NotFoundError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { userHasScopes } from '@n8n/backend-services';
 import {
 	markPublicApiController,
 	OptionalWidgetBodyDto,
@@ -38,7 +38,10 @@ import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.
 import type { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@n8n/backend-services', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/backend-services')>()),
+	userHasScopes: vi.fn(),
+}));
 
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();

@@ -4,7 +4,7 @@ import type {
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService, userHasScopes } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -19,7 +19,6 @@ import { Container, Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { SelfHealingConfiguration } from './database/self-healing-configuration.entity';

@@ -1,11 +1,9 @@
 import type { CreateSkillDto } from '@n8n/api-types';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { ProjectScopeService, userHasScopes } from '@n8n/backend-services';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
