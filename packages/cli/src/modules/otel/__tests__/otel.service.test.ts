@@ -6,12 +6,14 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import type { OtelConfigureHook } from '../otel-configure-hook';
 import { OtelExporterFactory } from '../otel-exporter.factory';
 import type { OtelConnectionParams, OtelSettingsService } from '../otel-settings.service';
 import type { OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
+import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
 import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -190,6 +192,7 @@ describe('OtelService', () => {
 	let exporterFactory: OtelExporterFactory;
 	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
+	let externalHooks: ReturnType<typeof mock<ExternalHooks>>;
 	let service: OtelService;
 
 	const createService = (sdk: OtelSdk) =>
@@ -201,6 +204,8 @@ describe('OtelService', () => {
 			sdk,
 			moduleRegistry,
 			publisher,
+			externalHooks,
+			mock<OtelConfigureHook>(),
 		);
 
 	beforeEach(() => {
@@ -219,6 +224,7 @@ describe('OtelService', () => {
 		moduleRegistry = mock<ModuleRegistry>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
+		externalHooks = mock<ExternalHooks>();
 		service = createService(otelSdk);
 	});
 	afterEach(() => vi.restoreAllMocks());
@@ -273,6 +279,20 @@ describe('OtelService', () => {
 			expect(OTLPTraceExporter).not.toHaveBeenCalled();
 			expect(fetchMock).not.toHaveBeenCalled();
 			expect(stoppedSdk.apply).not.toHaveBeenCalled();
+		});
+
+		it('logs a warning and still finishes startup when the otel.configure hook throws', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			externalHooks.run.mockRejectedValue(new Error('hook file is broken'));
+
+			await service.init();
+			await flushPromises();
+
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'The otel.configure external hook failed, so n8n starts without it',
+				{ error: 'hook file is broken' },
+			);
 		});
 
 		it('logs connectivity failure and still finishes startup', async () => {
