@@ -220,6 +220,10 @@ export {
 } from './variables/list-variables-query.dto';
 export { VariableListPublicDto, variablePublicSchema } from './variables/variable-public.dto';
 export type { VariablePublic } from './variables/variable-public.dto';
+export type {
+	CreateEnvironmentVariable,
+	EnvironmentVariable,
+} from './variables/environment-variable';
 export {
 	CreateVariablePublicDto,
 	UpdateVariablePublicDto,

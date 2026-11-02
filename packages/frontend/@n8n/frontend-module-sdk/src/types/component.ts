@@ -1,5 +1,6 @@
 import type { WorkflowReviewVersionSnapshot } from '@n8n/api-types';
 import type { DatatableColumn } from '@n8n/design-system';
+import type { IWorkflowSettings } from 'n8n-workflow';
 
 /**
  * UI a module renders but does not own.
@@ -13,6 +14,10 @@ import type { DatatableColumn } from '@n8n/design-system';
  * `features/collaboration/projects`, which sits above the module layer. A module
  * that needs to filter by project renders this instead of importing any of it.
  * `workflow-diff` renders plain workflow snapshots with the editor canvas.
+ * `workflow-diff-placeholder` is the inert frame of `workflow-diff`, shown while a diff loads or
+ * when it cannot show. The default slot holds the message over the frame. The `sourceLabel` and
+ * `targetLabel` slots hold the panel labels.
+ * `code-diff` renders a line diff of two texts in the editor theme.
  * `promotion-changes` lists what a promotion review changes. It loads the changes itself, so
  * the module needs no knowledge of the promotion types.
  * `project-header` is the overview/project page header with the project tabs, which a
@@ -25,6 +30,8 @@ import type { DatatableColumn } from '@n8n/design-system';
 export type ModuleComponentSlot =
 	| 'project-filter'
 	| 'workflow-diff'
+	| 'workflow-diff-placeholder'
+	| 'code-diff'
 	| 'promotion-changes'
 	| 'project-header'
 	| 'insights-summary'
@@ -44,7 +51,14 @@ export type SlotWorkflowDiffSnapshot = Pick<
 	WorkflowReviewVersionSnapshot,
 	'nodes' | 'connections'
 > &
-	Partial<Pick<WorkflowReviewVersionSnapshot, 'versionId' | 'createdAt' | 'nodeGroups'>>;
+	Partial<Pick<WorkflowReviewVersionSnapshot, 'versionId' | 'createdAt' | 'nodeGroups'>> & {
+		/** The workflow name on this side, when it differs from `workflowName`. */
+		workflowName?: string;
+		settings?: IWorkflowSettings;
+		/** Compared in this order, so sort them. */
+		tags?: Array<{ id: string; name: string }>;
+		isArchived?: boolean;
+	};
 
 export type SlotWorkflowDiffProps = {
 	workflowId: string;
@@ -54,8 +68,19 @@ export type SlotWorkflowDiffProps = {
 	sourceLabel?: string;
 	targetLabel?: string;
 	showFullscreenButton?: boolean;
+	/** The canvases take scroll and zoom only after a click, so the page around them still scrolls. */
+	requireCanvasFocus?: boolean;
 	canvasIdPrefix?: string;
 	hideTitle?: boolean;
+};
+
+export type SlotWorkflowDiffPlaceholderProps = {
+	hideIllustration?: boolean;
+};
+
+export type SlotCodeDiffProps = {
+	oldString: string;
+	newString: string;
 };
 
 export type SlotPromotionChangesProps = {

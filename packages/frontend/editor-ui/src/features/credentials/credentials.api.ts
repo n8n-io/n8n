@@ -1,9 +1,4 @@
-import type {
-	CreateCredentialPublicDto,
-	CredentialPublicDto,
-	CredentialOptionsRequestDto,
-} from '@n8n/api-types';
-import { makePublicApiRequest, type PublicApiContext } from '@n8n/rest-api-client';
+import type { CredentialOptionsRequestDto } from '@n8n/api-types';
 import type {
 	CredentialFetchScope,
 	CredentialPayload,
@@ -22,6 +17,8 @@ import type {
 } from 'n8n-workflow';
 import axios from 'axios';
 import type { CreateCredentialDto } from '@n8n/api-types';
+
+export { createPublicCredential } from '@n8n/rest-api-client';
 
 async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
 	for (let attempt = 0; attempt < retries; attempt++) {
@@ -215,11 +212,4 @@ export async function probeCredential(
 	credentialId: string,
 ): Promise<INodeCredentialTestResult> {
 	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
-}
-
-export async function createPublicCredential(
-	context: PublicApiContext,
-	data: CreateCredentialPublicDto,
-): Promise<CredentialPublicDto> {
-	return await makePublicApiRequest(context, 'POST', '/credentials', data);
 }

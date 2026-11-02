@@ -16,13 +16,16 @@ function toWorkflow(
 	if (!snapshot) return undefined;
 	return toDiffWorkflow({
 		id: props.workflowId,
-		name: props.workflowName,
+		name: snapshot.workflowName ?? props.workflowName,
 		// Graph-only snapshots still need separate canvas document identities.
 		versionId: snapshot.versionId ?? side,
 		createdAt: snapshot.createdAt,
 		nodes: snapshot.nodes,
 		connections: snapshot.connections,
 		nodeGroups: snapshot.nodeGroups,
+		settings: snapshot.settings,
+		tags: snapshot.tags,
+		isArchived: snapshot.isArchived,
 	});
 }
 
@@ -37,6 +40,7 @@ const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot, 'target')
 		:source-label="sourceLabel"
 		:target-label="targetLabel"
 		:show-fullscreen-button="showFullscreenButton"
+		:require-canvas-focus="requireCanvasFocus"
 		:canvas-id-prefix="canvasIdPrefix"
 		:hide-title="hideTitle"
 	>
@@ -44,6 +48,9 @@ const targetWorkflow = computed(() => toWorkflow(props.targetSnapshot, 'target')
 		<template v-if="$slots.targetLabel" #targetLabel><slot name="targetLabel" /></template>
 		<template v-if="$slots.sourceEmptyText" #sourceEmptyText
 			><slot name="sourceEmptyText"
+		/></template>
+		<template v-if="$slots.targetEmptyText" #targetEmptyText
+			><slot name="targetEmptyText"
 		/></template>
 	</WorkflowDiffView>
 </template>

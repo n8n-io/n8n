@@ -21,6 +21,7 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
     "@n8n/utils": "workspace:*",
     "n8n-workflow": "workspace:*",
     "vue": "catalog:frontend",
