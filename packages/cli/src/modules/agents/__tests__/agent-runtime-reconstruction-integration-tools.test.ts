@@ -492,9 +492,11 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			expect(runtimeAgent.nativeToolDeferral).toHaveBeenCalledWith({
 				eagerToolNames: [
 					'workspace_read_file',
+					'workspace_read_files',
 					'workspace_read_tool_result',
 					'workspace_write_file',
 					'workspace_str_replace_file',
+					'workspace_edit_files',
 					'workspace_execute_command',
 					'load_skill',
 					'mark_session_failed',

@@ -310,6 +310,12 @@
 		"PUT /settings/security-policy": {
 			"status": "gap"
 		},
+		"GET /settings/rate-limits": {
+			"status": "gap"
+		},
+		"PUT /settings/rate-limits": {
+			"status": "gap"
+		},
 		"GET /settings/sso/saml": {
 			"status": "gap"
 		},

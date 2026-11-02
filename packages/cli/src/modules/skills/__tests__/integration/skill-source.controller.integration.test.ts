@@ -350,6 +350,7 @@ describe('SkillSourceController', () => {
 
 			expect(importedFromSource).toHaveBeenCalledWith(
 				expect.objectContaining({
+					access: 'public',
 					selected: 3,
 					imported: 2,
 					blocked: 1,
@@ -733,9 +734,10 @@ describe('SkillSourceController', () => {
 			]);
 			expect(created).toHaveBeenCalledWith(
 				ownerUser.id,
-				[{ id: data.imported[0].skillId, projectId: null, agentId: null }],
+				[{ id: data.imported[0].skillId, projectId: null }],
 				'github',
 				'sync',
+				{ source_provider: 'github', source_access: 'public' },
 			);
 		});
 
@@ -751,6 +753,7 @@ describe('SkillSourceController', () => {
 				[expect.objectContaining({ projectId: personal.id })],
 				'github',
 				'sync',
+				{ source_provider: 'github', source_access: 'public' },
 			);
 		});
 

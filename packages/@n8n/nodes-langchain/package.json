@@ -54,6 +54,7 @@
       "dist/credentials/ChromaSelfHostedApi.credentials.js",
       "dist/credentials/ChromaCloudApi.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
+      "dist/credentials/CustomModelEndpointApi.credentials.js",
       "dist/credentials/DaytonaApi.credentials.js",
       "dist/credentials/DeepSeekApi.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",

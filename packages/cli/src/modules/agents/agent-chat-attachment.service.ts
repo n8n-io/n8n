@@ -1,4 +1,4 @@
-import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
+import { isAttachmentMediaTypeSupported, type AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -99,20 +99,22 @@ export class AgentChatAttachmentService {
 		}
 
 		try {
-			const attachment = this.repository.create({
-				id: attachmentId,
-				agentId,
-				projectId: params.projectId,
-				threadId: root.id,
-				createdByThreadId: params.threadId,
-				resourceId: params.resourceId ?? null,
-				binaryDataId: stored.id,
-				fileName: params.fileName,
-				mimeType: params.mimeType,
-				fileSizeBytes: params.data.byteLength,
-				source: params.source,
-			});
-			return await this.repository.save(attachment);
+			return await this.repository.saveInboundAttachment(
+				{
+					id: attachmentId,
+					agentId,
+					projectId: params.projectId,
+					threadId: root.id,
+					createdByThreadId: params.threadId,
+					resourceId: params.resourceId ?? null,
+					binaryDataId: stored.id,
+					fileName: params.fileName,
+					mimeType: params.mimeType,
+					fileSizeBytes: params.data.byteLength,
+					source: params.source,
+				},
+				{},
+			);
 		} catch (error) {
 			await this.binaryDataService
 				.deleteManyByBinaryDataId([stored.id])
@@ -153,10 +155,11 @@ export class AgentChatAttachmentService {
 			throw new UserError('Files can only be granted to a sub-agent of this conversation');
 		}
 		const rootId = chain[chain.length - 1].id;
-		const files = await this.repository.findByIdsInThread(attachmentIds, {
-			projectId: scope.projectId,
-			threadId: rootId,
-		});
+		const files = await this.repository.findByIdsInThread(
+			attachmentIds,
+			{ projectId: scope.projectId, threadId: rootId },
+			{},
+		);
 		const creatorById = new Map(files.map((file) => [file.id, file.createdByThreadId]));
 		const granted =
 			scope.parentThreadId === rootId
@@ -173,6 +176,40 @@ export class AgentChatAttachmentService {
 		await this.grantRepository.grant(attachmentIds, scope.childThreadId);
 	}
 
+	/**
+	 * List the files that a sub-agent thread made and let its parent read them.
+	 * The root thread reads them already, but a parent that is not the root
+	 * cannot read them without this grant.
+	 */
+	async returnToParent(scope: {
+		projectId: string;
+		parentThreadId: string;
+		childThreadId: string;
+	}): Promise<AgentToolOutputFile[]> {
+		const chain = await this.threadRepository.findDelegationChain(scope.childThreadId);
+		if (chain[1]?.id !== scope.parentThreadId) {
+			throw new UserError('Files can only be returned to the parent of a sub-agent');
+		}
+		const rootId = chain[chain.length - 1].id;
+		const files = await this.repository.findCreatedByThread(
+			scope.childThreadId,
+			{ projectId: scope.projectId, threadId: rootId },
+			{},
+		);
+		if (scope.parentThreadId !== rootId) {
+			await this.grantRepository.grant(
+				files.map((file) => file.id),
+				scope.parentThreadId,
+			);
+		}
+		return files.map((file) => ({
+			fileId: file.id,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.fileSizeBytes,
+		}));
+	}
+
 	private async findRootThread(threadId: string) {
 		const chain = await this.threadRepository.findDelegationChain(threadId);
 		return chain[chain.length - 1];
@@ -183,10 +220,11 @@ export class AgentChatAttachmentService {
 		scope: { projectId: string; threadId: string },
 		rootThreadId: string,
 	): Promise<AgentChatAttachment | null> {
-		const attachment = await this.repository.findByIdInThread(attachmentId, {
-			projectId: scope.projectId,
-			threadId: rootThreadId,
-		});
+		const attachment = await this.repository.findByIdInThread(
+			attachmentId,
+			{ projectId: scope.projectId, threadId: rootThreadId },
+			{},
+		);
 		if (!attachment) return null;
 		if (scope.threadId === rootThreadId || attachment.createdByThreadId === scope.threadId) {
 			return attachment;
@@ -204,16 +242,30 @@ export class AgentChatAttachmentService {
 		attachmentId: string,
 		scope: { agentId: string; resourceId: string; source: string },
 	): Promise<AgentChatAttachment | null> {
-		return await this.repository.findByIdForSystemAgent(attachmentId, scope);
+		return await this.repository.findByIdForSystemAgent(attachmentId, scope, {});
 	}
 
-	/** Return metadata only when the caller can read the session. */
+	/**
+	 * Return metadata only when the caller can read the session. A file of a
+	 * sub-agent session belongs to the agent of the root thread, so give
+	 * `threadId` to check the read grants of that session instead.
+	 */
 	async getForAgent(
 		attachmentId: string,
-		scope: { agentId: string; projectId: string; userId: string },
+		scope: { agentId: string; projectId: string; userId: string; threadId?: string },
 	): Promise<AgentChatAttachment | null> {
-		const attachment = await this.repository.findByIdForAgent(attachmentId, scope);
-		if (!attachment) return null;
+		const attachment = await this.repository.findByIdForAgent(attachmentId, scope, {});
+		if (!attachment) {
+			if (!scope.threadId) return null;
+			const session = await this.threadRepository.findOneBy({ id: scope.threadId });
+			if (!session || !threadBelongsTo(session, scope.projectId, scope.agentId, scope.userId)) {
+				return null;
+			}
+			return await this.getReadable(attachmentId, {
+				projectId: scope.projectId,
+				threadId: scope.threadId,
+			});
+		}
 		const thread = await this.threadRepository.findOneBy({ id: attachment.threadId });
 		if (thread) {
 			return threadBelongsTo(thread, scope.projectId, scope.agentId, scope.userId)
@@ -239,6 +291,14 @@ export class AgentChatAttachmentService {
 		}
 	}
 
+	async getBuffer(attachment: AgentChatAttachment): Promise<Buffer> {
+		return await this.binaryDataService.getAsBuffer({
+			id: attachment.binaryDataId,
+			data: '',
+			mimeType: attachment.mimeType,
+		});
+	}
+
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
 		return await this.binaryDataService.getAsStream(attachment.binaryDataId);
 	}
@@ -249,7 +309,7 @@ export class AgentChatAttachmentService {
 	 */
 	async deleteByIds(attachmentIds: string[]): Promise<void> {
 		if (attachmentIds.length === 0) return;
-		await this.deleteAttachments(await this.repository.findByIds(attachmentIds), {
+		await this.deleteAttachments(await this.repository.findByIds(attachmentIds, {}), {
 			attachmentIds: attachmentIds.join(','),
 		});
 	}
@@ -259,14 +319,14 @@ export class AgentChatAttachmentService {
 		threadId: string,
 		scope: { projectId: string } | { agentId: string },
 	): Promise<void> {
-		await this.deleteAttachments(await this.repository.findByThread(threadId, scope), {
+		await this.deleteAttachments(await this.repository.findByThread(threadId, scope, {}), {
 			threadId,
 		});
 	}
 
 	/** Called before the agent row is removed, so bytes don't outlive the cascading rows. */
 	async deleteByAgent(agentId: string): Promise<void> {
-		await this.deleteAttachments(await this.repository.findBy({ agentId }), { agentId });
+		await this.deleteAttachments(await this.repository.findByAgent(agentId, {}), { agentId });
 	}
 
 	/**
@@ -285,12 +345,16 @@ export class AgentChatAttachmentService {
 				scope,
 				before,
 				RETENTION_BATCH_SIZE,
+				{},
 			);
 			if (batch.length === 0) break;
 			await this.binaryDataService.deleteManyByBinaryDataId(
 				batch.map((attachment) => attachment.binaryDataId),
 			);
-			await this.repository.delete(batch.map((attachment) => attachment.id));
+			await this.repository.deleteByIds(
+				batch.map((attachment) => attachment.id),
+				{},
+			);
 			deleted += batch.length;
 			if (batch.length < RETENTION_BATCH_SIZE) break;
 		}
@@ -316,7 +380,10 @@ export class AgentChatAttachmentService {
 	): Promise<void> {
 		if (attachments.length === 0) return;
 
-		await this.repository.delete(attachments.map((attachment) => attachment.id));
+		await this.repository.deleteByIds(
+			attachments.map((attachment) => attachment.id),
+			{},
+		);
 		await this.deleteStoredData(
 			attachments.map((attachment) => attachment.binaryDataId),
 			logContext,
@@ -361,7 +428,7 @@ export class AgentChatAttachmentService {
 							{ projectId: scope.projectId, threadId },
 							await rootIdOf(threadId),
 						)
-					: await this.repository.findByIdForAgent(ref.id, scope);
+					: await this.repository.findByIdForAgent(ref.id, scope, {});
 				if (!attachment) return null;
 				try {
 					return await this.binaryDataService.getAsBuffer({

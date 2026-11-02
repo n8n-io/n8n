@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppResponse } from '@n8n/api-types';
+import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import {
 	isIconOrEmoji,
@@ -21,6 +21,7 @@ import { useRouter } from 'vue-router';
 import { listApps } from '../apps.api';
 import { APP_DETAIL_VIEW, PROJECT_APPS, type AppViewTab } from '../apps.constants';
 import AppActions from './AppActions.vue';
+import AppPublishButton from './AppPublishButton.vue';
 
 const PERSONAL_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
 const DEFAULT_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -31,9 +32,13 @@ function projectIcon(project: Project | null): IconOrEmoji {
 	return isIconOrEmoji(project?.icon) ? project.icon : DEFAULT_PROJECT_ICON;
 }
 
-const props = defineProps<{ projectId: string; app: AppResponse | null }>();
+const props = defineProps<{
+	projectId: string;
+	app: AppResponse | null;
+	publishableVersion: AppVersionResponse | null;
+}>();
 
-const emit = defineEmits<{ deleted: [appId: string] }>();
+const emit = defineEmits<{ updated: [app: AppResponse]; deleted: [appId: string] }>();
 
 const tab = defineModel<AppViewTab>('tab', { required: true });
 
@@ -120,6 +125,7 @@ watch(
 	<header :class="$style.header" data-test-id="app-header">
 		<div :class="$style.left">
 			<N8nBreadcrumbs
+				:class="$style.breadcrumbs"
 				:items="breadcrumbItems"
 				theme="medium"
 				@item-selected="router.push(appsRoute)"
@@ -158,9 +164,12 @@ watch(
 			data-test-id="app-header-tabs"
 		/>
 		<div :class="$style.right">
-			<N8nButton variant="outline" disabled data-test-id="app-header-publish">
-				{{ i18n.baseText('apps.detail.publish') }}
-			</N8nButton>
+			<AppPublishButton
+				v-if="app"
+				:app="app"
+				:version="publishableVersion"
+				@updated="emit('updated', $event)"
+			/>
 		</div>
 	</header>
 </template>
@@ -171,11 +180,26 @@ watch(
 	grid-template-columns: 1fr auto 1fr;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--md);
+	padding: var(--spacing--xs) var(--spacing--md) var(--spacing--xs) var(--spacing--xs);
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);
+	container-type: inline-size;
+	container-name: app-header;
+}
+
+@container app-header (max-width: 560px) {
+	.header [class*='itemLabel'] {
+		display: none;
+	}
+}
+
+@container app-header (max-width: 440px) {
+	.header [class*='itemContent'],
+	.separator {
+		display: none;
+	}
 }
 
 .left,
@@ -188,6 +212,11 @@ watch(
 
 .left {
 	grid-column: 1;
+	overflow: hidden;
+}
+
+.breadcrumbs {
+	min-width: 0;
 }
 
 .center {
@@ -209,10 +238,12 @@ watch(
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	flex-shrink: 0;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .appName {
+	min-width: 0;
 	font-size: var(--font-size--sm);
 	white-space: nowrap;
 	overflow: hidden;

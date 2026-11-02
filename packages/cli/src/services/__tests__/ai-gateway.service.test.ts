@@ -1,7 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import type { Project, User, UserRepository } from '@n8n/db';
+import type { Person, PersonRepository, Project, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -55,7 +55,7 @@ function makeService({
 	aiGatewayEnabled = true,
 	isAiGatewayLicensed = true,
 	ownershipService = mock<OwnershipService>(),
-	userRepository = mock<UserRepository>({ findOneBy: vi.fn().mockResolvedValue(null) }),
+	personRepository = mock<PersonRepository>({ findById: vi.fn().mockResolvedValue(null) }),
 	urlService = mock<UrlService>({
 		getInstanceBaseUrl: vi.fn().mockReturnValue(INSTANCE_BASE_URL),
 	}),
@@ -79,7 +79,7 @@ function makeService({
 		licenseState,
 		instanceSettings,
 		ownershipService,
-		userRepository,
+		personRepository,
 		urlService,
 		outboundHttp,
 		credentialTypes,
@@ -321,16 +321,16 @@ describe('AiGatewayService', () => {
 			expect(body.instanceUrl).toBe(INSTANCE_BASE_URL);
 		});
 
-		it('includes userEmail and userName in token body when user exists', async () => {
-			const userRepository = mock<UserRepository>({
-				findOneBy: vi
+		it('includes userEmail and userName in token body when the user is a person', async () => {
+			const personRepository = mock<PersonRepository>({
+				findById: vi
 					.fn()
 					.mockResolvedValue(
-						mock<User>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
+						mock<Person>({ email: 'alice@example.com', firstName: 'Alice', lastName: 'Smith' }),
 					),
 			});
 			mockConfigThenToken();
-			const service = makeService({ userRepository });
+			const service = makeService({ personRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -349,15 +349,15 @@ describe('AiGatewayService', () => {
 		});
 
 		it('omits userName from token body when user has no first or last name', async () => {
-			const userRepository = mock<UserRepository>({
-				findOneBy: vi
+			const personRepository = mock<PersonRepository>({
+				findById: vi
 					.fn()
 					.mockResolvedValue(
-						mock<User>({ email: 'alice@example.com', firstName: '', lastName: '' }),
+						mock<Person>({ email: 'alice@example.com', firstName: '', lastName: '' }),
 					),
 			});
 			mockConfigThenToken();
-			const service = makeService({ userRepository });
+			const service = makeService({ personRepository });
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 
@@ -366,9 +366,9 @@ describe('AiGatewayService', () => {
 			expect(body.userName).toBeUndefined();
 		});
 
-		it('omits userEmail and userName from token body when user is not found', async () => {
+		it('omits userEmail and userName from token body when the user is not found or is a service account', async () => {
 			mockConfigThenToken();
-			const service = makeService(); // userRepository returns null by default
+			const service = makeService(); // personRepository returns null by default
 
 			await service.getSyntheticCredential({ credentialType: 'googlePalmApi', userId: USER_ID });
 

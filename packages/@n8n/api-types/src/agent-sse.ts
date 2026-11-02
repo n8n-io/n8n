@@ -90,6 +90,7 @@ export type AgentSseEvent =
 	| { type: 'message-queued'; queueId: string; sessionId: string }
 	| {
 			type: 'execution-started';
+			stopReport?: boolean;
 			executionId: string;
 			sessionId: string;
 			message?: string;

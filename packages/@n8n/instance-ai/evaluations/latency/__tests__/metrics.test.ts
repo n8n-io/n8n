@@ -1,4 +1,6 @@
+import { createOrchestratorDomainTools } from '../../../src/tools';
 import { DOMAIN_TOOL_IDS } from '../../../src/tools/tool-ids';
+import type { InstanceAiContext } from '../../../src/types';
 import type { CapturedEvent } from '../../types';
 import { computeLatencyMetrics } from '../metrics';
 
@@ -21,6 +23,30 @@ function toolResult(timestamp: number, toolCallId: string, result: unknown = {})
 }
 
 const buildSuccess = { success: true, workflowId: 'wf-1' };
+
+/** Every service method is a stub, so each domain tool can be built. */
+function createStubContext(): InstanceAiContext {
+	const service = new Proxy({}, { get: () => vi.fn() });
+	return {
+		userId: 'user-1',
+		workflowService: service,
+		executionService: service,
+		credentialService: service,
+		nodeService: service,
+		dataTableService: service,
+		workspaceService: service,
+		evaluationConfigService: service,
+		mcpService: service,
+		activityService: service,
+		logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+	} as unknown as InstanceAiContext;
+}
+
+function domainToolsThatRequireWorkspace(): string[] {
+	return [...createOrchestratorDomainTools(createStubContext()).values()]
+		.filter((tool) => tool.requiresWorkspace)
+		.map((tool) => tool.name);
+}
 
 describe('computeLatencyMetrics', () => {
 	it('measures the first workspace tool, the first saved workflow and the turn', () => {
@@ -90,6 +116,53 @@ describe('computeLatencyMetrics', () => {
 				toolCall(6_000, 'tc-2', 'workspace_read_file'),
 				toolResult(7_000, 'tc-2'),
 				toolResult(13_000, 'tc-1'),
+			],
+			SENT_AT,
+		);
+
+		expect(metrics.firstWorkspaceToolMs).toBe(8_000);
+	});
+
+	it.each([DOMAIN_TOOL_IDS.BUILD_WORKFLOW, DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE])(
+		'counts %s as the first workspace tool, since it sets up the sandbox too',
+		(toolName) => {
+			const metrics = computeLatencyMetrics(
+				[
+					toolCall(5_000, 'tc-1', toolName),
+					toolResult(11_000, 'tc-1'),
+					toolCall(12_000, 'tc-2', 'workspace_read_file'),
+					toolResult(12_500, 'tc-2'),
+				],
+				SENT_AT,
+			);
+
+			expect(metrics.firstWorkspaceToolMs).toBe(6_000);
+		},
+	);
+
+	it('counts every domain tool that requires the workspace', () => {
+		const toolNames = domainToolsThatRequireWorkspace();
+		// Guards against a vacuous pass when the stub context hides the builder tools.
+		expect(toolNames).toContain(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
+
+		const uncounted = toolNames.filter(
+			(toolName) =>
+				computeLatencyMetrics(
+					[toolCall(2_000, 'tc-1', toolName), toolResult(3_000, 'tc-1')],
+					SENT_AT,
+				).firstWorkspaceToolMs === null,
+		);
+
+		expect(uncounted).toEqual([]);
+	});
+
+	it('ignores tools that do not use the sandbox', () => {
+		const metrics = computeLatencyMetrics(
+			[
+				toolCall(2_000, 'tc-1', DOMAIN_TOOL_IDS.SEARCH_NODES),
+				toolResult(4_000, 'tc-1'),
+				toolCall(5_000, 'tc-2', 'workspace_write_file'),
+				toolResult(13_000, 'tc-2'),
 			],
 			SENT_AT,
 		);

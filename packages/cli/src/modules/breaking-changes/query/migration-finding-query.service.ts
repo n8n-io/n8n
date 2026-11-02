@@ -12,7 +12,6 @@ import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflowRepository,
 	UserRepository,
-	WorkflowHistoryRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	type WorkflowEntity,
@@ -32,6 +31,7 @@ import { groupNodesByType } from '../group-nodes-by-type';
 import { toWorkflowOwner } from '../owners/workflow-owner';
 import { summarizeExecutionStatistics } from '../summarize-execution-statistics';
 import {
+	createWorkflowScanContext,
 	isInstanceRule,
 	isWorkflowLevelRule,
 	type IBreakingChangeBatchWorkflowRule,
@@ -70,7 +70,6 @@ export class MigrationFindingQueryService {
 		private readonly migrationRegistry: MigrationRegistry,
 		private readonly breakingChangeService: BreakingChangeService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly findingRepository: MigrationFindingRepository,
 		private readonly syncRepository: MigrationFindingSyncRepository,
@@ -262,22 +261,13 @@ export class MigrationFindingQueryService {
 	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
 		const issuesByWorkflow = await this.issuesFromRecheck(rule, workflows);
 
-		const publishedVersionIds = new Map<string, WorkflowEntity>();
-		for (const workflow of workflows) {
-			const { activeVersionId, versionId } = workflow;
-			const hasIssues = (issuesByWorkflow.get(workflow.id)?.length ?? 0) > 0;
-			if (!hasIssues && activeVersionId && activeVersionId !== versionId) {
-				publishedVersionIds.set(activeVersionId, workflow);
-			}
-		}
-		if (publishedVersionIds.size === 0) return issuesByWorkflow;
-
-		const versions = await this.workflowHistoryRepository.findNodesByVersionIds([
-			...publishedVersionIds.keys(),
-		]);
-		const published = versions.flatMap(({ versionId, nodes }) => {
-			const workflow = publishedVersionIds.get(versionId);
-			return workflow ? [{ ...workflow, nodes }] : [];
+		const withoutIssues = workflows.filter(
+			(workflow) => (issuesByWorkflow.get(workflow.id)?.length ?? 0) === 0,
+		);
+		const publishedNodes = await this.breakingChangeService.loadPublishedNodes(withoutIssues);
+		const published = withoutIssues.flatMap((workflow) => {
+			const nodes = publishedNodes.get(workflow.id);
+			return nodes ? [{ ...workflow, nodes }] : [];
 		});
 		for (const [workflowId, issues] of await this.issuesFromRecheck(rule, published)) {
 			if (issues.length > 0) issuesByWorkflow.set(workflowId, issues);
@@ -294,9 +284,14 @@ export class MigrationFindingQueryService {
 		workflows: WorkflowEntity[],
 	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
 		const issuesByWorkflow = new Map<string, BreakingChangeWorkflowIssue[]>();
+		const context = createWorkflowScanContext();
 		for (const workflow of workflows) {
 			try {
-				const result = await rule.detectWorkflow(workflow, groupNodesByType(workflow.nodes));
+				const result = await rule.detectWorkflow(
+					workflow,
+					groupNodesByType(workflow.nodes),
+					context,
+				);
 				issuesByWorkflow.set(workflow.id, result.issues);
 			} catch (error) {
 				this.logger.warn('Breaking change rule failed for workflow, listing it without issues', {

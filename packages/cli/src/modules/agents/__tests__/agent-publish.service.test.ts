@@ -883,7 +883,7 @@ describe('AgentPublishService', () => {
 		expect(result).toStrictEqual({ agent });
 		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledTimes(1);
-		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith('v1', agentId);
+		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith('v1', agentId, {});
 		expect(agent.activeVersionId).toBe('v1');
 		expect(agent.activeVersion).toBe(target);
 		expect(agent.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
@@ -1226,6 +1226,7 @@ describe('AgentPublishService', () => {
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
 			'old-version',
 			agentId,
+			{},
 		);
 		expect(result.version).toBe(version);
 		expect(result.definition).toEqual({
@@ -1590,9 +1591,12 @@ describe('AgentPublishService', () => {
 					name: null,
 				},
 			);
-			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(agentId, versionId, {
-				name: null,
-			});
+			expect(agentHistoryRepository.updateMetadata).toHaveBeenCalledWith(
+				agentId,
+				versionId,
+				{ name: null },
+				{},
+			);
 			expect(publishHistory.record).not.toHaveBeenCalled();
 			expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
 		});

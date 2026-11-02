@@ -24,10 +24,7 @@ import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
 export const reportVerificationVerdictInputSchema = z.object({
 	workItemId: z.string().describe('The work item ID from the build task (wi_XXXXXXXX)'),
 	workflowId: z.string().describe('The workflow ID that was verified'),
-	executionId: z
-		.string()
-		.optional()
-		.describe('The execution ID from `workflow_builder_executions(action="run")`, if available'),
+	executionId: z.string().optional().describe('The execution ID from `run_workflow`, if available'),
 	verdict: verificationVerdictSchema.describe(
 		'Your assessment: "verified" if the workflow ran correctly, ' +
 			'"needs_patch" if a specific node needs fixing, ' +

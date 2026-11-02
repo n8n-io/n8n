@@ -5,7 +5,7 @@ import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/back
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, ProjectRepository, TransactionRunner, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -34,6 +34,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 describe('Promotions in Public API', () => {
 	const testServer = setupTestServer({
+		reuseServer: true,
 		endpointGroups: ['publicApi'],
 		enabledFeatures: ['feat:promotions'],
 		modules: ['promotions'],
@@ -539,7 +540,7 @@ describe('Promotions in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('read_api scope');
+			expect(response.body.message).toContain('api scope');
 			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
 			api.done();
 		});
@@ -1252,7 +1253,7 @@ describe('Promotions in Public API', () => {
 
 		it.each([
 			{ route: 'repositories', status: 401, message: 'rejected the access token' },
-			{ route: 'repositories', status: 403, message: 'read_api scope' },
+			{ route: 'repositories', status: 403, message: 'api scope' },
 			{ route: 'repositories', status: 503, message: 'not available' },
 			{ route: 'repositories/42/branches', status: 403, message: 'repository access' },
 		])(
@@ -1630,9 +1631,12 @@ describe('Promotions in Public API', () => {
 				schemaVersion: 1 as const,
 				remoteUrl: 'https://other.example.com/platform/workflows.git',
 			};
-			await Container.get(PromotionEnvironmentRepository).updateEnvironment(id, providerId, {
-				remote,
-			});
+			await Container.get(PromotionEnvironmentRepository).updateEnvironment(
+				id,
+				providerId,
+				{ remote },
+				{},
+			);
 			await expect(
 				Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id),
 			).rejects.toThrow('Select the repository again');
@@ -1646,7 +1650,7 @@ describe('Promotions in Public API', () => {
 			const id = await selectedEnvironment(providerId);
 			const repository = Container.get(PromotionEnvironmentRepository);
 			const remote = { schemaVersion: 1 as const, remoteUrl: project.http_url_to_repo };
-			await repository.updateEnvironment(id, providerId, { remote });
+			await repository.updateEnvironment(id, providerId, { remote }, {});
 			const agent = testServer.publicApiAgentFor(owner);
 			const root = `/promotions/environments/${id}`;
 			expect((await agent.get(root)).body.remote).toEqual(remote);
@@ -1670,16 +1674,17 @@ describe('Promotions in Public API', () => {
 				const agent = testServer.publicApiAgentFor(owner);
 				const plainProviderId = await createProvider(agent);
 				const repository = Container.get(PromotionEnvironmentRepository);
-				const updateEnvironment = repository.updateEnvironment.bind(repository);
+				// Pause before the write transaction opens. SQLite runs one write transaction at a
+				// time, so a pause inside it would also hold back the winning update.
+				const transactions = Container.get(TransactionRunner);
+				const run = transactions.run.bind(transactions);
 				const paused = createDeferredPromise();
 				const resume = createDeferredPromise();
-				const write = vi
-					.spyOn(repository, 'updateEnvironment')
-					.mockImplementationOnce(async (...args) => {
-						paused.resolve();
-						await resume.promise;
-						return await updateEnvironment(...args);
-					});
+				const write = vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+					paused.resolve();
+					await resume.promise;
+					return await run(...args);
+				});
 				const root = `/promotions/environments/${id}`;
 				const changes =
 					field === 'remote'
@@ -2500,19 +2505,27 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('rejects an empty selection with 400 on both routes', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			expect(
-				(await agent.post('/promotions/projects/proj1/apply').send({ workflowIds: [] })).status,
-			).toBe(400);
-			expect(
-				(
-					await agent
-						.post('/promotions/projects/proj1/apply/continue')
-						.send({ workflowIds: [], expectedSource: selectionBody.expectedSource })
-				).status,
-			).toBe(400);
-		});
+		it.each([
+			{ selection: 'an empty', workflowIds: [] },
+			{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] },
+		])(
+			'rejects $selection selection before calling either Apply service',
+			async ({ workflowIds }) => {
+				const service = Container.get(PromotionsService);
+				const initial = vi.spyOn(service, 'applyProjectSelection');
+				const continuation = vi.spyOn(service, 'continueApplyProjectSelection');
+				const agent = testServer.publicApiAgentFor(owner);
+				for (const route of ['apply', 'apply/continue']) {
+					const response = await agent.post(`/promotions/projects/proj1/${route}`).send({
+						workflowIds,
+						expectedSource: selectionBody.expectedSource,
+					});
+					expect(response.status, JSON.stringify(response.body)).toBe(400);
+				}
+				expect(initial).not.toHaveBeenCalled();
+				expect(continuation).not.toHaveBeenCalled();
+			},
+		);
 
 		it('requires workflowIds and a supported source on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);

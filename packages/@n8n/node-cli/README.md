@@ -104,6 +104,7 @@ This command:
 - Persists workflows and credentials in a `n8n-node-cli-data-<image>` volume,
   one for each `--n8n-image`
 - Recompiles on change and pushes a reload to n8n, including for icons and JSON assets
+- Watches for changes in your `nodes/` and `credentials/` directories
 
 `CONTAINER_ENGINE=docker|podman` overrides engine detection. Colima, Rancher
 Desktop, OrbStack and a remote `DOCKER_HOST` all work.
@@ -206,8 +207,8 @@ The recommended workflow using the scaffolding tool:
 
 1. **Create your node**:
    ```bash
-   npm create @n8n/node my-awesome-node
-   cd my-awesome-node
+   npm create @n8n/node n8n-nodes-my-app
+   cd n8n-nodes-my-app
    ```
 
 2. **Start development**:
@@ -240,13 +241,13 @@ The recommended workflow using the scaffolding tool:
 The CLI expects your project to follow this structure:
 
 ```
-my-node/
-├── src/
-│   ├── nodes/
-│   │   └── MyNode/
-│   │       ├── MyNode.node.ts
-│   │       └── MyNode.node.json
-│   └── credentials/
+n8n-nodes-my-app/
+├── nodes/
+│   └── MyApp/
+│       ├── MyApp.node.ts
+│       └── MyApp.node.json
+├── credentials/
+│   └── MyAppApi.credentials.ts
 ├── package.json
 └── tsconfig.json
 ```
@@ -257,14 +258,14 @@ The CLI reads configuration from your `package.json`:
 
 ```json
 {
-  "name": "n8n-nodes-my-awesome-node",
+  "name": "n8n-nodes-my-app",
   "n8n": {
     "n8nNodesApiVersion": 1,
     "nodes": [
-      "dist/nodes/MyNode/MyNode.node.js"
+      "dist/nodes/MyApp/MyApp.node.js"
     ],
     "credentials": [
-      "dist/credentials/MyNodeAuth.credentials.js"
+      "dist/credentials/MyAppApi.credentials.js"
     ]
   }
 }

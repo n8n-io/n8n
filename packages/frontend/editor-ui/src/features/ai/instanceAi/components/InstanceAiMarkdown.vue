@@ -8,7 +8,7 @@ import {
 } from '@/features/agents/utils/agentTestUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useThread } from '../instanceAi.store';
-import { skillsHubHref } from '../canvasPreview.utils';
+import { appHref, skillsHubHref } from '../canvasPreview.utils';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
 const props = defineProps<{
@@ -54,6 +54,7 @@ const openSkillPreview = inject<((id: string) => boolean) | undefined>(
 	'openSkillPreview',
 	undefined,
 );
+const openAppPreview = inject<((id: string) => boolean) | undefined>('openAppPreview', undefined);
 const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
 
 function isCurrentSubject(type: string, id: string): boolean {
@@ -70,6 +71,7 @@ const ICON_SVGS: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
 	agent:
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>',
+	app: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="16" y="14" rx="1"/></svg>',
 	skill:
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>',
 };
@@ -238,6 +240,7 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
+	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
 ];
 const AGENT_ROUTE_PATTERN = /^\/projects\/[^/]+\/agents\/([^/]+)\/?$/;
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
@@ -289,6 +292,7 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
 		if (type === 'agent') return `/projects/${projectId}/agents/${id}`;
+		if (type === 'app') return appHref(projectId, id);
 	}
 	return URL_BUILDERS[type]?.(id) ?? '#';
 }
@@ -338,7 +342,7 @@ function enhanceResourceLinks(): void {
 
 		// 1. Handle n8n-resource:// custom scheme links
 		const resourceMatch =
-			/^n8n-resource:\/\/(workflow|credential|data-table|agent|skill)\/(.+)$/.exec(href);
+			/^n8n-resource:\/\/(workflow|credential|data-table|agent|skill|app)\/(.+)$/.exec(href);
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
 			const id = decodeResourceId(encodedId);
@@ -455,6 +459,8 @@ function handleLinkClick(event: MouseEvent): void {
 		}
 	} else if (type === 'skill') {
 		switched = openSkillPreview?.(id);
+	} else if (type === 'app') {
+		switched = openAppPreview?.(id);
 	}
 
 	// Suppress default navigation only when the preview actually switched.

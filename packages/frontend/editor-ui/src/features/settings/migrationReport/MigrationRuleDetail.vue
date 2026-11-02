@@ -797,6 +797,29 @@ const sortedWorkflows = computed(() => {
 	const { id, desc } = sortBy.value[0];
 	return orderBy(filteredWorkflows.value, [sortValues[id] ?? id], [desc ? 'desc' : 'asc']);
 });
+
+const page = ref(0);
+const itemsPerPage = ref(25);
+
+const pagedWorkflows = computed(() =>
+	sortedWorkflows.value.slice(
+		page.value * itemsPerPage.value,
+		(page.value + 1) * itemsPerPage.value,
+	),
+);
+
+watch([searchQuery, workflowFilters, sortBy], () => {
+	page.value = 0;
+});
+
+// Resolving rows can empty the last page, so the page moves back to the last one with rows.
+watch(
+	() => sortedWorkflows.value.length,
+	(length) => {
+		const lastPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
+		if (page.value > lastPage) page.value = lastPage;
+	},
+);
 </script>
 
 <template>
@@ -922,10 +945,11 @@ const sortedWorkflows = computed(() => {
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			v-model:selection="selectedWorkflowIds"
+			v-model:page="page"
+			v-model:items-per-page="itemsPerPage"
 			show-select
 			:item-selectable="isSelectable"
-			:items-per-page="sortedWorkflows.length + 1"
-			:items="sortedWorkflows"
+			:items="pagedWorkflows"
 			:items-length="sortedWorkflows.length"
 			:headers="tableHeaders"
 			:loading="isLoading"

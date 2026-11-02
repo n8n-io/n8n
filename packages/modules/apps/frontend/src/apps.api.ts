@@ -4,6 +4,7 @@ import type {
 	AppPreviewResponse,
 	AppResponse,
 	AppVersionResponse,
+	UpdateAppDto,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -31,6 +32,20 @@ export async function getApp(
 	appId: string,
 ): Promise<AppResponse> {
 	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/apps/${appId}`);
+}
+
+export async function updateApp(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	changes: UpdateAppDto,
+): Promise<AppResponse> {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${projectId}/apps/${appId}`,
+		changes,
+	);
 }
 
 export async function deleteApp(
@@ -72,5 +87,28 @@ export async function createAppPreview(
 		context,
 		'POST',
 		`/projects/${projectId}/apps/${appId}/versions/${versionId}/preview`,
+	);
+}
+
+export async function publishApp(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+): Promise<AppResponse> {
+	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/apps/${appId}/publish`, {
+		versionId,
+	});
+}
+
+export async function unpublishApp(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+): Promise<AppResponse> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/unpublish`,
 	);
 }
