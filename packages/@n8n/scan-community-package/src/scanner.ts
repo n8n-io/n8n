@@ -44,18 +44,23 @@ export type Finding = {
 	readonly origin?: 'source' | 'package';
 };
 
+export type Check = 'provenance' | 'source' | 'eslint';
+
 export type AnalysisResult =
 	| {
 			readonly passed: true;
 			readonly message?: string;
 			readonly details?: never;
 			readonly findings?: never;
+			readonly check?: never;
 	  }
 	| {
 			readonly passed: false;
 			readonly message: string;
 			readonly details?: string;
 			readonly findings?: readonly Finding[];
+			/** The check that did not pass. Not set when the scan failed before the first check. */
+			readonly check?: Check;
 			readonly error?: unknown;
 	  };
 
@@ -63,6 +68,7 @@ export type ScanReport = {
 	readonly package: string;
 	readonly version: string | null;
 	readonly status: 'passed' | 'failed' | 'error';
+	readonly check: Check | null;
 	readonly message: string | null;
 	readonly findings: readonly Finding[];
 };
@@ -99,6 +105,7 @@ export const buildReport = (
 	package: packageName,
 	version: result.version,
 	status: STATUSES[getExitCode(result)],
+	check: result.check ?? null,
 	message: result.message ?? null,
 	findings: result.findings ?? [],
 });
@@ -458,6 +465,7 @@ export const analyzePackage = async (
 			const formattedResults = await formatter.format(results);
 			return {
 				passed: false,
+				check: 'eslint',
 				message: 'ESLint violations found',
 				details: formattedResults,
 				findings: violations.flatMap((result) =>
@@ -479,6 +487,7 @@ export const analyzePackage = async (
 		console.error(error);
 		return {
 			passed: false,
+			check: 'eslint',
 			message: `Analysis failed: ${errorMessage(error)}`,
 			error,
 		};
@@ -510,6 +519,7 @@ export const analyzePackageByName = async (
 				packageName,
 				version: exactVersion,
 				...provenanceResult,
+				check: 'provenance',
 			};
 		}
 
@@ -549,6 +559,7 @@ export const analyzePackageByName = async (
 					packageName,
 					version: exactVersion,
 					passed: false,
+					check: 'source',
 					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
 					error: sourceError,
 				};
@@ -558,6 +569,7 @@ export const analyzePackageByName = async (
 				packageName,
 				version: exactVersion,
 				passed: false,
+				check: 'source',
 				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
 			};
 		}
@@ -600,6 +612,7 @@ export const analyzePackageByName = async (
 							.filter(Boolean)
 							.join('\n') || undefined,
 					findings,
+					check: firstFailure.check,
 					error: firstFailure.error,
 				}
 			: { passed: true };

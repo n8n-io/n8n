@@ -31,6 +31,7 @@ The file has this shape:
   "package": "n8n-nodes-PACKAGE",
   "version": "1.2.3",
   "status": "failed",
+  "check": "eslint",
   "message": "ESLint violations found",
   "findings": [
     {
@@ -46,6 +47,7 @@ The file has this shape:
 ```
 
 - `status` is `passed`, `failed` or `error`. It matches the [exit code](#exit-codes).
+- `check` names the check that did not pass: `provenance`, `source` or `eslint`. It is `null` when the package passed, or when the scan stopped before the first check (for example, the package does not exist on npm).
 - `message` gives the reason when the package did not pass.
 - `findings` lists the ESLint errors. `origin` tells if the file is in the attested source repository (`source`) or in the npm tarball (`package`). `file` is relative to that location.
 
