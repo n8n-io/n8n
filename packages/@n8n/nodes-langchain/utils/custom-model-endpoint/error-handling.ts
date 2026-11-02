@@ -120,26 +120,53 @@ function messageFromBody(text: string): string | undefined {
 }
 
 /**
+ * The tail worth keeping: the longest end of the buffer that could still turn
+ * out to be the start of a secret once the next chunk arrives. Usually nothing,
+ * so a token-by-token stream passes straight through.
+ */
+function unresolvedTail(text: string, forms: string[]): number {
+	let keep = 0;
+
+	for (const form of forms) {
+		const earliest = Math.max(0, text.length - (form.length - 1));
+		for (let at = earliest; at < text.length - keep; at++) {
+			if (text.charCodeAt(at) === form.charCodeAt(0) && form.startsWith(text.slice(at))) {
+				keep = text.length - at;
+				break;
+			}
+		}
+	}
+
+	return keep;
+}
+
+/** Splitting a surrogate pair would send each half out as a replacement character. */
+function offSurrogatePair(text: string, at: number): number {
+	const code = text.charCodeAt(at - 1);
+	return at > 0 && code >= 0xd800 && code <= 0xdbff ? at - 1 : at;
+}
+
+/**
  * Redacts a body as it passes, because a gateway can answer 200 and put the
- * failure in the stream. A secret can straddle two chunks, so the tail of each
- * chunk is held back until the next one can be matched against it.
+ * failure in the stream. A secret can straddle two chunks, so a tail that could
+ * be the start of one is held back until the next chunk settles it.
  */
 function redactingStream(secrets: string[]): TransformStream<Uint8Array, Uint8Array> {
 	const decoder = new TextDecoder();
 	const encoder = new TextEncoder();
 	const forms = bothForms(secrets);
-	const straddle = Math.max(0, ...forms.map((form) => form.length)) - 1;
 	let held = '';
 
 	return new TransformStream({
 		transform(chunk, controller) {
 			const text = replaceAll(held + decoder.decode(chunk, { stream: true }), forms);
-			const emit = Math.max(0, text.length - straddle);
+			const emit = offSurrogatePair(text, text.length - unresolvedTail(text, forms));
 			held = text.slice(emit);
 			if (emit > 0) controller.enqueue(encoder.encode(text.slice(0, emit)));
 		},
 		flush(controller) {
-			if (held) controller.enqueue(encoder.encode(replaceAll(held, forms)));
+			const rest = held + decoder.decode();
+			if (rest) controller.enqueue(encoder.encode(replaceAll(rest, forms)));
 		},
 	});
 }

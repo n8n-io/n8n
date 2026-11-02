@@ -128,6 +128,58 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		expect(JSON.parse(text)).toEqual({ error: { message: 'Rejected [redacted]' } });
 	});
 
+	describe('a 200 that streams', () => {
+		const encoder = new TextEncoder();
+
+		const streaming = (chunks: string[]) =>
+			(async () =>
+				new Response(
+					new ReadableStream<Uint8Array>({
+						start(controller) {
+							chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)));
+							controller.close();
+						},
+					}),
+					{ status: 200, headers: { 'content-type': 'text/event-stream' } },
+				)) as typeof fetch;
+
+		const drain = async (chunks: string[], secrets: string[]) => {
+			const response = await wrapCustomModelEndpointErrorFetch(streaming(chunks), { secrets })(
+				BASE_URL,
+			);
+			const reader = response.body!.getReader();
+			const decoder = new TextDecoder();
+			const seen: string[] = [];
+			for (;;) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				seen.push(decoder.decode(value, { stream: true }));
+			}
+			return seen;
+		};
+
+		it('keeps passing text through while a long token sits in the secret set', async () => {
+			const jwt = `ey${'J'.repeat(1200)}`;
+			const seen = await drain(['data: one\n\n', 'data: two\n\n'], [jwt]);
+
+			expect(seen.length).toBeGreaterThan(1);
+			expect(seen.join('')).toBe('data: one\n\ndata: two\n\n');
+		});
+
+		it('does not cut an emoji in half at a chunk boundary', async () => {
+			const seen = await drain(['data: 🌙', ' done\n\n'], [KEY]);
+
+			expect(seen.join('')).toBe('data: 🌙 done\n\n');
+			expect(seen.join('')).not.toContain('\uFFFD');
+		});
+
+		it('still redacts a secret split across two chunks', async () => {
+			const seen = await drain(['data: Rejected sk-live-', '9f2a71c4ab\n\n'], [KEY]);
+
+			expect(seen.join('')).toBe('data: Rejected [redacted]\n\n');
+		});
+	});
+
 	it('redacts a secret nested anywhere in a pass-through body', async () => {
 		const body = JSON.stringify({ error: { message: 'Denied', meta: { sent: [KEY] } } });
 		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
