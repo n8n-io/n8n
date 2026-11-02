@@ -268,10 +268,7 @@ function getPinnedCellBindings(column: Column<T, unknown>) {
 
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
-const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(
-	scrollContainer,
-	tableElement,
-);
+const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
 
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
