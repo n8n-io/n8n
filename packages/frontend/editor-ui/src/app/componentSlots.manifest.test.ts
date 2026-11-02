@@ -22,7 +22,6 @@ describe('registerComponentSlots', () => {
 		'project-header',
 		'insights-summary',
 		'resources-list-layout',
-		'instance-ai-app-chat',
 	] as const)('registers the %s slot lazily', (slot) => {
 		registerComponentSlots();
 

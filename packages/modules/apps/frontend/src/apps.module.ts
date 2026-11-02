@@ -19,9 +19,7 @@ function guardProjectRoute(permission: 'canList' | 'canRead'): NavigationGuard {
 
 const guardAppDetailRoute: NavigationGuard = (to) => {
 	if (typeof to.params.projectId === 'string') {
-		const permissions = getAppPermissions(to.params.projectId);
-		// A pending App uses this route before there is an App to read.
-		if (permissions.canRead || permissions.canCreate) return true;
+		if (getAppPermissions(to.params.projectId).canRead) return true;
 	}
 	return {
 		name: VIEWS.PROJECTS_WORKFLOWS,

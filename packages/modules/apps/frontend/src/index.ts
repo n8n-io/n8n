@@ -2,7 +2,6 @@ export { AppsModule } from './apps.module';
 export {
 	APP_DETAIL_VIEW,
 	APPS_LIST_VIEW,
-	PENDING_APP_ID_STATE,
 	PROJECT_APPS,
 } from './apps.constants';
 export { useCreateApp } from './composables/useCreateApp';

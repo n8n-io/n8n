@@ -20,11 +20,9 @@ import {
 	type AppConfigureTab,
 } from './configure/appConfigureTabs';
 
-const props = withDefaults(defineProps<{ projectId: string; appId: string; pending?: boolean }>(), {
-	pending: false,
-});
+const props = defineProps<{ projectId: string; appId: string }>();
 
-const emit = defineEmits<{ created: []; deleted: [appId: string] }>();
+const emit = defineEmits<{ deleted: [appId: string] }>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -65,7 +63,6 @@ async function loadApp(keepView = false) {
 		const result = await getApp(rootStore.restApiContext, props.projectId, props.appId);
 		if (!isLatest()) return;
 		app.value = result;
-		if (props.pending) emit('created');
 	} catch (error) {
 		if (!isLatest()) return;
 		if (error instanceof ResponseError && error.httpStatusCode === 404) {
@@ -94,7 +91,7 @@ defineExpose({ refresh });
 <template>
 	<div :class="$style.view" data-test-id="app-view">
 		<AppHeader
-			v-if="loading || app || pending"
+			v-if="loading || app"
 			v-model:tab="activeTab"
 			:project-id="projectId"
 			:app="app"
@@ -104,16 +101,8 @@ defineExpose({ refresh });
 		/>
 
 		<div :class="$style.workspace">
-			<slot name="aside" />
 			<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
 				<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
-				<N8nEmptyState
-					v-else-if="pending && !app"
-					:heading="i18n.baseText('apps.pending.heading')"
-					:description="i18n.baseText('apps.pending.description')"
-					data-test-id="app-view-pending"
-				/>
-
 				<N8nEmptyState
 					v-else-if="!app"
 					:heading="i18n.baseText('apps.detail.notFound.heading')"

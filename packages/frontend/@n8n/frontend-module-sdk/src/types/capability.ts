@@ -62,3 +62,10 @@ export interface SelfHealingChatHandoff {
 	/** Opens a chat in the project and sends the report through the normal Assistant handoff. */
 	start(projectId: string, input: SelfHealingChatInput): Promise<SelfHealingChatStartOutcome>;
 }
+
+export interface AppAssistantHandoff {
+	/** Opens the newest Assistant thread linked to an App, or creates one. */
+	openApp(input: { appId: string; projectId: string; appName?: string }): Promise<boolean>;
+	/** Opens the Assistant empty state for a new App. */
+	createApp(input: { appId: string; projectId: string }): Promise<void>;
+}

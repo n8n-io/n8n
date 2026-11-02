@@ -770,6 +770,43 @@ describe('InstanceAiEmptyView', () => {
 		);
 	});
 
+	it('uses the App empty state and creates a pending App thread on submit', async () => {
+		const appId = '019a4012-272c-7313-91af-5c94a3d819a9';
+		routeQuery.pendingAppId = appId;
+		routeQuery.projectId = 'project-1';
+		routeQuery.source = 'app_builder_page';
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
+		};
+		store.syncThread.mockResolvedValue(undefined);
+		store.updateThreadMetadata.mockResolvedValue(undefined);
+
+		const { getByTestId, getByText, queryByTestId } = renderView();
+
+		expect(getByText('REPLACE ME')).toBeVisible();
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('3');
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'apps.assistant.empty.placeholder',
+		);
+		expect(queryByTestId('instance-ai-project-select')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', 'project-1', {
+			source: 'app_builder_page',
+			origin: 'internal',
+		});
+		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-placeholder', {
+			instanceAiPendingAppTarget: { appId, projectId: 'project-1' },
+		});
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', expect.anything());
+		expect(replaceMock).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-placeholder' },
+		});
+	});
+
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
 		experimentMocks.promptSuggestionsV2Enabled.value = true;
 

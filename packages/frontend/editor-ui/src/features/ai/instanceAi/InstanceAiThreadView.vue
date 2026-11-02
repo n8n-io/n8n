@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nIconButton,
 	N8nResizeWrapper,
@@ -21,6 +21,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
+	getAppTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getThreadDisplayTitle,
@@ -29,6 +30,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
+import { INSTANCE_AI_APP_ID_QUERY } from './constants';
 import type { AgentTestHandoffParams } from './composables/useInstanceAiAgentTestHandoff';
 import {
 	MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
@@ -78,6 +80,7 @@ const thread = provideThread(props.threadId);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
@@ -246,6 +249,17 @@ const preview = useCanvasPreview({
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	initialAppId: () => {
+		const requestedAppId = route.query[INSTANCE_AI_APP_ID_QUERY];
+		const targets = getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId));
+		if (
+			typeof requestedAppId === 'string' &&
+			targets.some((target) => target.appId === requestedAppId)
+		) {
+			return requestedAppId;
+		}
+		return targets[0]?.appId;
+	},
 	tabsStorage: {
 		load: async () => (await fetchThreadTabs(rootStore.restApiContext, props.threadId)).state,
 		save: async (state) => {

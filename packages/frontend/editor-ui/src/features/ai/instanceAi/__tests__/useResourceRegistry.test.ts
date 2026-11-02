@@ -55,6 +55,7 @@ function setup(
 		| undefined,
 	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
+	appTargets?: () => Array<{ appId: string; projectId: string; name?: string }>,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
 	const {
@@ -72,6 +73,7 @@ function setup(
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
 		agentBuilderTargets,
+		appTargets,
 	);
 	return {
 		messages,
@@ -88,6 +90,30 @@ function setup(
 // ---------------------------------------------------------------------------
 
 describe('useResourceRegistry', () => {
+	test('registers an App linked in thread metadata as a preview artifact', async () => {
+		const appTargets = ref([
+			{ appId: '019a4012-272c-7313-91af-5c94a3d819a9', projectId: 'project-1', name: 'Portal' },
+		]);
+		const { producedArtifacts, linkableResourceNameIndex } = setup(
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			() => appTargets.value,
+		);
+		await nextTick();
+
+		expect(producedArtifacts.get(appTargets.value[0].appId)).toEqual({
+			type: 'app',
+			id: appTargets.value[0].appId,
+			name: 'Portal',
+			projectId: 'project-1',
+		});
+		expect(linkableResourceNameIndex.has('portal')).toBe(false);
+	});
+
 	describe('producedArtifacts — workflow registration', () => {
 		test('registers workflow with workflowName from result', async () => {
 			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();

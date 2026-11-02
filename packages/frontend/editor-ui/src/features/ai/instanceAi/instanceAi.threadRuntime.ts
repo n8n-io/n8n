@@ -258,7 +258,13 @@ export function getAppTargetsFromThreadMetadata(metadata: Record<string, unknown
 		) {
 			return [];
 		}
-		return [{ appId: target.appId, projectId: target.projectId }];
+		return [
+			{
+				appId: target.appId,
+				projectId: target.projectId,
+				...(typeof target.name === 'string' ? { name: target.name } : {}),
+			},
+		];
 	});
 }
 
@@ -659,6 +665,7 @@ export function createThreadRuntime(
 		() => pendingWorkflowAttachment.value ?? undefined,
 		() => [...transientWorkflowReferences.values()],
 		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		() => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =

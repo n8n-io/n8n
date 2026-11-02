@@ -55,11 +55,4 @@ export const registerComponentSlots = () => {
 			async () => await import('@/app/components/layouts/ResourcesListLayout.vue'),
 		),
 	);
-
-	componentRegistry.register(
-		'instance-ai-app-chat',
-		defineAsyncComponent(
-			async () => await import('@/features/ai/instanceAi/embed/InstanceAiAppChatSlot.vue'),
-		),
-	);
 };

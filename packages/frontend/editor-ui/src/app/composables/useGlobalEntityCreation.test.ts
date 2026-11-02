@@ -11,6 +11,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
@@ -27,11 +28,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
-import { APP_DETAIL_VIEW, PENDING_APP_ID_STATE } from '@n8n/frontend-module-apps';
-
 import { useGlobalEntityCreation } from './useGlobalEntityCreation';
 
 const promptMock = vi.hoisted(() => vi.fn());
+const createAppMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(false),
@@ -57,13 +57,9 @@ function expectAgentCreated(projectId: string) {
 }
 
 function expectAppCreated(projectId: string) {
-	const appId = routerPushMock.mock.calls.at(-1)?.[0]?.params?.appId;
+	const appId = createAppMock.mock.calls.at(-1)?.[0]?.appId;
 	expect(appId).toEqual(expect.any(String));
-	expect(routerPushMock).toHaveBeenCalledWith({
-		name: APP_DETAIL_VIEW,
-		params: { projectId, appId },
-		state: { [PENDING_APP_ID_STATE]: appId },
-	});
+	expect(createAppMock).toHaveBeenCalledWith({ projectId, appId });
 }
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
@@ -120,6 +116,11 @@ beforeEach(() => {
 	promptMock.mockReset();
 	trackMock.mockReset();
 	vi.mocked(hasPermission).mockReturnValue(false);
+	capabilityRegistry.clear();
+	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+		openApp: vi.fn(),
+		createApp: createAppMock,
+	}));
 });
 
 describe('useGlobalEntityCreation', () => {

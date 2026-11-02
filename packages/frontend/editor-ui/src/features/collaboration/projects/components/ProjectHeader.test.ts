@@ -21,9 +21,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
-import { APP_DETAIL_VIEW, PENDING_APP_ID_STATE } from '@n8n/frontend-module-apps';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 
 const mockPush = vi.fn();
+const createAppMock = vi.fn();
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	const params = {};
@@ -115,6 +116,11 @@ describe('ProjectHeader', () => {
 			overview: {},
 			project: {},
 		};
+		capabilityRegistry.clear();
+		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+			openApp: vi.fn(),
+			createApp: createAppMock,
+		}));
 	});
 
 	afterEach(() => {
@@ -694,13 +700,9 @@ describe('ProjectHeader', () => {
 
 			await userEvent.click(getByTestId('add-resource-app'));
 
-			const appId = mockPush.mock.calls.at(-1)?.[0]?.params?.appId;
+			const appId = createAppMock.mock.calls.at(-1)?.[0]?.appId;
 			expect(appId).toEqual(expect.any(String));
-			expect(mockPush).toHaveBeenCalledWith({
-				name: APP_DETAIL_VIEW,
-				params: { projectId: project.id, appId },
-				state: { [PENDING_APP_ID_STATE]: appId },
-			});
+			expect(createAppMock).toHaveBeenCalledWith({ projectId: project.id, appId });
 		});
 
 		it('should render workflow button as main by default', () => {

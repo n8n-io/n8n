@@ -509,7 +509,11 @@ export async function provisionSubjectThread(
 					},
 				};
 	} else if (subject.type === 'app') {
-		const target = { appId: subject.id, projectId: subject.projectId };
+		const target = {
+			appId: subject.id,
+			projectId: subject.projectId,
+			...(subject.name ? { name: subject.name } : {}),
+		};
 		targetMetadata = subject.pending
 			? { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target }
 			: { [INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [target] };

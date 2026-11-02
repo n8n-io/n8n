@@ -11,12 +11,11 @@ import AppsListView from './AppsListView.vue';
 vi.mock('../apps.api');
 
 const route = vi.hoisted(() => ({ params: {} as Record<string, string> }));
-const push = vi.hoisted(() => vi.fn());
+const createApp = vi.hoisted(() => vi.fn());
 const setCurrentPage = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => route,
-	useRouter: () => ({ push }),
 }));
 // Like the real layout: it emits the saved pagination preferences, then calls `initialize`.
 const ResourcesListLayoutStub = defineComponent({
@@ -93,6 +92,10 @@ describe('AppsListView', () => {
 			defaultProjectId: () => 'personal-project',
 			isReadOnly: () => false,
 		});
+		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+			openApp: vi.fn(),
+			createApp,
+		}));
 		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 2 });
 	});
 
@@ -161,13 +164,9 @@ describe('AppsListView', () => {
 
 		await userEvent.click(await findByRole('button', { name: 'Create app' }));
 
-		const appId = vi.mocked(push).mock.calls.at(-1)?.[0]?.params?.appId;
+		const appId = createApp.mock.calls.at(-1)?.[0]?.appId;
 		expect(appId).toEqual(expect.any(String));
-		expect(push).toHaveBeenCalledWith({
-			name: 'AppDetailView',
-			params: { projectId: 'project-1', appId },
-			state: { instanceAiPendingAppId: appId },
-		});
+		expect(createApp).toHaveBeenCalledWith({ projectId: 'project-1', appId });
 	});
 
 	it('does not show the empty state while a search is cleared', async () => {

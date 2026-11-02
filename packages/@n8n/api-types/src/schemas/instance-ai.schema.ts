@@ -1525,6 +1525,7 @@ export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingApp
 export const instanceAiAppTargetSchema = z.object({
 	appId: z.string().uuid(),
 	projectId: z.string().min(1),
+	name: z.string().max(255).optional(),
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
