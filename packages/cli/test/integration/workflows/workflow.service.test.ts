@@ -1819,6 +1819,24 @@ describe('version-scoped settings on save', () => {
 			expect(activateSpy).not.toHaveBeenCalled();
 		});
 
+		test('does not republish the published version on an engine change when the stored settings are null', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			await workflowRepository.update(workflow.id, { settings: () => 'NULL' });
+			const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			expect(activateSpy).not.toHaveBeenCalled();
+		});
+
 		test('republishes the published version on a live settings change, as before', async () => {
 			const owner = await createOwner();
 			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);

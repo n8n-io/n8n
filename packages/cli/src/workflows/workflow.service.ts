@@ -831,9 +831,10 @@ export class WorkflowService {
 		}
 
 		// Check if settings actually changed. A version-scoped change saved a new version above,
-		// so it must not republish the active version.
+		// so it must not republish the active version. Null stored settings skip the merge above,
+		// so compare them as empty settings.
 		const liveSettings = (settings: IWorkflowSettings | null) =>
-			versionedSettingsEnabled ? omitVersionedSettings(settings) : settings;
+			versionedSettingsEnabled ? (omitVersionedSettings(settings) ?? {}) : settings;
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
 			!isEqual(liveSettings(workflow.settings ?? null), liveSettings(workflowUpdateData.settings));
