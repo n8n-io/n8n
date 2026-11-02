@@ -79,7 +79,11 @@ const builderPreWriteStatus = agentStatus.describe("Agent status before the buil
 const pushRef = z.string().describe('Editor push reference (pushRef)');
 
 const agentConfigFingerprint = z.object({
-	instructions: z.string(),
+	instructions: z
+		.string()
+		.optional()
+		.meta({ deprecated: true })
+		.describe('Deprecated: carried the raw agent instructions. No longer emitted.'),
 	tools: z.array(z.string()),
 	skills: z.array(z.string()),
 	tasks: z.array(z.string()),
