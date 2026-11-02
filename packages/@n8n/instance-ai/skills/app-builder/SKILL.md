@@ -132,7 +132,8 @@ import { n8n, N8nAppError } from '@n8n/app-sdk';
 const run = await n8n.workflows.submit.run({ email });
 if (run.status !== 'success') throw new Error(run.error ?? run.status);
 
-// Data table: each call needs the matching permission.
+// Data table: each call needs the matching permission. Without `read`,
+// `update` and `delete` return only the `id` of each row.
 const { data, count } = await n8n.tables.tasks.list({ sortBy: 'createdAt:desc', take: 50 });
 await n8n.tables.tasks.insert([{ title: 'New task' }]);
 await n8n.tables.tasks.update({ filters: [{ columnName: 'id', value: 1 }] }, { done: true });

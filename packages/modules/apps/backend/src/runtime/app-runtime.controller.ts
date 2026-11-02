@@ -11,6 +11,7 @@ import {
 	type AppAgentPermission,
 	type AppBinding,
 	type AppBindingKind,
+	type AppDataTableBinding,
 	type AppDataTablePermission,
 	type AppRuntimeMeResponse,
 } from '@n8n/api-types';
@@ -45,6 +46,7 @@ import {
 	AppWorkflowPort,
 	type AppAgentTurn,
 	type AppCallContext,
+	type AppRow,
 } from '../bindings/app-binding-ports';
 import { toRuntimeBinding } from '../bindings/app-bindings.service';
 import { AppRuntimeError } from '../bindings/app-runtime.error';
@@ -55,6 +57,10 @@ import { AppVersionRepository } from '../versions/app-version.repository';
 export const APP_RUNTIME_MAX_BODY_BYTES = 1024 * 1024;
 const SSE_HEARTBEAT_INTERVAL_MS = 30_000;
 const VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
+
+function readableRows(binding: AppDataTableBinding, rows: AppRow[]): AppRow[] {
+	return binding.permissions.includes('read') ? rows : rows.map(({ id }) => ({ id }));
+}
 
 const parseCookies = cookieParser();
 const parseJson = express.json({ limit: APP_RUNTIME_MAX_BODY_BYTES });
@@ -196,7 +202,8 @@ export class AppRuntimeController {
 				req.body,
 				'The update is invalid.',
 			);
-			return { data: await this.dataTables.updateRows(ctx, binding.dataTableId, filter, data) };
+			const rows = await this.dataTables.updateRows(ctx, binding.dataTableId, filter, data);
+			return { data: readableRows(binding, rows) };
 		});
 	}
 
@@ -205,7 +212,8 @@ export class AppRuntimeController {
 		await this.answer(res, async () => {
 			const { ctx, binding } = this.resolve(req, 'dataTable', 'delete');
 			const { filter } = parse(appRuntimeDeleteRowsSchema, req.body, 'The filter is invalid.');
-			return { data: await this.dataTables.deleteRows(ctx, binding.dataTableId, filter) };
+			const rows = await this.dataTables.deleteRows(ctx, binding.dataTableId, filter);
+			return { data: readableRows(binding, rows) };
 		});
 	}
 

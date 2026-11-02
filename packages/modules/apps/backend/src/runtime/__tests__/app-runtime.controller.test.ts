@@ -29,6 +29,7 @@ const bindings: AppBinding[] = [
 		dataTableId: 'table-2',
 		permissions: ['read', 'insert', 'update', 'delete'],
 	},
+	{ key: 'inbox', kind: 'dataTable', dataTableId: 'table-3', permissions: ['update', 'delete'] },
 	{ key: 'submit', kind: 'workflow', workflowId: 'workflow-1' },
 	{ key: 'support', kind: 'agent', agentId: 'agent-1', permissions: ['chat'] },
 ];
@@ -366,6 +367,7 @@ describe('AppRuntimeController', () => {
 		expect(res.json).toHaveBeenCalledWith([
 			{ key: 'tasks', kind: 'dataTable', permissions: ['read'] },
 			{ key: 'notes', kind: 'dataTable', permissions: ['read', 'insert', 'update', 'delete'] },
+			{ key: 'inbox', kind: 'dataTable', permissions: ['update', 'delete'] },
 			{ key: 'submit', kind: 'workflow' },
 			{ key: 'support', kind: 'agent', permissions: ['chat'] },
 		]);
@@ -498,6 +500,22 @@ describe('AppRuntimeController', () => {
 			expect(dataTables.updateRows).not.toHaveBeenCalled();
 			expect(dataTables.deleteRows).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			['updated', 'updateRows', { filter, data: { done: true } }],
+			['deleted', 'deleteRows', { filter }],
+		] as const)(
+			'returns only the IDs of %s rows without the read permission',
+			async (_, route, body) => {
+				const { controller, dataTables } = setup();
+				dataTables[route].mockResolvedValue([{ id: 1, title: 'Private', done: true }]);
+				const res = response();
+
+				await controller[route](request({ method: 'POST', params: { key: 'inbox' }, body }), res);
+
+				expect(res.json).toHaveBeenCalledWith({ data: [{ id: 1 }] });
+			},
+		);
 
 		it('requires the update permission to update rows', async () => {
 			const { controller, dataTables } = setup();

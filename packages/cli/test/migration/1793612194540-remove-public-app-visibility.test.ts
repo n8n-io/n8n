@@ -9,11 +9,11 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'MovePublicAppsToProjectVisibility1793612194540';
+const migrationName = 'RemovePublicAppVisibility1793612194540';
 
-type Row = Record<string, string | null>;
+type Row = Record<string, string | number | null>;
 
-describe('MovePublicAppsToProjectVisibility migration', () => {
+describe('RemovePublicAppVisibility migration', () => {
 	let dataSource: DataSource;
 	let context: TestMigrationContext;
 	let projectId: string;
@@ -86,5 +86,31 @@ describe('MovePublicAppsToProjectVisibility migration', () => {
 		expect(await visibilityOf(publicApp)).toBe('project');
 		expect(await visibilityOf(projectApp)).toBe('project');
 		expect(await visibilityOf(instanceApp)).toBe('instance');
+	});
+
+	it('keeps the versions of the apps', async () => {
+		const appId = await insertApp('sales', 'public');
+		await insertRow('app_artifact', {
+			id: 1,
+			appId,
+			storedAt: 'db',
+			storageKey: 'source',
+			sizeBytes: 1,
+		});
+		const versionId = randomUUID();
+		await insertRow('app_version', { id: versionId, appId, sourceArtifactId: 1 });
+
+		await migrate();
+
+		const versions = await context.runQuery<Array<{ id: string }>>(
+			`SELECT ${column('id')} AS id FROM ${context.escape.tableName('app_version')}`,
+		);
+		expect(versions).toEqual([{ id: versionId }]);
+	});
+
+	it('rejects the public visibility', async () => {
+		await migrate();
+
+		await expect(insertApp('sales', 'public')).rejects.toThrow();
 	});
 });
