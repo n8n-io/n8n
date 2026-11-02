@@ -424,19 +424,23 @@ describe('analyzePackage', () => {
 
 		expect(result.passed).toBe(false);
 		expect(result.message).toMatch(/^Analysis failed: /);
-		expect(getExitCode(result)).toBe(EXIT_CODES.ERROR);
+		expect(getExitCode(result)).toBe(EXIT_CODES.SCAN_INCOMPLETE);
 	});
 });
 
 describe('getExitCode', () => {
 	it.each([
-		['passed', { passed: true } as const, 0],
+		['passed', { passed: true } as const, EXIT_CODES.PASSED],
 		[
 			'could not complete',
 			{ passed: false, message: 'Analysis failed', error: new Error('npm pack failed') } as const,
-			1,
+			EXIT_CODES.SCAN_INCOMPLETE,
 		],
-		['failed a check', { passed: false, message: 'ESLint violations found' } as const, 2],
+		[
+			'failed a check',
+			{ passed: false, message: 'ESLint violations found' } as const,
+			EXIT_CODES.CHECK_FAILED,
+		],
 	])('returns the code for a scan that %s', (_, result, code) => {
 		expect(getExitCode(result)).toBe(code);
 	});

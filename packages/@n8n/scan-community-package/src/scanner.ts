@@ -52,13 +52,20 @@ const field = (value: unknown, key: string): unknown => (isRecord(value) ? value
  * that could not finish, so callers never report a scanner-side error (network,
  * registry, ESLint crash) as a verdict on the package.
  */
-export const EXIT_CODES = { PASSED: 0, ERROR: 1, FAILED: 2 } as const;
+export const EXIT_CODES = {
+	/** The package passed all checks. */
+	PASSED: 0,
+	/** The scan could not finish. Matches Node.js, which exits with 1 on an uncaught exception. */
+	SCAN_INCOMPLETE: 1,
+	/** The scan finished and the package failed a check. */
+	CHECK_FAILED: 2,
+} as const;
 
 export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES];
 
 export const getExitCode = (result: AnalysisResult): ExitCode => {
 	if (result.passed) return EXIT_CODES.PASSED;
-	return result.error === undefined ? EXIT_CODES.FAILED : EXIT_CODES.ERROR;
+	return result.error === undefined ? EXIT_CODES.CHECK_FAILED : EXIT_CODES.SCAN_INCOMPLETE;
 };
 
 /**
