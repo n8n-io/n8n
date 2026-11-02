@@ -5,6 +5,8 @@ import type { EventService } from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
+	In,
+	Not,
 	type CreateExecutionPayload,
 	type EntityManager,
 	type ExecutionRepository,
@@ -659,6 +661,131 @@ describe('ExecutionPersistence', () => {
 				expect(executionRepository.update).toHaveBeenCalledWith(
 					{ id: executionId },
 					{ status: 'running' },
+				);
+			});
+		});
+
+		describe('saveExecutionOutcome', () => {
+			const unfinished = In(['new', 'running', 'unknown', 'waiting']);
+			const affected = (count: number) => ({ affected: count, generatedMaps: [], raw: {} });
+
+			it('should report ended when the write on an unfinished run matches', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValueOnce(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(result).toEqual({ updated: true, ended: true });
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: unfinished },
+					{ status: 'success' },
+				);
+			});
+
+			it('should fall back to the plain write when the run already finished', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update
+					.mockResolvedValueOnce(affected(0))
+					.mockResolvedValueOnce(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(result).toEqual({ updated: true, ended: false });
+				expect(executionRepository.update).toHaveBeenLastCalledWith(
+					{ id: executionId, status: Not('canceled') },
+					{ status: 'success' },
+				);
+			});
+
+			it('should report neither when no write matches', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(0));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'success' },
+					{ requireNotCanceled: true },
+				);
+
+				expect(result).toEqual({ updated: false, ended: false });
+			});
+
+			it('should write once when the required status is unfinished', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(0));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'canceled' },
+					{ requireStatus: 'running' },
+				);
+
+				expect(result).toEqual({ updated: false, ended: false });
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: 'running' },
+					{ status: 'canceled' },
+				);
+			});
+
+			it('should never report ended for a status that is not terminal', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(executionId, {
+					status: 'waiting',
+				});
+
+				expect(result).toEqual({ updated: true, ended: false });
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'waiting' },
+				);
+			});
+
+			it('should report ended from the write in the data transaction', async () => {
+				const executionPersistence = createPersistenceService('db');
+				mockEntity('db');
+				dbStore.overwrite.mockResolvedValue(123);
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const result = await executionPersistence.saveExecutionOutcome(executionId, {
+					data: runData,
+					workflowData,
+					status: 'error',
+				});
+
+				expect(result).toEqual({ updated: true, ended: true });
+				expect(mockTx.update).toHaveBeenCalledWith(
+					ExecutionEntity,
+					{ id: executionId, status: unfinished },
+					{ status: 'error' },
+				);
+			});
+
+			it('should keep updateExistingExecution on the plain write', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(1));
+
+				const result = await executionPersistence.updateExistingExecution(executionId, {
+					status: 'success',
+				});
+
+				expect(result).toBe(true);
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId },
+					{ status: 'success' },
 				);
 			});
 		});
@@ -2196,6 +2323,11 @@ describe('ExecutionPersistence', () => {
 	describe('deleteUnsaved', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
 		const outcome = { status: 'success' as const, finished: true, stoppedAt: new Date() };
+		const affected = (count: number) => ({ affected: count, raw: [], generatedMaps: [] });
+
+		beforeEach(() => {
+			executionRepository.update.mockReset();
+		});
 
 		it('should soft-delete with backdated `deletedAt` and the final state when pruning is enabled', async () => {
 			vi.useFakeTimers();
@@ -2204,10 +2336,11 @@ describe('ExecutionPersistence', () => {
 			executionsConfig.pruneData = true;
 			executionsConfig.pruneDataHardDeleteBuffer = 1;
 			const executionPersistence = createPersistenceService('db');
-			executionRepository.update.mockResolvedValueOnce({ affected: 1, raw: [], generatedMaps: [] });
+			executionRepository.update.mockResolvedValueOnce(affected(1));
 
-			await executionPersistence.deleteInFlightExecution(target, outcome);
+			const result = await executionPersistence.deleteInFlightExecution(target, outcome);
 
+			expect(result).toEqual({ ended: true });
 			expect(executionRepository.update).toHaveBeenCalledTimes(1);
 			expect(executionRepository.update).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'exec-1' }),
@@ -2218,14 +2351,73 @@ describe('ExecutionPersistence', () => {
 			vi.useRealTimers();
 		});
 
-		it('should hard-delete immediately when pruning is disabled', async () => {
+		it('should not report ended when another write already finished the run', async () => {
+			executionsConfig.pruneData = true;
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.update
+				.mockResolvedValueOnce(affected(0))
+				.mockResolvedValueOnce(affected(1));
+
+			const result = await executionPersistence.deleteInFlightExecution(target, outcome);
+
+			expect(result).toEqual({ ended: false });
+			expect(executionRepository.update).toHaveBeenCalledTimes(2);
+		});
+
+		it('should write the final state, then hard-delete, when pruning is disabled', async () => {
 			executionsConfig.pruneData = false;
 			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValueOnce(affected(1));
 
-			await executionPersistence.deleteInFlightExecution(target, outcome);
+			const result = await executionPersistence.deleteInFlightExecution(target, outcome);
 
+			expect(result).toEqual({ ended: true });
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: 'exec-1', status: In(['new', 'running', 'unknown', 'waiting']) },
+				outcome,
+			);
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			const [writeOrder] = executionRepository.update.mock.invocationCallOrder;
+			const [deleteOrder] = executionRepository.deleteByIds.mock.invocationCallOrder;
+			expect(writeOrder).toBeLessThan(deleteOrder);
+		});
+	});
+
+	describe('softDeleteWithOutcome', () => {
+		const outcome = { status: 'error' as const, finished: false, stoppedAt: new Date() };
+		const affected = (count: number) => ({ affected: count, raw: [], generatedMaps: [] });
+
+		beforeEach(() => {
+			executionRepository.update.mockReset();
+		});
+
+		it('should soft-delete and write the final state in one statement', async () => {
+			vi.useFakeTimers();
+			const now = new Date();
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValueOnce(affected(1));
+
+			const result = await executionPersistence.softDeleteWithOutcome('exec-1', outcome);
+
+			expect(result).toEqual({ ended: true });
+			expect(executionRepository.update).toHaveBeenCalledTimes(1);
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: 'exec-1', status: In(['new', 'running', 'unknown', 'waiting']) },
+				{ deletedAt: now, ...outcome },
+			);
+			expect(executionRepository.softDelete).not.toHaveBeenCalled();
+
+			vi.useRealTimers();
+		});
+
+		it('should only soft-delete a canceled run', async () => {
+			const executionPersistence = createPersistenceService('db');
+			executionRepository.update.mockResolvedValue(affected(0));
+
+			const result = await executionPersistence.softDeleteWithOutcome('exec-1', outcome);
+
+			expect(result).toEqual({ ended: false });
+			expect(executionRepository.softDelete).toHaveBeenCalledWith('exec-1');
 		});
 	});
 
