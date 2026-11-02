@@ -53,13 +53,21 @@ describe('versionedSettingsEqual', () => {
 
 describe('omitVersionedSettings', () => {
 	it('removes the version-scoped settings', () => {
-		expect(omitVersionedSettings({ engineType: 'v2', timezone: 'Europe/Berlin' })).toEqual({
-			timezone: 'Europe/Berlin',
+		expect(omitVersionedSettings({ engineType: 'v2', availableInMCP: true })).toEqual({
+			availableInMCP: true,
 		});
 	});
 
-	it.each([null, undefined])('returns %s unchanged', (settings) => {
-		expect(omitVersionedSettings(settings)).toBe(settings);
+	it('returns null unchanged', () => {
+		expect(omitVersionedSettings(null)).toBeNull();
+	});
+
+	it('does not change the settings it receives', () => {
+		const settings = { engineType: 'v2' as const, availableInMCP: true };
+
+		omitVersionedSettings(settings);
+
+		expect(settings).toEqual({ engineType: 'v2', availableInMCP: true });
 	});
 });
 
@@ -67,21 +75,21 @@ describe('applyVersionedSettings', () => {
 	it('takes the version-scoped settings from the version and keeps the others', () => {
 		expect(
 			applyVersionedSettings(
-				{ engineType: 'v2', timezone: 'Europe/Berlin' },
-				{ engineType: 'v1', timezone: 'UTC' },
+				{ engineType: 'v2', availableInMCP: true },
+				{ engineType: 'v1', availableInMCP: false },
 			),
-		).toEqual({ engineType: 'v1', timezone: 'Europe/Berlin' });
+		).toEqual({ engineType: 'v1', availableInMCP: true });
 	});
 
 	it('clears a version-scoped setting that the version does not set', () => {
-		const result = applyVersionedSettings({ engineType: 'v2', timezone: 'UTC' }, {});
+		const result = applyVersionedSettings({ engineType: 'v2' }, {});
 
 		expect(result).toHaveProperty('engineType', undefined);
 		expect({ engineType: 'v2', ...result }).toHaveProperty('engineType', undefined);
 	});
 
-	it('accepts missing settings', () => {
-		expect(applyVersionedSettings(undefined, { engineType: 'v2' })).toEqual({
+	it('accepts null settings', () => {
+		expect(applyVersionedSettings(null, { engineType: 'v2' })).toEqual({
 			engineType: 'v2',
 		});
 	});

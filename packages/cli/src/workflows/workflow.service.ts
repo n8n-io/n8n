@@ -696,7 +696,7 @@ export class WorkflowService {
 		if (versionedSettingsEnabled && restoredVersion) {
 			// A restore also brings back the version-scoped settings of the version, such as its engine.
 			workflowUpdateData.settings = applyVersionedSettings(
-				workflowUpdateData.settings,
+				workflowUpdateData.settings ?? null,
 				restoredVersion.settings,
 			);
 		}
@@ -832,11 +832,11 @@ export class WorkflowService {
 
 		// Check if settings actually changed. A version-scoped change saved a new version above,
 		// so it must not republish the active version.
-		const liveSettings = (settings: IWorkflowSettings | null | undefined) =>
+		const liveSettings = (settings: IWorkflowSettings | null) =>
 			versionedSettingsEnabled ? omitVersionedSettings(settings) : settings;
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
-			!isEqual(liveSettings(workflow.settings), liveSettings(workflowUpdateData.settings));
+			!isEqual(liveSettings(workflow.settings ?? null), liveSettings(workflowUpdateData.settings));
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
