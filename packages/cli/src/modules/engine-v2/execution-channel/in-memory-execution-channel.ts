@@ -5,8 +5,8 @@ import type {
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
 } from './execution-channel';
-import { InMemoryExecutionChannelSubscriber } from './in-memory-execution-response-receiver';
-import { InMemoryExecutionChannelPublisher } from './in-memory-execution-response-sender';
+import { InMemoryExecutionChannelSubscriber } from './execution-channel-receiver';
+import { InMemoryExecutionChannelPublisher } from './execution-channel-sender';
 
 /** Carries serialized frames between the endpoints of the channel in this process. */
 export class InMemoryExecutionChannel {

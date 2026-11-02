@@ -2,10 +2,10 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionResponse } from '@n8n/engine';
 import { ENCODED_BUFFER_KEY } from 'n8n-core';
 
-import { createExecutionResponseCodec } from '../response-channel/execution-response-frame';
-import { ExecutionChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import { ExecutionChannelSender } from '../response-channel/in-memory-execution-response-sender';
-import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
+import { createExecutionResponseCodec } from '../execution-channel/execution-response-frame';
+import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
+import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
+import { createInMemoryExecutionChannel } from '../execution-channel/in-memory-execution-channel';
 
 const ended = (executionId = 'exec-1', outputs: unknown = null): ExecutionResponse => ({
 	type: 'ended',
