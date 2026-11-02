@@ -5,6 +5,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { getWithWorkflowCollections } from '../utils/workflow-collections';
 
 export type PublishedWorkflowDataForExecution = Pick<
 	IWorkflowBase,
@@ -82,13 +83,18 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 	async getPublishedVersionWithRelations(
 		workflowId: string,
 	): Promise<WorkflowPublishedVersion | null> {
-		return await this.findOne({
-			where: { workflowId },
-			relations: {
-				workflow: { shared: { project: true } },
-				publishedVersion: true,
-			},
-		});
+		// `workflowId` is the primary key and both joins have one row, so no LIMIT is needed.
+		const qb = this.createQueryBuilder('record')
+			.innerJoinAndSelect('record.workflow', 'workflow')
+			.leftJoinAndSelect('record.publishedVersion', 'publishedVersion')
+			.where('record.workflowId = :workflowId', { workflowId });
+
+		const [record] = await getWithWorkflowCollections(
+			qb,
+			{ shared: { project: true } },
+			({ workflow }) => workflow,
+		);
+		return record ?? null;
 	}
 
 	async getPublishedVersionForExecution(

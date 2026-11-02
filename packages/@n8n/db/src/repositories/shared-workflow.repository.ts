@@ -22,6 +22,7 @@ import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
+import { getWithWorkflowCollections } from '../utils/workflow-collections';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -372,22 +373,26 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.managerFor(ctx),
 		} = options;
 
-		const sharedWorkflow = await em.findOne(SharedWorkflow, {
-			where: {
-				workflowId,
-				...where,
-			},
-			relations: {
-				workflow: {
-					shared: { project: true },
-					tags: includeTags,
-					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion,
-				},
-			},
-		});
+		// One statement reads the share the user reaches the workflow through, the workflow, its
+		// one-row relations, shares and tags, so the access check covers all of it.
+		const qb = em
+			.createQueryBuilder(SharedWorkflow, 'sharedWorkflow')
+			.innerJoinAndSelect('sharedWorkflow.workflow', 'workflow')
+			.setFindOptions({ where: { workflowId, ...where } })
+			// Every join has at most one row per share row, so a plain LIMIT picks one share
+			// without the extra DISTINCT query TypeORM runs for `findOne` with joins.
+			.limit(1);
+		if (includeParentFolder) qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+		if (includeActiveVersion) qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
 
-		const activeVersion = sharedWorkflow?.workflow.activeVersion;
+		const [sharedWorkflow] = await getWithWorkflowCollections(
+			qb,
+			{ shared: { project: true }, tags: includeTags },
+			({ workflow }) => workflow,
+		);
+		if (!sharedWorkflow) return null;
+
+		const activeVersion = sharedWorkflow.workflow.activeVersion;
 		if (activeVersion && publishHistory !== 'none') {
 			activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
