@@ -60,6 +60,7 @@ import { AgentMemoryEntryCandidateRepository } from '../repositories/agent-memor
 import { AgentMemoryEntryLockRepository } from '../repositories/agent-memory-entry-lock.repository';
 import { AgentMemoryEntrySourceRepository } from '../repositories/agent-memory-entry-source.repository';
 import { AgentMemoryEntryRepository } from '../repositories/agent-memory-entry.repository';
+import { AgentMemoryScopeRepository } from '../repositories/agent-memory-scope.repository';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentObservationCursorRepository } from '../repositories/agent-observation-cursor.repository';
 import { AgentObservationLockRepository } from '../repositories/agent-observation-lock.repository';
@@ -106,6 +107,7 @@ export class N8nMemory {
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly memoryScopeRepository: AgentMemoryScopeRepository,
 	) {}
 
 	/** The metadata of the given threads, in one query. Threads without metadata are left out. */
@@ -132,6 +134,7 @@ export class N8nMemory {
 			this.memoryEntryCandidateRepository,
 			this.memoryEntryLockRepository,
 			this.memoryEntrySourceRepository,
+			this.memoryScopeRepository,
 		);
 	}
 }
@@ -161,6 +164,7 @@ export class N8nMemoryImpl
 		private readonly memoryEntryCandidateRepository: AgentMemoryEntryCandidateRepository,
 		private readonly memoryEntryLockRepository: AgentMemoryEntryLockRepository,
 		private readonly memoryEntrySourceRepository: AgentMemoryEntrySourceRepository,
+		private readonly memoryScopeRepository: AgentMemoryScopeRepository,
 	) {}
 
 	readonly episodic: BuiltEpisodicMemoryCaptureStore['episodic'] = {
@@ -270,8 +274,8 @@ export class N8nMemoryImpl
 	}
 
 	async deleteThread(threadId: string, ctx: OperationContext = {}): Promise<void> {
-		await this.threadRepository.runInTransaction(ctx, async (trx) => {
-			await this.deleteEpisodicEntriesWithoutSources(trx, threadId);
+		await this.threadRepository.runInTransaction(ctx, async (trx, transactionCtx) => {
+			await this.deleteEpisodicEntriesWithoutSources(trx, threadId, transactionCtx);
 			const observationScope = { agentId: this.agentId, observationScopeId: threadId };
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
@@ -291,8 +295,8 @@ export class N8nMemoryImpl
 	}
 
 	private async deleteThreadsMatching(observationScopeId: FindOperator<string>): Promise<void> {
-		await this.threadRepository.manager.transaction(async (trx) => {
-			await this.deleteEpisodicEntriesWithoutSources(trx, observationScopeId);
+		await this.threadRepository.runInTransaction({}, async (trx, transactionCtx) => {
+			await this.deleteEpisodicEntriesWithoutSources(trx, observationScopeId, transactionCtx);
 			const observationScope = { agentId: this.agentId, observationScopeId };
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
@@ -304,6 +308,7 @@ export class N8nMemoryImpl
 	private async deleteEpisodicEntriesWithoutSources(
 		trx: EntityManager,
 		threadId: string | FindOperator<string>,
+		ctx: OperationContext,
 	): Promise<void> {
 		const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
 		const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
@@ -313,6 +318,14 @@ export class N8nMemoryImpl
 		});
 		const affectedEntryIds = uniqueStrings(affectedSources.map((source) => source.memoryEntryId));
 		if (affectedEntryIds.length === 0) return;
+
+		const entries = await entryRepo.find({
+			select: { resourceId: true },
+			where: { agentId: this.agentId, id: In(affectedEntryIds) },
+		});
+		for (const resourceId of uniqueStrings(entries.map((entry) => entry.resourceId)).sort()) {
+			await this.memoryScopeRepository.lockActiveScope(resourceId, ctx);
+		}
 
 		await trx.delete(AgentMemoryEntrySourceEntity, {
 			agentId: this.agentId,

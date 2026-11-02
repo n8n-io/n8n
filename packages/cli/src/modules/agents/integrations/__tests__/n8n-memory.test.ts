@@ -18,6 +18,7 @@ import type { AgentMemoryEntryCandidateRepository } from '../../repositories/age
 import type { AgentMemoryEntryLockRepository } from '../../repositories/agent-memory-entry-lock.repository';
 import type { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import type { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
+import type { AgentMemoryScopeRepository } from '../../repositories/agent-memory-scope.repository';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { AgentObservationCursorRepository } from '../../repositories/agent-observation-cursor.repository';
 import type { AgentObservationLockRepository } from '../../repositories/agent-observation-lock.repository';
@@ -61,6 +62,7 @@ describe('N8nMemory', () => {
 	let transactionObservationFind: Mock;
 	let transactionObservationSave: Mock;
 	let transactionObservationUpdate: Mock;
+	const memoryScopeRepository = mock<AgentMemoryScopeRepository>();
 	let transactionMemoryEntryDelete: Mock;
 	let transactionMemoryEntrySourceFind: Mock;
 
@@ -128,7 +130,10 @@ describe('N8nMemory', () => {
 					delete: transactionDelete,
 					getRepository: vi.fn((entity) => {
 						if (entity === AgentMemoryEntryEntity) {
-							return { delete: transactionMemoryEntryDelete };
+							return {
+								delete: transactionMemoryEntryDelete,
+								find: vi.fn().mockResolvedValue([{ resourceId: 'user-1' }]),
+							};
 						}
 						return { find: transactionMemoryEntrySourceFind };
 					}),
@@ -156,6 +161,7 @@ describe('N8nMemory', () => {
 			memoryEntryCandidateRepository,
 			memoryEntryLockRepository,
 			memoryEntrySourceRepository,
+			memoryScopeRepository,
 		);
 		memory = memoryService.getImplementation('agent-1');
 	});
@@ -507,6 +513,11 @@ describe('N8nMemory', () => {
 				]);
 
 			await memory.deleteThread('thread-1');
+
+			expect(memoryScopeRepository.lockActiveScope).toHaveBeenCalledWith('user-1', {});
+			expect(memoryScopeRepository.lockActiveScope.mock.invocationCallOrder[0]).toBeLessThan(
+				transactionMemoryEntryDelete.mock.invocationCallOrder[0],
+			);
 
 			expect(transactionMemoryEntrySourceFind).toHaveBeenNthCalledWith(1, {
 				select: { memoryEntryId: true },

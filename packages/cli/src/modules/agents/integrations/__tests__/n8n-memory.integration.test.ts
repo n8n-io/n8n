@@ -12,12 +12,15 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentObservationEntity } from '../../entities/agent-observation.entity';
 import { AgentMemoryEntryRepository } from '../../repositories/agent-memory-entry.repository';
+import { AgentMemoryScopeRepository } from '../../repositories/agent-memory-scope.repository';
 import { AgentMemoryEntrySourceRepository } from '../../repositories/agent-memory-entry-source.repository';
 import { AgentObservationRepository } from '../../repositories/agent-observation.repository';
 import { AgentThreadRepository } from '../../repositories/agent-thread.repository';
@@ -325,6 +328,71 @@ describe('N8nMemoryImpl', () => {
 					embedding: entry.embedding,
 					status: 'active',
 				});
+			},
+		);
+
+		it.runIf(process.env.DB_TYPE === 'postgresdb')(
+			'waits for a concurrent source write before deleting orphaned entries',
+			async () => {
+				const scope = { resourceId: 'shared-memory-scope', threadId: 'deleted-thread' };
+				const { entry } = await captureEntry(memory, scope);
+				await memory.saveThread({ id: 'kept-thread', resourceId: scope.resourceId });
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					resourceId: scope.resourceId,
+					threadId: 'kept-thread',
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId: 'call-2',
+					content: entry.content,
+					evidenceText: entry.content,
+					kind: 'fact',
+				});
+				const locked = createDeferredPromise();
+				const continueWrite = createDeferredPromise();
+				let deletionWaiting = false;
+				const scopes = Container.get(AgentMemoryScopeRepository);
+				const originalLock = scopes.lockActiveScope.bind(scopes);
+				let writer: OperationContext;
+				const lockSpy = vi.spyOn(scopes, 'lockActiveScope').mockImplementation(async (id, ctx) => {
+					if (writer && ctx.trx !== writer.trx) deletionWaiting = true;
+					return await originalLock(id, ctx);
+				});
+				const write = Container.get(TransactionRunner).run({}, async (ctx) => {
+					writer = ctx;
+					await scopes.lockActiveScope(scope.resourceId, ctx);
+					locked.resolve();
+					await continueWrite.promise;
+					return await entryRepository.addSources(
+						agentId,
+						entry.id,
+						[
+							{
+								candidateId: candidate.id,
+								threadId: 'kept-thread',
+								evidenceText: entry.content,
+							},
+						],
+						new Date(),
+						ctx,
+					);
+				});
+				await locked.promise;
+				const deletion = memory.deleteThread(scope.threadId);
+				try {
+					await vi.waitFor(() => expect(deletionWaiting).toBe(true));
+					continueWrite.resolve();
+					await Promise.all([write, deletion]);
+					expect(await entryRepository.findOneByOrFail({ id: entry.id })).toMatchObject({
+						status: 'active',
+					});
+					expect(await memory.episodic.getEntrySources([entry.id])).toEqual([
+						expect.objectContaining({ threadId: 'kept-thread' }),
+					]);
+				} finally {
+					continueWrite.resolve();
+					await Promise.allSettled([write, deletion]);
+					lockSpy.mockRestore();
+				}
 			},
 		);
 

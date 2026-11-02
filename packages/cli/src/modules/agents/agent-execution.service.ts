@@ -13,6 +13,7 @@ import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
+import groupBy from 'lodash/groupBy';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
@@ -771,6 +772,20 @@ export class AgentExecutionService {
 		const threadIds = await this.agentExecutionThreadRepository.findIdsByAgentId(agentId);
 		for (const batch of chunk(threadIds, AgentExecutionService.logDeletionBatchSize)) {
 			await memory.deleteThreads(batch);
+		}
+	}
+
+	/** Include instance-agent sessions before the project cascade removes their thread ids. */
+	async deleteMemoryThreadsForProject(projectId: string): Promise<void> {
+		const sessions =
+			await this.agentExecutionThreadRepository.findMemoryThreadsForProject(projectId);
+		for (const [agentId, threads] of Object.entries(
+			groupBy(sessions, (session) => session.agentId),
+		)) {
+			const memory = this.n8nMemory.getImplementation(agentId);
+			for (const batch of chunk(threads, AgentExecutionService.logDeletionBatchSize)) {
+				await memory.deleteThreads(batch.map((thread) => thread.id));
+			}
 		}
 	}
 

@@ -2330,6 +2330,23 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('deleteMemoryThreadsForProject', () => {
+		it('cleans project sessions grouped by agent, including instance agents', async () => {
+			agentExecutionThreadRepository.findMemoryThreadsForProject.mockResolvedValue([
+				{ id: 'thread-1', agentId: 'agent-1' },
+				{ id: 'thread-2', agentId: 'instance-agent' },
+			]);
+
+			await service.deleteMemoryThreadsForProject('project-1');
+
+			expect(agentExecutionThreadRepository.findMemoryThreadsForProject).toHaveBeenCalledWith(
+				'project-1',
+			);
+			expect(n8nMemory.getImplementation.mock.calls).toEqual([['agent-1'], ['instance-agent']]);
+			expect(memoryBackend.deleteThreads.mock.calls).toEqual([[['thread-1']], [['thread-2']]]);
+		});
+	});
+
 	describe('deleteExecutionLogsForAgent', () => {
 		it('deletes all blob-stored logs for an agent', async () => {
 			agentExecutionRepository.findBlobRefsByAgentId.mockResolvedValue([

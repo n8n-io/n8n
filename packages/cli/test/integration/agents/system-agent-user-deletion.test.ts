@@ -10,6 +10,8 @@ import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
+import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
+import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { registerUserDeletionHandler } from '@/modules/agents/register-user-deletion-handler';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
@@ -172,6 +174,38 @@ describe('Agent memory on user deletion', () => {
 			expect(destroy).not.toHaveBeenCalled();
 		},
 	);
+
+	it('discards pending system turns and keeps their input for audit history', async () => {
+		const user = await createMember();
+		const { store, scope, agentId } = await createSession(
+			user,
+			true,
+			systemChatMemoryResourceId(user.id),
+		);
+		const thread = await threadRepo.findOneByOrFail({ id: scope.threadId });
+		const queue = Container.get(AgentMessageQueueService);
+		await queue.enqueue({
+			agentId,
+			projectId: thread.projectId,
+			threadId: thread.id,
+			sessionMode: 'existing',
+			source: 'system',
+			payload: {
+				kind: 'system',
+				userId: user.id,
+				resourceId: scope.resourceId,
+				messageId: uuid(),
+				message: 'Keep this queued request in history.',
+			},
+		});
+		const before = await store.getMessages(thread.id);
+
+		await Container.get(SystemAgentExecutionService).stopThreadsOfUser(user.id);
+
+		expect(await queue.claimNext(thread.id, async () => true)).toBeNull();
+		expect(await store.getMessages(thread.id)).toEqual(before);
+		expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
+	});
 
 	it('clears inactive and source-less user memories across agents without changing other scopes', async () => {
 		const [user, other] = await Promise.all([createMember(), createMember()]);

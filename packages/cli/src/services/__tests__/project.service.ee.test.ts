@@ -30,6 +30,7 @@ import type { ICredentialConnectionStatusProvider } from '@/credentials/credenti
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
+import type { AgentTestChatService } from '@/modules/agents/agent-test-chat.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
@@ -47,6 +48,7 @@ describe('ProjectService', () => {
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const agentExecutionService = mock<AgentExecutionService>();
+	const agentTestChatService = mock<AgentTestChatService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
@@ -995,6 +997,10 @@ describe('ProjectService', () => {
 				configurable: true,
 				get: async () => agentKnowledgeService,
 			});
+			Object.defineProperty(projectService, 'agentTestChatService', {
+				configurable: true,
+				get: async () => agentTestChatService,
+			});
 			Object.defineProperty(projectService, 'agentExecutionService', {
 				configurable: true,
 				get: async () => agentExecutionService,
@@ -1043,10 +1049,11 @@ describe('ProjectService', () => {
 			);
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
-			expect(agentExecutionService.deleteMemoryThreadsForAgent).toHaveBeenCalledWith('agent-1');
-			expect(agentExecutionService.deleteMemoryThreadsForAgent).toHaveBeenCalledWith('agent-2');
+			expect(agentTestChatService.clearAllTestChatMessages).toHaveBeenCalledWith('agent-1');
+			expect(agentTestChatService.clearAllTestChatMessages).toHaveBeenCalledWith('agent-2');
+			expect(agentExecutionService.deleteMemoryThreadsForProject).toHaveBeenCalledWith(project.id);
 			expect(
-				agentExecutionService.deleteMemoryThreadsForAgent.mock.invocationCallOrder[1],
+				agentExecutionService.deleteMemoryThreadsForProject.mock.invocationCallOrder[0],
 			).toBeLessThan(projectRepository.remove.mock.invocationCallOrder[0]);
 		});
 
@@ -1201,6 +1208,10 @@ describe('ProjectService', () => {
 			Object.defineProperty(projectService, 'agentKnowledgeService', {
 				configurable: true,
 				get: async () => agentKnowledgeService,
+			});
+			Object.defineProperty(projectService, 'agentTestChatService', {
+				configurable: true,
+				get: async () => agentTestChatService,
 			});
 			Object.defineProperty(projectService, 'agentExecutionService', {
 				configurable: true,

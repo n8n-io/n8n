@@ -5,11 +5,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 
 import { AgentResourceEntity } from '../entities/agent-resource.entity';
-import {
-	userIdFromDraftChatMemoryResourceId,
-	userIdFromProductionChatMemoryResourceId,
-	userIdFromSystemChatMemoryResourceId,
-} from '../utils/agent-memory-scope';
 
 class AgentMemoryScopeTable extends BaseRepository<AgentResourceEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -28,13 +23,6 @@ export class AgentMemoryScopeRepository {
 
 	/** The caller must hold a transaction until its memory writes finish. */
 	async lockActiveScope(resourceId: string, ctx: OperationContext): Promise<boolean> {
-		if (
-			!userIdFromDraftChatMemoryResourceId(resourceId) &&
-			!userIdFromProductionChatMemoryResourceId(resourceId) &&
-			!userIdFromSystemChatMemoryResourceId(resourceId)
-		) {
-			return true;
-		}
 		const metadata = await this.lockScope(resourceId, ctx);
 		return metadata.memoryRetired !== true;
 	}

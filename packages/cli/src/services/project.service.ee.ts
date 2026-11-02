@@ -136,6 +136,12 @@ export class ProjectService {
 		);
 	}
 
+	private get agentTestChatService() {
+		return import('@/modules/agents/agent-test-chat.service.js').then(({ AgentTestChatService }) =>
+			Container.get(AgentTestChatService),
+		);
+	}
+
 	private get agentExecutionService() {
 		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
 			Container.get(AgentExecutionService),
@@ -277,13 +283,19 @@ export class ProjectService {
 
 		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService, agentExecutionService, agentChatAttachments] =
-				await Promise.all([
-					this.agentRepository,
-					this.agentKnowledgeService,
-					this.agentExecutionService,
-					this.agentChatAttachmentService,
-				]);
+			const [
+				agentRepository,
+				agentKnowledgeService,
+				agentExecutionService,
+				agentChatAttachments,
+				agentTestChats,
+			] = await Promise.all([
+				this.agentRepository,
+				this.agentKnowledgeService,
+				this.agentExecutionService,
+				this.agentChatAttachmentService,
+				this.agentTestChatService,
+			]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
 				try {
@@ -310,8 +322,9 @@ export class ProjectService {
 
 				await agentKnowledgeService.destroyKnowledgeSandbox(project.id, agent.id);
 				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
-				await agentExecutionService.deleteMemoryThreadsForAgent(agent.id);
+				await agentTestChats.clearAllTestChatMessages(agent.id);
 			}
+			await agentExecutionService.deleteMemoryThreadsForProject(project.id);
 		}
 
 		// Capture member user IDs before the project (and its relations) are removed,
