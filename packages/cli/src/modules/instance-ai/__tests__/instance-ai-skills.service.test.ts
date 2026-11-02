@@ -139,7 +139,7 @@ describe('Assistant reads of user skills', () => {
 		expect(skillRuntime.readFileForAssistant).not.toHaveBeenCalled();
 		const run = await service.loadSkills(openScope, context);
 		expect(run.source.registry.skills.length).toBeGreaterThan(0);
-		expect(run.availabilityNotice).toBeUndefined();
+		expect(run.source.dynamicCatalog?.notice).toBeUndefined();
 	});
 
 	it('reads the skills of the user while Assistant skills are on', async () => {

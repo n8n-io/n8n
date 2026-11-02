@@ -77,16 +77,17 @@ describe('Assistant Hub runtime skills', () => {
 		const provider = providerFor([content()]);
 		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
 		else provider.isEnabled.mockResolvedValue(false);
-		const { source, availabilityNotice } = await load(provider, builtIns);
+		const { source } = await load(provider, builtIns);
 		expect(source.registry).toEqual(builtIns.registry);
+		expect(source.dynamicCatalog?.skillIds).toEqual([]);
 		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(true);
 		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
 		expect(await source.loadSkill('hub-previously-loaded')).toBeNull();
 		if (flag === 'unavailable') {
-			expect(availabilityNotice).toContain('temporarily unavailable');
+			expect(source.dynamicCatalog?.notice).toContain('temporarily unavailable');
 			expect(source.getLoadError?.('hub-previously-loaded')?.retryable).toBe(true);
 		} else {
-			expect(availabilityNotice).toBeUndefined();
+			expect(source.dynamicCatalog?.notice).toBeUndefined();
 			expect(source.getLoadError?.('hub-previously-loaded')).toBeUndefined();
 		}
 		expect(provider.listSkills).not.toHaveBeenCalled();
@@ -103,6 +104,8 @@ describe('Assistant Hub runtime skills', () => {
 		const provider = providerFor([saved, content({ id: 'unselected' })]);
 		const { source, mapSkillEventForDisplay } = await load(provider);
 		const [entry] = hubEntries(source);
+		expect(source.dynamicCatalog?.skillIds).toEqual(hubEntries(source).map(({ id }) => id));
+		expect(source.dynamicCatalog?.notice).toContain('Load by exact skillId');
 		const catalog = renderSkillCatalogPrompt(source.registry);
 		expect(catalog).toContain(saved.description);
 		expect(catalog).not.toContain(saved.instructions);
@@ -425,7 +428,7 @@ describe('Assistant Hub runtime skills', () => {
 			const provider = providerFor([content()]);
 			if (availability === 'catalog-unavailable')
 				provider.listSkills.mockRejectedValue(new Error('Unavailable'));
-			const { source, availabilityNotice } = await load(provider, builtIns);
+			const { source } = await load(provider, builtIns);
 			const previousHash = source.registry.skillsHash;
 			await source.prepare?.();
 			expect(source.registry.skills[0].hash).toBe('prepared');
@@ -434,7 +437,7 @@ describe('Assistant Hub runtime skills', () => {
 			expect(hubEntries(source)).toHaveLength(availability === 'available' ? 1 : 0);
 			expect(provider.readSkill).not.toHaveBeenCalled();
 			if (availability !== 'available') {
-				expect(availabilityNotice).toContain('temporarily unavailable');
+				expect(source.dynamicCatalog?.notice).toContain('temporarily unavailable');
 				expect(source.getLoadError?.('hub-existing')?.retryable).toBe(true);
 				expect(source.getLoadError?.(builtIn.id)).toBeUndefined();
 			}
