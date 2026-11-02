@@ -476,11 +476,11 @@ describe('JiraTrigger', () => {
 			const trigger = new JiraTrigger();
 
 			const cloudId = 'test-cloud-id';
+			const domain = 'https://test-oauth2.atlassian.net';
 			const freshData: IDataObject = {
 				webhookId: '4000',
 				endpoint: '/api/3/webhook',
 				lastRefreshed: Date.now(),
-				cloudId,
 			};
 
 			const webhookFns = mockDeep<IWebhookFunctions>();
@@ -499,15 +499,21 @@ describe('JiraTrigger', () => {
 				authorization: `Bearer ${jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
 			});
 			webhookFns.getCredentials.mockResolvedValue({
+				domain,
 				clientId,
 				clientSecret,
 			} as ICredentialDataDecryptedObject);
+			// Site lookup so the delivery verifies and the refresh branch is actually reached.
+			webhookFns.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
+				{ id: cloudId, url: domain },
+			]);
 			webhookFns.helpers.returnJsonArray.mockImplementation((data: IDataObject | IDataObject[]) => [
 				{ json: data as IDataObject },
 			]);
 
-			await trigger.webhook.call(webhookFns);
+			const result = await trigger.webhook.call(webhookFns);
 
+			expect(result).toEqual({ workflowData: [[{ json: {} }]] });
 			expect(webhookFns.helpers.requestWithAuthentication).not.toHaveBeenCalled();
 		});
 
@@ -913,12 +919,10 @@ describe('JiraTrigger', () => {
 		const clientId = 'oauth-client-id';
 		const clientSecret = 'oauth-client-secret';
 		const cloudId = 'site-cloud-id';
-		const credentials = { jiraSoftwareCloudOAuth2Api: { clientId, clientSecret } };
+		const domain = 'https://site.atlassian.net';
+		const credentials = { jiraSoftwareCloudOAuth2Api: { clientId, clientSecret, domain } };
 		const node = { parameters: { jiraVersion: 'cloudOAuth2', authenticateWebhook: false } };
 		const event = { webhookEvent: 'jira:issue_created', issue: { key: 'TEST-1' } };
-
-		// The resolved site cloudId is memoized in static data, so verification needs no lookup.
-		const workflowStaticData: IDataObject = { cloudId };
 
 		const sign = (
 			payload: Record<string, unknown> = {},
@@ -931,13 +935,16 @@ describe('JiraTrigger', () => {
 				...options,
 			});
 
+		// The verifier resolves the configured site's cloudId from the credential domain.
 		const callWebhook = async (headerData: IncomingHttpHeaders) =>
 			await testWebhookTriggerNode(JiraTrigger, {
 				node,
 				credentials,
 				bodyData: event,
 				headerData,
-				workflowStaticData,
+				helpers: {
+					httpRequestWithAuthentication: vi.fn().mockResolvedValue([{ id: cloudId, url: domain }]),
+				},
 			});
 
 		test('should pass a request carrying a valid signed token through', async () => {
@@ -1003,7 +1010,8 @@ describe('JiraTrigger', () => {
 		});
 
 		test('should reject an unsigned (alg none) token', async () => {
-			const token = jwt.sign({ iss: clientId }, '', { algorithm: 'none' });
+			// Carries a valid issuer and site, so only the signature check can reject it.
+			const token = jwt.sign({ iss: clientId, context: { cloudId } }, '', { algorithm: 'none' });
 			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
 
 			expect(response.status).toHaveBeenCalledWith(403);
@@ -1032,6 +1040,22 @@ describe('JiraTrigger', () => {
 			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
 
 			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should answer 503 when the site lookup fails', async () => {
+			// A transient lookup failure is not an auth failure: answer a retryable 503, not 403.
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+				helpers: {
+					httpRequestWithAuthentication: vi.fn().mockRejectedValue(new Error('Atlassian down')),
+				},
+			});
+
+			expect(response.status).toHaveBeenCalledWith(503);
 			expect(responseData).toEqual({ noWebhookResponse: true });
 		});
 	});
