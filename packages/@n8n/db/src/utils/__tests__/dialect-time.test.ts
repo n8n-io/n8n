@@ -1,4 +1,5 @@
 import {
+	columnOrNowPlusMsLiteral,
 	dbNowLiteral,
 	dbNowPlusMsLiteral,
 	laterOfColumnAndNowPlusMsLiteral,
@@ -15,7 +16,7 @@ describe('dbNowLiteral', () => {
 describe('dbNowPlusMsLiteral', () => {
 	it('offsets the DB clock by whole milliseconds on postgres', () => {
 		expect(dbNowPlusMsLiteral(true, 1500)).toBe(
-			"CURRENT_TIMESTAMP(3) + (1500 || ' milliseconds')::interval",
+			"CURRENT_TIMESTAMP(3) + (1500 * INTERVAL '1 millisecond')",
 		);
 	});
 
@@ -27,13 +28,19 @@ describe('dbNowPlusMsLiteral', () => {
 
 	it('rounds a fractional offset so the literal stays a plain number', () => {
 		expect(dbNowPlusMsLiteral(true, 1000.4)).toBe(
-			"CURRENT_TIMESTAMP(3) + (1000 || ' milliseconds')::interval",
+			"CURRENT_TIMESTAMP(3) + (1000 * INTERVAL '1 millisecond')",
 		);
 	});
 
 	it('offsets the DB clock into the past on postgres', () => {
 		expect(dbNowPlusMsLiteral(true, -1500)).toBe(
-			"CURRENT_TIMESTAMP(3) + (-1500 || ' milliseconds')::interval",
+			"CURRENT_TIMESTAMP(3) + (-1500 * INTERVAL '1 millisecond')",
+		);
+	});
+
+	it('builds an offset past 2^31 ms on postgres without an interval string', () => {
+		expect(dbNowPlusMsLiteral(true, -2_592_000_000)).toBe(
+			"CURRENT_TIMESTAMP(3) + (-2592000000 * INTERVAL '1 millisecond')",
 		);
 	});
 
@@ -52,10 +59,18 @@ describe('dbNowPlusMsLiteral', () => {
 	});
 });
 
+describe('columnOrNowPlusMsLiteral', () => {
+	it('offsets the later of the column and the DB clock on postgres', () => {
+		expect(columnOrNowPlusMsLiteral(true, '"runAt"', 2_592_000_000)).toBe(
+			'GREATEST("runAt", CURRENT_TIMESTAMP(3)) + (2592000000 * INTERVAL \'1 millisecond\')',
+		);
+	});
+});
+
 describe('laterOfColumnAndNowPlusMsLiteral', () => {
 	it('takes the later of the column and the offset on postgres', () => {
 		expect(laterOfColumnAndNowPlusMsLiteral(true, '"backoffUntil"', 5000)).toBe(
-			'GREATEST(COALESCE("backoffUntil", CURRENT_TIMESTAMP(3)), CURRENT_TIMESTAMP(3) + (5000 || \' milliseconds\')::interval)',
+			'GREATEST(COALESCE("backoffUntil", CURRENT_TIMESTAMP(3)), CURRENT_TIMESTAMP(3) + (5000 * INTERVAL \'1 millisecond\'))',
 		);
 	});
 
