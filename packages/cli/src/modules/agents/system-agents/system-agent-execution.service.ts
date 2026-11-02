@@ -346,6 +346,85 @@ export class SystemAgentExecutionService {
 		await this.deleteOwnedThread(thread, user.id);
 	}
 
+	/** Stop running system-agent turns before account cleanup. Keep the sessions and workspaces. */
+	async stopThreadsOfUser(userId: string): Promise<void> {
+		let sessions: SessionRef[];
+		try {
+			sessions = await this.threadRepository.findOwnedSystemAgentSessions(userId);
+		} catch (error) {
+			this.logger.warn('Failed to find the system agent sessions of a deleted user', {
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+		for (const session of sessions) {
+			try {
+				const descendants = await this.findDescendantSessions(session);
+				await this.stopRunningTurn(session, [session, ...descendants], userId);
+			} catch (error) {
+				this.logger.warn('Failed to stop a system agent session on account deletion', {
+					userId,
+					threadId: session.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+	}
+
+	/** Child sessions of delegated runs, level by level. A child stays in the project of its parent. */
+	private async findDescendantSessions(root: SessionRef): Promise<SessionRef[]> {
+		const descendants: SessionRef[] = [];
+		const visited = new Set([root.id]);
+		let level = [root];
+		while (level.length > 0) {
+			const next: SessionRef[] = [];
+			for (const parent of level) {
+				for (const child of await this.threadRepository.findByParentThreadId(
+					parent.id,
+					parent.projectId,
+				)) {
+					if (visited.has(child.id)) continue;
+					visited.add(child.id);
+					next.push({ id: child.id, agentId: child.agentId, projectId: child.projectId });
+				}
+			}
+			descendants.push(...next);
+			level = next;
+		}
+		return descendants;
+	}
+
+	/**
+	 * Cancel the latest turn of the root session when any session of the tree
+	 * runs. The cancel also stops the background jobs of the root session,
+	 * which run the child sessions.
+	 */
+	private async stopRunningTurn(
+		session: SessionRef,
+		tree: SessionRef[],
+		userId: string,
+	): Promise<void> {
+		let running = false;
+		for (const thread of tree) {
+			if (await this.executionRepository.existsRunningByThread(thread.id)) {
+				running = true;
+				break;
+			}
+		}
+		if (!running) return;
+		const latest = await this.executionRepository.findLatestByThreadId(session.id);
+		if (!latest) return;
+		await this.chatExecutionService.requestCancel({
+			projectId: session.projectId,
+			agentId: session.agentId,
+			threadId: session.id,
+			executionId: latest.id,
+			userId,
+			surface: 'system',
+		});
+	}
+
 	/** Delete a session with its sandbox. The caller checks ownership. */
 	private async deleteOwnedThread(thread: SessionRef, userId: string): Promise<void> {
 		const deleted = await this.executionService.deleteThread(

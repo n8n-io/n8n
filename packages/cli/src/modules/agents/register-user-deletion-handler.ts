@@ -2,6 +2,7 @@ import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { AgentMemoryEntryRepository } from './repositories/agent-memory-entry.repository';
+import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
@@ -15,6 +16,7 @@ export function registerUserDeletionHandler() {
 		transferAll: async () => {},
 		deleteAll: async () => {},
 		deleteAllForUser: async (userId) => {
+			await Container.get(SystemAgentExecutionService).stopThreadsOfUser(userId);
 			await Container.get(AgentMemoryEntryRepository).retireUserScopes(
 				[
 					draftChatMemoryResourceId(userId),

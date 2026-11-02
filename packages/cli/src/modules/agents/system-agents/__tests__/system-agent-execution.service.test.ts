@@ -2000,6 +2000,85 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
+	describe('stopThreadsOfUser', () => {
+		it.each(['thread-1', 'child-1'])(
+			'stops the root when %s runs and keeps every session',
+			async (runningId) => {
+				const {
+					service,
+					threadRepository,
+					executionRepository,
+					chatExecutionService,
+					executionService,
+				} = setup();
+				threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				threadRepository.findByParentThreadId.mockImplementation(async (parentId) =>
+					parentId === 'thread-1'
+						? [
+								mock<AgentExecutionThread>({
+									id: 'child-1',
+									agentId: 'child-agent',
+									projectId: 'project-1',
+								}),
+							]
+						: [],
+				);
+				executionRepository.existsRunningByThread.mockImplementation(
+					async (id) => id === runningId,
+				);
+				executionRepository.findLatestByThreadId.mockResolvedValue(mock({ id: 'exec-1' }));
+
+				await service.stopThreadsOfUser('user-1');
+
+				expect(chatExecutionService.requestCancel).toHaveBeenCalledExactlyOnceWith({
+					projectId: 'project-1',
+					agentId: AGENT_ID,
+					threadId: 'thread-1',
+					executionId: 'exec-1',
+					userId: 'user-1',
+					surface: 'system',
+				});
+				expect(executionService.deleteThread).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps idle sessions without requesting cancellation', async () => {
+			const {
+				service,
+				threadRepository,
+				executionRepository,
+				chatExecutionService,
+				executionService,
+			} = setup();
+			threadRepository.findOwnedSystemAgentSessions.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			threadRepository.findByParentThreadId.mockResolvedValue([]);
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+
+			await service.stopThreadsOfUser('user-1');
+
+			expect(chatExecutionService.requestCancel).not.toHaveBeenCalled();
+			expect(executionService.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('logs a lookup failure without preventing memory cleanup', async () => {
+			const { service, threadRepository, logger } = setup();
+			threadRepository.findOwnedSystemAgentSessions.mockRejectedValue(
+				new Error('database unavailable'),
+			);
+
+			await expect(service.stopThreadsOfUser('user-1')).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to find the system agent sessions of a deleted user',
+				expect.objectContaining({ userId: 'user-1' }),
+			);
+		});
+	});
+
 	describe('threads', () => {
 		it('deletes an owned thread through the Agents execution service', async () => {
 			const { service, executionService } = setup();
