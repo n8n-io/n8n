@@ -144,10 +144,13 @@ describe('createClientCredentialsTokenSource', () => {
 		const { fetchImpl } = granting({ error_description: `Rejected ${pair}` }, 401);
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
 
-		const error = await source.getToken().catch((reason: Error) => reason);
+		const error = await source.getToken().then(
+			() => undefined,
+			(reason: Error) => reason,
+		);
 
-		expect(error.message).toContain('[redacted]');
-		expect(error.message).not.toContain(pair);
+		expect(error?.message).toContain('[redacted]');
+		expect(error?.message).not.toContain(pair);
 	});
 
 	it('fails when the answer carries no access token', async () => {
