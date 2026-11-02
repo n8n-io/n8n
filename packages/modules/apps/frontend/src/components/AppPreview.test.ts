@@ -407,6 +407,18 @@ describe('AppPreview', () => {
 			expect(getByTestId('app-preview-inspect-hint')).toBeInTheDocument();
 		});
 
+		it.each([
+			['a pick', selected()],
+			['a cancel', command('inspect:cancelled')],
+		])('ignores %s from the app while selection mode is off', async (_label, data) => {
+			const { getByTestId, emitted, fromFrame } = await renderInspectable();
+
+			fromFrame(data);
+
+			expect(emitted('element-selected')).toBeUndefined();
+			expect(getByTestId('app-preview-mode-browse')).toHaveAttribute('aria-pressed', 'true');
+		});
+
 		it('ignores a message from another window', async () => {
 			const { getByTestId, emitted } = await renderInspectable();
 			await userEvent.click(getByTestId('app-preview-mode-select'));

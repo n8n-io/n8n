@@ -175,6 +175,7 @@ function onFrameLoad() {
 }
 
 function onMessage(event: MessageEvent<unknown>) {
+	if (!inspecting.value) return;
 	if (event.source !== frame.value?.contentWindow || event.origin !== previewOrigin.value) return;
 	const parsed = appInspectorEventSchema.safeParse(event.data);
 	if (!parsed.success) return;
