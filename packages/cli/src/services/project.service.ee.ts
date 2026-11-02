@@ -30,9 +30,14 @@ import {
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
@@ -113,7 +118,7 @@ export class ProjectService {
 	}
 
 	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
+		return import('@n8n/backend-module-data-table').then(({ DataTableService }) =>
 			Container.get(DataTableService),
 		);
 	}

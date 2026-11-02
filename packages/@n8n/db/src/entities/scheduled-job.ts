@@ -159,6 +159,13 @@ export class ScheduledJob extends WithTimestamps {
 	lastFiredAt: Date | null;
 
 	/**
+	 * When the newest occurrence of this job reported its effect. Survives the
+	 * retention of the occurrence rows.
+	 */
+	@DateTimeColumn({ nullable: true })
+	lastDispatchedAt: Date | null;
+
+	/**
 	 * Retry ceiling copied onto each occurrence this job materializes.
 	 */
 	@Column({ type: 'int', default: 1 })

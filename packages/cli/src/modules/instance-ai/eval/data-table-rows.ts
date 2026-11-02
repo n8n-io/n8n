@@ -9,9 +9,10 @@ import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { buildDateAnchors, literalParameter, readDataTableLocator } from '@n8n/workflow-sdk';
-import { type DataTableRows, type INode, jsonParse, OperationalError } from 'n8n-workflow';
+import { type DataTableRows, type INode, jsonParse } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableService } from '@n8n/backend-module-data-table';
 
 export const DATA_TABLE_NODE_TYPES = new Set([
 	'n8n-nodes-base.dataTable',

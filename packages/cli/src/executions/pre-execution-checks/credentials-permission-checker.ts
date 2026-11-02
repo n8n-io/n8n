@@ -4,7 +4,8 @@ import { CredentialsRepository, SharedCredentialsRepository, UserRepository } fr
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
+import { getActiveCredentialTypes } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CredentialsFinderService, type UnusableCredential } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';

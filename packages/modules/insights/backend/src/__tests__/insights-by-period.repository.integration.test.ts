@@ -772,6 +772,25 @@ describe('InsightsByPeriodRepository', () => {
 					);
 				},
 			);
+
+			test.each(['Asia/Tokyo', 'America/New_York'])(
+				'getInsightsByTime without a time zone buckets by UTC day on %s',
+				async (timeZone) => {
+					await seedAroundUtcDay('success');
+					await setSessionTimeZone(timeZone);
+
+					const result = await repository.getInsightsByTime({
+						periodUnit: 'day',
+						insightTypes: ['success'],
+						startDate: day,
+						endDate: day,
+					});
+
+					expect(result).toEqual([
+						expect.objectContaining({ periodStart: '2026-03-20T00:00:00.000Z', succeeded: 111 }),
+					]);
+				},
+			);
 		});
 	});
 

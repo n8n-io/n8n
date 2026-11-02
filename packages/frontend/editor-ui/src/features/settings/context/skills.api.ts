@@ -9,6 +9,7 @@ import type {
 	SkillNewNameResponse,
 	SkillSaveResponse,
 	SkillSortOption,
+	SkillSourceCheckResponse,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -160,6 +161,18 @@ export async function connectSkillSource(
 }
 
 /** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
+/** Check now: checks the whole source of a synced skill for updates. */
+export async function checkSkillForUpdates(
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillSourceCheckResponse> {
+	return await makeRestApiRequest<SkillSourceCheckResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/skills/${skillId}/check`,
+	);
+}
+
 export async function stopSyncingSkill(context: IRestApiContext, skillId: string): Promise<void> {
 	await makeRestApiRequest<{ ok: true }>(
 		context,

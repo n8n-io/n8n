@@ -930,6 +930,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return false;
 	}
 
+	function holdsOnlyHostEvents(msg: ChatMessage): boolean {
+		return (
+			!!msg.hostEvents?.length &&
+			!msg.content &&
+			(msg.toolCalls?.length ?? 0) === 0 &&
+			getMessageThinkingSegments(msg).length === 0 &&
+			!msg.budgetNotices?.length
+		);
+	}
+
 	function dropOrphanMintedBubbles(session: StreamSession): void {
 		for (const msg of session.minted) {
 			if (
@@ -1091,8 +1101,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'finish-step':
 				// LLM iteration boundary — the next text/tool event mints a
 				// fresh ChatMessage. We don't flip status here; `done` is what
-				// finalizes the message at the end of the stream.
-				if (!session.stopReport) session.current = undefined;
+				// finalizes the message at the end of the stream. A message with
+				// only host events, such as the turn setup sends before the first
+				// step, takes the next step too, as the history shows it.
+				if (!session.stopReport && !(session.current && holdsOnlyHostEvents(session.current))) {
+					session.current = undefined;
+				}
 				break;
 			case 'text-start':
 			case 'text-end':

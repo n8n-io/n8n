@@ -89,6 +89,7 @@ describe('WorkflowPublisher', () => {
 			sourceWorkflowId: 'wf-1',
 			decidedId: 'wf-1',
 			sourcePublished,
+			publishingAction: sourcePublished ? 'publish' : 'noop',
 			sourceArchived: false,
 			parentFolderId: null,
 			entity: mock<WorkflowEntity>(),
@@ -101,12 +102,7 @@ describe('WorkflowPublisher', () => {
 				isArchived: false,
 			});
 
-			const result = await publisher.apply(
-				user,
-				createItem(false),
-				workflow,
-				WorkflowPublishingPolicy.PreservePublishedState,
-			);
+			const result = await publisher.apply(user, createItem(false), workflow);
 
 			expect(result.workflow).toBe(workflow);
 			expect(result.publishing).toEqual({ state: 'unchanged' });
@@ -124,12 +120,7 @@ describe('WorkflowPublisher', () => {
 			const published = mock<WorkflowEntity>({ id: 'wf-1', activeVersionId: 'v1' });
 			workflowService.activateWorkflow.mockResolvedValue(published);
 
-			const result = await publisher.apply(
-				user,
-				createItem(true),
-				workflow,
-				WorkflowPublishingPolicy.PublishAll,
-			);
+			const result = await publisher.apply(user, createItem(true), workflow);
 
 			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 				versionId: 'v1',
@@ -148,12 +139,7 @@ describe('WorkflowPublisher', () => {
 			});
 			workflowService.activateWorkflow.mockRejectedValue(new Error('no trigger node'));
 
-			const result = await publisher.apply(
-				user,
-				createItem(true),
-				workflow,
-				WorkflowPublishingPolicy.PublishAll,
-			);
+			const result = await publisher.apply(user, createItem(true), workflow);
 
 			expect(result.workflow).toBe(workflow);
 			expect(result.publishing).toEqual({
@@ -179,6 +165,7 @@ describe('WorkflowPublisher', () => {
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
 				archiveTransition: null,
+				publishingAction: 'unpublish',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: false,
 				sourceArchived: false,
@@ -187,13 +174,7 @@ describe('WorkflowPublisher', () => {
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
 
-			const result = await publisher.apply(
-				user,
-				updateItem,
-				workflow,
-				WorkflowPublishingPolicy.MatchSource,
-				'stub-credential',
-			);
+			const result = await publisher.apply(user, updateItem, workflow, 'stub-credential');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
@@ -211,13 +192,7 @@ describe('WorkflowPublisher', () => {
 				isArchived: false,
 			});
 
-			const result = await publisher.apply(
-				user,
-				createItem(true),
-				workflow,
-				WorkflowPublishingPolicy.PublishAll,
-				'stub-credential',
-			);
+			const result = await publisher.apply(user, createItem(true), workflow, 'stub-credential');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(result.workflow).toBe(workflow);
@@ -238,6 +213,7 @@ describe('WorkflowPublisher', () => {
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
 				archiveTransition: null,
+				publishingAction: 'publish',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: true,
 				sourceArchived: false,
@@ -246,13 +222,7 @@ describe('WorkflowPublisher', () => {
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
 
-			const result = await publisher.apply(
-				user,
-				updateItem,
-				workflow,
-				WorkflowPublishingPolicy.PreservePublishedState,
-				'stub-credential',
-			);
+			const result = await publisher.apply(user, updateItem, workflow, 'stub-credential');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(result.workflow).toBe(workflow);
@@ -275,6 +245,7 @@ describe('WorkflowPublisher', () => {
 			const updateItem: PersistedWorkflowPlanItem = {
 				action: 'update',
 				archiveTransition: null,
+				publishingAction: 'unpublish',
 				sourceWorkflowId: 'wf-broken',
 				sourcePublished: true,
 				sourceArchived: false,
@@ -283,13 +254,7 @@ describe('WorkflowPublisher', () => {
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
 
-			const result = await publisher.apply(
-				user,
-				updateItem,
-				workflow,
-				WorkflowPublishingPolicy.UnpublishAll,
-				'missing-node-type',
-			);
+			const result = await publisher.apply(user, updateItem, workflow, 'missing-node-type');
 
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
@@ -311,6 +276,7 @@ describe('WorkflowPublisher', () => {
 			}),
 			item: {
 				action: 'create',
+				publishingAction: 'publish',
 				sourceWorkflowId,
 				decidedId: `local-${sourceWorkflowId}`,
 				sourcePublished: false,

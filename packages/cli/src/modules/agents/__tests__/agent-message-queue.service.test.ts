@@ -26,6 +26,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return mock<AgentExecutionThread>({
@@ -320,6 +321,26 @@ describe('AgentMessageQueueService', () => {
 				'thread-1',
 				'message-1',
 				{ kind: 'preview', stopReportId: 'stop-1' },
+				expect.anything(),
+			);
+		});
+
+		it('stores an n8n Chat report with the n8n Chat source, kind and memory', async () => {
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+
+			await service.enqueueStopReport(makeThread(), 'stop-1', 'Summarize the stop', {}, 'n8n-chat');
+
+			expect(messages.createInput).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resourceId: productionChatMemoryResourceId('user-1'),
+					origin: { source: N8N_CHAT_PRODUCTION_SOURCE, hidden: true, stopReport: true },
+				}),
+				expect.anything(),
+			);
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'n8n_chat', stopReportId: 'stop-1' },
 				expect.anything(),
 			);
 		});

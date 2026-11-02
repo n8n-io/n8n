@@ -101,6 +101,17 @@ export function agentToolReferenceWhere(
 	return where;
 }
 
+/** The fields the migration report scan rules and the report read. */
+const MIGRATION_SCAN_FIELDS: Array<keyof WorkflowEntity> = [
+	'id',
+	'name',
+	'active',
+	'activeVersionId',
+	'versionId',
+	'nodes',
+	'updatedAt',
+];
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -711,6 +722,27 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows.map(({ id }) => id);
 	}
 
+	/**
+	 * One page of workflows for the migration report scan, keyset-paged like `getIdsAfter`.
+	 * It returns only the fields the scan rules and the report read.
+	 */
+	async findMigrationScanPage(
+		afterId: string | undefined,
+		take: number,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select: MIGRATION_SCAN_FIELDS,
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/** One workflow with the fields of `findMigrationScanPage`, for a re-check after a save. */
+	async findMigrationScanWorkflow(workflowId: string): Promise<WorkflowEntity | null> {
+		return await this.findOne({ select: MIGRATION_SCAN_FIELDS, where: { id: workflowId } });
+	}
+
 	/** The subset of `workflowIds` that still exists, in no particular order. */
 	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
 		if (workflowIds.length === 0) return [];
@@ -1027,6 +1059,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		if (
 			options.filter?.parentFolderId &&
@@ -1046,8 +1079,18 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		}
 
 		const [workflowsAndFolders, count] = await Promise.all([
-			this.getWorkflowsAndFoldersUnionWithSharingSubquery(user, sharingOptions, options),
-			this.getWorkflowsAndFoldersCountWithSharingSubquery(user, sharingOptions, options),
+			this.getWorkflowsAndFoldersUnionWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			),
+			this.getWorkflowsAndFoldersCountWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			),
 		]);
 
 		const isArchived =
@@ -1074,9 +1117,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } =
-			this.buildBaseUnionQueryWithSharingSubquery(user, sharingOptions, options);
+			this.buildBaseUnionQueryWithSharingSubquery(
+				user,
+				sharingOptions,
+				options,
+				accessibleProjectIds,
+			);
 
 		const query = this.buildUnionQuery(baseQuery, {
 			sortByColumn,
@@ -1102,6 +1151,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
 
@@ -1109,6 +1159,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			user,
 			sharingOptions,
 			baseQueryParameters,
+			accessibleProjectIds,
 		);
 
 		const response = await baseQuery
@@ -1130,6 +1181,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			onlySharedWithMe?: boolean;
 		},
 		options: WorkflowListQueryOptions = {},
+		accessibleProjectIds?: string[],
 	) {
 		// Common fields for both folders and workflows
 		const commonFields = {
@@ -1174,6 +1226,18 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.getManyQuery(folderQueryParameters)
 			.addSelect('NULL', 'description') // Add NULL for description in folders
 			.addSelect("'folder'", 'resource');
+
+		// Restrict folders to projects in which the user can list folders.
+		// When undefined (global access), no filtering is applied.
+		if (accessibleProjectIds !== undefined) {
+			if (accessibleProjectIds.length > 0) {
+				foldersQuery.andWhere('folder.projectId IN (:...accessibleProjectIds)', {
+					accessibleProjectIds,
+				});
+			} else {
+				foldersQuery.andWhere('1 = 0');
+			}
+		}
 
 		const workflowsQuery = this.getManyQueryWithSharingSubquery(
 			user,

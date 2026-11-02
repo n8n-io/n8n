@@ -63,16 +63,14 @@ function setup(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
+	} = useResourceRegistry(() => messages.value, {
 		workflowNameLookup,
-		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
 		agentBuilderTargets,
-	);
+	});
 	return {
 		messages,
 		producedArtifacts,
@@ -1553,9 +1551,14 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test.each(['schema', 'query'] as const)(
-			'registers data table from data-tables %s result with resolved metadata',
-			async (action) => {
+		test.each([
+			{ toolName: 'data_tables', action: 'schema' },
+			{ toolName: 'data_tables', action: 'query' },
+			{ toolName: 'get_data_table_schema', action: 'schema' },
+			{ toolName: 'query_data_table', action: 'query' },
+		] as const)(
+			'registers data table from $toolName $action result with resolved metadata',
+			async ({ toolName, action }) => {
 				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
@@ -1563,8 +1566,11 @@ describe('useResourceRegistry', () => {
 						agentTree: makeAgentNode({
 							toolCalls: [
 								makeToolCall({
-									toolName: 'data_tables',
-									args: { action, dataTableId: 'Signups' },
+									toolName,
+									args:
+										toolName === 'data_tables'
+											? { action, dataTableId: 'Signups' }
+											: { dataTableId: 'Signups' },
 									result: {
 										dataTableId: 'dt-signups',
 										dataTableName: 'Signups',
@@ -1702,11 +1708,9 @@ describe('useResourceRegistry', () => {
 		test('field-level changes notify field readers, and removed fields are swept', async () => {
 			const messages = ref<InstanceAiMessage[]>([]);
 			const archived = ref<ReadonlySet<string>>(new Set());
-			const { producedArtifacts } = useResourceRegistry(
-				() => messages.value,
-				undefined,
-				() => archived.value,
-			);
+			const { producedArtifacts } = useResourceRegistry(() => messages.value, {
+				archivedWorkflowIds: () => archived.value,
+			});
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({

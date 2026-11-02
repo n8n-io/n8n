@@ -3,11 +3,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 import { Readable } from 'node:stream';
-import { UserError } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -2334,6 +2333,26 @@ describe('SystemAgentExecutionService', () => {
 				ctx,
 			);
 			expect(updated).toMatchObject({ title: 'Renamed', projectId: 'project-2' });
+		});
+
+		it('refuses to rename a thread that the user can no longer use', async () => {
+			const { service, provider, threadRepository } = setup();
+			provider.authorize.mockResolvedValue(false);
+
+			await expect(
+				service.updateThread(AGENT_ID, user, 'thread-1', { title: 'Renamed' }),
+			).rejects.toThrow(NotFoundError);
+			expect(threadRepository.renameOwned).not.toHaveBeenCalled();
+		});
+
+		it('refuses to rename a thread in a project that the user cannot read', async () => {
+			const { service, threadRepository } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.updateThread(AGENT_ID, user, 'thread-1', { title: 'Renamed' }),
+			).rejects.toThrow(NotFoundError);
+			expect(threadRepository.renameOwned).not.toHaveBeenCalled();
 		});
 
 		it('reports a thread that was deleted during the update as not found', async () => {

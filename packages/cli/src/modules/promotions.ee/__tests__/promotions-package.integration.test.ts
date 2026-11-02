@@ -51,10 +51,12 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { BadRequestError } from '@n8n/errors';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import {
+	DataTableRepository,
+	DataTableColumnRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
@@ -2357,6 +2359,53 @@ describe('Check of the Apply preview', () => {
 				},
 			],
 		});
+	});
+});
+
+describe('Create the projects of the Apply package that are missing here', () => {
+	it('lists a missing project, creates it with the same ID, and then applies its workflow', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.apply.id, owner);
+		const {
+			project,
+			workflows: [workflow],
+		} = await setupProjectWithWorkflows('Orders', ['Order intake']);
+		await createTeamProject('Billing', owner);
+		await exportPackageToRemote(remote);
+		// Orders exists only on the source instance.
+		await projectService.deleteProject(owner, project.id);
+		const agent = testServer.publicApiAgentFor(owner);
+		const missingProjectsUrl = `/promotions/environments/${environments.apply.id}/missing-projects`;
+
+		const listed = await agent.get(missingProjectsUrl);
+
+		expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+		expect(listed.body).toEqual({
+			environmentId: environments.apply.id,
+			git: { branchName: 'main', commitSha: expect.any(String) },
+			data: [expect.objectContaining({ id: project.id, name: 'Orders' })],
+		});
+
+		const missingProject = listed.body.data[0];
+		const created = await agent.post('/projects').send(missingProject);
+		expect(created.status, JSON.stringify(created.body)).toBe(201);
+		expect((await agent.get(missingProjectsUrl)).body.data).toEqual([]);
+
+		const applied = await agent
+			.post(`/promotions/projects/${project.id}/apply`)
+			.send({ workflowIds: [workflow.id] });
+		expect(applied.status, JSON.stringify(applied.body)).toBe(200);
+		expect(applied.body).toMatchObject({
+			status: 'applied',
+			counts: { workflows: { created: 1 } },
+		});
+		expect(
+			await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: workflow.id,
+				role: 'workflow:owner',
+			}),
+		).toMatchObject({ projectId: project.id });
 	});
 });
 

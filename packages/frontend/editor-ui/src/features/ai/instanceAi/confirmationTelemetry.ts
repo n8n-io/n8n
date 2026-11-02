@@ -104,6 +104,19 @@ export function continueInputs(message: string): ConfirmationInputs {
 	};
 }
 
+export function appBlueprintInputs(approved: boolean): ConfirmationInputs {
+	return {
+		provided: [
+			{
+				label: 'app-blueprint',
+				options: ['start-building', 'cancel'],
+				option_chosen: approved ? 'start-building' : 'cancel',
+			},
+		],
+		skipped: [],
+	};
+}
+
 /** The MCP connect card. A skip lists every offered server as skipped. */
 export function mcpConnectInputs(
 	servers: InstanceAiMcpConnectServer[],

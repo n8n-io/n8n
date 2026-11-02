@@ -60,6 +60,8 @@ describe('GlobalConfig', () => {
 				secure: true,
 			},
 			oauthBrowserBinding: false,
+			oauthCimdEnabled: false,
+			oauthClientMetadataUrl: '',
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
@@ -596,6 +598,7 @@ describe('GlobalConfig', () => {
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
+				maxResumeAttempts: 2,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',

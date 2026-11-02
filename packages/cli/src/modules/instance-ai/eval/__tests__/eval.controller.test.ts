@@ -10,11 +10,10 @@ import type {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { meterEvalUsage, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EvalAgentExecutionService } from '../agent-execution.service';
