@@ -6,6 +6,7 @@ on:
     branches:
       - master
     paths:
+      - 'docker/docker-bake.hcl'
       - 'docker/images/n8n-base/Dockerfile'
       - 'docker/images/n8n-base/Dockerfile.debian'
       - '.github/scripts/docker/base-debian-smoke-check.mjs'
