@@ -1,9 +1,22 @@
 /**
- * parse-file tool — parses user files with the structured-file and text
- * extraction parsers. One of two versions is registered:
- * - `createParseFileTool` reads the current message's attachments by index.
- *   It is registered only when the current turn has parseable attachments.
- * - `createParseStoredFileTool` reads stored files of the thread by fileId.
+ * parse-file tool: parses user files with the structured-file and text
+ * extraction parsers.
+ *
+ * There are two versions with the same tool name. A turn gets one of them.
+ * `getOrchestratorDomainToolFactories` in `../index.ts` selects the version:
+ *
+ * - `createParseStoredFileTool` is used when the host sets
+ *   `context.storedFiles`. Only the Assistant agent on the Agents runtime does
+ *   this. The tool reads a stored file of the thread by `fileId`, so it can
+ *   read files from earlier messages and after an approval resume. It is
+ *   registered on every turn, so the tool list stays the same and the prompt
+ *   cache stays valid.
+ * - `createParseFileTool` is used otherwise, by the current Instance AI
+ *   runtime. That runtime does not store files. The tool reads an attachment
+ *   of the current message by `attachmentIndex`. It is registered only when
+ *   the current message has a parseable attachment.
+ *
+ * Both versions use `parseAttachment`, so they give the same output.
  */
 
 import { Tool } from '@n8n/agents';
@@ -272,7 +285,7 @@ const PARSE_FILE_FORMATS_DESCRIPTION =
 	'WARNING: Cell values starting with =, +, @, or - may be interpreted as formulas by spreadsheet applications. ' +
 	'If data will be exported to a spreadsheet, consider prefixing such values with a single quote.';
 
-/** Reads the attachments of the current message by index. */
+/** The current Instance AI runtime version. See the comment at the top of this file. */
 export function createParseFileTool(context: InstanceAiContext) {
 	return new Tool('parse-file')
 		.description(
@@ -311,10 +324,7 @@ export const parseStoredFileInputSchema = parseFileInputSchema
 			.describe('The fileId of a file in this conversation, as shown in its file attachment label'),
 	});
 
-/**
- * Reads stored files of the thread by id. It does not depend on the current
- * message, so the host can register it on every turn.
- */
+/** The Assistant agent version. See the comment at the top of this file. */
 export function createParseStoredFileTool(reader: InstanceAiStoredFileReader) {
 	return new Tool('parse-file')
 		.description(
