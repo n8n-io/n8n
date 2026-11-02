@@ -5,6 +5,7 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+	analyzeLocalPackage,
 	analyzePackage,
 	buildReport,
 	buildScanConfig,
@@ -12,6 +13,7 @@ import {
 	findPackageRoot,
 	formatPackageSpec,
 	getExitCode,
+	isLocalPath,
 	isSourceUnavailable,
 	parseSourceRepo,
 	resolvePackage,
@@ -455,6 +457,61 @@ describe('getExitCode', () => {
 		expect(getExitCode({ ...failed, error: new Error('npm pack failed') })).toBe(
 			EXIT_CODES.INTERNAL_ERROR,
 		);
+	});
+});
+
+describe('isLocalPath', () => {
+	it('treats only paths as local packages', () => {
+		expect(isLocalPath('.')).toBe(true);
+		expect(isLocalPath('..')).toBe(true);
+		expect(isLocalPath('./n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('../n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('/home/me/n8n-nodes-foo')).toBe(true);
+		expect(isLocalPath('n8n-nodes-foo')).toBe(false);
+		expect(isLocalPath('@scope/n8n-nodes-foo@1.0.0')).toBe(false);
+	});
+});
+
+describe('analyzeLocalPackage', () => {
+	let fixtureDir: string | undefined;
+
+	afterEach(() => {
+		if (fixtureDir) {
+			fs.rmSync(fixtureDir, { recursive: true, force: true });
+			fixtureDir = undefined;
+		}
+	});
+
+	it('lints the sources and the compiled output', async () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': {
+				name: 'n8n-nodes-fixture',
+				version: '1.0.0',
+				description: 'A fixture community node package',
+				license: 'MIT',
+				author: { name: 'Test Author', email: 'test@example.com' },
+				keywords: ['n8n-community-node-package'],
+				peerDependencies: { 'n8n-workflow': '*' },
+				n8n: { n8nNodesApiVersion: 1, nodes: ['dist/nodes/Foo/Foo.node.js'] },
+			},
+			'nodes/Foo/Foo.node.ts': "console.log('debug');\nexport class Foo {}\n",
+			'dist/nodes/Foo/Foo.node.js': "console.log('debug');\nexports.Foo = class Foo {};\n",
+		});
+
+		const result = await analyzeLocalPackage(fixtureDir);
+
+		expect(result).toMatchObject({ packageName: 'n8n-nodes-fixture', version: '1.0.0' });
+		expect(getExitCode(result)).toBe(EXIT_CODES.SCAN_FAILED);
+		expect(result.findings?.map((f) => [f.origin, f.file])).toEqual([
+			['source', path.join('nodes', 'Foo', 'Foo.node.ts')],
+			['package', path.join('dist', 'nodes', 'Foo', 'Foo.node.js')],
+		]);
+	});
+
+	it('rejects a directory without a package.json', async () => {
+		fixtureDir = makeFixturePackage({ 'README.md': '# not a package\n' });
+
+		await expect(analyzeLocalPackage(fixtureDir)).rejects.toThrow('No package.json found');
 	});
 });
 

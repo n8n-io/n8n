@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { parseArgs } from 'node:util';
 
 import {
 	resolvePackage,
+	analyzeLocalPackage,
 	analyzePackageByName,
+	isLocalPath,
 	buildReport,
 	errorMessage,
 	formatPackageSpec,
@@ -14,7 +17,8 @@ import {
 	type ScanReport,
 } from './scanner.js';
 
-const USAGE = 'Usage: npx @n8n/scan-community-package <package-name>[@version] [--output <file>]';
+const USAGE =
+	'Usage: npx @n8n/scan-community-package <package-name>[@version] | <path> [--output <file>]';
 
 let packageSpec: string | undefined;
 let output: string | undefined;
@@ -38,9 +42,15 @@ const writeReport = (report: ScanReport) => {
 	if (output) fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
 };
 
+const scan = async (spec: string) => {
+	if (isLocalPath(spec)) return await analyzeLocalPackage(path.resolve(spec));
+	const { packageName, version } = resolvePackage(spec);
+	return await analyzePackageByName(packageName, version);
+};
+
 try {
-	const { packageName, version } = resolvePackage(packageSpec);
-	const result = await analyzePackageByName(packageName, version);
+	const result = await scan(packageSpec);
+	const { packageName } = result;
 	const label = formatPackageSpec(packageName, result.version);
 	const exitCode = getExitCode(result);
 
@@ -59,6 +69,12 @@ try {
 			console.log('\nDetails:');
 			console.log(result.details);
 		}
+	}
+
+	if (isLocalPath(packageSpec)) {
+		console.log(
+			'\n⚠️ This was a local scan. The npm provenance and attested source checks run after you publish.',
+		);
 	}
 
 	writeReport(buildReport(packageName, result));

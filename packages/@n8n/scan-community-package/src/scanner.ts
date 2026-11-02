@@ -485,6 +485,83 @@ export const analyzePackage = async (
 	}
 };
 
+const mergeResults = (sourceResult: AnalysisResult, distResult: AnalysisResult): AnalysisResult => {
+	const failures = [sourceResult, distResult].filter((r) => !r.passed);
+	const firstFailure = failures.find((r) => r.error !== undefined) ?? failures[0];
+	if (!firstFailure) return { passed: true };
+
+	return {
+		passed: false,
+		message: firstFailure.message,
+		details:
+			failures
+				.map((r) => r.details)
+				.filter(Boolean)
+				.join('\n') || undefined,
+		findings: [
+			...(sourceResult.findings ?? []).map((f) => ({ ...f, origin: 'source' as const })),
+			...(distResult.findings ?? []).map((f) => ({ ...f, origin: 'package' as const })),
+		],
+		error: firstFailure.error,
+	};
+};
+
+const writeAnalyzed = (label: string, result: AnalysisResult) => {
+	if (stdout.isTTY) {
+		stdout.clearLine(0);
+		stdout.cursorTo(0);
+	}
+	stdout.write(
+		!result.passed && result.error !== undefined
+			? `❌ Could not analyze "${label}" \n`
+			: `✅ Analyzed "${label}" \n`,
+	);
+};
+
+export const isLocalPath = (packageSpec: string): boolean =>
+	packageSpec === '.' ||
+	packageSpec === '..' ||
+	packageSpec.startsWith('./') ||
+	packageSpec.startsWith('../') ||
+	path.isAbsolute(packageSpec);
+
+/**
+ * Lints a package directory on disk the way a published package is linted, so
+ * authors can check it before they submit. npm provenance and the attested
+ * source only exist after publishing, so this skips them.
+ */
+export const analyzeLocalPackage = async (
+	packageDir: string,
+): Promise<AnalysisResult & { packageName: string; version: string | null }> => {
+	const packageJsonPath = path.join(packageDir, 'package.json');
+	if (!fs.existsSync(packageJsonPath)) {
+		throw new Error(`No package.json found in "${packageDir}"`);
+	}
+	const packageJson: unknown = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+	const packageName = field(packageJson, 'name');
+	if (typeof packageName !== 'string') {
+		throw new Error(`No package name in "${packageJsonPath}"`);
+	}
+	const rawVersion = field(packageJson, 'version');
+	const version = typeof rawVersion === 'string' ? rawVersion : null;
+	const label = formatPackageSpec(packageName, version);
+
+	if (!fs.existsSync(path.join(packageDir, 'dist'))) {
+		stdout.write(
+			'⚠️ No "dist" directory found. Build the package to also lint the compiled output.\n',
+		);
+	}
+
+	stdout.write(`Analyzing "${label}"...`);
+	const result = mergeResults(
+		await analyzePackage(packageDir, SOURCE_FILE_PATTERNS),
+		await analyzePackage(packageDir, ['dist/**/*.js']),
+	);
+	writeAnalyzed(label, result);
+
+	return { packageName, version, ...result };
+};
+
 export const analyzePackageByName = async (
 	packageName: string,
 	version: string | null,
@@ -582,36 +659,11 @@ export const analyzePackageByName = async (
 		// into `dist/`. Scope the tarball leg to compiled `.js` and the
 		// published package.json; `.ts`/`.d.ts` declarations are covered better
 		// by the source scan and only false-positive on filename rules here.
-		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
-		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
-		const failures = [sourceResult, distResult].filter((r) => !r.passed);
-		const firstFailure = failures.find((r) => r.error !== undefined) ?? failures[0];
-		const findings = [
-			...(sourceResult.findings ?? []).map((f) => ({ ...f, origin: 'source' as const })),
-			...(distResult.findings ?? []).map((f) => ({ ...f, origin: 'package' as const })),
-		];
-		const analysisResult: AnalysisResult = firstFailure
-			? {
-					passed: false,
-					message: firstFailure.message,
-					details:
-						failures
-							.map((r) => r.details)
-							.filter(Boolean)
-							.join('\n') || undefined,
-					findings,
-					error: firstFailure.error,
-				}
-			: { passed: true };
-		if (stdout.isTTY) {
-			stdout.clearLine(0);
-			stdout.cursorTo(0);
-		}
-		stdout.write(
-			firstFailure?.error === undefined
-				? `✅ Analyzed "${label}" \n`
-				: `❌ Could not analyze "${label}" \n`,
+		const analysisResult = mergeResults(
+			await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS),
+			await analyzePackage(packageDir, ['**/*.js', 'package.json']),
 		);
+		writeAnalyzed(label, analysisResult);
 
 		return {
 			packageName,

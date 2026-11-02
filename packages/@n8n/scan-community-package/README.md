@@ -18,6 +18,17 @@ $ npx @n8n/scan-community-package @SCOPE/n8n-nodes-PACKAGE@beta
 
 Without a version, the scanner checks the `latest` dist-tag.
 
+### Scan a local package before you submit it
+
+Run the scanner with a path, for example `.` in your node's directory:
+
+```
+$ npm run build
+$ npx @n8n/scan-community-package .
+```
+
+The scanner lints your sources and the compiled files in `dist/` with the same rules it applies to a published package. Build the package first, or the scanner lints your sources only. The npm provenance and attested source checks need a published package, so a local scan skips them.
+
 To get the result as JSON, add `--output` with a file path. The scanner still prints its progress to the terminal:
 
 ```
