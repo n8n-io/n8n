@@ -1,6 +1,10 @@
 # check=skip=InvalidDefaultArgInFrom
 ARG PNPM_VERSION=12.4.2
 ARG PYTHON_VERSION=3.13
+# Each digest pins the multi-arch index of its tag. Change the tag and the digest
+# together. PYTHON_VERSION above is the major.minor of PYTHON_IMAGE.
+ARG PYTHON_IMAGE=python:3.13.18-slim-trixie@sha256:ae14d4ce8771606477a81446e7ef429edd6762305fc50c84507c1041fa8285d1
+ARG ALPINE_IMAGE=alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # glibc variant of ./Dockerfile, for Code nodes that load a vendor library that
 # needs glibc (Oracle Instant Client, IBM Db2) on an external runner. The runtime
@@ -43,13 +47,13 @@ RUN node -e "const pkg = require('./package.json'); \
 # `--config.minimum-release-age=0`: see ./Dockerfile. This only re-resolves an
 # already-pinned dependency set.
 RUN rm -f node_modules/.modules.yaml && \
-    pnpm add moment@2.30.1 --save-prod --no-lockfile --config.minimum-release-age=0
+    pnpm add moment@2.31.0 --save-prod --no-lockfile --config.minimum-release-age=0
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
 # Produces a relocatable venv tied to the python version used
 # ==============================================================================
-FROM python:${PYTHON_VERSION}-slim-trixie AS python-runner-builder
+FROM ${PYTHON_IMAGE} AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
 
@@ -103,9 +107,9 @@ RUN pip install --no-cache-dir "pip>=26.0"
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22 AS launcher-downloader
+FROM ${ALPINE_IMAGE} AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.5.1
+ARG LAUNCHER_VERSION=1.6.0
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \
@@ -146,7 +150,7 @@ COPY --from=python-runner-builder /usr/local/lib/libpython${PYTHON_VERSION}.so.1
 RUN ldconfig && ln -s "python${PYTHON_VERSION}" /usr/local/bin/python3
 
 # Bring pnpm over, to make the image easier to extend. pnpm 12 installs a
-# standalone native executable, so the runtime does not need npm or Corepack.
+# standalone native executable, so the runtime does not need npm.
 COPY --from=javascript-runner-builder /usr/local/lib/node_modules/pnpm/pnpm /usr/local/bin/pnpm
 
 # The base ships uid 1000 as `node`; the runners images call it `runner`.
