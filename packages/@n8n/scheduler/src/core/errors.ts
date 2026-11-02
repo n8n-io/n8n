@@ -94,6 +94,30 @@ export class TaskTimeoutError extends Error {
 	}
 }
 
+/** The failure recorded when a holder returns without reporting ready. */
+export class HolderNotReadyError extends Error {
+	constructor() {
+		super('The holder returned before it reported ready');
+		this.name = 'HolderNotReadyError';
+	}
+}
+
+/** The abort reason of a holder's signal when the executor stops. */
+export class HolderShutdownError extends Error {
+	constructor() {
+		super('The executor is stopping, so the holder must let go');
+		this.name = 'HolderShutdownError';
+	}
+}
+
+/** Raised at construction when held tasks are enabled and the store lacks the hold writes. */
+export class HoldStoreMissingError extends Error {
+	constructor() {
+		super('Held tasks are enabled, but the task store has no hold operations');
+		this.name = 'HoldStoreMissingError';
+	}
+}
+
 /** Raised when a lease heartbeat is given a lease duration that is not a positive integer. */
 export class InvalidLeaseDurationError extends Error {
 	constructor(readonly leaseDurationMs: number) {

@@ -71,6 +71,8 @@ export const SCHEDULER_FIRE_OUTCOME = {
 	skippedNoHandler: 'skipped_no_handler',
 	/** The row was gone or reclaimed by the time it fired; nothing dispatched. */
 	skippedNotOwned: 'skipped_not_owned',
+	/** A holder let go of its held task, which went back to `pending`. */
+	released: 'released',
 } as const;
 
 /** The `job_id` + `task_id` + `task_type` triple every scheduler task span carries. */

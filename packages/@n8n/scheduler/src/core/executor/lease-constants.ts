@@ -13,3 +13,14 @@ export const RENEWALS_PER_LEASE = 3;
  * renewals, and one this short or shorter expires before its first renewal.
  */
 export const MIN_RENEWAL_INTERVAL_MS = 5_000;
+
+/** The longest a holder is told to stop before its lease runs out. */
+export const MAX_FENCE_MARGIN_MS = 5_000;
+
+/**
+ * Half a renewal interval, so the abort lands between two renewals rather than on
+ * the last one, capped at {@link MAX_FENCE_MARGIN_MS}.
+ */
+export function defaultFenceMarginMs(leaseMs: number): number {
+	return Math.min(MAX_FENCE_MARGIN_MS, Math.floor(leaseMs / (2 * (RENEWALS_PER_LEASE + 1))));
+}

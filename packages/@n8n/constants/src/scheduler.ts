@@ -15,13 +15,15 @@ import { NODE_ID_MAX_LENGTH } from './nodes';
  * - on a cron expression
  * - on a fixed interval
  * - just once
- * - or on a cron repeated every N periods.
+ * - on a cron repeated every N periods
+ * - or never: a `hold` job has one task that a holder keeps for as long as the work runs.
  */
 export const ScheduledJobKind = {
 	Cron: 'cron',
 	Interval: 'interval',
 	OneOff: 'one_off',
 	RecurringCron: 'recurring_cron',
+	Hold: 'hold',
 } as const;
 
 export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJobKind];
@@ -142,6 +144,24 @@ export type ScheduledTaskStatus = (typeof ScheduledTaskStatus)[keyof typeof Sche
 
 /** All statuses as a runtime list. */
 export const ScheduledTaskStatusList = Object.values(ScheduledTaskStatus);
+
+/**
+ * How the executor runs a task:
+ * - `once`: the handler runs one occurrence and a clean return completes it.
+ * - `hold`: the handler keeps the task until it is told to stop, and a clean return releases it.
+ */
+export const ScheduledTaskMode = {
+	Once: 'once',
+	Hold: 'hold',
+} as const;
+
+export type ScheduledTaskMode = (typeof ScheduledTaskMode)[keyof typeof ScheduledTaskMode];
+
+/**
+ * The `scheduledFor` of a held task. A hold job has exactly one task, so a fixed
+ * instant keeps the `(jobId, scheduledFor)` identity unique and makes a re-seed a no-op.
+ */
+export const HELD_TASK_SCHEDULED_FOR = new Date(0);
 
 /** Statuses of finished work: the only tasks retention may delete. */
 export const TerminalTaskStatusList = [

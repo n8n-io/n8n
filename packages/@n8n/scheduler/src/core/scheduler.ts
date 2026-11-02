@@ -1,4 +1,4 @@
-import type { TaskHandler } from './executor';
+import type { AnyTaskHandler } from './executor';
 import type { MaterializerSummary } from './materializer';
 import type { ReapResult } from './reaper';
 import type { ReconciliationSummary } from './reconciliation';
@@ -16,7 +16,7 @@ export interface Scheduler {
 	 * The executor claims only registered types,
 	 * so an instance never picks up work it cannot run.
 	 */
-	registerTaskHandler(taskType: string, handler: TaskHandler): void;
+	registerTaskHandler(taskType: string, handler: AnyTaskHandler): void;
 
 	/**
 	 * Start the periodic loops that drive the passes ({@link SchedulerPasses}),

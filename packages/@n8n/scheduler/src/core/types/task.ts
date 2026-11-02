@@ -20,7 +20,7 @@
  * (absolute UTC).
  */
 
-import type { ScheduledTaskStatus } from '@n8n/constants';
+import type { ScheduledTaskMode, ScheduledTaskStatus } from '@n8n/constants';
 
 /**
  * A materialised occurrence of a job (`scheduled_task`): one queued run.
@@ -40,6 +40,10 @@ export interface ScheduledTask {
 	attempts: number;
 	maxAttempts: number;
 	timeoutSeconds: number;
+	/** How the executor runs the task. Absent means `once`. */
+	mode?: ScheduledTaskMode;
+	/** The task's own lease length. Absent or `null` means the executor's lease. */
+	leaseSeconds?: number | null;
 }
 
 /**

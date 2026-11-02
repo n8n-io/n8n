@@ -329,6 +329,17 @@ export class SchedulerConfig {
 	enabledForAgentTasks: boolean = false;
 
 	/**
+	 * Whether the durable scheduler runs held tasks: work that one main keeps for
+	 * as long as it runs, and that another main takes over when the first one
+	 * stops or crashes. Off by default. Requires {@link enabled} to also be on.
+	 *
+	 * Give every main the same value, and change it with a full restart, not a
+	 * rolling one.
+	 */
+	@Env('N8N_SCHEDULER_HELD_TASKS_ENABLED')
+	enabledForHeldTasks: boolean = false;
+
+	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)
 	 * or retried on error before it's given up on and dead-lettered. Defaults to
 	 * 5. Raise it on infrastructure prone to instance restarts or transient

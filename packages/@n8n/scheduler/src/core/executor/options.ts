@@ -23,6 +23,19 @@ export interface ExecutorOptions {
 
 	/** The most tasks one claim takes from the queue per tick. */
 	batchSize: number;
+
+	/** Runs held tasks when set. Absent, the executor runs only `once` tasks. */
+	hold?: HoldOptions;
+}
+
+export interface HoldOptions {
+	/**
+	 * How long before its lease runs out a holder is told to let go. Defaults to half
+	 * a renewal interval, at most 5 seconds.
+	 */
+	fenceMarginMs?: number;
+	/** How long `stop()` waits for holders to return before it releases their claims. */
+	shutdownGraceMs: number;
 }
 
 export const DEFAULT_EXECUTOR_OPTIONS: ExecutorOptions = {

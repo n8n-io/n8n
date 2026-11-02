@@ -13,6 +13,7 @@
 | intervalSeconds | integer |  | true |  |  | Gap between fires in seconds; set only when kind is 'interval'. |
 | kind | varchar(16) |  | false |  |  | Recurrence kind; selects which of the schedule columns below apply. |
 | lastFiredAt | timestamp(3) with time zone |  | true |  |  | Last time an occurrence was materialized; used to recompute nextRunAt. |
+| leaseSeconds | integer |  | true |  |  |  |
 | maxAttempts | integer | 1 | false |  |  | Retry ceiling copied onto each occurrence this job materializes. |
 | misfireGraceSeconds | integer | 60 | false |  |  | How late an occurrence may be before the misfire policy applies to it; an ordinary restart stays inside it. |
 | misfirePolicy | varchar(16) | 'coalesce'::character varying | false |  |  | What to do with occurrences that came due while nothing ran them: 'coalesce' records a single late run per job, 'coalesce_owner' a single one across every job the same owner scheduled, 'skip' records none. |
@@ -38,7 +39,8 @@
 | CHK_scheduled_job_cron_expression | CHECK | CHECK ((((kind)::text <> 'cron'::text) OR ("cronExpression" IS NOT NULL))) |
 | CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
 | CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
-| CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying, 'recurring_cron'::character varying])::text[]))) |
+| CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying, 'recurring_cron'::character varying, 'hold'::character varying])::text[]))) |
+| CHK_scheduled_job_leaseSeconds | CHECK | CHECK (("leaseSeconds" > 0)) NOT VALID |
 | CHK_scheduled_job_misfireGraceSeconds | CHECK | CHECK (("misfireGraceSeconds" > 0)) |
 | CHK_scheduled_job_misfirePolicy | CHECK | CHECK ((("misfirePolicy")::text = ANY ((ARRAY['coalesce'::character varying, 'skip'::character varying, 'coalesce_owner'::character varying])::text[]))) |
 | CHK_scheduled_job_recurrence_size | CHECK | CHECK (("recurrenceSize" >= 2)) |
@@ -88,6 +90,7 @@ erDiagram
   integer intervalSeconds
   varchar_16_ kind
   timestamp_3__with_time_zone lastFiredAt
+  integer leaseSeconds
   integer maxAttempts
   integer misfireGraceSeconds
   varchar_16_ misfirePolicy
@@ -112,12 +115,15 @@ erDiagram
   timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
+  timestamp_3__with_time_zone heldSince
   bigint id
   integer jobId FK
   integer leaseEpoch
   timestamp_3__with_time_zone leaseExpiresAt
+  integer leaseSeconds
   integer maxAttempts
   timestamp_3__with_time_zone missedAfter
+  varchar_16_ mode
   json payload
   timestamp_3__with_time_zone runAt
   timestamp_3__with_time_zone scheduledFor

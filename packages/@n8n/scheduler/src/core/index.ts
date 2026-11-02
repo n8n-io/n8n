@@ -60,9 +60,14 @@ export type {
 	ProvisionSummary,
 	StoredJobs,
 } from './provisioning';
-export { createDispatchReporter, backoff } from './executor';
+export { createDispatchReporter, backoff, isHoldTaskHandler } from './executor';
 export type {
 	ExecutorOptions,
+	HoldOptions,
+	AnyTaskHandler,
+	HoldReporter,
+	HoldRun,
+	HoldTaskHandler,
 	TaskHandler,
 	TaskRun,
 	DispatchReporter,
@@ -114,6 +119,7 @@ export {
 	InvalidOwnerMemberIdError,
 	InvalidRunOptionError,
 	LeaseLostError,
+	HolderShutdownError,
 	TaskTimeoutError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';

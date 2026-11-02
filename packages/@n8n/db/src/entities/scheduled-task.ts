@@ -1,4 +1,4 @@
-import { ScheduledTaskStatus } from '@n8n/constants';
+import { ScheduledTaskMode, ScheduledTaskStatus } from '@n8n/constants';
 import { Column, Entity, Generated, Index, PrimaryColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, JsonColumn, WithCreatedAt, dbType } from './abstract-entity';
@@ -7,6 +7,7 @@ import { idStringifier } from '../utils/transformers';
 // Defined in `@n8n/constants` (shared with `@n8n/scheduler`), re-exported here
 // so the schema side keeps exposing its vocabulary.
 export {
+	ScheduledTaskMode,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
 	type TerminalTaskStatus,
@@ -210,4 +211,26 @@ export class ScheduledTask extends WithCreatedAt {
 	 */
 	@DateTimeColumn({ nullable: true })
 	missedAfter: Date | null;
+
+	/**
+	 * How the executor runs this task, copied from the job's kind when the task is
+	 * created, so the claim and the reaper need no join to tell a held task apart.
+	 */
+	@Column({ type: 'varchar', length: 16, default: ScheduledTaskMode.Once })
+	mode: ScheduledTaskMode;
+
+	/**
+	 * Lease length in seconds for this task, copied from the job. `null` means the
+	 * executor's configured lease.
+	 */
+	@Column({ type: 'int', nullable: true })
+	leaseSeconds: number | null;
+
+	/**
+	 * When the current holder reported its resource armed. Set only on a held task
+	 * while it is `running`; cleared whenever the task leaves its holder. A set value
+	 * means the holder worked, so losing it costs no attempt.
+	 */
+	@DateTimeColumn({ nullable: true })
+	heldSince: Date | null;
 }
