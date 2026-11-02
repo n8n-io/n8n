@@ -85,6 +85,7 @@ export class AppWorkspaceService {
 					String(deadline),
 					String(this.config.maxBuildLogBytes),
 					String(this.config.buildTimeoutMs),
+					this.config.unsafeSameOrigin ? './' : '/',
 				],
 				{ timeout: remaining, abortSignal: signal, env: { CI: 'true' } },
 			);

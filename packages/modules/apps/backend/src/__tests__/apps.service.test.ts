@@ -15,7 +15,11 @@ import { AppsConfig } from '../apps.config';
 import { AppsService } from '../apps.service';
 import { AppHostService } from '../serving/app-host.service';
 
-function createService({ deploymentType = 'default', host = 'n8n.example.net' } = {}) {
+function createService({
+	deploymentType = 'default',
+	host = 'n8n.example.net',
+	sameOrigin = false,
+} = {}) {
 	const appRepository = mock<AppRepository>();
 	const appVersions = mock<AppVersionRepository>();
 	const projectScopeService = mock<ProjectScopeService>();
@@ -23,7 +27,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 	const workspaces = mock<AppWorkspaceService>();
 	const logger = mock<Logger>();
 	const configuredHosts = new AppHostService(
-		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com', unsafeSameOrigin: sameOrigin }),
 		mock<GlobalConfig>({
 			host,
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
@@ -36,6 +40,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 	const hosts = mock<AppHostService>();
 	hosts.origin.mockImplementation((namespace) => configuredHosts.origin(namespace));
 	hosts.previewOrigin.mockImplementation((namespace) => configuredHosts.previewOrigin(namespace));
+	hosts.appUrl.mockImplementation((app) => configuredHosts.appUrl(app));
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
 	appVersions.hasRunningBuild.mockResolvedValue(false);
 	const service = new AppsService(
@@ -183,6 +188,24 @@ describe('AppsService', () => {
 			publishedUrl: 'https://updated-app.apps.example.com',
 			updatedAt: '2026-10-14T00:00:00.000Z',
 		});
+	});
+
+	it('returns the instance app URL when same-origin hosting is enabled', async () => {
+		const { service, appRepository } = createService({ sameOrigin: true });
+		const id = '11111111-1111-4111-8111-111111111111';
+		appRepository.findInProject.mockResolvedValue(
+			mock<App>({
+				id,
+				namespace: 'sales',
+				publishedVersionId: 'version',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}),
+		);
+
+		expect((await service.getApp('project', id)).publishedUrl).toBe(
+			`https://n8n.example.net/apps/${id}/`,
+		);
 	});
 
 	it.each([

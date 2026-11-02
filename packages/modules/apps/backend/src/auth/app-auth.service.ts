@@ -35,7 +35,12 @@ export class AppAuthService {
 
 	async requireApp(req: Request, appId?: string): Promise<App> {
 		const namespace = this.hosts.namespace(req);
-		const app = namespace ? await this.apps.findByNamespace(namespace) : null;
+		const id = this.hosts.requestAppId(req);
+		const app = id
+			? await this.apps.findById(id)
+			: namespace
+				? await this.apps.findByNamespace(namespace)
+				: null;
 		if (!app?.publishedVersionId || (appId !== undefined && app.id !== appId)) {
 			throw new NotFoundError('App not found.');
 		}
@@ -54,7 +59,7 @@ export class AppAuthService {
 		const result = await this.admission.admitBearer(
 			resource,
 			request,
-			readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '',
+			readCookie(req, this.sessionCookieName(app)) ?? '',
 		);
 		if (result.ok) {
 			req.appContext.security = result.context;
@@ -67,7 +72,7 @@ export class AppAuthService {
 				message: "You don't have access to this app. Contact your project administrator.",
 			});
 		} else if (this.isNavigation(req)) {
-			const loginUrl = new URL(`/_n8n/auth/${app.id}/login`, this.hosts.callbackUrl(app));
+			const loginUrl = new URL('login', this.hosts.callbackUrl(app));
 			loginUrl.searchParams.set('returnTo', req.originalUrl);
 			res.redirect(loginUrl.toString());
 		} else {
@@ -90,7 +95,7 @@ export class AppAuthService {
 		const url = await this.flow.begin(this.hosts.callbackUrl(app), {
 			appId: app.id,
 			namespace: app.namespace,
-			returnPath: this.returnPath(returnPath),
+			returnPath: this.returnPath(returnPath, app),
 			nonceHash: this.hash(nonce),
 		});
 		const state = new URL(url).searchParams.get('state');
@@ -151,20 +156,27 @@ export class AppAuthService {
 		);
 		if (!admitted.ok)
 			throw new AuthError('App access is no longer available. Open the app again to check access.');
-		res.cookie(appCookieName(this.hosts.baseUrl, 'session'), result.token, {
+		res.cookie(this.sessionCookieName(app), result.token, {
 			...appCookieOptions(this.hosts.baseUrl),
 			maxAge: result.expiresIn * 1000,
 		});
-		res.redirect(this.returnPath(result.metadata.returnPath));
+		res.redirect(this.returnPath(result.metadata.returnPath, app));
 	}
 
-	private returnPath(value: string | undefined): string {
+	private sessionCookieName(app: App): string {
+		return appCookieName(this.hosts.baseUrl, 'session', this.hosts.sameOrigin ? app.id : undefined);
+	}
+
+	private returnPath(value: string | undefined, app: App): string {
+		const root = this.hosts.sameOrigin ? this.hosts.appPath(app.id) : '/';
 		if (!value || !value.startsWith('/') || value.startsWith('//') || /[\\\r\n]/.test(value))
-			return '/';
+			return root;
 		const url = new URL(value, 'http://app');
-		return url.origin === 'http://app' && !url.pathname.startsWith('/_n8n/')
+		return url.origin === 'http://app' &&
+			url.pathname.startsWith(root) &&
+			!url.pathname.startsWith(`${root}_n8n/`)
 			? url.pathname + url.search
-			: '/';
+			: root;
 	}
 
 	private flowCookieName(state: string): string {

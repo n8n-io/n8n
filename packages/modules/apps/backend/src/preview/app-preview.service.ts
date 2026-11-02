@@ -61,34 +61,35 @@ export class AppPreviewService {
 		}
 		const app = await this.apps.findInProject(projectId, appId);
 		if (!app) throw new NotFoundError('App not found.');
-		const origin = this.hosts.previewOrigin(app.namespace);
-		if (!origin) throw new BadRequestError('Use a valid app namespace before previewing this app.');
+		const appUrl = this.hosts.appUrl(app, true);
+		if (!appUrl) throw new BadRequestError('Use a valid app namespace before previewing this app.');
 		assertBuiltVersion(await this.versions.findVersionById(versionId), appId);
 
 		const code = randomBytes(32).toString('hex');
 		const grant: PreviewGrant = { userId, appId, versionId };
 		await this.cache.set(this.codeKey(code), JSON.stringify(grant), CODE_TTL_MS);
-		const url = new URL('/_n8n/preview', origin);
+		const url = new URL('_n8n/preview', `${appUrl.replace(/\/$/, '')}/`);
 		url.searchParams.set('code', code);
 		return { url: url.toString() };
 	}
 
 	async exchange(req: Request, res: Response): Promise<void> {
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
-		const namespace = this.hosts.previewNamespace(req);
-		if (!namespace) throw new NotFoundError('App not found.');
+		if (!this.hosts.isPreview(req)) throw new NotFoundError('App not found.');
 		const code = typeof req.query.code === 'string' ? req.query.code : '';
 		const grant = code ? this.parseGrant(await this.cache.take(this.codeKey(code))) : undefined;
-		const app = grant ? await this.apps.findByNamespace(namespace) : null;
+		const app = grant ? await this.requestApp(req) : null;
 		if (!grant || app?.id !== grant.appId) {
 			throw new AuthError('This preview link is no longer valid. Open the preview again.');
 		}
 		this.setSession(res, { sub: grant.userId, appId: grant.appId, versionId: grant.versionId });
-		res.redirect('/');
+		res.redirect(this.hosts.sameOrigin ? this.hosts.appPath(grant.appId, true) : '/');
 	}
 
 	async authenticate(req: AppRequest, res: Response, next: NextFunction): Promise<void> {
-		const session = this.verifySession(readCookie(req, this.cookieName()));
+		const session = this.verifySession(
+			readCookie(req, this.cookieName(this.hosts.requestAppId(req))),
+		);
 		const app = session ? await this.findSessionApp(req, session) : null;
 		if (!session || !app) {
 			res.set('Cache-Control', 'no-store').status(401).json({
@@ -101,12 +102,18 @@ export class AppPreviewService {
 	}
 
 	private async findSessionApp(req: Request, session: PreviewSession): Promise<App | null> {
-		const namespace = this.hosts.previewNamespace(req);
-		const app = namespace ? await this.apps.findByNamespace(namespace) : null;
+		const app = await this.requestApp(req);
 		if (app?.id !== session.appId) return null;
 		const user = await this.users.findByIdWithRole(session.sub);
 		if (!user || user.disabled || !(await this.resources.canRead(app, user))) return null;
 		return app;
+	}
+
+	private async requestApp(req: Request): Promise<App | null> {
+		const id = this.hosts.requestAppId(req);
+		if (id) return await this.apps.findById(id);
+		const namespace = this.hosts.previewNamespace(req);
+		return namespace ? await this.apps.findByNamespace(namespace) : null;
 	}
 
 	private setSession(res: Response, { sub, appId, versionId }: PreviewSession) {
@@ -115,7 +122,7 @@ export class AppPreviewService {
 			{ sub, appId, versionId },
 			{ expiresIn: SESSION_TTL_SECONDS },
 		);
-		res.cookie(this.cookieName(), token, embeddedAppCookieOptions(this.hosts.baseUrl));
+		res.cookie(this.cookieName(appId), token, embeddedAppCookieOptions(this.hosts.baseUrl));
 	}
 
 	private verifySession(token: string | undefined): PreviewSession | undefined {
@@ -136,8 +143,8 @@ export class AppPreviewService {
 		}
 	}
 
-	private cookieName(): string {
-		return appCookieName(this.hosts.baseUrl, 'preview');
+	private cookieName(appId?: string): string {
+		return appCookieName(this.hosts.baseUrl, 'preview', this.hosts.sameOrigin ? appId : undefined);
 	}
 
 	private codeKey(code: string): string {

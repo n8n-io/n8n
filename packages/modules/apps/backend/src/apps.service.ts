@@ -28,7 +28,7 @@ function toResponse(app: App, hosts: AppHostService): AppResponse {
 		visibility: app.visibility,
 		draftVersionId: app.draftVersionId,
 		publishedVersionId: app.publishedVersionId,
-		publishedUrl: app.publishedVersionId ? hosts.origin(app.namespace) : null,
+		publishedUrl: app.publishedVersionId ? hosts.appUrl(app) : null,
 		createdAt: app.createdAt.toISOString(),
 		updatedAt: app.updatedAt.toISOString(),
 	};

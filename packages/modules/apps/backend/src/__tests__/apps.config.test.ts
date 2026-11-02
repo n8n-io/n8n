@@ -7,6 +7,16 @@ afterEach(() => {
 	Container.reset();
 });
 
+it('enables same-origin hosting only when set to true', () => {
+	expect(Container.get(AppsConfig).unsafeSameOrigin).toBe(false);
+	Container.reset();
+	vi.stubEnv('N8N_APPS_UNSAFE_SAME_ORIGIN', 'true');
+	expect(Container.get(AppsConfig).unsafeSameOrigin).toBe(true);
+	Container.reset();
+	vi.stubEnv('N8N_APPS_UNSAFE_SAME_ORIGIN', 'false');
+	expect(Container.get(AppsConfig).unsafeSameOrigin).toBe(false);
+});
+
 it('loads positive integer limits from the environment', () => {
 	vi.stubEnv('N8N_APPS_BUILD_TIMEOUT_MS', '900000');
 	vi.stubEnv('N8N_APPS_BUILD_START_TIMEOUT_MS', '120000');

@@ -1,4 +1,3 @@
-import { appSchema } from '@n8n/api-types';
 import { RoleService } from '@n8n/backend-services';
 import type { ProtectedResourceResolver } from '@n8n/backend-services/auth';
 import { ProjectRelationRepository } from '@n8n/db';
@@ -66,9 +65,7 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 		try {
 			const url = new URL(value);
 			if (url.username || url.password || url.search || url.hash) return false;
-			return (
-				this.appId(url.pathname) !== undefined && this.hosts.namespaceFromUrl(url) !== undefined
-			);
+			return this.hosts.callbackAppId(url) !== undefined;
 		} catch {
 			return false;
 		}
@@ -76,7 +73,7 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 
 	async resolveByUrl(value: string): Promise<ProtectedResource | undefined> {
 		if (!this.matchesVirtualClientUrl(value)) return undefined;
-		const id = this.appId(new URL(value).pathname);
+		const id = this.hosts.callbackAppId(new URL(value));
 		if (!id) return undefined;
 		const app = await this.apps.findById(id);
 		const resource = app?.publishedVersionId ? this.forApp(app) : undefined;
@@ -84,12 +81,7 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 	}
 
 	async resolveByPath(): Promise<ProtectedResource | undefined> {
-		// App resources require the apps host, which a path cannot identify.
+		// App resources require a canonical URL, including its host.
 		return undefined;
-	}
-
-	private appId(pathname: string): string | undefined {
-		const match = /^\/_n8n\/auth\/([^/]+)\/callback$/.exec(pathname);
-		return match && appSchema.shape.id.safeParse(match[1]).success ? match[1] : undefined;
 	}
 }

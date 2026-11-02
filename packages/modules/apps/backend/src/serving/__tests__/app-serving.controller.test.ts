@@ -19,7 +19,7 @@ function setup(url = '/', navigation = true) {
 		]),
 	);
 	const auth = mock<AppAuthService>({ isNavigation: () => navigation });
-	const hosts = mock<AppHostService>();
+	const hosts = mock<AppHostService>({ sameOrigin: false });
 	const preview = mock<AppPreviewService>({ editorOrigin: 'https://n8n.example.net' });
 	const controller = new AppServingController(bundles, auth, hosts, preview);
 	const req = mock<AppRequest>({
@@ -102,7 +102,7 @@ describe('AppServingController', () => {
 		async ({ namespace, expected, skipped }) => {
 			const context = setup();
 			const { controller, req, res, hosts } = context;
-			hosts.previewNamespace.mockReturnValue(namespace);
+			hosts.isPreview.mockReturnValue(!!namespace);
 			const next = vi.fn();
 
 			await controller.authenticate(req, res, next);
@@ -136,4 +136,38 @@ describe('AppServingController', () => {
 			expect.objectContaining({ 'Content-Security-Policy': "base-uri 'self'; object-src 'none'" }),
 		);
 	});
+
+	it.each([
+		{ preview: false, prefix: '' },
+		{ preview: true, prefix: '' },
+		{ preview: false, prefix: '/$&' },
+		{ preview: true, prefix: '/$&' },
+	])(
+		'sets the HTML base for nested navigation (preview: $preview, prefix: $prefix)',
+		async ({ preview, prefix }) => {
+			const { controller, req, res, bundles, hosts } = setup('/orders/123');
+			const html = Buffer.from(
+				'<!doctype html><html><head><title>App</title></head><body></body></html>',
+			);
+			const file = { body: html, contentType: 'text/html; charset=utf-8', etag: 'original' };
+			bundles.get.mockResolvedValue(new Map([['index.html', file]]));
+			Object.defineProperty(hosts, 'sameOrigin', { value: true });
+			const root = `${prefix}/apps/app-id/${preview ? '_preview/' : ''}`;
+			hosts.appPath.mockReturnValue(root);
+			req.appContext = { app: mock({ id: 'app-id' }), versionId: 'version', preview };
+
+			await controller.serve(req, res);
+
+			expect(res.send).toHaveBeenCalledWith(
+				Buffer.from(
+					`<!doctype html><html><head><base href="${root}"><title>App</title></head><body></body></html>`,
+				),
+			);
+			expect(hosts.appPath).toHaveBeenCalledWith('app-id', preview);
+			expect(res.set).toHaveBeenCalledWith(
+				expect.objectContaining({ ETag: expect.not.stringContaining('original') }),
+			);
+			expect(file.body).toBe(html);
+		},
+	);
 });

@@ -6,6 +6,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import type { NextFunction, Response } from 'express';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 import { AppBundleCache } from './app-bundle-cache';
@@ -39,7 +40,7 @@ export class AppServingController {
 			res.sendStatus(404);
 			return;
 		}
-		if (this.hosts.previewNamespace(req)) {
+		if (this.hosts.isPreview(req)) {
 			await this.preview.authenticate(req, res, next);
 		} else {
 			await this.auth.authenticate(req, res, next);
@@ -59,6 +60,18 @@ export class AppServingController {
 				file = bundle.get('index.html');
 			}
 			if (!file) throw new NotFoundError('App file not found.');
+			if (this.hosts.sameOrigin && file === bundle.get('index.html') && req.appContext) {
+				// Keep relative assets rooted at the app when a nested route serves the entry page.
+				const base = this.hosts.appPath(req.appContext.app.id, req.appContext.preview);
+				const html = file.body.toString('utf8');
+				const insertion = /<head\b[^>]*>/i.test(html)
+					? /<head\b[^>]*>/i
+					: /^(\s*<!doctype[^>]*>)?/i;
+				const body = Buffer.from(
+					html.replace(insertion, (match) => `${match}<base href="${base}">`),
+				);
+				file = { ...file, body, etag: `W/"${createHash('sha256').update(body).digest('hex')}"` };
+			}
 			res.set({
 				'Cache-Control': 'private, no-cache',
 				ETag: file.etag,
