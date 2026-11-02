@@ -161,7 +161,7 @@ describe('PromotionsSettingsView', () => {
 		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
-		const removal = Promise.withResolvers<void>();
+		const removal = Promise.withResolvers<undefined>();
 		api.deletePromotionEnvironment.mockReturnValueOnce(removal.promise);
 		mockConfirm.mockResolvedValue('confirm');
 		const cachedEnvironments = useInstancePromotionConnection();
@@ -177,7 +177,7 @@ describe('PromotionsSettingsView', () => {
 		);
 		await userEvent.click(await screen.findByTestId('action-remove'));
 		await waitFor(() => expect(addProjects).toBeDisabled());
-		removal.resolve();
+		removal.resolve(undefined);
 
 		expect(await screen.findByTestId('promotion-environment-add-apply')).toBeInTheDocument();
 		// A plain Git environment has no promotion reviews to close.
@@ -293,14 +293,14 @@ describe('PromotionsSettingsView', () => {
 
 	it('allows a toggle only after the current protection state loads', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		const preferences = Promise.withResolvers<void>();
+		const preferences = Promise.withResolvers<undefined>();
 		environmentsSettings.loadPreferences.mockReturnValue(preferences.promise);
 		renderView();
 
 		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
 		expect(toggle).toBeDisabled();
 		shell.isProtected = true;
-		preferences.resolve();
+		preferences.resolve(undefined);
 		await waitFor(() => expect(toggle).toBeEnabled());
 		expect(toggle).toBeChecked();
 		await userEvent.click(toggle);

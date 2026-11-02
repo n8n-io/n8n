@@ -682,6 +682,7 @@ describe('PromotionPreviewView', () => {
 	it('should keep the promotion toast open and link the merge request', async () => {
 		vi.mocked(api.promoteProjectSelection).mockResolvedValue({
 			git: { branchName: 'promotion/p1', commitSha: COMMIT_SHA },
+			// eslint-disable-next-line id-denylist -- the merge request number of the API
 			review: { reviewId: 'review-1', number: 3, webUrl: 'https://gitlab.example/mr/3' },
 		} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
 

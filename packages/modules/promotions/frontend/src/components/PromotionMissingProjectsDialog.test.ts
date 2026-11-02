@@ -47,7 +47,7 @@ describe('PromotionMissingProjectsDialog', () => {
 			if (id === support.id) {
 				throw new ResponseError('The project limit is reached', { httpStatusCode: 400 });
 			}
-			return mock();
+			return await mock();
 		});
 		const { emitted } = renderDialog({
 			props: {
