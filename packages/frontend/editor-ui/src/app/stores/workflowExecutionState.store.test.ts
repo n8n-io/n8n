@@ -1506,6 +1506,74 @@ describe('workflowExecutionState.store', () => {
 			expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
 			expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
 		});
+
+		describe('by engine type', () => {
+			function setUpTwoNodes(engineType: 'v1' | 'v2') {
+				const id = createWorkflowDocumentId(`wf-engine-${engineType}`);
+				const documentStore = useWorkflowDocumentStore(id);
+				const executionStateStore = useWorkflowExecutionStateStore(id);
+
+				documentStore.mergeSettings({ engineType });
+				for (const [nodeId, name] of [
+					['a-id', 'Node A'],
+					['b-id', 'Node B'],
+				]) {
+					documentStore.addNode({
+						id: nodeId,
+						name,
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					});
+				}
+
+				return executionStateStore;
+			}
+
+			it('shows every running node as executing on engine v2', () => {
+				const executionStateStore = setUpTwoNodes('v2');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(true);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+
+				executionStateStore.executingNode.removeExecutingNode('Node A', 0);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows "waiting for next" only on the node that finished last on engine v2', () => {
+				const executionStateStore = setUpTwoNodes('v2');
+				useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+					makeExecution({ id: 'exec-1', status: 'running', finished: false }),
+				);
+				executionStateStore.setActiveExecutionId('exec-1');
+
+				executionStateStore.executingNode.addExecutingNode('Node B', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node A', 1, 1);
+				executionStateStore.executingNode.removeExecutingNode('Node A', 1);
+				executionStateStore.executingNode.removeExecutingNode('Node B', 0);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(false);
+				expect(executionStateStore.executionWaitingForNextByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionWaitingForNextByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows only the latest node as executing on engine v1', () => {
+				const executionStateStore = setUpTwoNodes('v1');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
+		});
 	});
 
 	describe('trackExecutionId', () => {

@@ -136,11 +136,15 @@ export class ActiveExecutions {
 					await capacityReservation.reserve({ mode, executionId });
 				}
 
-				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+				const execution: Pick<
+					IExecutionDb,
+					'id' | 'data' | 'waitTill' | 'status' | 'resumeAttempts'
+				> = {
 					id: executionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
+					resumeAttempts: 0,
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
@@ -186,7 +190,9 @@ export class ActiveExecutions {
 			.finally(() => {
 				capacityReservation.release();
 				execution.postExecuteSettled = true;
-				if (execution.status === 'waiting' && !this.isDraining) {
+				// A worker never resumes in-process: a main or webhook process resumes it as a new job.
+				const mayResumeHere = !this.isDraining && !this.instanceSettings.isWorker;
+				if (execution.status === 'waiting' && mayResumeHere) {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
 				} else if (this.activeExecutions[executionId] === execution) {

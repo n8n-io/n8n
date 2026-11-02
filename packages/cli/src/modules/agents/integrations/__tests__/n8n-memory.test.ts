@@ -1370,6 +1370,7 @@ describe('N8nMemory', () => {
 				'agent-1',
 				'thread:thread-1',
 				100,
+				{},
 			);
 		});
 
@@ -1495,6 +1496,7 @@ describe('N8nMemory', () => {
 					'agent-1',
 					'slack:T1:channel:C1',
 					100,
+					{},
 				);
 			});
 
@@ -1602,10 +1604,11 @@ describe('N8nMemory', () => {
 
 			const sources = await memory.getEntrySourcesWithMessageContext(['memory-1']);
 
-			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith('agent-1', [
-				'candidate-1',
-				'candidate-2',
-			]);
+			expect(memoryEntryCandidateRepository.findSourceMessages).toHaveBeenCalledWith(
+				'agent-1',
+				['candidate-1', 'candidate-2'],
+				{},
+			);
 			expect(sources[0]).toMatchObject({
 				id: 'source-quoted',
 				author: { id: 'U1', name: 'Alice' },

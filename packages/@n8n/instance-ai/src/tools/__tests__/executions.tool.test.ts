@@ -6,7 +6,8 @@ import { executeTool } from '../../__tests__/tool-test-utils';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext, ExecutionResult } from '../../types';
 import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
-import { createExecutionsTool } from '../executions.tool';
+import { createExecutionTool } from '../executions.tool';
+import { createExecutionToolRouter } from './execution-tools-test-utils';
 import { recordLiveRunVerification } from '../orchestration/verification/record-live-run';
 
 vi.mock('../orchestration/verification/record-live-run', () => ({
@@ -58,7 +59,7 @@ function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe('executions tool', () => {
+describe('execution tools', () => {
 	it.each([true, false])(
 		'resumes a saved execution without a summary when approved=%s',
 		async (approved) => {
@@ -67,8 +68,8 @@ describe('executions tool', () => {
 				executionId: 'exec-1',
 				status: 'success',
 			});
-			const tool = createExecutionsTool(context);
-			const savedInput = { action: 'run', workflowId: 'wf-1', inputData: { orderId: 'order-1' } };
+			const tool = createExecutionTool(context, 'run');
+			const savedInput = { workflowId: 'wf-1', inputData: { orderId: 'order-1' } };
 			const input: unknown = (tool.inputSchema as z.ZodType).parse(savedInput);
 			const suspend = vi.fn();
 			const result = await executeTool(tool, input, { resumeData: { approved }, suspend });
@@ -90,9 +91,8 @@ describe('executions tool', () => {
 	it('preserves a live execution summary through input validation', async () => {
 		const context = createMockContext();
 		vi.mocked(context.workflowService.get).mockResolvedValue({ name: 'Orders' } as never);
-		const tool = createExecutionsTool(context);
+		const tool = createExecutionTool(context, 'run');
 		const input: unknown = (tool.inputSchema as z.ZodType).parse({
-			action: 'run',
 			workflowId: 'wf-1',
 			approvalSummary: 'Send a Slack notification for order 42',
 		});
@@ -125,7 +125,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.list as Mock).mockResolvedValue(executions);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(tool, { action: 'list' as const }, {} as never);
 
 			expect(context.executionService.list).toHaveBeenCalledWith({
@@ -140,7 +140,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.list as Mock).mockResolvedValue([]);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{
@@ -187,7 +187,7 @@ describe('executions tool', () => {
 				},
 			]);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool<{
 				executions: Array<{ id: string; workflowVersionId?: string | null }>;
 				workflow?: { activeVersionId: string | null; draftVersionId: string };
@@ -211,7 +211,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.list as Mock).mockResolvedValue([]);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool<{
 				workflow?: { activeVersionId: string | null; draftVersionId: string };
 			}>(tool, { action: 'list' as const, workflowId: 'wf-1' }, {} as never);
@@ -223,7 +223,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.list as Mock).mockResolvedValue([]);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(tool, { action: 'list' as const }, {} as never);
 
 			expect(context.workflowService.getWorkflowHead).not.toHaveBeenCalled();
@@ -235,7 +235,7 @@ describe('executions tool', () => {
 			(context.workflowService.getWorkflowHead as Mock).mockRejectedValue(new Error('no access'));
 			(context.executionService.list as Mock).mockResolvedValue([]);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'list' as const, workflowId: 'wf-1' },
@@ -258,7 +258,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.getStatus as Mock).mockResolvedValue(executionStatus);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'get' as const, executionId: 'exec-1' },
@@ -278,7 +278,7 @@ describe('executions tool', () => {
 				permissions: { runWorkflow: 'blocked' },
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
@@ -304,7 +304,7 @@ describe('executions tool', () => {
 				name: 'My Workflow',
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{
@@ -332,7 +332,7 @@ describe('executions tool', () => {
 			const context = createMockContext({ permissions: {} });
 			(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{ action: 'run' as const, workflowId: 'wf-42' },
@@ -352,7 +352,7 @@ describe('executions tool', () => {
 		it('should return denied when resumed with approval=false', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
@@ -376,7 +376,7 @@ describe('executions tool', () => {
 			const context = createMockContext({ permissions: {} });
 			(context.executionService.run as Mock).mockResolvedValue(executionResult);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -408,7 +408,7 @@ describe('executions tool', () => {
 			(context.executionService.run as Mock).mockResolvedValue(executionResult);
 
 			const suspendFn = vi.fn();
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
@@ -432,7 +432,7 @@ describe('executions tool', () => {
 				status: 'success',
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{ action: 'run' as const, workflowId: 'wf-1' },
@@ -454,7 +454,7 @@ describe('executions tool', () => {
 				status: 'success',
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Weekly 5pm' },
@@ -495,7 +495,7 @@ describe('executions tool', () => {
 				};
 				vi.mocked(recordLiveRunVerification).mockResolvedValueOnce(claim);
 
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				const result = await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Every Morning' },
@@ -514,7 +514,7 @@ describe('executions tool', () => {
 			it('returns the plain run result when no claim was recorded', async () => {
 				const context = createAllowedContext();
 
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				const result = await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
@@ -537,7 +537,7 @@ describe('executions tool', () => {
 				});
 
 				const suspendFn = vi.fn();
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
@@ -555,7 +555,7 @@ describe('executions tool', () => {
 				});
 
 				const suspendFn = vi.fn();
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-2' },
@@ -573,7 +573,7 @@ describe('executions tool', () => {
 					status: 'success',
 				});
 
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
@@ -592,7 +592,7 @@ describe('executions tool', () => {
 					status: 'success',
 				});
 
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
@@ -618,7 +618,7 @@ describe('executions tool', () => {
 					executionId: 'exec-1',
 					status: 'success',
 				});
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 
 				await executeTool(
 					tool,
@@ -649,7 +649,7 @@ describe('executions tool', () => {
 				});
 				const suspendFn = vi.fn();
 
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-built' },
@@ -670,7 +670,7 @@ describe('executions tool', () => {
 				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Pre-existing WF' });
 				const suspendFn = vi.fn();
 
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				const result = await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-preexisting' },
@@ -689,7 +689,7 @@ describe('executions tool', () => {
 				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Some WF' });
 				const suspendFn = vi.fn();
 
-				const tool = createExecutionsTool(context);
+				const tool = createExecutionToolRouter(context);
 				await executeTool(
 					tool,
 					{ action: 'run' as const, workflowId: 'wf-1' },
@@ -714,7 +714,7 @@ describe('executions tool', () => {
 		const suspendFn = vi.fn();
 		const context = createMockContext({ permissions: {}, assertInThreadProject });
 
-		const tool = createExecutionsTool(context);
+		const tool = createExecutionToolRouter(context);
 		await expect(
 			executeTool(tool, input, createAgentCtx({ suspend: suspendFn }) as never),
 		).rejects.toThrow(OutsideThreadProjectError);
@@ -735,7 +735,7 @@ describe('executions tool', () => {
 		it('returns denied when the admin blocked workflow runs', async () => {
 			const context = createMockContext({ permissions: { runWorkflow: 'blocked' } });
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(tool, stepInput, createAgentCtx() as never);
 
 			expect(result).toEqual({
@@ -751,7 +751,7 @@ describe('executions tool', () => {
 			const context = createMockContext({ permissions: {} });
 			delete (context.executionService as { runStep?: unknown }).runStep;
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(tool, stepInput, createAgentCtx() as never);
 
 			expect(result).toEqual({
@@ -767,7 +767,7 @@ describe('executions tool', () => {
 			const context = createMockContext({ permissions: {} });
 			(context.workflowService.get as Mock).mockResolvedValue({ id: 'wf-1', name: 'My Workflow' });
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
 
 			expect(suspendFn).toHaveBeenCalled();
@@ -783,7 +783,7 @@ describe('executions tool', () => {
 		it('returns denied when the user rejects the prompt', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				stepInput,
@@ -802,7 +802,7 @@ describe('executions tool', () => {
 		it('passes every input option through once approved', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{
@@ -832,7 +832,7 @@ describe('executions tool', () => {
 		it('accepts a bare string as the tool arguments', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{ ...stepInput, toolArguments: 'Napoleon' },
@@ -851,7 +851,7 @@ describe('executions tool', () => {
 			const grantSessionToolApproval = vi.fn();
 			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				stepInput,
@@ -870,7 +870,7 @@ describe('executions tool', () => {
 				sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Send Slack message']),
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
 
 			expect(suspendFn).not.toHaveBeenCalled();
@@ -884,7 +884,7 @@ describe('executions tool', () => {
 				sessionApprovedToolKeys: new Set(['executions:run-step:wf-1:Other node']),
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
 
 			expect(suspendFn).toHaveBeenCalled();
@@ -898,7 +898,7 @@ describe('executions tool', () => {
 				sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
 
 			expect(suspendFn).not.toHaveBeenCalled();
@@ -912,7 +912,7 @@ describe('executions tool', () => {
 				aiCreatedWorkflowIds: new Set(['wf-1']),
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
 
 			expect(suspendFn).not.toHaveBeenCalled();
@@ -926,7 +926,7 @@ describe('executions tool', () => {
 				aiCreatedWorkflowIds: new Set(['wf-other']),
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(tool, stepInput, createAgentCtx({ suspend: suspendFn }) as never);
 
 			expect(suspendFn).toHaveBeenCalled();
@@ -954,7 +954,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.getDebugInfo as Mock).mockResolvedValue(debugInfo);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'debug' as const, executionId: 'exec-fail' },
@@ -979,7 +979,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.getNodeOutput as Mock).mockResolvedValue(nodeOutput);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -1008,7 +1008,7 @@ describe('executions tool', () => {
 				returned: { from: 0, to: 0 },
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{
@@ -1042,7 +1042,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.getResolvedNodeParameters as Mock).mockResolvedValue(resolution);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -1075,7 +1075,7 @@ describe('executions tool', () => {
 				emptyResolutions: [],
 			});
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			await executeTool(
 				tool,
 				{
@@ -1107,7 +1107,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.getResolvedNodeParameters as Mock).mockResolvedValue(suppressed);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -1130,7 +1130,7 @@ describe('executions tool', () => {
 			const context = createMockContext();
 			(context.executionService.stop as Mock).mockResolvedValue(stopResult);
 
-			const tool = createExecutionsTool(context);
+			const tool = createExecutionToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'stop' as const, executionId: 'exec-running' },

@@ -78,6 +78,7 @@ async function seed(waits: Partial<Record<'wait-a' | 'wait-b', WaitDeclaration>>
 		graph: { ...graph, seeded: [] },
 		workflow: { nodes: [] },
 		triggerOutputs: null,
+		parent: null,
 		callerContext: { hostMode: 'webhook' },
 		responseExpectation: { kind: 'none' },
 	});

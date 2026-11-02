@@ -1,14 +1,20 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
+import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
+import { ResumeAttemptService } from '@/executions/resume-attempt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -24,7 +30,9 @@ export class EnqueuedExecutionRecoveryService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly executionService: ExecutionService,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionCrashService: ExecutionCrashService,
+		private readonly resumeAttemptService: ResumeAttemptService,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowPublisherService: WorkflowPublisherService,
 		private readonly workflowRunner: WorkflowRunner,
@@ -48,55 +56,82 @@ export class EnqueuedExecutionRecoveryService {
 			'Enqueued execution recovery must not run in queue mode',
 		);
 
-		const { executions, unreadableIds } = await this.executionService.findAllEnqueuedExecutions();
+		const executionIds = await this.executionService.findEnqueuedExecutionIds();
 
-		// An enqueued execution whose data is gone can never run. Left at `new` it sits at
-		// "Queued" forever and is re-read on every restart.
-		if (unreadableIds.length > 0) {
-			this.logger.warn('Crashing enqueued executions with unreadable data', {
-				executionIds: unreadableIds,
-			});
-			await this.executionCrashService.markAsCrashed(unreadableIds, 'start-failure');
-		}
+		if (executionIds.length === 0) return;
 
-		if (executions.length === 0) return;
+		this.logger.debug('Found enqueued executions to run', { executionIds });
 
-		this.logger.debug('Found enqueued executions to run', {
-			executionIds: executions.map((e) => e.id),
-		});
-
-		for (const execution of executions) {
-			// capture the id so the rejection handler below does not retain the whole
-			// execution - and with it its run data - while the execution sits queued
-			const executionId = execution.id;
-
+		for (const executionId of executionIds) {
 			try {
-				const project = await this.ownershipService.getWorkflowProjectCached(execution.workflowId);
-
-				const data: IWorkflowExecutionDataProcess = {
-					executionMode: execution.mode,
-					executionData: execution.data,
-					workflowData: execution.workflowData,
-					projectId: project.id,
-					// Same as a wait resume: the acting user is not stored, so it has to be
-					// derived again or the recovered run starts without an identity.
-					userId: await this.workflowPublisherService.findActingUserIdForRestart(execution),
-				};
-
-				this.eventService.emit('execution-started-during-bootup', { executionId });
-
-				// do not block - each execution either runs concurrently or is queued
-				void this.workflowRunner
-					.run(data, undefined, false, {
-						executionId,
-						expectedStatus: 'new',
-						storedAt: execution.storedAt,
-					})
-					.catch(async (error) => await this.crashUnstartableExecution(executionId, error));
+				await this.recoverEnqueuedExecution(executionId);
 			} catch (error) {
 				await this.crashUnstartableExecution(executionId, error);
 			}
 		}
+	}
+
+	private async recoverEnqueuedExecution(executionId: string) {
+		const claim = await this.resumeAttemptService.claim(executionId, 'new');
+		if (!claim.granted) return;
+
+		const execution = await this.loadEnqueuedExecution(executionId, claim.attempt);
+		if (!execution) return;
+
+		const project = await this.ownershipService.getWorkflowProjectCached(execution.workflowId);
+
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: execution.mode,
+			executionData: execution.data,
+			workflowData: execution.workflowData,
+			projectId: project.id,
+			// Same as a wait resume: the acting user is not stored, so it has to be
+			// derived again or the recovered run starts without an identity.
+			userId: await this.workflowPublisherService.findActingUserIdForRestart(execution),
+		};
+
+		this.eventService.emit('execution-started-during-bootup', { executionId });
+
+		// do not block - each execution either runs concurrently or is queued
+		void this.workflowRunner
+			.run(data, undefined, false, {
+				executionId,
+				expectedStatus: 'new',
+				storedAt: execution.storedAt,
+			})
+			.catch(async (error) => await this.crashUnstartableExecution(executionId, error));
+	}
+
+	/**
+	 * Returns `undefined` when the execution must not start now: missing or corrupt data marks
+	 * the row `crashed`, any other read error leaves it `new` for the next start.
+	 */
+	private async loadEnqueuedExecution(executionId: string, attempt: number) {
+		let execution: IExecutionResponse | undefined;
+		try {
+			execution = await this.executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+		} catch (error) {
+			const isDataGone =
+				error instanceof MissingExecutionDataError || error instanceof CorruptedExecutionDataError;
+			if (!isDataGone) {
+				await this.resumeAttemptService.release(executionId, 'new', attempt);
+				this.errorReporter.error(error, { executionId, shouldBeLogged: false });
+				this.logger.warn('Failed to load enqueued execution, leaving it for the next start', {
+					executionId,
+					error: ensureError(error).message,
+				});
+				return undefined;
+			}
+		}
+
+		if (execution) return execution;
+
+		this.logger.warn('Crashing enqueued execution with unreadable data', { executionId });
+		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
+		return undefined;
 	}
 
 	/** An enqueued execution we cannot start would otherwise stay at `new` indefinitely. */

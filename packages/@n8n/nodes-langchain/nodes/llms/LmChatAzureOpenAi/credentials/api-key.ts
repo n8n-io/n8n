@@ -1,7 +1,7 @@
 import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
 
-import { normalizeEndpoint } from './normalizeEndpoint';
 import { requireFoundryEndpoint } from './requireFoundryEndpoint';
+import { normalizeEndpoint } from '../../../../utils/normalizeEndpoint';
 import type { AzureOpenAIApiKeyModelConfig } from '../types';
 
 /**

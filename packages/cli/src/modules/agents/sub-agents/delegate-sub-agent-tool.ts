@@ -1,3 +1,4 @@
+import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import {
 	createDelegateSubAgentTool,
 	type CreateDelegateSubAgentToolOptions,
@@ -82,6 +83,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(request.expectedOutput !== undefined
 						? { expectedOutput: request.expectedOutput }
 						: {}),
+					...(request.fileIds !== undefined ? { fileIds: request.fileIds } : {}),
 					...(policy !== undefined ? { policy } : {}),
 					...(request.parentThreadId !== undefined
 						? { parentThreadId: request.parentThreadId }
@@ -98,6 +100,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				{
 					...runContext,
 					...(parentEpisodicScope !== undefined ? { parentEpisodicScope } : {}),
+					planTask: readPlanTaskContext(request.parentHostMetadata),
 					...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
@@ -130,6 +133,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 			const context = {
 				...runContext,
+				planTask: readPlanTaskContext(request.parentHostMetadata),
 				...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 				...(request.parentExecutionCounter !== undefined
 					? { executionCounter: request.parentExecutionCounter }

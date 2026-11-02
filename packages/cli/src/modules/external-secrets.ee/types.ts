@@ -44,6 +44,7 @@ export abstract class SecretsProvider {
 	abstract test(): Promise<[boolean] | [boolean, string]>;
 	abstract getSecret(name: string): unknown;
 	abstract hasSecret(name: string): boolean;
+	/** Return discovery paths. Use bracket notation for keys with literal dots or brackets. */
 	abstract getSecretNames(): string[];
 
 	state: SecretsProviderState = 'initializing';

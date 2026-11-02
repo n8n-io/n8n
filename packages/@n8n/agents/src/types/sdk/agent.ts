@@ -245,7 +245,7 @@ export interface AgentInputBoundary {
 }
 
 export interface ExecutionOptions {
-	/** Expose local and provider tools to the model. Defaults to true. */
+	/** Allow tool calls. Defaults to true. Keep tool definitions for history replay when false. */
 	toolsEnabled?: boolean;
 	/**
 	 * The text that title generation titles a new thread from. Set it when the

@@ -14,36 +14,55 @@ import type {
 import { isPromotionGitHostType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { ProjectRepository, type User } from '@n8n/db';
+import { ProjectRepository, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
+import type { PromotionProvider } from './database/entities/promotion-provider.entity';
 import { PromotionEnvironmentProjectRepository } from './database/repositories/promotion-environment-project.repository';
 import {
 	PromotionEnvironmentRepository,
 	type PromotionEnvironmentFilter,
 } from './database/repositories/promotion-environment.repository';
+import { PromotionReviewRepository } from './database/repositories/promotion-review.repository';
 import { resolveStoredConfig } from './promotion-config-settings';
 import {
+	repositoryIdentity,
 	resolvePromotionGitRemote,
 	resolvePromotionRemote,
 	storePromotionRemote,
+	type PromotionStoredEnvironmentRemote,
 } from './git-hosts/git-host-remote';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import { buildCacheDescriptor, checkoutBranchName } from './promotions-git.utils';
-import type { ResolvedPromotionConfig } from './promotions.types';
+import type { PromotionReviewCloseReason, ResolvedPromotionConfig } from './promotions.types';
 
 type ManageProjectLinkOptions = {
 	user: User;
 	environmentId: string;
 	projectId: string;
 };
+
+type ReviewTarget = {
+	provider: Pick<PromotionProvider, 'type'>;
+	remote: PromotionStoredEnvironmentRemote;
+};
+
+/**
+ * Open reviews stay on the repository they were opened in. A new provider type or a new
+ * repository leaves them behind. A new base URL alone does not, because it can name the
+ * same host.
+ */
+function invalidatesOpenReviews(current: ReviewTarget, next: ReviewTarget): boolean {
+	if (current.provider.type !== next.provider.type) return true;
+	return repositoryIdentity(current.remote) !== repositoryIdentity(next.remote);
+}
 
 /**
  * Owns environments and their project links. Provider credentials belong to
@@ -58,6 +77,8 @@ export class PromotionEnvironmentsService {
 		private readonly providersService: PromotionProvidersService,
 		private readonly gitService: PromotionsGitService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
+		private readonly reviewRepository: PromotionReviewRepository,
+		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
 	) {
@@ -121,7 +142,8 @@ export class PromotionEnvironmentsService {
 
 	/**
 	 * Direction and scope cannot change. A settings write replaces the whole
-	 * settings object and must match the stored direction.
+	 * settings object and must match the stored direction. A new provider type or
+	 * repository closes the open reviews, because they stay on the old target.
 	 */
 	async update(
 		id: string,
@@ -150,17 +172,27 @@ export class PromotionEnvironmentsService {
 		const settings =
 			input.settings && (await this.checkSettings(current.direction, input.settings));
 
-		const updated = await this.environmentRepository.updateEnvironment(id, current.providerId, {
-			...(input.name !== undefined && { name: input.name }),
-			...(changesRemote && { remote }),
-			...(input.providerId !== undefined && { providerId: input.providerId }),
-			...(settings && { settings }),
-		});
-		if (!updated) {
-			throw new ConflictError(
-				'The environment changed during the update. Reload it and try again.',
+		const closed = await this.txRunner.run({}, async (ctx) => {
+			const updated = await this.environmentRepository.updateEnvironment(
+				id,
+				current.providerId,
+				{
+					...(input.name !== undefined && { name: input.name }),
+					...(changesRemote && { remote }),
+					...(input.providerId !== undefined && { providerId: input.providerId }),
+					...(settings && { settings }),
+				},
+				ctx,
 			);
-		}
+			if (!updated) {
+				throw new ConflictError(
+					'The environment changed during the update. Reload it and try again.',
+				);
+			}
+			if (!invalidatesOpenReviews(current, { provider, remote })) return 0;
+			return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), ctx);
+		});
+		this.logClosedReviews(id, closed, 'environment_target_changed');
 		const changedFields = [
 			...(input.name !== undefined ? ['name' as const] : []),
 			...(input.remote !== undefined ? ['remote' as const] : []),
@@ -181,12 +213,22 @@ export class PromotionEnvironmentsService {
 	}
 
 	/**
-	 * Cascades to this environment's project links. The provider stays, because
-	 * other environments may use it.
+	 * Cascades to this environment's project links and closes its open reviews. The
+	 * provider stays, because other environments may use it.
 	 */
 	async delete(id: string, actor: User): Promise<void> {
 		const { id: environmentId, direction, scope } = await this.getEntity(id);
-		const deleted = await this.environmentRepository.deleteEnvironment(environmentId);
+		// Close first: the delete clears the environment of its reviews.
+		const { closed, deleted } = await this.txRunner.run({}, async (ctx) => {
+			const closed = await this.reviewRepository.closeOpenByEnvironmentId(
+				environmentId,
+				new Date(),
+				ctx,
+			);
+			const deleted = await this.environmentRepository.deleteEnvironment(environmentId, ctx);
+			return { closed, deleted };
+		});
+		this.logClosedReviews(environmentId, closed, 'environment_deleted');
 		if (deleted) {
 			this.eventService.emit('promotion-environment-deleted', {
 				user: actor,
@@ -339,6 +381,19 @@ export class PromotionEnvironmentsService {
 
 	private linkedElsewhere(direction: PromotionDirection) {
 		return new ConflictError(`This project uses another ${direction} promotion environment`);
+	}
+
+	private logClosedReviews(
+		environmentId: string,
+		count: number,
+		reason: PromotionReviewCloseReason,
+	) {
+		if (count === 0) return;
+		this.logger.info('Closed the open promotion reviews of an environment', {
+			environmentId,
+			count,
+			reason,
+		});
 	}
 
 	/**

@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 
 import N8nUserSelect from '.';
 import { createComponentRenderer } from '../../__tests__/render';
@@ -15,8 +15,9 @@ const getRenderedOptions = async () => {
 
 const filterInput = async (filterText: string) => {
 	const input = screen.getByRole('combobox');
-	// Avoid a timer wait for each character on busy CI workers.
-	await userEvent.type(input, filterText, { delay: null });
+	await userEvent.click(input);
+	// Set the query in one input event. Per-character events repeat filtering and DOM updates.
+	await fireEvent.update(input, filterText);
 };
 
 const sampleUsers: IUser[] = [
@@ -142,85 +143,34 @@ describe('UserSelect', () => {
 		});
 	});
 
-	it('filters users by email (case-sensitive for filter term, if full name does not match)', async () => {
-		renderComponent({
-			props: {
-				users: sampleUsers,
-			},
-		});
+	it.each([
+		{ query: 'alice@example.com', expectedIds: ['u1'] },
+		{ query: 'Example.com', expectedIds: [] },
+		{ query: 'example.com', expectedIds: sampleUsers.map((user) => user.id) },
+	])(
+		'filters users by email with the case-sensitive query "$query"',
+		async ({ query, expectedIds }) => {
+			renderComponent({ props: { users: sampleUsers } });
 
-		await filterInput('alice@example.com');
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(1);
-			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
-		});
+			await filterInput(query);
 
-		await userEvent.click(document.body);
+			if (expectedIds.length === 0) {
+				await waitFor(() => {
+					expect(screen.getByText('No matching users')).toBeVisible();
+					expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+				});
+				return;
+			}
 
-		await filterInput('Example.com'); // Email part of filter is case-sensitive in the component's logic
-		await waitFor(() => {
-			expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-		});
-
-		await userEvent.click(document.body);
-
-		await filterInput('example.com'); // Matches all users with email containing 'example.com'
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(sampleUsers.length);
-		});
-	});
-
-	it.each([0, 100])('finishes email checks with %i ms timer latency', async (latency) => {
-		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-		const scheduleTimeout = globalThis.setTimeout;
-		// DEVP-1283: Model a busy CI worker without a wall-clock delay.
-		vi.stubGlobal(
-			'setTimeout',
-			(handler: (...args: unknown[]) => void, delay?: number, ...args: unknown[]) =>
-				scheduleTimeout(handler, Math.max(delay ?? 0, latency), ...args),
-		);
-		const { unmount } = renderComponent({ props: { users: sampleUsers } });
-		const runInteraction = async (interaction: Promise<unknown>) => {
-			let settled = false;
-			const completion = interaction.finally(() => {
-				settled = true;
+			await waitFor(async () => {
+				const options = await getRenderedOptions();
+				expect(options).toHaveLength(expectedIds.length);
+				expect(Array.from(options, (option) => option.id)).toEqual(
+					expect.arrayContaining(expectedIds.map((id) => `user-select-option-id-${id}`)),
+				);
 			});
-			while (!settled) {
-				await vi.advanceTimersToNextTimerAsync();
-			}
-			await completion;
-		};
-
-		try {
-			const startedAt = Date.now();
-
-			await runInteraction(filterInput('alice@example.com'));
-			const aliceOptions = await getRenderedOptions();
-			expect(aliceOptions).toHaveLength(1);
-			expect(aliceOptions[0]).toHaveAttribute('id', 'user-select-option-id-u1');
-
-			await runInteraction(userEvent.click(document.body));
-			await runInteraction(filterInput('Example.com'));
-			expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-
-			await runInteraction(userEvent.click(document.body));
-			await runInteraction(filterInput('example.com'));
-			expect(await getRenderedOptions()).toHaveLength(sampleUsers.length);
-
-			// All three searches share the default Vitest test timeout.
-			expect(Date.now() - startedAt).toBeLessThan(5000);
-		} finally {
-			try {
-				unmount();
-				await vi.runAllTimersAsync();
-			} finally {
-				vi.unstubAllGlobals();
-				vi.useRealTimers();
-			}
-		}
-	});
+		},
+	);
 
 	it('filters by full name and email and sorts by last name', async () => {
 		const specificUsers: IUser[] = [

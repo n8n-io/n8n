@@ -16,7 +16,7 @@ defineProps<DialogOverlayProps>();
 </script>
 
 <template>
-	<DialogOverlay :class="[$style.overlay, stacked && $style.stacked]" />
+	<DialogOverlay data-dialog-overlay :class="[$style.overlay, stacked && $style.stacked]" />
 </template>
 
 <style module lang="scss">

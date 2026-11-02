@@ -92,6 +92,7 @@ export type JobFinishedProps = {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
+	failedBeforeStart?: true;
 	nodeTimeSavedMinutes?: number;
 };
 
