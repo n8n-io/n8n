@@ -232,8 +232,12 @@ export class CustomModelEndpointApi implements ICredentialType {
 				// Following one would re-POST the secret to wherever it pointed
 				disableFollowRedirect: redirect === 'manual',
 			});
-		} catch {
-			// The raw failure carries the request that caused it, secret and all
+		} catch (error) {
+			// A refusal from the domain allowlist or the egress policy names the host
+			// it turned down and is worth keeping. Anything else carries the request
+			// that caused it, secret and all.
+			if (error instanceof UserError) throw error;
+
 			throw new UserError('Could not sign in to the gateway', {
 				description: 'Check the token URL, client ID, client secret and scope on the credential.',
 			});
