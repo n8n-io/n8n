@@ -131,6 +131,19 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		};
 	}
 
+	/** The jobs of one owner type, or only those of `ownerIds` when given. */
+	async findByOwnerType(
+		manager: EntityManager,
+		ownerType: string,
+		ownerIds?: readonly string[],
+	): Promise<ScheduledJob[]> {
+		if (ownerIds?.length === 0) return [];
+		return await manager.findBy(ScheduledJob, {
+			ownerType,
+			...(ownerIds === undefined ? {} : { ownerId: In([...ownerIds]) }),
+		});
+	}
+
 	/** All jobs owned by exactly this owner member. */
 	async findManyByOwner(manager: EntityManager, owner: ScheduledJobOwner): Promise<ScheduledJob[]> {
 		return await manager.findBy(ScheduledJob, ownerCriteria(owner));
@@ -583,6 +596,46 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			 ${ignore}`,
 			[scheduledFor, ScheduledTaskMode.Hold, ...jobIds],
 		);
+	}
+
+	/**
+	 * Rewrite a hold job's payload and run options in place, and send its task back
+	 * to `pending` with a bumped epoch. The current holder's next renewal fails, and
+	 * the next holder gets a higher epoch than any holder before it.
+	 */
+	async redefineHeldJob(
+		manager: EntityManager,
+		id: number,
+		update: Pick<
+			ScheduledJob,
+			'name' | 'payload' | 'maxAttempts' | 'timeoutSeconds' | 'leaseSeconds'
+		>,
+	): Promise<void> {
+		// `payload` is a free-form JSON column, which TypeORM's QueryDeepPartialEntity can't express.
+		await manager.update(ScheduledJob, { id }, update as QueryDeepPartialEntity<ScheduledJob>);
+		await manager
+			.createQueryBuilder()
+			.update(ScheduledTask)
+			.set({
+				payload: update.payload,
+				maxAttempts: update.maxAttempts,
+				timeoutSeconds: update.timeoutSeconds,
+				leaseSeconds: update.leaseSeconds,
+				status: ScheduledTaskStatus.Pending,
+				attempts: 0,
+				runAt: () => dbNowLiteral(this.isPostgres),
+				leaseEpoch: () => '"leaseEpoch" + 1',
+				claimedBy: null,
+				leaseExpiresAt: null,
+				startedAt: null,
+				dispatchedAt: null,
+				heldSince: null,
+				finishedAt: null,
+				errorMessage: null,
+			} as QueryDeepPartialEntity<ScheduledTask>)
+			.where('"jobId" = :id', { id })
+			.andWhere('"mode" = :hold', { hold: ScheduledTaskMode.Hold })
+			.execute();
 	}
 
 	/**
