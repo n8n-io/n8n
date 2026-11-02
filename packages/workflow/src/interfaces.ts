@@ -4169,8 +4169,9 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeName: string | undefined,
 			headers: Record<string, string>,
 		) => void;
-		/** Returns the caller's sanitized `baggage` header. Undefined when baggage propagation is off. */
-		extractInboundBaggage: (header: unknown) => string | undefined;
+		extractTracingContext: (
+			headers: Record<string, string | string[] | undefined>,
+		) => IWorkflowExecutionDataProcess['tracingContext'];
 	};
 }
 
