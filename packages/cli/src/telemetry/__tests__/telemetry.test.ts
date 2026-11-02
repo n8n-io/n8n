@@ -1187,6 +1187,10 @@ describe('Telemetry', () => {
 						'GET /workflows': 2,
 						'GET /executions': 1,
 					},
+					endpoints_by_client: {
+						editor_ui: { 'GET /workflows': 1 },
+						other: { 'GET /workflows': 1, 'GET /executions': 1 },
+					},
 					first: expect.any(Date),
 					user_agents: {},
 				},
@@ -1640,6 +1644,7 @@ describe('Telemetry', () => {
 					user_id: 'user1',
 					total_calls: 1,
 					clients: JSON.stringify({ editor_ui: 0, other: 1 }),
+					endpoints_by_client: JSON.stringify({ editor_ui: {}, other: { 'GET /workflows': 1 } }),
 				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());

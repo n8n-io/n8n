@@ -68,6 +68,7 @@ interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
+	endpoints_by_client: Record<PublicApiClient, Record<string, number>>;
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
 }
@@ -282,6 +283,7 @@ export class Telemetry {
 					total_calls: entry.total_calls,
 					first: entry.first,
 					endpoints: JSON.stringify(entry.endpoints),
+					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
 					user_agents: JSON.stringify(entry.user_agents),
 					clients: JSON.stringify(entry.clients),
 				});
@@ -556,6 +558,7 @@ export class Telemetry {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
+			endpoints_by_client: { editor_ui: {}, other: {} },
 			user_agents: {},
 			clients: { editor_ui: 0, other: 0 },
 		});
@@ -564,6 +567,8 @@ export class Telemetry {
 
 		const endpointKey = `${method} ${path}`;
 		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
+		const clientEndpoints = entry.endpoints_by_client[client];
+		clientEndpoints[endpointKey] = (clientEndpoints[endpointKey] ?? 0) + 1;
 
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
