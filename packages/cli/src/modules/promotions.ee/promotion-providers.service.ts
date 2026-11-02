@@ -189,19 +189,25 @@ export class PromotionProvidersService {
 		}
 		if (credentials) changes.auth = await this.encryptCredentials(credentials);
 
-		if (updatesAuthentication) {
-			const updated = await this.providerRepository.updateProviderIfUnchanged(
-				id,
-				{ config: current.config, auth: current.auth },
-				changes,
-			);
-			if (!updated) {
-				throw new ConflictError('The provider changed during the update. Reload it and try again.');
+		const writeProvider = async () => {
+			if (updatesAuthentication) {
+				const updated = await this.providerRepository.updateProviderIfUnchanged(
+					id,
+					{ config: current.config, auth: current.auth },
+					changes,
+				);
+				if (!updated) {
+					throw new ConflictError(
+						'The provider changed during the update. Reload it and try again.',
+					);
+				}
+			} else {
+				await this.providerRepository.updateProvider(id, changes);
 			}
-		} else {
-			await this.providerRepository.updateProvider(id, changes);
-		}
-		if (changesHostUrl) await this.checkoutCleanup.resetCheckoutsForHostChange(id);
+		};
+		// Lock after the host access check, so the locks are held only for the write.
+		if (changesHostUrl) await this.checkoutCleanup.changeHostUrl(id, writeProvider);
+		else await writeProvider();
 		// Read the row back. A provider deleted in between fails the update.
 		return this.toPublic(await this.getEntity(id));
 	}

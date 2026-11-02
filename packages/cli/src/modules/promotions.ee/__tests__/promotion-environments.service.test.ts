@@ -1,7 +1,8 @@
 import type { UpdatePromotionEnvironmentDto } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, ProjectRepository, TransactionRunner, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -9,7 +10,7 @@ import path from 'node:path';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError, ForbiddenError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, LockedError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -19,6 +20,7 @@ import type { PromotionEnvironmentProjectRepository } from '../database/reposito
 import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionReviewRepository } from '../database/repositories/promotion-review.repository';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
+import { PromotionEnvironmentLockService } from '../promotion-environment-lock.service';
 import { PromotionEnvironmentsService } from '../promotion-environments.service';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
@@ -52,6 +54,7 @@ describe('PromotionEnvironmentsService', () => {
 
 	let n8nFolder: string;
 	let workingDirectory: PromotionWorkingDirectoryService;
+	let environmentLock: PromotionEnvironmentLockService;
 	let service: PromotionEnvironmentsService;
 
 	const ENVIRONMENT_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
@@ -86,6 +89,25 @@ describe('PromotionEnvironmentsService', () => {
 			updatedAt: new Date(),
 		}) as PromotionEnvironment;
 
+	/** Holds the environment lock until the returned function is called. */
+	const holdLock = async () => {
+		let release!: () => void;
+		let acquired!: () => void;
+		const held = new Promise<void>((resolve) => (acquired = resolve));
+		const done = environmentLock.run(ENVIRONMENT_ID, async () => {
+			acquired();
+			await new Promise<void>((resolve) => (release = resolve));
+		});
+		await held;
+		return async () => {
+			release();
+			await done;
+		};
+	};
+
+	const isLockFree = async () =>
+		await environmentLock.run(ENVIRONMENT_ID, async () => true).catch(() => false);
+
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
@@ -97,6 +119,7 @@ describe('PromotionEnvironmentsService', () => {
 
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-environments-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
+		environmentLock = new PromotionEnvironmentLockService(Container.get(LockService));
 		service = new PromotionEnvironmentsService(
 			environmentRepository,
 			linkRepository,
@@ -107,6 +130,7 @@ describe('PromotionEnvironmentsService', () => {
 			new PromotionCheckoutCleanupService(
 				workingDirectory,
 				environmentRepository,
+				environmentLock,
 				logger,
 				publisher,
 				mock<InstanceSettings>({ isMultiMain: true }),
@@ -141,6 +165,33 @@ describe('PromotionEnvironmentsService', () => {
 			environmentId: ENVIRONMENT_ID,
 			error: 'EBUSY',
 		});
+	});
+
+	it('deletes the environment while it holds the environment lock', async () => {
+		environmentRepository.deleteEnvironment.mockImplementation(async () => {
+			expect(await isLockFree()).toBe(false);
+			return true;
+		});
+
+		await service.delete(ENVIRONMENT_ID, actor);
+
+		expect(environmentRepository.deleteEnvironment).toHaveBeenCalledOnce();
+		expect(await isLockFree()).toBe(true);
+	});
+
+	it('fails with 423 and changes nothing when another operation holds the lock', async () => {
+		const paths = workingDirectory.paths(ENVIRONMENT_ID);
+		await mkdir(paths.repositoryFolder, { recursive: true });
+		const release = await holdLock();
+
+		await expect(service.delete(ENVIRONMENT_ID, actor)).rejects.toThrow(LockedError);
+
+		expect(reviewRepository.closeOpenByEnvironmentId).not.toHaveBeenCalled();
+		expect(environmentRepository.deleteEnvironment).not.toHaveBeenCalled();
+		await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		await release();
 	});
 
 	it('asks the other mains to remove the checkout of the environment it deletes', async () => {
@@ -301,6 +352,54 @@ describe('PromotionEnvironmentsService', () => {
 
 			expect(await exists(paths.repositoryFolder)).toBe(true);
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('updates while it holds the environment lock when the update changes the checkout', async () => {
+			environmentRepository.updateEnvironment.mockImplementation(async () => {
+				expect(await isLockFree()).toBe(false);
+				return true;
+			});
+
+			await service.update(
+				ENVIRONMENT_ID,
+				{ remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } },
+				actor,
+			);
+
+			expect(environmentRepository.updateEnvironment).toHaveBeenCalledOnce();
+		});
+
+		it('fails with 423 and changes nothing when the update changes the checkout and the lock is busy', async () => {
+			const paths = await createCheckout();
+			const release = await holdLock();
+
+			await expect(
+				service.update(
+					ENVIRONMENT_ID,
+					{ remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } },
+					actor,
+				),
+			).rejects.toThrow(LockedError);
+
+			expect(environmentRepository.updateEnvironment).not.toHaveBeenCalled();
+			expect(reviewRepository.closeOpenByEnvironmentId).not.toHaveBeenCalled();
+			expect(await exists(paths.repositoryFolder)).toBe(true);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			await release();
+		});
+
+		it('takes no lock for an update that keeps the checkout', async () => {
+			const paths = await createCheckout();
+			const release = await holdLock();
+
+			await expect(
+				service.update(ENVIRONMENT_ID, { name: 'Renamed' }, actor),
+			).resolves.toMatchObject({ id: ENVIRONMENT_ID });
+
+			expect(environmentRepository.updateEnvironment).toHaveBeenCalledOnce();
+			expect(await exists(paths.repositoryFolder)).toBe(true);
+			await release();
 		});
 
 		it('keeps the checkout when the update loses a race', async () => {

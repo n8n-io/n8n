@@ -304,6 +304,22 @@ describe('getDecoratorGeneratedOperations', () => {
 		});
 	});
 
+	it('refs the shared locked response file for a declared 423', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			@ApiErrorResponse(423)
+			method() {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[423]).toEqual({
+			$ref: '../../../../shared/spec/responses/locked.yml',
+		});
+	});
+
 	it('inlines the body schema for an error status declared with a body DTO', () => {
 		class WidgetsPublicController {
 			@Get('/')

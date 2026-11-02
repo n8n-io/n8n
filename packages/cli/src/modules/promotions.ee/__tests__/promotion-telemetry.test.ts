@@ -2,6 +2,7 @@ import {
 	BadRequestError,
 	ConflictError,
 	InternalServerError,
+	LockedError,
 	NotFoundError,
 	ServiceUnavailableError,
 	TooManyRequestsError,
@@ -9,6 +10,7 @@ import {
 import { UnexpectedError } from 'n8n-workflow';
 
 import { PromotionConflictError } from '../database/promotion-conflict.error';
+import { PromotionLockLostError } from '../promotion-environment-lock.service';
 import { classifyPromotionFailure, observePromotion } from '../promotion-telemetry';
 import { PromotionGitError, PromotionLocalGitError } from '../promotions-git.error';
 
@@ -26,6 +28,8 @@ describe('classifyPromotionFailure', () => {
 		['a bug', new UnexpectedError('bug'), 'unexpected'],
 		['a plain error', new Error('plain'), 'unexpected'],
 		['a thrown string', 'oops', 'unexpected'],
+		['a held environment lock', new LockedError('busy'), 'busy'],
+		['a lost environment lock', new PromotionLockLostError(), 'unexpected'],
 	])('classifies %s as %s', (_label, error, expected) => {
 		expect(classifyPromotionFailure(error)).toBe(expected);
 	});
@@ -63,6 +67,23 @@ describe('observePromotion', () => {
 				throw error;
 			}, report),
 		).rejects.toBe(error);
+	});
+
+	it('reports a held environment lock as busy', async () => {
+		const report = vi.fn();
+		const error = new LockedError('busy');
+
+		await expect(
+			observePromotion(async () => {
+				throw error;
+			}, report),
+		).rejects.toBe(error);
+
+		expect(report).toHaveBeenCalledWith({
+			ok: false,
+			failureKind: 'busy',
+			durationMs: expect.any(Number),
+		});
 	});
 
 	it('reports the failure kind and rethrows the original error', async () => {

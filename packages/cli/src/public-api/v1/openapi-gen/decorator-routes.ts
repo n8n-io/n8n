@@ -41,6 +41,7 @@ export const ERROR_RESPONSE_REFS = {
 	413: { $ref: '../../../../shared/spec/responses/contentTooLarge.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	423: { $ref: '../../../../shared/spec/responses/locked.yml' },
 	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
@@ -65,6 +66,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	413: 'Content too large.',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
+	423: 'The resource is locked by another operation.',
 	500: 'Internal server error.',
 	503: 'The requested service is temporarily unavailable.',
 };
