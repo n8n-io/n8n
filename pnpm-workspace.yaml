@@ -228,7 +228,7 @@ catalog:
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
-  isolated-vm: ^7.0.1
+  isolated-vm: ^7.0.2
   js-base64: 3.7.8
   js-tiktoken: 1.0.21
   jsdom: 23.0.1
