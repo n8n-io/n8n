@@ -1,8 +1,8 @@
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import { createComponentRenderer } from '@/__tests__/render';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionEnvironmentSummary, PromotionProvider } from '../promotionsSettings.api';
 import PromotionProviderDialog from './PromotionProviderDialog.vue';

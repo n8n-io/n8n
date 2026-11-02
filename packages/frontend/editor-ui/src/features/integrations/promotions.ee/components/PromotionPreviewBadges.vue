@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { PromotionDirection } from '@n8n/api-types';
 import { N8nBadge, N8nIcon, N8nTooltip, type IconName } from '@n8n/design-system';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
+import { ProjectTypes } from '@n8n/rest-api-client';
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 import { useInstancePromotionConnection } from '../composables/useInstancePromotionConnection';

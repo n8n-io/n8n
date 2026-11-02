@@ -1,4 +1,6 @@
-import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
+import { INBOX_VIEW } from '@n8n/frontend-constants/inbox';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -7,10 +9,6 @@ import userEvent from '@testing-library/user-event';
 import { render as renderToast, waitFor, within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
-
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 
 import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
 import { billingPreview, COMMIT_SHA } from '../__tests__/preview.fixtures';
@@ -42,7 +40,10 @@ vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('../composables/usePromotionBindingCreation', () => ({
 	usePromotionBindingCreation: () => ({ createBinding, updateCheck: vi.fn() }),
 }));
-vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+vi.mock('@n8n/design-system', async () => ({
+	...(await vi.importActual<object>('@n8n/design-system')),
+	useMessage: () => ({ confirm }),
+}));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError: vi.fn() }),
 }));
@@ -269,7 +270,7 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(previewWithCheck());
 		vi.mocked(api.getPromotionResourceDetails).mockReset();
 		vi.mocked(api.getPromotionResourceDetails).mockResolvedValue({ details: [], missingKeys: [] });
-		confirm.mockResolvedValue(MODAL_CONFIRM);
+		confirm.mockResolvedValue('confirm');
 	});
 
 	it('should keep the selection while the user inspects cards', async () => {
@@ -712,7 +713,7 @@ describe('PromotionPreviewView', () => {
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
 		await userEvent.click(getByTestId('promotion-preview-submit'));
-		answer(MODAL_CONFIRM);
+		answer('confirm');
 		await waitAllPromises();
 
 		expect(confirm).toHaveBeenCalledTimes(1);

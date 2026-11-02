@@ -1,10 +1,10 @@
+import { VIEWS } from '@n8n/frontend-constants/views';
 import type { Scope } from '@n8n/permissions';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 
-import { VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { PromotionsModule } from '../module.descriptor';
 import { PROMOTION_PREVIEW_VIEWS, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';

@@ -3,12 +3,12 @@ import type {
 	PromotionResourceDetail,
 	SerializedWorkflow,
 } from '@n8n/api-types';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 
-import { createComponentRenderer } from '@/__tests__/render';
 import type { IWorkflowDb } from '@/Interface';
 
 import { billingPreview, resource } from '../../__tests__/preview.fixtures';

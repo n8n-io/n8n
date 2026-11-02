@@ -1,11 +1,10 @@
+import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, h } from 'vue';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { applied, blocked, credential, variable } from '../__tests__/bindings.fixtures';
 import type * as PromotionsApi from '../promotionsSettings.api';

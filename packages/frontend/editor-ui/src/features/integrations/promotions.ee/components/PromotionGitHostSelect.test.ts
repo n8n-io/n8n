@@ -1,10 +1,10 @@
 import type { PromotionRepository, PromotionRepositoryListPublicDto } from '@n8n/api-types';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import { createComponentRenderer } from '@/__tests__/render';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import PromotionGitHostSelect from './PromotionGitHostSelect.vue';
 

@@ -1,9 +1,9 @@
 import type { PromotionDirection } from '@n8n/api-types';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { RouterView, type RouteLocationNormalized, type RouteRecordRaw } from 'vue-router';
 
-import { VIEWS } from '@/app/constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import {
 	PROMOTION_PREVIEW_VIEWS,

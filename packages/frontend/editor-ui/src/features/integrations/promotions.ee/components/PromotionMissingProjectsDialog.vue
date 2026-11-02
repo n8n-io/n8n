@@ -16,6 +16,8 @@ import {
 	N8nText,
 	N8nUserSelect,
 } from '@n8n/design-system';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -27,7 +29,6 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useDebounceFn } from '@vueuse/core';
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
 import {
 	addProjectMembers,
 	createPublicProject,

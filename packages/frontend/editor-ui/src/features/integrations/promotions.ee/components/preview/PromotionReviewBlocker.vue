@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
+import { INBOX_VIEW } from '@n8n/frontend-constants/inbox';
 import { N8nEmptyState } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRBACStore } from '@n8n/stores/rbac.store';

@@ -4,6 +4,7 @@ import {
 	promotionDirectionSchema,
 	type PromotionDirection,
 } from '@n8n/api-types';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -29,9 +30,7 @@ import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from
 import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
-import { MODAL_CONFIRM } from '@/app/constants';
 import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
@@ -57,7 +56,7 @@ const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const { next: nextLoad } = useLatestFetch();
 const { connectErrors, canConnect, connect } = usePromotionCheckout();
 const {
@@ -127,7 +126,7 @@ async function remove(environment: PromotionEnvironment) {
 			showClose: true,
 		},
 	);
-	if (confirmed !== MODAL_CONFIRM) return;
+	if (confirmed !== 'confirm') return;
 
 	const context = rootStore.publicApiContext;
 	busy.set(environment.id, 'remove');

@@ -1,3 +1,4 @@
+import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -7,9 +8,6 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
-import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import {
 	getPreferences,
 	updatePreferences,
@@ -149,7 +147,7 @@ describe('PromotionsSettingsView', () => {
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
 		const removal = Promise.withResolvers<void>();
 		api.deletePromotionEnvironment.mockReturnValueOnce(removal.promise);
-		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+		mockConfirm.mockResolvedValue('confirm');
 		const cachedEnvironments = useInstancePromotionConnection();
 		await cachedEnvironments.load();
 		renderView();
@@ -207,7 +205,7 @@ describe('PromotionsSettingsView', () => {
 			} as PromotionEnvironment;
 			api.fetchPromotionEnvironments.mockResolvedValue([gitlabEnvironment]);
 			api.fetchPromotionEnvironment.mockResolvedValue(gitlabEnvironment);
-			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+			mockConfirm.mockResolvedValue('cancel');
 			renderView();
 
 			const card = await screen.findByTestId(`promotion-environment-card-${direction}`);
@@ -226,7 +224,7 @@ describe('PromotionsSettingsView', () => {
 
 	it('switches an instance without a v1 repository back to Environments v1 after confirmation', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+		mockConfirm.mockResolvedValue('confirm');
 		useRBACStore().setGlobalScopes(['sourceControl:manage']);
 		const sourceControlStore = useSourceControlStore();
 		vi.mocked(getPreferences).mockResolvedValue({

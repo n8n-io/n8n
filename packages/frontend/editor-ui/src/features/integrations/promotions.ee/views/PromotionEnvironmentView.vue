@@ -6,6 +6,7 @@ import {
 	type PromotionProviderType,
 	type PromotionRepository,
 } from '@n8n/api-types';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -22,13 +23,12 @@ import {
 	useMessage,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useEventListener } from '@vueuse/core';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { MODAL_CONFIRM } from '@/app/constants';
 import PromotionGitHostSelect from '../components/PromotionGitHostSelect.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
@@ -60,7 +60,9 @@ const toast = useToast();
 const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 const { canConnect, connect } = usePromotionCheckout();
 
 const overview = { name: PROMOTIONS_SETTINGS_VIEW };
@@ -221,7 +223,7 @@ async function confirmRepositoryChange(name: string) {
 			showClose: true,
 		},
 	);
-	return confirmed === MODAL_CONFIRM;
+	return confirmed === 'confirm';
 }
 
 async function save() {

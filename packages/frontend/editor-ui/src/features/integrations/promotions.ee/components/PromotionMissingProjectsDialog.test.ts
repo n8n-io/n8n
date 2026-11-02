@@ -1,3 +1,4 @@
+import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useRolesStore } from '@n8n/stores/roles.store';
@@ -7,8 +8,6 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
 import type * as ProjectsApi from '@/features/collaboration/projects/projects.api';
 
 import PromotionMissingProjectsDialog from './PromotionMissingProjectsDialog.vue';

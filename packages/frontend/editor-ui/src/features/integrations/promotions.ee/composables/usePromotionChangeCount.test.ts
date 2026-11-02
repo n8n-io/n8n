@@ -1,7 +1,7 @@
+import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { nextTick, ref } from 'vue';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { PromotionPreview } from '@n8n/api-types';
-import { waitAllPromises } from '@/__tests__/utils';
 import { usePromotionChangeCount } from './usePromotionChangeCount';
 import * as api from '../promotions.api';
 import { resource } from '../__tests__/preview.fixtures';

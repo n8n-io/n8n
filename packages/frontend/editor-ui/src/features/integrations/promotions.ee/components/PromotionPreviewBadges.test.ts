@@ -1,3 +1,6 @@
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
+import { ProjectTypes } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import type { PromotionPreview } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -8,10 +11,6 @@ import type { IUser } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { VIEWS } from '@/app/constants';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
