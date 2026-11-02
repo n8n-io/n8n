@@ -562,7 +562,7 @@ describe('Agent memory on user deletion', () => {
 			mimeType: 'text/plain',
 		});
 		const read = vi.spyOn(binary, 'getAsBuffer').mockResolvedValue(Buffer.from('tool output'));
-		const remove = vi.spyOn(binary, 'deleteManyByBinaryDataId').mockResolvedValue([]);
+		const remove = vi.spyOn(binary, 'deleteManyByBinaryDataId').mockResolvedValue();
 		const write = async () => {
 			const output = await Container.get(AgentFileBridge).adoptFromItems(
 				[
