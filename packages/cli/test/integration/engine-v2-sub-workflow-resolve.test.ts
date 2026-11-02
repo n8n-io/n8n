@@ -147,7 +147,6 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		expect(result.graph.nodes.map(({ name }) => name)).toEqual([TRIGGER_NAME, 'Set']);
 		expect(result.graph.nodes[0].type).toBe('trigger');
 		expect(result.triggerOutputs).toEqual([[{ json: { a: 1 } }]]);
-		expect(result.returnLastRunOnly).toBe(false);
 		expect(result.workflow).toMatchObject({ id: workflow.id });
 	});
 

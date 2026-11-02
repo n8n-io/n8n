@@ -27,7 +27,6 @@ const resolved: ResolveSubWorkflowResponse = {
 	graph: { nodes: [{ id: 't', name: 'Trigger', type: 'trigger' }], edges: [] },
 	workflow: { id: 'wf-sub' },
 	triggerOutputs: [[{ json: { a: 1 } }]],
-	returnLastRunOnly: false,
 };
 
 describe('EngineSubWorkflowClient', () => {
