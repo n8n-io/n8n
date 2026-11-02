@@ -136,17 +136,10 @@ export class AiPreferenceService {
 	/** Preferences that apply to the user inside the given projects. */
 	async getApplicable(
 		user: User,
-		projects: Array<Required<AiPreferenceProjectRef>>,
+		projects: AiPreferenceProjectRef[],
 	): Promise<ApplicableAiPreferences> {
 		const readable = await this.projectAccess(user).allowed('read');
-		const ownPersonalProjectId = projects.some((project) => project.type === 'personal')
-			? (await this.projectRepository.getPersonalProjectForUser(user.id))?.id
-			: undefined;
-		const applicable = projects.filter(
-			(project) =>
-				(readable === 'all' || readable.has(project.id)) &&
-				(project.type !== 'personal' || project.id === ownPersonalProjectId),
-		);
+		const applicable = projects.filter((project) => readable === 'all' || readable.has(project.id));
 		return await this.findApplicableIn(user.id, applicable);
 	}
 

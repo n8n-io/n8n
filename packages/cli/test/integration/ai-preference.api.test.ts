@@ -1037,19 +1037,21 @@ describe('the preferences a write produces', () => {
 	test.each([
 		['owner', () => owner],
 		['admin', () => admin],
-	])("skip another user's personal project for an %s", async (_, caller) => {
+	])("reach an %s bound to another user's personal project", async (_, caller) => {
 		const othersPersonal = await getPersonalProject(outsider);
-		const instance = await seed({ content: 'Everyone.' });
-		await seed({ content: 'Theirs, there', projectId: othersPersonal.id });
+		const theirs = await seed({ content: 'Theirs, there', projectId: othersPersonal.id });
 
 		const applicable = await Container.get(AiPreferenceService).getApplicable(caller(), [
 			{ id: othersPersonal.id, name: othersPersonal.name, type: 'personal' },
 		]);
 
-		expect(applicable).toEqual({
-			instance: [{ id: instance.id, content: 'Everyone.' }],
-			user: [],
-			projects: [],
-		});
+		expect(applicable.projects).toEqual([
+			{
+				id: othersPersonal.id,
+				name: othersPersonal.name,
+				type: 'personal',
+				items: [{ id: theirs.id, content: 'Theirs, there' }],
+			},
+		]);
 	});
 });

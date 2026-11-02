@@ -123,9 +123,6 @@ describe('AiPreferenceService', () => {
 		it("keeps the caller's own personal project", async () => {
 			const user = mock<User>({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 			projectRelationRepository.findAllByUser.mockResolvedValue([reader('personal-1')]);
-			projectRepository.getPersonalProjectForUser.mockResolvedValue(
-				mock<Project>({ id: 'personal-1' }),
-			);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
 			await service.getApplicable(user, [ownPersonal]);
@@ -149,19 +146,15 @@ describe('AiPreferenceService', () => {
 			});
 		});
 
-		it("leaves out another user's personal project, even for an owner", async () => {
+		it("keeps another user's personal project for an owner", async () => {
 			const owner = mock<User>({ id: 'owner-1', role: GLOBAL_OWNER_ROLE });
-			projectRepository.getPersonalProjectForUser.mockResolvedValue(
-				mock<Project>({ id: 'personal-owner' }),
-			);
 			aiPreferenceRepository.findApplicable.mockResolvedValue([]);
 
 			await service.getApplicable(owner, [othersPersonal]);
 
-			expect(projectRepository.getPersonalProjectForUser).toHaveBeenCalledWith('owner-1');
 			expect(aiPreferenceRepository.findApplicable).toHaveBeenCalledWith({
 				userId: 'owner-1',
-				projectIds: [],
+				projectIds: ['personal-2'],
 			});
 		});
 	});
