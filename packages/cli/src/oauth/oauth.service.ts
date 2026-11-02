@@ -1333,7 +1333,7 @@ export class OauthService {
 				// RFC 8414 3.3: do not use metadata for another issuer. A terminating "/" is ignored,
 				// because RFC 8414 3.1 removes it before it builds the well-known URL.
 				const issuer = isRecord(document) ? document.issuer : undefined;
-				if (typeof issuer !== 'string' || issuer.replace(/\/$/, '') !== expectedIssuer) {
+				if (typeof issuer !== 'string' || issuer !== expectedIssuer) {
 					throw new OperationalError(
 						`Issuer ${String(issuer)} in ${url} does not match expected issuer ${expectedIssuer}`,
 					);
