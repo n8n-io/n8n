@@ -99,6 +99,60 @@ describe('dynamic skill catalogues', () => {
 		expect(list.messages().some(isRuntimeSkillCatalog)).toBe(false);
 	});
 
+	it.each([
+		'anthropic/claude-opus-4-8',
+		'openai/gpt-4.1',
+		'google/gemini-2.5-flash',
+		'moonshotai/kimi-k2.5',
+		'openrouter/anthropic/claude-sonnet-4.5',
+	])(
+		'preserves the complete prompt and cache options for an empty catalogue on %s',
+		async (model) => {
+			const builtIns = createRuntimeSkillSource([builtIn]);
+			const baseline = { ...(await config(builtIns)), model };
+			const empty = { ...(await config({ ...builtIns, dynamicCatalog: { skillIds: [] } })), model };
+			const baselineList = input();
+			const emptyList = input();
+			for (let turn = 0; turn < 2; turn++) {
+				const before = await prompt(baseline, baselineList);
+				const after = await prompt(empty, emptyList);
+				expect(after.system).toEqual(before.system);
+				expect(after.messages).toEqual(before.messages);
+				expect(JSON.stringify(after.aiTools)).toBe(JSON.stringify(before.aiTools));
+				expect(emptyList.messages().some(isRuntimeSkillCatalog)).toBe(false);
+				input(baselineList);
+				input(emptyList);
+			}
+			expect(
+				new RuntimeContextBuilder(empty, undefined).buildStaticLoopContext().providerOptions,
+			).toEqual(
+				new RuntimeContextBuilder(baseline, undefined).buildStaticLoopContext().providerOptions,
+			);
+		},
+	);
+
+	it('does not add a catalogue when all dynamic entries were filtered out', async () => {
+		const skills = createRuntimeSkillSource([builtIn, custom]);
+		skills.dynamicCatalog = { skillIds: [custom.id] };
+		const filtered = filterRuntimeSkillSource(skills, [custom.id]);
+		const list = input();
+		const result = await prompt(await config(filtered), list);
+		const baseline = await prompt(await config(createRuntimeSkillSource([builtIn])), input());
+
+		expect(result.system).toEqual(baseline.system);
+		expect(result.messages).toEqual(baseline.messages);
+		expect(list.messages().some(isRuntimeSkillCatalog)).toBe(false);
+	});
+
+	it('keeps an availability notice when no dynamic skills can be listed', async () => {
+		const skills = createRuntimeSkillSource([builtIn]);
+		skills.dynamicCatalog = { skillIds: [], notice: 'Hub skills are temporarily unavailable.' };
+		const result = await prompt(await config(skills), input());
+
+		expect(JSON.stringify(result.messages)).toContain(skills.dynamicCatalog.notice);
+		expect(JSON.stringify(result.system)).not.toContain(skills.dynamicCatalog.notice);
+	});
+
 	it.each([false, true])(
 		'keeps hidden reference loading guidance with dynamic skills (with built-ins: %s)',
 		async (includeBuiltIn) => {
@@ -246,6 +300,8 @@ describe('dynamic skill catalogues', () => {
 			expect(JSON.stringify(result.messages.at(-1))).not.toContain(custom.id);
 			expect(runtime.instructions).not.toContain('temporarily unavailable');
 			if (notice) expect(JSON.stringify(result.messages.at(-1))).toContain(notice);
+			await prompt(runtime, list);
+			expect(list.messages().filter(isRuntimeSkillCatalog)).toHaveLength(2);
 		},
 	);
 

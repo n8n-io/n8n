@@ -181,7 +181,17 @@ export class RuntimeContextBuilder {
 
 	private synchronizeSkillCatalog(list: AgentMessageList): void {
 		const source = this.config.skillSource;
-		if (!source?.dynamicCatalog && !list.messages().some(isRuntimeSkillCatalog)) return;
+		const dynamicIds = new Set(source?.dynamicCatalog?.skillIds);
+		const hasDynamicSkills = source?.registry.skills.some(
+			(skill) => !skill.parents && dynamicIds.has(skill.id),
+		);
+		// Empty catalogues only need a snapshot to clear earlier dynamic context.
+		if (
+			!hasDynamicSkills &&
+			!source?.dynamicCatalog?.notice &&
+			!list.messages().some(isRuntimeSkillCatalog)
+		)
+			return;
 		const content = renderDynamicSkillCatalog(source);
 		const previous = list.llmVisibleMessages().filter(isRuntimeSkillCatalog).at(-1);
 		if (previous?.data.content === content) return;

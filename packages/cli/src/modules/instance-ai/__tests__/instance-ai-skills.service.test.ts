@@ -1,4 +1,6 @@
+import { Agent } from '@n8n/agents';
 import type { User } from '@n8n/db';
+import { MockLanguageModelV3 } from 'ai/test';
 import { mock } from 'vitest-mock-extended';
 import { loadInstanceAiSkills, resolvePromptProfile } from '@n8n/instance-ai';
 
@@ -168,6 +170,47 @@ describe('Assistant reads of user skills', () => {
 			file.path,
 		);
 	});
+
+	it.each([false, true])(
+		'preserves the built-in model request with no applicable skills when the flag is %s',
+		async (enabled) => {
+			gate.isEnabled.mockResolvedValue(enabled);
+			skillRuntime.listForAssistant.mockResolvedValue([]);
+			const builtIns = await service.loadSkills(openScope);
+			const current = await service.loadSkills(openScope, context);
+			const model = new MockLanguageModelV3({
+				provider: 'openai',
+				modelId: 'gpt-4.1',
+				doGenerate: {
+					content: [{ type: 'text', text: 'Done.' }],
+					finishReason: { unified: 'stop', raw: 'stop' },
+					usage: {
+						inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
+						outputTokens: { total: 5, text: 5, reasoning: 0 },
+					},
+					warnings: [],
+				},
+			});
+			for (const { source } of [builtIns, current]) {
+				await new Agent('empty-catalog-test')
+					.model(model)
+					.instructions('Complete the task.')
+					.skills(source)
+					.promptCaching()
+					.generate('Summarize these notes.');
+			}
+			const [before, after] = model.doGenerateCalls;
+			expect(after.prompt).toEqual(before.prompt);
+			expect(after.tools).toEqual(before.tools);
+			expect(after.providerOptions).toEqual(before.providerOptions);
+			expect(after.providerOptions?.openai).toMatchObject({
+				promptCacheKey: expect.stringMatching(/^agent:/),
+			});
+			expect(JSON.stringify(after.prompt)).not.toContain('current dynamic skill catalogue');
+			expect(skillRuntime.listForAssistant).toHaveBeenCalledTimes(enabled ? 1 : 0);
+			expect(skillRuntime.readForAssistant).not.toHaveBeenCalled();
+		},
+	);
 
 	it('combines the user skills with the active built-ins', async () => {
 		gate.isEnabled.mockResolvedValue(true);
