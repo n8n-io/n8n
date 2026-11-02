@@ -292,10 +292,8 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 	subExecutionResume?: SubExecutionResumeCause;
 
 	/**
-	 * Do not call super. Core hands the call to the host, which runs the sub-execution
-	 * in the process. The engine starts the sub-execution instead: on the first run the
-	 * call is recorded for it, and on the run after the sub-execution ended the same
-	 * call is answered from the result.
+	 * Records the sub-execution declaration on the first pass, or supplies the
+	 * sub-execution's result on the resume path.
 	 */
 	async executeWorkflow(
 		workflowInfo: IExecuteWorkflowInfo,
