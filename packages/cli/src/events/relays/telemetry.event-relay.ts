@@ -26,9 +26,11 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import {
+	ERROR_MESSAGE_REDACTED_MESSAGE,
 	getEmptyGroupAnchor,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
+	isExecutionOutputRedacted,
 	TelemetryHelpers,
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
@@ -1787,7 +1789,14 @@ export class TelemetryEventRelay extends EventRelay {
 					this.telemetry.track('User ran out of free AI credits');
 				}
 
-				telemetryProperties.error_message = runData?.data.resultData.error.message;
+				// Under an active redaction policy the message can carry node output.
+				telemetryProperties.error_message = isExecutionOutputRedacted(
+					runData.data,
+					workflow.settings,
+					runData.mode,
+				)
+					? ERROR_MESSAGE_REDACTED_MESSAGE
+					: runData.data.resultData.error.message;
 				let errorNodeName =
 					'node' in runData?.data.resultData.error
 						? runData?.data.resultData.error.node?.name

@@ -6,9 +6,11 @@ import {
 	effectiveRedactionChannels,
 	escalateSubWorkflowRedaction,
 	mergeRedactionChannels,
+	isExecutionOutputRedacted,
 	policyToChannels,
+	redactExecutionError,
 	redactionSettingToChannels,
-	shouldRedactConsoleOutput,
+	shouldRedactExecutionOutput,
 	summarizeSubWorkflowRedaction,
 	takeAttachedSubWorkflowRedaction,
 } from '../src/redaction-channels';
@@ -83,7 +85,7 @@ describe('redaction-channels', () => {
 		});
 	});
 
-	describe('shouldRedactConsoleOutput', () => {
+	describe('shouldRedactExecutionOutput', () => {
 		it.each([
 			[{ version: 2, production: true, manual: false }, 'manual', false],
 			[{ version: 2, production: true, manual: false }, 'trigger', true],
@@ -94,7 +96,7 @@ describe('redaction-channels', () => {
 			[{ version: 2, production: false, manual: true }, 'manual', true],
 			[{ version: 2, production: false, manual: true }, 'trigger', true],
 		] as const)('V2 snapshot %j in mode %s → %s', (redaction, mode, expected) => {
-			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(expected);
+			expect(shouldRedactExecutionOutput(redaction, undefined, mode)).toBe(expected);
 		});
 
 		it.each([
@@ -107,7 +109,7 @@ describe('redaction-channels', () => {
 			['none', 'manual', false],
 			['none', 'trigger', false],
 		] as const)('V1 snapshot policy %s in mode %s → %s', (policy, mode, expected) => {
-			expect(shouldRedactConsoleOutput({ version: 1, policy }, undefined, mode)).toBe(expected);
+			expect(shouldRedactExecutionOutput({ version: 1, policy }, undefined, mode)).toBe(expected);
 		});
 
 		it.each([
@@ -120,7 +122,7 @@ describe('redaction-channels', () => {
 			'combines the sub-workflow channels %j in mode %s → %s',
 			(subWorkflowRedaction, mode, expected) => {
 				expect(
-					shouldRedactConsoleOutput(
+					shouldRedactExecutionOutput(
 						{ version: 2, production: false, manual: false },
 						undefined,
 						mode,
@@ -132,7 +134,7 @@ describe('redaction-channels', () => {
 
 		it('combines the sub-workflow channels with the workflow-setting fallback', () => {
 			expect(
-				shouldRedactConsoleOutput(undefined, { redactionPolicy: 'none' }, 'trigger', {
+				shouldRedactExecutionOutput(undefined, { redactionPolicy: 'none' }, 'trigger', {
 					production: true,
 					manual: false,
 				}),
@@ -140,15 +142,73 @@ describe('redaction-channels', () => {
 		});
 
 		it('falls back to the workflow setting when the snapshot is absent', () => {
-			expect(shouldRedactConsoleOutput(undefined, { redactionPolicy: 'all' }, 'trigger')).toBe(
+			expect(shouldRedactExecutionOutput(undefined, { redactionPolicy: 'all' }, 'trigger')).toBe(
 				true,
 			);
-			expect(shouldRedactConsoleOutput(undefined, { redactionPolicy: 'all' }, 'manual')).toBe(true);
+			expect(shouldRedactExecutionOutput(undefined, { redactionPolicy: 'all' }, 'manual')).toBe(
+				true,
+			);
 			expect(
-				shouldRedactConsoleOutput(undefined, { redactionPolicy: 'non-manual' }, 'manual'),
+				shouldRedactExecutionOutput(undefined, { redactionPolicy: 'non-manual' }, 'manual'),
 			).toBe(false);
-			expect(shouldRedactConsoleOutput(undefined, {}, 'manual')).toBe(false);
-			expect(shouldRedactConsoleOutput(undefined, undefined, 'trigger')).toBe(false);
+			expect(shouldRedactExecutionOutput(undefined, {}, 'manual')).toBe(false);
+			expect(shouldRedactExecutionOutput(undefined, undefined, 'trigger')).toBe(false);
+		});
+	});
+
+	describe('isExecutionOutputRedacted', () => {
+		it('reads the snapshot and the sub-workflow channels from the run', () => {
+			const run = runWith(
+				context({
+					redaction: { version: 2, production: false, manual: false },
+					subWorkflowRedaction: { production: true, manual: false },
+				}),
+			);
+
+			expect(isExecutionOutputRedacted(run, undefined, 'trigger')).toBe(true);
+			expect(isExecutionOutputRedacted(run, undefined, 'manual')).toBe(false);
+		});
+
+		it('falls back to the workflow setting when the run has no snapshot', () => {
+			expect(
+				isExecutionOutputRedacted(runWith(undefined), { redactionPolicy: 'all' }, 'manual'),
+			).toBe(true);
+			expect(isExecutionOutputRedacted(undefined, { redactionPolicy: 'none' }, 'manual')).toBe(
+				false,
+			);
+			expect(isExecutionOutputRedacted(undefined, undefined, 'trigger')).toBe(false);
+		});
+
+		it('fails closed when reading the run throws', () => {
+			const broken = {
+				get executionData(): never {
+					throw new Error('boom');
+				},
+			} as unknown as IRunExecutionData;
+
+			expect(isExecutionOutputRedacted(broken, undefined, 'manual')).toBe(true);
+		});
+	});
+
+	describe('redactExecutionError', () => {
+		it('keeps only the error type for a non-API error', () => {
+			expect(redactExecutionError({ name: 'NodeOperationError' })).toEqual({
+				type: 'NodeOperationError',
+			});
+		});
+
+		it('keeps the HTTP status code for a NodeApiError', () => {
+			expect(redactExecutionError({ name: 'NodeApiError', httpCode: '500' })).toEqual({
+				type: 'NodeApiError',
+				httpCode: '500',
+			});
+		});
+
+		it('reports a NodeApiError without a status code as null', () => {
+			expect(redactExecutionError({ name: 'NodeApiError' })).toEqual({
+				type: 'NodeApiError',
+				httpCode: null,
+			});
 		});
 	});
 

@@ -5,6 +5,7 @@ import type {
 	IRedactedErrorInfo,
 	ITaskDataConnections,
 } from 'n8n-workflow';
+import { redactExecutionError } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@n8n/backend-services';
 
@@ -111,16 +112,10 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	}
 
 	/**
-	 * Extracts safe, non-PII technical metadata from any execution error.
-	 * Preserves: error name (type classification), HTTP status code from NodeApiError.
-	 * Omits: message, description, cause, context — may contain PII or credential data.
+	 * Safe, non-PII technical metadata of an execution error. Shared with the
+	 * log-streaming sink, see `redactExecutionError`.
 	 */
 	private redactError(error: ExecutionError): IRedactedErrorInfo {
-		const result: IRedactedErrorInfo = { type: error.name };
-		if (error.name === 'NodeApiError') {
-			result.httpCode =
-				('httpCode' in error ? (error as { httpCode: string | null }).httpCode : null) ?? null;
-		}
-		return result;
+		return redactExecutionError(error);
 	}
 }

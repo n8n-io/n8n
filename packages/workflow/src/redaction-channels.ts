@@ -1,5 +1,10 @@
 import type { IExecutionContext, IRedactionSetting } from './execution-context';
-import type { IWorkflowSettings, WorkflowExecuteMode, WorkflowSettings } from './interfaces';
+import type {
+	IRedactedErrorInfo,
+	IWorkflowSettings,
+	WorkflowExecuteMode,
+	WorkflowSettings,
+} from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 /**
@@ -170,8 +175,27 @@ export const CONSOLE_OUTPUT_REDACTED_MESSAGE =
 	'[Console output redacted by workflow redaction policy]';
 
 /**
- * Decides whether Code-node console output (`console.log` / `print`) is
- * redacted for this run. Mirrors `ExecutionRedactionService.resolvePolicy`:
+ * Emitted in place of a failed execution's error message on the log-streaming
+ * and telemetry sinks when the run's resolved redaction policy redacts the
+ * channel it executes on. The error type and HTTP status code travel next to
+ * it, see {@link redactExecutionError}.
+ */
+export const ERROR_MESSAGE_REDACTED_MESSAGE =
+	'[Error message redacted by workflow redaction policy]';
+
+/**
+ * Emitted in place of an AI event's payload (`msg`) on the log-streaming sink
+ * when the run's resolved redaction policy redacts the channel it executes on.
+ * The event itself still fires, so the audit trail keeps the node and the
+ * event name.
+ */
+export const AI_EVENT_REDACTED_MESSAGE = '[AI event payload redacted by workflow redaction policy]';
+
+/**
+ * Decides whether output that leaves the execution-data pipeline (Code-node
+ * console output, the error message on log-streaming and telemetry sinks,
+ * AI event payloads, process-log error reports) is redacted for this run.
+ * Mirrors `ExecutionRedactionService.resolvePolicy`:
  * the `runtimeData.redaction` snapshot wins, the workflow setting is the
  * fallback; manual runs consult the manual channel, every other mode the
  * production channel. For a V2 snapshot, production is clamped up when
@@ -179,7 +203,7 @@ export const CONSOLE_OUTPUT_REDACTED_MESSAGE =
  * The channels reported by sub-workflows (`subWorkflowRedaction`) are
  * combined in, strictest per channel, with the same clamp.
  */
-export function shouldRedactConsoleOutput(
+export function shouldRedactExecutionOutput(
 	redaction: IRedactionSetting | undefined,
 	workflowSettings: IWorkflowSettings | undefined,
 	mode: WorkflowExecuteMode,
@@ -200,4 +224,42 @@ export function shouldRedactConsoleOutput(
 	);
 
 	return mode === 'manual' ? channels.manual : channels.production;
+}
+
+/**
+ * {@link shouldRedactExecutionOutput} read from a run's execution data. Fails
+ * closed: an error while resolving the policy redacts rather than emits, so a
+ * sink never falls back to raw output on a malformed snapshot.
+ */
+export function isExecutionOutputRedacted(
+	runExecutionData: IRunExecutionData | undefined,
+	workflowSettings: IWorkflowSettings | undefined,
+	mode: WorkflowExecuteMode,
+): boolean {
+	try {
+		const runtimeData = runExecutionData?.executionData?.runtimeData;
+		return shouldRedactExecutionOutput(
+			runtimeData?.redaction,
+			workflowSettings,
+			mode,
+			runtimeData?.subWorkflowRedaction,
+		);
+	} catch {
+		return true;
+	}
+}
+
+/**
+ * Extracts the safe technical metadata of an execution error: the error class
+ * name and, for a `NodeApiError`, the HTTP status code. Omits the message,
+ * description, cause and context, which can carry user data.
+ */
+export function redactExecutionError(
+	error: Pick<Error, 'name'> & { httpCode?: string | null },
+): IRedactedErrorInfo {
+	const result: IRedactedErrorInfo = { type: error.name };
+	if (error.name === 'NodeApiError') {
+		result.httpCode = error.httpCode ?? null;
+	}
+	return result;
 }
