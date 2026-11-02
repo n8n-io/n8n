@@ -7,7 +7,9 @@
  *
  * - Frontend: browser V8 already in outputDir/.cache (inline maps w/ sources) —
  *   monocart resolves it with no extra inputs.
- * - Backend: Node V8 from the containers (N8N_COVERAGE_DIR). The repo isn't
+ * - Backend: Node V8 from the containers (N8N_COVERAGE_DIR): one file for each
+ *   per-spec coverage window plus the exit dump, which add up to the whole run.
+ *   The repo isn't
  *   built on the shard, so .js/.map BYTES are read from the n8n image's dist
  *   (docker cp'd to IMAGE_DIST_ROOT — the exact executed files), while the map's
  *   `sources` are resolved to the checkout's `packages/<x>/src/*.ts`. No build.
@@ -21,7 +23,9 @@ import { join } from 'node:path';
 import { CoverageReport } from 'monocart-coverage-reports';
 
 import {
+	addMissingRootRanges,
 	buildPackageMap,
+	collectRootRanges,
 	createBackendResolveStats,
 	formatBackendStats,
 	listJsonFiles,
@@ -37,15 +41,18 @@ async function addBackendCoverage(report: CoverageReport): Promise<number> {
 	const dir = process.env.N8N_COVERAGE_DIR;
 	if (!dir || !existsSync(dir)) return 0;
 	const pkgMap = buildPackageMap();
+	const files = listJsonFiles(dir);
+	const roots = collectRootRanges(files);
 	let added = 0;
-	for (const file of listJsonFiles(dir)) {
+	for (const file of files) {
 		let parsed: { result?: Array<{ url: string }> };
 		try {
 			parsed = JSON.parse(readFileSync(file, 'utf8'));
 		} catch {
 			continue;
 		}
-		const entries = resolveBackendEntries(parsed, pkgMap, stats);
+		const result = addMissingRootRanges(parsed.result ?? [], roots);
+		const entries = resolveBackendEntries({ result }, pkgMap, stats);
 		if (entries.length) {
 			await report.add(entries as never);
 			added += entries.length;

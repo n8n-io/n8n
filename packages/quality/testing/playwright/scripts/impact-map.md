@@ -34,6 +34,11 @@ each spec we record which functions actually ran:
 - **Frontend**: the browser's own coverage (`page.coverage`), per spec.
 - **Backend**: the n8n server's coverage, captured per spec via a test-only hook
   (`/rest/e2e/coverage/*`). See `backend-v8-coverage.ts` / `emit-spec-backend-lcovs.ts`.
+  Each spec gets the call counts of its own window, so code that every spec
+  runs maps to every spec. Code that ran while the server started maps to the
+  pseudo-spec `<boot>`. Selection reads `<boot>` as every spec when a changed
+  function ran at boot. A change outside every function (imports, class fields,
+  new methods) selects only the specs that ran the file in their own tests.
 
 We only record a function if it **actually executed** (`hits > 0`) — code that was
 merely loaded but never run is not mapped.

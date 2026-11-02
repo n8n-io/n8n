@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 
-import { resolveImpact } from './impact-map.js';
+import { BOOT_SPEC, resolveImpact } from './impact-map.js';
 import {
 	changedSpans,
 	parseHunks,
@@ -116,25 +116,30 @@ describe('resolveSpans', () => {
 		{ start: 22, end: 30 },
 	];
 	const fileMap = { '1': ['outer.spec'], '5': ['callback.spec'], '22': [] };
+	const inFunctions = (specs: string[]) => ({ specs, moduleLevel: false });
 
 	it('gives a line after a nested callback to the outer function', () => {
-		expect(resolveSpans(fileMap, ranges, [{ lo: 12, hi: 12 }])).toEqual([
-			'callback.spec',
-			'outer.spec',
-		]);
+		expect(resolveSpans(fileMap, ranges, [{ lo: 12, hi: 12 }])).toEqual(
+			inFunctions(['callback.spec', 'outer.spec']),
+		);
 	});
 
 	it('gives a line in the callback to the callback only', () => {
-		expect(resolveSpans(fileMap, ranges, [{ lo: 6, hi: 7 }])).toEqual(['callback.spec']);
+		expect(resolveSpans(fileMap, ranges, [{ lo: 6, hi: 7 }])).toEqual(
+			inFunctions(['callback.spec']),
+		);
 	});
 
 	it('selects nothing for a function that no spec ran', () => {
-		expect(resolveSpans(fileMap, ranges, [{ lo: 25, hi: 25 }])).toEqual([]);
+		expect(resolveSpans(fileMap, ranges, [{ lo: 25, hi: 25 }])).toEqual(inFunctions([]));
 	});
 
-	it('falls back to the file for module-level lines and insertions between functions', () => {
-		expect(resolveSpans(fileMap, ranges, [{ lo: 21, hi: 21 }])).toBeNull();
-		expect(resolveSpans(fileMap, ranges, [{ lo: 20, hi: 21 }])).toBeNull();
+	it('marks module-level lines and insertions between functions', () => {
+		expect(resolveSpans(fileMap, ranges, [{ lo: 21, hi: 21 }])).toEqual({
+			specs: [],
+			moduleLevel: true,
+		});
+		expect(resolveSpans(fileMap, ranges, [{ lo: 20, hi: 21 }])?.moduleLevel).toBe(true);
 	});
 
 	it('falls back to the file when the map has no entry at the function start', () => {
@@ -168,11 +173,71 @@ describe('resolveImpact with a scope', () => {
 		expect(result).toMatchObject({ specs: [], uncovered: ['f.ts'] });
 	});
 
-	it('selects the whole file when the scope cannot resolve', () => {
+	it('selects the specs that ran the file for a change outside every function', () => {
 		const result = resolveImpact(
 			[{ file: 'f.ts', scope: { spans: [{ lo: 9, hi: 9 }], ranges } }],
 			map,
 			{ onUncovered: 'declare' },
+		);
+		expect(result.specs).toEqual(['a.spec', 'b.spec']);
+	});
+});
+
+describe('resolveImpact with boot coverage', () => {
+	// `init` (1-8) ran at boot and in a.spec. `handle` (10-18) ran in b.spec.
+	// `onStart` (20-25) ran at boot only. c.spec ran another file.
+	const map = {
+		'f.ts': { '1': [BOOT_SPEC, 'a.spec'], '10': ['b.spec'], '20': [BOOT_SPEC] },
+		'g.ts': { '1': ['c.spec'] },
+		'boot-only.ts': { '1': [BOOT_SPEC] },
+	};
+	const ranges = [
+		{ start: 1, end: 8 },
+		{ start: 10, end: 18 },
+		{ start: 20, end: 25 },
+	];
+	const every = ['a.spec', 'b.spec', 'c.spec'];
+	const resolve = (file: string, lo: number) =>
+		resolveImpact([{ file, scope: { spans: [{ lo, hi: lo }], ranges } }], map, {
+			onUncovered: 'declare',
+		}).specs;
+
+	it('selects every spec for a change in a function that ran at boot', () => {
+		expect(resolve('f.ts', 3)).toEqual(every);
+		expect(resolve('f.ts', 22)).toEqual(every);
+	});
+
+	it('selects only the specs that ran a function that did not run at boot', () => {
+		expect(resolve('f.ts', 12)).toEqual(['b.spec']);
+	});
+
+	it('leaves boot out of a change outside every function', () => {
+		expect(resolve('f.ts', 9)).toEqual(['a.spec', 'b.spec']);
+	});
+
+	it('leaves boot out when the map has no entry for the changed function', () => {
+		const unrun = [...ranges, { start: 30, end: 40 }];
+		const result = resolveImpact(
+			[{ file: 'f.ts', scope: { spans: [{ lo: 35, hi: 35 }], ranges: unrun } }],
+			map,
+		);
+		expect(result.specs).toEqual(['a.spec', 'b.spec']);
+	});
+
+	it('leaves boot out of a whole-file change', () => {
+		expect(resolveImpact([{ file: 'f.ts' }], map).specs).toEqual(['a.spec', 'b.spec']);
+	});
+
+	it('selects every spec for a fallback in a file that only boot ran', () => {
+		expect(resolve('boot-only.ts', 30)).toEqual(every);
+		expect(resolveImpact([{ file: 'boot-only.ts' }], map).specs).toEqual(every);
+	});
+
+	it('leaves boot out of the sibling fallback for a new file', () => {
+		const result = resolveImpact(
+			[{ file: 'dir/new.ts' }],
+			{ 'dir/f.ts': map['f.ts'], 'g.ts': map['g.ts'] },
+			{ siblingFallback: true },
 		);
 		expect(result.specs).toEqual(['a.spec', 'b.spec']);
 	});
