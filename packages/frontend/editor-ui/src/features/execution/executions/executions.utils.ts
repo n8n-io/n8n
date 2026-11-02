@@ -4,6 +4,7 @@ import {
 	createRunExecutionData,
 	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
@@ -268,6 +269,16 @@ export function hasTrimmedTaskData(taskData: ITaskData[]) {
  */
 export function hasTrimmedRunData(runData: IRunData) {
 	return Object.keys(runData).some((nodeName) => hasTrimmedTaskData(runData[nodeName]));
+}
+
+/**
+ * Check whether an execution ID belongs to engine v2.
+ *
+ * The ID shape names the engine, as in the backend: engine v2 uses a UUID v7,
+ * and v1 uses a number. No push message or REST response names the engine.
+ */
+export function isEngineV2ExecutionId(executionId: string): boolean {
+	return UUID_V7_PATTERN.test(executionId);
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):

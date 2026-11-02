@@ -4,6 +4,7 @@ import {
 	displayForm,
 	executionFilterToQueryFilter,
 	hasCancellableExecutions,
+	isEngineV2ExecutionId,
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
@@ -1115,5 +1116,19 @@ describe('hasCancellableExecutions', () => {
 
 	it('returns false for an empty executions list', () => {
 		expect(hasCancellableExecutions([])).toBe(false);
+	});
+});
+
+describe('isEngineV2ExecutionId', () => {
+	it('returns true for a UUID v7', () => {
+		expect(isEngineV2ExecutionId('019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b')).toBe(true);
+	});
+
+	it.each([
+		['a numeric v1 ID', '123'],
+		['a UUID v4', '3b241101-e2bb-4255-8caf-4136c566a962'],
+		['an empty string', ''],
+	])('returns false for %s', (_label, executionId) => {
+		expect(isEngineV2ExecutionId(executionId)).toBe(false);
 	});
 });
