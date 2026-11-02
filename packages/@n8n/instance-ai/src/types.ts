@@ -1857,6 +1857,8 @@ export interface InstanceAiContext {
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */
 	workspaceRoot?: string;
+	/** Second accepted workspace root, for sandboxes where `workspaceRoot` does not exist. */
+	fallbackWorkspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */

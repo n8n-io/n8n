@@ -275,10 +275,18 @@ provider notifications or polling.
 
 ## Workspace root
 
-Both providers use `/home/user/workspace` as the workspace root, so the prompt
-is the same on both. Daytona sandboxes from snapshots built before this change
-use `/home/daytona/workspace`. The tools detect the root of each sandbox, and
-the prompt names the Daytona path as the fallback.
+The n8n sandbox service and current Daytona snapshots use `/home/user/workspace`
+as the workspace root, so the prompt is the same for both. A custom
+`N8N_INSTANCE_AI_SANDBOX_IMAGE` gets the same root, because n8n builds the
+workspace on top of it. These Daytona sandboxes still use
+`/home/daytona/workspace`:
+
+- Sandboxes created before this change, which a thread reconnects to.
+- Sandboxes from a snapshot built before this change, including a pinned
+  `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT`.
+
+The tools detect the root of each sandbox. The prompt names the Daytona path as
+the fallback, and the workflow tools accept absolute paths under both roots.
 
 ## Configuration
 

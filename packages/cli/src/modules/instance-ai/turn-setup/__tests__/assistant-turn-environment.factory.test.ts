@@ -215,6 +215,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				const { context, orchestrationContext } = await factory.create(params, runtime);
 
 				expect(context.workspaceRoot).toBe('/home/user/workspace');
+				expect(context.fallbackWorkspaceRoot).toBe('/home/daytona/workspace');
 				expect(orchestrationContext.workspaceRoot).toBe('/home/user/workspace');
 				expect(orchestrationContext.fallbackWorkspaceRoot).toBe('/home/daytona/workspace');
 			},

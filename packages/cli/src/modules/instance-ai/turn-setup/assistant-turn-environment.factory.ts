@@ -502,6 +502,7 @@ export class AssistantTurnEnvironmentFactory {
 
 		context.workspace = runtimeWorkspace;
 		context.workspaceRoot = workspaceRoot;
+		context.fallbackWorkspaceRoot = fallbackWorkspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
 		// Tool-emitted telemetry is an open-ended property bag (search queries,
