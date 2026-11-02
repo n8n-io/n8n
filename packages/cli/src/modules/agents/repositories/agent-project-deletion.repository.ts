@@ -31,6 +31,10 @@ export class AgentProjectDeletionRepository {
 		return `agents.projectDeletion.${projectId}`;
 	}
 
+	async completeDeletion(projectId: string): Promise<void> {
+		await this.table.manager.delete(Settings, { key: this.markerKey(projectId) });
+	}
+
 	async beginDeletion(projectId: string): Promise<void> {
 		await this.transactions.run({}, async (ctx) => {
 			const manager = this.table.managerFor(ctx);

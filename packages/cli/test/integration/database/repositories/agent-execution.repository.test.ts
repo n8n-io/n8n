@@ -94,6 +94,7 @@ import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execu
 import type { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
+import { AgentUserDeletionRepository } from '@/modules/agents/repositories/agent-user-deletion.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
 import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
@@ -179,7 +180,12 @@ describe('AgentExecutionRepository', () => {
 		);
 		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
 		const threads = connection
-			? new AgentExecutionThreadRepository(connection, txRunner)
+			? new AgentExecutionThreadRepository(
+					connection,
+					txRunner,
+					new AgentProjectDeletionRepository(connection, txRunner),
+					new AgentUserDeletionRepository(connection, txRunner),
+				)
 			: threadRepo;
 		const queueRepository = new AgentMessageQueueRepository(
 			connection ?? repository.manager.connection,

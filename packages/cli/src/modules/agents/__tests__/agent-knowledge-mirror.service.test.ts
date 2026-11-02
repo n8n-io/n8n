@@ -129,6 +129,10 @@ function makeService({
 	);
 }
 
+function isMirrorSyncCommand(command: string): boolean {
+	return command.includes(`mkdir -p ${knowledgePaths.filesDir}`);
+}
+
 describe('AgentKnowledgeMirrorService', () => {
 	let sandbox: ReturnType<typeof mock<TestWorkspaceSandbox>>;
 	let filesystem: ReturnType<typeof mock<WorkspaceFilesystem>>;
@@ -157,7 +161,7 @@ describe('AgentKnowledgeMirrorService', () => {
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('project is being deleted'));
 		const agentFileRepository = mock<AgentFileRepository>();
-		agentFileRepository.findByAgentId.mockResolvedValue([]);
+		agentFileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.existsBy.mockResolvedValue(true);
 		const service = makeService({
@@ -171,6 +175,13 @@ describe('AgentKnowledgeMirrorService', () => {
 			expect(runtimeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId),
 		);
 		expect(projectDeletion.assertWritable).toHaveBeenCalledTimes(2);
+		const syncIndex = sandbox.executeCommand.mock.calls.findIndex(([command]) =>
+			isMirrorSyncCommand(command),
+		);
+		expect(syncIndex).toBeGreaterThanOrEqual(0);
+		expect(sandbox.executeCommand.mock.invocationCallOrder[syncIndex]).toBeLessThan(
+			runtimeService.destroyKnowledgeSandbox.mock.invocationCallOrder[0],
+		);
 	});
 
 	describe('globKnowledgeFiles', () => {
@@ -286,10 +297,6 @@ describe('AgentKnowledgeMirrorService', () => {
 	describe('mirror sync', () => {
 		function isManifestReadCommand(command: string): boolean {
 			return command.startsWith('cat ') && command.includes('/manifest');
-		}
-
-		function isMirrorSyncCommand(command: string): boolean {
-			return command.includes(`mkdir -p ${knowledgePaths.filesDir}`);
 		}
 
 		function makeMirrorFile(id: string, fileName: string): AgentFile {

@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -119,6 +120,34 @@ describe('AgentChatAttachmentService', () => {
 		).rejects.toThrow('project is being deleted');
 		expect(repository.saveInboundAttachment).not.toHaveBeenCalled();
 		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith(['filesystem-v2:x']);
+	});
+
+	it('removes upload bytes when account deletion rejects a private chat file', async () => {
+		binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
+		binaryDataService.store.mockResolvedValue({
+			id: 'filesystem-v2:late-file',
+			data: 'filesystem-v2',
+			mimeType: 'text/plain',
+		});
+		threadRepository.assertOwnerActive.mockRejectedValue(
+			new UserError('This user is being deleted'),
+		);
+		await expect(
+			service.storeInbound({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				threadId: 'root',
+				resourceId: 'system-chat:user-1',
+				source: 'system',
+				fileName: 'file.txt',
+				mimeType: 'text/plain',
+				data: Buffer.from('content'),
+			}),
+		).rejects.toThrow('user is being deleted');
+		expect(repository.saveInboundAttachment).not.toHaveBeenCalled();
+		expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
+			'filesystem-v2:late-file',
+		]);
 	});
 
 	it('checks attachment access through the session and falls back to its persisted resource', async () => {

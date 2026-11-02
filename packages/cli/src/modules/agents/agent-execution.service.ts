@@ -248,6 +248,7 @@ export class AgentExecutionService {
 		const prepared = lockedQueueThread
 			? { thread: lockedQueueThread, created: false }
 			: await this.prepareThread(params, ctx);
+		await this.agentExecutionThreadRepository.assertOwnerActive(prepared.thread, ctx);
 		const { queueItem, predecessorId } = await this.checkAdmission(params, ctx);
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,

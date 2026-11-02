@@ -20,6 +20,9 @@ import {
 import chunk from 'lodash/chunk';
 import { jsonParse, UserError, OperationalError } from 'n8n-workflow';
 
+import { AgentProjectDeletionRepository } from './agent-project-deletion.repository';
+import { AgentUserDeletionRepository } from './agent-user-deletion.repository';
+
 import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
@@ -96,6 +99,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	constructor(
 		dataSource: DataSource,
 		private readonly txRunner: TransactionRunner,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly userDeletion: AgentUserDeletionRepository,
 	) {
 		super(AgentExecutionThread, dataSource.manager, txRunner);
 	}
@@ -158,6 +163,43 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		taskVersionId?: string | null,
 		sessionMode: AgentSessionMode = 'new',
 	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
+		return await this.projectDeletion.withWritableProject(
+			projectId,
+			async (ctx) =>
+				await this.findOrCreateWritable(
+					threadId,
+					agentId,
+					agentName,
+					projectId,
+					access,
+					ctx,
+					metadata,
+					taskId,
+					taskVersionId,
+					sessionMode,
+				),
+			ctx,
+		);
+	}
+
+	async assertOwnerActive(access: AgentThreadAccess, ctx: OperationContext): Promise<void> {
+		if (access.accessScope === 'user' && access.ownerId) {
+			await this.userDeletion.assertActiveUser(access.ownerId, ctx);
+		}
+	}
+
+	private async findOrCreateWritable(
+		threadId: string,
+		agentId: string,
+		agentName: string,
+		projectId: string,
+		access: AgentThreadAccess,
+		ctx: OperationContext,
+		metadata?: AgentExecutionThreadMetadata,
+		taskId?: string | null,
+		taskVersionId?: string | null,
+		sessionMode: AgentSessionMode = 'new',
+	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
 		const manager = this.managerFor(ctx);
 		const repository = manager.getRepository(AgentExecutionThread);
 		if (metadata?.parentThreadId) {
@@ -173,6 +215,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			}
 		}
 		if (access.accessScope === 'user' && !access.ownerId) throw new UserError('Session not found');
+		await this.assertOwnerActive(access, ctx);
 
 		const isPostgres = manager.connection.options.type === 'postgres';
 		const findSession = async () =>

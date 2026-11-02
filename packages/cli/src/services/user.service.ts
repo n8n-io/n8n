@@ -690,7 +690,6 @@ export class UserService {
 			await trx.delete(Project, { id: personalProjectToDelete.id });
 			await trx.delete(User, { id: userToDelete.id });
 		});
-
 		this.eventService.emit('user-deleted', {
 			// No user acts in a system deletion, so the event names the system.
 			user: actorUser,
@@ -701,6 +700,11 @@ export class UserService {
 			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
 			migrationUserId: transfereeId,
 		});
+
+		await ownershipTransferService.completeUserDeletion(
+			userToDelete.id,
+			personalProjectToDelete.id,
+		);
 
 		await this.externalHooks.run('user.deleted', [await this.toPublic(userToDelete)]);
 

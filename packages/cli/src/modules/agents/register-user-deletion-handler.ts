@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 
 import { AgentProjectCleanupService } from './agent-project-cleanup.service';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import { AgentUserDeletionRepository } from './repositories/agent-user-deletion.repository';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentMemoryEntryRepository } from './repositories/agent-memory-entry.repository';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import {
@@ -18,7 +20,12 @@ export function registerUserDeletionHandler() {
 		resource: 'agent-user-memory',
 		transferAll: async () => {},
 		deleteAll: async () => {},
+		afterUserDeleted: async (userId, personalProjectId) => {
+			await Container.get(AgentUserDeletionRepository).completeDeletion(userId);
+			await Container.get(AgentProjectDeletionRepository).completeDeletion(personalProjectId);
+		},
 		deleteAllForUser: async (userId) => {
+			await Container.get(AgentUserDeletionRepository).beginDeletion(userId);
 			const systemAgents = Container.get(SystemAgentExecutionService);
 			await systemAgents.stopThreadsOfUser(userId);
 			await systemAgents.deleteThreadsOfUser(userId);

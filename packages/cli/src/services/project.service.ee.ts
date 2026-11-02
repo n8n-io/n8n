@@ -269,6 +269,9 @@ export class ProjectService {
 
 		// 9. delete project
 		await this.projectRepository.remove(project);
+		if (this.moduleRegistry.isActive('agents')) {
+			await (await this.agentProjectCleanupService).completeProjectDeletion(projectId);
+		}
 
 		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
 		try {

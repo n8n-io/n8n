@@ -36,10 +36,12 @@ export class AgentChatAttachmentRepository {
 		projectId: string,
 		limit: number,
 		ctx: OperationContext,
-	): Promise<AgentChatAttachment[]> {
+	): Promise<Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>>> {
 		return await this.table.managerFor(ctx).find(AgentChatAttachment, {
 			where: { projectId },
-			order: { id: 'ASC' },
+			// The project/thread index orders batches. Deleted rows need no pagination offset.
+			order: { threadId: 'ASC' },
+			select: ['id', 'binaryDataId'],
 			take: limit,
 		});
 	}

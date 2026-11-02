@@ -8,6 +8,8 @@ import { IsNull } from '@n8n/typeorm';
 import { mockEntityManager } from '@test/mocking';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
+import type { AgentUserDeletionRepository } from '../repositories/agent-user-deletion.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 
 const access = { accessScope: 'project' as const, ownerId: null };
@@ -18,12 +20,22 @@ const mockDataSource = { manager: entityManager };
 describe('AgentExecutionThreadRepository', () => {
 	let repository: AgentExecutionThreadRepository;
 	const transactions = mock<TransactionRunner>();
+	const projectDeletion = mock<AgentProjectDeletionRepository>();
+	const userDeletion = mock<AgentUserDeletionRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		Object.assign(entityManager.connection, { options: { type: 'sqlite-pooled' } });
-		repository = new AgentExecutionThreadRepository(mockDataSource as never, transactions);
+		projectDeletion.withWritableProject.mockImplementation(
+			async (_id, write, ctx = {}) => await write(ctx),
+		);
+		repository = new AgentExecutionThreadRepository(
+			mockDataSource as never,
+			transactions,
+			projectDeletion,
+			userDeletion,
+		);
 	});
 
 	describe('deleteCheckpointsForThreads', () => {

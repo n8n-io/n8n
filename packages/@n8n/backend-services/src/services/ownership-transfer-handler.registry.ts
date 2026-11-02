@@ -22,6 +22,9 @@ export interface ProjectOwnershipTransferHandler<TTransaction> {
 	 * belong to a project, not to a user.
 	 */
 	deleteAllForUser?(userId: string): Promise<void>;
+
+	/** Run module cleanup after the account and personal project are deleted. */
+	afterUserDeleted?(userId: string, personalProjectId: string): Promise<void>;
 }
 
 @Service()

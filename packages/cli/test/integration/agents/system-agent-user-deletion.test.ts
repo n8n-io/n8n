@@ -5,7 +5,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { UserRepository, type User } from '@n8n/db';
+import { SettingsRepository, TransactionRunner, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
@@ -219,6 +219,7 @@ describe('Agent memory on user deletion', () => {
 		'removes personal-project agent data with transfer=%s',
 		async (transfer) => {
 			const user = await createMember();
+			const personalProjectId = (await getPersonalProject(user)).id;
 			const personal = await createSession(user, false, draftChatMemoryResourceId(user.id), true);
 			const instance = await createSession(user, true, systemChatMemoryResourceId(user.id), true);
 			const kept = await createSession(user, false, productionChatMemoryResourceId(user.id));
@@ -271,6 +272,16 @@ describe('Agent memory on user deletion', () => {
 				expect(await entryRepo.findOneBy({ id: session.entry.id })).toBeNull();
 			}
 			expect(await agentRepo.findOneBy({ id: personal.agentId })).toBeNull();
+			expect(
+				await Container.get(SettingsRepository).findOneBy({
+					key: `agents.projectDeletion.${personalProjectId}`,
+				}),
+			).toBeNull();
+			expect(
+				await Container.get(SettingsRepository).findOneBy({
+					key: `agents.userDeletion.${user.id}`,
+				}),
+			).toBeNull();
 			expect(await agentRepo.findOneBy({ id: INSTANCE_AGENT_ID })).not.toBeNull();
 			expect(await checkpointRepo.findByRunId(`run-${personal.scope.threadId}`)).toBeNull();
 			expect(await checkpointRepo.findByRunId(`run-${instance.scope.threadId}`)).toBeNull();
@@ -411,6 +422,62 @@ describe('Agent memory on user deletion', () => {
 		expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
 	});
 
+	it('blocks new sessions, queued input and turn admission after account cleanup starts', async () => {
+		const user = await createMember();
+		const { scope, agentId } = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const thread = await threadRepo.findOneByOrFail({ id: scope.threadId });
+		const systemAgents = Container.get(SystemAgentExecutionService);
+		const stop = systemAgents.stopThreadsOfUser.bind(systemAgents);
+		const stopping = vi
+			.spyOn(systemAgents, 'stopThreadsOfUser')
+			.mockImplementation(async (userId) => {
+				await expect(
+					systemAgents.createThread({ agentId, user, projectId: thread.projectId }),
+				).rejects.toThrow('Session not found');
+				await expect(
+					Container.get(AgentMessageQueueService).enqueue({
+						agentId,
+						projectId: thread.projectId,
+						threadId: thread.id,
+						sessionMode: 'existing',
+						source: 'system',
+						payload: {
+							kind: 'system',
+							userId,
+							resourceId: scope.resourceId,
+							messageId: uuid(),
+							message: 'A late input.',
+						},
+					}),
+				).rejects.toThrow('user is being deleted');
+				await Container.get(TransactionRunner).run({}, async (ctx) => {
+					await expect(
+						Container.get(AgentExecutionService).reserveExecution(
+							{
+								agentId,
+								agentName: thread.agentName,
+								projectId: thread.projectId,
+								threadId: thread.id,
+								resourceId: scope.resourceId,
+								userMessage: 'A late turn.',
+								access: { accessScope: 'user', ownerId: userId },
+							},
+							new Date(),
+							ctx,
+							thread,
+						),
+					).rejects.toThrow('user is being deleted');
+				});
+				await stop(userId);
+			});
+		try {
+			await Container.get(UserService).deleteUser(admin, user.id);
+		} finally {
+			stopping.mockRestore();
+		}
+		expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
+	});
+
 	it('keeps the account and session owner when a running system chat cannot be removed', async () => {
 		const user = await createMember();
 		const { scope, entry } = await createSession(user, true, systemChatMemoryResourceId(user.id));
@@ -425,6 +492,9 @@ describe('Agent memory on user deletion', () => {
 			deletion.mockRestore();
 		}
 		expect(await Container.get(UserRepository).findOneBy({ id: user.id })).not.toBeNull();
+		expect(
+			await Container.get(SettingsRepository).findOneBy({ key: `agents.userDeletion.${user.id}` }),
+		).not.toBeNull();
 		expect(await entryRepo.findOneByOrFail({ id: entry.id })).toMatchObject({
 			status: 'active',
 			embedding: entry.embedding,

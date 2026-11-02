@@ -127,4 +127,10 @@ export class OwnershipTransferService {
 			}
 		}
 	}
+
+	async completeUserDeletion(userId: string, personalProjectId: string): Promise<void> {
+		for (const handler of this.transferHandlers.getAll()) {
+			await handler.afterUserDeleted?.(userId, personalProjectId);
+		}
+	}
 }

@@ -62,4 +62,8 @@ export class AgentProjectCleanupService {
 		await agentExecutionService.deleteMemoryThreadsForProject(projectId);
 		await agentChatAttachmentService.deleteByProject(projectId);
 	}
+
+	async completeProjectDeletion(projectId: string): Promise<void> {
+		await this.deletion.completeDeletion(projectId);
+	}
 }

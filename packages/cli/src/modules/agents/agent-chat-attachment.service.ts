@@ -17,6 +17,9 @@ import {
 	draftChatMemoryResourceId,
 	isIntegrationMemoryResourceId,
 	isTaskRunMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import { threadBelongsTo } from './utils/agent-thread-access';
 
@@ -102,26 +105,32 @@ export class AgentChatAttachmentService {
 		}
 
 		try {
-			return await this.projectDeletion.withWritableProject(
-				params.projectId,
-				async (ctx) =>
-					await this.repository.saveInboundAttachment(
-						{
-							id: attachmentId,
-							agentId,
-							projectId: params.projectId,
-							threadId: root.id,
-							createdByThreadId: params.threadId,
-							resourceId: params.resourceId ?? null,
-							binaryDataId,
-							fileName: params.fileName,
-							mimeType: params.mimeType,
-							fileSizeBytes: params.data.byteLength,
-							source: params.source,
-						},
-						ctx,
-					),
-			);
+			return await this.projectDeletion.withWritableProject(params.projectId, async (ctx) => {
+				const resourceId = params.resourceId ?? '';
+				const ownerId =
+					userIdFromDraftChatMemoryResourceId(resourceId) ??
+					userIdFromProductionChatMemoryResourceId(resourceId) ??
+					userIdFromSystemChatMemoryResourceId(resourceId);
+				if (ownerId) {
+					await this.threadRepository.assertOwnerActive({ accessScope: 'user', ownerId }, ctx);
+				}
+				return await this.repository.saveInboundAttachment(
+					{
+						id: attachmentId,
+						agentId,
+						projectId: params.projectId,
+						threadId: root.id,
+						createdByThreadId: params.threadId,
+						resourceId: params.resourceId ?? null,
+						binaryDataId,
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+						source: params.source,
+					},
+					ctx,
+				);
+			});
 		} catch (error) {
 			await this.binaryDataService
 				.deleteManyByBinaryDataId([binaryDataId])

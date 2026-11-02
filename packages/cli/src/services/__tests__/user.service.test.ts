@@ -1060,6 +1060,19 @@ describe('UserService', () => {
 			expect(ownershipTransferService.enforceTransferPolicy).not.toHaveBeenCalled();
 		});
 
+		it('emits the account deletion event before post-delete module cleanup', async () => {
+			const error = new Error('Marker cleanup failed');
+			ownershipTransferService.completeUserDeletion.mockRejectedValueOnce(error);
+			await expect(userService.deleteUser(actor, userToDelete.id)).rejects.toThrow(error);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({ targetUserId: userToDelete.id }),
+			);
+			expect(eventService.emit.mock.invocationCallOrder[0]).toBeLessThan(
+				ownershipTransferService.completeUserDeletion.mock.invocationCallOrder[0],
+			);
+		});
+
 		it.each([
 			['without a transferee', undefined],
 			['with a transferee', transfereeProject.id],

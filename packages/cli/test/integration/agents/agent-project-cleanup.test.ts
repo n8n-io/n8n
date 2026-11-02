@@ -1,5 +1,5 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
@@ -10,6 +10,11 @@ import { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-exe
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
+import { AgentProjectCleanupService } from '@/modules/agents/agent-project-cleanup.service';
+import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import { EXECUTION_METADATA_KEY } from '@/modules/agents/types/agent-queued-message';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { createOwner } from '../shared/db/users';
@@ -22,6 +27,66 @@ describe('Agent conversations on project deletion', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	it('rejects a late checkpoint save before the project cascade', async () => {
+		const project = await createTeamProject();
+		const agents = Container.get(AgentRepository);
+		const agent = await agents.save(
+			agents.create({
+				name: 'Instance agent',
+				scope: 'instance',
+				projectId: null,
+				integrations: [],
+			}),
+		);
+		const threads = Container.get(AgentExecutionThreadRepository);
+		const threadId = uuid();
+		await threads.save(
+			threads.create({
+				id: threadId,
+				agentId: agent.id,
+				agentName: agent.name,
+				projectId: project.id,
+				accessScope: 'project',
+				ownerId: null,
+			}),
+		);
+		const executions = Container.get(AgentExecutionRepository);
+		const execution = await executions.save(
+			executions.create({ id: uuid(), threadId, status: 'success' }),
+		);
+		const checkpoints = Container.get(AgentCheckpointRepository);
+		await checkpoints.save(
+			checkpoints.create({
+				runId: 'finished-checkpoint',
+				agentId: agent.id,
+				threadId,
+				state: '{}',
+			}),
+		);
+		await Container.get(AgentProjectCleanupService).cleanupProject(project.id);
+		expect(await checkpoints.findByRunId('finished-checkpoint')).toBeNull();
+		expect(await threads.findOneBy({ id: threadId })).not.toBeNull();
+		await expect(
+			Container.get(N8NCheckpointStorage).save(
+				'late-checkpoint',
+				{
+					status: 'running',
+					persistence: {
+						threadId,
+						resourceId: 'test-resource',
+						hostMetadata: { [EXECUTION_METADATA_KEY]: execution.id },
+					},
+					messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+					pendingToolCalls: {},
+				},
+				agent.id,
+			),
+		).rejects.toThrow('no longer owns this session');
+		expect(await checkpoints.findByRunId('late-checkpoint')).toBeNull();
+		await Container.get(ProjectRepository).delete(project.id);
+		await Container.get(AgentProjectDeletionRepository).completeDeletion(project.id);
 	});
 
 	it('removes project and builder conversations while preserving other instance-agent sessions', async () => {
@@ -139,6 +204,19 @@ describe('Agent conversations on project deletion', () => {
 		expect(await threads.findOneBy({ id: keptInstanceSessionId })).not.toBeNull();
 		expect(await agents.findOneBy({ id: instanceAgent.id })).not.toBeNull();
 		expect(await Container.get(ProjectRepository).findOneBy({ id: project.id })).toBeNull();
+		expect(
+			await Container.get(SettingsRepository).findOneBy({
+				key: `agents.projectDeletion.${project.id}`,
+			}),
+		).toBeNull();
+		await Container.get(ProjectRepository).insert({
+			id: project.id,
+			type: 'team',
+			name: 'Replacement project',
+		});
+		await expect(
+			Container.get(AgentProjectDeletionRepository).assertWritable(project.id),
+		).resolves.toBeUndefined();
 		expect(await executions.findOneBy({ id: deletedLog.executionId })).toBeNull();
 		expect(await logs.read(deletedLog, 'fs')).toBeNull();
 		expect(await logs.read(keptLog, 'fs')).not.toBeNull();
