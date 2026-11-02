@@ -13,6 +13,8 @@ import { useNow } from '@vueuse/core';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
+import { latestSentence } from '../../shared/thinking.utils';
+
 import { useSteadyValue } from './useSteadyValue';
 import { getAgentActivityKey, getAgentSectionTitle, isActiveBuilderAgent } from '../builderAgents';
 import { useToolLabel } from '../toolLabels';
@@ -203,6 +205,13 @@ export function useRunActivity() {
 		);
 	}
 
+	/** While an agent reasons, its newest complete sentence; else the step after its last call. */
+	function idleLabel(node: InstanceAiAgentNode, now: number): string | undefined {
+		const last = node.timeline.at(-1);
+		const sentence = last?.type === 'reasoning' ? latestSentence(last.content) : undefined;
+		return sentence ?? nextStepLabel(node, now);
+	}
+
 	/** The step after the last finished call of an agent, when it is known. */
 	function nextStepLabel(node: InstanceAiAgentNode, now: number): string | undefined {
 		const last = node.toolCalls.at(-1);
@@ -246,7 +255,7 @@ export function useRunActivity() {
 			const activeTool = activeChild.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
 			const detail = activeTool
 				? runningToolLabel(activeTool, tree, now)
-				: nextStepLabel(activeChild, now);
+				: idleLabel(activeChild, now);
 			return detail ? { label: roleLabel, detail } : { label: roleLabel };
 		}
 
@@ -254,7 +263,7 @@ export function useRunActivity() {
 		const activeTool = tree.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
 		if (activeTool) return { label: runningToolLabel(activeTool, tree, now) };
 
-		return { label: nextStepLabel(tree, now) ?? i18n.baseText('instanceAi.statusBar.thinking') };
+		return { label: idleLabel(tree, now) ?? i18n.baseText('instanceAi.statusBar.thinking') };
 	};
 }
 

@@ -314,28 +314,39 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Configuring Gmail nodes');
 	});
 
-	it('should show "Thinking" on the subline when no tool call is the tail', () => {
-		// Covers the reasoning-only phases (run start, between tool calls) —
-		// the block must always carry a live signal while active.
+	it('should show the newest complete reasoning sentence on the subline', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Figuring out the trigger. Gmail can filter by label. Then the')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter by label.');
+	});
+
+	it('should show "Thinking" on the subline until reasoning adds to the title', () => {
+		// The title already shows the first sentence, so the subline does not repeat it.
 		const tc = makeToolCall({ toolCallId: 'tc-1' });
-		const noTools = renderComponent({
+		const firstSentenceOnly = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active' }),
 				entries: [reasoning('Figuring out the trigger. Hmm.')],
 				active: true,
 			},
 		});
-		expect(noTools.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
-		noTools.unmount();
+		expect(firstSentenceOnly.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+		firstSentenceOnly.unmount();
 
-		const toolThenReasoning = renderComponent({
+		const toolThenStreaming = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
-				entries: [toolEntry('tc-1'), reasoning('Got the results. Next step.')],
+				entries: [toolEntry('tc-1'), reasoning('Got the')],
 				active: true,
 			},
 		});
-		expect(toolThenReasoning.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+		expect(toolThenStreaming.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
 	});
 
 	it('should show the elapsed in the header while expanded', async () => {

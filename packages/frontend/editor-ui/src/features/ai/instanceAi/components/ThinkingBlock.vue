@@ -10,6 +10,7 @@ import { useNow } from '@vueuse/core';
 import { computed } from 'vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
+import { firstSentence, latestSentence } from '../../shared/thinking.utils';
 import { useActiveToolLabel } from '../composables/useRunActivity';
 import { useSteadyValue } from '../composables/useSteadyValue';
 
@@ -45,6 +46,12 @@ const activeToolLabel = useActiveToolLabel();
 const now = useNow({ interval: 1000 });
 const { getInstanceContextLabel } = useInstanceContextLabel();
 
+/** The newest reasoning sentence, unless the title already shows it. */
+function reasoningLabel(content: string): string | undefined {
+	const sentence = latestSentence(content);
+	return sentence && sentence !== firstSentence(content) ? sentence : undefined;
+}
+
 /** A running call gets the same label as the status bar; a finished one its own. */
 function toolCallLabel(toolCall: InstanceAiToolCallState): string {
 	return toolCall.isLoading && props.agentNode.status === 'active'
@@ -78,6 +85,7 @@ const activityLabel = computed<string | undefined>(() => {
 
 	if (!props.active || props.awaitingInput) return undefined;
 	const last = props.entries[props.entries.length - 1];
+	if (last?.type === 'reasoning') return reasoningLabel(last.content);
 	if (last?.type === 'skill-update') return skillUpdateLabel(last);
 	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
 });

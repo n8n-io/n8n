@@ -277,6 +277,64 @@ describe('useRunActivity, long steps', () => {
 	});
 });
 
+describe('useRunActivity, reasoning', () => {
+	beforeEach(() => {
+		createTestingPinia();
+	});
+
+	const reasoningTimeline = (content: string) => [{ type: 'reasoning' as const, content }];
+
+	it('shows the newest complete sentence while the agent reasons', () => {
+		const tree = agent({
+			timeline: reasoningTimeline('The user wants invoices. Gmail can filter by label. Then'),
+		});
+
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Gmail can filter by label.' });
+	});
+
+	it('keeps the next step until a reasoning sentence ends', () => {
+		const read: InstanceAiToolCallState = {
+			...call('get_node_types', { nodeTypes: ['n8n-nodes-base.gmail'] }),
+			isLoading: false,
+		};
+		const tree = agent({
+			toolCalls: [read],
+			timeline: [
+				{ type: 'tool-call', toolCallId: read.toolCallId },
+				...reasoningTimeline('The user wants'),
+			],
+		});
+
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Planning the workflow' });
+	});
+
+	it('shows the reasoning of an active sub-agent as its detail', () => {
+		const child = agent({
+			agentId: 'child',
+			role: 'workflow-builder',
+			kind: 'builder',
+			timeline: reasoningTimeline('Gmail can filter by label. More'),
+		});
+
+		expect(useRunActivity()([message(agent({ children: [child] }))]).detail).toBe(
+			'Gmail can filter by label.',
+		);
+	});
+
+	it('names a running tool even when reasoning came before it', () => {
+		const search = call('search_nodes', { queries: ['gmail'] });
+		const tree = agent({
+			toolCalls: [search],
+			timeline: [
+				...reasoningTimeline('Gmail can filter by label. More'),
+				{ type: 'tool-call', toolCallId: search.toolCallId },
+			],
+		});
+
+		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Searching for gmail' });
+	});
+});
+
 describe('formatRunActivity', () => {
 	it('joins the label and the detail like the status bar', () => {
 		expect(formatRunActivity({ label: 'Building workflow', detail: 'Searching nodes' })).toBe(
