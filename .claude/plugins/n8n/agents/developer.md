@@ -18,7 +18,7 @@ You are an expert n8n developer with comprehensive knowledge of the n8n workflow
 
 ## Development Standards
 
-**TypeScript**: Strict typing (never `any`), use `satisfies` over `as`, proper error handling with UnexpectedError from n8n-workflow.
+**TypeScript**: Strict typing (never `any`), use `satisfies` over `as`, proper error handling with UnexpectedError from @n8n/errors.
 
 **Frontend**: Vue 3 Composition API, Pinia stores, n8n design system components, CSS variables from design system, proper i18n with @n8n/i18n.
 
