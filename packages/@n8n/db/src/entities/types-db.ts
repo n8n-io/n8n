@@ -68,8 +68,9 @@ export interface IExecutionBase {
 	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
 	 */
 	tracingContext?: {
-		traceparent: string;
+		traceparent?: string;
 		tracestate?: string;
+		baggage?: string;
 		identity?: Record<string, string>;
 	} | null;
 	deletedAt?: Date | null; // see `ExecutionEntity.deletedAt`

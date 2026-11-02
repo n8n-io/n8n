@@ -154,8 +154,8 @@ describe('OTEL Workflow Tracing Integration', () => {
 		const resumedContext = (await executionRepository.findOneBy({ id: executionId }))
 			?.tracingContext;
 
-		const [, parkedTraceId, parkedSpanId] = parkedContext!.traceparent.split('-');
-		const [, resumedTraceId, resumedSpanId] = resumedContext!.traceparent.split('-');
+		const [, parkedTraceId, parkedSpanId] = parkedContext!.traceparent!.split('-');
+		const [, resumedTraceId, resumedSpanId] = resumedContext!.traceparent!.split('-');
 		expect(resumedTraceId).toBe(parkedTraceId);
 		expect(resumedSpanId).not.toBe(parkedSpanId);
 	});
