@@ -1,4 +1,4 @@
-import type { INodeListSearchResult } from 'n8n-workflow';
+import type { INodeListSearchResult, INodeParameterResourceLocator } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -1440,7 +1440,7 @@ describe('ResourceLocator', () => {
 		};
 
 		const renderDataTableLocator = (
-			modelValue: Record<string, unknown>,
+			modelValue: Omit<INodeParameterResourceLocator, '__rl'>,
 			{
 				parameter = DATA_TABLE_PARAMETER,
 				node = EVALUATION_TRIGGER_NODE,
