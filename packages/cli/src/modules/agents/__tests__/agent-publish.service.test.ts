@@ -944,7 +944,7 @@ describe('AgentPublishService', () => {
 
 			await service.publishAgent(agentId, projectId, user, { by, trigger: 'explicit' });
 
-			expect(agentFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId);
+			expect(agentFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId, {});
 			expect(telemetry.track).toHaveBeenCalledWith(
 				publishedEvent,
 				expect.objectContaining({ knowledge_file_count: 3, knowledge_total_bytes: 4096 }),

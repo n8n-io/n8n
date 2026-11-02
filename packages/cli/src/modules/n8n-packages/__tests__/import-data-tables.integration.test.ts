@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import type { SerializedDataTable } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -11,12 +12,15 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import {
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableProxyService,
+	DataTableRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
+
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -46,7 +50,7 @@ let workflowRepository: WorkflowRepository;
 const licenseMocker = new LicenseMocker();
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'data-table']);
+	await testModules.loadModules(['n8n-packages', 'data-table'], packagedModules);
 	await testDb.init();
 	// Register node types so the plan-phase missing-node-type check can resolve
 	// the node types used by the package fixtures.

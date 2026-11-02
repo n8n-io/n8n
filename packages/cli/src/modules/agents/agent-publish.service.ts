@@ -292,7 +292,7 @@ export class AgentPublishService {
 		agentId: string,
 	): Promise<AgentKnowledgeTotals | undefined> {
 		try {
-			return await this.agentFileRepository.getKnowledgeTotals(agentId);
+			return await this.agentFileRepository.getKnowledgeTotals(agentId, {});
 		} catch (error) {
 			this.logger.warn('Failed to read knowledge totals for the publish event', {
 				agentId,
