@@ -69,7 +69,7 @@ interface SystemAgentTurnBase<TLease> {
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
 	/**
-	 * Find a stored file of this thread by id, from any message or tool result.
+	 * Find a file that the user attached to any message of this thread, by id.
 	 * Gives `undefined` for a file of another thread.
 	 */
 	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
