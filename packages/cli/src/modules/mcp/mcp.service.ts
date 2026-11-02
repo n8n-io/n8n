@@ -17,6 +17,7 @@ import {
 	WorkflowPublishedDataService,
 	AiPreferenceService,
 	CredentialsFinderService,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -44,7 +45,6 @@ import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { SkillsGate } from '@/modules/skills';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';

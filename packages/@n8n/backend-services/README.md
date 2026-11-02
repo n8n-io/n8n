@@ -31,6 +31,7 @@ and infrastructure services that need the persistence layer or that only
 - `UrlService`: instance and webhook URLs.
 - `CacheService`: application cache access.
 - `RedisClientService`: shared Redis connections and support code.
+- `PostHogClient`: product analytics events and feature flags from PostHog.
 
 The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
 and the scope checks here, one area at a time.

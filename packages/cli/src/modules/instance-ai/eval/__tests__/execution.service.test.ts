@@ -1,3 +1,4 @@
+import type { PostHogClient } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -19,7 +20,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { PrepareWorkflowAgentForEval } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import type { NodeTypes } from '@/node-types';
-import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@n8n/backend-module-data-table';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { OwnershipService } from '@/services/ownership.service';

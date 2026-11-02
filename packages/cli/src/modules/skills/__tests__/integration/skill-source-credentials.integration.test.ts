@@ -5,6 +5,7 @@ import {
 	type SkillSourceDiscovery,
 	type SkillSourceRepositoryList,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -27,7 +28,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
-import { PostHogClient } from '@/posthog';
 
 import { saveCredential, shareCredentialWithProjects } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';

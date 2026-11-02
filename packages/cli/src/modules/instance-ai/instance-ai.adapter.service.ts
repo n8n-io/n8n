@@ -38,6 +38,7 @@ import {
 	FolderFinderService,
 	InstanceWriteAccessService,
 	AiPreferenceService,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -220,7 +221,6 @@ import type { ExecuteNodeResult } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';

@@ -13,7 +13,7 @@ import { PostHog } from 'posthog-node';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { PostHogClient } from '@/posthog';
+import { PostHogClient } from '../posthog-client';
 
 vi.mock('posthog-node');
 

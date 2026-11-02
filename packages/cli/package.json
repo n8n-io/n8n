@@ -273,7 +273,6 @@
     "pg": "catalog:",
     "picocolors": "catalog:",
     "pkce-challenge": "5.0.0",
-    "posthog-node": "catalog:",
     "prom-client": "15.1.3",
     "psl": "1.15.0",
     "rate-limit-redis": "catalog:",
