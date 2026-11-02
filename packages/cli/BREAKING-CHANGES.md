@@ -30,6 +30,14 @@ The CLI rejects the old workflow-specific flag names, including their camelCase 
 Selection imports accept `--conflict-policy` and `--id-policy`.
 There are no compatibility aliases or per-kind policy overrides.
 
+Package imports now check the `workflow:activate` and `workflow:deactivate` API key scopes.
+An import that publishes or republishes a workflow requires `workflow:activate`.
+This includes a republish under the default `preserve-published-state` policy.
+It also includes the fixed `match-source` policy of selection imports.
+An import that unpublishes a workflow requires `workflow:deactivate`.
+An import that archives a published workflow requires only `workflow:delete`.
+If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
+
 # 2.0.0
 
 ### What changed?

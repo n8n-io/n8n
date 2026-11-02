@@ -663,6 +663,18 @@ function enrichAgentFromPendingTarget(
 // Composable
 // ---------------------------------------------------------------------------
 
+/** Thread state besides the messages that adds or enriches registry entries. */
+export interface ResourceRegistrySources {
+	workflowNameLookup?: (id: string) => string | undefined;
+	archivedWorkflowIds?: () => ReadonlySet<string>;
+	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined;
+	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined;
+	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[];
+	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
+	appTargets?: () => readonly InstanceAiAppTarget[];
+}
+
 /**
  * Scans tool-call results in the conversation and returns two collections:
  *
@@ -687,14 +699,16 @@ function enrichAgentFromPendingTarget(
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
-	workflowNameLookup?: (id: string) => string | undefined,
-	archivedWorkflowIds?: () => ReadonlySet<string>,
-	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
-	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
-	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
-	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
-	agentBuilderTargets?: () => AgentBuilderTargetMetadata[],
-	appTargets?: () => readonly InstanceAiAppTarget[],
+	{
+		workflowNameLookup,
+		archivedWorkflowIds,
+		agentBuilderTarget,
+		pendingAgentTarget,
+		pendingWorkflowAttachment,
+		transientWorkflowReferences,
+		agentBuilderTargets,
+		appTargets,
+	}: ResourceRegistrySources = {},
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.

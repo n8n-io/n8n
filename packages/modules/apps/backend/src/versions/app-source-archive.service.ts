@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 
 import { AppArchive } from '../app-archive';
 import { AppsService } from '../apps.service';
+import { loadAppSdkFiles } from '../build/app-sdk-files';
 import { createAppScaffold } from '../scaffold/app-scaffold';
 import { AppChangeService } from './app-change.service';
 import { AppVersionService } from './app-version.service';
@@ -27,6 +28,11 @@ export class AppSourceArchiveService {
 			? await this.versions.readSource(projectId, appId, draftVersionId)
 			: createAppScaffold();
 		return { baseVersionId: draftVersionId, archive: await this.archives.pack(files) };
+	}
+
+	/** The `@n8n/app-sdk` package that app builds install, as one archive. */
+	async exportSdk(): Promise<Buffer> {
+		return await this.archives.pack(await loadAppSdkFiles());
 	}
 
 	/** Saves the archive as a new version on top of `baseVersionId` and builds it. */

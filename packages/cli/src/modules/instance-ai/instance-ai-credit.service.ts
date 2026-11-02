@@ -5,7 +5,7 @@ import { isSelfHealingResourceId, type BuilderUsageItem, type TraceStatus } from
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { Push } from '@/push';

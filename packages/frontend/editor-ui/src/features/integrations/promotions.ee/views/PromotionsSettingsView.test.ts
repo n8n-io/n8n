@@ -1,5 +1,6 @@
 import type { IUser } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
@@ -103,6 +104,30 @@ describe('PromotionsSettingsView', () => {
 		},
 	);
 
+	it('shows the Preview and limited enterprise readiness tags next to the title on enterprise', () => {
+		mockedStore(useSettingsStore).isEnterprisePlan = true;
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		renderView();
+
+		const titleRow = screen.getByRole('heading', {
+			level: 1,
+			name: 'Environments',
+		}).parentElement;
+		const readinessBadge = screen.getByTestId('promotions-enterprise-readiness-badge');
+		expect(titleRow).toContainElement(screen.getByTestId('promotions-preview-badge'));
+		expect(titleRow).toContainElement(readinessBadge);
+		expect(readinessBadge).toHaveTextContent('Limited enterprise readiness');
+	});
+
+	it('shows only the Preview tag on other plans', () => {
+		mockedStore(useSettingsStore).isEnterprisePlan = false;
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		renderView();
+
+		expect(screen.getByTestId('promotions-preview-badge')).toBeInTheDocument();
+		expect(screen.queryByTestId('promotions-enterprise-readiness-badge')).not.toBeInTheDocument();
+	});
+
 	it('checks for missing projects again on click after the check failed', async () => {
 		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
@@ -199,33 +224,18 @@ describe('PromotionsSettingsView', () => {
 		},
 	);
 
-	it('offers no switch back while no v1 repository is connected', async () => {
-		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		useRBACStore().setGlobalScopes(['sourceControl:manage']);
-		const sourceControlStore = useSourceControlStore();
-		vi.mocked(getPreferences).mockResolvedValue({
-			...sourceControlStore.preferences,
-			connected: false,
-		});
-		renderView();
-
-		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
-		await waitFor(() => expect(toggle).toBeEnabled());
-		expect(screen.queryByTestId('promotions-switch-to-v1')).not.toBeInTheDocument();
-	});
-
-	it('switches the instance back to Environments v1 after confirmation', async () => {
+	it('switches an instance without a v1 repository back to Environments v1 after confirmation', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 		useRBACStore().setGlobalScopes(['sourceControl:manage']);
 		const sourceControlStore = useSourceControlStore();
 		vi.mocked(getPreferences).mockResolvedValue({
 			...sourceControlStore.preferences,
-			connected: true,
+			connected: false,
 		});
 		vi.mocked(updatePreferences).mockResolvedValue({
 			...sourceControlStore.preferences,
-			connected: true,
+			connected: false,
 			environmentsVersion: 'v1',
 		});
 		renderView();

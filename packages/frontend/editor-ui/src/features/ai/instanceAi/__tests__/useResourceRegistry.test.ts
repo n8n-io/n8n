@@ -64,17 +64,15 @@ function setup(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
+	} = useResourceRegistry(() => messages.value, {
 		workflowNameLookup,
-		undefined,
 		agentBuilderTarget,
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
 		transientWorkflowReferences,
 		agentBuilderTargets,
 		appTargets,
-	);
+	});
 	return {
 		messages,
 		producedArtifacts,
@@ -1736,11 +1734,9 @@ describe('useResourceRegistry', () => {
 		test('field-level changes notify field readers, and removed fields are swept', async () => {
 			const messages = ref<InstanceAiMessage[]>([]);
 			const archived = ref<ReadonlySet<string>>(new Set());
-			const { producedArtifacts } = useResourceRegistry(
-				() => messages.value,
-				undefined,
-				() => archived.value,
-			);
+			const { producedArtifacts } = useResourceRegistry(() => messages.value, {
+				archivedWorkflowIds: () => archived.value,
+			});
 			messages.value = [
 				makeMessage({
 					agentTree: makeAgentNode({

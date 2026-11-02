@@ -218,7 +218,8 @@
 			"status": "gap"
 		},
 		"GET /users/{userId}": {
-			"status": "gap"
+			"status": "covered",
+			"nodeOperation": "user:get"
 		},
 		"DELETE /users/{userId}": {
 			"status": "gap"

@@ -1,6 +1,6 @@
 import type { AgentSkill } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { AgentSkillRefsService } from '../agent-skill-refs.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
