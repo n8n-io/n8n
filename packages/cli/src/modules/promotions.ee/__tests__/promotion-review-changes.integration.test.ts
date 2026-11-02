@@ -605,33 +605,25 @@ it('reads a merged review from the target branch after the host deleted its head
 	]);
 }, 60_000);
 
-const writeUnreadableManifest = async (folder: string) => {
-	await mkdir(path.join(folder, 'n8n'), { recursive: true });
-	await writeFile(path.join(folder, 'n8n', 'manifest.json'), '{ not json');
+/** A workflow on the branch whose requirements file is not valid, so the side cannot be read. */
+const writeUnreadableRequirements = async (folder: string) => {
+	const workflowDir = path.join(folder, 'n8n', 'projects', 'sales-p1', 'workflows', 'quote-w1');
+	await mkdir(workflowDir, { recursive: true });
+	await writeFile(
+		path.join(folder, 'n8n', 'projects', 'sales-p1', 'project.json'),
+		'{"id":"p1","name":"Sales"}',
+	);
+	await writeFile(path.join(workflowDir, 'workflow.json'), '{"id":"w1","name":"Quote"}');
+	await writeFile(path.join(workflowDir, 'requirements.json'), '{ not json');
 };
 
-it('refuses a promote when the manifest of the target branch cannot be read', async () => {
-	const project = await createTeamProject('Sales', owner);
-	await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);
-	await commitOnMain(writeUnreadableManifest);
-	const mainBefore = (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
-
-	await expect(promote('Changes')).rejects.toMatchObject({
-		httpStatusCode: 400,
-		message: expect.stringContaining('"n8n/manifest.json" on the branch is not readable'),
-	});
-	expect(hostMergeRequests.size).toBe(0);
-	expect((await createFixtureGit(remoteFolder).raw(['branch', '--list'])).trim()).toBe('* main');
-	expect((await createFixtureGit(remoteFolder).revparse(['main'])).trim()).toBe(mainBefore);
-}, 60_000);
-
-it('lists nothing when the recorded base of a closed review has an unreadable manifest', async () => {
+it('lists nothing when the recorded base of a closed review has an unreadable requirements file', async () => {
 	const project = await createTeamProject('Sales', owner);
 	await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);
 	const review = await promote('Changes');
-	// The manifest on `main` became unreadable after the promote, and the host recorded that
+	// A requirements file on `main` became unreadable after the promote, and the host recorded that
 	// commit as the base of the review when it closed.
-	await commitOnMain(writeUnreadableManifest);
+	await commitOnMain(writeUnreadableRequirements);
 	const baseSha = (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
 	const mergeRequest = hostMergeRequests.get(review.iid);
 	assert(mergeRequest);

@@ -37,17 +37,21 @@ const ENTITIES_BY_DIRECTORY = new Map<string, BaseBranchEntity>(
 	Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]),
 );
 
-export function parseBaseBranchFiles(
-	lsTreeOutput: string,
-	options: { exportRoot: string; projectId: string },
-): PackageFile[] {
-	const files = lsTreeOutput.split('\0').flatMap((record) => {
+/** The files in `git ls-tree -z` output, with their blob SHA. */
+export function parseLsTreeBlobs(lsTreeOutput: string): Array<{ path: string; blobSha: string }> {
+	return lsTreeOutput.split('\0').flatMap((record) => {
 		const tabIndex = record.indexOf('\t');
 		if (tabIndex === -1) return [];
 		const [, objectType, blobSha] = record.slice(0, tabIndex).split(' ');
 		return objectType === 'blob' ? [{ path: record.slice(tabIndex + 1), blobSha }] : [];
 	});
-	return parsePackageFiles(files, options);
+}
+
+export function parseBaseBranchFiles(
+	lsTreeOutput: string,
+	options: { exportRoot: string; projectId: string },
+): PackageFile[] {
+	return parsePackageFiles(parseLsTreeBlobs(lsTreeOutput), options);
 }
 
 export function parsePackageFiles(

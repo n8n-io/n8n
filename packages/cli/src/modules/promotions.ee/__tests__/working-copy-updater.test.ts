@@ -1,4 +1,3 @@
-import type { InstanceSettings } from 'n8n-core';
 import {
 	mkdir,
 	mkdtemp,
@@ -13,7 +12,6 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'vitest-mock-extended';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('node:fs/promises')>();
@@ -26,9 +24,9 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import type { BranchLayout } from '../branch-placement';
+import { manifestFromFiles } from '../package-manifest';
 import { PromotionsWorkflowsMovedCrossProjectError } from '../promotions-selective-push.error';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import type { SelectivePushOptions } from '../working-copy-updater';
@@ -101,10 +99,7 @@ describe('WorkingCopyUpdater', () => {
 	let root: string;
 	let exportFolder: string;
 	let stagingFolder: string;
-	const updater = new WorkingCopyUpdater(
-		mock<InstanceSettings>({ instanceId: 'inst-1' }),
-		mockLogger(),
-	);
+	const updater = new WorkingCopyUpdater(mockLogger());
 
 	const writeTree = async (base: string, files: Record<string, string>) => {
 		for (const [filePath, content] of Object.entries(files)) {
@@ -118,8 +113,23 @@ describe('WorkingCopyUpdater', () => {
 		await readFile(path.join(exportFolder, relative), 'utf-8');
 	const expectAbsent = async (relative: string) =>
 		await expect(stat(path.join(exportFolder, relative))).rejects.toThrow();
-	const readWrittenManifest = async () =>
-		packageManifestSchema.parse(JSON.parse(await readExported('manifest.json')));
+	/** The manifest that a read from Git builds from the written files. The branch holds none. */
+	const readWrittenManifest = async () => {
+		await expectAbsent('manifest.json');
+		const entries = await readdir(exportFolder, { recursive: true, withFileTypes: true });
+		const files = await Promise.all(
+			entries
+				.filter((entry) => entry.isFile())
+				.map(async (entry): Promise<[string, string]> => {
+					const full = path.join(entry.parentPath, entry.name);
+					return [
+						path.relative(exportFolder, full).split(path.sep).join('/'),
+						await readFile(full, 'utf-8'),
+					];
+				}),
+		);
+		return manifestFromFiles(files);
+	};
 
 	const overlaySelection = async (staging: PackageManifest, sel: SelectivePushOptions) => {
 		const scanned = await updater.assertSelectionFitsBranch(exportFolder, sel);
@@ -1200,9 +1210,7 @@ describe('WorkingCopyUpdater', () => {
 			expect(await readExported('projects/alpha/variables/old-v1/variable.json')).toBe(
 				variableFile('v1', 'old'),
 			);
-			expect((await readWrittenManifest()).variables).toEqual([
-				{ id: 'v1', name: 'new', target: 'projects/alpha/variables/new-v1' },
-			]);
+			expect((await readWrittenManifest()).variables?.map(({ id }) => id)).toEqual(['v1']);
 		});
 
 		it('leaves the export in place when moving it aside fails', async () => {

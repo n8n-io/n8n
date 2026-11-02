@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
@@ -13,7 +12,7 @@ import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec
 
 import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';
-import { writeImportManifest } from './import-manifest-bridge';
+import { writeWorkflowRequirementFiles } from './workflow-requirements';
 import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
 
 const selectivePushOptionsSchema = z.object({
@@ -67,10 +66,7 @@ export type ScannedBranch = {
  */
 @Service()
 export class WorkingCopyUpdater {
-	constructor(
-		private readonly instanceSettings: InstanceSettings,
-		private readonly logger: Logger,
-	) {
+	constructor(private readonly logger: Logger) {
 		this.logger = this.logger.scoped('promotions');
 	}
 
@@ -354,8 +350,7 @@ export class WorkingCopyUpdater {
 	 * `assertSelectionFitsBranch` for the same folder and selection.
 	 * File work runs on a copy, then the copy replaces the
 	 * export, so a failed write leaves the working copy untouched. After overlay,
-	 * write an import inventory of the remaining files. Delete that write with
-	 * import-manifest-bridge when import walks entity files.
+	 * write the requirements file of each selected workflow.
 	 */
 	async applySelection(
 		exportFolder: string,
@@ -433,13 +428,8 @@ export class WorkingCopyUpdater {
 			await this.relocateBranchContainers(workFolder, moves);
 
 			await this.overlayDirectory(stagingFolder, workFolder, outOfScopeInStaging);
-			await writeImportManifest({
-				exportFolder: workFolder,
-				staging,
-				sourceId: this.instanceSettings.instanceId,
-				selectedWorkflowIds: selection.workflowIds,
-				containerMoves: moves,
-			});
+			// The branch holds no manifest. The selected workflows write their own requirements.
+			await writeWorkflowRequirementFiles(workFolder, staging);
 
 			const backupPath = path.join(tempBase, `.${path.basename(exportFolder)}-bak-${randomUUID()}`);
 			await fs.rename(exportFolder, backupPath);
