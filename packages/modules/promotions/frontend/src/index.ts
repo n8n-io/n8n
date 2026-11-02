@@ -3,7 +3,7 @@
 // component loaders. A direct `.vue` export would put that component in the boot chunk.
 export { PromotionsModule } from './promotions.module';
 export { ENVIRONMENTS_UPGRADE_DOCS_URL, PROMOTIONS_SETTINGS_VIEW } from './promotions.constants';
-export { promotionEventBus, type PromotionEventBusEvents } from './promotions.eventBus';
+export { promotionEventBus } from './promotions.eventBus';
 
 export const loadPromotionPreviewBadges = async () =>
 	await import('./components/PromotionPreviewBadges.vue');
