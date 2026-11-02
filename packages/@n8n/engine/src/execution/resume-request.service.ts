@@ -13,10 +13,21 @@ import {
 import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
 
 export type ResumeRejection =
+	/**
+	 * The token does not verify, names another id, or binds another path and
+	 * query. `resolve` also answers it for a step that does not exist.
+	 */
 	| 'invalid_token'
+	/** The execution or the step does not exist. */
 	| 'not_found'
+	/** The step does not wait (any more) for a request of the token's kind, or its execution ended. */
 	| 'not_waiting'
+	/** The execution has two execution-bound waits, so an execution-bound token cannot pick one. */
 	| 'ambiguous'
+	/**
+	 * The token is execution bound, and after the hold the execution has a
+	 * step-bound wait but no execution-bound wait.
+	 */
 	| 'step_bound_only';
 
 export class ResumeRejectedError extends Error {
@@ -103,9 +114,7 @@ export class ResumeRequestService {
 	 * A request can arrive before the step writes its wait. While the execution
 	 * is live, this retries for a short time.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous`
-	 * when a live execution has two execution-bound waits, or `step_bound_only`
-	 * when the hold runs out and the execution has a step-bound wait.
+	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous` or `step_bound_only`.
 	 */
 	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
 		const claims = verifyResumeToken(this.secret, token);
@@ -120,9 +129,7 @@ export class ResumeRequestService {
 	 * token. The kind of the token decides whether `id` names an execution or a
 	 * step. An execution-bound token gets the answer of `locate`.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token` when the token does not
-	 * name `id`, or a step-bound token binds another path and query; else as
-	 * `locate`, and `not_found` for a step that does not exist.
+	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous` or `step_bound_only`.
 	 */
 	async locateByToken(id: string, token: string, pathAndQuery?: string): Promise<ResumeLocation> {
 		const claims = verifyResumeToken(this.secret, token);
@@ -202,10 +209,7 @@ export class ResumeRequestService {
 	 * binding of a step-bound token is not compared here: `locateByToken`
 	 * compared it with the request.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token` when the token names
-	 * neither the step nor its execution, or `not_waiting` when the step does
-	 * not wait (any more) for a request of the token's kind, or its execution
-	 * ended.
+	 * @throws {ResumeRejectedError} `invalid_token` or `not_waiting`.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
 		const claims = verifyResumeToken(this.secret, token);

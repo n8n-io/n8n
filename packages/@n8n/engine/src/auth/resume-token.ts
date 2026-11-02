@@ -49,17 +49,22 @@ export type ResumeTokenClaims =
  * An execution-bound token names the execution and not the step:
  * `$execution.resumeUrl` is built by whichever node reads it, usually before
  * the step that waits exists. A step-bound token names the step whose node
- * built the URL, and `b` holds the path and query of that URL.
+ * built the URL. The claim names are short because the token goes into a URL.
  */
 const resumeClaimsSchema = z.discriminatedUnion('k', [
 	z.object({
+		/** The kind of the token. */
 		k: z.literal('execution-bound'),
+		/** The id of the execution. */
 		eid: z.string().regex(UUID_V7_PATTERN),
 		iat: z.number().int(),
 	}),
 	z.object({
+		/** The kind of the token. */
 		k: z.literal('step-bound'),
+		/** The id of the step. */
 		sid: z.string().regex(UUID_V7_PATTERN),
+		/** The binding: the path and query of the URL, without the token parameter. */
 		b: z.string().min(1),
 		iat: z.number().int(),
 	}),
