@@ -42,8 +42,19 @@ describe('useAppAssistantHandoff', () => {
 	it('opens the newest thread linked to the App', async () => {
 		store.threads = [
 			{
-				id: 'thread-1',
-				title: 'App thread',
+				id: 'thread-old',
+				title: 'Older App thread',
+				createdAt: '2026-10-01T10:00:00.000Z',
+				updatedAt: '2026-10-01T10:00:00.000Z',
+				metadata: {
+					instanceAiAppTargets: [
+						{ appId: '019a4012-272c-7313-91af-5c94a3d819a9', projectId: 'project-1' },
+					],
+				},
+			},
+			{
+				id: 'thread-new',
+				title: 'Newer App thread',
 				createdAt: '2026-11-02T10:00:00.000Z',
 				updatedAt: '2026-11-02T10:00:00.000Z',
 				metadata: {
@@ -60,9 +71,10 @@ describe('useAppAssistantHandoff', () => {
 		});
 
 		expect(provisionSubjectThread).not.toHaveBeenCalled();
+		expect(fetchThreadHistory).not.toHaveBeenCalled();
 		expect(replace).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
-			params: { threadId: 'thread-1' },
+			params: { threadId: 'thread-new' },
 			query: { appId: '019a4012-272c-7313-91af-5c94a3d819a9' },
 		});
 	});

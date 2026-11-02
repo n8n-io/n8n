@@ -43,7 +43,9 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 			const loaded = await store.loadThreads();
 			if (!isOriginRouteActive()) return true;
 			if (!loaded) throw new Error(i18n.baseText('instanceAi.handoff.openFailed.message'));
-			let existing = store.threads.find((thread) => threadTargetsSubject(thread.metadata, subject));
+			let existing = store.threads
+				.filter((thread) => threadTargetsSubject(thread.metadata, subject))
+				.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id))[0];
 			let cursor: string | undefined;
 			while (!existing) {
 				const page = await fetchThreadHistory(rootStore.restApiContext, { limit: 100, cursor });
