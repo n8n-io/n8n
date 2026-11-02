@@ -290,7 +290,11 @@ export class MxcSandbox extends BaseSandbox {
 			filesystem: {
 				readwritePaths: [this.workspaceDir],
 				readonlyPaths: [...this.readonlyPaths, ...defaultToolPaths()],
-				deniedPaths: this.deniedPaths.filter((path) => existsSync(path)),
+				// The tool prefixes hold interpreters, but their `var` folders hold service data.
+				deniedPaths: [
+					...this.deniedPaths,
+					...defaultToolPaths().map((path) => join(path, 'var')),
+				].filter((path) => existsSync(path)),
 			},
 			network: {
 				egress: { default: 'deny' },

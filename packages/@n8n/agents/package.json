@@ -110,7 +110,6 @@
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/xai": "catalog:",
     "@daytona/sdk": "catalog:",
-    "@microsoft/mxc-sdk": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
@@ -131,6 +130,7 @@
     "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
+    "@microsoft/mxc-sdk": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@pinecone-database/pinecone": "catalog:",
     "@qdrant/js-client-rest": "catalog:",
@@ -139,6 +139,9 @@
     "zod": "catalog:"
   },
   "peerDependenciesMeta": {
+    "@microsoft/mxc-sdk": {
+      "optional": true
+    },
     "@opentelemetry/api": {
       "optional": true
     },
@@ -168,6 +171,7 @@
     }
   },
   "devDependencies": {
+    "@microsoft/mxc-sdk": "catalog:",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",

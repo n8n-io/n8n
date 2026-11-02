@@ -65,15 +65,16 @@ export async function canonicalizePath(path: string): Promise<string> {
 		}
 		if (++hops > MAX_SYMLINK_HOPS) throw new Error(`Too many symbolic links in "${path}"`);
 		const target = await fs.readlink(next);
-		const targetPath = isAbsolute(target) ? target : join(current, target);
-		const parsedTarget = parse(targetPath);
+		// Queue the target's segments as they are. Joining first would apply `..` as text,
+		// before the links in the target are followed.
+		const targetRoot = isAbsolute(target) ? parse(target).root : '';
 		pending.unshift(
-			...targetPath
-				.slice(parsedTarget.root.length)
+			...target
+				.slice(targetRoot.length)
 				.split(/[\\/]+/)
 				.filter(Boolean),
 		);
-		current = parsedTarget.root;
+		if (targetRoot) current = targetRoot;
 	}
 	return current;
 }
@@ -189,6 +190,8 @@ export class MxcLocalFilesystem extends BaseFilesystem {
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
+		const target = await this.resolvePath(path, 'write', { keepLeafLink: true });
+		if (!(await fs.lstat(target)).isDirectory()) throw new Error(`Not a directory: ${path}`);
 		await this.deleteFile(path, options);
 	}
 
@@ -204,10 +207,7 @@ export class MxcLocalFilesystem extends BaseFilesystem {
 			if (!entry.isFile() && !entry.isDirectory()) continue;
 			if (options?.extension && entry.isFile() && !entry.name.endsWith(options.extension)) continue;
 			const fullPath = resolve(entry.parentPath, entry.name);
-			if (
-				isPathInside(fullPath, workspace) &&
-				SCRATCH_DIRS.has(relativeHead(workspace, fullPath))
-			) {
+			if (target === workspace && SCRATCH_DIRS.has(relativeHead(workspace, fullPath))) {
 				continue;
 			}
 			result.push({

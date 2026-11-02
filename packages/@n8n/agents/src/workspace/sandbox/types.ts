@@ -106,7 +106,7 @@ export interface N8nSandboxConfig extends EnabledSandboxConfigBase {
 	id?: string;
 }
 
-export interface MxcSandboxConfig extends EnabledSandboxConfigBase {
+export interface MxcSandboxConfig extends Omit<EnabledSandboxConfigBase, 'ephemeral'> {
 	provider: 'mxc';
 	/** Workspace id. It is also the name of the agent's folder in `workspaceRoot`. */
 	id: string;

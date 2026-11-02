@@ -7,8 +7,8 @@ import {
 	type DisabledSandboxConfig,
 	type N8nSandboxConfig,
 	type SandboxConfig as SharedSandboxConfig,
+	type RemoteSandboxProvider,
 	type SandboxInstance,
-	type SandboxProvider,
 } from '@n8n/agents/sandbox';
 import { randomUUID } from 'node:crypto';
 
@@ -29,7 +29,9 @@ export type InstanceAiSandboxConfig =
 	| N8nSandboxConfig;
 
 export type SandboxConfig = InstanceAiSandboxConfig;
-export { type SandboxInstance, type SandboxProvider };
+export { type SandboxInstance };
+/** n8n Assistant only runs in a remote sandbox. The local `mxc` provider is agents-only. */
+export type SandboxProvider = RemoteSandboxProvider;
 
 export type InstanceAiCreateSandboxOptions = CreateSandboxOptions &
 	(

@@ -107,9 +107,10 @@ export class AgentsConfig {
 
 	/**
 	 * Set to `mxc` to run agent workspace commands and scripts on this host in Microsoft
-	 * Execution Containers instead of a remote sandbox. Agent workspaces then live on this
-	 * host's disk, so only use it with a single main instance. When unset, agents use the
-	 * sandbox provider of the n8n Assistant.
+	 * Execution Containers instead of a remote sandbox. It needs
+	 * `N8N_AGENTS_AI_SANDBOX_ENABLED=true`. Agent workspaces then live on this host's disk, so
+	 * only use it with a single main instance. When unset, agents use the sandbox provider of
+	 * the n8n Assistant.
 	 */
 	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
 	sandboxProvider: string = '';

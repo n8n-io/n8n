@@ -151,6 +151,9 @@ describe.skipIf(!process.env.MXC_INTEGRATION)('mxc workspace (real MXC)', () => 
 
 		expect(result.success).toBe(false);
 		expect(result.stdout).not.toContain('Example Domain');
+		// The failure must come from the network block, not from a missing curl binary.
+		expect(result.exitCode).not.toBe(127);
+		expect(result.stderr).not.toMatch(/not found|not recognized/i);
 	});
 
 	it('times out long-running commands', async () => {

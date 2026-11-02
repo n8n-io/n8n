@@ -136,6 +136,21 @@ describe('MxcLocalFilesystem', () => {
 		expect(existsSync(join(inputs, 'sales.csv'))).toBe(true);
 	});
 
+	it('refuses to remove a file with rmdir', async () => {
+		await filesystem.writeFile('notes.txt', 'keep me');
+
+		await expect(filesystem.rmdir('notes.txt')).rejects.toThrow(/Not a directory/);
+		expect(existsSync(join(filesystem.basePath, 'notes.txt'))).toBe(true);
+	});
+
+	it('lists the files inside a scratch folder when asked for it directly', async () => {
+		await filesystem.writeFile('.tmp/cache.json', '{}', { recursive: true });
+
+		expect(await filesystem.readdir('.tmp')).toEqual([
+			{ name: 'cache.json', type: 'file', size: 2 },
+		]);
+	});
+
 	it('does not delete the workspace root', async () => {
 		await expect(filesystem.deleteFile('.', { recursive: true })).rejects.toThrow(
 			/workspace root cannot be deleted/,
@@ -163,6 +178,13 @@ describe('canonicalizePath', () => {
 		const raw = [root, 'inside', 'link', '..', 'x'].join(sep);
 
 		expect(await canonicalizePath(raw)).toBe(join(root, 'x'));
+	});
+
+	it('follows links inside a relative link target before it applies `..`', async () => {
+		symlinkSync(join(root, 'outside'), join(root, 'inside', 'sub'));
+		symlinkSync(['sub', '..', 'target'].join(sep), join(root, 'inside', 'link'));
+
+		expect(await canonicalizePath(join(root, 'inside', 'link'))).toBe(join(root, 'target'));
 	});
 
 	it('follows a chain of relative links', async () => {

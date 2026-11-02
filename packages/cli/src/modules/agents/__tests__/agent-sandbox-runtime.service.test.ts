@@ -1,5 +1,7 @@
+import { canonicalizePath } from '@n8n/agents/sandbox';
 import type {
 	DaytonaSandboxConfig,
+	RemoteSandboxProvider,
 	SandboxProvider,
 	WorkspaceFilesystem,
 	WorkspaceSandbox,
@@ -7,6 +9,9 @@ import type {
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { SandboxSettingsService } from '../../../services/sandbox-settings.service';
@@ -58,7 +63,7 @@ function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 }
 
 function makeSandboxSettingsService(
-	provider: SandboxProvider = 'daytona',
+	provider: RemoteSandboxProvider = 'daytona',
 ): ReturnType<typeof mock<SandboxSettingsService>> {
 	const service = mock<SandboxSettingsService>();
 	service.isAgentSandboxEnabled.mockReturnValue(true);
@@ -386,9 +391,10 @@ describe('AgentSandboxRuntimeService', () => {
 					enabled: true,
 					provider: 'mxc',
 					id: workspaceSandboxId,
-					workspaceRoot: '/srv/agent-workspaces',
+					// Paths are compared as real paths. On macOS, /home is itself a link.
+					workspaceRoot: await canonicalizePath('/srv/agent-workspaces'),
 					readonlyPaths: ['/data/reports', '/data/exports'],
-					deniedPaths: [n8nFolder],
+					deniedPaths: [await canonicalizePath(n8nFolder)],
 				}),
 				expect.anything(),
 			);
@@ -405,6 +411,38 @@ describe('AgentSandboxRuntimeService', () => {
 			await expect(
 				service.acquireWorkspaceSandbox(projectId, agentId, principalHash),
 			).rejects.toThrow(/must be outside the n8n user folder/);
+		});
+
+		it('refuses a workspace root that is a symlink into the n8n user folder', async () => {
+			const base = mkdtempSync(join(tmpdir(), 'mxc-root-test-'));
+			try {
+				const userFolder = join(base, '.n8n');
+				mkdirSync(join(userFolder, 'inner'), { recursive: true });
+				symlinkSync(join(userFolder, 'inner'), join(base, 'workspaces'));
+				const service = makeService({
+					configOverrides: { ...mxcConfig, mxcWorkspaceRoot: join(base, 'workspaces') },
+					instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder: userFolder }),
+				});
+
+				await expect(
+					service.acquireWorkspaceSandbox(projectId, agentId, principalHash),
+				).rejects.toThrow(/must be outside the n8n user folder/);
+			} finally {
+				rmSync(base, { recursive: true, force: true });
+			}
+		});
+
+		it('does not touch local mxc folders when a knowledge sandbox is deleted', async () => {
+			const providers: string[] = [];
+			createSandboxMock.mockImplementation(async (config) => {
+				providers.push(config.provider);
+				return makeSandbox(config.provider, config.id);
+			});
+			const service = makeService({ configOverrides: mxcConfig });
+
+			await service.destroyKnowledgeSandbox(projectId, agentId);
+
+			expect(providers).not.toContain('mxc');
 		});
 
 		it('keeps the knowledge sandbox on the n8n Assistant provider', async () => {

@@ -175,6 +175,7 @@ describe('MxcSandbox', () => {
 
 		const result = await makeSandbox().executeCommand('sleep 10', [], { timeout: 10 });
 
+		expect(mockSpawn).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 10 }));
 		expect(result.success).toBe(false);
 		expect(result.timedOut).toBe(true);
 	});
