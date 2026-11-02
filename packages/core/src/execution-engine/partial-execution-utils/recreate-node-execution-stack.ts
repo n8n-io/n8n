@@ -13,8 +13,8 @@ import {
 	type IWaitingForExecutionSource,
 } from 'n8n-workflow';
 
-import type { DirectedGraph, GraphConnection } from './directed-graph';
-import { getIncomingDataFromAnyRun } from './get-incoming-data';
+import type { DirectedGraph } from './directed-graph';
+import { getIncomingDataForConnection } from './get-incoming-data';
 import { getSourceDataGroups } from './get-source-data-groups';
 
 export function addWaitingExecution(
@@ -53,25 +53,6 @@ export function addWaitingExecutionSource(
 	taskDataConnectionsSource[inputType] = sourceDataList;
 	waitingExecutionSourceObject[runIndex] = taskDataConnectionsSource;
 	waitingExecutionSource[nodeName] = waitingExecutionSourceObject;
-}
-
-function getIncomingDataFromPinOrAnyRun(
-	connection: GraphConnection,
-	runData: IRunData,
-	pinData: IPinData,
-): { data: INodeExecutionData[]; runIndex: number } | undefined {
-	const pinnedData = pinData[connection.from.name];
-
-	if (pinnedData) {
-		return { data: pinnedData, runIndex: 0 };
-	}
-
-	return getIncomingDataFromAnyRun(
-		runData,
-		connection.from.name,
-		connection.type,
-		connection.outputIndex,
-	);
 }
 
 /**
@@ -147,26 +128,23 @@ export function recreateNodeExecutionStack(
 
 					for (const incomingConnection of sourceData.connections) {
 						const sourceNode = incomingConnection.from;
-
-						a.ok(
-							pinData[sourceNode.name] ?? runData[sourceNode.name],
-							`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${sourceNode.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
-						);
-
-						const nodeIncomingData = getIncomingDataFromPinOrAnyRun(
+						const nodeIncomingData = getIncomingDataForConnection(
 							incomingConnection,
 							runData,
 							pinData,
 						);
 
-						if (nodeIncomingData) {
-							incomingData.push(nodeIncomingData.data);
-						}
+						a.ok(
+							nodeIncomingData,
+							`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${sourceNode.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
+						);
+
+						incomingData.push(nodeIncomingData.data);
 
 						incomingSourceData.main.push({
 							previousNode: incomingConnection.from.name,
 							previousNodeOutput: incomingConnection.outputIndex,
-							previousNodeRun: nodeIncomingData?.runIndex ?? 0,
+							previousNodeRun: nodeIncomingData.runIndex,
 						});
 					}
 
@@ -184,7 +162,7 @@ export function recreateNodeExecutionStack(
 						: 0;
 
 					for (const incomingConnection of sourceData.connections) {
-						const nodeIncomingData = getIncomingDataFromPinOrAnyRun(
+						const nodeIncomingData = getIncomingDataForConnection(
 							incomingConnection,
 							runData,
 							pinData,
