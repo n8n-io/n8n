@@ -411,7 +411,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					clientState,
 					requiredResources,
 					subscriptions,
-					// A failed create here throws, so a resource that cannot be proven is replaced.
+					// An unproven leftover is replaced: a failed create here throws, and core retries.
 					holdUnproven: false,
 				});
 				// A resource without a live subscription is a dark trigger, so the activation

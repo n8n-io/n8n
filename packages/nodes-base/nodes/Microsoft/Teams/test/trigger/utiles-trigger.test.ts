@@ -1069,15 +1069,15 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(staticData.subscriptionIds).toEqual(['a']);
 			});
 
-			// Activation does not hold: a failed create there fails the activation, and core retries it.
-			it('replaces twins that GET by id cannot prove when the caller does not hold', async () => {
+			// A read can fail for a reason about the transport, so even activation keeps a stored one.
+			it('holds stored twins that GET by id cannot prove when the caller does not hold', async () => {
 				const { ctx, staticData } = arrange({
 					staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
 				});
 				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
 				(microsoftApiRequest.call as Mock).mockImplementation(
 					async (callCtx: unknown, method: string, path: string, body?: unknown) => {
-						if (method === 'GET') throw new Error('Graph is unavailable');
+						if (method === 'GET') throw new Error('Too many requests');
 						return await baseline?.(callCtx, method, path, body);
 					},
 				);
@@ -1089,7 +1089,30 @@ describe('Microsoft Teams Helpers Functions', () => {
 					],
 				});
 
-				expect(deleted()).toEqual(['/v1.0/subscriptions/a', '/v1.0/subscriptions/b']);
+				expect(deleted()).toEqual([]);
+				expect(created()).toEqual([]);
+				expect(result).toEqual({ errors: [], retry: true });
+				expect(staticData.subscriptionIds).toEqual(['a', 'b']);
+			});
+
+			// Activation replaces an unproven leftover: a failed create there fails the activation.
+			it('replaces an unstored subscription whose read fails when the caller does not hold', async () => {
+				const { ctx, staticData } = arrange({
+					staticData: { subscriptionIds: [], webhookSecret: 'secret' },
+				});
+				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (callCtx: unknown, method: string, path: string, body?: unknown) => {
+						if (method === 'GET') throw new Error('Too many requests');
+						return await baseline?.(callCtx, method, path, body);
+					},
+				);
+
+				const result = await reconcile(ctx, {
+					subscriptions: [subscription('x', '/me/chats', minutes(60))],
+				});
+
+				expect(deleted()).toEqual(['/v1.0/subscriptions/x']);
 				expect(created()).toEqual(['/me/chats']);
 				expect(result).toEqual({ errors: [], retry: false });
 				expect(staticData.subscriptionIds).toEqual(['new-chats']);

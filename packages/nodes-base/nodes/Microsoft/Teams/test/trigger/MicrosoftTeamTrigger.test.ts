@@ -112,6 +112,8 @@ describe('Microsoft Teams Trigger Node', () => {
 				(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3));
 			const forbidden = (ctx: TriggerContext) =>
 				new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+			const throttled = (ctx: TriggerContext) =>
+				new NodeApiError(ctx.getNode(), { message: 'Too many requests', httpCode: '429' });
 
 			it('adopts the stored live subscription without rewriting the static data', async () => {
 				// The static-data proxy marks every set and delete as a change, and each change is a save.
@@ -146,10 +148,14 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 			});
 
-			// A failed create here fails the activation and core retries it, so nothing goes dark unseen.
-			it('replaces both twins when GET by id cannot prove them', async () => {
+			// A read can fail for a reason about the transport, a 429 for example, so a stored
+			// subscription stays and the next lifecycle batch reconciles.
+			it.each([
+				['two stored twins', ['a', 'b'], ['a', 'b']],
+				['a stored subscription and a leftover beside it', ['a'], ['a']],
+			])('keeps %s and marks a retry when every read fails', async (_label, storedIds, keptIds) => {
 				const staticData: Record<string, unknown> = {
-					subscriptionIds: ['a', 'b'],
+					subscriptionIds: storedIds,
 					webhookSecret: 'secret',
 				};
 				const ctx = hookCtx(staticData, { event: 'newChat' });
@@ -157,18 +163,35 @@ describe('Microsoft Teams Trigger Node', () => {
 					own('a', '/me/chats', HOUR),
 					own('b', '/me/chats', 2 * HOUR),
 				]);
+				(microsoftApiRequest.call as Mock).mockRejectedValue(throttled(ctx));
+
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(calls('DELETE')).toHaveLength(0);
+				expect(calls('POST')).toHaveLength(0);
+				expect(staticData).toEqual({
+					subscriptionIds: keptIds,
+					webhookSecret: 'secret',
+					pendingReconcile: true,
+				});
+			});
+
+			// A failed create here fails the activation and core retries it, so nothing goes dark unseen.
+			it('replaces an unstored leftover whose read fails', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: [],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([own('x', '/me/chats', HOUR)]);
 				(microsoftApiRequest.call as Mock).mockImplementation(
 					async (_ctx: unknown, method: string) => {
-						if (method === 'GET') throw new Error('Graph is unavailable');
+						if (method === 'GET') throw throttled(ctx);
 						return method === 'POST' ? { id: 'new' } : {};
 					},
 				);
 
 				await expect(checkExists(ctx)).resolves.toBe(true);
-				expect(calls('DELETE').map((call) => call[2])).toEqual([
-					'/v1.0/subscriptions/a',
-					'/v1.0/subscriptions/b',
-				]);
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/x']);
 				expect(calls('POST')).toHaveLength(1);
 				expect(staticData).toEqual({ subscriptionIds: ['new'], webhookSecret: 'secret' });
 			});
@@ -334,8 +357,6 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			describe('when the listing fails', () => {
-				const throttled = (ctx: TriggerContext) =>
-					new NodeApiError(ctx.getNode(), { message: 'Too many requests', httpCode: '429' });
 				// GET by id answers from the table and 404s for any other id.
 				const answerById = (answers: Record<string, unknown>) =>
 					(microsoftApiRequest.call as Mock).mockImplementation(

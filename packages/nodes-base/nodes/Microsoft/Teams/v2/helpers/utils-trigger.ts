@@ -254,8 +254,10 @@ async function proveSecrets(
 
 /**
  * Marks the workflow so that its next lifecycle batch lists and reconciles instead of only
- * renewing, after a failed create, read or listing. Writes on change only: the static-data
- * proxy marks every set and delete as a change, and each change is a database write.
+ * renewing, after a failed create, read or listing. Only a subscription that still delivers
+ * sends that batch: when every subscription of the workflow is gone, nothing reads the mark
+ * (ENT-537, ENT-545). Writes on change only: the static-data proxy marks every set and delete
+ * as a change, and each change is a database write.
  */
 export function markPendingReconcile(webhookData: IDataObject, pending: boolean): void {
 	if (pending && webhookData.pendingReconcile !== true) webhookData.pendingReconcile = true;
@@ -283,8 +285,9 @@ export async function reconcileSubscriptions(
 		/** Ids Graph reported removed. */
 		gone?: ReadonlySet<string>;
 		/**
-		 * A lifecycle batch leaves a resource with an unproven subscription as it is. Activation
-		 * replaces it: a failed create there fails the activation, and core retries it.
+		 * A lifecycle batch leaves a resource with any unproven subscription as it is. Activation
+		 * does that only for an unproven stored one and replaces an unproven leftover: a failed
+		 * create there fails the activation, and core retries it.
 		 */
 		holdUnproven: boolean;
 	},
@@ -320,8 +323,8 @@ export async function reconcileSubscriptions(
 	// versions stored every own subscription, whatever its secret, so storage alone decides only
 	// for a stored subscription that is the only live own one and the only stored one on its
 	// resource. Elsewhere GET by id proves the live ones, so a live listed subscription with the
-	// stored secret goes only beside a keeper, or at activation when its read failed and the
-	// create replaces it. Stale, unlisted and no longer required ones go without a read.
+	// stored secret goes only beside a keeper, or at activation when it is not stored and its read
+	// failed. Stale, unlisted and no longer required ones go without a read.
 	const keepers = new Map<string, string>();
 	const unproven: SubscriptionResponse[] = [];
 	for (const resource of required) {
@@ -344,12 +347,15 @@ export async function reconcileSubscriptions(
 		webhookUrl,
 		clientState,
 	);
-	// On a lifecycle batch a failed read never costs a subscription that delivers.
+	// A read can fail for a reason about the transport, a 429 for example, not about the
+	// subscription, so a failed read never costs a stored subscription.
 	const held = new Set<string>();
 	for (const resource of required) {
 		if (keepers.has(resource)) continue;
 		const candidates = unproven.filter((sub) => sub.resource === resource);
-		if (holdUnproven && candidates.some((sub) => proofs.get(sub.id) === 'unknown')) {
+		if (
+			candidates.some((sub) => proofs.get(sub.id) === 'unknown' && (holdUnproven || isStored(sub)))
+		) {
 			held.add(resource);
 			continue;
 		}
@@ -497,7 +503,8 @@ export function isSubscriptionResponse(value: unknown): value is SubscriptionRes
  * save and core would answer an ended response. Renews the stored ids the batch names;
  * a batch with a removal, an unknown id, a failed renewal or a rejected item lists once
  * and reconciles, and so does a trigger that watches one resource but stores more ids, or
- * one that an earlier batch marked because its reconcile did not finish.
+ * one that an earlier batch marked because its reconcile did not finish. A batch arrives only
+ * while a subscription still delivers.
  */
 export async function handleLifecycleNotifications(
 	this: IWebhookFunctions,
