@@ -629,13 +629,15 @@ export function calculateNodeSize(
 	mainOutputCount: number,
 	nonMainInputCount: number,
 	isExperimentalNdvActive: boolean,
+	nonMainOutputCount = 0,
 ): { width: number; height: number } {
 	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
 	const height = DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
 	const widthScale = isExperimentalNdvActive ? 1.5 : 1;
 
 	if (isConfigurable) {
-		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount);
+		// Non-main inputs sit at the bottom and non-main outputs at the top: the busier side sets the width
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount, nonMainOutputCount);
 
 		return {
 			// Configuration node has extra width so that its centered port aligns to the grid
@@ -656,8 +658,8 @@ export function calculateNodeSize(
 
 /**
  * Returns the size of a default-rendered node from its port types, with the rule
- * of the canvas node: a non-main output makes it a configuration node, and only
- * non-main inputs count as ports for a configurable node.
+ * of the canvas node: a non-main output makes it a configuration node, and a
+ * configurable node is as wide as its busier side of non-main ports.
  */
 export function getNodeSizeFromPorts(
 	inputTypes: NodeConnectionType[],
@@ -665,13 +667,15 @@ export function getNodeSizeFromPorts(
 ): { width: number; height: number } {
 	const isMain = (type: NodeConnectionType) => type === NodeConnectionTypes.Main;
 	const nonMainInputCount = inputTypes.filter((type) => !isMain(type)).length;
+	const nonMainOutputCount = outputTypes.filter((type) => !isMain(type)).length;
 
 	return calculateNodeSize(
-		outputTypes.some((type) => !isMain(type)),
+		nonMainOutputCount > 0,
 		nonMainInputCount > 0,
 		inputTypes.filter(isMain).length,
 		outputTypes.filter(isMain).length,
 		nonMainInputCount,
 		false,
+		nonMainOutputCount,
 	);
 }

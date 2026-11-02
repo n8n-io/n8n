@@ -628,13 +628,13 @@ describe('getNodeSizeFromPorts', () => {
 		).toEqual({ width: 240, height: 80 });
 	});
 
-	it('should not make a node wider for several non-main outputs at the top', () => {
+	it('should make a node wider for each non-main output at the top above four', () => {
 		expect(
 			getNodeSizeFromPorts(
 				[Main, AiLanguageModel],
 				[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
 			),
-		).toEqual({ width: 240, height: 80 });
+		).toEqual({ width: 336, height: 80 });
 	});
 });
 

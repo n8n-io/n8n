@@ -1226,7 +1226,7 @@ describe('computeNodeDisplaySize', () => {
 			[Main, AiLanguageModel],
 			[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
 			configurableConfiguration,
-			{ width: 240, height: 80 },
+			{ width: 336, height: 80 },
 		],
 	])(
 		'should give %s the same size as getNodeSizeFromPorts',

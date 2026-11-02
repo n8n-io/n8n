@@ -377,7 +377,7 @@ describe('useCanvasMapping — node display sizes', () => {
 		expect(nodeDisplaySizeById.value[agentTool.id]).toEqual({ width: 240, height: 80 });
 	});
 
-	it('does not make a node wider for several non-main outputs at the top', () => {
+	it('makes a node wider for each non-main output at the top above four', () => {
 		const codeNode = createTestNode({
 			id: 'code',
 			name: 'LangChain Code',
@@ -419,8 +419,8 @@ describe('useCanvasMapping — node display sizes', () => {
 			renderData: shallowRef(rd),
 		});
 
-		// The canvas renders this node at 240 x 80, so its group frame uses the same size
-		expect(nodeDisplaySizeById.value[codeNode.id]).toEqual({ width: 240, height: 80 });
+		// One port slot for each of the six outputs, as the canvas renders it
+		expect(nodeDisplaySizeById.value[codeNode.id]).toEqual({ width: 336, height: 80 });
 	});
 });
 

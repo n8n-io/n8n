@@ -598,9 +598,13 @@ describe('CanvasNodeDefault', () => {
 			expect(getByTestId('canvas-configurable-node')).toMatchSnapshot();
 		});
 
-		it.each([1, 4, 6])(
-			'should not make a node wider for %s non-main outputs at the top',
-			(outputCount) => {
+		it.each([
+			[1, '240px'],
+			[4, '240px'],
+			[6, '336px'],
+		])(
+			'should give a node with %s non-main outputs at the top a width of %s',
+			(outputCount, expectedWidth) => {
 				renderNodeInputsMap.set(
 					'node',
 					computed(() => [
@@ -635,7 +639,7 @@ describe('CanvasNodeDefault', () => {
 				});
 
 				expect(getByText('Test Node').closest('.node')).toHaveStyle({
-					'--canvas-node--width': '240px',
+					'--canvas-node--width': expectedWidth,
 					'--canvas-node--height': '80px',
 				});
 			},

@@ -60,6 +60,7 @@ export function computeNodeDisplaySize(
 	const mainInputCount = inputs.filter((p) => p.type === 'main').length || 1;
 	const mainOutputCount = outputs.filter((p) => p.type === 'main').length || 1;
 	const nonMainInputCount = inputs.filter((p) => p.type !== 'main').length;
+	const nonMainOutputCount = outputs.filter((p) => p.type !== 'main').length;
 
 	return calculateNodeSize(
 		renderOptions.configuration ?? false,
@@ -68,6 +69,7 @@ export function computeNodeDisplaySize(
 		mainOutputCount,
 		nonMainInputCount,
 		isExperimentalNdvActive,
+		nonMainOutputCount,
 	);
 }
 

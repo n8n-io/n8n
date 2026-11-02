@@ -9399,7 +9399,7 @@ describe('useCanvasOperations', () => {
 			},
 		);
 
-		it('should not make a node wider for several non-main outputs at the top', () => {
+		it('should make a node wider for each non-main output at the top above four', () => {
 			const codeNode = createTestNode({
 				id: 'code',
 				name: 'LangChain Code',
@@ -9425,7 +9425,7 @@ describe('useCanvasOperations', () => {
 						],
 					}),
 				),
-			).toEqual([240, 80]);
+			).toEqual([336, 80]);
 		});
 
 		it.each([
