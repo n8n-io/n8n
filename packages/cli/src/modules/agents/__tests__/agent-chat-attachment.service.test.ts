@@ -423,19 +423,20 @@ describe('AgentChatAttachmentService', () => {
 	});
 
 	describe('listForSession', () => {
-		it('keeps the newest file for each hash and every file without one', async () => {
-			const row = (id: string, contentHash: string | null, minute: number) =>
+		it('keeps the newest file for each name and hash and every file without a hash', async () => {
+			const row = (id: string, contentHash: string | null, minute: number, fileName = 'a.txt') =>
 				({
 					id,
 					contentHash,
-					fileName: `${id}.txt`,
+					fileName,
 					mimeType: 'text/plain',
 					fileSizeBytes: 1,
 					source: 'sandbox',
 					createdAt: new Date(Date.UTC(2026, 9, 29, 10, minute)),
 				}) as AgentChatAttachment;
 			repository.findInThreadNewestFirst.mockResolvedValue([
-				row('new', 'h1', 3),
+				row('new', 'h1', 4),
+				row('other-name', 'h1', 3, 'a.csv'),
 				row('legacy-1', null, 2),
 				row('old', 'h1', 1),
 				row('legacy-2', null, 0),
@@ -446,14 +447,19 @@ describe('AgentChatAttachmentService', () => {
 				'n8n_chat_production',
 			);
 
-			expect(files.map((file) => file.fileId)).toEqual(['new', 'legacy-1', 'legacy-2']);
+			expect(files.map((file) => file.fileId)).toEqual([
+				'new',
+				'other-name',
+				'legacy-1',
+				'legacy-2',
+			]);
 			expect(files[0]).toEqual({
 				fileId: 'new',
-				fileName: 'new.txt',
+				fileName: 'a.txt',
 				mimeType: 'text/plain',
 				sizeBytes: 1,
 				source: 'sandbox',
-				createdAt: '2026-10-29T10:03:00.000Z',
+				createdAt: '2026-10-29T10:04:00.000Z',
 			});
 			expect(repository.findInThreadNewestFirst).toHaveBeenCalledWith(
 				{ projectId: 'project-1', threadId: 'root' },
@@ -467,7 +473,7 @@ describe('AgentChatAttachmentService', () => {
 		const file = (id: string, contentHash: string, createdByThreadId: string) =>
 			({ id, contentHash, createdByThreadId, threadId: 'root' }) as AgentChatAttachment;
 
-		it('maps each hash to its newest file for the root thread', async () => {
+		it('maps each hash to its files, newest first, for the root thread', async () => {
 			repository.findByHashesInThread.mockResolvedValue([
 				file('new', 'h1', 'child'),
 				file('old', 'h1', 'root'),
@@ -478,7 +484,9 @@ describe('AgentChatAttachmentService', () => {
 				threadId: 'root',
 			});
 
-			expect([...result]).toEqual([['h1', expect.objectContaining({ id: 'new' })]]);
+			expect([...result]).toEqual([
+				['h1', [expect.objectContaining({ id: 'new' }), expect.objectContaining({ id: 'old' })]],
+			]);
 			expect(repository.findByHashesInThread).toHaveBeenCalledWith(
 				['h1', 'h2'],
 				{ projectId: 'project-1', threadId: 'root' },

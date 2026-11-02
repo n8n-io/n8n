@@ -119,26 +119,42 @@ describe('AgentSandboxFilesService', () => {
 			filesystem.readFile.mockResolvedValue(Buffer.from('x'));
 		});
 
-		it('stores only the files whose bytes the thread does not have', async () => {
+		it('stores only the files whose name and bytes the thread does not have', async () => {
 			const known = 'b'.repeat(64);
 			listed([
 				`${HASH}  outputs/new.txt`,
 				`${HASH}  outputs/copy.txt`,
 				`${known}  outputs/old.txt`,
+				`${known}  outputs/old.csv`,
 			]);
 			attachmentService.findReadableByHashes.mockResolvedValueOnce(
-				new Map([[known, mock<AgentChatAttachment>()]]),
+				new Map([[known, [mock<AgentChatAttachment>({ fileName: 'old.txt' })]]]),
 			);
 
 			await service.syncOutputs(workspace, scope);
 
 			expect(attachmentService.findReadableByHashes).toHaveBeenNthCalledWith(
 				1,
-				[HASH, HASH, known],
+				[HASH, HASH, known, known],
 				scope,
 			);
-			expect(filesystem.readFile).toHaveBeenCalledTimes(1);
-			expect(filesystem.readFile).toHaveBeenCalledWith('outputs/new.txt', expect.anything());
+			expect(filesystem.readFile.mock.calls.map(([path]) => path)).toEqual([
+				'outputs/new.txt',
+				'outputs/copy.txt',
+				'outputs/old.csv',
+			]);
+		});
+
+		it('matches a file with a long path on its bytes only', async () => {
+			const longPath = `${'d/'.repeat(130)}x.json`;
+			listed([`${HASH}  outputs/${longPath}`]);
+			attachmentService.findReadableByHashes.mockResolvedValueOnce(
+				new Map([[HASH, [mock<AgentChatAttachment>({ fileName: 'att-1.json' })]]]),
+			);
+
+			await service.syncOutputs(workspace, scope);
+
+			expect(filesystem.readFile).not.toHaveBeenCalled();
 		});
 
 		it('goes on after a file fails and never throws', async () => {
@@ -322,15 +338,29 @@ describe('AgentSandboxFilesService', () => {
 			});
 		});
 
-		it('returns a readable file with the same bytes instead of a new one', async () => {
+		it('returns a readable file with the same name and bytes instead of a new one', async () => {
 			fileOf('same');
-			const existing = mock<AgentChatAttachment>({ id: 'old' });
+			const existing = mock<AgentChatAttachment>({ id: 'old', fileName: 'a.txt' });
 			attachmentService.findReadableByHashes.mockImplementation(
-				async ([hash]) => new Map([[hash, existing]]),
+				async ([hash]) => new Map([[hash, [existing]]]),
 			);
 
 			await expect(service.store(workspace, 'a.txt', scope)).resolves.toBe(existing);
 			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+		});
+
+		it('stores the same bytes under another name as a new file', async () => {
+			fileOf('a,b\n');
+			const existing = mock<AgentChatAttachment>({ id: 'old', fileName: 'spreadsheet.txt' });
+			attachmentService.findReadableByHashes.mockImplementation(
+				async ([hash]) => new Map([[hash, [existing]]]),
+			);
+
+			const stored = await service.store(workspace, 'spreadsheet.csv', scope);
+
+			expect(stored).not.toBe(existing);
+			expect(stored).toMatchObject({ fileName: 'spreadsheet.csv', mimeType: 'text/csv' });
+			expect(attachmentService.storeInbound).toHaveBeenCalledOnce();
 		});
 
 		it('does not read a file over the size cap', async () => {
