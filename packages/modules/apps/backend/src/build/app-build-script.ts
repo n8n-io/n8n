@@ -40,6 +40,6 @@ if [ ! -d node_modules ] || [ ! -f "$root/dependencies" ] || [ "$(cat "$root/dep
 fi
 printf build > "$stage/stage"
 ulimit -c 0
-npm run build 2>&1 | tail -c "$max_log_bytes"
+npm run build -- --base=/ 2>&1 | tail -c "$max_log_bytes"
 tar -czf "$stage/bundle.tgz" -C dist .
 `;

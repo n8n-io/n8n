@@ -14,6 +14,7 @@ import {
 	N8nDialogOverlay,
 	N8nDialogTitle,
 } from './index';
+import { OVERLAY_LAYER_SELECTOR } from '../../constants';
 
 // Helper to render the simplified N8nDialog component
 const renderDialog = (
@@ -396,6 +397,18 @@ describe('N8nDialog', () => {
 			await waitFor(() => {
 				expect(queryByRole('dialog')).not.toBeInTheDocument();
 			});
+		});
+
+		it('should mark the content and the backdrop as overlay layers', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole } = renderDialog();
+
+			await user.click(getByTestId('dialog-trigger'));
+
+			expect(getByRole('dialog')).toBeInTheDocument();
+			const layers = [...document.querySelectorAll(OVERLAY_LAYER_SELECTOR)];
+			expect(layers).toContain(getByRole('dialog'));
+			expect(layers).toContain(document.querySelector('[data-dialog-overlay]'));
 		});
 
 		it('should close dialog when Escape key is pressed', async () => {

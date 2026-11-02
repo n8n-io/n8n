@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentChatResumeDto, AgentJsonConfig, AgentThreadMemoryDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import type { Component } from 'vue';
 import { computed } from 'vue';
@@ -9,6 +9,7 @@ import SessionBackgroundJobItem from './timeline-items/SessionBackgroundJobItem.
 import SessionCapabilityItem from './timeline-items/SessionCapabilityItem.vue';
 import SessionExecutionErrorItem from './timeline-items/SessionExecutionErrorItem.vue';
 import SessionHitlItem from './timeline-items/SessionHitlItem.vue';
+import SessionMemoryItem from './timeline-items/SessionMemoryItem.vue';
 import SessionMessageItem from './timeline-items/SessionMessageItem.vue';
 
 const props = defineProps<{
@@ -23,6 +24,8 @@ const props = defineProps<{
 	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 	tools?: AgentJsonConfig['tools'];
+	memory?: AgentThreadMemoryDto;
+	onMemoryDeleted?: () => void;
 }>();
 
 const i18n = useI18n();
@@ -31,6 +34,7 @@ const componentByKind: Record<EventKind, Component> = {
 	user: SessionMessageItem,
 	agent: SessionMessageItem,
 	skill: SessionCapabilityItem,
+	memory: SessionMemoryItem,
 	tool: SessionCapabilityItem,
 	node: SessionCapabilityItem,
 	workflow: SessionCapabilityItem,
@@ -67,6 +71,17 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 		};
 	}
 
+	if (kind === 'memory') {
+		return {
+			...baseProps,
+			memory: props.memory,
+			projectId: props.projectId,
+			agentId: props.agentId,
+			threadId: props.threadId,
+			onDeleted: props.onMemoryDeleted,
+		};
+	}
+
 	if (kind === 'user' || kind === 'agent') {
 		const fallbackSenderName =
 			kind === 'user'
@@ -78,8 +93,18 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 			projectId: props.projectId,
 			agentId: props.agentId,
 			senderName: props.item.authorName ?? fallbackSenderName,
+			threadId: props.threadId,
 			messageMarkdown: props.item.content ?? '',
 			personalisation: props.personalisation,
+		};
+	}
+
+	if (componentByKind[kind] === SessionCapabilityItem) {
+		return {
+			...baseProps,
+			projectId: props.projectId,
+			agentId: props.agentId,
+			threadId: props.threadId,
 		};
 	}
 

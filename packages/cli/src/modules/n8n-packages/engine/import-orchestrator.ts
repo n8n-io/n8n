@@ -31,7 +31,11 @@ import type {
 	CredentialImportPlan,
 	CredentialResolutionFailure,
 } from '../entities/credential/credential.types';
-import { DataTableImporter } from '../entities/data-table/data-table-importer';
+import {
+	columnIdConflictError,
+	DataTableImporter,
+} from '../entities/data-table/data-table-importer';
+import { reconcileSharedWrites, shareRevisionRaises } from '../entities/skill/skill-import.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -86,6 +90,7 @@ import type {
 	ImportBindingMap,
 	ImportContext,
 	ImportedFolderSummary,
+	ImportPlanMode,
 	ImportWorkflowProperties,
 	PackageImportBindings,
 	PackageImportSource,
@@ -94,6 +99,7 @@ import type {
 	ResolvedImportFolderProperties,
 } from '../n8n-packages.types';
 import { mergeRequirementConsumers } from '../spec/requirement-consumers';
+import type { SerializedSkill } from '../spec/serialized/skill.schema';
 import type {
 	PackageRequirementConsumer,
 	PackageAgentRequirement,
@@ -106,6 +112,7 @@ import {
 	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
 	assertDataTableWritesAllowed,
+	assertSharedSkillWritesAllowed,
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
 	assertPackageImportApiKeyScopes,
@@ -117,6 +124,8 @@ export interface ImportOrchestrationInput {
 	folders: PreparedFolder[];
 	workflows: PreparedWorkflow[];
 	agents?: PreparedAgent[];
+	/** Every skill of the package. A scope imports the ones its Agents reference. */
+	skills?: SerializedSkill[];
 	agentRequirements?: PackageAgentRequirement[];
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
@@ -192,14 +201,26 @@ export class ImportOrchestrator {
 		private readonly licenseState: LicenseState,
 	) {}
 
-	/**
-	 * Licence and scope before quota: an unlicensed instance also reports a zero quota, which would
-	 * otherwise surface as a limit issue instead of the real cause.
-	 */
 	async assertNotBlocked(
 		plans: ImportPlan[],
 		options: { apiKeyScopes: string[] | undefined },
 	): Promise<void> {
+		const issues = await this.blockingIssues(plans, { ...options, mode: 'enforce' });
+		if (issues.length > 0) throw toImportBlockedError(issues);
+		await this.assertCanUpdateCredentials(plans);
+	}
+
+	/**
+	 * The issues that block the plans together. Permission gates that the import reports as an
+	 * error still throw.
+	 *
+	 * Licence and scope before quota: an unlicensed instance also reports a zero quota, which would
+	 * otherwise surface as a limit issue instead of the real cause.
+	 */
+	async blockingIssues(
+		plans: ImportPlan[],
+		options: { apiKeyScopes: string[] | undefined; mode: ImportPlanMode },
+	): Promise<BlockingIssue[]> {
 		assertTagWritesAllowed(
 			options.apiKeyScopes,
 			plans.map((plan) => plan.tagPlan),
@@ -261,12 +282,20 @@ export class ImportOrchestrator {
 			if (!plan.agentPlan) continue;
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, requiredAgentScopes(plan.agentPlan));
 		}
+		assertSharedSkillWritesAllowed(
+			options.apiKeyScopes,
+			plans.flatMap(({ agentPlan }) => (agentPlan?.skills ? [agentPlan.skills] : [])),
+		);
 
-		const issues = await this.collectPackageBlockingIssues(plans);
-		if (issues.length > 0) throw toImportBlockedError(issues);
+		return await this.collectPackageBlockingIssues(plans, options.mode);
+	}
 
-		// Last: an import with blocking issues reports them instead of a dry-run error, and a
-		// divergent update never reaches the dry run.
+	/**
+	 * Prepares the planned credential updates without writing them. Runs after the blocking issues:
+	 * an import with blocking issues reports them instead of a dry-run error, and a divergent update
+	 * never reaches the dry run.
+	 */
+	async assertCanUpdateCredentials(plans: ImportPlan[]): Promise<void> {
 		for (const { input, credentialPlan } of plans) {
 			await this.credentialImporter.assertCanUpdate(
 				input.context,
@@ -276,7 +305,10 @@ export class ImportOrchestrator {
 		}
 	}
 
-	private async collectPackageBlockingIssues(plans: ImportPlan[]): Promise<BlockingIssue[]> {
+	private async collectPackageBlockingIssues(
+		plans: ImportPlan[],
+		mode: ImportPlanMode,
+	): Promise<BlockingIssue[]> {
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
 
 		issues.push(
@@ -318,6 +350,7 @@ export class ImportOrchestrator {
 					plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
 					contentImportTransport(importSource),
 					{ kind: 'user', user: context.user },
+					mode,
 				)),
 			);
 		}
@@ -339,17 +372,21 @@ export class ImportOrchestrator {
 			});
 		}
 
-		return issues;
+		return withOneFailurePerPolicyCheck(issues);
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
 		return (await this.planPackage([input]))[0];
 	}
 
-	async planPackage(inputs: ImportOrchestrationInput[]): Promise<ImportPlan[]> {
+	async planPackage(
+		inputs: ImportOrchestrationInput[],
+		mode: ImportPlanMode = 'enforce',
+	): Promise<ImportPlan[]> {
 		const plans: ImportPlan[] = [];
-		for (const input of inputs) plans.push(await this.planScope(input));
+		for (const input of inputs) plans.push(await this.planScope(input, mode));
 		if (!plans.some((plan) => plan.agentPlan)) return plans;
+		this.reconcileSkillWrites(plans);
 
 		const agentImporter = await this.getAgentImporter();
 		const { AgentImportBindings } = await import('../entities/agent/agent-import-bindings.js');
@@ -361,18 +398,33 @@ export class ImportOrchestrator {
 		return plans;
 	}
 
+	/** Applies the skill checks that span the project scopes of one package. */
+	private reconcileSkillWrites(plans: ImportPlan[]): void {
+		const scopes = plans.flatMap(({ agentPlan }) =>
+			agentPlan?.skills ? [{ agentPlan, skills: agentPlan.skills }] : [],
+		);
+		const skillPlans = scopes.map(({ skills }) => skills);
+		const issues = reconcileSharedWrites(skillPlans);
+		shareRevisionRaises(skillPlans);
+		for (const [index, { agentPlan }] of scopes.entries()) agentPlan.issues.push(...issues[index]);
+	}
+
 	private async getAgentImporter(): Promise<AgentImporter> {
 		const { AgentImporter } = await import('../entities/agent/agent-importer.js');
 		return Container.get(AgentImporter);
 	}
 
-	private async planScope(input: ImportOrchestrationInput): Promise<ImportPlan> {
+	private async planScope(
+		input: ImportOrchestrationInput,
+		mode: ImportPlanMode,
+	): Promise<ImportPlan> {
 		let agentPlan: AgentImportPlan | undefined;
 		if (input.agents?.length) {
 			const agentImporter = await this.getAgentImporter();
 			agentPlan = await agentImporter.plan(
 				{ ...input.context, projectPendingCreation: input.projectPendingCreation },
 				input.agents,
+				input.skills ?? [],
 				input.options,
 			);
 			input = scopeAgentRequirements(input, agentPlan);
@@ -398,6 +450,10 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
+		const columnIdConflict = dataTablePlan.failures.find(
+			({ kind }) => kind === 'column-id-conflict',
+		);
+		if (mode === 'enforce' && columnIdConflict) throw columnIdConflictError(columnIdConflict);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options, {
 			checkRootPlacement: input.checkRootPlacement,
@@ -458,12 +514,14 @@ export class ImportOrchestrator {
 			context.projectId,
 			contentImportTransport(input.importSource),
 			actor,
+			mode,
 		);
 		const refusedStubs = await this.credentialSavePolicyGate.refusedStubs(
 			credentialRequest,
 			credentialPlan,
 			context.projectId,
 			actor,
+			mode,
 		);
 
 		const plan = {
@@ -781,10 +839,11 @@ function toCredentialBlockingIssue(
 	failure: CredentialResolutionFailure,
 	request: CredentialBindingRequest,
 ): BlockingIssue {
-	const { kind, sourceId, targetId, expectedType, actualType } = failure;
+	const { kind, reason, sourceId, targetId, expectedType, actualType } = failure;
 	return {
 		type: 'credential-unresolved',
 		kind,
+		...(reason ? { reason } : {}),
 		sourceId,
 		...(targetId ? { targetId } : {}),
 		...(expectedType ? { expectedType } : {}),
@@ -847,6 +906,17 @@ function toTagBlockingIssue(
 	});
 
 	return { type: 'tag-unresolved', ...failure, usedBy: mergeRequirementConsumers(consumers) };
+}
+
+/** Several scopes and steps can report the same broken policy check. Keeps the first report. */
+function withOneFailurePerPolicyCheck(issues: BlockingIssue[]): BlockingIssue[] {
+	const failedPoints = new Set<string>();
+	return issues.filter((issue) => {
+		if (issue.type !== 'policy-check-failed') return true;
+		if (failedPoints.has(issue.point)) return false;
+		failedPoints.add(issue.point);
+		return true;
+	});
 }
 
 function variableConsumers(

@@ -15,3 +15,4 @@ export type {
 } from './api.types';
 export { fail } from './error-response';
 export type { EngineErrorResponse } from './error-response';
+export { triggerOutputsSchema, workflowGraphSchema } from './start-execution.schema';

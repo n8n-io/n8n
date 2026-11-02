@@ -578,6 +578,22 @@ describe('ExecutionService', () => {
 			});
 		});
 
+		it('should return undefined without loading data when the user cannot read the executions', async () => {
+			const workflowId = 'workflow-123';
+			const mockUser = mock<User>();
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+
+			const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+			expect(userHasScopes).toHaveBeenCalledWith(mockUser, ['execution:read'], false, {
+				workflowId,
+			});
+			expect(result).toBeUndefined();
+			expect(executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
+			expect(engineV2ExecutionReader.findLatest).not.toHaveBeenCalled();
+			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+		});
+
 		it('should return undefined when no successful execution exists', async () => {
 			/**
 			 * Arrange
@@ -1067,6 +1083,47 @@ describe('ExecutionService', () => {
 						execution,
 						{ requireStatus: 'running' },
 					);
+				});
+
+				it('should persist the canceled status before it broadcasts the stop request', async () => {
+					globalConfig.executions.mode = 'queue';
+					const execution = mock<IExecutionResponse>({
+						id: 'exec-123',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+					await executionService.stop(execution.id, [execution.id]);
+
+					const [updateOrder] =
+						executionPersistence.updateExistingExecution.mock.invocationCallOrder;
+					const [broadcastOrder] = executionStopService.requestStop.mock.invocationCallOrder;
+					expect(updateOrder).toBeLessThan(broadcastOrder);
+				});
+
+				it('should broadcast the stop request when persisting the canceled status fails', async () => {
+					globalConfig.executions.mode = 'queue';
+					const execution = mock<IExecutionResponse>({
+						id: 'exec-123',
+						status: 'running',
+						data: { resultData: {} },
+					});
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.updateExistingExecution.mockRejectedValue(
+						new Error('database unavailable'),
+					);
+
+					await expect(executionService.stop(execution.id, [execution.id])).rejects.toThrow(
+						'database unavailable',
+					);
+
+					expect(executionStopService.requestStop).toHaveBeenCalledWith(execution.id);
 				});
 			});
 		});

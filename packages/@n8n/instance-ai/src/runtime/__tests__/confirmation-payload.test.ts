@@ -1,5 +1,6 @@
 import {
 	instanceAiApprovalResumeSchema,
+	appBlueprintResumeSchema,
 	mcpConnectResumeSchema,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmRequestKind,
@@ -69,7 +70,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	const wizardSchemas: Array<[string, ZodType]> = [
 		['workflows (setup wizard)', workflowsResumeSchema],
 		['credentials', credentialsResumeSchema],
-		['workflow_builder_ask_user', askUserResumeSchema],
+		['ask_user', askUserResumeSchema],
 		['Browser Use MCP', gatewayConfirmationResumeSchema],
 		['domain gating', domainGatingResumeSchema],
 		['mcp-servers', mcpConnectResumeSchema],
@@ -105,7 +106,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					{ questionId: 'q3', selectedOptions: [], skipped: true },
 				],
 			},
-			targets: [['workflow_builder_ask_user', askUserResumeSchema]],
+			targets: [['ask_user', askUserResumeSchema]],
 		},
 		{
 			label: 'credential selection',
@@ -166,6 +167,22 @@ describe('confirmation payload → tool resume schema contract', () => {
 			request: { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] },
 			targets: [['mcp-servers', mcpConnectResumeSchema]],
 		},
+		{
+			label: 'app blueprint approval',
+			request: {
+				kind: 'appBlueprint',
+				approved: true,
+				blueprint: {
+					name: 'Planner',
+					namespace: 'planner',
+					visibility: 'project',
+					description: 'Plan weekly tasks.',
+					theme: 'both',
+					additionalInstructions: 'Use compact cards.',
+				},
+			},
+			targets: [['apps create', appBlueprintResumeSchema]],
+		},
 	];
 
 	const cases = rows.flatMap(({ label, request, targets }) =>
@@ -200,6 +217,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 		setupWorkflowApply: true,
 		setupWorkflowTestTrigger: true,
 		mcpConnect: true,
+		appBlueprint: true,
 	} satisfies Record<InstanceAiConfirmRequestKind, true>;
 
 	it('covers every confirmation kind the API accepts', () => {

@@ -5,7 +5,7 @@ import {
 	isAgentEditingAgent,
 	isAgentEditingWorkflow,
 } from '../canvasPreview.utils';
-import { useThread, type ThreadRuntime } from '../instanceAi.store';
+import { useArtifactThread, type ArtifactThread } from '../artifactThread';
 
 /**
  * Ids of the thread's artifacts the AI is actively mutating right now — the
@@ -25,8 +25,8 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
  * inject what it provides. Everything below it just calls this with no
  * argument.
  */
-export function useBuildingArtifactIds(runtime?: ThreadRuntime): ComputedRef<Set<string>> {
-	const thread = runtime ?? useThread();
+export function useBuildingArtifactIds(runtime?: ArtifactThread): ComputedRef<Set<string>> {
+	const thread = runtime ?? useArtifactThread();
 
 	return computed(() => {
 		const ids = new Set<string>();

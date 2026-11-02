@@ -27,7 +27,7 @@ import {
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
-import { useThread } from '../instanceAi.store';
+import { useArtifactThread } from '../artifactThread';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 export interface WorkflowFailuresReport {
@@ -142,7 +142,7 @@ function handleWorkflowLoaded(workflowId: string) {
 // drag nodes into a mid-stream conflict. Thread-wide, since the per-workflow
 // signals below only fire around tool calls that name a workflowId — leaving
 // the canvas editable through workspace file edits and failed builds.
-const thread = useThread();
+const thread = useArtifactThread();
 const isAgentWorking = useIsAgentWorking();
 const settingsStore = useInstanceAiSettingsStore();
 

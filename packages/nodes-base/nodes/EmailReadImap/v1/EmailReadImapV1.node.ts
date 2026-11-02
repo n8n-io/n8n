@@ -430,7 +430,10 @@ export class EmailReadImapV1 implements INodeType {
 			}
 
 			try {
-				const returnData = await getNewEmails(conn, currentSearchCriteria);
+				// Arrivals come after activation released its isolate, and the fetch resolves parameters.
+				const returnData = await this.helpers.withExpressionIsolate(
+					async () => await getNewEmails(conn, currentSearchCriteria),
+				);
 				if (returnData.length) {
 					this.emit([returnData]);
 				}

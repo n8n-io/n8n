@@ -65,6 +65,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ discoveryClaimToken
   datetime_3_ discoveryClaimedAt
+  datetime_3_ firstAuthenticatedAt
   varchar_36_ id PK
   varchar issuer
   datetime_3_ lastCheckedAt

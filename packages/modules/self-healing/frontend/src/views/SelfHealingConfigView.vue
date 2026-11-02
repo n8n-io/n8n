@@ -7,6 +7,7 @@ import {
 	N8nCombobox2,
 	N8nIcon,
 	N8nIconButton,
+	N8nLoading,
 	N8nSegmentControl,
 	N8nText,
 	N8nSettingsLayout,
@@ -342,7 +343,36 @@ onBeforeRouteUpdate(async (to, from) => {
 				"
 				:show-docs-link="false"
 			/>
-			<p v-if="loading">{{ i18n.baseText('selfHealing.config.loading') }}</p>
+			<div v-if="loading" data-test-id="self-healing-config-loading">
+				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.scope')">
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow>
+							<template #info>
+								<N8nLoading :rows="2" :class="$style.skeleton" />
+							</template>
+							<template #action>
+								<N8nLoading variant="button" />
+							</template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+				</N8nSettingsSection>
+				<N8nSettingsSection
+					v-if="!isPersonalTab"
+					:title="i18n.baseText('selfHealing.config.reviewers')"
+					:description="i18n.baseText('selfHealing.config.reviewersHelp')"
+				>
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow layout="custom">
+							<N8nLoading :class="$style.skeleton" />
+						</N8nSettingsRow>
+						<N8nSettingsRow>
+							<template #info>
+								<N8nLoading :rows="2" :class="$style.skeleton" />
+							</template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+				</N8nSettingsSection>
+			</div>
 			<N8nButton v-else-if="loadError" variant="outline" @click="load">{{
 				i18n.baseText('selfHealing.config.retry')
 			}}</N8nButton>
@@ -598,5 +628,11 @@ onBeforeRouteUpdate(async (to, from) => {
 .hint {
 	display: block;
 	margin-top: var(--spacing--2xs);
+}
+
+.skeleton {
+	:global(.el-skeleton__p) {
+		margin-top: 0;
+	}
 }
 </style>

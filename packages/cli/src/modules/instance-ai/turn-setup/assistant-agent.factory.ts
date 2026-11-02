@@ -25,7 +25,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 
-import { canAccessAgentPreviewHandoff } from '../agent-preview-handoff';
+import { canAccessAgentTestHandoff } from '../agent-test-handoff';
 import { getAgentContextService, isAgentsAccessEnabled } from '../agents-access';
 import { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
@@ -142,7 +142,8 @@ export class AssistantAgentFactory {
 			checkpointStore: runtime.checkpointStore,
 			onMemoryTaskEvent: runtime.onMemoryTaskEvent,
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: this.modelService.getLabeledModelFetch({ runId, threadId }),
+			requestLabels: this.instanceAiConfig.modelRequestLabels,
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing
 		// here (rather than at each call site) covers the foreground run and both
@@ -203,7 +204,7 @@ export class AssistantAgentFactory {
 			context.agentPreviewSession = undefined;
 			return;
 		}
-		if (!(await canAccessAgentPreviewHandoff(user, projectId))) {
+		if (!(await canAccessAgentTestHandoff(user, projectId))) {
 			context.agentPreviewSession = undefined;
 			return;
 		}

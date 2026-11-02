@@ -51,7 +51,7 @@ describe('WorkflowDependencyQueryService', () => {
 				new Set(['cred-1']),
 			);
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
-			dependencyRepository.find.mockResolvedValue([
+			dependencyRepository.findDependenciesForResources.mockResolvedValue([
 				mock({ workflowId: 'wf-1', dependencyType: 'credentialId', dependencyKey: 'cred-1' }),
 			]);
 			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Test Cred' })]);
@@ -100,7 +100,7 @@ describe('WorkflowDependencyQueryService', () => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
 				new Set(['wf-1', 'wf-2']),
 			);
-			dependencyRepository.find.mockResolvedValue([
+			dependencyRepository.findDependenciesForResources.mockResolvedValue([
 				mock({ workflowId: 'wf-2', dependencyType: 'workflowCall', dependencyKey: 'wf-1' }),
 			]);
 			workflowRepository.find.mockResolvedValue([
@@ -123,7 +123,7 @@ describe('WorkflowDependencyQueryService', () => {
 		beforeEach(() => {
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
-			dependencyRepository.find.mockResolvedValue([
+			dependencyRepository.findDependenciesForResources.mockResolvedValue([
 				mock({ workflowId: 'wf-1', dependencyType: 'credentialId', dependencyKey: 'cred-1' }),
 			]);
 			credentialsRepository.find.mockResolvedValue([mock({ id: 'cred-1', name: 'Personal Cred' })]);

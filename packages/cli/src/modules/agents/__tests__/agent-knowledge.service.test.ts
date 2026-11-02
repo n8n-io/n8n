@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 
-import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { NotFoundError } from '@n8n/errors';
@@ -521,6 +521,27 @@ describe('AgentKnowledgeService', () => {
 						}),
 					]),
 				).rejects.toMatchObject({ reason: 'pdf_no_text' });
+			} finally {
+				await rm(tempDirectory, { recursive: true, force: true });
+			}
+		});
+
+		it('gives a PDF whose text is above the file size limit the file_size reason', async () => {
+			loadMock.mockResolvedValue([{ pageContent: 'a'.repeat(MAX_AGENT_FILE_SIZE_BYTES + 1) }]);
+			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+			try {
+				const pdfFilePath = path.join(tempDirectory, 'large.pdf');
+				await writeFile(pdfFilePath, '%PDF-1.4');
+
+				await expect(
+					service.uploadFiles(agentId, projectId, [
+						makeMulterFile({
+							originalname: 'large.pdf',
+							mimetype: 'application/pdf',
+							path: pdfFilePath,
+						}),
+					]),
+				).rejects.toMatchObject({ reason: 'file_size' });
 			} finally {
 				await rm(tempDirectory, { recursive: true, force: true });
 			}

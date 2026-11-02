@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { DateTime, Duration, Interval } from 'luxon';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
 import { QuickJsBridge } from '../bridge/quickjs-bridge';
@@ -199,6 +199,73 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('Value types at the transfer boundary', () => {
+		describe.each([
+			{ label: 'returns a custom result', parser: '() => ({ name: "custom" })' },
+			{ label: 'throws', parser: '() => { throw new Error("custom parser"); }' },
+		])('host data with a JSON parser that $label', ({ parser }) => {
+			it.each(['$json.profile.name', '$json.rows[0].name', '$input.first().json.profile.name'])(
+				'reads %s',
+				(access) => {
+					const json = { profile: { name: 'from host' }, rows: [{ name: 'from host' }] };
+					const data = { $json: json, $input: { first: () => ({ json }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const original = JSON.parse; JSON.parse = ${parser}; try { return ${access}; } finally { JSON.parse = original; } })() }}`,
+							data,
+							caller,
+						),
+					).toBe('from host');
+				},
+			);
+		});
+
+		describe.each([
+			{ label: 'plain', properties: {} },
+			{ label: 'transfer marker', properties: { __n8nType: 'user data' } },
+			{ label: 'bridge marker', properties: { __isDate: true } },
+		])('own JSON keys in a $label object', ({ properties }) => {
+			const payload = {
+				...(JSON.parse('{"__proto__":{"flag":1},"kept":2}') as Record<string, unknown>),
+				...properties,
+			};
+
+			it.each(['$json.error', '$input.first().json.error'])(
+				'keeps own JSON keys when reading %s',
+				(access) => {
+					const error = Object.assign(new Error('from host'), { payload });
+					const data = { $json: { error }, $input: { first: () => ({ json: { error } }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const value = ${access}.payload; return [Object.hasOwn(value, "__proto__"), Object.entries(value)]; })() }}`,
+							data,
+							caller,
+						),
+					).toEqual([true, Object.entries(payload)]);
+				},
+			);
+
+			it.each([
+				{ label: 'plain object', expression: '({ payload })' },
+				{ label: 'Error', expression: 'Object.assign(new Error("from guest"), { payload })' },
+				{
+					label: 'class instance',
+					expression: 'new (class { constructor() { this.payload = payload; } })()',
+				},
+			])('keeps own JSON keys when returning a $label', ({ expression }) => {
+				const result = evaluator.evaluate(
+					`{{ (() => { const payload = JSON.parse(${JSON.stringify(JSON.stringify(payload))}); return ${expression}; })() }}`,
+					{},
+					caller,
+				) as { payload: Record<string, unknown> };
+
+				expect(Object.hasOwn(result.payload, '__proto__')).toBe(true);
+				expect(result.payload).toStrictEqual(payload);
+				expect(Object.getPrototypeOf(result.payload)).toBe(Object.prototype);
+			});
+		});
+
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
 			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);
@@ -262,6 +329,108 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			const [setEntry] = [...(fromSet as Set<unknown>)];
 			expect(setEntry).not.toBeInstanceOf(DateTime);
 			expect(setEntry).toEqual(expected);
+		});
+
+		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]) }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+			};
+
+			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${flagged}]]) }}`, data, caller);
+			const fromSet = evaluator.evaluate(`{{ new Set([${flagged}]) }}`, data, caller);
+
+			expect((fromMap as Map<string, unknown>).get('k')).toEqual(expected);
+			expect([...(fromSet as Set<unknown>)]).toEqual([expected]);
+		});
+
+		it('should return a user object with an __isError key as data', () => {
+			const data = { $json: { flag: { __isError: true, message: 'from data' } } };
+
+			expect(
+				evaluator.evaluate('{{ ({ __isError: true, message: "hi" }) }}', data, caller),
+			).toEqual({ __isError: true, message: 'hi' });
+			expect(evaluator.evaluate('{{ $json.flag }}', data, caller)).toEqual({
+				__isError: true,
+				message: 'from data',
+			});
+		});
+
+		describe.each([
+			{ key: '__isError', properties: { __isError: true } },
+			{ key: '__isArray', properties: { __isArray: true, __length: 2 } },
+			{ key: '__isObject', properties: { __isObject: true, __keys: ['message'] } },
+		])('Error data with $key', ({ key, properties }) => {
+			it.each(['$error', '$json.error', '$json.errors[0]'])('reads %s as an Error', (access) => {
+				const error = Object.assign(new Error('from data'), properties);
+				const json = { error, errors: [error] };
+				const data = { $error: error, $json: json, $input: { first: () => ({ json }) } };
+
+				expect(evaluator.evaluate('{{ $input.first().json.error.message }}', data, caller)).toBe(
+					'from data',
+				);
+				expect(
+					evaluator.evaluate(
+						`{{ (() => { const error = ${access}; return [error.message, error.name, error instanceof Error, Array.isArray(error), error.${key}]; })() }}`,
+						data,
+						caller,
+					),
+				).toEqual(['from data', 'Error', true, false, true]);
+			});
+		});
+
+		it('finds Error data with an __isError key through the in operator', () => {
+			const error = Object.assign(new Error('from data'), { __isError: true });
+
+			expect(evaluator.evaluate('{{ "error" in $json }}', { $json: { error } }, caller)).toBe(true);
+		});
+
+		it('should convert the values inside an object with an __isError key in an object or an array', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]), u: undefined }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+				u: undefined,
+			};
+
+			expect(evaluator.evaluate(`{{ ({ a: ${flagged} }) }}`, data, caller)).toStrictEqual({
+				a: expected,
+			});
+			expect(evaluator.evaluate(`{{ [${flagged}] }}`, data, caller)).toStrictEqual([expected]);
+		});
+
+		it('should give host-call data with an __isError key to the expression as data', () => {
+			const item = {
+				json: {
+					flag: { __isError: true, message: 'm', when: new Date('2024-01-15T00:00:00.000Z') },
+				},
+			};
+			const data = {
+				$input: {
+					first: () => item,
+					last: () => ({ __isError: true, message: 'root' }),
+					all: () => ({ __n8nEscaped: true, __value: 1 }),
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $input.first() }}', data, caller)).toEqual(item);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.flag.when.getTime() }}', data, caller),
+			).toBe(item.json.flag.when.getTime());
+			expect(evaluator.evaluate('{{ $input.last().message }}', data, caller)).toBe('root');
+			expect(evaluator.evaluate('{{ $input.all() }}', data, caller)).toEqual({
+				__n8nEscaped: true,
+				__value: 1,
+			});
 		});
 
 		it('should preserve Date objects (structured-cloneable)', () => {
@@ -456,10 +625,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		it('should keep a marker that an error flag guards inside a class instance as data', () => {
 			const data = { $json: {} };
 
-			// An object carrying `__isError` leaves the guest walk before the walk can
-			// escape it, so it reaches the host with its keys as they were written.
-			// It sits inside a class instance, which the host reads as data, so the
-			// key that names a type is the user's own and must stay a string.
+			// An object carrying `__isError` sits inside a class instance, which the
+			// host reads as data, so the key that names a type is the user's own and
+			// must stay a string.
 			const result = evaluator.evaluate(
 				'{{ (function(){ function Row(){ this.m = { __isError: true, __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; } return new Row(); })() }}',
 				data,
@@ -565,6 +733,93 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toBe('10:30 AM');
 	});
 
+	describe('returned Error fields', () => {
+		it.each(['detail', 'toJSON'])(
+			'should return the original Error when a hidden %s getter throws',
+			async (key) => {
+				const bridge = createBridge();
+				await bridge.initialize();
+				try {
+					const result = bridge.execute(
+						`return Object.defineProperties(new TypeError('original'), {
+							${key}: { get() { throw new RangeError('getter failed'); } },
+							code: { value: 400 }
+						});`,
+						{},
+					) as Error;
+
+					expect(result).toBeInstanceOf(TypeError);
+					expect(result.message).toBe('original');
+					expect(Object.hasOwn(result, key)).toBe(false);
+					expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+						value: 400,
+						enumerable: false,
+					});
+				} finally {
+					await bridge.dispose();
+				}
+			},
+		);
+
+		it.each([
+			{ label: 'function', expression: '() => 1' },
+			{ label: 'Promise', expression: '(async () => 1)()' },
+			{ label: 'symbol', expression: 'Symbol("detail")' },
+		])('should omit a $label from an Error', ({ expression }) => {
+			for (const nested of [false, true]) {
+				const result = evaluator.evaluate(
+					`{{ (() => {
+						const value = ${expression};
+						const detail = ${nested ? '{ code: 400, values: [value, { value }] }' : 'value'};
+						return Object.assign(new TypeError('original', { cause: detail }), {
+							code: 400, detail, toJSON: () => detail
+						});
+					})() }}`,
+					{ $json: {} },
+					caller,
+				) as Error & { code: number; detail: unknown; toJSON: () => unknown };
+				const expected = nested
+					? { code: 400, values: [undefined, { value: undefined }] }
+					: undefined;
+
+				expect(result).toBeInstanceOf(TypeError);
+				expect(result.message).toBe('original');
+				expect(result.code).toBe(400);
+				expect(result.detail).toStrictEqual(expected);
+				expect(result.cause).toStrictEqual(expected);
+				expect(result.toJSON()).toStrictEqual(expected);
+			}
+		});
+
+		it('should keep non-enumerable custom fields', async () => {
+			const bridge = createBridge();
+			await bridge.initialize();
+			try {
+				// Expressions cannot call defineProperties. Set up the fields in the guest directly.
+				const result = bridge.execute(
+					`return Object.defineProperties(new TypeError('original'), {
+						code: { value: 400 },
+						detail: { value: new Error('inner') },
+						visible: { value: true, enumerable: true }
+					});`,
+					{},
+				) as Error & { detail: Error };
+
+				expect(result).toBeInstanceOf(TypeError);
+				expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+					value: 400,
+					enumerable: false,
+				});
+				expect(result.detail).toBeInstanceOf(Error);
+				expect(result.detail.message).toBe('inner');
+				expect(Object.keys(result)).toEqual(['visible']);
+				expect(JSON.stringify(result)).toBe('{"visible":true}');
+			} finally {
+				await bridge.dispose();
+			}
+		});
+	});
+
 	it('should throw when the result cannot be cloned (function or Promise)', () => {
 		const data = { $json: {} };
 
@@ -575,6 +830,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			'could not be cloned',
 		);
 		expect(() => evaluator.evaluate('{{ ({ fn: () => 1 }) }}', data, caller)).toThrow(
+			'could not be cloned',
+		);
+		expect(() => evaluator.evaluate('{{ ({ task: (async () => 1)() }) }}', data, caller)).toThrow(
 			'could not be cloned',
 		);
 	});
@@ -1032,6 +1290,77 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ $json.nested + "|" + $json.other }}', data, caller)).toBe(
 			'inner|OUTER_VALUE',
 		);
+	});
+
+	describe('host value reads', () => {
+		const rows = [
+			{ id: 1, tags: ['a', 'b'] },
+			{ id: 2, tags: ['c'] },
+		];
+
+		it('reads a host getter once when the guest copies its whole value', () => {
+			const read = vi.fn(() => ({ rows, count: rows.length }));
+			const data = {
+				get $json() {
+					return read();
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json }}', data, caller)).toEqual({ rows, count: 2 });
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+
+		it('recreates an evicted $item() result when copying a lazy value', () => {
+			const item = vi.fn((index: number) => ({ $json: { index, rows } }));
+			const node = vi.fn((name: string) => ({ json: { name, rows } }));
+			const data = { $item: item, $: node } as unknown as WorkflowData;
+
+			expect(
+				evaluator.evaluate(
+					'{{ [$item(0).$json.rows, $item(0).$json.index, $item(1).$json.index, $("A").json.rows, $("A").json.name] }}',
+					data,
+					caller,
+				),
+			).toEqual([rows, 0, 1, rows, 'A']);
+			// Copying the returned rows reads item 0 again after item 1.
+			expect(item.mock.calls).toEqual([[0], [1], [0]]);
+			expect(node.mock.calls).toEqual([['A']]);
+		});
+
+		it('reads the host data again in the next evaluation', () => {
+			let current = 'first';
+			const data = {
+				get $json() {
+					return { value: current };
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('first');
+			current = 'second';
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('second');
+		});
+
+		it('reads a getter again after it threw', () => {
+			let attempts = 0;
+			const data = {
+				$json: {
+					get flaky() {
+						attempts++;
+						if (attempts === 1) throw new Error('not ready');
+						return 'ready';
+					},
+				},
+			};
+
+			expect(
+				evaluator.evaluate(
+					'{{ (() => { try { return $json.flaky; } catch (e) { return $json.flaky; } })() }}',
+					data,
+					caller,
+				),
+			).toBe('ready');
+			expect(attempts).toBe(2);
+		});
 	});
 });
 

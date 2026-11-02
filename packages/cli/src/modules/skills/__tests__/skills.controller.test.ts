@@ -7,7 +7,8 @@ import { SkillsController } from '../controllers/skills.controller';
  * The skills routes carry no scope decorator: `SkillService` checks each skill row,
  * or for `newName` the create permission in the requested scope, as `create` does.
  * `creators` names only the creators of the skills that `list` would show, and `agents`
- * only the agents in projects where the user holds `agent:read`.
+ * only the agents in projects where the user holds `agent:read`. `listVersions` and
+ * `getVersion` check read access on the skill row, as `get` does.
  * A new route must add that check on purpose, so the set of routes is pinned here.
  */
 const ROW_CHECKED_HANDLERS = [
@@ -16,7 +17,9 @@ const ROW_CHECKED_HANDLERS = [
 	'creators',
 	'delete',
 	'get',
+	'getVersion',
 	'list',
+	'listVersions',
 	'newName',
 	'update',
 ];

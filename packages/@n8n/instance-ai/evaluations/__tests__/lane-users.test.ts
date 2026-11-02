@@ -1,7 +1,10 @@
 import { silentLogger } from './fixtures';
 import type { N8nClient } from '../clients/n8n-client';
 import {
+	BUILD_PROJECT_ICON,
+	buildProjectProvider,
 	cleanupLaneUsers,
+	deleteTeamBuildProjects,
 	LaneUserPool,
 	provisionBuildProject,
 	provisionCaseBuildUser,
@@ -120,12 +123,12 @@ describe('provisionCaseBuildUser', () => {
 		return { member, client: member as unknown as N8nClient, created };
 	}
 
-	it("accepts the pooled invite as the member and returns that user's MCP key", async () => {
+	it("accepts the pooled invite as the member and returns that user's MCP key and id", async () => {
 		const { client: ownerClient } = fakeOwnerClient();
 		const pool = new LaneUserPool(ownerClient, 1);
 		const { member, client } = fakeMemberClient();
 
-		const mcpApiKey = await provisionCaseBuildUser({
+		const { mcpApiKey, userId } = await provisionCaseBuildUser({
 			pool,
 			memberClient: client,
 			onCredentialCreated: () => {},
@@ -139,6 +142,7 @@ describe('provisionCaseBuildUser', () => {
 		expect(acceptArgs.password).toBe(pool.password);
 		expect(acceptArgs.token).toContain('token-');
 		expect(mcpApiKey).toBe('mcp-key-1');
+		expect(userId).toEqual(expect.any(String));
 		expect(member.createCredential).not.toHaveBeenCalled();
 	});
 
@@ -212,5 +216,75 @@ describe('cleanupLaneUsers', () => {
 		await cleanupLaneUsers({ deleteUser } as unknown as N8nClient, pool, silentLogger);
 
 		expect(deleteUser).toHaveBeenCalledTimes(3);
+	});
+});
+
+describe('buildProjectProvider', () => {
+	const ownerName = { firstName: 'Eval', lastName: 'Owner' };
+
+	it('gives each build a team project the owner creates, marked for cleanup', async () => {
+		const createTeamProject = vi.fn().mockResolvedValue({ id: 'team-1', name: 'Eval Owner' });
+		const { client: poolClient } = fakeOwnerClient();
+		const provide = buildProjectProvider({
+			client: { createTeamProject, userName: ownerName } as unknown as N8nClient,
+			baseUrl: 'http://n8n.test',
+			buildUserPool: new LaneUserPool(poolClient),
+			teamBuildProjects: true,
+		});
+
+		await expect(provide?.()).resolves.toEqual({ projectId: 'team-1' });
+		expect(createTeamProject).toHaveBeenCalledWith('Eval Owner', BUILD_PROJECT_ICON);
+	});
+
+	it("falls back to a member's personal project without team projects", async () => {
+		const createTeamProject = vi.fn();
+		const { client: poolClient, inviteMembers } = fakeOwnerClient();
+		const provide = buildProjectProvider({
+			client: { createTeamProject, userName: ownerName } as unknown as N8nClient,
+			baseUrl: 'http://n8n.test',
+			buildUserPool: new LaneUserPool(poolClient, 1),
+			teamBuildProjects: false,
+		});
+
+		expect(provide).toBeDefined();
+		// The member client is created inside; stop at the invite so no fetch runs.
+		inviteMembers.mockRejectedValueOnce(new Error('stop'));
+		await expect(provide?.()).rejects.toThrow('stop');
+		expect(createTeamProject).not.toHaveBeenCalled();
+	});
+
+	it('gives no build project without team projects or a user pool', () => {
+		const provide = buildProjectProvider({
+			client: {} as N8nClient,
+			baseUrl: 'http://n8n.test',
+			teamBuildProjects: false,
+		});
+
+		expect(provide).toBeUndefined();
+	});
+});
+
+describe('deleteTeamBuildProjects', () => {
+	it('deletes only the marked build projects and logs a failed delete', async () => {
+		const listTeamProjects = vi.fn().mockResolvedValue([
+			{ id: 'build-1', name: 'Eval Owner', icon: BUILD_PROJECT_ICON },
+			{ id: 'build-2', name: 'Eval Owner', icon: BUILD_PROJECT_ICON },
+			{ id: 'seed-1', name: 'Eval Owner', icon: null },
+			{ id: 'other', name: 'Marketing', icon: { type: 'emoji', value: 'x' } },
+		]);
+		const deleteProject = vi
+			.fn()
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('HTTP 502'));
+		const warn = vi.fn();
+
+		await deleteTeamBuildProjects({ listTeamProjects, deleteProject } as unknown as N8nClient, {
+			...silentLogger,
+			warn,
+		});
+
+		expect(deleteProject.mock.calls.map(([id]) => id as string)).toEqual(['build-1', 'build-2']);
+		expect(warn).toHaveBeenCalledTimes(1);
+		expect(String(warn.mock.calls[0]?.[0])).toContain('build-2');
 	});
 });

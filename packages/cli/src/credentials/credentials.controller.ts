@@ -253,6 +253,10 @@ export class CredentialsController {
 			jweEnabled: payload.data.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(newCredential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(newCredential.type, payload.data),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				newCredential.type,
+				payload.data,
+			),
 		});
 
 		if (newCredential.isResolvable) {
@@ -420,6 +424,10 @@ export class CredentialsController {
 			jweEnabled: updatedData.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(credential.type, updatedData),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				updatedData,
+			),
 		});
 
 		const wasResolvable = Boolean(credential.isResolvable);

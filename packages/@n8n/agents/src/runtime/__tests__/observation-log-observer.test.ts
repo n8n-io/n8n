@@ -585,6 +585,49 @@ describe('runObservationLogObserver', () => {
 		},
 	);
 
+	it('counts observer-serialized tool results without another JSON encoding layer', async () => {
+		const store = new InMemoryMemory();
+		const report = 'Line with "quotes"\n'.repeat(4_000);
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				{
+					id: 'm1',
+					createdAt: new Date(0),
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc1',
+							toolName: 'fetch_report',
+							providerExecuted: true,
+							input: {},
+							state: 'resolved',
+							output: { report },
+						},
+					],
+				},
+			],
+		});
+		const counted: string[] = [];
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 20,
+			tokenCounter: (text) => {
+				counted.push(text);
+				return 10;
+			},
+			observe: async () => await Promise.resolve('NO_OBSERVATIONS'),
+		});
+
+		expect(counted).toContainEqual(expect.stringMatching(/^\{"report":"Line with \\"quotes\\"\\n/));
+		expect(counted.some((text) => text.startsWith('"{'))).toBe(false);
+	});
+
 	it('writes observations with indented detail lists and advances the cursor', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });

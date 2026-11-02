@@ -54,7 +54,9 @@ export const IMPORT_DESCRIPTION =
 	'Agent packages require `agent:import` and `agent:read`. Workflow packages require ' +
 	'`workflow:import`. Mixed packages require both import grants. Planned Agent actions also ' +
 	'require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents ' +
-	'do not require write grants. Destination-project permissions and dependency scopes still apply.\n\n' +
+	'do not require write grants. Creating a project or instance skill requires `skill:create`, ' +
+	'and saving a new version of one requires `skill:update`. ' +
+	'Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +
 	'Check `agents[].publishing.state` and `workflows[].publishing.state` for publication ' +
@@ -76,7 +78,10 @@ export const IMPORT_422_DESCRIPTION =
 	'Import blocked by non-conflict issues only — for example unresolved credentials or ' +
 	'variables, invalid Agent definitions or dependencies, node types this instance does not have, ' +
 	'a delete the caller may not perform, or ' +
-	'variable stubs whose creation would exceed the instance variable quota.';
+	'variable stubs whose creation would exceed the instance variable quota. ' +
+	'Exception: a skill conflict returns 422, also under `conflictPolicy=fail`. The import plans ' +
+	'a skill as part of each Agent that uses it, so it reports every skill problem as an ' +
+	'`agent-invalid` issue on that Agent, with the path `skills.<skillId>`.';
 
 export const IMPORT_SELECTION_SUMMARY =
 	'Beta: Import a selected subset of workflows from an n8n package';

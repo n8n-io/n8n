@@ -51,10 +51,14 @@ export class MigrationOwnerSuggestionService {
 		private readonly userRepository: UserRepository,
 	) {}
 
-	async suggestOwners(workflowIds: string[]): Promise<OwnerSuggestion[]> {
+	/**
+	 * `users` lets a caller that suggests owners for many batches load the users
+	 * once. Without it, the users are loaded for this call.
+	 */
+	async suggestOwners(workflowIds: string[], users?: EligibleUsers): Promise<OwnerSuggestion[]> {
 		if (workflowIds.length === 0) return [];
 
-		const users = await this.loadEligibleUsers();
+		users ??= await this.loadEligibleUsers();
 		const latestByWorkflow = await this.findLatestAttributedActivity(workflowIds, users);
 
 		const unresolved = workflowIds.filter((workflowId) => !latestByWorkflow.has(workflowId));
@@ -69,7 +73,7 @@ export class MigrationOwnerSuggestionService {
 	}
 
 	/** Every user who can be an owner, by id and by the display name workflow history records. */
-	private async loadEligibleUsers(): Promise<EligibleUsers> {
+	async loadEligibleUsers(): Promise<EligibleUsers> {
 		const all = await this.userRepository.findAllWithRoleAndAuthIdentities();
 		const byId = new Map<string, User>();
 		const idsByName = new Map<string, string[]>();
@@ -150,7 +154,7 @@ export class MigrationOwnerSuggestionService {
 	}
 }
 
-interface EligibleUsers {
+export interface EligibleUsers {
 	byId: Map<string, User>;
 	idsByName: Map<string, string[]>;
 }

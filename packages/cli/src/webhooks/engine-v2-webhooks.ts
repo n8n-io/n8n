@@ -16,7 +16,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	UserError,
-	WAIT_NODE_TYPE,
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
@@ -27,8 +26,8 @@ import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/web
 
 /**
  * Trigger types the v2 path cannot serve. Each carries machinery the engine
- * path does not: a seeded execution stack, MCP relay fields, multi-page forms,
- * or a resume URL.
+ * path does not: a seeded execution stack, MCP relay fields, or multi-page
+ * forms.
  */
 const UNSUPPORTED_TRIGGERS = new Set<string>([
 	CHAT_TRIGGER_NODE_TYPE,
@@ -36,7 +35,6 @@ const UNSUPPORTED_TRIGGERS = new Set<string>([
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-	WAIT_NODE_TYPE,
 ]);
 
 /**
@@ -103,9 +101,11 @@ export class EngineV2Webhooks {
 			);
 		}
 
-		// A v2 run keeps no control-plane execution row, so there is nothing to resume.
+		// A resume runs the waiting node, not a trigger. The trigger checks below
+		// ran when the run started.
 		if (executionId !== undefined) {
-			throw new UserError('Engine v2 cannot resume a waiting execution yet.');
+			this.assertResumeResponseSupported(responseMode);
+			return;
 		}
 
 		if (UNSUPPORTED_TRIGGERS.has(workflowStartNode.type)) {
@@ -137,6 +137,35 @@ export class EngineV2Webhooks {
 		if (responseMode === 'streaming' && this.keepsRawBody(workflowStartNode)) {
 			throw new UserError(
 				`Engine v2 cannot stream a response for the "${workflowStartNode.name}" trigger with the Raw Body option yet.`,
+			);
+		}
+	}
+
+	/**
+	 * On engine v2 a Respond to Webhook node answers the request that started the
+	 * run, and so does the next form page. The end of the run is also answered
+	 * only to that request. With any of these modes, a resume request would wait
+	 * for an answer that goes elsewhere.
+	 *
+	 * TODO(CET-476): answer all three modes once the data plane can answer a
+	 * resume request.
+	 */
+	private assertResumeResponseSupported(responseMode: WebhookResponseMode): void {
+		if (responseMode === 'responseNode' || responseMode === 'formPage') {
+			throw new UserError(
+				'Engine v2 cannot answer a resume request from a Respond to Webhook node or from the next form page yet.',
+			);
+		}
+
+		if (responseMode === 'lastNode') {
+			throw new UserError(
+				'Engine v2 cannot answer a resume request with the last node yet. Set the waiting node to respond immediately.',
+			);
+		}
+
+		if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
+			throw new UserError(
+				`Engine v2 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);
 		}
 	}

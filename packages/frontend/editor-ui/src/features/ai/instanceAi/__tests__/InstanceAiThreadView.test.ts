@@ -17,6 +17,7 @@ import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { fetchThreadTabs } from '../instanceAi.memory.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
@@ -357,6 +358,30 @@ const InstanceAiDataTablePreviewStub = {
 	template: '<div data-test-id="data-table-preview-stub" />',
 };
 
+// Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
+const InstanceAiResourcePickerStub = defineComponent({
+	props: {
+		projectId: { type: String, required: true },
+		contentTestId: { type: String, default: 'instance-ai-tab-picker' },
+	},
+	emits: ['select'],
+	setup:
+		(props, { emit }) =>
+		() =>
+			h('button', {
+				'data-test-id': props.contentTestId,
+				'data-project-id': props.projectId,
+				onClick: () =>
+					emit('select', {
+						type: 'workflow',
+						id: 'wf-picked',
+						name: 'Picked workflow',
+						icon: 'workflow',
+						projectId: props.projectId,
+					}),
+			}),
+});
+
 // Reused by tests that need to override one stub (e.g. swap in a controllable
 // `InstanceAiTestAgentPreviewPanel`) without losing the rest — the renderer's
 // per-call `global.stubs` replaces the whole map rather than merging into it.
@@ -369,6 +394,7 @@ const defaultViewStubs = {
 	AgentSection: AgentSectionStub,
 	InstanceAiDataTablePreview: InstanceAiDataTablePreviewStub,
 	InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
+	InstanceAiResourcePicker: InstanceAiResourcePickerStub,
 };
 
 const renderView = createComponentRenderer(InstanceAiThreadView, {
@@ -545,6 +571,61 @@ describe('InstanceAiThreadView', () => {
 			'workflow-1',
 			'thread-project',
 		);
+	});
+
+	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+		const user = userEvent.setup();
+		const { findByTestId, queryAllByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		// The header toggle opens the preview. The tab bar has its own, which closes it.
+		const headerToggles = () =>
+			queryAllByTestId('instance-ai-artifacts-preview-toggle').filter(
+				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+			);
+
+		const picker = await findByTestId('instance-ai-open-resource-picker');
+		expect(picker).toHaveAttribute('data-project-id', 'thread-project');
+		expect(headerToggles()).toHaveLength(0);
+
+		await user.click(picker);
+
+		expect(await findByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
+			'data-workflow-id',
+			'wf-picked',
+		);
+	});
+
+	it('shows no resource picker until the stored tabs load', async () => {
+		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
+		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
+		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
+		expect(
+			toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false'),
+		).toBeDisabled();
+	});
+
+	it('shows the preview toggle, not the picker, while tabs are open', async () => {
+		seedWorkflowArtifact();
+		const user = userEvent.setup();
+		const { findByTestId, getAllByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		await findByTestId('instance-ai-workflow-preview-stub');
+
+		const closeToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'true',
+		);
+		await user.click(closeToggle!);
+
+		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
+		expect(
+			getAllByTestId('instance-ai-artifacts-preview-toggle').some(
+				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+			),
+		).toBe(true);
 	});
 
 	it('uses the message-circle-plus icon for the new chat button', function () {
@@ -1687,7 +1768,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'workflow_builder_ask_user',
+					toolName: 'ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -1882,7 +1963,6 @@ describe('InstanceAiThreadView', () => {
 		const header = getByTestId('instance-ai-builder-chat-header');
 		const content = getByTestId('instance-ai-content-area');
 		expect(previewPanel.style.width).toBe('400px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('200px');
 		await vi.waitFor(() => {
 			expect(previewPanel).toHaveClass('agentPreviewLayoutTransition');
 		});
@@ -1891,12 +1971,13 @@ describe('InstanceAiThreadView', () => {
 
 		expect(threadArea).toHaveClass('agentPreviewDockOpen');
 		expect(previewPanel.style.width).toBe('400px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('200px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 
 		expect(threadArea).not.toHaveClass('agentPreviewDockOpen');
+		expect(header).not.toHaveAttribute('inert');
+		expect(content).not.toHaveAttribute('inert');
 		expect(previewPanel.style.width).toBe('400px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
@@ -1905,7 +1986,6 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
 		await moveResize({ clientX: 720 });
 		expect(previewPanel.style.width).toBe('480px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
 		await fireEvent.mouseUp(window);
 
@@ -1920,14 +2000,13 @@ describe('InstanceAiThreadView', () => {
 
 		expect(threadArea).toHaveClass('agentPreviewDockOpen');
 		expect(header).not.toHaveAttribute('hidden');
-		expect(header).not.toHaveAttribute('inert');
-		expect(header).not.toHaveAttribute('aria-hidden');
+		expect(header).toHaveAttribute('inert');
+		expect(header).toHaveAttribute('aria-hidden', 'true');
 		expect(content).not.toHaveAttribute('hidden');
-		expect(content).not.toHaveAttribute('inert');
-		expect(content).not.toHaveAttribute('aria-hidden');
+		expect(content).toHaveAttribute('inert');
+		expect(content).toHaveAttribute('aria-hidden', 'true');
 		expect(previewPanel).toBeVisible();
 		expect(previewPanel.style.width).toBe('480px');
-		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 		expect(routerPushSpy).not.toHaveBeenCalled();
 	});
@@ -2007,7 +2086,7 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-preview-panel').style.width).toBe('400px');
 	});
 
-	it('keeps expanded preview state independent from the agent dock', async () => {
+	it('reveals the Assistant column when the agent dock opens from an expanded artifact', async () => {
 		const { getByTestId, user } = await renderAgentArtifact();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
 		const expandToggle = getByTestId('instance-ai-preview-expand-toggle');
@@ -2017,11 +2096,8 @@ describe('InstanceAiThreadView', () => {
 
 		await user.click(getByTestId('instance-ai-agent-preview-open-dock'));
 
-		expect(previewPanel).toHaveAttribute('data-expanded', 'true');
-		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
-
-		await user.click(expandToggle);
 		expect(previewPanel).toHaveAttribute('data-expanded', 'false');
+		expect(getByTestId('instance-ai-thread-area')).toHaveClass('agentPreviewDockOpen');
 
 		await user.click(getByTestId('instance-ai-agent-preview-close-dock'));
 		expect(getByTestId('instance-ai-thread-area')).not.toHaveClass('agentPreviewDockOpen');
@@ -2389,6 +2465,21 @@ describe('InstanceAiThreadView', () => {
 			expect(prompt).toContain('Extract Emails');
 			expect(prompt).toContain('Intentional break');
 			expect(prompt).toContain('My Workflow');
+		});
+
+		it('attaches the failed execution to the fix prompt', async () => {
+			seedThreadArtifact('wf-1', 'My Workflow');
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
+
+			await emitFailure();
+			await user.click(await findByTestId('instance-ai-fix-with-ai-button'));
+
+			const [, options] = vi.mocked(thread.sendMessage).mock.calls[0];
+			expect(options?.attachments).toEqual([
+				{ type: 'workflow', id: 'wf-1', name: 'My Workflow', executionId: 'exec-1' },
+			]);
 		});
 
 		it('hides the card while the chat is busy', async () => {

@@ -267,6 +267,13 @@ oneOf:
           - unknown_type
           - source_not_found
           - type_mismatch
+      reason:
+        type: string
+        enum:
+          - not-on-instance
+          - access-required
+          - incompatible-usage-scope
+        description: 'For `not_found` of a credential named by id, when the caller can read all credentials: `not-on-instance` (no credential has the id), `access-required` (the credential exists, but it is not shared with the target project), or `incompatible-usage-scope` (the credential is not a project credential).'
       sourceId:
         type: string
       targetId:
@@ -363,6 +370,11 @@ oneOf:
         type: string
         enum:
           - fail-policy
+          - not-team
+          - update-forbidden
+          - create-forbidden
+          - license
+        description: '`fail-policy`: the project exists and `projectConflictPolicy` is `fail`. The import endpoints return only this kind. They report the other kinds as a 403 error: `not-team` (the id belongs to a personal project), `update-forbidden`, `create-forbidden`, and `license` (the license does not allow team projects).'
       sourceProjectId:
         type: string
       name:
@@ -480,6 +492,7 @@ oneOf:
           - schema-incompatible
           - module-disabled
           - permission-denied
+          - column-id-conflict
       sourceId:
         type: string
         description: Absent for import-wide failures (`module-disabled`, `permission-denied`).
@@ -664,6 +677,17 @@ oneOf:
       currentName:
         type: string
         description: "For a rename `name-conflict`: the matched table's current name."
+      column:
+        type: object
+        properties:
+          id:
+            type: string
+          name:
+            type: string
+        required:
+          - id
+          - name
+        description: 'For `column-id-conflict`: the package column whose id a column of another table already uses. The import endpoints do not return this. They fail with an error.'
       usedBy:
         type: array
         items:
@@ -854,6 +878,21 @@ oneOf:
       - name
       - violations
     description: 'A workflow the content-import policy refused. Takes down the whole package rather than skipping the workflow: the import rewrites cross-workflow references to the ids each workflow would get, so dropping one leaves the workflows that call it pointing at a row nothing ever wrote.'
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
+          - policy-check-failed
+      point:
+        type: string
+        enum:
+          - contentImport
+          - credentialSave
+    required:
+      - type
+      - point
+    description: A policy check that could not run. The import endpoints do not return this. They fail with an error.
   - type: object
     properties:
       type:

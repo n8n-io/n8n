@@ -49,9 +49,19 @@ export interface RuntimeSkillInterfaceContract {
 	brandColor?: string;
 }
 
+export const RUNTIME_SKILL_LIFETIMES = ['thread', 'turn'] as const;
+
+/**
+ * How long a loaded skill stays active. `thread` (the default) keeps it for the
+ * rest of the conversation. `turn` keeps it until the next user turn starts, for
+ * skills that guide one decision and are dead weight in context afterwards.
+ */
+export type RuntimeSkillLifetime = (typeof RUNTIME_SKILL_LIFETIMES)[number];
+
 export interface RuntimeSkillPolicyContract {
 	allowImplicitInvocation?: boolean;
 	product?: string;
+	lifetime?: RuntimeSkillLifetime;
 }
 
 export interface RuntimeSkillMcpServerDependency {
@@ -180,6 +190,8 @@ export interface RuntimeSkillFileContent {
 export type RuntimeSkillFileLoader = (
 	skillId: string,
 	filePath: string,
+	/** Keep failure details local to this read when calls run concurrently. */
+	onError?: (error: RuntimeSkillLoadError) => void,
 ) => Promise<RuntimeSkillFileContent | null>;
 
 export interface RuntimeSkillLoadError {
@@ -190,6 +202,8 @@ export interface RuntimeSkillLoadError {
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Observe applied revocations and skill context prepared for model calls. */
+	onContext?: (skills: RuntimeSkillContextUsage[]) => void;
 	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
 	shouldAppendSkillUpdates?: (skillId: string) => boolean;
 	/**
@@ -202,6 +216,12 @@ export interface RuntimeSkillSource {
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
 	getLoadError?: (skillId: string) => RuntimeSkillLoadError | undefined;
+}
+
+export interface RuntimeSkillContextUsage {
+	skillId: string;
+	version?: string;
+	kind: 'carried' | 'refreshed' | 'revoked' | 'unavailable';
 }
 
 export interface RuntimeSkillStateScope {

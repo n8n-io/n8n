@@ -6,7 +6,7 @@ import { enableAutoUnmount, mount, type VueWrapper } from '@vue/test-utils';
 import AgentSessionTimelineHeader from '../components/AgentSessionTimelineHeader.vue';
 import type { SessionTimelineMetadata } from '../types';
 
-import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
+import AgentTestHeader from '../components/AgentTestHeader.vue';
 
 const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -69,9 +69,9 @@ vi.mock('@n8n/design-system', () => ({
 	},
 }));
 
-describe('AgentPreviewHeader', () => {
+describe('AgentTestHeader', () => {
 	function mountPreviewHeader() {
-		return mount(AgentPreviewHeader, {
+		return mount(AgentTestHeader, {
 			props: {
 				agentId: 'agent-1',
 				agentName: 'Darwin',

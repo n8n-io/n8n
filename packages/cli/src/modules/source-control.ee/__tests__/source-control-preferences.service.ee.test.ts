@@ -489,8 +489,8 @@ describe('SourceControlPreferencesService', () => {
 		});
 
 		const savedVersion = () => {
-			const [saved] = mockSettingsRepository.save.mock.calls[0] as [{ value: string }];
-			return JSON.parse(saved.value).environmentsVersion;
+			const [, value] = mockSettingsRepository.upsertByKey.mock.calls[0];
+			return JSON.parse(value).environmentsVersion;
 		};
 
 		it.each([
@@ -505,7 +505,7 @@ describe('SourceControlPreferencesService', () => {
 
 				await loader.loadFromDbAndApplySourceControlPreferences();
 
-				expect(mockSettingsRepository.save).toHaveBeenCalledTimes(1);
+				expect(mockSettingsRepository.upsertByKey).toHaveBeenCalledTimes(1);
 				expect(savedVersion()).toBe(version);
 				expect(loader.getPreferences().environmentsVersion).toBe(version);
 			},
@@ -518,7 +518,7 @@ describe('SourceControlPreferencesService', () => {
 
 			await loader.loadFromDbAndApplySourceControlPreferences();
 
-			expect(mockSettingsRepository.save).not.toHaveBeenCalled();
+			expect(mockSettingsRepository.upsertByKey).not.toHaveBeenCalled();
 			expect(loader.getPreferences().environmentsVersion).toBe('v2');
 		});
 

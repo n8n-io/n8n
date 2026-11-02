@@ -239,7 +239,9 @@ onMounted(async () => {
 			matchingColumns: nodeValues.matchingColumns,
 		};
 	}
-	if (!hasSchema) {
+	if (props.isReadOnly) {
+		// A read-only view renders the saved schema as-is. Nothing to fetch or reconcile.
+	} else if (!hasSchema) {
 		// Only fetch a schema if it's not already set
 		await initFetching();
 	} else if (
@@ -402,6 +404,8 @@ const createRequestParams = async (methodName: string) => {
 };
 
 async function fetchFields(): Promise<ResourceMapperFields | null> {
+	// A read-only view keeps the saved schema; no refresh path may load fields.
+	if (props.isReadOnly) return null;
 	const { resourceMapperMethod, localResourceMapperMethod } =
 		props.parameter.typeOptions?.resourceMapper ?? {};
 

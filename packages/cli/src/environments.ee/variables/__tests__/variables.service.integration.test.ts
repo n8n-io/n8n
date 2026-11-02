@@ -1,6 +1,6 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import { VariablesRepository } from '@n8n/db';
+import { ProjectRepository, VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
 import type { Mock } from 'vitest';
@@ -180,6 +180,32 @@ describe('VariablesService', () => {
 					value: 'value1',
 				}),
 			).rejects.toThrow('Variables limit reached');
+		});
+	});
+
+	describe('create after project deletion', () => {
+		it('creates the same project variable after the project is deleted and recreated with the same id', async () => {
+			// ARRANGE
+			const admin = await createAdmin();
+			const project = await createTeamProject('Promoted', admin);
+			await createProjectVariable('API_URL', 'https://example.com', project);
+
+			await projectService.deleteProject(admin, project.id);
+
+			const projectRepository = Container.get(ProjectRepository);
+			await projectRepository.save(
+				projectRepository.create({ id: project.id, name: 'Promoted', type: 'team' }),
+			);
+
+			// ACT & ASSERT
+			await expect(
+				variablesService.create(admin, {
+					key: 'API_URL',
+					type: 'string',
+					value: 'https://example.com',
+					projectId: project.id,
+				}),
+			).resolves.toMatchObject({ key: 'API_URL' });
 		});
 	});
 

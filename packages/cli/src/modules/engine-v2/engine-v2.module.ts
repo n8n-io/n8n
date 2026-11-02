@@ -131,4 +131,10 @@ function assertRemoteConfig(config: EngineConfig): void {
 			'N8N_ENGINE_MODE=remote needs N8N_ENGINE_BASE_URL. The default points at this process, which does not run the data plane.',
 		);
 	}
+
+	if (config.resumeSecret) {
+		throw new UserError(
+			'N8N_ENGINE_MODE=remote must not set N8N_ENGINE_RESUME_SECRET on this main. The data plane runs elsewhere; set the secret in its environment only.',
+		);
+	}
 }

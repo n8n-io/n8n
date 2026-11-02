@@ -5,11 +5,9 @@ import { z } from 'zod';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 import {
-	promotionBindingPreflightResultSchema,
-	promotionBindingProjectSchema,
+	promotionApplyCheckSchema,
 	promotionBindingWarningSchema,
-	promotionInstanceProjectSchema,
-} from './promotion-binding-preflight.dto';
+} from './promotion-apply-check.dto';
 import { promotionCommitMessageSchema } from './promotion-common.dto';
 import { promotionReviewResultSchema } from './promotion-review.dto';
 
@@ -155,6 +153,16 @@ export class ContinueApplyPackageDto extends Z.class(
 	{ strict: true },
 ) {}
 
+const expectedPreviewRevisionSchema = z
+	.string()
+	.regex(/^[0-9a-f]{64}$/)
+	.optional()
+	.openapi({
+		description:
+			'The `revision` of the reviewed Apply preview. Apply builds the preview again and returns ' +
+			'status `preview-changed` without writing when it differs, for example after a local edit.',
+	});
+
 /** The selection is a set, so a repeated workflow id is a malformed request. */
 const selectedWorkflowIdsSchema = z
 	.array(n8nIdSchema)
@@ -167,6 +175,7 @@ export class ApplySelectionDto extends Z.class(
 	{
 		workflowIds: selectedWorkflowIdsSchema,
 		expectedSource: expectedSourceSchema.optional(),
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 	},
 	{ strict: true },
 ) {}
@@ -175,6 +184,7 @@ export class ContinueApplySelectionDto extends Z.class(
 	{
 		workflowIds: selectedWorkflowIdsSchema,
 		expectedSource: expectedSourceSchema,
+		expectedPreviewRevision: expectedPreviewRevisionSchema,
 		confirmDestructiveChanges: confirmDestructiveChangesSchema,
 	},
 	{ strict: true },
@@ -193,9 +203,11 @@ export const applyPackageResultSchema = z.discriminatedUnion('status', [
 	}),
 	applyPackageIdentitySchema.extend({
 		status: z.literal('blocked'),
-		preflight: promotionBindingPreflightResultSchema,
+		check: promotionApplyCheckSchema,
 	}),
 	applyPackageIdentitySchema.extend({ status: z.literal('source-changed') }),
+	/** This instance changed after the reviewed preview. Nothing was imported. */
+	applyPackageIdentitySchema.extend({ status: z.literal('preview-changed') }),
 ]);
 
 export const ApplyPackageResultDto = {
@@ -205,36 +217,3 @@ export const ApplyPackageResultDto = {
 };
 
 export type ApplyPackageResultDto = z.infer<typeof applyPackageResultSchema>;
-
-/** The Apply check reads the package at the commit of the Apply preview. */
-export class ApplyCheckQueryDto extends Z.class(
-	{ commitSha: expectedSourceSchema.shape.commitSha },
-	{ strict: true },
-) {}
-
-const crossProjectMoveSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	/** The project that holds the item on the branch. */
-	project: promotionBindingProjectSchema,
-	/**
-	 * False when the branch project does not exist on this instance yet. Then the item can only move
-	 * back on the source instance.
-	 */
-	projectExists: z.boolean(),
-	/** The project that holds the item on this instance. */
-	instanceProject: promotionInstanceProjectSchema,
-});
-
-const applyCheckResultSchema = applyPackageIdentitySchema.extend({
-	preflight: promotionBindingPreflightResultSchema,
-	/**
-	 * Workflows that the branch holds in one project and this instance holds in another, where one of
-	 * the two is this project. Apply cannot move them between projects.
-	 */
-	movedWorkflows: z.array(crossProjectMoveSchema),
-	/** Folders that the branch and this instance hold in different projects, as for workflows. */
-	movedFolders: z.array(crossProjectMoveSchema),
-});
-
-export type ApplyCheckResult = z.infer<typeof applyCheckResultSchema>;

@@ -123,7 +123,14 @@ import {
 	discardPendingN8nChatMessage,
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
-import { base64ToFile } from '@/app/utils/fileUtils';
+import {
+	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	discardPendingAssistantAgentMessage,
+	rememberAssistantAgentThread,
+	stashPendingAssistantAgentMessage,
+} from './assistantAgent/assistantAgentThreads';
+import { base64ToFile, resolveFileMimeType } from '@/app/utils/fileUtils';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -817,6 +824,17 @@ async function handleSubmit(
 		return;
 	}
 
+	if (settingsStore.isAssistantAgentEnabled) {
+		await startAssistantAgentThread(
+			selectedProject.value,
+			message,
+			attachments,
+			restoreDraft,
+			acceptDraft,
+		);
+		return;
+	}
+
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 	// The composer clears on submit, but this view stays up until the send is
@@ -880,6 +898,7 @@ async function handleSubmit(
 	if (nodeCount > 0) {
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 			node_count: nodeCount,
+			runtime: 'instance-ai',
 		});
 	}
 	acceptDraft();
@@ -893,6 +912,58 @@ async function handleSubmit(
 		toast.showError(error, i18n.baseText('generic.error'));
 	} finally {
 		isStartingThread.value = false;
+	}
+}
+
+/**
+ * Starts a thread on the Assistant agent of the agents runtime. The thread view
+ * sends the first message, so this view only hands it over and navigates.
+ */
+async function startAssistantAgentThread(
+	projectId: string,
+	message: string,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
+	acceptDraft: () => void,
+) {
+	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
+	const fileAttachments: InstanceAiFileAttachment[] = [];
+	for (const attachment of attachments ?? []) {
+		if (attachment.type !== 'file') continue;
+		const mimeType = resolveFileMimeType(attachment.fileName, attachment.mimeType);
+		if (isFileAcceptedByAccept(attachment.fileName, mimeType, acceptString)) {
+			fileAttachments.push(attachment);
+			continue;
+		}
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: attachment.fileName },
+			}),
+		});
+	}
+	// The thread view cannot send references without text or a file, so keep the draft.
+	if (!message.trim() && fileAttachments.length === 0) {
+		restoreDraftAfterFailedSubmit(restoreDraft);
+		return;
+	}
+	const pendingMessage = {
+		threadId: uuidv4(),
+		text: message,
+		files: fileAttachments.map((attachment) =>
+			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
+		),
+		references: (attachments ?? []).filter((attachment) => attachment.type !== 'file'),
+	};
+	stashPendingAssistantAgentMessage(pendingMessage);
+	rememberAssistantAgentThread(pendingMessage.threadId, projectId);
+	acceptDraft();
+	const failure = await router.push({
+		name: INSTANCE_AI_THREAD_VIEW,
+		params: { threadId: pendingMessage.threadId },
+	});
+	if (failure && discardPendingAssistantAgentMessage(pendingMessage)) {
+		restoreDraftAfterFailedSubmit(restoreDraft);
 	}
 }
 
