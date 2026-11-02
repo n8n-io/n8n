@@ -13,6 +13,9 @@ import {
 import type { ComputedRef } from 'vue';
 import { createEventHook, throttledWatch } from '@vueuse/core';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
+import { mapArray } from '@n8n/utils/array/map-array';
+import { mapRecord } from '@n8n/utils/object/map-record';
+import { renameRecordKey } from '@n8n/utils/object/rename-record-key';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -86,50 +89,6 @@ export function getExecutionDataStoreId(id: ExecutionDataId) {
  */
 export function hasExecutionDataStore(id: ExecutionDataId): boolean {
 	return getActivePinia()?.state.value[getExecutionDataStoreId(id)] !== undefined;
-}
-
-/**
- * Maps the items of an array. Returns the same array when `fn` changes no item,
- * so consumers that gate on identity see no change.
- */
-function mapArray<T>(items: T[], fn: (item: T) => T): T[] {
-	let changed = false;
-	const next = items.map((item) => {
-		const mapped = fn(item);
-		if (mapped !== item) changed = true;
-		return mapped;
-	});
-	return changed ? next : items;
-}
-
-/**
- * Maps the values of a record. Returns the same record when `fn` changes no
- * value, so consumers that gate on identity see no change.
- */
-function mapRecord<T>(record: Record<string, T>, fn: (value: T) => T): Record<string, T> {
-	let changed = false;
-	const next = Object.fromEntries(
-		Object.entries(record).map(([key, value]) => {
-			const mapped = fn(value);
-			if (mapped !== value) changed = true;
-			return [key, mapped];
-		}),
-	);
-	return changed ? next : record;
-}
-
-/**
- * Returns a copy of `record` with the `oldName` entry moved to `newName`.
- * Returns the same record when it has no `oldName` entry.
- */
-function renameRecordKey<T>(
-	record: Record<string, T>,
-	oldName: string,
-	newName: string,
-): Record<string, T> {
-	if (!record[oldName]) return record;
-	const { [oldName]: value, ...rest } = record;
-	return { ...rest, [newName]: value };
 }
 
 function renameTaskSources(tasks: ITaskData[], oldName: string, newName: string): ITaskData[] {
