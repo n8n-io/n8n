@@ -567,7 +567,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_MODEL: {
 		name: 'User configured AI Assistant model',
 		description:
-			'An admin saved an n8n Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
+			'An admin saved an n8n Assistant model connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
 		properties: z.object({
 			provider: z
 				.string()
@@ -585,7 +585,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_SANDBOX: {
 		name: 'User configured AI Assistant sandbox',
 		description:
-			'An admin saved an n8n Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
+			'An admin saved an n8n Assistant sandbox connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
 		properties: z.object({
 			sandbox_type: z.enum(['n8n-sandbox', 'daytona']),
 			previous_sandbox_type: z
@@ -599,7 +599,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_WEB_SEARCH: {
 		name: 'User configured AI Assistant web search',
 		description:
-			'An admin saved an n8n Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
+			'An admin saved an n8n Assistant web search connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
 		properties: z.object({
 			provider: z.enum(['brave', 'searxng']),
 			previous_provider: z
@@ -613,7 +613,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_CONNECTION_FAILED: {
 		name: 'AI Assistant connection failed',
 		description:
-			'A setup verification call (POST /instance-ai/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
+			'A setup verification call (POST /assistant/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
 		properties: z.object({
 			component: z.enum(['model', 'sandbox', 'web_search']),
 			provider: z

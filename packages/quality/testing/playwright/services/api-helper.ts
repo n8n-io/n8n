@@ -574,21 +574,21 @@ export class ApiHelpers {
 	}
 
 	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
-		const response = await this.request.put('/rest/instance-ai/settings', {
+		const response = await this.request.put('/rest/assistant/settings', {
 			data: { permissions },
 		});
 		if (!response.ok()) {
 			throw new TestError(
-				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+				`PUT /rest/assistant/settings failed (${response.status()}): ${await response.text()}`,
 			);
 		}
 	}
 
 	async updateInstanceAiSettings(settings: InstanceAiAdminSettingsUpdateRequest): Promise<void> {
-		const response = await this.request.put('/rest/instance-ai/settings', { data: settings });
+		const response = await this.request.put('/rest/assistant/settings', { data: settings });
 		if (!response.ok()) {
 			throw new TestError(
-				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+				`PUT /rest/assistant/settings failed (${response.status()}): ${await response.text()}`,
 			);
 		}
 	}
