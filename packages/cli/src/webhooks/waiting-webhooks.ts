@@ -42,9 +42,29 @@ import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
 
-function toLocateRefusal(executionId: string, status: number, reason: string): Error {
-	if (status === 404) return new NotFoundError(`The execution "${executionId}" does not exist.`);
-	const refusal = `The execution "${executionId}" cannot be resumed: ${reason}.`;
+/**
+ * The path and query of a resume request as the caller sent them, without the
+ * token parameter. A step-bound token binds this exact string, so the token is
+ * cut out as a substring and the query is never parsed and rebuilt: two
+ * different strings can parse to the same values.
+ */
+export function literalRequestShape(originalUrl: string): { pathname: string; search: string } {
+	const queryStart = originalUrl.indexOf('?');
+	if (queryStart === -1) return { pathname: originalUrl, search: '' };
+
+	// The parameter goes with the separator after it, so a token in the middle
+	// leaves no `&&`. Anchored to `?` or `&`, so a parameter such as `xsignature`
+	// stays.
+	const search = originalUrl
+		.slice(queryStart)
+		.replace(new RegExp(`(^\\?|&)${WAITING_TOKEN_QUERY_PARAM}=[^&]*&?`), '$1')
+		.replace(/[?&]$/, '');
+	return { pathname: originalUrl.slice(0, queryStart), search };
+}
+
+function toLocateRefusal(id: string, status: number, reason: string): Error {
+	if (status === 404) return new NotFoundError(`The execution or step "${id}" does not exist.`);
+	const refusal = `The execution or step "${id}" cannot be resumed: ${reason}.`;
 	if (status === 409) return new ConflictError(refusal);
 	// A data plane without a resume secret, so not a wait that is over.
 	if (status === 501) return new NotImplementedError(refusal);
@@ -92,7 +112,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 		private readonly endpointsConfig: EndpointsConfig,
-		private readonly dataPlane: EngineDataPlaneProxyService,
+		protected readonly dataPlane: EngineDataPlaneProxyService,
 		private readonly executionReader: EngineV2ExecutionReader,
 	) {}
 
@@ -433,7 +453,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	protected async resumeEngineV2Execution(
 		req: WaitingWebhookRequest,
 		res: express.Response,
-		executionId: ExecutionIdV2,
+		pathId: ExecutionIdV2,
 		routeSuffix: string | undefined,
 	): Promise<IWebhookResponseCallbackData> {
 		req.params = {} as WaitingWebhookRequest['params'];
@@ -441,29 +461,33 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { token, webhookPath } = this.parseSignatureParam(req);
 		if (!token) return this.respondInvalidToken(res);
 
-		const located = await this.dataPlane.locateResumeTarget(executionId, { token });
+		// The path names an execution or, for a step-bound URL, a step. The token
+		// says which, and the data plane reads it.
+		const located = await this.dataPlane.locateResume({
+			id: pathId,
+			token,
+			request: literalRequestShape(req.originalUrl),
+		});
 		if (!located.ok) {
 			if (located.status === 401) return this.respondInvalidToken(res);
-			throw toLocateRefusal(executionId, located.status, located.error);
+			throw toLocateRefusal(pathId, located.status, located.error);
 		}
 
 		this.stripTokenFromRequest(req);
 		const suffix = routeSuffix ?? webhookPath;
 		const { execution: snapshot, target } = located.value;
+		const executionId = snapshot.id;
 
 		const statusResult = this.answerEngineV2Status({ snapshot, target, suffix, req, res });
 		if (statusResult) return statusResult;
 
 		if (target === null) return this.answerEngineV2WithoutTarget(executionId, snapshot, res);
 
-		const execution = await this.executionReader.fromSnapshot(snapshot);
-		if (!execution) throw new NotFoundError(`The execution "${executionId}" does not exist.`);
-
-		const node = execution.workflowData.nodes.find((candidate) => candidate.id === target.nodeId);
-		if (!node) throw new NotFoundError('Could not find node to process webhook.');
+		const standIn = await this.buildEngineV2StandIn(snapshot, target.nodeId);
+		if (!standIn) throw new NotFoundError('Could not find node to process webhook.');
+		const { execution, node } = standIn;
 
 		this.sanitizeEngineV2Request(req, node);
-		seedResumingNode(execution, node);
 
 		// A form wait reached through the webhook route: send the browser to the
 		// form route, as v1 does.
@@ -486,6 +510,23 @@ export class WaitingWebhooks implements IWebhookManager {
 			suffix,
 			engineResume: { stepId: target.stepId, token },
 		});
+	}
+
+	/**
+	 * The execution that the v1 resume code reads, built from the data plane's
+	 * snapshot, with the waiting node seeded. Undefined when the run's workflow
+	 * document lacks what the v1 code reads or lacks the node.
+	 */
+	protected async buildEngineV2StandIn(
+		snapshot: ExecutionSnapshot,
+		nodeId: string,
+	): Promise<{ execution: IExecutionResponse; node: INode } | undefined> {
+		const execution = await this.executionReader.fromSnapshot(snapshot);
+		const node = execution?.workflowData.nodes.find((candidate) => candidate.id === nodeId);
+		if (!execution || !node) return undefined;
+
+		seedResumingNode(execution, node);
+		return { execution, node };
 	}
 
 	protected respondInvalidToken(res: express.Response): IWebhookResponseCallbackData {

@@ -4,7 +4,7 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
-import { SharedSecretIdentityVerifier } from '@n8n/engine';
+import { mintApprovalCallback, SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
 import type { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
@@ -353,22 +353,29 @@ describe('EngineDataPlaneClient', () => {
 	});
 
 	describe('resume requests', () => {
-		it("posts `locateResumeTarget` to the execution's resume-target route", async () => {
+		it('reads the step id of an approval callback, and nothing from another reference', () => {
+			const stepId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+
+			expect(client.readApprovalCallback(mintApprovalCallback('secret', stepId, 'a'))).toBe(stepId);
+			expect(client.readApprovalCallback('nhitl1|e1|a|mac')).toBeUndefined();
+		});
+
+		it("posts `locateResume` to the engine's locate route", async () => {
 			const value = {
 				execution: { id: EXECUTION_ID },
 				target: { stepId: 'step-1', nodeId: 'wait' },
 			};
 			respondWith(200, value);
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
 				ok: true,
 				value,
 			});
 			expect(http.request).toHaveBeenCalledWith(
 				expect.objectContaining({
-					url: `/api/workflow-executions/${EXECUTION_ID}/resume-target`,
+					url: '/api/resume-requests/locate',
 					method: 'POST',
-					body: { token: 't' },
+					body: { id: EXECUTION_ID, token: 't' },
 					returnFullResponse: true,
 					ignoreHttpStatusErrors: true,
 					disableFollowRedirect: true,
@@ -399,7 +406,7 @@ describe('EngineDataPlaneClient', () => {
 		])("relays a %s refusal with the engine's reason", async (status, error) => {
 			respondWith(status, { error });
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
 				ok: false,
 				status,
 				error,
@@ -409,7 +416,7 @@ describe('EngineDataPlaneClient', () => {
 		it('relays a 300 without a reason as an engine error', async () => {
 			respondWith(300, {});
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).resolves.toEqual({
 				ok: false,
 				status: 300,
 				error: 'engine_error',
@@ -419,7 +426,7 @@ describe('EngineDataPlaneClient', () => {
 		it("throws on a 401 for this plane's own identity, which is a failure and not a refusal", async () => {
 			respondWith(401, { error: 'unauthenticated' });
 
-			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).rejects.toThrow(
+			await expect(client.locateResume({ id: EXECUTION_ID, token: 't' })).rejects.toThrow(
 				'Engine responded with 401',
 			);
 		});
