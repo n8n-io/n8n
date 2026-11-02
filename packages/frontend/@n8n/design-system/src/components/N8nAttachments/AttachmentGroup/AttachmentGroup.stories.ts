@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { ref } from 'vue';
 
 import type { AttachmentProps } from '../Attachment/Attachment.types';
 import N8nAttachment from '../Attachment/Attachment.vue';
@@ -12,8 +13,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function onRemove() {
-	window.alert('Remove attachment');
+function useAttachments(initialAttachments: AttachmentProps[]) {
+	const attachments = ref([...initialAttachments]);
+
+	function onRemove(fileName: string) {
+		attachments.value = attachments.value.filter((attachment) => attachment.fileName !== fileName);
+	}
+
+	return { attachments, onRemove };
 }
 
 const attachments: AttachmentProps[] = Array.from({ length: 8 }, (_, index) => ({
@@ -55,7 +62,7 @@ export const Placeholders: Story = {
 		return {
 			components: { N8nAttachment, N8nAttachmentGroup },
 			setup() {
-				return { attachments, onRemove };
+				return useAttachments(attachments);
 			},
 			template: `
 				<N8nAttachmentGroup>
@@ -64,7 +71,7 @@ export const Placeholders: Story = {
 						:key="attachment.fileName"
 						v-bind="attachment"
 						:is-removable="true"
-						@remove="onRemove"
+						@remove="onRemove(attachment.fileName)"
 						style="width: var(--height--4xl)"
 					/>
 				</N8nAttachmentGroup>
@@ -78,18 +85,16 @@ export const Default: Story = {
 		return {
 			components: { N8nAttachment, N8nAttachmentGroup },
 			setup() {
-				return { onRemove };
+				return useAttachments(attachments.slice(0, 2));
 			},
 			template: `
 				<N8nAttachmentGroup>
 					<N8nAttachment
-						v-for="index in 2"
-						:key="index"
-						:file-name="'image-' + index + '.jpg'"
-						mime-type="image/jpeg"
+						v-for="attachment in attachments"
+						:key="attachment.fileName"
+						v-bind="attachment"
 						:is-removable="true"
-						@remove="onRemove"
-						:src="'https://picsum.photos/seed/attachment-' + index + '/300/300'"
+						@remove="onRemove(attachment.fileName)"
 						style="width: var(--height--4xl)"
 					/>
 				</N8nAttachmentGroup>

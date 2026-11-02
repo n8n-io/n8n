@@ -1,16 +1,97 @@
-import { fireEvent, render, screen } from '@testing-library/vue';
+import { cleanup, fireEvent, render, screen } from '@testing-library/vue';
+
+import { nextTick } from 'vue';
 
 import N8nAttachment from './Attachment.vue';
 
 describe('N8nAttachment', function describeComponent() {
-	it('emits removal', async function testActions() {
-		const { emitted } = render(N8nAttachment, {
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+	});
+
+	it('emits removal after the loaded sprite finishes once', async function testActions() {
+		vi.useFakeTimers();
+		const { emitted, container, baseElement, unmount } = render(N8nAttachment, {
 			props: { fileName: 'example.pdf', mimeType: 'application/pdf' },
 		});
 
+		const root = screen.getByRole('figure').parentElement!;
+		vi.spyOn(root, 'getBoundingClientRect').mockReturnValue(new DOMRect(40, 60, 80, 80));
+		const sprite = baseElement.querySelector('img')!;
+		const overlay = sprite.parentElement!;
+		expect(container.contains(overlay)).toBe(false);
+		await fireEvent.load(sprite);
 		await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
 
+		expect(root.style.display).not.toBe('none');
+		await vi.advanceTimersByTimeAsync(159);
+		await nextTick();
+		expect(root.style.display).not.toBe('none');
+		await vi.advanceTimersByTimeAsync(1);
+		await nextTick();
+		expect(root).toHaveStyle({ display: 'none' });
+		expect(overlay).toHaveAttribute('aria-hidden', 'true');
+		expect(overlay).toHaveStyle({ left: '40px', top: '60px', width: '80px', height: '80px' });
+		expect(emitted('remove')).toBeUndefined();
+		expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+		expect(emitted('remove')).toBeUndefined();
+		await fireEvent.animationEnd(sprite);
+		await fireEvent.animationEnd(sprite);
 		expect(emitted('remove')).toHaveLength(1);
+		unmount();
+		expect(overlay).not.toBeInTheDocument();
+	});
+
+	it('keeps the teleported sprite available while it loads after removal', async function testLateLoad() {
+		const { baseElement, emitted } = render(N8nAttachment, {
+			props: { fileName: 'example.pdf', mimeType: 'application/pdf' },
+		});
+		const root = screen.getByRole('figure').parentElement!;
+		await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+		expect(root).toHaveStyle({ display: 'none' });
+		const sprite = baseElement.querySelector('img')!;
+		await fireEvent.load(sprite);
+		expect(emitted('remove')).toBeUndefined();
+		await fireEvent.animationEnd(sprite);
+		expect(emitted('remove')).toHaveLength(1);
+	});
+
+	it('removes immediately with reduced motion', async function testReducedMotion() {
+		vi.stubGlobal('matchMedia', (query: string) => ({
+			matches: query.includes('prefers-reduced-motion'),
+			media: query,
+			addEventListener() {},
+			removeEventListener() {},
+			addListener() {},
+			removeListener() {},
+		}));
+		try {
+			const { emitted, unmount } = render(N8nAttachment, {
+				props: { fileName: 'example.pdf', mimeType: 'application/pdf' },
+			});
+			await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+			expect(emitted('remove')).toHaveLength(1);
+			unmount();
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('clears the fallback on unmount', async function testCleanup() {
+		vi.useFakeTimers();
+		try {
+			const { unmount, emitted } = render(N8nAttachment, {
+				props: { fileName: 'example.pdf', mimeType: 'application/pdf' },
+			});
+			await fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+			unmount();
+			vi.runAllTimers();
+			expect(emitted('remove')).toBeUndefined();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('hides removal when the attachment is not removable', function testReadOnly() {
