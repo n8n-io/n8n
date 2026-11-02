@@ -419,12 +419,14 @@ describe('analyzePackage', () => {
 
 	it('marks a crash during analysis as an error, not a failed check', async () => {
 		fixtureDir = makeFixturePackage({ 'index.js': 'module.exports = {};\n' });
+		const patternsWithEmptyPattern = [''];
 
-		const result = await analyzePackage(fixtureDir, ['']);
+		const result = await analyzePackage(fixtureDir, patternsWithEmptyPattern);
 
-		expect(getExitCode(result), 'fast-glob throws on an empty pattern').toBe(
-			EXIT_CODES.INTERNAL_ERROR,
-		);
+		expect(
+			getExitCode(result),
+			'patternsWithEmptyPattern holds an empty file pattern, which crashes the analysis',
+		).toBe(EXIT_CODES.INTERNAL_ERROR);
 	});
 });
 
