@@ -228,11 +228,6 @@ export const parseSourceRepo = (
 // a stalled connection must not hang the gate.
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
 
-/**
- * A 4xx means the attested repository or commit is not publicly reachable,
- * which the package author has to fix. Anything else (timeouts, 5xx, a broken
- * archive) is a scanner-side error and says nothing about the package.
- */
 export const isSourceUnavailable = (error: unknown): boolean => {
 	if (!axios.isAxiosError(error)) return false;
 	const status = error.response?.status;
