@@ -2,6 +2,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
+import { defineComponent, h } from 'vue';
+import { N8nDataTableServer } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
@@ -1551,6 +1553,29 @@ describe('MigrationRuleDetail', () => {
 	});
 
 	describe('pagination', () => {
+		// A distinct name keeps Vue Test Utils from stubbing the inner table again.
+		const PaginationTable = { ...N8nDataTableServer, name: 'PaginationTable' };
+
+		// Keep the real table, pagination, and filters. Render only row names here,
+		// because mounting all cell components on each page can exceed the test timeout.
+		const renderPaginationComponent = () =>
+			renderComponent({
+				props: { migrationRuleId: 'rule-1' },
+				global: {
+					stubs: {
+						N8nDataTableServer: defineComponent({
+							inheritAttrs: false,
+							setup(_, { attrs }) {
+								return () =>
+									h(PaginationTable, attrs, {
+										item: ({ item }: { item: { name: string } }) => h('tr', [h('td', item.name)]),
+									});
+							},
+						}),
+					},
+				},
+			});
+
 		const manyWorkflows = Array.from({ length: 30 }, (_, index) => ({
 			...mockWorkflowWithIssue,
 			id: `wf-${index}`,
@@ -1562,7 +1587,7 @@ describe('MigrationRuleDetail', () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
 			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			renderPaginationComponent();
 
 			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
 			// The header row plus 25 workflow rows.
@@ -1580,7 +1605,7 @@ describe('MigrationRuleDetail', () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
 			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			renderPaginationComponent();
 			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
 			await userEvent.click(screen.getByTestId('pagination-next'));
 			await waitFor(() => expect(screen.getByText('Paged workflow 25')).toBeInTheDocument());
@@ -1590,6 +1615,8 @@ describe('MigrationRuleDetail', () => {
 			await userEvent.click(within(status).getByRole('radio', { name: 'Published' }));
 
 			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+			expect(screen.getAllByRole('row')).toHaveLength(26);
+			expect(screen.queryByText('Paged workflow 25')).not.toBeInTheDocument();
 		});
 	});
 

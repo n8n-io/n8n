@@ -15,6 +15,7 @@ import {
 	W3CBaggagePropagator,
 	W3CTraceContextPropagator,
 } from '@opentelemetry/core';
+import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -37,6 +38,7 @@ import {
 } from './execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS, isReservedBaggageKey } from './otel.constants';
+import { OtelConfigureHook } from './otel-configure-hook';
 import type { TracingContext } from './tracing-context';
 
 const propagator = new W3CTraceContextPropagator();
@@ -63,6 +65,7 @@ export class ExecutionLevelTracer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
+		private readonly configureHook: OtelConfigureHook,
 	) {}
 
 	private get tracer() {
@@ -315,9 +318,16 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			const callerBaggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			const hookEntries = this.configureHook.buildOutboundBaggage(
+				hasAttributes(span) ? span.attributes : {},
+			);
 
-			propagation.inject(spanContext(span, baggage), headers, defaultTextMapSetter);
+			propagation.inject(
+				spanContext(span, withHookEntries(callerBaggage, hookEntries)),
+				headers,
+				defaultTextMapSetter,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -456,6 +466,26 @@ function toTracingParentContext(
 		identity,
 		...(carrier.baggage && { baggage: carrier.baggage }),
 	};
+}
+
+/**
+ * The caller baggage with the `otel.configure` entries on top. The hook is
+ * operator configuration, so it wins where a key is in both.
+ */
+function withHookEntries(
+	baggage: Baggage | undefined,
+	entries: Record<string, string>,
+): Baggage | undefined {
+	const hookEntries = Object.entries(entries);
+	if (hookEntries.length === 0) return baggage;
+
+	let merged = baggage ?? propagation.createBaggage();
+	for (const [key, value] of hookEntries) merged = merged.setEntry(key, { value });
+	return merged;
+}
+
+function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {
+	return 'attributes' in span && typeof span.attributes === 'object' && span.attributes !== null;
 }
 
 // Only a recorded SDK span has a start time. The API span type does not expose it.

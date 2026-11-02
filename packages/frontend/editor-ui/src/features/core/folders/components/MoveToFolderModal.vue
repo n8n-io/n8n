@@ -37,6 +37,14 @@ import {
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useToast } from '@n8n/composables/useToast';
 import { I18nT } from 'vue-i18n';
+import {
+	TransferPolicyWarning,
+	useTransferPreview,
+	type TransferPreviewTarget,
+} from '@n8n/frontend-module-type-availability-policies';
+import PolicyViolationTypeIcon from '@/app/components/PolicyViolationTypeIcon.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
+import { useUnpublishedByMoveToast } from '@/app/composables/useUnpublishedByMoveToast';
 
 import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
 /**
@@ -77,6 +85,8 @@ const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
 const { fetchDependencies, fetchFolderDependencies, getDependencies } = useDependencies();
 const toast = useToast();
+const { labelOf } = usePolicyViolationLabels();
+const unpublishedByMoveToast = useUnpublishedByMoveToast();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
@@ -222,6 +232,8 @@ const onSubmit = async () => {
 				type: 'project',
 			};
 
+	// The project picker stays enabled while the move runs.
+	const movedToProjectName = targetProjectName.value;
 	loading.value = true;
 
 	try {
@@ -236,13 +248,14 @@ const onSubmit = async () => {
 					? shareableCredentials.value.map((c) => c.id)
 					: undefined;
 
-				await foldersStore.moveFolderToProject(
+				const result = await foldersStore.moveFolderToProject(
 					projectsStore.currentProject?.id ?? '',
 					props.data.resource.id,
 					selectedProject.value.id,
 					destinationParentFolderId,
 					shareCredentials,
 				);
+				unpublishedByMoveToast.showForFolder(result, movedToProjectName);
 
 				props.data.workflowListEventBus.emit('folder-transferred', {
 					source: {
@@ -290,12 +303,17 @@ const onSubmit = async () => {
 					? shareableCredentials.value.map((c) => c.id)
 					: undefined;
 
-				await projectsStore.moveResourceToProject(
+				const result = await projectsStore.moveResourceToProject(
 					'workflow',
 					props.data.resource.id,
 					selectedProject.value.id,
 					destinationParentFolderId,
 					shareCredentials,
+				);
+				unpublishedByMoveToast.showForWorkflow(
+					result,
+					props.data.resource.name,
+					movedToProjectName,
 				);
 
 				props.data.workflowListEventBus.emit('workflow-transferred', {
@@ -405,6 +423,24 @@ const usedDataTables = computed(() =>
 		: [],
 );
 
+const transferPreviewTarget = computed((): TransferPreviewTarget | null => {
+	if (!isChangingProject.value) return null;
+	if (props.data.resourceType === 'workflow') {
+		return { resourceType: 'workflow', id: props.data.resource.id };
+	}
+	if (!currentResourceProjectId.value) return null;
+	return {
+		resourceType: 'folder',
+		id: props.data.resource.id,
+		projectId: currentResourceProjectId.value,
+	};
+});
+
+const { preview: transferPreview } = useTransferPreview(
+	transferPreviewTarget,
+	() => selectedProject.value?.id,
+);
+
 const isFolderSelectable = computed(() => {
 	return isOwnPersonalProject.value || !isPersonalProject.value;
 });
@@ -471,6 +507,19 @@ onMounted(async () => {
 						:filter-fn="filterFn"
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
+					<TransferPolicyWarning
+						v-if="transferPreview && selectedProject"
+						:class="$style.calloutSpacing"
+						:preview="transferPreview"
+						:resource-type="props.data.resourceType"
+						:project-id="selectedProject.id"
+						:project-name="targetProjectName"
+						:label-of="labelOf"
+					>
+						<template #icon="{ violation }">
+							<PolicyViolationTypeIcon :violation="violation" />
+						</template>
+					</TransferPolicyWarning>
 				</div>
 
 				<div v-if="isTransferringOwnership" :class="$style.block">

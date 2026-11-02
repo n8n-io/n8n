@@ -57,8 +57,9 @@ There are two ways to add the headers:
   helper is public, so a community node can use it too.
 
 `getTraceHeaders()` returns the headers the propagator writes: `traceparent`, also `tracestate`
-when the trace has one, and `baggage` when the execution has caller baggage. It returns an
-empty object when the propagator writes nothing, and when no execution runs.
+when the trace has one, and `baggage` when the execution has caller baggage or the
+`otel.configure` hook adds entries (see below). It returns an empty object when the propagator
+writes nothing, and when no execution runs. Use the result without a guard.
 
 Both ways write every outbound header with the global propagator. `ExecutionLevelTracer` puts
 the caller baggage on the context it hands that propagator, so one writer produces the whole
@@ -211,6 +212,44 @@ replaces them with a JSON object, for example `{"project":"","node":""}`.
 - n8n compares the key after it adds the prefix. If that key matches a built-in key in `ATTR`, n8n drops it and keeps the built-in value.
 - Node metadata from the Tools Agent (`ai.agent.*`) uses the node prefix too.
 - Set the same value on main, workers and webhook processes.
+
+### The `otel.configure` external hook
+
+An operator can change what n8n sends to the OTel backend with one
+[external hook](https://docs.n8n.io/deploy/host-n8n/configure-n8n/external-hooks) file.
+`OtelService` runs the hook once at startup, on main, worker and webhook processes, and gives
+it an API with two functions. Each mapper gets the attributes of one span and returns a plain
+object. n8n keeps only string values.
+
+- `registerResourceAttributeMapper((spanAttributes) => attributes)`: the result is merged into
+  the resource of each exported span. n8n's own resource attributes (`service.name`,
+  `service.version`, `n8n.instance.*`) win over the hook.
+- `registerOutboundBaggageMapper((spanAttributes) => entries)`: the result is sent as a
+  `baggage` header next to `traceparent` on outbound requests. Without a mapper, n8n sends no
+  `baggage` header.
+
+A failing `otel.configure` callback at startup logs one warning, and n8n starts without the
+mappers. A mapper that throws logs one warning, then n8n ignores it and keeps the span as it is.
+
+Example hook file. Load it with `EXTERNAL_HOOK_FILES=/absolute/path/to/otel-project-resource.hook.js`:
+
+```js
+const projectIdFrom = (spanAttributes) => {
+	const projectId = spanAttributes['n8n.project.id'];
+	return typeof projectId === 'string' ? { 'project.id': projectId } : {};
+};
+
+module.exports = {
+	otel: {
+		configure: [
+			async (api) => {
+				api.registerResourceAttributeMapper(projectIdFrom);
+				api.registerOutboundBaggageMapper(projectIdFrom);
+			},
+		],
+	},
+};
+```
 
 ### Module architecture
 ```mermaid

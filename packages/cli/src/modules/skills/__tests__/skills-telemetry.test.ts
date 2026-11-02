@@ -41,6 +41,23 @@ describe('SkillsTelemetry', () => {
 		]);
 	});
 
+	it('reports the provider and access of the source of a synced skill', async () => {
+		await service.created('user-1', ['skill_instance'], 'github', 'sync', {
+			source_provider: 'github',
+			source_access: 'credential',
+		});
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_CREATED_SKILL, {
+			user_id: 'user-1',
+			skill_id: 'skill_instance',
+			scope: 'instance',
+			source: 'github',
+			method: 'sync',
+			source_provider: 'github',
+			source_access: 'credential',
+		});
+	});
+
 	it('reports an update with the scope after the save', async () => {
 		await service.updated('user-1', 'skill_project', 'mcp', 4, true);
 
@@ -117,6 +134,7 @@ describe('SkillsTelemetry', () => {
 	it('reports a Skill Sync import with its counts', async () => {
 		const props = {
 			provider: 'github' as const,
+			access: 'credential' as const,
 			scope_type: 'global' as const,
 			first_or_more: 'first' as const,
 			selected: 4,

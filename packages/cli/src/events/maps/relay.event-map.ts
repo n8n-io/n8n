@@ -1,4 +1,4 @@
-import type { DataTableEventMap } from '@/modules/data-table/data-table-events';
+import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -78,6 +78,7 @@ export type CrashDetector =
 	| 'queue-recovery'
 	| 'startup-recovery'
 	| 'start-failure'
+	| 'resume-limit'
 	| 'workflow-deactivation';
 
 export type ProjectSummary = {

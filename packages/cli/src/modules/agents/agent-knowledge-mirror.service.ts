@@ -374,7 +374,7 @@ export class AgentKnowledgeMirrorService {
 	private async loadKnowledgeFileReferences(
 		agentId: string,
 	): Promise<AgentKnowledgeFileReference[]> {
-		const files = await this.agentFileRepository.findByAgentId(agentId);
+		const files = await this.agentFileRepository.findByAgentId(agentId, {});
 		return files.map((file) => ({
 			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,
