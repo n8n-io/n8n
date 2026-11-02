@@ -164,6 +164,7 @@ async function onAction(action: string) {
 			description: locale.baseText('agents.delete.modal.description', {
 				interpolate: { name: props.agent.name },
 			}),
+			isDestructive: true,
 			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
 			cancelButtonText: locale.baseText('generic.cancel'),
 		});
@@ -237,12 +238,12 @@ async function toggleMCPAccess(enabled: boolean) {
 					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
 					data-test-id="agent-card-publish-indicator"
 				/>
-				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+				<N8nTooltip :content="locale.baseText('agents.list.actions.newTest')">
 					<N8nIconButton
-						icon="message-circle-plus"
+						icon="flask-conical"
 						variant="ghost"
 						size="medium"
-						:aria-label="locale.baseText('agents.list.actions.newChat')"
+						:aria-label="locale.baseText('agents.list.actions.newTest')"
 						data-test-id="agent-card-new-chat"
 						@click="emit('new-chat', agent.id, projectId)"
 					/>

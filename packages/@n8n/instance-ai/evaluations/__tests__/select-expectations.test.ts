@@ -44,6 +44,33 @@ describe('selectAuthorExpectations', () => {
 		expect(warnings).toEqual([]);
 	});
 
+	it('leaves expectations on the structured question tool ungraded for an MCP build only', () => {
+		const { logger } = makeLogger();
+		const args = {
+			testCase: testCase({
+				processExpectations: ['The agent asked using the structured question tool.', 'p2'],
+				outcomeExpectations: ['o1'],
+			}),
+			transcript: realTranscript,
+			buildSucceeded: true,
+			isPrebuilt: true,
+			logger,
+		};
+
+		const mcp = selectAuthorExpectations({ ...args, mcpBuild: true });
+		expect(mcp.expectations).toEqual(['p2', 'o1']);
+		expect(mcp.unjudged).toEqual([
+			expect.objectContaining({
+				expectation: 'The agent asked using the structured question tool.',
+				incomplete: true,
+			}),
+		]);
+
+		const instanceAi = selectAuthorExpectations({ ...args, isPrebuilt: false });
+		expect(instanceAi.expectations).toHaveLength(3);
+		expect(instanceAi.unjudged).toEqual([]);
+	});
+
 	it('judges only outcome expectations against a synthesized transcript for a prebuilt build', () => {
 		const { logger, warnings } = makeLogger();
 		const { expectations, transcript } = selectAuthorExpectations({
@@ -136,6 +163,27 @@ describe('selectAuthorExpectations', () => {
 		expect(expectations).toEqual([]);
 		expect(unjudged).toHaveLength(3);
 		expect(unjudged.every((v) => v.incomplete)).toBe(true);
+	});
+
+	it('leaves expectations ungraded when only the seeded history has agent output', () => {
+		const { logger } = makeLogger();
+		const { expectations, unjudged } = selectAuthorExpectations({
+			testCase: testCase({ processExpectations: ['p1'], outcomeExpectations: ['o1'] }),
+			transcript: [
+				{
+					userMessage: 'earlier ask',
+					steps: [{ kind: 'agent-text', text: 'Built it.' }],
+					seeded: true,
+				},
+				{ userMessage: 'build it', steps: [] },
+			],
+			buildSucceeded: false,
+			isPrebuilt: true,
+			mcpBuild: true,
+			logger,
+		});
+		expect(expectations).toEqual([]);
+		expect(unjudged).toHaveLength(2);
 	});
 
 	it('still judges a genuine build failure that produced agent activity', () => {

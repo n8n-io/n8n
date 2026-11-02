@@ -11,10 +11,8 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		// TODO(CET-309): the last-successful-execution read covers control-plane executions only,
-		// so a workflow on engine v2 has no previous execution to inject.
-		test('can map keys from previous execution @engine:v2-pending', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('NDV-debug-generate-data.json');
+		test('can map keys from previous execution @engine:v2', async ({ n8n }) => {
+			const { workflowId } = await n8n.start.fromImportedWorkflow('NDV-debug-generate-data.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
@@ -39,11 +37,12 @@ test.describe(
 
 			await expect(n8n.ndv.inputPanel.getSchemaItemText('id')).toBeVisible();
 			await expect(n8n.ndv.inputPanel.getSchemaItemText('firstName')).toBeVisible();
+
+			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 		});
 
-		// TODO(CET-309): same last-successful-execution gap as above.
-		test('can pin data from previous execution @engine:v2-pending', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('NDV-debug-generate-data.json');
+		test('can pin data from previous execution @engine:v2', async ({ n8n }) => {
+			const { workflowId } = await n8n.start.fromImportedWorkflow('NDV-debug-generate-data.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
 
@@ -59,6 +58,8 @@ test.describe(
 			const editor = n8n.ndv.outputPanel.getContentEditableEditor();
 			await expect(editor).toContainText('"password":');
 			await expect(editor).toContainText('"uid":');
+
+			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 		});
 	},
 );

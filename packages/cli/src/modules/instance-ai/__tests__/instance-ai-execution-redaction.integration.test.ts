@@ -8,17 +8,21 @@ import {
 	randomCredentialPayload,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import type { INode, INodeTypeData, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
-import { createRunExecutionData } from 'n8n-workflow';
+import { ExecutionContextHookRegistry } from 'n8n-core';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { License } from '@/license';
 import { ExecutionRedactionService } from '@/modules/redaction/executions/execution-redaction.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+// Declares the hook that the redaction module loads at startup.
+import '@/modules/redaction/redaction-context-hook';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
@@ -40,17 +44,22 @@ describe('Instance AI execution redaction (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
 	mockInstance(Telemetry);
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
+	const redactionFloor = mockInstance(InstanceRedactionEnforcementService);
 
 	const SECRET_OUTPUT = { email: 'alice@example.com', token: 'tok_secret' };
 	const SECRET_ERROR = 'Upstream said: tok_secret is invalid';
 
 	let adapterService: InstanceAiAdapterService;
+	/** Can read every credential, but not use a member's personal one in a team project. */
+	let owner: User;
 	/** Owns the personal credential. */
 	let alice: User;
 	/** A member of the same team project. */
 	let bob: User;
 	let workflow: IWorkflowBase;
 	let executionId: string;
+	let teamProject: Project;
+	let credential: { id: string; name: string };
 
 	const saveCredential = affixRoleToSaveCredential('credential:owner');
 	const licenseMocker = new LicenseMocker();
@@ -84,8 +93,26 @@ describe('Instance AI execution redaction (integration)', () => {
 		const description = data['n8n-nodes-base.actionNetwork'].type
 			.description as INodeTypeDescription;
 		description.credentials = [{ name: 'actionNetworkApi', required: true }];
+		// A node that a one-off node run can execute, and that returns the secret.
+		data['n8n-nodes-base.secretSource'] = {
+			sourcePath: '',
+			type: {
+				description: {
+					...description,
+					displayName: 'Secret Source',
+					name: 'secretSource',
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [{ name: 'actionNetworkApi', required: false }],
+				},
+				execute: async () => [[{ json: SECRET_OUTPUT }]],
+			},
+		};
 		return data;
 	};
+
+	const executeNodeFor = (user: User, projectId?: string) =>
+		adapterService.createContext(user, { threadId: 'thread-1', projectId }).executeNodeService!;
 
 	const executionsFor = (user: User) =>
 		adapterService.createContext(user, { threadId: 'thread-1' }).executionService;
@@ -95,6 +122,9 @@ describe('Instance AI execution redaction (integration)', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		await initNodeTypes(nodeTypesData());
+		// Registers the hook the side-effect import declared: it saves the redaction
+		// policy onto each execution when the execution starts.
+		await Container.get(ExecutionContextHookRegistry).init();
 		licenseMocker.mock(Container.get(License));
 		licenseMocker.mockLicenseState(Container.get(LicenseState));
 		// What the redaction module wires up at startup.
@@ -103,14 +133,14 @@ describe('Instance AI execution redaction (integration)', () => {
 		);
 		adapterService = Container.get(InstanceAiAdapterService);
 
-		await createOwner();
+		owner = await createOwner();
 		[alice, bob] = await Promise.all([createMember(), createMember()]);
 	});
 
 	beforeEach(async () => {
-		const teamProject = await createTeamProject('Team', alice);
+		teamProject = await createTeamProject('Team', alice);
 		await linkUserToProject(bob, teamProject, 'project:editor');
-		const credential = await saveCredential(randomCredentialPayload(), { user: alice });
+		credential = await saveCredential(randomCredentialPayload(), { user: alice });
 		workflow = await createWorkflowWithHistory({ nodes: nodes(credential) }, teamProject);
 
 		const data = createRunExecutionData({
@@ -148,6 +178,7 @@ describe('Instance AI execution redaction (integration)', () => {
 
 	afterEach(async () => {
 		licenseMocker.reset();
+		redactionFloor.get.mockReset();
 		await testDb.truncate([
 			'ExecutionEntity',
 			'WorkflowEntity',
@@ -319,6 +350,57 @@ describe('Instance AI execution redaction (integration)', () => {
 
 			expect(result.redaction).toBeUndefined();
 			expect(JSON.stringify(result.data)).toContain('tok_secret');
+		});
+	});
+	describe('a one-off node run', () => {
+		const secretNode = { type: 'n8n-nodes-base.secretSource', version: 1 };
+
+		it('returns redacted output when the instance redaction minimum covers manual runs', async () => {
+			licenseMocker.enable('feat:dataRedaction');
+			redactionFloor.get.mockResolvedValue('all');
+
+			const result = await executeNodeFor(alice).execute({
+				...secretNode,
+				config: { parameters: {} },
+			});
+
+			expect(result).toMatchObject({
+				status: 'success',
+				output: '',
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+			});
+			expect(JSON.stringify(result)).not.toContain('tok_secret');
+		});
+
+		it('returns the output when no redaction applies', async () => {
+			redactionFloor.get.mockResolvedValue('off');
+
+			const result = await executeNodeFor(alice).execute({
+				...secretNode,
+				config: { parameters: {} },
+			});
+
+			expect(result).toMatchObject({ status: 'success' });
+			expect(JSON.stringify(result)).toContain('tok_secret');
+		});
+
+		it('names the credential the user cannot use in a team project', async () => {
+			redactionFloor.get.mockResolvedValue('off');
+
+			const result = await executeNodeFor(owner, teamProject.id).execute({
+				...secretNode,
+				config: {
+					parameters: {},
+					credentials: { actionNetworkApi: { id: credential.id, name: credential.name } },
+				},
+			});
+
+			expect(result).toMatchObject({
+				status: 'error',
+				error: {
+					message: `Node "Node" uses the credential "${credential.name}", which you cannot use`,
+				},
+			});
 		});
 	});
 });

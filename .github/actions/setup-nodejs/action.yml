@@ -78,7 +78,7 @@ runs:
     - name: Activate cached pnpm executable
       if: steps.cache-pnpm-exe.outputs.cache-hit == 'true'
       shell: bash
-      run: | # zizmor: ignore[github-env] Fixed paths contain no external input.
+      run: |
         PNPM_DEST="$HOME/setup-pnpm"
         echo "PNPM_HOME=$PNPM_DEST" >> "$GITHUB_ENV"
         echo "$PNPM_DEST" >> "$GITHUB_PATH"

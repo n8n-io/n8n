@@ -6,6 +6,8 @@ type MockAgentInstance = {
 	thinking: Mock;
 	configuration: Mock;
 	telemetry: Mock;
+	modelFetch: Mock;
+	functionId: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -17,13 +19,15 @@ vi.mock('@n8n/agents', () => ({
 		this.thinking = vi.fn().mockReturnThis();
 		this.configuration = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
+		this.modelFetch = vi.fn().mockReturnThis();
+		this.functionId = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
 }));
 
 import type { GenerateResult } from '@n8n/agents';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -42,6 +46,9 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_INSTANCE_AI_MODEL_URL',
+	'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS_FILE',
+	'N8N_INSTANCE_AI_EVAL_MODEL_URL',
+	'N8N_INSTANCE_AI_EVAL_MODEL_API_KEY',
 	'EVAL_MODAL_LLM_HEADERS',
 	'N8N_AI_ANTHROPIC_KEY',
 	'ANTHROPIC_API_KEY',
@@ -52,6 +59,7 @@ const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_EVAL_JUDGE_MODEL',
 	'N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT',
 	'N8N_INSTANCE_AI_EVAL_USAGE_LOG',
+	'N8N_INSTANCE_AI_MODEL_REQUEST_LABELS',
 ];
 
 function resetModelEnv(): void {
@@ -89,7 +97,7 @@ describe('eval agent model config', () => {
 
 		const config = resolveEvalModelConfig();
 
-		expect(config.modelId).toBe('anthropic/claude-sonnet-4-6');
+		expect(config.modelId).toBe('anthropic/claude-sonnet-5-5');
 		expect(config.apiKey).toBe('legacy-anthropic-key');
 	});
 
@@ -128,17 +136,70 @@ describe('eval agent model config', () => {
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
+		const modelFetch = vi.fn();
 
 		createEvalAgent('test-agent', {
 			instructions: 'Do the task.',
 			fallbackModelConfig,
+			modelFetch,
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
+		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[0]?.functionId).not.toHaveBeenCalled();
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
 			effort: 'medium',
 		});
+	});
+
+	it('names the caller only when model request labels are on', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = 'true';
+		try {
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+		} finally {
+			delete process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS;
+		}
+
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
+	});
+
+	it('reads the request labels switch from its _FILE form, as @n8n/config does', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		const dir = mkdtempSync(path.join(tmpdir(), 'labels-'));
+		const file = path.join(dir, 'flag');
+		writeFileSync(file, 'true\n');
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS_FILE = file;
+
+		try {
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+		} finally {
+			rmSync(dir, { recursive: true });
+		}
+
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('test-agent');
+	});
+
+	it.each(['true ', '"true"', 'yes'])(
+		'stays off for %j, which @n8n/config also reads as off',
+		(value) => {
+			process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+			process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = value;
+
+			createEvalAgent('test-agent', { instructions: 'Do the task.' });
+
+			expect(mockAgentInstances[0]?.functionId).not.toHaveBeenCalled();
+		},
+	);
+
+	it('turns a helper name with spaces or slashes into a safe caller id', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		process.env.N8N_INSTANCE_AI_MODEL_REQUEST_LABELS = 'true';
+
+		createEvalAgent('eval mock/Slack node', { instructions: 'Do the task.' });
+
+		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('eval-mock-Slack-node');
 	});
 
 	it('prefers env-based model resolution over the fallback', () => {
@@ -150,7 +211,7 @@ describe('eval agent model config', () => {
 		});
 
 		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-6',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'env-key',
 			url: undefined,
 		});
@@ -228,6 +289,58 @@ describe('eval agent model config', () => {
 			url: undefined,
 			headers: undefined,
 		});
+	});
+
+	it('routes a dedicated eval model to its own URL and key, never the builder key', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'builder-key';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+
+		expect(resolveEvalModelConfig()).toEqual({
+			modelId: 'custom/deepseek/deepseek-v4.1-flash',
+			provider: 'custom',
+			providerModelId: 'deepseek/deepseek-v4.1-flash',
+			apiKey: '',
+			url: 'https://router.example.com/v1',
+			headers: undefined,
+		});
+
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY = 'router-key';
+		expect(resolveEvalModelConfig().apiKey).toBe('router-key');
+	});
+
+	it('uses the eval model URL and key when no builder model is set', () => {
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_API_KEY = 'router-key';
+
+		expect(resolveEvalModelConfig()).toMatchObject({
+			apiKey: 'router-key',
+			url: 'https://router.example.com/v1',
+		});
+	});
+
+	it('keeps judges and fixed helper ids off the eval model URL', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'custom/deepseek/deepseek-v4.1-flash';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://router.example.com/v1';
+
+		expect(resolveEvalModelConfig('anthropic/claude-haiku-4-5-20251001')).toMatchObject({
+			apiKey: 'anthropic-key',
+			url: undefined,
+		});
+	});
+
+	it('requires the eval key for a provider-native model on the eval model URL', () => {
+		process.env.N8N_INSTANCE_AI_MODEL = 'anthropic/claude-sonnet-4-6';
+		process.env.ANTHROPIC_API_KEY = 'anthropic-key';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'openai/gpt-5.6-sol';
+		process.env.N8N_INSTANCE_AI_EVAL_MODEL_URL = 'https://gateway.example.com/v1';
+
+		expect(() => resolveEvalModelConfig()).toThrow(/N8N_INSTANCE_AI_EVAL_MODEL_API_KEY/);
 	});
 
 	it('prefers Anthropic keys over a non-Anthropic builder MODEL_API_KEY for the eval model', () => {
@@ -346,7 +459,7 @@ describe('eval agent judge and effort settings', () => {
 		expect(modelId()).toBe('anthropic/claude-sonnet-5');
 
 		createEvalAgent('proxy', { instructions: 'x' });
-		expect(modelId()).toBe('anthropic/claude-sonnet-4-6');
+		expect(modelId()).toBe('anthropic/claude-sonnet-5-5');
 	});
 
 	it('routes the eval effort to agents without a pinned model only', () => {

@@ -52,6 +52,7 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  TEXT bindings
   INTEGER buildAttempts
   varchar_16_ buildStatus
   datetime_3_ buildStatusUpdatedAt

@@ -16,11 +16,10 @@ import type {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { OperationalError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 

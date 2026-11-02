@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app_version" ("id" varchar PRIMARY KEY NOT NULL, "appId" varchar NOT NULL, "label" varchar(255), "sourceArtifactId" integer NOT NULL, "bundleArtifactId" integer, "buildAttempts" integer NOT NULL DEFAULT (0), "buildStatus" varchar(16) NOT NULL DEFAULT ('queued'), "buildStatusUpdatedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_version_buildStatus" CHECK ("buildStatus" IN ('queued', 'running', 'succeeded', 'failed')), CONSTRAINT "FK_e9aeab5b1db8dc77708231ae44e" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9f1db6f02f5a0d1ae2f2b41a327" FOREIGN KEY ("sourceArtifactId") REFERENCES "app_artifact" ("id") ON DELETE RESTRICT, CONSTRAINT "FK_2ab536cbf97d71bad59517afee5" FOREIGN KEY ("bundleArtifactId") REFERENCES "app_artifact" ("id") ON DELETE SET NULL)
+CREATE TABLE "app_version" ("id" varchar PRIMARY KEY NOT NULL, "appId" varchar NOT NULL, "label" varchar(255), "sourceArtifactId" integer NOT NULL, "bundleArtifactId" integer, "buildAttempts" integer NOT NULL DEFAULT (0), "buildStatus" varchar(16) NOT NULL DEFAULT ('queued'), "buildStatusUpdatedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "bindings" text NOT NULL DEFAULT '[]', CONSTRAINT "CHK_app_version_buildStatus" CHECK ("buildStatus" IN ('queued', 'running', 'succeeded', 'failed')), CONSTRAINT "FK_e9aeab5b1db8dc77708231ae44e" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9f1db6f02f5a0d1ae2f2b41a327" FOREIGN KEY ("sourceArtifactId") REFERENCES "app_artifact" ("id") ON DELETE RESTRICT, CONSTRAINT "FK_2ab536cbf97d71bad59517afee5" FOREIGN KEY ("bundleArtifactId") REFERENCES "app_artifact" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -16,6 +16,7 @@ CREATE TABLE "app_version" ("id" varchar PRIMARY KEY NOT NULL, "appId" varchar N
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | appId | varchar |  | false |  | [app](app.md) |  |
+| bindings | TEXT | '[]' | false |  |  |  |
 | buildAttempts | INTEGER | 0 | false |  |  |  |
 | buildStatus | varchar(16) | 'queued' | false |  |  |  |
 | buildStatusUpdatedAt | datetime(3) |  | true |  |  |  |
@@ -53,12 +54,13 @@ erDiagram
 
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app_version" }o--o| "app_artifact" : "FOREIGN KEY (bundleArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--|| "app_artifact" : "FOREIGN KEY (sourceArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 
 "app_version" {
   varchar appId FK
+  TEXT bindings
   INTEGER buildAttempts
   varchar_16_ buildStatus
   datetime_3_ buildStatusUpdatedAt

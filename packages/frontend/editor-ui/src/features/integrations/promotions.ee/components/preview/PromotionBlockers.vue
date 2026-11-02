@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type {
-	ApplyCheckResult,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
-	PromotionResource,
 	PromotionResourceType,
 } from '@n8n/api-types';
 import {
@@ -19,15 +17,14 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
 import { usePromotionBindings } from '../../composables/usePromotionBindings';
-import type { BlockedApplyResult } from '../../promotions.types';
+import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
 const props = defineProps<{
-	/** The Apply check, scoped to the workflows that the preview lists. */
+	/** The Apply check, scoped to the workflows that the preview lists. Moved folders stay unscoped. */
 	check: ApplyCheckResult;
-	/** Folders and workflows that the branch holds in another folder. Apply cannot move them. */
-	locations: PromotionResource[];
 	busy: boolean;
 }>();
 
@@ -38,13 +35,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const labels = usePromotionPreviewLabels();
 
-const asBlockedResult = (check: ApplyCheckResult): BlockedApplyResult => ({
-	status: 'blocked',
-	environmentId: check.environmentId,
-	git: check.git,
-	preflight: check.preflight,
-});
+const asBlockedResult = ({
+	environmentId,
+	git,
+	movedWorkflows,
+	movedFolders,
+	...check
+}: ApplyCheckResult): BlockedApplyResult => ({ status: 'blocked', environmentId, git, check });
 
 // The binding session lives as long as the commit. A later check for the same commit keeps the
 // created bindings in the table as resolved.
@@ -55,7 +54,7 @@ watch(
 	() => props.check,
 	(check) => {
 		const result = asBlockedResult(check);
-		creation.updatePreflight(check.preflight);
+		creation.updateCheck(result.check);
 		if (sessionCommit === check.git.commitSha) {
 			bindings.reconcile(result);
 			return;
@@ -98,31 +97,72 @@ type HardConflict = Exclude<
 >;
 
 const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
-	const detail = i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`);
+	if (conflict.code === 'moved') return movedRow(conflict.kind, conflict);
+	const row = {
+		key: `conflict:${index}`,
+		status: status('conflict'),
+		detail: i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`),
+	};
 	if (conflict.kind === 'project') {
 		return {
-			key: `conflict:${index}`,
+			...row,
 			icon: resourceIcon('project'),
 			name: conflict.project.name,
 			type: 'project',
-			usedBy: conflict.workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name })),
-			status: status('conflict'),
-			detail,
+			usedBy:
+				'workflows' in conflict
+					? conflict.workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name }))
+					: [],
+		};
+	}
+	if (conflict.kind === 'workflow') {
+		const workflows = usedBy(conflict.consumers);
+		return {
+			...row,
+			icon: resourceIcon('workflow'),
+			name: workflows.map(({ name }) => name).join(', '),
+			type: 'workflow',
+			usedBy: workflows,
+		};
+	}
+	if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
+		const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+		return {
+			...row,
+			icon: resourceIcon(type),
+			// An import-wide issue, such as a disabled module, names no table or tag.
+			name:
+				conflict.name ?? conflict.id ?? i18n.baseText(`promotions.preview.blockers.type.${type}`),
+			type,
+			usedBy: usedBy(conflict.consumers),
 		};
 	}
 	return {
-		key: `conflict:${index}`,
+		...row,
 		icon: resourceIcon(conflict.kind),
 		name: conflict.name,
 		type: conflict.kind,
 		usedBy: usedBy(conflict.consumers),
-		status: status('conflict'),
-		detail,
 	};
 };
 
+function movedRow(
+	type: 'workflow' | 'folder',
+	move: ApplyCheckResult['movedWorkflows'][number],
+): BlockerRow {
+	return {
+		key: `moved:${type}:${move.id}`,
+		icon: resourceIcon(type),
+		name: move.name,
+		type,
+		usedBy: [],
+		status: status('moved'),
+		detail: labels.moveDetail(type, move),
+	};
+}
+
 const blockerRows = computed<BlockerRow[]>(() => {
-	const { preflight, movedWorkflows } = props.check;
+	const { accessRequirements, movedWorkflows, movedFolders } = props.check;
 	return [
 		...bindings.rows.value.map(({ key, binding, status: bindingStatus }) => ({
 			key,
@@ -136,7 +176,7 @@ const blockerRows = computed<BlockerRow[]>(() => {
 					? i18n.baseText(`promotions.preview.blockers.create.${binding.kind}`)
 					: undefined,
 		})),
-		...preflight.accessRequirements.map((access) => ({
+		...accessRequirements.map((access) => ({
 			key: `access:${access.sourceId}`,
 			icon: resourceIcon('credential'),
 			name: access.name,
@@ -146,30 +186,8 @@ const blockerRows = computed<BlockerRow[]>(() => {
 			detail: i18n.baseText('promotions.preview.blockers.access'),
 		})),
 		...bindings.hardConflicts.value.map(conflictRow),
-		...movedWorkflows.map((workflow) => ({
-			key: `moved:${workflow.id}`,
-			icon: resourceIcon('workflow'),
-			name: workflow.name,
-			type: 'workflow' as const,
-			usedBy: [],
-			status: status('moved'),
-			detail: i18n.baseText('promotions.preview.blockers.movedWorkflow', {
-				interpolate: { project: workflow.project.name },
-			}),
-		})),
-		...props.locations.map((resource) => ({
-			key: resource.key,
-			icon: resourceIcon(resource.type),
-			name: resource.name,
-			type: resource.type,
-			usedBy: [],
-			status: status('moved'),
-			detail: i18n.baseText(
-				resource.type === 'folder'
-					? 'promotions.preview.folder.moveConflict'
-					: 'promotions.preview.blockers.workflowLocation',
-			),
-		})),
+		...movedWorkflows.map((move) => movedRow('workflow', move)),
+		...movedFolders.map((move) => movedRow('folder', move)),
 	];
 });
 
@@ -187,7 +205,7 @@ function removedColumns(
 		.join(', ');
 }
 
-const warnings = computed(() => props.check.preflight.warnings);
+const warnings = computed(() => props.check.warnings);
 
 // Data table changes and variable warnings do not block Apply, so they share one section.
 const warningCount = computed(
@@ -303,13 +321,13 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								</N8nText>
 							</td>
 							<td aria-live="polite">
-								<span :class="[$style.status, $style[row.status.tone]]">
+								<N8nText size="medium" :class="[$style.status, $style[row.status.tone]]">
 									<N8nIcon
 										:icon="row.status.tone === 'success' ? 'circle-check' : 'circle-alert'"
 										size="small"
 									/>
 									{{ row.status.label }}
-								</span>
+								</N8nText>
 							</td>
 							<td :class="$style.action">
 								<N8nButton
@@ -530,7 +548,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		background-color: var(--background--subtle);
 		color: var(--text-color--subtle);
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 
 	td {
@@ -575,7 +593,6 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
 	white-space: nowrap;
 }
 

@@ -1,4 +1,5 @@
 import type { AgentProviderModelsQueryDto } from '@n8n/api-types';
+import type { OutboundHttp } from '@n8n/backend-network';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -33,6 +34,7 @@ describe('AgentsCatalogController — getProviderModels', () => {
 		const controller = new AgentsCatalogController(
 			mock<AgentIntegrationPersistenceService>(),
 			modelCatalogService,
+			mock<OutboundHttp>(),
 		);
 		return { controller, modelCatalogService };
 	}

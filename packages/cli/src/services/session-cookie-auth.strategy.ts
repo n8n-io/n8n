@@ -7,7 +7,11 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { AuthError } from '@n8n/errors';
 
-import type { AuthStrategy, AuthStrategyOptions } from '@n8n/backend-services/auth';
+import type {
+	AuthStrategy,
+	AuthStrategyOptions,
+	AuthStrategyResult,
+} from '@n8n/backend-services/auth';
 
 /**
  * Lets the public API accept the browser's `n8n-auth` session cookie as an
@@ -28,9 +32,9 @@ export class SessionCookieAuthStrategy implements AuthStrategy {
 		return null;
 	}
 
-	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
+	async authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult> {
 		const token = req.cookies[AUTH_COOKIE_NAME];
-		if (!token) return null;
+		if (!token) return { outcome: 'abstained' };
 
 		try {
 			const user = await this.authService.authenticateUserBasedOnToken(
@@ -43,9 +47,9 @@ export class SessionCookieAuthStrategy implements AuthStrategy {
 			const tokenGrant = this.toGrant(user);
 			req.user = user;
 			req.tokenGrant = tokenGrant;
-			return true;
+			return { outcome: 'authenticated' };
 		} catch (error) {
-			if (this.isAuthFailure(error)) return false;
+			if (this.isAuthFailure(error)) return { outcome: 'rejected' };
 			throw error;
 		}
 	}

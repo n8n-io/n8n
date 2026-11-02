@@ -7,7 +7,7 @@ import type {
 	IWorkflowBase,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';

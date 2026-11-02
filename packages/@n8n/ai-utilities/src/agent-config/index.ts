@@ -1,6 +1,8 @@
 export { getProviderPrefix, splitModelId } from './model-id';
 export {
+	AZURE_FOUNDRY_ANTHROPIC_PREFIX,
 	getModelPromptCachingCapability,
+	isAzureFoundryAnthropicModel,
 	isGoogleVertexAnthropicModel,
 	isOpenRouterAnthropicModel,
 	isRoutedAnthropicModel,

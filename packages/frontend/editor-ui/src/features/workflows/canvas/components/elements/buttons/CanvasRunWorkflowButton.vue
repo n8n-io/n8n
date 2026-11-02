@@ -204,7 +204,7 @@ function onSelectTriggerNode(name: string) {
 			:class="$style.menu"
 			:items="actions"
 			:disabled="disabled"
-			placement="top"
+			placement="top-end"
 			:extra-popper-class="$style.menuPopper"
 			@select="onSelectTriggerNode"
 		>
@@ -212,7 +212,7 @@ function onSelectTriggerNode(name: string) {
 				<N8nButton
 					:variant="buttonVariant"
 					:size="buttonSize"
-					icon-size="large"
+					icon-size="medium"
 					:disabled="disabled"
 					:class="$style.chevron"
 					aria-label="Select trigger node"
@@ -277,18 +277,15 @@ function onSelectTriggerNode(name: string) {
 	margin-inline-start: -1px;
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+	border-left: 1px solid var(--color--white-alpha-100);
 
-	&::before {
-		content: '';
-		position: absolute;
-		inset-block: 0;
-		inset-inline-start: 0;
-		width: 1px;
-		background-color: var(--color--black-alpha-100);
+	/** Offset this icon as button is rounded so some icons optically look mis-aligned when centered **/
+	:global(.n8n-icon) {
+		transform: translateX(-1.5px);
 	}
 }
 
-.menu :global(.el-dropdown) {
+.menu {
 	height: 100%;
 }
 

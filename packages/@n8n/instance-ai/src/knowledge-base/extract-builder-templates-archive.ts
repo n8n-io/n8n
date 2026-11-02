@@ -79,19 +79,6 @@ function gunzipArchive(archive: Buffer): { tar: Buffer } | { error: string } {
 }
 
 /**
- * Validate the exact archive shape published by n8n-sdk-templates: a gzip-wrapped tar
- * with only regular top-level files (`index.json` or CDN `index.txt`, and `<slug>.ts`).
- * The workspace never materializes `index.txt` — it is converted to `index.json`.
- */
-export function validateBuilderTemplatesArchive(archive: Buffer): string | null {
-	const gunzipped = gunzipArchive(archive);
-	if ('error' in gunzipped) return gunzipped.error;
-
-	const walked = walkBuilderTemplatesTar(gunzipped.tar, false);
-	return walked.ok ? null : walked.error;
-}
-
-/**
  * Extract template files from a validated n8n-sdk-templates archive on the host.
  * Returns null when the archive is invalid.
  */

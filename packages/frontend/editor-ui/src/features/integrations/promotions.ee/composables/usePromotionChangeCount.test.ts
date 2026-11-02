@@ -40,6 +40,31 @@ const preview = (count: number): PromotionPreview => ({
 	})),
 });
 
+describe('usePromotionChangeCount blocker', () => {
+	beforeEach(() => {
+		vi.mocked(api.getPromotionPreview).mockReset();
+	});
+
+	it('should keep the blocker of the preview and clear it on the next check', async () => {
+		const blocker = { code: 'reviewOpen' as const, reviewId: 'review-1' };
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce({ ...preview(0), blocker })
+			.mockResolvedValueOnce(preview(1));
+		const {
+			blocker: current,
+			changeCount,
+			refetch,
+		} = usePromotionChangeCount(ref('project-a'), 'promote', ref(true));
+
+		await waitAllPromises();
+		expect(current.value).toEqual(blocker);
+		expect(changeCount.value).toBe(0);
+
+		await refetch();
+		expect(current.value).toBeNull();
+	});
+});
+
 describe('usePromotionChangeCount', () => {
 	// One entry per request, in call order, so a test can answer them out of order.
 	let pending: Pending[];
@@ -58,7 +83,12 @@ describe('usePromotionChangeCount', () => {
 		{ direction: 'promote' as const, expected: 1 },
 		{ direction: 'apply' as const, expected: 2 },
 	])('should count changes included by $direction', async ({ direction, expected }) => {
-		const { changeCount } = usePromotionChangeCount(ref('project-a'), direction, ref(true));
+		const { changeCount, loading } = usePromotionChangeCount(
+			ref('project-a'),
+			direction,
+			ref(true),
+		);
+		expect(loading.value).toBe(true);
 		const result = preview(1);
 		result.resources.push(resource({ key: 'folder:empty', name: 'Empty folder', change: 'added' }));
 
@@ -66,11 +96,12 @@ describe('usePromotionChangeCount', () => {
 		await waitAllPromises();
 
 		expect(changeCount.value).toBe(expected);
+		expect(loading.value).toBe(false);
 	});
 
 	it('should keep the newest result when an older request answers last', async () => {
 		const projectId = ref<string | undefined>('project-a');
-		const { changeCount, failed } = usePromotionChangeCount(projectId, 'apply', ref(true));
+		const { changeCount, loading, failed } = usePromotionChangeCount(projectId, 'apply', ref(true));
 
 		projectId.value = 'project-b';
 		await nextTick();
@@ -78,13 +109,18 @@ describe('usePromotionChangeCount', () => {
 		await nextTick();
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(3);
 
+		pending[1].reject(new Error('offline'));
+		await waitAllPromises();
+		expect(loading.value).toBe(true);
+		expect(failed.value).toBe(false);
+
 		pending[2].resolve(preview(2));
 		await waitAllPromises();
 		expect(changeCount.value).toBe(2);
+		expect(loading.value).toBe(false);
 
 		// The first request was for the same project, so a project id check alone would accept it.
 		pending[0].resolve(preview(5));
-		pending[1].reject(new Error('offline'));
 		await waitAllPromises();
 		expect(changeCount.value).toBe(2);
 		expect(failed.value).toBe(false);

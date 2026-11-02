@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { OAuthDiscoveryClient } from '@n8n/backend-services';
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -121,6 +121,7 @@ beforeAll(async () => {
 		Container.get(TrustedSourceDbStore),
 		client,
 		Container.get(LocalAuthorizationServer),
+		Container.get(EventService),
 	);
 });
 

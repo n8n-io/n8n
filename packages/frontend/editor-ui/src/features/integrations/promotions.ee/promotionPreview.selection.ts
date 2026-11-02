@@ -1,5 +1,7 @@
 import type { PromotionDirection, PromotionPreview, PromotionResource } from '@n8n/api-types';
 
+import { isContainer } from './promotionPreview.tree';
+
 /**
  * Selection rules of the promotion preview pages. Users select resources directly. The
  * operation includes the other resources for them.
@@ -144,11 +146,12 @@ export function resolveInclusion(
 		for (const reference of graph.calls.get(key) ?? []) addTo(called, reference, key);
 	}
 
-	// Apply imports every folder of the project, also folders without a selected workflow.
-	// It runs only with at least one selected workflow.
+	// Apply creates every new folder of the project, also one without a selected workflow. It
+	// moves or renames a folder only with a selected workflow inside it. It runs only with at
+	// least one selected workflow.
 	if (graph.direction === 'apply' && reasons.size > 0) {
 		for (const { key, type, change } of graph.resources.values()) {
-			if (type === 'folder' && change !== 'unchanged' && !containers.has(key)) {
+			if (type === 'folder' && change === 'added' && !containers.has(key)) {
 				containers.set(key, []);
 			}
 		}
@@ -217,6 +220,45 @@ export function containerCheckState(
 	const count = keys.filter((key) => selected.has(key)).length;
 	if (count === 0) return 'unchecked';
 	return count === keys.length ? 'checked' : 'indeterminate';
+}
+
+export type SelectionCheck = { checked: boolean; indeterminate: boolean; disabled: boolean };
+
+/**
+ * The checkbox of a resource in the tree and on its change card. Workflows toggle themselves,
+ * projects and folders toggle the workflows inside them, and dependencies stay read-only: they
+ * are checked while a selected workflow needs them.
+ */
+export function selectionCheck(
+	graph: SelectionGraph,
+	resource: PromotionResource,
+	state: {
+		selected: ReadonlySet<ResourceKey>;
+		inclusion: Inclusion;
+		disabled: DisabledKeys;
+		locked: boolean;
+	},
+): SelectionCheck {
+	const { selected, inclusion, disabled, locked } = state;
+	if (resource.selectable) {
+		const checked = selected.has(resource.key);
+		return {
+			checked,
+			indeterminate: false,
+			// A blocked workflow can still be cleared.
+			disabled: locked || (!checked && disabled.has(resource.key)),
+		};
+	}
+	if (isContainer(resource)) {
+		const check = containerCheckState(graph, selected, resource.key, disabled);
+		const canAdd = selectableDescendants(graph, resource.key).some((key) => !disabled.has(key));
+		return {
+			checked: check === 'checked',
+			indeterminate: check === 'indeterminate',
+			disabled: locked || (!canAdd && check === 'unchecked'),
+		};
+	}
+	return { checked: inclusion.included.has(resource.key), indeterminate: false, disabled: true };
 }
 
 /**

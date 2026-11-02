@@ -31,7 +31,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { Tool, type BuiltTool, type GuardrailsOptions, type RuntimeSkill } from '@n8n/agents';
-import { AGENT_BUILDER_TOOL_NAMES, type InstanceAiEvent, type TaskList } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	type InstanceAiEvent,
+	type TaskList,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -45,7 +50,12 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
-import { buildTurnMessage, createSeededThread, type SeededThread } from './seeded-turn';
+import {
+	buildTurnMessage,
+	createSeededThread,
+	STUB_PROJECT_ID,
+	type SeededThread,
+} from './seeded-turn';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -220,8 +230,10 @@ export async function runOrchestratorTurn(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			// Every production thread belongs to a project. Without one, adopting an existing Agent fails.
+			projectId: STUB_PROJECT_ID,
 			// The Agents module is a default module, so the eval runs with a builder.
-			builderDelegate: createStubBuilderDelegate(),
+			builderDelegate: createStubBuilderDelegate(options.scenario.seed),
 			workspace: createStubWorkspace(knowledgeBase.files),
 			workspaceRoot: stubWorkspaceRoot,
 		};
@@ -244,8 +256,8 @@ export async function runOrchestratorTurn(
 			instanceEvents.push(event);
 		});
 
-		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `workflow_builder_create_tasks` and skills. Discovery scenarios measure first-step
+		// `OrchestrationContext` is required for the orchestrator to receive orchestration
+		// tools and skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
@@ -384,6 +396,13 @@ const STUB_BUILDER_TOOL_NAMES: readonly string[] = AGENT_BUILDER_ORCHESTRATOR_TO
 	(name) => name !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
 );
 
+const AGENT_BUILD_STOP_TOOL_NAMES: readonly string[] = [
+	...STUB_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS,
+];
+
 /**
  * Ends the trial at the first builder call after `agent_builder_select_agent`. The route is
  * settled by then, and the stubs report success, so the model otherwise builds until the budget.
@@ -397,7 +416,9 @@ async function stopAtAgentBuild(
 			event.type === 'tool-call' &&
 			event.payload.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
 	);
-	return await Promise.resolve(agentSelected && STUB_BUILDER_TOOL_NAMES.includes(call.toolName));
+	return await Promise.resolve(
+		agentSelected && AGENT_BUILD_STOP_TOOL_NAMES.includes(call.toolName),
+	);
 }
 
 /**
@@ -435,7 +456,7 @@ function createStubBuilderTools(tools: AgentBuilderFile['tools']): BuiltTool[] {
 	});
 }
 
-function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+function createStubBuilderDelegate(seed: DiscoveryScenario['seed']): InstanceAiBuilderDelegate {
 	const agentBuilder = agentBuilderFileSchema.parse(
 		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder.json'), 'utf8')),
 	);
@@ -443,13 +464,14 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 		createAgent: async (name) =>
 			await Promise.resolve({
 				agentId: 'discovery-agent',
-				projectId: 'discovery-project',
+				projectId: STUB_PROJECT_ID,
 				name,
 			}),
 		getBuilderTools: () => createStubBuilderTools(agentBuilder.tools),
 		getRuntimeSkills: () => agentBuilder.skills,
 		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
-		resolveAgentName: async () => await Promise.resolve(undefined),
+		resolveAgentName: async (agentId) =>
+			await Promise.resolve(seed?.agents.find((agent) => agent.id === agentId)?.config.name),
 	};
 }
 

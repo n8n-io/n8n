@@ -44,6 +44,7 @@ export class AgentSelectionExporter {
 	async export(request: AgentSelectionExportRequest): Promise<AgentSelectionExportResult> {
 		const result: AgentSelectionExportResult = {
 			agentEntries: [],
+			skillEntries: [],
 			projectEntries: [],
 			projectTargetsById: new Map(request.projectTargetsById),
 			requirements: mergeRequirements(),
@@ -89,6 +90,17 @@ export class AgentSelectionExporter {
 			const prefix = projectIds.length > 0 ? result.projectTargetsById.get(snapshot.projectId) : '';
 			result.agentEntries.push(await exporter.write(snapshot, request.writer, prefix));
 		}
+		const { SkillExporter } = await import('../skill/skill.exporter.js');
+		result.skillEntries = await Container.get(SkillExporter).export({
+			user: request.user,
+			writer: request.writer,
+			agents: prepared.map(({ snapshot }) => ({
+				agentId: snapshot.content.id,
+				projectId: snapshot.projectId,
+				skillIds: (snapshot.content.config?.skills ?? []).map(({ id }) => id),
+			})),
+			projectTargetsById: projectIds.length > 0 ? result.projectTargetsById : undefined,
+		});
 		result.requirements = mergeRequirements(...prepared.map(({ requirements }) => requirements));
 		result.workflowRequirements = prepared.flatMap(({ requirements }) => requirements.workflows);
 		result.agentRequirements = this.collectAgentRequirements(prepared);

@@ -39,7 +39,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": false
+					"defer_loading": false,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -59,7 +60,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -79,7 +81,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "tool_search",
@@ -173,7 +176,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": false
+					"defer_loading": false,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -193,7 +197,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -213,7 +218,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "tool_search",
@@ -288,8 +294,9 @@
 					"output": "{\"total\":42}"
 				},
 				{
-					"type": "item_reference",
-					"id": "msg_05161c45d0810130006ac85fe1c88487d1940ceafdc4feaa33"
+					"role": "assistant",
+					"content": "Invoice issued for 42.",
+					"phase": "final_answer"
 				},
 				{
 					"role": "user",
@@ -320,7 +327,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": false
+					"defer_loading": false,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -340,7 +348,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -360,7 +369,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "tool_search",
@@ -435,8 +445,9 @@
 					"output": "{\"total\":42}"
 				},
 				{
-					"type": "item_reference",
-					"id": "msg_05161c45d0810130006ac85fe1c88487d1940ceafdc4feaa33"
+					"role": "assistant",
+					"content": "Invoice issued for 42.",
+					"phase": "final_answer"
 				},
 				{
 					"role": "user",
@@ -487,7 +498,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": false
+					"defer_loading": false,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -507,7 +519,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "function",
@@ -527,7 +540,8 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
-					"defer_loading": true
+					"defer_loading": true,
+					"strict": false
 				},
 				{
 					"type": "tool_search",

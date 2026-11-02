@@ -231,6 +231,131 @@ describe('N8nDataTableServer', () => {
 		);
 	});
 
+	it('should pin the first column, and the selection column, when asked to', async () => {
+		const { container, rerender } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
+		});
+
+		const headerCells = container.querySelectorAll('thead tr th');
+		expect(headerCells[0]).toHaveClass('is-pinned');
+		expect(headerCells[0]).toHaveClass('is-pinned-edge');
+		expect(headerCells[0]).toHaveStyle({ left: '0px' });
+		expect(headerCells[1]).not.toHaveClass('is-pinned');
+
+		const bodyCells = container.querySelectorAll('tbody tr:first-child td');
+		expect(bodyCells[0]).toHaveClass('is-pinned');
+		expect(bodyCells[0]).toHaveClass('is-pinned-edge');
+		expect(bodyCells[1]).not.toHaveClass('is-pinned');
+
+		await rerender({ showSelect: true });
+
+		await waitFor(() => {
+			const cells = container.querySelectorAll('tbody tr:first-child td');
+			expect(cells[0]).toHaveClass('is-pinned');
+			expect(cells[0]).not.toHaveClass('is-pinned-edge');
+			expect(cells[1]).toHaveClass('is-pinned');
+			expect(cells[1]).toHaveClass('is-pinned-edge');
+			expect(cells[1]).toHaveStyle({ left: '40px' });
+			expect(cells[2]).not.toHaveClass('is-pinned');
+		});
+	});
+
+	it('should pin the leading columns when given a count', () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 2 },
+		});
+
+		const headerCells = container.querySelectorAll('thead tr th');
+		expect(headerCells[0]).toHaveClass('is-pinned');
+		expect(headerCells[0]).not.toHaveClass('is-pinned-edge');
+		expect(headerCells[1]).toHaveClass('is-pinned-edge');
+		expect(headerCells[1]).toHaveStyle({ left: '150px' });
+		expect(headerCells[2]).not.toHaveClass('is-pinned');
+
+		const bodyCells = container.querySelectorAll('tbody tr:first-child td');
+		expect(bodyCells[0]).toHaveClass('is-pinned');
+		expect(bodyCells[1]).toHaveClass('is-pinned-edge');
+		expect(bodyCells[2]).not.toHaveClass('is-pinned');
+	});
+
+	it('should not pin any column by default', () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
+		});
+
+		expect(container.querySelector('.is-pinned')).toBeNull();
+	});
+
+	it('should show the pinned edge only after the table has scrolled sideways', async () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2, pinColumns: 1 },
+		});
+
+		const wrapper = container.querySelector('.n8n-data-table-server-wrapper')!;
+		const scroller = container.querySelector<HTMLElement>('.table-scroll')!;
+		expect(wrapper).not.toHaveClass('is-scrolled-left');
+
+		// jsdom has no layout, so stand in for a table that has been scrolled.
+		let scrollLeft = 0;
+		Object.defineProperty(scroller, 'scrollLeft', {
+			get: () => scrollLeft,
+			set: (value: number) => {
+				scrollLeft = value;
+			},
+			configurable: true,
+		});
+
+		scroller.scrollLeft = 40;
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).toHaveClass('is-scrolled-left');
+		});
+
+		scroller.scrollLeft = 0;
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).not.toHaveClass('is-scrolled-left');
+		});
+	});
+
+	it('should show the right-edge hint only while columns remain past that edge', async () => {
+		const { container } = render(N8nDataTableServer, {
+			//@ts-expect-error testing-library errors due to header generics
+			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
+		});
+
+		const wrapper = container.querySelector('.n8n-data-table-server-wrapper')!;
+		const scroller = container.querySelector<HTMLElement>('.table-scroll')!;
+		expect(wrapper).not.toHaveClass('can-scroll-right');
+
+		// jsdom has no layout, so stand in for a table that is wider than its frame.
+		let scrollLeft = 0;
+		Object.defineProperty(scroller, 'scrollLeft', {
+			get: () => scrollLeft,
+			set: (value: number) => {
+				scrollLeft = value;
+			},
+			configurable: true,
+		});
+		Object.defineProperty(scroller, 'scrollWidth', { get: () => 800, configurable: true });
+		Object.defineProperty(scroller, 'clientWidth', { get: () => 400, configurable: true });
+
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).toHaveClass('can-scroll-right');
+		});
+
+		scroller.scrollLeft = 400;
+		scroller.dispatchEvent(new Event('scroll'));
+		await waitFor(() => {
+			expect(wrapper).not.toHaveClass('can-scroll-right');
+		});
+	});
+
 	it('should emit all items per page when All is selected', async () => {
 		const { emitted, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 106, showAll: true },

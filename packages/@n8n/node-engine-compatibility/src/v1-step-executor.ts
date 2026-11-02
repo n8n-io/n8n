@@ -7,8 +7,10 @@ import type {
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
 import {
+	CHAT_NODE_TYPE,
 	Expression,
 	isNodeClassInstance,
+	SEND_AND_WAIT_OPERATION,
 	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
@@ -19,12 +21,14 @@ import {
 	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
+	UnendingWaitError,
 	UnsupportedStepTypeError,
 	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
@@ -49,19 +53,24 @@ import {
  * and a disabled node does not run: it passes its first input through. So the
  * step emits that input at the deadline, not what the node returned before it
  * paused.
- *
- * A sentinel wait fails the step. Engine v2 has no resume route and no
- * sub-workflow steps yet. A declaration replaces each failure when its path
- * exists.
  */
 function toStepResult(
 	context: DurableWaitExecuteContext,
 	nodeResult: INodeExecutionData[][],
 ): StepExecutionResult {
+	// The node ran to the end on an empty result; the sub-execution it asked for is
+	// what the step owes, and the node runs again once the sub-execution ends.
+	const { declaration } = context.subWorkflowCalls;
+	if (declaration?.awaited) return { subExecution: declaration };
+
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (waitTill === undefined) {
+		const outputs = toStepOutputs(nodeResult);
+		return declaration ? { subExecution: { ...declaration, outputs } } : { outputs };
+	}
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
-		throw new UnsupportedWaitError(context.getNode().name, 'a resume request');
+		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
+		return { wait: { resumeBinding: 'execution' } };
 	}
 	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
 		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
@@ -75,7 +84,7 @@ function toStepResult(
 		wait: {
 			resumeAt: waitTill.toISOString(),
 			outputsAtDeadline: toStepOutputs([context.getInputData()]),
-			acceptsResumeRequest: context.acceptsResumeRequest,
+			...(context.acceptsResumeRequest ? { resumeBinding: 'execution' as const } : {}),
 		},
 	};
 }
@@ -97,6 +106,13 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
+		// Send-and-wait needs a step-bound resume request, which engine v2 does not
+		// have yet. Fail before the node sends the message. The Chat node waits in
+		// every version and operation.
+		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
+			throw new UnsupportedWaitError(node.name, 'an approval');
+		}
+
 		const execution = toV1Execution(
 			stepData.graph,
 			stepData.outputsByNode,
@@ -118,6 +134,9 @@ export class V1StepExecutor implements IStepExecutor {
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
+			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
+			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
+			subExecutionResume: request.resume,
 		});
 
 		return await workflow.expression.withIsolate(async () => {
@@ -200,6 +219,9 @@ export class V1StepExecutor implements IStepExecutor {
 				// The node's own error is the one to report. The response channel
 				// already tells the caller when it cannot carry the error chunk.
 			}
+			// The node failed, so do not start a sub-execution it may have declared
+			// before failing. This holds for continueOnFail too.
+			context.subWorkflowCalls.declaration = undefined;
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}

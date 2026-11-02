@@ -1,3 +1,4 @@
+import { createWorkflowToolRouter } from './workflow-tools-test-utils';
 /**
  * Integration coverage for the setup path: the workflows tool wired to the real
  * setup analysis, with only the n8n-facing services mocked.
@@ -8,7 +9,6 @@
  */
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
-import { createWorkflowsTool } from '../workflows.tool';
 
 function createContext(): InstanceAiContext {
 	return {
@@ -47,7 +47,7 @@ async function openSetupCard(preferNewCredentials?: string[]) {
 	const context = createContext();
 	const suspend = vi.fn();
 	await executeTool(
-		createWorkflowsTool(context),
+		createWorkflowToolRouter(context),
 		{
 			action: 'setup',
 			workflowId: 'wf1',
@@ -59,7 +59,7 @@ async function openSetupCard(preferNewCredentials?: string[]) {
 	return payload.setupRequests[0];
 }
 
-describe('workflow_builder_workflows(action="setup") credential preselection', () => {
+describe('setup_workflow credential preselection', () => {
 	it('marks the card as preferring a new credential when the user asked for one', async () => {
 		const request = await openSetupCard(['slackApi']);
 

@@ -27,10 +27,15 @@ import {
 	AgentEvalRunRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
-import { BadRequestError, ForbiddenError, NotFoundError, OperationalError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+} from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';

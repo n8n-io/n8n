@@ -18,7 +18,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIconPicker: {
 		name: 'N8nIconPicker',
 		template:
-			'<div v-bind="$attrs"><button data-testid="agent-personalisation-picker" :data-icon="modelValue.value" :data-icons-only="String(iconsOnly)" :class="buttonClass" @click="$emit(\'update:modelValue\', { type: \'icon\', value: \'mail\' })" /></div>',
+			'<div v-bind="$attrs"><button data-testid="agent-personalisation-picker" :data-icon="modelValue.value" :data-icons-only="String(iconsOnly)" :data-fallback-icon="fallbackIcon" :class="buttonClass" @click="$emit(\'update:modelValue\', { type: \'icon\', value: \'mail\' })" /></div>',
 		props: {
 			modelValue: Object,
 			buttonTooltip: String,
@@ -27,6 +27,7 @@ vi.mock('@n8n/design-system', () => ({
 			iconsOnly: Boolean,
 			containerClass: String,
 			buttonClass: String,
+			fallbackIcon: String,
 		},
 		emits: ['update:modelValue'],
 	},
@@ -113,6 +114,45 @@ describe('AgentIdentityHeader', () => {
 		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-angle: 135deg');
 		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-from-stop: 0%');
 		expect(header.attributes('style')).toContain('--agent-personalisation-gradient-to-stop: 100%');
+	});
+
+	it('passes the default agent icon as the fallback for an icon name no icon set has', async () => {
+		const wrapper = await mountHeader({
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Help the user.',
+			personalisation: { icon: 'not-an-icon', gradient: { from: '#111111', to: '#222222' } },
+		});
+		const picker = wrapper.find('[data-testid="agent-personalisation-picker"]');
+
+		expect(picker.attributes('data-icon')).toBe('not-an-icon');
+		expect(picker.attributes('data-fallback-icon')).toBe('bot');
+	});
+
+	it('renders the default agent icon for an empty icon name', async () => {
+		const wrapper = await mountHeader({
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Help the user.',
+			personalisation: { icon: '', gradient: { from: '#111111', to: '#222222' } },
+		});
+
+		expect(
+			wrapper.find('[data-testid="agent-personalisation-picker"]').attributes('data-icon'),
+		).toBe('bot');
+	});
+
+	it('renders the default gradient for a stored gradient the schema would reject', async () => {
+		const wrapper = await mountHeader({
+			name: 'Support agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Help the user.',
+			personalisation: { icon: 'search', gradient: { from: '#X000FF', to: '#222222' } },
+		});
+		const style = wrapper.find('[data-testid="agent-identity-header"]').attributes('style');
+
+		expect(style).toContain('--agent-personalisation-gradient-from: #FF1500');
+		expect(style).toContain('--agent-personalisation-gradient-to: #FF6900');
 	});
 
 	it('emits the picked icon while preserving the saved gradient', async () => {

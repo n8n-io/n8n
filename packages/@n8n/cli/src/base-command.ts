@@ -7,7 +7,7 @@ import { formatOutput, applyJqFilter, type OutputFormat, type OutputOptions } fr
 
 /** Exit codes following the RFC spec. */
 export const EXIT_SUCCESS = 0;
-const EXIT_ERROR = 1;
+export const EXIT_ERROR = 1;
 const EXIT_AUTH = 2;
 export const EXIT_SOURCE_CHANGED = 3;
 export const EXIT_BLOCKED = 4;

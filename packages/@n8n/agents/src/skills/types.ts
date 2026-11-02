@@ -17,8 +17,9 @@ export const RUNTIME_SKILL_LINKED_FILE_GROUPS = [
 
 export interface RuntimeSkillLinkedFile {
 	path: string;
-	bytes: number;
-	sha256: string;
+	/** Content metadata can be absent until a deferred file is read. */
+	bytes?: number;
+	sha256?: string;
 }
 
 export type RuntimeSkillLinkedFileGroup =
@@ -48,9 +49,19 @@ export interface RuntimeSkillInterfaceContract {
 	brandColor?: string;
 }
 
+export const RUNTIME_SKILL_LIFETIMES = ['thread', 'turn'] as const;
+
+/**
+ * How long a loaded skill stays active. `thread` (the default) keeps it for the
+ * rest of the conversation. `turn` keeps it until the next user turn starts, for
+ * skills that guide one decision and are dead weight in context afterwards.
+ */
+export type RuntimeSkillLifetime = (typeof RUNTIME_SKILL_LIFETIMES)[number];
+
 export interface RuntimeSkillPolicyContract {
 	allowImplicitInvocation?: boolean;
 	product?: string;
+	lifetime?: RuntimeSkillLifetime;
 }
 
 export interface RuntimeSkillMcpServerDependency {
@@ -179,10 +190,22 @@ export interface RuntimeSkillFileContent {
 export type RuntimeSkillFileLoader = (
 	skillId: string,
 	filePath: string,
+	/** Keep failure details local to this read when calls run concurrently. */
+	onError?: (error: RuntimeSkillLoadError) => void,
 ) => Promise<RuntimeSkillFileContent | null>;
+
+export interface RuntimeSkillLoadError {
+	message: string;
+	/** Preserve an active selection when content is temporarily unavailable. */
+	retryable: boolean;
+}
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/** Observe applied revocations and skill context prepared for model calls. */
+	onContext?: (skills: RuntimeSkillContextUsage[]) => void;
+	/** Identify skills that need explicit updates, including IDs no longer in the catalog. */
+	shouldAppendSkillUpdates?: (skillId: string) => boolean;
 	/**
 	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
 	 * It must not change catalog fields (id, name, description, category,
@@ -192,6 +215,13 @@ export interface RuntimeSkillSource {
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;
+	getLoadError?: (skillId: string) => RuntimeSkillLoadError | undefined;
+}
+
+export interface RuntimeSkillContextUsage {
+	skillId: string;
+	version?: string;
+	kind: 'carried' | 'refreshed' | 'revoked' | 'unavailable';
 }
 
 export interface RuntimeSkillStateScope {
@@ -200,10 +230,16 @@ export interface RuntimeSkillStateScope {
 	agentName: string;
 }
 
-/** Stores active IDs separately from conversation text that memory can compact. */
+export interface RuntimeSkillState {
+	skillIds: string[];
+	/** Last loaded versions. Null keeps a revocation effective after compaction. */
+	versions?: Record<string, string | null>;
+}
+
+/** Stores active selections separately from conversation text that memory can compact. */
 export interface RuntimeSkillStateStore {
-	load(scope: RuntimeSkillStateScope): Promise<string[] | undefined>;
-	save(scope: RuntimeSkillStateScope, skillIds: string[]): Promise<void>;
+	load(scope: RuntimeSkillStateScope): Promise<RuntimeSkillState | undefined>;
+	save(scope: RuntimeSkillStateScope, state: RuntimeSkillState): Promise<void>;
 }
 
 export interface RuntimeSkillValidationError {

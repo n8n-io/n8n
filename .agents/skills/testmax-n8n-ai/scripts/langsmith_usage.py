@@ -7,7 +7,8 @@ LANGSMITH_PROJECT from the config (see n8n_api.config).
 
   langsmith_usage.py --run-dir <run-dir>/iai
 
-It takes all LLM runs in the project between startedAt and finishedAt from run.json.
+It takes all LLM runs in the project between startedAt and finishedAt from run.json
+(usageFinishedAt when it is set).
 Do not start other Instance AI work on the same instance during the run, or use --by-trace.
 
   langsmith_usage.py --run-dir <dir> --by-trace
@@ -150,7 +151,7 @@ def main():
 	traces = set(meta.get('langsmithRunIds') or [])
 	if args.by_trace and not traces:
 		raise SystemExit('run.json has no langsmithRunIds. Is LANGSMITH_TRACING=true on the instance?')
-	calls = fetch_calls(meta['startedAt'], meta['finishedAt'], traces if args.by_trace else None)
+	calls = fetch_calls(meta['startedAt'], meta.get('usageFinishedAt') or meta['finishedAt'], traces if args.by_trace else None)
 	(run_dir / 'usage.json').write_text(json.dumps(calls, indent=1))
 	(run_dir / 'context.json').write_text(json.dumps(fetch_contexts(calls), indent=1))
 	print(json.dumps(totals(calls), indent=2))
