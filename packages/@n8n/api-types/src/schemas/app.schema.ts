@@ -48,6 +48,29 @@ export type AppVersionResponse = z.infer<typeof appVersionSchema>;
 export const appPreviewResponseSchema = z.object({ url: z.string().url() });
 export type AppPreviewResponse = z.infer<typeof appPreviewResponseSchema>;
 
+export const APP_INSPECTOR_MESSAGE_SOURCE = 'n8n-app-inspector';
+
+export const appPreviewElementSchema = z.object({
+	route: z.string().max(500).optional(),
+	tagName: z.string().min(1).max(50),
+	text: z.string().max(200).optional(),
+	selector: z.string().max(500).optional(),
+});
+export type AppPreviewElement = z.infer<typeof appPreviewElementSchema>;
+
+export const appInspectorEventSchema = z.discriminatedUnion('type', [
+	z.object({
+		source: z.literal(APP_INSPECTOR_MESSAGE_SOURCE),
+		type: z.literal('inspect:selected'),
+		element: appPreviewElementSchema,
+	}),
+	z.object({
+		source: z.literal(APP_INSPECTOR_MESSAGE_SOURCE),
+		type: z.literal('inspect:cancelled'),
+	}),
+]);
+export type AppInspectorEvent = z.infer<typeof appInspectorEventSchema>;
+
 export const appBuildResponseSchema = z.object({
 	versionId: z.string().uuid(),
 	status: appBuildStatusSchema,

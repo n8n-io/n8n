@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppResponse } from '@n8n/api-types';
+import type { AppPreviewElement, AppResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState, N8nLoading } from '@n8n/design-system';
@@ -20,9 +20,17 @@ import {
 	type AppConfigureTab,
 } from './configure/appConfigureTabs';
 
-const props = defineProps<{ projectId: string; appId: string }>();
+const props = defineProps<{
+	projectId: string;
+	appId: string;
+	inspectable?: boolean;
+	elementSelected?: boolean;
+}>();
 
-const emit = defineEmits<{ deleted: [appId: string] }>();
+const emit = defineEmits<{
+	deleted: [appId: string];
+	'element-selected': [element: AppPreviewElement];
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -116,6 +124,9 @@ defineExpose({ refresh });
 					:project-id="projectId"
 					:app="app"
 					:versions="versions"
+					:inspectable="inspectable"
+					:element-selected="elementSelected"
+					@element-selected="emit('element-selected', $event)"
 				/>
 				<AppConfigure
 					v-else

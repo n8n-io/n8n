@@ -20,6 +20,8 @@ const emit = defineEmits<{
 	'update:attachment': [attachment: InstanceAiNodesAttachment];
 }>();
 
+const ELEMENT_LABEL_TEXT_LIMIT = 24;
+
 const loading = ref(true);
 
 const nodesAttachment = computed(() =>
@@ -33,6 +35,18 @@ const workflowAttachment = computed(() =>
 const agentAttachment = computed(() =>
 	props.attachment?.type === 'agent' ? props.attachment : undefined,
 );
+const elementAttachment = computed(() =>
+	props.attachment?.type === 'element' ? props.attachment : undefined,
+);
+const elementLabel = computed(() => {
+	const element = elementAttachment.value;
+	if (!element) return '';
+	const text = element.text?.replace(/\s+/g, ' ').trim();
+	if (!text) return element.tagName;
+	const shortText =
+		text.length > ELEMENT_LABEL_TEXT_LIMIT ? `${text.slice(0, ELEMENT_LABEL_TEXT_LIMIT)}...` : text;
+	return `${element.tagName}: "${shortText}"`;
+});
 const fileAttachment = computed(() =>
 	props.attachment?.type === 'file' ? props.attachment : undefined,
 );
@@ -98,6 +112,16 @@ onBeforeUnmount(() => {
 		:remove-label="i18n.baseText('instanceAi.mentions.removeWorkflow')"
 		test-id="attachment-preview-resource"
 		remove-test-id="attachment-preview-remove-resource"
+		@remove="emit('remove-resource')"
+	/>
+	<InstanceAiResourceChip
+		v-else-if="elementAttachment"
+		:label="elementLabel"
+		icon="mouse-pointer"
+		:removable="isRemovable"
+		:remove-label="i18n.baseText('instanceAi.elementSelection.remove')"
+		test-id="attachment-preview-element"
+		remove-test-id="attachment-preview-remove-element"
 		@remove="emit('remove-resource')"
 	/>
 	<InstanceAiResourceChip
