@@ -1938,6 +1938,11 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
+vi.mock('@n8n/backend-module-apps', () => ({
+	AppsService: class {},
+	AppSourceArchiveService: class {},
+}));
+
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	User,
@@ -1978,6 +1983,7 @@ import type { License } from '@/license';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { EngineConfig } from '@n8n/config';
 import type {
 	InstanceAiBuilderDelegate,
 	InstanceAiSkillService,
@@ -1992,6 +1998,7 @@ import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { AppsService, AppSourceArchiveService } from '@n8n/backend-module-apps';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 
@@ -2602,12 +2609,14 @@ function createDataTableAdapterForTests(overrides?: {
 		>[35],
 	);
 
-	const adapter = service.createContext(mockUser, {
+	const context = service.createContext(mockUser, {
 		projectId: overrides?.projectId,
-	}).dataTableService;
+	});
+	const adapter = context.dataTableService;
 
 	return {
 		adapter,
+		context,
 		mockProjectRepository,
 		mockDataTableService,
 		mockDataTableRepository,
@@ -4387,6 +4396,7 @@ describe('createWorkflowAdapter', () => {
 	it('defaults executionOrder to v1 when the SDK workflow declares no settings', async () => {
 		// Regression: the SDK omits the settings argument when empty, so AI-authored
 		// workflows persisted with `{}` and ran on legacy v0.
+		Container.get(EngineConfig).defaultType = 'v1';
 		const { adapter, mockWorkflowRepository, mockWorkflowService } =
 			createWorkflowAdapterForTests();
 
@@ -4405,6 +4415,7 @@ describe('createWorkflowAdapter', () => {
 	});
 
 	it('keeps an explicit executionOrder from the SDK workflow', async () => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON({
@@ -4418,6 +4429,65 @@ describe('createWorkflowAdapter', () => {
 			expect.anything(),
 			expect.anything(),
 		);
+	});
+
+	describe('default engine', () => {
+		const withEngine = (engineType: 'v1' | 'v2') =>
+			({ ...minimalWorkflowJSON, settings: { engineType } }) as unknown as WorkflowJSON;
+
+		const activateEngineV2Module = () =>
+			vi
+				.spyOn(Container.get(ModuleRegistry), 'isActive')
+				.mockImplementation((name) => name === 'engine-v2');
+
+		afterEach(() => {
+			Container.get(EngineConfig).defaultType = 'v1';
+			vi.restoreAllMocks();
+		});
+
+		it('saves a workflow without an engine on v2 when the default is v2 and the module is active', async () => {
+			Container.get(EngineConfig).defaultType = 'v2';
+			activateEngineV2Module();
+			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v2' } }),
+			);
+		});
+
+		it.each([
+			{ engineType: 'v1' as const, defaultType: 'v2' as const },
+			{ engineType: 'v2' as const, defaultType: 'v1' as const },
+		])(
+			'keeps an explicit $engineType when the default is $defaultType',
+			async ({ engineType, defaultType }) => {
+				Container.get(EngineConfig).defaultType = defaultType;
+				activateEngineV2Module();
+				const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+				await adapter.createFromWorkflowJSON(withEngine(engineType));
+
+				expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({ settings: { executionOrder: 'v1', engineType } }),
+				);
+			},
+		);
+
+		it('writes no engine when the default is v2 but the module is not active', async () => {
+			Container.get(EngineConfig).defaultType = 'v2';
+			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+			);
+		});
 	});
 
 	describe('execution timeout', () => {
@@ -9218,4 +9288,129 @@ describe('createContext — skill service wiring', () => {
 			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled);
 		},
 	);
+});
+
+describe('createContext: appService', () => {
+	const APP_ID = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
+
+	function mockAppsModule(active: boolean) {
+		const apps = mock<AppsService>();
+		const sources = mock<AppSourceArchiveService>();
+		const get = Container.get.bind(Container);
+		vi.spyOn(Container, 'get').mockImplementation(((token: Parameters<typeof get>[0]) => {
+			if (token === ModuleRegistry) {
+				return { isActive: (name: string) => active && name === 'apps', settings: new Map() };
+			}
+			if (token === AppsService) return apps;
+			if (token === AppSourceArchiveService) return sources;
+			return get(token);
+		}) as typeof get);
+		return { apps, sources };
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it.each([
+		{ name: 'the apps module is inactive', active: false, projectId: 'project-1' },
+		{ name: 'the run has no bound project', active: true, projectId: undefined },
+	])('omits the app service when $name', ({ active, projectId }) => {
+		mockAppsModule(active);
+
+		expect(createDataTableAdapterForTests({ projectId }).context.appService).toBeUndefined();
+	});
+
+	it('creates apps in the bound project with the create scope', async () => {
+		const { apps } = mockAppsModule(true);
+		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await context.appService?.createApp({ name: 'Todos', namespace: 'todos', id: APP_ID });
+
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:create'], false, {
+			projectId: 'project-1',
+		});
+		expect(apps.createApp).toHaveBeenCalledWith(
+			'project-1',
+			{ name: 'Todos', namespace: 'todos', visibility: 'project' },
+			{ id: APP_ID },
+		);
+	});
+
+	it('exports with the read scope and commits with the update scope', async () => {
+		const { sources } = mockAppsModule(true);
+		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
+		const archive = Buffer.from('archive');
+
+		await context.appService?.exportDraft(APP_ID);
+		await context.appService?.commit(APP_ID, 'v1', archive, 'Label');
+
+		expect(mockedUserHasScopes).toHaveBeenNthCalledWith(1, mockUser, ['app:read'], false, {
+			projectId: 'project-1',
+		});
+		expect(mockedUserHasScopes).toHaveBeenNthCalledWith(2, mockUser, ['app:update'], false, {
+			projectId: 'project-1',
+		});
+		expect(sources.exportDraft).toHaveBeenCalledWith('project-1', APP_ID);
+		expect(sources.commit).toHaveBeenCalledWith('project-1', APP_ID, 'v1', archive, 'Label');
+	});
+
+	it('lists apps with the list scope, also on a protected instance', async () => {
+		const { apps } = mockAppsModule(true);
+		const { context, mockUser } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			branchReadOnly: true,
+		});
+
+		await context.appService?.listApps({ name: 'Todo' });
+
+		expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['app:list'], false, {
+			projectId: 'project-1',
+		});
+		expect(apps.listApps).toHaveBeenCalledWith(
+			'project-1',
+			expect.objectContaining({ name: 'Todo', take: 50 }),
+		);
+	});
+
+	it('finds no app only when the app does not exist', async () => {
+		const { apps } = mockAppsModule(true);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		apps.getApp.mockRejectedValueOnce(new NotFoundError('App not found'));
+		expect(await context.appService?.findApp(APP_ID)).toBeUndefined();
+
+		apps.getApp.mockRejectedValueOnce(new Error('Database unavailable'));
+		await expect(context.appService?.findApp(APP_ID)).rejects.toThrow('Database unavailable');
+	});
+
+	it('does not commit without the update scope', async () => {
+		const { sources } = mockAppsModule(true);
+		mockedUserHasScopes.mockResolvedValue(false);
+		const { context } = createDataTableAdapterForTests({ projectId: 'project-1' });
+
+		await expect(
+			context.appService?.commit(APP_ID, 'v1', Buffer.from('archive'), 'Label'),
+		).rejects.toThrow('User does not have the required permissions in this project');
+		expect(sources.commit).not.toHaveBeenCalled();
+	});
+
+	it('blocks app changes on a protected instance and still allows reads', async () => {
+		const { sources } = mockAppsModule(true);
+		const { context } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			branchReadOnly: true,
+		});
+
+		await expect(
+			context.appService?.commit(APP_ID, 'v1', Buffer.from('archive'), 'Label'),
+		).rejects.toThrow('Cannot modify apps on a protected instance.');
+		await context.appService?.exportDraft(APP_ID);
+		expect(sources.commit).not.toHaveBeenCalled();
+	});
 });

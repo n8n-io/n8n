@@ -20,4 +20,27 @@ describe('UserInfo.vue', () => {
 		expect(getByText('email@example.com')).toBeInTheDocument();
 		expect(getByText('Pending')).toBeInTheDocument();
 	});
+
+	it('shows the avatar by default', () => {
+		const { getByTestId } = renderComponent({
+			props: { firstName: 'John', lastName: 'Doe', email: 'email@example.com' },
+		});
+
+		expect(getByTestId('user-avatar')).toBeInTheDocument();
+	});
+
+	it('hides the avatar when hideAvatar is set', () => {
+		const { getByText, queryByTestId } = renderComponent({
+			props: {
+				firstName: 'John',
+				lastName: 'Doe',
+				email: 'email@example.com',
+				hideAvatar: true,
+			},
+		});
+
+		expect(queryByTestId('user-avatar')).not.toBeInTheDocument();
+		expect(getByText('John Doe')).toBeInTheDocument();
+		expect(getByText('email@example.com')).toBeInTheDocument();
+	});
 });

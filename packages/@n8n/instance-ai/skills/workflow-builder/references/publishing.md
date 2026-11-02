@@ -7,7 +7,8 @@ description: >-
 recommended_tools:
   - publish_workflow
   - get_workflow
-  - workflow_builder_executions
+  - list_executions
+  - get_execution
   - workflow_builder_verify_built_workflow
 ---
 
@@ -34,8 +35,8 @@ publish approval prompt, so a summary that contradicts them is visible to them.
 
 Execution evidence can come from a run you started or a run the user started.
 If the user says they ran the workflow manually, call
-`workflow_builder_executions(action="list", workflowId)`, identify the relevant run, and inspect
-it with `workflow_builder_executions(action="get", executionId)`. The user's statement alone is
+`list_executions( workflowId)`, identify the relevant run, and inspect
+it with `get_execution( executionId)`. The user's statement alone is
 not execution evidence. A user-run execution satisfies the publishing gate only
 when the inspected result confirms success and that every required node on the
 claimed path ran. Do not count it if mocked, simulated, fixture, or pinned output

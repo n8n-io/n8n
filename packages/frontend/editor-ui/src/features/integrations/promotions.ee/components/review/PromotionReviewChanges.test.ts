@@ -87,7 +87,7 @@ it('explains why the changes cannot be read and loads them again on retry', asyn
 	vi.mocked(api.getPromotionReviewChanges)
 		.mockRejectedValueOnce(
 			new ResponseError(
-				'The remote no longer has the commits of this review. Open the review on the Git host.',
+				"n8n can't read the commits of this review. Open the review on the Git host.",
 			),
 		)
 		.mockResolvedValueOnce(reviewChanges());
@@ -95,7 +95,7 @@ it('explains why the changes cannot be read and loads them again on retry', asyn
 	const { getByTestId, getByRole, findAllByTestId } = await render();
 
 	expect(getByTestId('promotion-review-error')).toHaveTextContent(
-		'The remote no longer has the commits of this review.',
+		"n8n can't read the commits of this review.",
 	);
 	await userEvent.click(getByRole('button', { name: 'Try again' }));
 

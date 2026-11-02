@@ -48,6 +48,7 @@
     "@n8n/eslint-plugin-design-system": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
     "eslint-plugin-import-x": "^4.15.2",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
     "eslint-plugin-lodash": "^8.0.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "oxlint": "catalog:"

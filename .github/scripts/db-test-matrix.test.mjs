@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { buildMatrix, readPostgresVersions, POSTGRES_VERSIONS_PATH } from './db-test-matrix.mjs';
+import {
+	buildJobMatrices,
+	buildMatrix,
+	INTEGRATION_SHARDS,
+	readPostgresVersions,
+	POSTGRES_VERSIONS_PATH,
+} from './db-test-matrix.mjs';
 
 // node --test ./.github/scripts/db-test-matrix.test.mjs
 
@@ -165,5 +171,59 @@ describe('buildMatrix', () => {
 
 	it('rejects an unknown scope', () => {
 		assert.throws(() => buildMatrix(versions(), 'nightly'), /Unknown scope/);
+	});
+});
+
+describe('buildJobMatrices', () => {
+	const shardFlags = Array.from(
+		{ length: INTEGRATION_SHARDS },
+		(_, i) => `--shard=${i + 1}/${INTEGRATION_SHARDS}`,
+	);
+
+	it('splits the integration suite of every leg, SQLite and Postgres alike', () => {
+		const { integration } = buildJobMatrices(versions());
+
+		for (const leg of buildMatrix(versions())) {
+			const jobs = integration.filter((job) => job.name.startsWith(`${leg.name} Integration`));
+			assert.deepEqual(
+				jobs.map((job) => job['test-cmd']),
+				shardFlags.map((flag) => `${leg['test-cmd']} ${flag}`),
+			);
+		}
+	});
+
+	it('runs the unsharded steps once per leg, on the first shard', () => {
+		const { integration } = buildJobMatrices(versions());
+
+		assert.deepEqual(
+			integration.filter((job) => job['packaged-modules-cmd']).map((job) => job.name),
+			[
+				'Postgres 16 Integration (1/2)',
+				'Postgres 17 Integration (1/2)',
+				'Postgres 18 Integration (1/2)',
+			],
+		);
+		assert.deepEqual(
+			integration.filter((job) => job['schema-check-cmd']).map((job) => job.name),
+			['SQLite Pooled Integration (1/2)', 'Postgres 18 Integration (1/2)'],
+		);
+	});
+
+	it('does not split the migration suite', () => {
+		const { migration } = buildJobMatrices(versions());
+
+		assert.deepEqual(
+			migration.map((job) => job.name),
+			[
+				'SQLite Pooled Migrations',
+				'Postgres 16 Migrations',
+				'Postgres 17 Migrations',
+				'Postgres 18 Migrations',
+			],
+		);
+		assert.equal(
+			migration.some((job) => job['migration-cmd'].includes('--shard')),
+			false,
+		);
 	});
 });
