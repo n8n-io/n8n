@@ -709,4 +709,24 @@ describe('AuthController', () => {
 			await expect(promise).rejects.toThrow('Token is required');
 		});
 	});
+
+	describe('logout', () => {
+		beforeEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('should end the session and emit `user-logged-out` once', async () => {
+			const user = mock<User>({ id: '123' });
+			const req = mock<AuthenticatedRequest>({ user });
+			const res = mock<Response>();
+
+			const result = await controller.logout(req, res);
+
+			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
+			expect(authService.clearCookie).toHaveBeenCalledWith(res);
+			expect(eventsService.emit).toHaveBeenCalledTimes(1);
+			expect(eventsService.emit).toHaveBeenCalledWith('user-logged-out', { user });
+			expect(result).toEqual({ loggedOut: true });
+		});
+	});
 });
