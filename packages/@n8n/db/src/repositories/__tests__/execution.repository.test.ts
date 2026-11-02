@@ -261,23 +261,21 @@ describe('ExecutionRepository', () => {
 			const [error] = errorReporter.error.mock.calls[0];
 			expect(error).toMatchObject({
 				message: 'Found executions without executionData',
-				extra: {
-					executionIds: ['42'],
-					executions: [
-						{
-							id: '42',
-							storedAt: 'fs',
-							status: 'success',
-							mode: 'manual',
-							finished: true,
-							createdAt: '2026-11-01T10:00:00.000Z',
-							startedAt: '2026-11-01T10:00:01.000Z',
-							stoppedAt: '2026-11-01T10:00:02.000Z',
-							jsonSizeBytes: 1024,
-						},
-					],
-				},
+				extra: { executionIds: ['42'] },
 			});
+			expect(error).toHaveProperty('extra.executions', [
+				{
+					id: '42',
+					storedAt: 'fs',
+					status: 'success',
+					mode: 'manual',
+					finished: true,
+					createdAt: '2026-11-01T10:00:00.000Z',
+					startedAt: '2026-11-01T10:00:01.000Z',
+					stoppedAt: '2026-11-01T10:00:02.000Z',
+					jsonSizeBytes: 1024,
+				},
+			]);
 		});
 
 		test('should report all ids but the row fields of at most 20 executions', () => {
@@ -288,12 +286,14 @@ describe('ExecutionRepository', () => {
 			executionRepository.reportInvalidExecutions(executions);
 
 			const [error] = errorReporter.error.mock.calls[0];
-			expect(error).toMatchObject({
-				extra: {
-					executionIds: executions.map(({ id }) => id),
-					executions: executions.slice(0, 20).map(({ id }) => ({ id })),
-				},
-			});
+			expect(error).toHaveProperty(
+				'extra.executionIds',
+				executions.map(({ id }) => id),
+			);
+			expect(error).toHaveProperty(
+				'extra.executions',
+				executions.slice(0, 20).map(({ id }) => ({ id })),
+			);
 		});
 	});
 
