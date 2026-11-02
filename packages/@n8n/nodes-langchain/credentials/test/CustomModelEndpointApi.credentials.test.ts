@@ -187,17 +187,18 @@ describe('CustomModelEndpointApi Credential', () => {
 			const { httpRequest, mint } = minting({ access_token: 'tok-abc', expires_in: 3600 });
 
 			expect(await mint(OAUTH2)).toEqual({ sessionToken: 'tok-abc' });
-			expect(httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					method: 'POST',
-					url: 'https://login.example.com/oauth2/token',
-					headers: expect.objectContaining({
-						authorization: `Basic ${Buffer.from('client-1:cs-9f2a71c4ab').toString('base64')}`,
-						'content-type': 'application/x-www-form-urlencoded',
-					}),
-					body: 'grant_type=client_credentials',
-				}),
-			);
+			expect(httpRequest).toHaveBeenCalledWith({
+				method: 'POST',
+				url: 'https://login.example.com/oauth2/token',
+				headers: {
+					accept: 'application/json',
+					authorization: `Basic ${Buffer.from('client-1:cs-9f2a71c4ab').toString('base64')}`,
+					'content-type': 'application/x-www-form-urlencoded',
+				},
+				body: 'grant_type=client_credentials',
+				// A redirect would re-POST the secret somewhere else
+				disableFollowRedirect: true,
+			});
 		});
 
 		it('fails when the login server returns no access token', async () => {
