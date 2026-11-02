@@ -18,6 +18,7 @@ import {
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import { EngineConfig, WorkflowsConfig } from '@n8n/config';
 import type {
+	Person,
 	User,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
@@ -74,9 +75,9 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: Person;
+let member: Person;
+let anotherMember: Person;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;

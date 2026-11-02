@@ -1,5 +1,5 @@
 import { EventService } from '@n8n/backend-services';
-import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type User, type UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type Person, type UserRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -3245,7 +3245,7 @@ describe('LogStreamingEventRelay', () => {
 
 		it('should read the user fields when the host passed only the user id', async () => {
 			userRepository.findByIdWithRole.mockResolvedValue(
-				mock<User>({
+				mock<Person>({
 					id: 'user-1',
 					email: 'alice@example.com',
 					firstName: 'Alice',

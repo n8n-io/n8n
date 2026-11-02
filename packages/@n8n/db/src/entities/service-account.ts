@@ -18,9 +18,4 @@ export class ServiceAccount extends User {
 	 */
 	@OneToOne('ServiceAccountDetails', 'serviceAccount', { eager: true })
 	details: Relation<ServiceAccountDetails>;
-
-	/** A service account never waits for an invite. */
-	override computeIsPending(): void {
-		this.isPending = false;
-	}
 }

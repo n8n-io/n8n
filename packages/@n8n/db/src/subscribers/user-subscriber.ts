@@ -5,8 +5,7 @@ import { EventSubscriber } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { Project, User } from '../entities';
-import { UserRepository } from '../repositories/user.repository';
+import { Person, Project, User } from '../entities';
 
 @EventSubscriber()
 export class UserSubscriber implements EntitySubscriberInterface<User> {
@@ -29,10 +28,9 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 					fields.includes('email')
 				) {
 					const oldUser = event.databaseEntity;
+					// Only a person has a name and an email.
 					const userEntity =
-						newUserData instanceof User
-							? newUserData
-							: Container.get(UserRepository).create(newUserData);
+						newUserData instanceof Person ? newUserData : event.manager.create(Person, newUserData);
 
 					const projectName = userEntity.createPersonalProjectName();
 

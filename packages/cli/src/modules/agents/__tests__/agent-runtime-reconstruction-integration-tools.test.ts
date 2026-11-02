@@ -13,7 +13,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
 	TransactionRunner,
-	User,
+	Person,
 	CredentialsEntity,
 	ProjectRelationRepository,
 	WorkflowRepository,
@@ -96,8 +96,8 @@ const projectId = 'project-1';
 const userId = 'user-1';
 const versionId = 'v1';
 type N8nMemoryImplementation = ReturnType<N8nMemory['getImplementation']>;
-const testUser = { id: userId, firstName: 'Test', lastName: 'User' } as User;
-const testUserAuthor = `${testUser.firstName} ${testUser.lastName}`;
+const testPerson = { id: userId, firstName: 'Test', lastName: 'User' } as Person;
+const testUserAuthor = `${testPerson.firstName} ${testPerson.lastName}`;
 let credentialsService: Mocked<CredentialsService>;
 
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
