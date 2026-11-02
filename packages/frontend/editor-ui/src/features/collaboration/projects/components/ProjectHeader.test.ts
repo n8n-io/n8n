@@ -690,19 +690,17 @@ describe('ProjectHeader', () => {
 			const project = createTestProject({ scopes: ['app:create'] });
 			projectsStore.currentProject = project;
 			projectsStore.personalProject = project;
-			const randomUuid = vi
-				.spyOn(crypto, 'randomUUID')
-				.mockReturnValue('11111111-1111-4111-8111-111111111111');
 			const { getByTestId } = renderComponent({ props: { mainButton: 'app' } });
 
 			await userEvent.click(getByTestId('add-resource-app'));
 
+			const appId = mockPush.mock.calls.at(-1)?.[0]?.params?.appId;
+			expect(appId).toEqual(expect.any(String));
 			expect(mockPush).toHaveBeenCalledWith({
 				name: APP_DETAIL_VIEW,
-				params: { projectId: project.id, appId: '11111111-1111-4111-8111-111111111111' },
-				state: { [PENDING_APP_ID_STATE]: '11111111-1111-4111-8111-111111111111' },
+				params: { projectId: project.id, appId },
+				state: { [PENDING_APP_ID_STATE]: appId },
 			});
-			randomUuid.mockRestore();
 		});
 
 		it('should render workflow button as main by default', () => {
