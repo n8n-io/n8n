@@ -209,8 +209,24 @@ describe('buildJobMatrices', () => {
 		);
 	});
 
-	it('drops the SQLite integration jobs in pr scope and moves their schema check', () => {
-		const { integration, migration } = buildJobMatrices(versions(), 'pr');
+	it('keeps the SQLite integration jobs in pr scope without the CLI integration signal', () => {
+		const { integration } = buildJobMatrices(versions(), 'pr');
+
+		assert.deepEqual(
+			integration.map((job) => job.name),
+			[
+				'SQLite Pooled Integration (1/2)',
+				'SQLite Pooled Integration (2/2)',
+				'Postgres 18 Integration (1/2)',
+				'Postgres 18 Integration (2/2)',
+			],
+		);
+	});
+
+	it('drops the SQLite integration jobs when the CLI integration job runs and moves their schema check', () => {
+		const { integration, migration } = buildJobMatrices(versions(), 'pr', {
+			cliIntegrationRuns: true,
+		});
 
 		assert.deepEqual(
 			integration.map((job) => job.name),

@@ -136,17 +136,18 @@ const PACKAGED_MODULES_CMD = `${TEST_RUN} --full-task=test:postgres --filter='./
  *
  * @param {PostgresVersions} versions
  * @param {'pr' | 'full'} scope
+ * @param {{ cliIntegrationRuns?: boolean }} [options] `cliIntegrationRuns`: the
+ *   caller runs the CLI Integration Tests job in full on SQLite.
  */
-export function buildJobMatrices(versions, scope = 'full') {
+export function buildJobMatrices(versions, scope = 'full', { cliIntegrationRuns = false } = {}) {
 	const legs = buildMatrix(versions, scope);
-	// In PRs the CLI Integration Tests job runs the same SQLite suite (same config
-	// and pool size) in full when DB files change, so the SQLite leg only keeps its
-	// migrations. Its schema-docs check moves to the first Postgres job.
-	const integrationLegs = scope === 'pr' ? legs.filter((leg) => leg.TEST_IMAGE_POSTGRES) : legs;
-	const movedSchemaChecks =
-		scope === 'pr'
-			? legs.filter((leg) => !leg.TEST_IMAGE_POSTGRES).map((leg) => leg['schema-check-cmd'])
-			: [];
+	// When the CLI Integration Tests job runs the same SQLite suite (same config
+	// and pool size) in full, the SQLite leg only keeps its migrations. Its
+	// schema-docs check moves to the first Postgres job.
+	const integrationLegs = cliIntegrationRuns ? legs.filter((leg) => leg.TEST_IMAGE_POSTGRES) : legs;
+	const movedSchemaChecks = cliIntegrationRuns
+		? legs.filter((leg) => !leg.TEST_IMAGE_POSTGRES).map((leg) => leg['schema-check-cmd'])
+		: [];
 
 	const integration = integrationLegs.flatMap((leg, legIndex) =>
 		Array.from({ length: INTEGRATION_SHARDS }, (_, i) => {
@@ -182,5 +183,8 @@ export function buildJobMatrices(versions, scope = 'full') {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const scopeArg = process.argv.find((arg) => arg.startsWith('--scope='));
 	const scope = scopeArg ? scopeArg.slice('--scope='.length) : 'full';
-	console.log(JSON.stringify(buildJobMatrices(readPostgresVersions(), scope)));
+	const cliIntegrationRuns = process.argv.includes('--cli-integration-runs=true');
+	console.log(
+		JSON.stringify(buildJobMatrices(readPostgresVersions(), scope, { cliIntegrationRuns })),
+	);
 }

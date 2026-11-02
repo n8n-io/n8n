@@ -269,12 +269,15 @@ jobs:
       # Generated here because a reusable workflow cannot resolve its own matrix.
       # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
       # full Postgres range, so every merge still gates on the older majors.
+      # CLI_INTEGRATION_RUNS must match `fullCliIntegration` of unit-test: when that
+      # job runs the SQLite suite in full, the DB matrix drops its duplicate run.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
         if: fromJSON(steps.ci-filter.outputs.results).db
         env:
           DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE")" >> "$GITHUB_OUTPUT"
+          CLI_INTEGRATION_RUNS: ${{ github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).unit }}
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE" --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
@@ -328,7 +331,8 @@ jobs:
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
       lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
-      fullCliIntegration: ${{ needs.install-and-build.outputs.db == 'true' }}
+      # The merge queue keeps the SQLite leg in the DB matrix, so it scopes this suite.
+      fullCliIntegration: ${{ github.event_name != 'merge_group' && needs.install-and-build.outputs.db == 'true' }}
     secrets: inherit
 
   typecheck:
