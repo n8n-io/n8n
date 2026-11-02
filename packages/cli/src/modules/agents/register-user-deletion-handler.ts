@@ -19,7 +19,9 @@ export function registerUserDeletionHandler() {
 		transferAll: async () => {},
 		deleteAll: async () => {},
 		deleteAllForUser: async (userId) => {
-			await Container.get(SystemAgentExecutionService).stopThreadsOfUser(userId);
+			const systemAgents = Container.get(SystemAgentExecutionService);
+			await systemAgents.stopThreadsOfUser(userId);
+			await systemAgents.deleteThreadsOfUser(userId);
 			await Container.get(AgentMemoryEntryRepository).retireUserScopes(
 				[
 					draftChatMemoryResourceId(userId),
@@ -31,15 +33,6 @@ export function registerUserDeletionHandler() {
 			const project =
 				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 			const threads = Container.get(AgentExecutionThreadRepository);
-			for (const session of await threads.findOwnedSystemAgentSessions(userId)) {
-				if (session.projectId === project.id) {
-					await Container.get(SystemAgentExecutionService).destroyThreadWorkspace(
-						session.agentId,
-						session.id,
-						userId,
-					);
-				}
-			}
 			await Container.get(AgentProjectCleanupService).cleanupProject(project.id);
 			await threads.shareUserSessionHistory(userId);
 		},

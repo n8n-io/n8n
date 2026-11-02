@@ -5,8 +5,9 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
@@ -162,7 +163,6 @@ describe('Agent memory on user deletion', () => {
 	it.each([
 		{ name: 'Preview', system: false, resourceId: draftChatMemoryResourceId },
 		{ name: 'n8n Chat', system: false, resourceId: productionChatMemoryResourceId },
-		{ name: 'system chat', system: true, resourceId: systemChatMemoryResourceId },
 	])(
 		'keeps $name session history and clears private embeddings',
 		async ({ system, resourceId }) => {
@@ -200,21 +200,17 @@ describe('Agent memory on user deletion', () => {
 				admin.id,
 				10,
 			);
-			if (system) {
-				expect(history.threads).toEqual([]);
-			} else {
-				expect(history.threads).toEqual([
-					expect.objectContaining({ id: scope.threadId, canContinueInPreview: false }),
-				]);
-				expect(
-					await Container.get(AgentExecutionService).getThreadDetail(
-						scope.threadId,
-						before.projectId,
-						before.agentId,
-						admin.id,
-					),
-				).not.toBeNull();
-			}
+			expect(history.threads).toEqual([
+				expect.objectContaining({ id: scope.threadId, canContinueInPreview: false }),
+			]);
+			expect(
+				await Container.get(AgentExecutionService).getThreadDetail(
+					scope.threadId,
+					before.projectId,
+					before.agentId,
+					admin.id,
+				),
+			).not.toBeNull();
 			expect(destroy).not.toHaveBeenCalled();
 		},
 	);
@@ -314,6 +310,75 @@ describe('Agent memory on user deletion', () => {
 		},
 	);
 
+	it('removes private system chats and keeps project audit sessions and chats of other users', async () => {
+		const user = await createMember();
+		const root = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const child = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const rootThread = await threadRepo.findOneByOrFail({ id: root.scope.threadId });
+		await threadRepo.update(child.scope.threadId, {
+			projectId: rootThread.projectId,
+			parentThreadId: root.scope.threadId,
+			parentAgentId: root.agentId,
+		});
+		const projectSession = await createSession(user);
+		const other = await createMember();
+		const kept = await createSession(other, true, systemChatMemoryResourceId(other.id));
+		const logs = Container.get(AgentExecutionLogStore);
+		const refs = [];
+		for (const session of [root, child, kept]) {
+			const [execution] = await executionRepo.findByThreadIdOrdered(session.scope.threadId);
+			const ref = {
+				agentId: session.agentId,
+				threadId: session.scope.threadId,
+				executionId: execution.id,
+			};
+			await executionRepo.update(execution.id, { storedAt: 'fs', source: 'system_chat' });
+			await logs.write(ref, { timeline: [] }, 'fs');
+			refs.push(ref);
+		}
+		const settings = Container.get(AgentsSettingsService);
+		await settings.setEnabled(false);
+		try {
+			await Container.get(UserService).deleteUser(admin, user.id);
+		} finally {
+			await settings.setEnabled(true);
+		}
+		for (const session of [root, child]) {
+			expect(await threadRepo.findOneBy({ id: session.scope.threadId })).toBeNull();
+			expect(await executionRepo.findByThreadIdOrdered(session.scope.threadId)).toEqual([]);
+			expect(await checkpointRepo.findByRunId(`run-${session.scope.threadId}`)).toBeNull();
+			expect(await session.store.getThread(session.scope.threadId)).toBeNull();
+			expect(await session.store.getMessages(session.scope.threadId)).toEqual([]);
+			expect(await entryRepo.findOneBy({ id: session.entry.id })).toBeNull();
+			expect(destroy).toHaveBeenCalledWith({
+				agentId: session.agentId,
+				threadId: session.scope.threadId,
+				userId: user.id,
+			});
+		}
+		expect(destroy).toHaveBeenCalledTimes(2);
+		expect(await kept.store.getMessages(kept.scope.threadId)).toHaveLength(1);
+		expect(await threadRepo.findOneByOrFail({ id: kept.scope.threadId })).toMatchObject({
+			ownerId: other.id,
+		});
+		expect(await checkpointRepo.findByRunId(`run-${kept.scope.threadId}`)).not.toBeNull();
+		const audit = await threadRepo.findOneByOrFail({ id: projectSession.scope.threadId });
+		expect(
+			await Container.get(AgentExecutionService).getThreadDetail(
+				audit.id,
+				audit.projectId,
+				audit.agentId,
+				admin.id,
+			),
+		).not.toBeNull();
+		for (const ref of refs) {
+			const log = await logs.read(ref, 'fs');
+			if (ref.threadId === kept.scope.threadId) expect(log).not.toBeNull();
+			else expect(log).toBeNull();
+		}
+		await logs.delete(refs.map((ref) => ({ ...ref, storedAt: 'fs' })));
+	});
+
 	it('discards pending system turns and keeps their input for audit history', async () => {
 		const user = await createMember();
 		const { store, scope, agentId } = await createSession(
@@ -345,6 +410,31 @@ describe('Agent memory on user deletion', () => {
 		expect(await store.getMessages(thread.id)).toEqual(before);
 		expect(await threadRepo.findOneBy({ id: thread.id })).not.toBeNull();
 	});
+
+	it('keeps the account and session owner when a running system chat cannot be removed', async () => {
+		const user = await createMember();
+		const { scope, entry } = await createSession(user, true, systemChatMemoryResourceId(user.id));
+		const deletion = vi
+			.spyOn(Container.get(AgentExecutionService), 'deleteThread')
+			.mockRejectedValue(new ConflictError('Session has active work'));
+		try {
+			await expect(Container.get(UserService).deleteUser(admin, user.id)).rejects.toThrow(
+				ConflictError,
+			);
+		} finally {
+			deletion.mockRestore();
+		}
+		expect(await Container.get(UserRepository).findOneBy({ id: user.id })).not.toBeNull();
+		expect(await entryRepo.findOneByOrFail({ id: entry.id })).toMatchObject({
+			status: 'active',
+			embedding: entry.embedding,
+		});
+		expect(await threadRepo.findOneByOrFail({ id: scope.threadId })).toMatchObject({
+			ownerId: user.id,
+			accessScope: 'user',
+		});
+		expect(destroy).not.toHaveBeenCalled();
+	}, 10_000);
 
 	it('clears inactive and source-less user memories across agents without changing other scopes', async () => {
 		const [user, other] = await Promise.all([createMember(), createMember()]);

@@ -2151,6 +2151,93 @@ describe('SystemAgentExecutionService', () => {
 		});
 	});
 
+	describe('deleteThreadsOfUser', () => {
+		it('removes all private system chats without requiring a registered provider', async () => {
+			const destroy = vi.fn(async () => {});
+			const { service, threadRepository, executionService } = setup([], undefined, {
+				acquire: async () => undefined,
+				destroy,
+			});
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'child-1', agentId: 'unregistered-agent', projectId: 'project-1' },
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			executionService.deleteThread.mockResolvedValue(true);
+			await service.deleteThreadsOfUser('user-1');
+			expect(threadRepository.findPrivateSystemAgentSessionsForDeletion).toHaveBeenCalledWith(
+				'user-1',
+			);
+			expect(executionService.deleteThread.mock.calls).toEqual([
+				['project-1', 'unregistered-agent', 'child-1', 'user-1'],
+				['project-1', AGENT_ID, 'thread-1', 'user-1'],
+			]);
+			expect(destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
+		});
+
+		it('cleans the workspace when another request has already removed the session', async () => {
+			const destroy = vi.fn(async () => {});
+			const { service, threadRepository, executionService } = setup([], undefined, {
+				acquire: async () => undefined,
+				destroy,
+			});
+			threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+				{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+			]);
+			executionService.deleteThread.mockResolvedValue(false);
+			executionService.findThreadById.mockResolvedValue(null);
+			await service.deleteThreadsOfUser('user-1');
+			expect(destroy).toHaveBeenCalledExactlyOnceWith({
+				agentId: AGENT_ID,
+				threadId: 'thread-1',
+				userId: 'user-1',
+			});
+		});
+
+		it('waits for a stopped turn to finish before deleting its session', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service, threadRepository, executionService } = setup();
+				threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				executionService.deleteThread
+					.mockRejectedValueOnce(new ConflictError('Session has active work'))
+					.mockResolvedValueOnce(true);
+				const deletion = service.deleteThreadsOfUser('user-1');
+				await vi.runAllTimersAsync();
+				await deletion;
+				expect(executionService.deleteThread).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('fails account cleanup if a session still has active work after all retries', async () => {
+			vi.useFakeTimers();
+			try {
+				const { service, threadRepository, executionService } = setup();
+				threadRepository.findPrivateSystemAgentSessionsForDeletion.mockResolvedValue([
+					{ id: 'thread-1', agentId: AGENT_ID, projectId: 'project-1' },
+				]);
+				executionService.deleteThread.mockRejectedValue(
+					new ConflictError('Session has active work'),
+				);
+				const deletion = expect(service.deleteThreadsOfUser('user-1')).rejects.toThrow(
+					ConflictError,
+				);
+				await vi.runAllTimersAsync();
+				await deletion;
+				expect(executionService.deleteThread).toHaveBeenCalledTimes(5);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('threads', () => {
 		it('deletes an owned thread through the Agents execution service', async () => {
 			const { service, executionService } = setup();

@@ -8,7 +8,8 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
+import { retry } from '@n8n/utils/retry';
 import { FileNotFoundError } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -346,7 +347,7 @@ export class SystemAgentExecutionService {
 		await this.deleteOwnedThread(thread, user.id);
 	}
 
-	/** Stop running system-agent turns before account cleanup. Keep the sessions and workspaces. */
+	/** Stop running system-agent turns and discard queued turns before account cleanup. */
 	async stopThreadsOfUser(userId: string): Promise<void> {
 		let sessions: SessionRef[];
 		try {
@@ -368,6 +369,39 @@ export class SystemAgentExecutionService {
 					threadId: session.id,
 					error: error instanceof Error ? error.message : String(error),
 				});
+			}
+		}
+	}
+
+	/** Remove private system-agent chats after their turns have been stopped. */
+	async deleteThreadsOfUser(userId: string): Promise<void> {
+		const sessions = await this.threadRepository.findPrivateSystemAgentSessionsForDeletion(userId);
+		for (const session of sessions) {
+			const deleted = await retry(
+				async () => {
+					try {
+						await this.deleteOwnedThread(session, userId);
+						return true;
+					} catch (error) {
+						if (error instanceof ConflictError) return false;
+						if (
+							error instanceof NotFoundError &&
+							!(await this.executionService.findThreadById(session.id))
+						) {
+							await this.destroyThreadWorkspace(session.agentId, session.id, userId);
+							return true;
+						}
+						throw error;
+					}
+				},
+				1_000,
+				5,
+				null,
+			);
+			if (!deleted) {
+				throw new ConflictError(
+					'Stop the running assistant session before you delete the account.',
+				);
 			}
 		}
 	}

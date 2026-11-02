@@ -505,6 +505,17 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	/** Include private child sessions and agents whose provider is no longer registered. */
+	async findPrivateSystemAgentSessionsForDeletion(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: { ownerId, accessScope: 'user', agent: { scope: 'instance' } },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+	}
+
 	/** One top-level private session of a user with an agent. */
 	async findOwnedById(
 		agentId: string,
