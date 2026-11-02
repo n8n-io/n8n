@@ -7,7 +7,7 @@ import type { OperationContext } from '../services/transaction';
 export type AfterFoldCommit = () => Promise<void>;
 
 /**
- * Turns a batch of claimed ledger rows into one feature's summary table. It writes only
+ * Aggregates a batch of claimed ledger rows into the tables of one feature. It writes only
  * through `ctx`, so its writes commit or roll back with the claim.
  */
 export interface ExecutionLedgerFoldStep {
