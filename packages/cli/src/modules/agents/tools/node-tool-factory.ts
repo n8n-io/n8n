@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
-import { AgentFileBridge } from '../agent-file-bridge.service';
+import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { toPolicyRefusalResult } from './policy-refusal';
 
@@ -85,11 +85,19 @@ function createNativeStringToolInputSchema(description: string): z.ZodType {
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
-): Promise<NodeToolInputSchema> {
+): Promise<{ schema: NodeToolInputSchema; acceptsFiles: boolean }> {
 	const collectedArguments = extractFromAIParameters(
 		(toolSchema.node.nodeParameters ?? {}) as INodeParameters,
 	);
-	if (collectedArguments.length > 0) return createZodSchemaFromArgs(collectedArguments);
+	// Supply-data tools take JSON only, so only these schemas accept files.
+	// A `$fromAI('files')` argument keeps its meaning, so the tool then takes no files.
+	if (collectedArguments.length > 0) {
+		const schema = createZodSchemaFromArgs(collectedArguments);
+		if (collectedArguments.some(({ key }) => key === 'files')) {
+			return { schema, acceptsFiles: false };
+		}
+		return { schema: schema.extend({ files: FILES_INPUT_SCHEMA }), acceptsFiles: true };
+	}
 
 	let nodeType;
 	const nodeTypeName = resolveToolNodeType(
@@ -104,7 +112,7 @@ async function resolveInputSchema(
 	} catch {
 		// If the node type can't be resolved here, fall through — the executor
 		// will surface a clearer error at invocation time.
-		return { type: 'object', properties: {} };
+		return { schema: { type: 'object', properties: {} }, acceptsFiles: false };
 	}
 
 	if (typeof nodeType.supplyData === 'function') {
@@ -116,16 +124,21 @@ async function resolveInputSchema(
 			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
 		});
 
-		if (introspected) return introspected as NodeToolInputSchema;
+		if (introspected) {
+			return { schema: introspected as NodeToolInputSchema, acceptsFiles: false };
+		}
 
-		return createNativeStringToolInputSchema(
-			toolSchema.description ??
-				nodeType.description.description ??
-				`The query or input text to pass to ${toolSchema.node.nodeType}.`,
-		);
+		return {
+			schema: createNativeStringToolInputSchema(
+				toolSchema.description ??
+					nodeType.description.description ??
+					`The query or input text to pass to ${toolSchema.node.nodeType}.`,
+			),
+			acceptsFiles: false,
+		};
 	}
 
-	return { type: 'object', properties: {} };
+	return { schema: z.object({ files: FILES_INPUT_SCHEMA }).passthrough(), acceptsFiles: true };
 }
 
 /**
@@ -155,16 +168,28 @@ export async function resolveNodeTool(
 			}
 		: {};
 
+	const { schema, acceptsFiles } = await resolveInputSchema(toolSchema, ctx);
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
-		.input(await resolveInputSchema(toolSchema, ctx))
-		.handler(async (input: Record<string, unknown>, toolCtx) => {
+		.input(schema)
+		.handler(async (toolInput: Record<string, unknown>, toolCtx) => {
+			const { files, ...rest } = toolInput;
+			const input = acceptsFiles ? rest : toolInput;
+			const inputFiles =
+				acceptsFiles && files
+					? await Container.get(AgentFileBridge).toBinary(files, {
+							projectId: ctx.projectId,
+							threadId: toolCtx.persistence?.threadId,
+						})
+					: undefined;
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [{ json: input as IDataObject }],
+				inputData: [
+					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
+				],
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
@@ -186,11 +211,11 @@ export async function resolveNodeTool(
 			// Without a thread there is no scope for the files, so the binary is dropped.
 			const threadId = toolCtx.persistence?.threadId;
 			if (!threadId) return { ...result, data: result.data.map(({ json }) => ({ json })) };
-			const adopted = await Container.get(AgentFileBridge).adoptFromItems(result.data, {
-				agentId: ctx.agentId ?? null,
-				projectId: ctx.projectId,
-				threadId,
-			});
+			const adopted = await Container.get(AgentFileBridge).adoptFromItems(
+				result.data,
+				{ agentId: ctx.agentId ?? null, projectId: ctx.projectId, threadId },
+				inputFiles?.stored,
+			);
 			return {
 				...result,
 				data: adopted.items,

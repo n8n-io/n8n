@@ -8,6 +8,7 @@ export function getAppPermissions(projectId: string) {
 	return {
 		canList: Boolean(app?.list),
 		canRead: Boolean(app?.read),
+		canUpdate: !permissions.isReadOnly() && Boolean(app?.update),
 		canDelete: !permissions.isReadOnly() && Boolean(app?.delete),
 	};
 }

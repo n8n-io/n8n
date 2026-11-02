@@ -2,10 +2,12 @@
 import type {
 	DiscoveredSkill,
 	SkillSourceConnectResponse,
+	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
+	SkillSourceRepositoryOption,
 } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nBadge,
@@ -22,9 +24,13 @@ import {
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
+import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
+import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 import { useSkillsStore } from '../skills.store';
 import { parseScope, useSkillSourceReasons } from '../skills.utils';
@@ -52,12 +58,24 @@ const GITHUB_LINK = /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+([/?#].*)?
 /** A web link to another host, such as GitLab. */
 const OTHER_HOST_LINK = /^https?:\/\/(?!(www\.)?github\.com([/?#:]|$))[^\s/?#]+/i;
 
+/** A source reads a private repository with a token only, never with OAuth. */
+const TOKEN_CREDENTIAL_TYPES = ['githubApi', 'githubAppApi'] as const;
+type TokenCredentialType = (typeof TOKEN_CREDENTIAL_TYPES)[number];
+
+/** The options of the credential select that open the credential modal instead of picking. */
+const NEW_CREDENTIAL_PREFIX = '__new__:';
+
+type Mode = 'account' | 'url';
+
 const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
-const { reasonText } = useSkillSourceReasons();
+const { reasonText, findingsText, linkedDomainsText } = useSkillSourceReasons();
+const projectsStore = useProjectsStore();
+const uiStore = useUIStore();
 
-const step = ref<'link' | 'choose'>('link');
+const step = ref<'start' | 'repository' | 'choose'>('start');
+const mode = ref<Mode>('url');
 const url = ref('');
 const scope = ref('');
 const discovering = ref(false);
@@ -65,27 +83,66 @@ const connecting = ref(false);
 const linkError = ref('');
 const discovery = ref<SkillSourceDiscovery | null>(null);
 const selected = ref<string[]>([]);
+/** The link and credential that the shown discovery read, which connect sends again. */
+const discovered = ref<{ url: string; credentialId?: string } | null>(null);
+
+/** `''` is "None, the repository is public", which only the link mode offers. */
+const credentialId = ref('');
+const credentials = ref<SkillSourceCredentialOption[]>([]);
+const credentialsLoading = ref(false);
+/** The credential that the user created from this dialog, for the success box. */
+const createdCredential = ref<{ id: string; scopeLabel: string } | null>(null);
+
+const repositories = ref<SkillSourceRepositoryOption[]>([]);
+const repositoriesTruncated = ref(false);
+const repositoriesLoading = ref(false);
+const owner = ref('');
+const repositoryName = ref('');
+
+/** "I reviewed the warnings", for the picked skills that need review. */
+const reviewed = ref(false);
 /** Counts the reads of a link, so the answer of a read from before a close is dropped. */
 let discoverRun = 0;
+let credentialsRun = 0;
+let repositoriesRun = 0;
+
+function resetRepositories() {
+	repositoriesRun += 1;
+	repositories.value = [];
+	repositoriesTruncated.value = false;
+	repositoriesLoading.value = false;
+	owner.value = '';
+	repositoryName.value = '';
+}
 
 watch(
 	() => props.open,
 	(open) => {
 		if (!open) return;
 		discoverRun += 1;
+		credentialsRun += 1;
 		discovering.value = false;
-		step.value = 'link';
+		step.value = 'start';
+		mode.value = 'url';
 		url.value = '';
 		scope.value = props.scopeOptions[0]?.value ?? '';
 		linkError.value = '';
 		discovery.value = null;
+		discovered.value = null;
 		selected.value = [];
+		credentialId.value = '';
+		credentials.value = [];
+		credentialsLoading.value = false;
+		createdCredential.value = null;
+		resetRepositories();
+		reviewed.value = false;
 	},
 	{ immediate: true },
 );
 
-// A new link or scope needs a new read, so the old answer and its messages go.
-watch([url, scope], () => {
+// A new link, scope, credential or repository needs a new read, so the old answer and its
+// messages go.
+watch([url, scope, credentialId, owner, repositoryName, mode], () => {
 	linkError.value = '';
 	discovery.value = null;
 });
@@ -108,11 +165,207 @@ const scopeHint = computed(() => {
 });
 
 /**
- * Each reason has its own text. An error without a reason, such as a 404 when skill sync is
- * off, gets the generic text.
+ * Each reason has its own text. With a credential picked, `not_found` means the credential cannot
+ * read the repository. An error without a reason, such as a 404 when skill sync is off, gets
+ * `fallback`.
  */
-function discoverErrorText(error: unknown, link: string): string {
-	return reasonText(error instanceof ResponseError ? error.meta?.reason : undefined, link);
+function discoverErrorText(
+	error: unknown,
+	link?: string,
+	fallback: BaseTextKey = 'settings.context.skills.connect.error.discover',
+): string {
+	const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
+	if (reason === undefined) return i18n.baseText(fallback);
+	return reasonText(reason, link, { withCredential: !!credentialId.value });
+}
+
+const credentialHint = computed(() => {
+	const option = selectedScope.value;
+	if (!option || option.value === 'instance') {
+		return i18n.baseText('settings.context.skills.connect.credential.hint.instance');
+	}
+	if (option.icon === 'user') {
+		return i18n.baseText('settings.context.skills.connect.credential.hint.personal');
+	}
+	return i18n.baseText('settings.context.skills.connect.credential.hint.project', {
+		interpolate: { project: option.label },
+	});
+});
+
+/**
+ * Where a credential made from this dialog lives: the project of a project source, or the
+ * personal project of the admin for a Global source, since Global uses credentials that
+ * admins own.
+ */
+const credentialProject = computed(() => {
+	const target = parseScope(scope.value);
+	const projectId =
+		target.scope === 'instance' ? projectsStore.personalProject?.id : target.projectId;
+	if (!projectId) return null;
+	if (projectsStore.personalProject?.id === projectId) return projectsStore.personalProject;
+	return projectsStore.myProjects.find((project) => project.id === projectId) ?? null;
+});
+
+const canCreateCredential = computed(
+	() =>
+		!!credentialProject.value &&
+		!!getResourcePermissions(credentialProject.value.scopes).credential.create,
+);
+
+const newCredentialOptions = computed(() =>
+	canCreateCredential.value
+		? [
+				{
+					value: `${NEW_CREDENTIAL_PREFIX}githubApi`,
+					label: i18n.baseText('settings.context.skills.connect.credential.new'),
+				},
+				{
+					value: `${NEW_CREDENTIAL_PREFIX}githubAppApi`,
+					label: i18n.baseText('settings.context.skills.connect.credential.newApp'),
+				},
+			]
+		: [],
+);
+
+/** Reads the credentials of the scope; `select` picks one, such as a credential just made. */
+async function loadCredentials(select?: string) {
+	const requestedScope = scope.value;
+	const run = ++credentialsRun;
+	credentialsLoading.value = true;
+	try {
+		const list = await skillsStore.fetchSourceCredentials(parseScope(requestedScope));
+		if (run !== credentialsRun) return;
+		// The server lists only the credential types that its source clients read.
+		credentials.value = list;
+		const ids = credentials.value.map((credential) => credential.id);
+		if (select && ids.includes(select)) {
+			credentialId.value = select;
+		} else if (!ids.includes(credentialId.value)) {
+			// The account mode needs a credential, so it starts on the first one, as the prototype.
+			credentialId.value = mode.value === 'account' ? (ids[0] ?? '') : '';
+		}
+	} catch (error) {
+		if (run !== credentialsRun) return;
+		credentials.value = [];
+		credentialId.value = '';
+		showError(error, i18n.baseText('settings.context.skills.connect.credential.error.load'));
+	} finally {
+		if (run === credentialsRun) credentialsLoading.value = false;
+	}
+}
+
+async function loadRepositories() {
+	resetRepositories();
+	const id = credentialId.value;
+	if (mode.value !== 'account' || step.value !== 'repository' || !id) return;
+	const requestedScope = scope.value;
+	const run = repositoriesRun;
+	repositoriesLoading.value = true;
+	try {
+		const list = await skillsStore.fetchSourceRepositories({
+			...parseScope(requestedScope),
+			credentialId: id,
+		});
+		if (run !== repositoriesRun) return;
+		repositories.value = list.repositories;
+		repositoriesTruncated.value = list.truncated;
+	} catch (error) {
+		if (run !== repositoriesRun) return;
+		linkError.value = discoverErrorText(
+			error,
+			undefined,
+			'settings.context.skills.connect.repository.error.load',
+		);
+	} finally {
+		if (run === repositoriesRun) repositoriesLoading.value = false;
+	}
+}
+
+// The account mode lists the repositories of the chosen credential.
+watch([credentialId, scope, mode, step], (next, previous) => {
+	const nextStep = next[3];
+	const prevStep = previous[3];
+	// Going back from the skills to the repository keeps the owner and repository.
+	if (nextStep === 'choose' || (prevStep === 'choose' && nextStep === 'repository')) return;
+	void loadRepositories();
+});
+
+const owners = computed(() => [
+	...new Set(repositories.value.map((repository) => repository.owner)),
+]);
+
+const ownerRepositories = computed(() =>
+	repositories.value.filter((repository) => repository.owner === owner.value),
+);
+
+const selectedRepository = computed(() =>
+	ownerRepositories.value.find((repository) => repository.name === repositoryName.value),
+);
+
+function onOwnerChange(value: string) {
+	owner.value = value;
+	repositoryName.value = '';
+}
+
+/** The link that discover reads: the pasted one, or the one of the picked repository. */
+const sourceUrl = computed(() =>
+	mode.value === 'url' ? url.value.trim() : (selectedRepository.value?.url ?? ''),
+);
+
+function startMode(next: Mode) {
+	mode.value = next;
+	step.value = 'repository';
+	credentialId.value = '';
+	createdCredential.value = null;
+	void loadCredentials();
+}
+
+function onScopeChange(value: string) {
+	scope.value = value;
+	credentialId.value = '';
+	createdCredential.value = null;
+	if (step.value === 'repository') void loadCredentials();
+}
+
+const credentialModalOpen = computed(
+	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
+);
+
+function openCredentialModal(type: TokenCredentialType) {
+	const project = credentialProject.value;
+	if (!project || !canCreateCredential.value) return;
+	const requestedScope = scope.value;
+	const scopeLabel =
+		parseScope(requestedScope).scope === 'instance'
+			? i18n.baseText('settings.context.skills.connect.credential.created.personal')
+			: (selectedScope.value?.label ?? '');
+	uiStore.openNewCredential(type, false, false, project.id, undefined, undefined, undefined, {
+		hideAskAssistant: true,
+		appendToBody: true,
+		closeOnSave: true,
+		onCredentialCreated: (credential) => {
+			void onCredentialCreated(credential.id, requestedScope, scopeLabel);
+		},
+	});
+}
+
+async function onCredentialCreated(id: string, requestedScope: string, scopeLabel: string) {
+	// The user may have closed the dialog or picked another scope while the modal was open.
+	if (!props.open || step.value !== 'repository' || requestedScope !== scope.value) return;
+	await loadCredentials(id);
+	if (credentialId.value === id) createdCredential.value = { id, scopeLabel };
+}
+
+function onCredentialSelect(value: string) {
+	if (value.startsWith(NEW_CREDENTIAL_PREFIX)) {
+		const type = TOKEN_CREDENTIAL_TYPES.find(
+			(known) => known === value.slice(NEW_CREDENTIAL_PREFIX.length),
+		);
+		if (type) openCredentialModal(type);
+		return;
+	}
+	credentialId.value = value;
+	createdCredential.value = null;
 }
 
 const duplicate = computed(() => discovery.value?.duplicate ?? { kind: 'none' as const });
@@ -140,15 +393,60 @@ const duplicateMessage = computed(() => {
 const isBlocked = computed(() => duplicate.value.kind === 'blocked');
 
 const canGoNext = computed(
-	() => !!url.value.trim() && !!scope.value && !discovering.value && !isBlocked.value,
+	() =>
+		!!sourceUrl.value &&
+		!!scope.value &&
+		(mode.value === 'url' || !!credentialId.value) &&
+		!discovering.value &&
+		!isBlocked.value,
 );
 
 function isSelectable(skill: DiscoveredSkill): boolean {
-	return !skill.nameTaken && !skill.error;
+	return !skill.nameTaken && !skill.error && skill.check?.verdict !== 'blocked';
+}
+
+// The picked skills that the picker shows as needing review. A tick covers only these.
+const needsReviewKeys = computed(
+	() =>
+		discovery.value?.skills
+			.filter(
+				(skill) => selected.value.includes(skill.key) && skill.check?.verdict === 'needs_review',
+			)
+			.map((skill) => skill.key) ?? [],
+);
+
+const needsReview = computed(() => needsReviewKeys.value.length > 0);
+
+// A tick covers the warnings that the user saw, so it goes when no picked skill needs review.
+watch(needsReview, (needed) => {
+	if (!needed) reviewed.value = false;
+});
+
+const canAdd = computed(() => selected.value.length > 0 && (!needsReview.value || reviewed.value));
+
+const CHECK_BADGES = {
+	pass: { variant: 'success', label: 'settings.context.skills.connect.check.pass' },
+	needs_review: { variant: 'warning', label: 'settings.context.skills.connect.check.needsReview' },
+	blocked: { variant: 'danger', label: 'settings.context.skills.connect.check.blocked' },
+} as const;
+
+/**
+ * The findings line of a skill. A SKILL.md that n8n cannot read is blocked, and its findings
+ * name the cause, so they replace the read error.
+ */
+function checkFindings(skill: DiscoveredSkill): string {
+	if (!skill.check || skill.nameTaken) return '';
+	return findingsText(skill.check.findings);
+}
+
+/** The domains of a skill that can come in. A blocked row shows only why it is blocked. */
+function linkedDomains(skill: DiscoveredSkill): string {
+	if (!skill.check || skill.nameTaken || skill.check.verdict === 'blocked') return '';
+	return linkedDomainsText(skill.check.findings);
 }
 
 async function onNext() {
-	const link = url.value.trim();
+	const link = sourceUrl.value;
 	if (!GITHUB_LINK.test(link)) {
 		linkError.value = reasonText(
 			OTHER_HOST_LINK.test(link) ? 'unsupported_provider' : 'invalid_url',
@@ -156,17 +454,28 @@ async function onNext() {
 		return;
 	}
 	const requestedScope = scope.value;
+	const requestedCredential = credentialId.value;
 	const run = ++discoverRun;
-	// The user may have changed the link or the scope, or closed the dialog, while n8n read it.
+	// The user may have changed the link, the scope or the credential, or closed the dialog,
+	// while n8n read it.
 	const isCurrent = () =>
-		run === discoverRun && link === url.value.trim() && requestedScope === scope.value;
+		run === discoverRun &&
+		link === sourceUrl.value &&
+		requestedScope === scope.value &&
+		requestedCredential === credentialId.value;
+	const target = {
+		url: link,
+		...(requestedCredential ? { credentialId: requestedCredential } : {}),
+	};
 	discovering.value = true;
 	try {
-		const result = await skillsStore.discoverSource({ url: link, ...parseScope(requestedScope) });
+		const result = await skillsStore.discoverSource({ ...target, ...parseScope(requestedScope) });
 		if (!isCurrent()) return;
 		discovery.value = result;
+		discovered.value = target;
 		if (result.duplicate.kind === 'blocked') return;
 		selected.value = result.skills.filter(isSelectable).map((skill) => skill.key);
+		reviewed.value = false;
 		step.value = 'choose';
 	} catch (error) {
 		if (isCurrent()) linkError.value = discoverErrorText(error, link);
@@ -176,7 +485,10 @@ async function onNext() {
 }
 
 function onBack() {
-	step.value = 'link';
+	// A read still running answers for a step the user left, so it is dropped.
+	discoverRun += 1;
+	discovering.value = false;
+	step.value = step.value === 'choose' ? 'repository' : 'start';
 }
 
 function toggle(key: string, checked: boolean) {
@@ -234,13 +546,15 @@ function withSkillName(
 
 async function onAdd() {
 	const source = discovery.value?.source;
-	if (!source || selected.value.length === 0) return;
+	const target = discovered.value;
+	if (!source || !target || !canAdd.value) return;
 	connecting.value = true;
 	try {
 		const response = await skillsStore.connectSource({
-			url: url.value.trim(),
+			...target,
 			...parseScope(scope.value),
 			skillKeys: selected.value,
+			...(needsReview.value ? { reviewedSkillKeys: needsReviewKeys.value } : {}),
 		});
 		emit('connected', {
 			response: { ...response, failed: response.failed.map(withSkillName) },
@@ -249,23 +563,37 @@ async function onAdd() {
 		});
 		emit('update:open', false);
 	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.connect.error.connect'));
+		// A known reason gets its own text, as on discover. Other errors keep their message.
+		const hasReason = error instanceof ResponseError && error.meta?.reason !== undefined;
+		showError(
+			hasReason ? new Error(discoverErrorText(error)) : error,
+			i18n.baseText('settings.context.skills.connect.error.connect'),
+		);
 	} finally {
 		connecting.value = false;
 	}
 }
 
-/** The import runs on the server until it answers, so the dialog stays open until then. */
+/**
+ * The import runs on the server until it answers, so the dialog stays open until then. It
+ * also stays open under the credential modal, which an Escape or a click there must not close.
+ */
 function onOpenChange(open: boolean) {
-	if (!open && connecting.value) return;
+	if (!open && (connecting.value || credentialModalOpen.value)) return;
 	emit('update:open', open);
 }
 
-const title = computed(() =>
-	step.value === 'link'
-		? i18n.baseText('settings.context.skills.connect.link.title')
-		: i18n.baseText('settings.context.skills.connect.choose.title'),
-);
+function onInteractOutside(event: Event) {
+	if (credentialModalOpen.value) event.preventDefault();
+}
+
+const title = computed(() => {
+	if (step.value === 'start') return i18n.baseText('settings.context.skills.connect.start.title');
+	if (step.value === 'choose') return i18n.baseText('settings.context.skills.connect.choose.title');
+	return mode.value === 'account'
+		? i18n.baseText('settings.context.skills.connect.repository.title')
+		: i18n.baseText('settings.context.skills.connect.link.title');
+});
 </script>
 
 <template>
@@ -273,21 +601,58 @@ const title = computed(() =>
 		:open="open"
 		:header="title"
 		size="large"
-		:disable-outside-pointer-events="true"
+		:trap-focus="!credentialModalOpen"
+		:disable-outside-pointer-events="!credentialModalOpen"
 		data-test-id="skill-source-connect-dialog"
 		@update:open="onOpenChange"
+		@interact-outside="onInteractOutside"
 	>
-		<N8nDialogBody v-if="step === 'link'" :class="$style.body">
+		<N8nDialogBody v-if="step === 'start'" :class="$style.body">
+			<N8nText tag="p">
+				{{ i18n.baseText('settings.context.skills.connect.start.description') }}
+			</N8nText>
+			<div :class="$style.start">
+				<N8nButton
+					icon="git-branch"
+					:label="i18n.baseText('settings.context.skills.connect.start.github')"
+					data-test-id="skill-source-mode-account"
+					@click="startMode('account')"
+				/>
+				<N8nText color="text-light">
+					{{ i18n.baseText('settings.context.skills.connect.start.or') }}
+				</N8nText>
+				<N8nButton
+					variant="ghost"
+					:label="i18n.baseText('settings.context.skills.connect.start.url')"
+					data-test-id="skill-source-mode-url"
+					@click="startMode('url')"
+				/>
+			</div>
+		</N8nDialogBody>
+
+		<N8nDialogBody v-else-if="step === 'repository'" :class="$style.body">
+			<N8nCallout
+				v-if="createdCredential && createdCredential.id === credentialId"
+				theme="success"
+				data-test-id="skill-source-credential-created"
+			>
+				{{
+					i18n.baseText('settings.context.skills.connect.credential.created', {
+						interpolate: { scope: createdCredential.scopeLabel },
+					})
+				}}
+			</N8nCallout>
 			<div :class="$style.field">
 				<N8nInputLabel
 					:label="i18n.baseText('settings.context.skills.connect.scope.label')"
 					color="text-dark"
 				>
 					<N8nSelect
-						v-model="scope"
+						:model-value="scope"
 						size="large"
 						:teleported="false"
 						data-test-id="skill-source-scope-select"
+						@update:model-value="onScopeChange"
 					>
 						<template v-if="selectedScope" #prefix>
 							<N8nIcon :icon="selectedScope.icon" />
@@ -309,7 +674,7 @@ const title = computed(() =>
 					{{ scopeHint }}
 				</N8nText>
 			</div>
-			<div :class="$style.field">
+			<div v-if="mode === 'url'" :class="$style.field">
 				<N8nInputLabel
 					:label="i18n.baseText('settings.context.skills.connect.url.label')"
 					color="text-dark"
@@ -326,6 +691,108 @@ const title = computed(() =>
 					{{ i18n.baseText('settings.context.skills.connect.url.hint') }}
 				</N8nText>
 			</div>
+			<div :class="$style.field">
+				<N8nInputLabel
+					:label="i18n.baseText('settings.context.skills.connect.credential.label')"
+					color="text-dark"
+				>
+					<N8nSelect
+						:model-value="credentialId"
+						size="large"
+						:teleported="false"
+						:loading="credentialsLoading"
+						:placeholder="i18n.baseText('settings.context.skills.connect.credential.placeholder')"
+						data-test-id="skill-source-credential-select"
+						@update:model-value="onCredentialSelect"
+					>
+						<N8nOption
+							v-if="mode === 'url'"
+							value=""
+							:label="i18n.baseText('settings.context.skills.connect.credential.none')"
+						/>
+						<N8nOption
+							v-for="credential in credentials"
+							:key="credential.id"
+							:value="credential.id"
+							:label="credential.name"
+						/>
+						<N8nOption
+							v-for="option in newCredentialOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+						/>
+					</N8nSelect>
+				</N8nInputLabel>
+				<N8nText size="small" color="text-light" data-test-id="skill-source-credential-hint">
+					{{ credentialHint }}
+				</N8nText>
+			</div>
+			<template v-if="mode === 'account'">
+				<div :class="$style.field">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.context.skills.connect.owner.label')"
+						color="text-dark"
+					>
+						<N8nSelect
+							:model-value="owner"
+							size="large"
+							:teleported="false"
+							:loading="repositoriesLoading"
+							:disabled="!credentialId"
+							:placeholder="i18n.baseText('settings.context.skills.connect.owner.placeholder')"
+							:no-data-text="i18n.baseText('settings.context.skills.connect.repository.empty')"
+							data-test-id="skill-source-owner-select"
+							@update:model-value="onOwnerChange"
+						>
+							<N8nOption v-for="name in owners" :key="name" :value="name" :label="name" />
+						</N8nSelect>
+					</N8nInputLabel>
+				</div>
+				<div :class="$style.field">
+					<N8nInputLabel
+						:label="i18n.baseText('settings.context.skills.connect.repository.label')"
+						color="text-dark"
+					>
+						<N8nSelect
+							v-model="repositoryName"
+							size="large"
+							:teleported="false"
+							:disabled="!owner"
+							:placeholder="i18n.baseText('settings.context.skills.connect.repository.placeholder')"
+							data-test-id="skill-source-repository-select"
+						>
+							<N8nOption
+								v-for="repository in ownerRepositories"
+								:key="repository.url"
+								:value="repository.name"
+								:label="repository.name"
+							>
+								<div :class="$style.option">
+									<span>{{ repository.name }}</span>
+									<N8nIcon
+										v-if="repository.private"
+										icon="lock"
+										size="small"
+										:title="i18n.baseText('settings.context.skills.connect.repository.private')"
+									/>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+					</N8nInputLabel>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.context.skills.connect.repository.hint') }}
+					</N8nText>
+					<N8nText
+						v-if="repositoriesTruncated"
+						size="small"
+						color="text-light"
+						data-test-id="skill-source-repositories-truncated"
+					>
+						{{ i18n.baseText('settings.context.skills.connect.repository.truncated') }}
+					</N8nText>
+				</div>
+			</template>
 			<N8nCallout v-if="linkError" theme="danger" data-test-id="skill-source-link-error">
 				{{ linkError }}
 			</N8nCallout>
@@ -374,6 +841,22 @@ const title = computed(() =>
 							{{ skippedFilesText(item) }}
 						</N8nText>
 						<N8nText
+							v-if="checkFindings(item)"
+							size="small"
+							:color="item.check?.verdict === 'blocked' ? 'danger' : 'warning'"
+							data-test-id="skill-source-skill-findings"
+						>
+							{{ checkFindings(item) }}
+						</N8nText>
+						<N8nText
+							v-if="linkedDomains(item)"
+							size="small"
+							color="text-light"
+							data-test-id="skill-source-skill-domains"
+						>
+							{{ linkedDomains(item) }}
+						</N8nText>
+						<N8nText
 							v-if="item.nameTaken"
 							size="small"
 							color="text-light"
@@ -382,7 +865,7 @@ const title = computed(() =>
 							{{ nameTakenReason(item) }}
 						</N8nText>
 						<N8nText
-							v-else-if="item.error"
+							v-else-if="item.error && !checkFindings(item)"
 							size="small"
 							color="danger"
 							data-test-id="skill-source-skill-reason"
@@ -396,6 +879,13 @@ const title = computed(() =>
 						data-test-id="skill-source-skill-name-taken"
 					>
 						{{ i18n.baseText('settings.context.skills.connect.nameTaken.tag') }}
+					</N8nBadge>
+					<N8nBadge
+						v-else-if="item.check"
+						:variant="CHECK_BADGES[item.check.verdict].variant"
+						data-test-id="skill-source-skill-check"
+					>
+						{{ i18n.baseText(CHECK_BADGES[item.check.verdict].label) }}
 					</N8nBadge>
 				</li>
 			</ul>
@@ -429,11 +919,17 @@ const title = computed(() =>
 					{{ i18n.baseText('settings.context.skills.connect.addTo.hint') }}
 				</N8nText>
 			</div>
+			<N8nCheckbox
+				v-if="needsReview"
+				v-model="reviewed"
+				:label="i18n.baseText('settings.context.skills.connect.check.reviewed')"
+				data-test-id="skill-source-reviewed-warnings"
+			/>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
 			<N8nButton
-				v-if="step === 'choose'"
+				v-if="step !== 'start'"
 				variant="ghost"
 				:label="i18n.baseText('generic.back')"
 				:disabled="connecting"
@@ -449,7 +945,7 @@ const title = computed(() =>
 				@click="onOpenChange(false)"
 			/>
 			<N8nButton
-				v-if="step === 'link'"
+				v-if="step === 'repository'"
 				:label="i18n.baseText('generic.next')"
 				:disabled="!canGoNext"
 				:loading="discovering"
@@ -457,9 +953,9 @@ const title = computed(() =>
 				@click="onNext"
 			/>
 			<N8nButton
-				v-else
+				v-else-if="step === 'choose'"
 				:label="addLabel"
-				:disabled="selected.length === 0"
+				:disabled="!canAdd"
 				:loading="connecting"
 				data-test-id="skill-source-add"
 				@click="onAdd"
@@ -479,6 +975,13 @@ const title = computed(() =>
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.start {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .option {

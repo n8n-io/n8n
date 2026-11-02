@@ -112,15 +112,15 @@ function isCodeTool(): boolean {
 
 function isTableTool(): boolean {
 	return (
-		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'query') ||
+		resolvedToolName() === SHARED_BUILDER_TOOL_NAMES.QUERY_DATA_TABLE ||
 		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS, 'list') ||
+		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.LIST_EXECUTIONS ||
 		resolveBuilderToolName(props.toolName, props.toolArgs?.action) ===
 			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'search') ||
 		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'list') ||
 		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
-		isAction(SHARED_BUILDER_TOOL_NAMES.DATA_TABLES, 'list')
+		resolvedToolName() === SHARED_BUILDER_TOOL_NAMES.LIST_DATA_TABLES
 	);
 }
 

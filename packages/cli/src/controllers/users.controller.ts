@@ -197,7 +197,8 @@ export class UsersController {
 		await this.userService.updateSettings(id, payload);
 
 		const user = await this.userRepository.findOneOrFail({
-			select: ['settings'],
+			// TypeORM needs `id` here because `ServiceAccount.details` is an eager join.
+			select: ['id', 'settings'],
 			where: { id },
 		});
 

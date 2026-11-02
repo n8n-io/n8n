@@ -33,15 +33,9 @@ describe('AgentHistoryRepository', () => {
 
 	it('records the saver without a publishing identity', async () => {
 		const versionId = randomUUID();
-		await history.saveVersion({
-			agentId,
-			versionId,
-			schema: null,
-			tools: {},
-			savedBy: saver,
-		});
+		await history.saveVersion({ agentId, versionId, schema: null, tools: {}, savedBy: saver }, {});
 
-		expect(await history.findByVersionAndAgentId(versionId, agentId)).toMatchObject({
+		expect(await history.findByVersionAndAgentId(versionId, agentId, {})).toMatchObject({
 			author: 'Draft Author',
 			publishedById: null,
 		});
@@ -49,15 +43,12 @@ describe('AgentHistoryRepository', () => {
 
 	it('keeps legacy publication attribution when no saver is supplied', async () => {
 		const versionId = randomUUID();
-		await history.saveVersion({
-			agentId,
-			versionId,
-			schema: null,
-			tools: {},
-			publishedBy: publisher,
-		});
+		await history.saveVersion(
+			{ agentId, versionId, schema: null, tools: {}, publishedBy: publisher },
+			{},
+		);
 
-		expect(await history.findByVersionAndAgentId(versionId, agentId)).toMatchObject({
+		expect(await history.findByVersionAndAgentId(versionId, agentId, {})).toMatchObject({
 			author: 'Release Publisher',
 			publishedById: publisher.id,
 		});
@@ -65,16 +56,12 @@ describe('AgentHistoryRepository', () => {
 
 	it('keeps the saver separate from a different publisher', async () => {
 		const versionId = randomUUID();
-		await history.saveVersion({
-			agentId,
-			versionId,
-			schema: null,
-			tools: {},
-			savedBy: saver,
-			publishedBy: publisher,
-		});
+		await history.saveVersion(
+			{ agentId, versionId, schema: null, tools: {}, savedBy: saver, publishedBy: publisher },
+			{},
+		);
 
-		expect(await history.findByVersionAndAgentId(versionId, agentId)).toMatchObject({
+		expect(await history.findByVersionAndAgentId(versionId, agentId, {})).toMatchObject({
 			author: 'Draft Author',
 			publishedById: publisher.id,
 		});

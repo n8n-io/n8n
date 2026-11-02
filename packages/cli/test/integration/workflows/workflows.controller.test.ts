@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -15,7 +16,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { UUID_V7_PATTERN } from '@n8n/constants';
-import { WorkflowsConfig } from '@n8n/config';
+import { EngineConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	User,
 	ListQueryDb,
@@ -35,6 +36,7 @@ import {
 import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import type { MockInstance } from 'vitest';
 import { DateTime } from 'luxon';
 import {
 	PROJECT_ROOT,
@@ -1089,6 +1091,53 @@ describe('POST /workflows', () => {
 			});
 
 			expect(dbWorkflow?.settings?.redactionPolicy).toBeUndefined();
+		});
+	});
+});
+
+describe('default engine', () => {
+	const engineConfig = Container.get(EngineConfig);
+	let isActiveSpy: MockInstance<ModuleRegistry['isActive']>;
+
+	beforeEach(() => {
+		isActiveSpy = vi
+			.spyOn(Container.get(ModuleRegistry), 'isActive')
+			.mockImplementation((name) => name === 'engine-v2');
+	});
+
+	afterEach(() => {
+		engineConfig.defaultType = 'v1';
+		isActiveSpy.mockRestore();
+	});
+
+	test('POST /workflows saves a workflow without an engine on the default engine v2', async () => {
+		engineConfig.defaultType = 'v2';
+		const payload = { ...makeWorkflow({ withPinData: false }), settings: { executionOrder: 'v1' } };
+
+		const response = await authOwnerAgent.post('/workflows').send(payload).expect(200);
+
+		const created = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
+		expect(created.settings).toEqual({ executionOrder: 'v1', engineType: 'v2' });
+	});
+
+	test('PATCH /workflows/:workflowId with settings without an engine keeps the stored engine', async () => {
+		engineConfig.defaultType = 'v1';
+		const workflow = await createWorkflow(
+			{ settings: { executionOrder: 'v1', engineType: 'v2' } },
+			owner,
+		);
+		const payload = {
+			settings: { executionOrder: 'v1', timezone: 'America/New_York' },
+			versionId: workflow.versionId,
+		};
+
+		await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload).expect(200);
+
+		const updated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(updated.settings).toEqual({
+			executionOrder: 'v1',
+			timezone: 'America/New_York',
+			engineType: 'v2',
 		});
 	});
 });

@@ -3,6 +3,8 @@ import {
 	type AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
+	AgentTaskCancellationDto,
+	type AgentTaskCancellationState,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
 	AgentChatQueueReorderDto,
@@ -29,6 +31,9 @@ import { redactDeep } from '@n8n/utils/redaction/redact-text';
 import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
+import { AgentPlanService } from './agent-plan.service';
+import { presentPlan } from './plans/agent-plan-tools';
+import { AgentTaskCancellationService } from './agent-task-cancellation.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -66,6 +71,7 @@ import {
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
 	constructor(
+		private readonly taskCancellation: AgentTaskCancellationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
@@ -79,6 +85,7 @@ export class AgentChatController {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly chatRelay: AgentChatRelayService,
+		private readonly plans: AgentPlanService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -440,10 +447,11 @@ export class AgentChatController {
 			projectId,
 			userId: req.user.id,
 		});
+		// Agent output files (tool and sandbox) have no resource ID. The thread check below limits them to this user's own session.
 		if (
 			!attachment ||
-			attachment.source !== N8N_CHAT_PRODUCTION_SOURCE ||
-			attachment.resourceId !== productionChatMemoryResourceId(req.user.id)
+			(attachment.source === N8N_CHAT_PRODUCTION_SOURCE &&
+				attachment.resourceId !== productionChatMemoryResourceId(req.user.id))
 		) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
@@ -753,7 +761,10 @@ export class AgentChatController {
 			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
 		}
 
-		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId, {
+			includePaused: true,
+		});
+
 		return this.mapBackgroundJobsToDto(jobs);
 	}
 
@@ -775,6 +786,9 @@ export class AgentChatController {
 				title: scrubSecretsInText(job.title),
 				kind: job.kind,
 				status: job.status,
+				...(job.planId && job.planTaskId
+					? { planTask: { planId: job.planId, planTaskId: job.planTaskId } }
+					: {}),
 				...(job.pauseRequestId ? { pauseRequested: true } : {}),
 				...(job.approval
 					? {
@@ -788,8 +802,105 @@ export class AgentChatController {
 					: {}),
 				startedAt: job.createdAt.toISOString(),
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
+				...(job.files?.length
+					? {
+							files: job.files.map((file) => ({
+								...file,
+								fileName: scrubSecretsInText(file.fileName),
+							})),
+						}
+					: {}),
 			})),
 		};
+	}
+
+	private async requireTaskThread(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		requireTaskFeatures = true,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+
+		if (
+			!(await this.agentsService.findById(agentId, projectId)) ||
+			!(await this.agentExecutionService.canUseDraftThread(
+				threadId,
+				projectId,
+				agentId,
+				req.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			))
+		)
+			throw new NotFoundError('Session not found');
+
+		if (
+			requireTaskFeatures &&
+			!this.agentsConfig.backgroundTasksEnabled &&
+			!this.agentsConfig.planToolsEnabled
+		)
+			throw new BadRequestError('Background tasks are not enabled');
+	}
+
+	@Post('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async cancelTasks(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<AgentTaskCancellationState> {
+		await this.requireTaskThread(req);
+
+		return await this.taskCancellation.request(req.params.threadId, payload.planId);
+	}
+
+	@Post('/:agentId/chat/:threadId/task-cancellation/stream')
+	@ProjectScope('agent:execute')
+	async streamTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		res: FlushableResponse,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<void> {
+		await this.requireTaskThread(req);
+
+		await this.chatRelay.relayQueuedStop(
+			res,
+			req.params.threadId,
+			async (onQueued) =>
+				await this.taskCancellation.request(req.params.threadId, payload.planId, onQueued),
+		);
+	}
+
+	@Get('/:agentId/n8n-chat/:threadId/plan')
+	@ProjectScope('agent:execute')
+	async getProductionPlan(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+
+		return presentPlan(await this.plans.findLatestPlan(threadId, {}));
+	}
+
+	@Get('/:agentId/chat/:threadId/plan')
+	@ProjectScope('agent:execute')
+	async getPlan(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		// Reading a plan stays available when the flags are off, so the UI can still show earlier plans.
+		await this.requireTaskThread(req, false);
+
+		return presentPlan(await this.plans.findLatestPlan(req.params.threadId, {}));
+	}
+
+	@Get('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async getTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentTaskCancellationState | null> {
+		await this.requireTaskThread(req);
+
+		return await this.taskCancellation.state(req.params.threadId);
 	}
 
 	@Post('/:agentId/chat/:threadId/background-tasks/stop')
@@ -907,7 +1018,12 @@ export class AgentChatController {
 	@Get('/:agentId/chat/attachments/:attachmentId')
 	@ProjectScope('agent:read')
 	async getChatAttachment(
-		req: AuthenticatedRequest<{ projectId: string; agentId: string; attachmentId: string }>,
+		req: AuthenticatedRequest<
+			{ projectId: string; agentId: string; attachmentId: string },
+			{},
+			{},
+			{ threadId?: string }
+		>,
 		res: Response,
 	) {
 		const { projectId, agentId, attachmentId } = req.params;
@@ -918,6 +1034,7 @@ export class AgentChatController {
 			agentId,
 			projectId,
 			userId: req.user.id,
+			...(typeof req.query.threadId === 'string' ? { threadId: req.query.threadId } : {}),
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {

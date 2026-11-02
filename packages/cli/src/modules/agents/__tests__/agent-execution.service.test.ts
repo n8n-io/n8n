@@ -1258,9 +1258,12 @@ describe('AgentExecutionService', () => {
 				record: makeMessageRecord(),
 			});
 
-			expect(agentExecutionThreadRepository.update).toHaveBeenCalledWith('thread-1', {
-				title: 'Workflow builder chat',
-			});
+			// The repository writes only to a thread without a title, so a rename during the turn stays.
+			expect(agentExecutionThreadRepository.setGeneratedTitle).toHaveBeenCalledWith(
+				'thread-1',
+				'Workflow builder chat',
+				null,
+			);
 		});
 
 		it('does not sync title from memory when the thread already has a title', async () => {
@@ -1283,7 +1286,7 @@ describe('AgentExecutionService', () => {
 			});
 
 			expect(memoryBackend.getThread).not.toHaveBeenCalled();
-			expect(agentExecutionThreadRepository.update).not.toHaveBeenCalled();
+			expect(agentExecutionThreadRepository.setGeneratedTitle).not.toHaveBeenCalled();
 		});
 
 		it('tracks succeeded turn telemetry after recording the execution', async () => {

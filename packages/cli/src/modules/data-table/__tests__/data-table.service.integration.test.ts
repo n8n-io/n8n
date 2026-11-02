@@ -1148,6 +1148,7 @@ describe('dataTable', () => {
 				dataTableId,
 				{},
 				columns,
+				{},
 			);
 
 			expect(count).toEqual(2);
@@ -1212,6 +1213,7 @@ describe('dataTable', () => {
 				dataTableId,
 				{},
 				columns,
+				{},
 			);
 
 			expect(count).toEqual(3);

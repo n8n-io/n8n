@@ -47,6 +47,7 @@ import {
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
+import { matchesSinkPackage } from './core/global-triggers.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -82,6 +83,7 @@ import {
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
 import { readLockfileImporters, readRuntimeClosure } from './core/read-lockfile-importers.js';
+import { readLineScopes } from './core/read-line-scopes.js';
 import { isManifest, readFileDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
@@ -695,6 +697,10 @@ function runTestScopedCmd(options: CliOptions): void {
 		changedFiles,
 		packageName: readPackageName(packageDir),
 		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
+		sinkAffectedPackages: resolveAffectedPackages(
+			rootDir,
+			changedFiles?.filter(matchesSinkPackage) ?? null,
+		),
 		passthroughArgs: options.passthroughArgs,
 		collectCoverage: process.env.COVERAGE_ENABLED === 'true',
 	});
@@ -711,6 +717,10 @@ function runScope(options: CliOptions): void {
 		rootDir,
 		packageName: readPackageName(packageDir),
 		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
+		sinkAffectedPackages: resolveAffectedPackages(
+			rootDir,
+			changedFiles?.filter(matchesSinkPackage) ?? null,
+		),
 	});
 	console.log(formatScope(result));
 }
@@ -737,11 +747,32 @@ function runMergeCoverage(options: CliOptions): void {
 	const result = buildImpactMap(inputs);
 	fs.writeFileSync(options.outLcov, result.lcov);
 	// Interned on-disk form — spec paths once, referenced by index (~10x smaller).
-	fs.writeFileSync(options.outMap, JSON.stringify(encodeImpactMap(result.impactMap)));
+	fs.writeFileSync(
+		options.outMap,
+		JSON.stringify(encodeImpactMap(result.impactMap, options.mapSha)),
+	);
 	console.error(
 		`merge-coverage: ${files.length} lcov(s) → ${result.stats.files} files, ` +
 			`${result.stats.mapEntries} map entries, ${result.stats.specs} specs`,
 	);
+}
+
+/** The commit the impact map was built from, or undefined if it has none. */
+function readMapSha(mapFile: string): string | undefined {
+	try {
+		const parsed: unknown = JSON.parse(fs.readFileSync(mapFile, 'utf8'));
+		if (typeof parsed !== 'object' || parsed === null || !('sha' in parsed)) return undefined;
+		return typeof parsed.sha === 'string' ? parsed.sha : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Line-level scopes need the base commit and the commit the map was built from. */
+function readSelectLineScopes(changedFiles: string[], options: CliOptions) {
+	if (!options.baseRef || !options.mapFile) return undefined;
+	const mapSha = readMapSha(options.mapFile);
+	return mapSha ? readLineScopes(changedFiles, options.baseRef, mapSha) : undefined;
 }
 
 /** select: changed files + impact map → spec list (JSON). I/O wrapper
@@ -779,6 +810,7 @@ function runSelect(options: CliOptions): void {
 		configs: diffs(isBackendConfig),
 		lockfileImporters,
 		runtimeClosure: overridesChanged ? readRuntimeClosure() : undefined,
+		lineScopes: readSelectLineScopes(changedFiles, options),
 	});
 	console.log(JSON.stringify(result));
 }

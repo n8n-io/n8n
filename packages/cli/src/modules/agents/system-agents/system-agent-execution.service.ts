@@ -311,13 +311,17 @@ export class SystemAgentExecutionService {
 		return thread;
 	}
 
+	/**
+	 * Rename a thread, move it to another project, or both. The user must be able to
+	 * use the thread, and to use the target project of a move.
+	 */
 	async updateThread(
 		agentId: string,
 		user: User,
 		threadId: string,
 		changes: { title?: string; projectId?: string },
 	): Promise<AgentExecutionThread> {
-		const thread = await this.getThread(agentId, user, threadId);
+		const thread = await this.getUsableThread(agentId, user, threadId);
 		const { title, projectId } = changes;
 		const moving = projectId !== undefined && projectId !== thread.projectId;
 		if (moving) await this.assertCanUse(agentId, user, projectId);
@@ -1082,7 +1086,7 @@ export class SystemAgentExecutionService {
 		const stopTurn = () => controller.abort(providerSignal?.reason);
 		if (providerSignal?.aborted) stopTurn();
 		else providerSignal?.addEventListener('abort', stopTurn, { once: true });
-		try {
+		const consume = async () => {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
 				agentInstance: handle.agent,
@@ -1119,6 +1123,10 @@ export class SystemAgentExecutionService {
 				}
 				handle.onChunk?.(chunk);
 			}
+		};
+		try {
+			if (handle.withTurnContext) await handle.withTurnContext(consume);
+			else await consume();
 		} catch (caught) {
 			failure = caught;
 			const formatted = await formatError(caught);
