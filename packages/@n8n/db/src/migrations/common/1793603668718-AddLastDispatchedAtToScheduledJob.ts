@@ -11,7 +11,7 @@ const column = 'lastDispatchedAt';
  * does not rebuild `scheduled_job`, which `scheduled_task` references with
  * ON DELETE CASCADE.
  */
-export class AddLastDispatchedAtToScheduledJob1793182657728 implements ReversibleMigration {
+export class AddLastDispatchedAtToScheduledJob1793603668718 implements ReversibleMigration {
 	async up({ runQuery, escape, isPostgres }: MigrationContext) {
 		const tableName = escape.tableName(table);
 		const columnName = escape.columnName(column);

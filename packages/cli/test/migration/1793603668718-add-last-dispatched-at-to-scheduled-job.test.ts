@@ -9,7 +9,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const MIGRATION_NAME = 'AddLastDispatchedAtToScheduledJob1793182657728';
+const MIGRATION_NAME = 'AddLastDispatchedAtToScheduledJob1793603668718';
 
 describe('AddLastDispatchedAtToScheduledJob Migration', () => {
 	let dataSource: DataSource;
