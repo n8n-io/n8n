@@ -420,10 +420,11 @@ describe('analyzePackage', () => {
 	it('marks a crash during analysis as an error, not a failed check', async () => {
 		fixtureDir = makeFixturePackage({ 'index.js': 'module.exports = {};\n' });
 
-		// fast-glob rejects an empty pattern, which throws inside the try
 		const result = await analyzePackage(fixtureDir, ['']);
 
-		expect(getExitCode(result)).toBe(EXIT_CODES.INTERNAL_ERROR);
+		expect(getExitCode(result), 'fast-glob throws on an empty pattern').toBe(
+			EXIT_CODES.INTERNAL_ERROR,
+		);
 	});
 });
 
