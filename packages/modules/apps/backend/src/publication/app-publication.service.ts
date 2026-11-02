@@ -1,4 +1,4 @@
-import { appSchema, appVersionSchema } from '@n8n/api-types';
+import { appSchema, appVersionSchema, type PublishAppDto } from '@n8n/api-types';
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
@@ -18,7 +18,12 @@ export class AppPublicationService {
 		private readonly locks: DbLockService,
 	) {}
 
-	async publish(projectId: string, appId: string, versionId: string | null) {
+	async publish(
+		projectId: string,
+		appId: string,
+		versionId: string | null,
+		details: Partial<Omit<PublishAppDto, 'versionId'>> = {},
+	) {
 		if (
 			!appSchema.shape.id.safeParse(appId).success ||
 			(versionId !== null && !appVersionSchema.shape.id.safeParse(versionId).success)
@@ -35,8 +40,15 @@ export class AppPublicationService {
 						throw new BadRequestError('Use a valid app namespace before publishing this app.');
 					}
 					assertBuiltVersion(await this.versions.findVersionById(versionId, ctx), appId);
+					if (details.label !== undefined) {
+						await this.versions.setDetails(
+							versionId,
+							{ label: details.label, description: details.description || null },
+							ctx,
+						);
+					}
 				}
-				await this.apps.setPublishedVersion(projectId, appId, versionId, ctx);
+				await this.apps.setPublishedVersion(projectId, appId, versionId, details.visibility, ctx);
 			},
 			{ subKey: appStorageLockSubKey(appId) },
 		);

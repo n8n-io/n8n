@@ -14,6 +14,7 @@ const version = (id: string, buildStatus: AppBuildStatus): AppVersionResponse =>
 	id,
 	appId: 'app-1',
 	label: null,
+	description: null,
 	sourceArtifactId: 1,
 	bundleArtifactId: buildStatus === 'succeeded' ? 2 : null,
 	buildStatus,

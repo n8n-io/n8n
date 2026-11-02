@@ -32,6 +32,7 @@ const version: AppVersionResponse = {
 	id: 'v1',
 	appId: 'app-1',
 	label: null,
+	description: null,
 	sourceArtifactId: 1,
 	bundleArtifactId: 2,
 	buildStatus: 'succeeded',
@@ -69,6 +70,12 @@ const renderComponent = createComponentRenderer(AppHeader, {
 				emits: ['updated'],
 				template:
 					'<button data-test-id="app-publish" @click="$emit(\'updated\', { ...app, publishedVersionId: version.id })">Publish</button>',
+			},
+			AppSharePopover: {
+				props: ['app', 'url'],
+				emits: ['updated'],
+				template:
+					'<button data-test-id="app-share" @click="$emit(\'updated\', { ...app, visibility: \'public\' })">{{ url }}</button>',
 			},
 			AppActions: {
 				props: ['app'],
@@ -121,6 +128,23 @@ describe('AppHeader', () => {
 		await userEvent.click(getByTestId('app-publish'));
 
 		expect(emitted('updated')).toEqual([[{ ...app, publishedVersionId: 'v1' }]]);
+	});
+
+	it('shows the share button only for a published app and passes its update on', async () => {
+		vi.mocked(getProject).mockResolvedValue(project({ type: 'team', name: 'Marketing' }));
+		const published = {
+			...app,
+			publishedVersionId: 'v1',
+			publishedUrl: 'https://expenses.example.com',
+		};
+		const { queryByTestId, getByTestId, emitted, rerender } = renderComponent();
+		expect(queryByTestId('app-share')).not.toBeInTheDocument();
+
+		await rerender({ app: published });
+		await userEvent.click(getByTestId('app-share'));
+
+		expect(getByTestId('app-share')).toHaveTextContent('https://expenses.example.com');
+		expect(emitted('updated')).toEqual([[{ ...published, visibility: 'public' }]]);
 	});
 
 	it('switches to the configure view', async () => {

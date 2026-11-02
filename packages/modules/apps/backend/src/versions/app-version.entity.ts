@@ -14,6 +14,9 @@ export class AppVersion extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	label: string | null;
 
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
 	@Index()
 	@Column({ type: 'int' })
 	sourceArtifactId: number;

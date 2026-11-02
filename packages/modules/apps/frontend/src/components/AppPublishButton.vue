@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
-import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionDropdown,
@@ -13,10 +12,11 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 
-import { publishApp, unpublishApp } from '../apps.api';
+import { unpublishApp } from '../apps.api';
 import { getAppPermissions } from '../apps.permissions';
+import AppPublishDialog from './publish/AppPublishDialog.vue';
 
-type MenuAction = 'open' | 'copy' | 'unpublish';
+type MenuAction = 'open' | 'unpublish';
 
 const props = defineProps<{ app: AppResponse; version: AppVersionResponse | null }>();
 
@@ -25,10 +25,10 @@ const emit = defineEmits<{ updated: [app: AppResponse] }>();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
-const clipboard = useClipboard();
 const rootStore = useRootStore();
 
 const busy = ref(false);
+const dialogOpen = ref(false);
 
 const canUpdate = computed(() => getAppPermissions(props.app.projectId).canUpdate);
 const isUpToDate = computed(
@@ -38,7 +38,6 @@ const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
 	if (!props.app.publishedUrl) return [];
 	const items: Array<ActionDropdownItem<MenuAction>> = [
 		{ id: 'open', label: i18n.baseText('apps.publish.openApp'), icon: 'external-link' },
-		{ id: 'copy', label: i18n.baseText('apps.publish.copyUrl'), icon: 'copy' },
 	];
 	if (canUpdate.value) {
 		items.push({
@@ -50,27 +49,6 @@ const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
 	}
 	return items;
 });
-
-async function update(request: () => Promise<AppResponse>, errorTitle: string) {
-	busy.value = true;
-	try {
-		emit('updated', await request());
-	} catch (error) {
-		toast.showError(error, errorTitle);
-	} finally {
-		busy.value = false;
-	}
-}
-
-async function publish() {
-	const versionId = props.version?.id;
-	if (!versionId) return;
-	await update(
-		async () =>
-			await publishApp(rootStore.restApiContext, props.app.projectId, props.app.id, versionId),
-		i18n.baseText('apps.publish.error'),
-	);
-}
 
 async function unpublish() {
 	const answer = await message.confirm(
@@ -85,10 +63,17 @@ async function unpublish() {
 		},
 	);
 	if (answer !== 'confirm') return;
-	await update(
-		async () => await unpublishApp(rootStore.restApiContext, props.app.projectId, props.app.id),
-		i18n.baseText('apps.publish.unpublishError'),
-	);
+	busy.value = true;
+	try {
+		emit(
+			'updated',
+			await unpublishApp(rootStore.restApiContext, props.app.projectId, props.app.id),
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.publish.unpublishError'));
+	} finally {
+		busy.value = false;
+	}
 }
 
 async function onMenuSelect(action: MenuAction) {
@@ -96,9 +81,6 @@ async function onMenuSelect(action: MenuAction) {
 	if (!url) return;
 	if (action === 'open') {
 		window.open(url, '_blank', 'noopener');
-	} else if (action === 'copy') {
-		await clipboard.copy(url);
-		toast.showMessage({ title: i18n.baseText('apps.publish.urlCopied'), type: 'success' });
 	} else {
 		await unpublish();
 	}
@@ -113,7 +95,7 @@ async function onMenuSelect(action: MenuAction) {
 			:loading="busy"
 			:disabled="!canUpdate || !version || isUpToDate"
 			data-test-id="app-publish-button"
-			@click="publish"
+			@click="dialogOpen = true"
 		>
 			{{ i18n.baseText(isUpToDate ? 'apps.publish.published' : 'apps.publish.publish') }}
 		</N8nButton>
@@ -136,6 +118,13 @@ async function onMenuSelect(action: MenuAction) {
 				/>
 			</template>
 		</N8nActionDropdown>
+		<AppPublishDialog
+			v-if="version"
+			v-model:open="dialogOpen"
+			:app="app"
+			:version="version"
+			@updated="emit('updated', $event)"
+		/>
 	</div>
 </template>
 
