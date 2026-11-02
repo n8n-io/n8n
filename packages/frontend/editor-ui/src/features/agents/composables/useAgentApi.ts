@@ -1147,7 +1147,7 @@ export const cancelAgentChatRun = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/runs/${encodeURIComponent(runId)}`,
-		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
+		...(channel !== 'system' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1163,7 +1163,7 @@ export const cancelAgentChatExecution = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
-		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
+		...(channel !== 'system' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1221,11 +1221,12 @@ export const getAgentTaskCancellation = async (
 	projectId: string,
 	agentId: string,
 	threadId: string,
+	channel: AgentChatChannel = 'chat',
 ): Promise<AgentTaskCancellationState | null> =>
 	await makeRestApiRequest(
 		context,
 		'GET',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/task-cancellation`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/task-cancellation`,
 	);
 
 export const getAgentPlan = async (
