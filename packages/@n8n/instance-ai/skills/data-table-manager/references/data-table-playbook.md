@@ -148,7 +148,7 @@ Create a designed table:
 Import a CSV into a new table:
 
 ```text
-1. parse-file { attachmentIndex or fileId of the file, maxRows: 20 }
+1. parse-file { maxRows: 20 } with the file field of the parse-file schema (fileId or attachmentIndex)
 2. list_data_tables
 3. create_data_table with chosen column names/types
 4. insert_data_table_rows, max 100 rows
