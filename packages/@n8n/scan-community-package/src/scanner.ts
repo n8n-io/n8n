@@ -86,7 +86,7 @@ export const safeJoinPath = (parentPath: string, ...paths: string[]): string => 
 
 	if (!isContainedWithin(parentPath, candidate)) {
 		throw new Error(
-			`Path traversal detected, refusing to join paths: ${parentPath} and ${JSON.stringify(paths)}`,
+			`Path traversal detected, refusing to join paths: "${parentPath}" and ${JSON.stringify(paths)}`,
 		);
 	}
 
@@ -136,7 +136,7 @@ export const resolveVersion = (metadata: PackageMetadata, version: string | null
 		}
 		case isRange: {
 			const match = semver.maxSatisfying(Object.keys(metadata.versions), version);
-			if (!match) throw new Error(`No version found matching ${version}`);
+			if (!match) throw new Error(`No version found matching "${version}"`);
 			return match;
 		}
 		default:
@@ -440,7 +440,7 @@ export const analyzePackageByName = async (
 		const exactVersion = resolveVersion(packageMetadata, version);
 		const label = `${packageName}@${exactVersion}`;
 
-		stdout.write(`Checking provenance for ${label}...`);
+		stdout.write(`Checking provenance for "${label}"...`);
 		const provenanceResult = checkPackageProvenance(packageMetadata, exactVersion);
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
@@ -448,7 +448,7 @@ export const analyzePackageByName = async (
 		}
 
 		if (!provenanceResult.passed) {
-			stdout.write(`❌ Provenance check failed for ${label} \n`);
+			stdout.write(`❌ Provenance check failed for "${label}" \n`);
 
 			return {
 				packageName,
@@ -457,7 +457,7 @@ export const analyzePackageByName = async (
 			};
 		}
 
-		stdout.write(`✅ Provenance check passed for ${label} \n`);
+		stdout.write(`✅ Provenance check passed for "${label}" \n`);
 
 		// Lint the source the provenance attestation points at: the
 		// node/credential rules are written for `.ts` sources and mostly no-op
@@ -465,7 +465,7 @@ export const analyzePackageByName = async (
 		// in the tarball. An unreachable source is a hard failure — falling
 		// back to a tarball-only scan would silently reintroduce that blind
 		// spot.
-		stdout.write(`Fetching source for ${label}...`);
+		stdout.write(`Fetching source for "${label}"...`);
 		let sourceDir: string | null = null;
 		let sourceInfo: SourceRepo | null = null;
 		let sourceError: unknown = null;
@@ -486,7 +486,7 @@ export const analyzePackageByName = async (
 			const reason = sourceError
 				? errorMessage(sourceError)
 				: 'unsupported or unlocatable source repository';
-			stdout.write(`❌ Could not fetch source for ${label} \n`);
+			stdout.write(`❌ Could not fetch source for "${label}" \n`);
 
 			if (sourceError && !isSourceUnavailable(sourceError)) {
 				return {
@@ -508,18 +508,18 @@ export const analyzePackageByName = async (
 
 		const shortCommit = sourceInfo.gitCommit.slice(0, 7);
 		stdout.write(
-			`✅ Fetched source from github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit} \n`,
+			`✅ Fetched source from "github.com/${sourceInfo.owner}/${sourceInfo.repo}@${shortCommit}" \n`,
 		);
 
-		stdout.write(`Downloading ${label}...`);
+		stdout.write(`Downloading "${label}"...`);
 		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(`✅ Downloaded ${label} \n`);
+		stdout.write(`✅ Downloaded "${label}" \n`);
 
-		stdout.write(`Analyzing ${label}...`);
+		stdout.write(`Analyzing "${label}"...`);
 		// The source checkout gets the full rule set on real `.ts` sources.
 		// The shipped artifact must stay scanned too: provenance pins the
 		// source commit, not the build output — a build step can emit anything
@@ -550,8 +550,8 @@ export const analyzePackageByName = async (
 		}
 		stdout.write(
 			firstFailure?.error === undefined
-				? `✅ Analyzed ${label} \n`
-				: `❌ Could not analyze ${label} \n`,
+				? `✅ Analyzed "${label}" \n`
+				: `❌ Could not analyze "${label}" \n`,
 		);
 
 		return {
@@ -560,7 +560,7 @@ export const analyzePackageByName = async (
 			...analysisResult,
 		};
 	} catch (error: unknown) {
-		console.error(`Failed to analyze ${packageName}@${version}:`, error);
+		console.error(`Failed to analyze "${packageName}@${version}":`, error);
 		return {
 			packageName,
 			version,

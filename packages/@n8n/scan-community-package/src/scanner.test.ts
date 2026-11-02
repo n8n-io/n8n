@@ -205,7 +205,7 @@ describe('resolveVersion', () => {
 	});
 
 	it('throws when no version matches the range', () => {
-		expect(() => resolveVersion(metadata, '3.x')).toThrow('No version found matching 3.x');
+		expect(() => resolveVersion(metadata, '3.x')).toThrow('No version found matching "3.x"');
 	});
 
 	it('throws when there is no latest dist-tag', () => {

@@ -16,9 +16,9 @@ try {
 
 	console.log(
 		{
-			[EXIT_CODES.SCAN_SUCCEEDED]: `✅ Package ${label} has passed all security checks`,
-			[EXIT_CODES.SCAN_FAILED]: `❌ Package ${label} has failed security checks`,
-			[EXIT_CODES.INTERNAL_ERROR]: `❌ Could not complete the scan of ${label}`,
+			[EXIT_CODES.SCAN_SUCCEEDED]: `✅ Package "${label}" has passed all security checks`,
+			[EXIT_CODES.SCAN_FAILED]: `❌ Package "${label}" has failed security checks`,
+			[EXIT_CODES.INTERNAL_ERROR]: `❌ Could not complete the scan of "${label}"`,
 		}[exitCode],
 	);
 

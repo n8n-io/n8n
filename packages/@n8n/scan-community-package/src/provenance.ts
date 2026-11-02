@@ -31,7 +31,7 @@ export const checkPackageProvenance = (
 	if (!packageVersion) {
 		return {
 			passed: false,
-			message: `No package metadata found for version ${version}`,
+			message: `No package metadata found for version "${version}"`,
 		};
 	}
 
@@ -45,7 +45,7 @@ export const checkPackageProvenance = (
 	if (provenance.predicateType !== NPM_PROVENANCE_PREDICATE_TYPE) {
 		return {
 			passed: false,
-			message: `Unsupported npm provenance predicate type: ${provenance.predicateType ?? 'unknown'}`,
+			message: `Unsupported npm provenance predicate type: "${provenance.predicateType ?? 'unknown'}"`,
 		};
 	}
 
