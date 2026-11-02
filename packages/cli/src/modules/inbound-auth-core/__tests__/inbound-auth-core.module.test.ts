@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
@@ -82,14 +83,38 @@ describe('InboundAuthCoreModule', () => {
 			);
 		});
 
+		it('upgrades the stored configs once on a main instance', async () => {
+			dbStore.upgradeStoredConfigs.mockClear();
+
+			await new InboundAuthCoreModule().init();
+
+			expect(dbStore.upgradeStoredConfigs).toHaveBeenCalledTimes(1);
+		});
+
+		it('warns and still seeds when the upgrade fails', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+			const error = new Error('database down');
+			dbStore.seedSystemSource.mockClear();
+			dbStore.upgradeStoredConfigs.mockRejectedValueOnce(error);
+
+			await expect(new InboundAuthCoreModule().init()).resolves.toBeUndefined();
+
+			expect(warn).toHaveBeenCalledWith('Could not upgrade stored trusted source configs', {
+				error,
+			});
+			expect(dbStore.seedSystemSource).toHaveBeenCalledTimes(1);
+		});
+
 		it.each(['webhook', 'worker'] as const)(
-			'does not seed the system trusted source on a %s instance',
+			'neither upgrades nor seeds on a %s instance',
 			async (instanceType) => {
 				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+				dbStore.upgradeStoredConfigs.mockClear();
 				dbStore.seedSystemSource.mockClear();
 
 				await new InboundAuthCoreModule().init();
 
+				expect(dbStore.upgradeStoredConfigs).not.toHaveBeenCalled();
 				expect(dbStore.seedSystemSource).not.toHaveBeenCalled();
 				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			},

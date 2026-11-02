@@ -171,6 +171,29 @@ describe('POST /trusted-sources', () => {
 		expect(response.body).toMatchObject({ path: ['config', 'identity', 'provision'] });
 	});
 
+	it('stores a v1 write as v2 with person provisioning', async () => {
+		const response = await adminAgent.post('/trusted-sources').send(
+			body({
+				config: {
+					...minimalConfig(),
+					version: 1,
+					identity: { ...jitIdentity, provision: { human: 'jit' } },
+				},
+			}),
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.config).toMatchObject({
+			version: 2,
+			identity: { provision: { person: 'jit' } },
+		});
+		const row = await rows.findOneByOrFail({ id: response.body.data.id });
+		expect(row.configVersion).toBe(2);
+		expect(
+			JSON.parse(await Container.get(Cipher).decryptV2(row.config)).identity.provision,
+		).toEqual({ person: 'jit' });
+	});
+
 	it('creates an admin source with defaults applied and returns it without the secret', async () => {
 		const response = await ownerAgent
 			.post('/trusted-sources')

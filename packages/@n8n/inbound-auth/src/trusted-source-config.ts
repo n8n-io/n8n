@@ -305,15 +305,15 @@ export const configMigrations: Record<number, ConfigMigration> = {
 	},
 };
 
-const LATEST_VERSION = 2;
+export const LATEST_TRUSTED_SOURCE_CONFIG_VERSION = 2;
 
 export type TrustedSourceConfigLatest = Extract<
 	TrustedSourceConfig,
-	{ version: typeof LATEST_VERSION }
+	{ version: typeof LATEST_TRUSTED_SOURCE_CONFIG_VERSION }
 >;
 
 const isLatest = (config: TrustedSourceConfig): config is TrustedSourceConfigLatest =>
-	config.version === LATEST_VERSION;
+	config.version === LATEST_TRUSTED_SOURCE_CONFIG_VERSION;
 
 /**
  * Every throw here is a programming error, not bad input: the union parse already rejected

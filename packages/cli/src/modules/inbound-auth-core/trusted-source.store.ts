@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import {
+	LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
 	TrustedSourceStore,
@@ -330,6 +331,57 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return 'issuer-updated';
 	}
 
+	/**
+	 * Rewrites every row stored below the latest config version, so the database holds what reads
+	 * return. Only the config changes: status, metadata and bindings stay. Reads still migrate on
+	 * demand, so a row this skips stays usable. Returns the number of rows it rewrote.
+	 */
+	async upgradeStoredConfigs(): Promise<number> {
+		const rows = await this.trustedSourceRepository.findWithConfigVersionBelow(
+			LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
+			{},
+		);
+		let upgraded = 0;
+		for (const row of rows) {
+			let written: boolean;
+			try {
+				const config = migrateToLatest(await this.parseConfig(row), {
+					managedBy: row.managedBy,
+				});
+				written = await this.trustedSourceRepository.upgradeConfig(
+					row.id,
+					row.configVersion,
+					{ config: await this.cipher.encryptV2(config), configVersion: config.version },
+					{},
+				);
+			} catch (error) {
+				this.logger.warn('Could not upgrade the config of a trusted source', {
+					id: row.id,
+					reason: ensureError(error).message,
+				});
+				continue;
+			}
+			if (!written) continue;
+			upgraded += 1;
+			// Cached copies were migrated on read, so a stale entry still serves the same config.
+			try {
+				await this.invalidateCache(row);
+			} catch (error) {
+				this.logger.warn('Config upgraded but the cache could not be invalidated', {
+					id: row.id,
+					error,
+				});
+			}
+		}
+		if (upgraded > 0) {
+			this.logger.info('Upgraded stored trusted source configs', {
+				count: upgraded,
+				version: LATEST_TRUSTED_SOURCE_CONFIG_VERSION,
+			});
+		}
+		return upgraded;
+	}
+
 	private async loadAdminRow(id: string, action: 'update' | 'delete') {
 		const row = await this.trustedSourceRepository.findById(id, {});
 		if (!row) throw new NotFoundError(`Trusted source "${id}" not found`);
@@ -354,9 +406,8 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	private async load(row: TrustedSourceEntity | null): Promise<TrustedSource | undefined> {
 		if (!row) return undefined;
 		try {
-			const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
-			const config = trustedSourceConfigSchemaFor(row.managedBy).parse(document);
-			return this.toRuntime(row, migrateToLatest(config, { managedBy: row.managedBy }));
+			const config = migrateToLatest(await this.parseConfig(row), { managedBy: row.managedBy });
+			return this.toRuntime(row, config);
 		} catch (error) {
 			this.logger.warn('Skipping unusable trusted source', {
 				id: row.id,
@@ -364,6 +415,12 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			});
 			return undefined;
 		}
+	}
+
+	/** The stored document, validated for the row but not migrated. Throws when it is unusable. */
+	private async parseConfig(row: TrustedSourceEntity) {
+		const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
+		return trustedSourceConfigSchemaFor(row.managedBy).parse(document);
 	}
 
 	private async loadAll(): Promise<TrustedSource[]> {
