@@ -164,11 +164,11 @@ def seed(base_url):
 	c.login()
 	# Web search is optional. Without a choice, the Assistant shows its setup screen instead of the chat.
 	# A search provider from the environment makes the choice, and the API rejects searchDisabled then.
-	current = c.request('GET', '/rest/instance-ai/settings') or {}
+	current = c.request('GET', '/rest/assistant/settings') or {}
 	update = {'enabled': True}
 	if not current.get('searchEnvConfigured'):
 		update['searchDisabled'] = True
-	c.request('PUT', '/rest/instance-ai/settings', update)
+	c.request('PUT', '/rest/assistant/settings', update)
 
 
 def git(*args, cwd=REPO_ROOT):

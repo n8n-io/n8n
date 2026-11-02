@@ -12,20 +12,10 @@ import {
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiThreadHistoryQuery,
-	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiVerifyModelRequest,
-	InstanceAiVerifySandboxRequest,
-	InstanceAiVerifySearchRequest,
 } from '@n8n/api-types';
-import type {
-	InstanceAiAdminSettingsResponse,
-	InstanceAiEvent,
-	AssistantThreadTabsResponse,
-} from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
+import type { InstanceAiEvent, AssistantThreadTabsResponse } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Container } from '@n8n/di';
 import {
 	RestController,
 	GlobalScope,
@@ -35,7 +25,6 @@ import {
 	Put,
 	Patch,
 	Delete,
-	OnPubSubEvent,
 	Param,
 	Body,
 	Query,
@@ -57,23 +46,26 @@ import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
-import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
 import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
-import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 type FlushableResponse = Response & { flush?: () => void };
 
 const KEEP_ALIVE_INTERVAL_MS = 15_000;
 
+/**
+ * Routes that only the current Assistant runtime uses. They are removed with
+ * that runtime, so do not add routes here. Routes that both runtimes use go in
+ * `AssistantController`, and routes that only the Assistant agent uses go in
+ * `AssistantAgentController`.
+ */
 @RestController('/instance-ai')
 export class InstanceAiController {
 	private readonly instanceAiConfig: GlobalConfig['instanceAi'];
@@ -85,14 +77,11 @@ export class InstanceAiController {
 		private readonly onboarding: InstanceAiOnboardingService,
 		private readonly pendingAgentService: InstanceAiPendingAgentService,
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly modelCatalogService: InstanceAiModelCatalogService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
 		private readonly durableLogMetrics: DurableLogMetrics,
-		private readonly moduleRegistry: ModuleRegistry,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
-		private readonly publisher: Publisher,
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
@@ -692,135 +681,12 @@ export class InstanceAiController {
 		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
 	}
 
-	// ── Credits ──────────────────────────────────────────────────────────────
-
-	@Get('/credits')
-	@GlobalScope('instanceAi:message')
-	async getCredits(req: AuthenticatedRequest) {
-		this.requireInstanceAiEnabled();
-		return await this.instanceAiService.getCredits(req.user);
-	}
-
-	// ── Admin settings (owner/admin only) ──────────────────────────────────
-
-	@Get('/settings')
-	@GlobalScope('instanceAi:manage')
-	async getAdminSettings(_req: AuthenticatedRequest) {
-		return await this.settingsService.getAdminSettings();
-	}
-
-	@Get('/settings/models')
-	@GlobalScope('instanceAi:manage')
-	async getModelCatalog(_req: AuthenticatedRequest) {
-		return await this.modelCatalogService.getModels();
-	}
-
-	@Put('/settings')
-	@GlobalScope('instanceAi:manage')
-	async updateAdminSettings(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiAdminSettingsUpdateRequest,
-	) {
-		const result = await this.settingsService.updateAdminSettings(payload, req.user);
-		const [publishResult] = await Promise.allSettled([
-			this.publisher.publishCommand({ command: 'reload-instance-ai-settings' }),
-			this.applyAdminSettingsSideEffects(result),
-		]);
-
-		if (publishResult.status === 'rejected') {
-			this.instanceAiErrorReporter.report(publishResult.reason, {
-				component: 'settings-publish',
-				threadId: 'admin-settings',
-			});
-		}
-
-		return result;
-	}
-
-	@Post('/settings/verify/model')
-	@GlobalScope('instanceAi:manage')
-	async verifyModel(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiVerifyModelRequest,
-	) {
-		return await Container.get(InstanceAiVerificationService).verifyModel(req.user, payload);
-	}
-
-	@Post('/settings/verify/sandbox')
-	@GlobalScope('instanceAi:manage')
-	async verifySandbox(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiVerifySandboxRequest,
-	) {
-		return await Container.get(InstanceAiVerificationService).verifySandbox(req.user, payload);
-	}
-
-	@Post('/settings/verify/search')
-	@GlobalScope('instanceAi:manage')
-	async verifySearch(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiVerifySearchRequest,
-	) {
-		return await Container.get(InstanceAiVerificationService).verifySearch(payload);
-	}
-
-	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
-	async reloadAdminSettings() {
-		await this.settingsService.reloadFromDb();
-		await this.applyAdminSettingsSideEffects({
-			enabled: this.settingsService.isInstanceAiEnabled(),
-			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
-		});
-	}
-
-	private async applyAdminSettingsSideEffects(
-		settings: Pick<InstanceAiAdminSettingsResponse, 'enabled' | 'browserUseEnabled'>,
-	) {
-		const sideEffects: Array<() => Promise<void> | void> = [
-			async () => {
-				await this.moduleRegistry.refreshModuleSettings('instance-ai');
-			},
-			async () => {
-				await this.moduleRegistry.refreshModuleSettings('agents');
-			},
-		];
-		if (!settings.enabled || !settings.browserUseEnabled) {
-			sideEffects.push(async () => await this.browserSessionService.shutdown());
-		}
-
-		const results = await Promise.allSettled(sideEffects.map(async (apply) => await apply()));
-		for (const result of results) {
-			if (result.status === 'rejected') {
-				this.instanceAiErrorReporter.report(result.reason, {
-					component: 'settings-side-effects',
-					threadId: 'admin-settings',
-				});
-			}
-		}
-	}
-
 	// ── User preferences (per-user, self-service) ──────────────────────────
 
 	@Get('/preferences')
 	@GlobalScope('instanceAi:message')
 	async getUserPreferences(req: AuthenticatedRequest) {
 		return await this.settingsService.getUserPreferences(req.user);
-	}
-
-	@Get('/settings/service-credentials')
-	@GlobalScope('instanceAi:manage')
-	async listServiceCredentials(_req: AuthenticatedRequest) {
-		return await this.settingsService.listInstanceServiceCredentials();
-	}
-
-	@Get('/settings/model-credentials')
-	@GlobalScope('instanceAi:manage')
-	async listInstanceModelCredentials(_req: AuthenticatedRequest) {
-		return await this.settingsService.listInstanceModelCredentials();
 	}
 
 	@Get('/threads')
