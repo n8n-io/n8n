@@ -11,7 +11,10 @@ export type AfterFoldCommit = () => Promise<void>;
  * through `ctx`, so its writes commit or roll back with the claim.
  */
 export interface ExecutionLedgerFoldStep {
-	/** Stable id used in logs, alerts and the parked table. Must match {@link FOLD_STEP_NAME_PATTERN}. */
+	/**
+	 * Stable id used in logs, alerts and the parked table. Lowercase letters, digits and `_`,
+	 * starting with a letter, 48 characters at most.
+	 */
 	readonly name: string;
 	fold(
 		rows: readonly ExecutionLedgerRow[],
