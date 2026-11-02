@@ -11,16 +11,13 @@
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
-import {
-	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	OperationalError,
-} from 'n8n-workflow';
+import { HTTP_REQUEST_AS_TOOL_NODE_TYPE, HTTP_REQUEST_NODE_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
