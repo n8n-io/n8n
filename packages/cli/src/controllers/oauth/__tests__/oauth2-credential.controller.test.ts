@@ -207,6 +207,45 @@ describe('OAuth2CredentialController', () => {
 			);
 		});
 
+		it.each([
+			[
+				'shows',
+				{ issuer: 'https://auth.example.com' },
+				'https://auth.example.com',
+				'invalid_client',
+			],
+			['hides', { issuer: 'https://auth.example.com' }, 'https://attacker.example', undefined],
+			[
+				'hides',
+				{ issuer: 'https://auth.example.com', issParameterRequired: true },
+				undefined,
+				undefined,
+			],
+		])(
+			'%s the error details after the issuer check (recorded: %o, iss: %s)',
+			async (_, recorded, iss, reason) => {
+				oauthService.peekCallbackFlowState.mockResolvedValueOnce({
+					csrfSecret: 'csrf-secret',
+					...recorded,
+				});
+				const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+				errorReq.query = {
+					error: 'invalid_client',
+					state: validState,
+					...(iss ? { iss } : {}),
+				} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+				await controller.handleCallback(errorReq, res);
+
+				expect(oauthService.peekCallbackFlowState).toHaveBeenCalledWith(validState);
+				expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+					res,
+					'The OAuth2 server returned an error.',
+					reason,
+				);
+			},
+		);
+
 		it('should hide the error details when the response carries an issuer', async () => {
 			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
 			errorReq.query = {
@@ -278,6 +317,66 @@ describe('OAuth2CredentialController', () => {
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', expect.any(Array));
+		});
+
+		describe('authorization response issuer', () => {
+			const runCallback = async (
+				flowState: { issuer?: string; issParameterRequired?: boolean },
+				iss?: string,
+			) => {
+				const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+				const mockGetToken = vi.fn().mockResolvedValue({ data: { access_token: 'new_token' } });
+				vi.mocked(ClientOAuth2).mockImplementation(function () {
+					return { code: { getToken: mockGetToken } } as unknown as ClientOAuth2;
+				});
+				oauthService.resolveCredential.mockResolvedValueOnce([
+					mock<CredentialsEntity>({ id: '1' }),
+					{},
+					{
+						clientId: 'client_id',
+						authUrl: 'https://auth.example.com/authorize',
+						accessTokenUrl: 'https://auth.example.com/token',
+						grantType: 'pkce',
+					},
+					{ token: 'token', cid: '1', origin: 'static-credential' as const, createdAt: timestamp },
+					{ csrfSecret: 'csrf-secret', codeVerifier: 'verifier', ...flowState },
+				]);
+				oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+
+				const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+					query: { code: 'auth_code', state: validState, ...(iss ? { iss } : {}) },
+					originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+				});
+				await controller.handleCallback(req, res);
+				return mockGetToken;
+			};
+
+			it.each([
+				['iss differs from the recorded issuer', {}, 'https://attacker.example'],
+				['iss is absent but required', { issParameterRequired: true }, undefined],
+			])('should not exchange the code when %s', async (_, flowState, iss) => {
+				const getToken = await runCallback(
+					{ issuer: 'https://auth.example.com', ...flowState },
+					iss,
+				);
+
+				expect(getToken).not.toHaveBeenCalled();
+				expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
+				expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+					res,
+					'The authorization response came from an unexpected OAuth2 server.',
+				);
+			});
+
+			it.each([
+				['iss matches the recorded issuer', { issuer: 'https://auth.example.com' }],
+				['no issuer is recorded', {}],
+			])('should exchange the code when %s', async (_, flowState) => {
+				const getToken = await runCallback(flowState, 'https://auth.example.com');
+
+				expect(getToken).toHaveBeenCalled();
+				expect(res.render).toHaveBeenCalledWith('oauth-callback');
+			});
 		});
 
 		describe('outbound network policy', () => {

@@ -15,7 +15,11 @@ import { jsonParse } from 'n8n-workflow';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
 import { withTokenVersion } from '@/managed-versions';
-import { OauthService, OauthVersion } from '@/oauth/oauth.service';
+import {
+	isAuthorizationResponseIssuerValid,
+	OauthService,
+	OauthVersion,
+} from '@/oauth/oauth.service';
 import { AuthlessRequest, OAuthRequest } from '@/requests';
 
 @RestController('/oauth2-credential')
@@ -82,14 +86,13 @@ export class OAuth2CredentialController {
 						errorDescription,
 						iss,
 					});
-					// n8n does not record the expected issuer yet, so it cannot verify `iss` (RFC 9207).
-					// The MCP spec forbids showing error details from an unverified issuer.
-					const reason =
-						iss !== undefined
-							? undefined
-							: typeof errorDescription === 'string' && errorDescription
-								? `${error}: ${errorDescription}`
-								: error;
+					// The MCP spec forbids showing error details when `iss` fails validation (RFC 9207).
+					const flowState = await this.oauthService.peekCallbackFlowState(encodedState);
+					const reason = !isAuthorizationResponseIssuerValid(flowState, iss)
+						? undefined
+						: typeof errorDescription === 'string' && errorDescription
+							? `${error}: ${errorDescription}`
+							: error;
 					return this.oauthService.renderCallbackError(
 						res,
 						'The OAuth2 server returned an error.',
@@ -107,6 +110,22 @@ export class OAuth2CredentialController {
 			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 			credentialType = credential.type;
+
+			// RFC 9207: do not send the code to a token endpoint when `iss` fails validation.
+			if (
+				flowState.issuer !== undefined &&
+				!isAuthorizationResponseIssuerValid(flowState, req.query.iss)
+			) {
+				this.logger.warn('OAuth2 authorization response has an unexpected issuer', {
+					credentialId: credential.id,
+					expectedIssuer: flowState.issuer,
+					iss: req.query.iss,
+				});
+				return this.oauthService.renderCallbackError(
+					res,
+					'The authorization response came from an unexpected OAuth2 server.',
+				);
+			}
 
 			if (typeof state.resource === 'string') {
 				oauthCredentials.resource = state.resource;

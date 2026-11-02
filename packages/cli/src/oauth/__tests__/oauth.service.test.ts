@@ -35,6 +35,7 @@ import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.servic
 import {
 	InvalidTargetError,
 	InvalidOAuthUrlError,
+	isAuthorizationResponseIssuerValid,
 	OauthService,
 	OauthVersion,
 	shouldSkipAuthOnOAuthCallback,
@@ -1235,6 +1236,48 @@ describe('OauthService', () => {
 
 			expect(result).toBeUndefined();
 			expect(cacheService.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('peekCallbackFlowState', () => {
+		it('reads the flow state of the state token without deleting it', async () => {
+			cacheService.get.mockResolvedValue({ csrfSecret: 'csrf-secret' });
+			const state = Buffer.from(JSON.stringify({ token: 'the-token' })).toString('base64');
+
+			await expect(service.peekCallbackFlowState(state)).resolves.toEqual({
+				csrfSecret: 'csrf-secret',
+			});
+			expect(cacheService.get).toHaveBeenCalledWith('oauth:flow:the-token');
+			expect(cacheService.delete).not.toHaveBeenCalled();
+		});
+
+		it.each([undefined, 'not-base64-json', Buffer.from('null').toString('base64')])(
+			'returns undefined for the state %s',
+			async (state) => {
+				await expect(service.peekCallbackFlowState(state)).resolves.toBeUndefined();
+				expect(cacheService.get).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	describe('isAuthorizationResponseIssuerValid', () => {
+		const issuer = 'https://auth.example.com';
+
+		it.each([
+			['iss matches', { issuer }, issuer, true],
+			['iss differs by a trailing slash', { issuer }, `${issuer}/`, false],
+			['iss differs', { issuer }, 'https://attacker.example', false],
+			['iss is absent and not required', { issuer }, undefined, true],
+			['iss is absent but required', { issuer, issParameterRequired: true }, undefined, false],
+			['iss is present but no issuer is recorded', {}, issuer, false],
+			['iss is absent and there is no flow state', undefined, undefined, true],
+		])('returns the correct result when %s', (_, flowState, iss, expected) => {
+			expect(
+				isAuthorizationResponseIssuerValid(
+					flowState && { csrfSecret: 'csrf-secret', ...flowState },
+					iss,
+				),
+			).toBe(expected);
 		});
 	});
 
@@ -2580,6 +2623,7 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain',
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
 					token_endpoint: 'https://example.domain/oauth2/token',
 					registration_endpoint: 'https://example.domain/oauth2/register',
@@ -2587,6 +2631,7 @@ describe('OauthService', () => {
 					token_endpoint_auth_methods_supported: ['none', 'client_secret_basic'],
 					code_challenge_methods_supported: ['S256'],
 					scopes_supported: ['openid', 'profile'],
+					authorization_response_iss_parameter_supported: true,
 				},
 			} as any);
 
@@ -2613,6 +2658,8 @@ describe('OauthService', () => {
 			expect(httpClientMock.post).toHaveBeenCalledWith(
 				'https://example.domain/oauth2/register',
 				expect.objectContaining({
+					// The test instance runs on localhost.
+					application_type: 'native',
 					client_name: 'n8n',
 					grant_types: ['authorization_code', 'refresh_token'],
 				}),
@@ -2644,6 +2691,8 @@ describe('OauthService', () => {
 				expect.objectContaining({
 					csrfSecret: expect.any(String),
 					codeVerifier: 'code_verifier',
+					issuer: 'https://example.domain',
+					issParameterRequired: true,
 				}),
 				expect.any(Number),
 			);
@@ -2676,6 +2725,7 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain',
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
 					token_endpoint: 'https://example.domain/oauth2/token',
 					registration_endpoint: 'https://example.domain/oauth2/register',
@@ -2708,7 +2758,7 @@ describe('OauthService', () => {
 				oauthCredentials,
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
-				data: { invalid: 'metadata' },
+				data: { issuer: 'https://example.domain', invalid: 'metadata' },
 			} as any);
 
 			await expect(
@@ -2744,6 +2794,7 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain',
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
 					token_endpoint: 'https://example.domain/oauth2/token',
 					registration_endpoint: 'https://example.domain/oauth2/register',
@@ -2798,12 +2849,13 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain',
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
 					token_endpoint: 'https://example.domain/oauth2/token',
 					registration_endpoint: 'https://example.domain/oauth2/register',
 					grant_types_supported: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_methods_supported: ['client_secret_post'],
-					code_challenge_methods_supported: [],
+					code_challenge_methods_supported: ['S256'],
 				},
 			} as any);
 
@@ -3049,6 +3101,7 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain/issuer1',
 					authorization_endpoint: 'https://example.domain/issuer1/authorize',
 					token_endpoint: 'https://example.domain/issuer1/token',
 					registration_endpoint: 'https://example.domain/issuer1/register',
@@ -3106,6 +3159,7 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain',
 					authorization_endpoint: 'https://example.domain/authorize',
 					token_endpoint: 'https://example.domain/token',
 					registration_endpoint: 'https://example.domain/register',
@@ -3161,6 +3215,7 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain/issuer1',
 					authorization_endpoint: 'https://example.domain/authorize',
 					token_endpoint: 'https://example.domain/token',
 					registration_endpoint: 'https://example.domain/register',
@@ -3213,6 +3268,7 @@ describe('OauthService', () => {
 			});
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://oauth.example.com/tenant/auth/provider',
 					authorization_endpoint: 'https://oauth.example.com/tenant/auth/provider/authorize',
 					token_endpoint: 'https://oauth.example.com/tenant/auth/provider/token',
 					registration_endpoint: 'https://oauth.example.com/tenant/auth/provider/register',
@@ -3272,6 +3328,7 @@ describe('OauthService', () => {
 				.mockRejectedValueOnce(new Error('404 Not Found')) // RFC 8414
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://example.domain/issuer1',
 						authorization_endpoint: 'https://example.domain/issuer1/authorize',
 						token_endpoint: 'https://example.domain/issuer1/token',
 						registration_endpoint: 'https://example.domain/issuer1/register',
@@ -3338,6 +3395,7 @@ describe('OauthService', () => {
 				.mockRejectedValueOnce(new Error('404 Not Found')) // OpenID Connect path insertion
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://example.domain/issuer1',
 						authorization_endpoint: 'https://example.domain/issuer1/authorize',
 						token_endpoint: 'https://example.domain/issuer1/token',
 						registration_endpoint: 'https://example.domain/issuer1/register',
@@ -3407,6 +3465,7 @@ describe('OauthService', () => {
 				.mockRejectedValueOnce(new Error('401')) // OpenID Connect path appending
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://mcp.atlassian.com',
 						authorization_endpoint: 'https://mcp.atlassian.com/authorize',
 						token_endpoint: 'https://mcp.atlassian.com/token',
 						registration_endpoint: 'https://mcp.atlassian.com/register',
@@ -3517,6 +3576,7 @@ describe('OauthService', () => {
 				// Authorization server metadata discovery
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://auth.example.com',
 						authorization_endpoint: 'https://auth.example.com/authorize',
 						token_endpoint: 'https://auth.example.com/token',
 						registration_endpoint: 'https://auth.example.com/register',
@@ -3586,6 +3646,7 @@ describe('OauthService', () => {
 				// Fall back to direct authorization server discovery
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://example.domain/issuer1',
 						authorization_endpoint: 'https://example.domain/issuer1/authorize',
 						token_endpoint: 'https://example.domain/issuer1/token',
 						registration_endpoint: 'https://example.domain/issuer1/register',
@@ -3662,6 +3723,7 @@ describe('OauthService', () => {
 				// Fall back to direct authorization server discovery (200 succeeds)
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://example.domain/issuer1',
 						authorization_endpoint: 'https://example.domain/issuer1/authorize',
 						token_endpoint: 'https://example.domain/issuer1/token',
 						registration_endpoint: 'https://example.domain/issuer1/register',
@@ -3734,6 +3796,7 @@ describe('OauthService', () => {
 				// Authorization server metadata discovery
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp',
 						authorization_endpoint:
 							'https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp/authorize',
 						token_endpoint: 'https://auth.smithery.ai/AnkitDigitalsherpa/weather_mcp/token',
@@ -3808,6 +3871,7 @@ describe('OauthService', () => {
 				// Authorization server metadata discovery (root-level)
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://mcp.notion.com',
 						authorization_endpoint: 'https://mcp.notion.com/authorize',
 						token_endpoint: 'https://mcp.notion.com/token',
 						registration_endpoint: 'https://mcp.notion.com/register',
@@ -3877,6 +3941,7 @@ describe('OauthService', () => {
 				// Fallback to authorization server discovery (RFC 8414 succeeds)
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://www.veed.io/api/v1/oauth2',
 						authorization_endpoint: 'https://www.veed.io/api/v1/oauth2/authorize',
 						token_endpoint: 'https://www.veed.io/api/v1/oauth2/token',
 						registration_endpoint: 'https://www.veed.io/api/v1/oauth2/register',
@@ -3977,6 +4042,7 @@ describe('OauthService', () => {
 				.mockRejectedValueOnce(new Error('404')) // protected resource root
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://login.commonroom.io',
 						authorization_endpoint: 'https://login.commonroom.io/authorize',
 						token_endpoint: 'https://login.commonroom.io/token',
 						registration_endpoint: 'https://login.commonroom.io/register',
@@ -4039,6 +4105,7 @@ describe('OauthService', () => {
 				.mockRejectedValueOnce(new Error('404')) // protected resource root
 				.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://example.domain',
 						authorization_endpoint: 'https://example.domain/authorize',
 						token_endpoint: 'https://example.domain/token',
 						registration_endpoint: 'https://example.domain/register',
@@ -4100,6 +4167,7 @@ describe('OauthService', () => {
 		beforeEach(async () => {
 			vi.mocked(httpClientMock.get).mockResolvedValue({
 				data: {
+					issuer: 'https://example.domain',
 					authorization_endpoint: 'https://example.domain/oauth2/auth',
 					token_endpoint: 'https://example.domain/oauth2/token',
 					registration_endpoint: 'https://example.domain/oauth2/register',
@@ -4263,11 +4331,13 @@ describe('OauthService', () => {
 		const mockSuccessfulAuthorizationServerDiscovery = () => {
 			vi.mocked(httpClientMock.get).mockResolvedValueOnce({
 				data: {
+					issuer: 'https://auth.example.com',
 					authorization_endpoint: 'https://auth.example.com/oauth2/auth',
 					token_endpoint: 'https://auth.example.com/oauth2/token',
 					registration_endpoint: 'https://auth.example.com/oauth2/register',
 					grant_types_supported: ['authorization_code'],
 					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
 					scopes_supported: ['openid'],
 				},
 			});
@@ -4388,12 +4458,13 @@ describe('OauthService', () => {
 
 		describe('registerClient', () => {
 			const makeMetadata = (overrides: Record<string, unknown> = {}) => ({
+				issuer: 'https://auth.example.com',
 				authorization_endpoint: 'https://auth.example.com/oauth2/auth',
 				token_endpoint: 'https://auth.example.com/oauth2/token',
 				registration_endpoint: 'https://auth.example.com/oauth2/register',
 				grant_types_supported: ['authorization_code'],
 				token_endpoint_auth_methods_supported: ['client_secret_basic'],
-				code_challenge_methods_supported: [],
+				code_challenge_methods_supported: ['S256'],
 				...overrides,
 			});
 
@@ -4459,13 +4530,6 @@ describe('OauthService', () => {
 				it.each([
 					['the flag is off', {}, () => (globalConfig.auth.oauthCimdEnabled = false)],
 					['the server does not support CIMD', { client_id_metadata_document_supported: false }],
-					[
-						'the server does not support S256 PKCE',
-						{
-							code_challenge_methods_supported: ['plain'],
-							token_endpoint_auth_methods_supported: ['none', 'client_secret_post'],
-						},
-					],
 					[
 						'the server does not support public clients',
 						{ token_endpoint_auth_methods_supported: ['client_secret_basic'] },
@@ -4551,7 +4615,9 @@ describe('OauthService', () => {
 
 				vi.mocked(httpClientMock.get)
 					.mockRejectedValueOnce(new Error('404'))
-					.mockResolvedValueOnce({ data: makeMetadata() });
+					.mockResolvedValueOnce({
+						data: makeMetadata({ issuer: 'https://auth.example.com/issuer' }),
+					});
 				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
 					data: { client_id: 'registered-client-id' },
 				});
@@ -4592,6 +4658,91 @@ describe('OauthService', () => {
 				expect(toUpdate).not.toHaveProperty('clientSecret');
 				expect(toUpdate).not.toHaveProperty('scope');
 			});
+
+			it('should skip metadata whose issuer does not match the authorization server', async () => {
+				vi.mocked(httpClientMock.get)
+					.mockResolvedValueOnce({ data: makeMetadata({ issuer: 'https://attacker.example' }) })
+					.mockResolvedValueOnce({ data: makeMetadata({ issuer: 'https://auth.example.com/' }) });
+				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id' },
+				});
+
+				const metadata = await (service as any).registerClient(
+					makeDcrCredentials(),
+					'https://auth.example.com',
+					{},
+					[],
+				);
+
+				expect(httpClientMock.get).toHaveBeenNthCalledWith(
+					2,
+					'https://auth.example.com/.well-known/openid-configuration',
+					expect.any(Object),
+				);
+				// A terminating "/" does not change the well-known URL, so the issuer matches.
+				expect(metadata.issuer).toBe('https://auth.example.com/');
+			});
+
+			it.each(['https://attacker.example', 'https://auth.example.com/tenant', undefined])(
+				'should reject the metadata when the issuer is %s',
+				async (issuer) => {
+					vi.mocked(httpClientMock.get).mockResolvedValue({ data: makeMetadata({ issuer }) });
+
+					await expect(
+						(service as any).registerClient(
+							makeDcrCredentials(),
+							'https://auth.example.com',
+							{},
+							[],
+						),
+					).rejects.toThrow('does not match expected issuer https://auth.example.com');
+					expect(httpClientMock.post).not.toHaveBeenCalled();
+				},
+			);
+
+			it.each([
+				['https://n8n.example.com', 'web'],
+				['http://localhost:5678', 'native'],
+				['http://127.0.0.1:5678', 'native'],
+				['http://[::1]:5678', 'native'],
+			])('should register an instance on %s as a %s application', async (baseUrl, type) => {
+				urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
+				vi.mocked(httpClientMock.get).mockResolvedValueOnce({ data: makeMetadata() });
+				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+					data: { client_id: 'registered-client-id' },
+				});
+
+				await (service as any).registerClient(
+					makeDcrCredentials(),
+					'https://auth.example.com',
+					{},
+					[],
+				);
+
+				expect(httpClientMock.post).toHaveBeenCalledWith(
+					'https://auth.example.com/oauth2/register',
+					expect.objectContaining({ application_type: type }),
+				);
+			});
+
+			it.each([[undefined], [[]], [['plain']]])(
+				'should refuse to register when code_challenge_methods_supported is %o',
+				async (methods) => {
+					vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+						data: makeMetadata({ code_challenge_methods_supported: methods }),
+					});
+
+					await expect(
+						(service as any).registerClient(
+							makeDcrCredentials(),
+							'https://auth.example.com',
+							{},
+							[],
+						),
+					).rejects.toThrow('does not support PKCE');
+					expect(httpClientMock.post).not.toHaveBeenCalled();
+				},
+			);
 
 			it.each([
 				['header', 'client_secret_basic'],
@@ -4700,35 +4851,6 @@ describe('OauthService', () => {
 					'https://auth.example.com/oauth2/register',
 					expect.objectContaining({
 						grant_types: ['client_credentials'],
-						token_endpoint_auth_method: 'client_secret_basic',
-					}),
-				);
-			});
-
-			it('should default authorization code flow to header authentication when the server omits token_endpoint_auth_methods_supported', async () => {
-				const oauthCredentials = makeDcrCredentials();
-				const toUpdate = {};
-
-				const metadata = makeMetadata({ grant_types_supported: ['authorization_code'] });
-				delete (metadata as Record<string, unknown>).token_endpoint_auth_methods_supported;
-				vi.mocked(httpClientMock.get).mockResolvedValueOnce({ data: metadata });
-				vi.mocked(httpClientMock.post).mockResolvedValueOnce({
-					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
-				});
-
-				await (service as any).registerClient(
-					oauthCredentials,
-					'https://auth.example.com',
-					toUpdate,
-					[],
-				);
-
-				expect(oauthCredentials.grantType).toBe('authorizationCode');
-				expect(oauthCredentials.authentication).toBe('header');
-				expect(httpClientMock.post).toHaveBeenCalledWith(
-					'https://auth.example.com/oauth2/register',
-					expect.objectContaining({
-						grant_types: ['authorization_code', 'refresh_token'],
 						token_endpoint_auth_method: 'client_secret_basic',
 					}),
 				);
@@ -5077,11 +5199,13 @@ describe('OauthService', () => {
 			it('maps dynamic client registration to a POST carrying a JSON body', async () => {
 				httpClientMock.get.mockResolvedValueOnce({
 					data: {
+						issuer: 'https://as.example.com',
 						authorization_endpoint: 'https://as.example.com/authorize',
 						token_endpoint: 'https://as.example.com/token',
 						registration_endpoint: 'https://as.example.com/register',
 						grant_types_supported: ['authorization_code'],
 						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
 					},
 				});
 				httpClientMock.post.mockResolvedValueOnce({
@@ -5329,6 +5453,7 @@ describe('OauthService', () => {
 				});
 				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
 					data: {
+						issuer: 'https://auth.example.com',
 						authorization_endpoint: 'https://auth.example.com/oauth2/auth',
 						token_endpoint: 'https://auth.example.com/oauth2/token',
 						registration_endpoint: 'https://auth.example.com/oauth2/register',
@@ -5392,6 +5517,7 @@ describe('OauthService', () => {
 				});
 				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
 					data: {
+						issuer: 'https://auth.example.com',
 						authorization_endpoint: 'https://auth.example.com/oauth2/auth',
 						token_endpoint: 'https://auth.example.com/oauth2/token',
 						registration_endpoint: 'https://auth.example.com/oauth2/register',
@@ -5561,7 +5687,7 @@ describe('OauthService', () => {
 			const mockAuthServerWithoutScopes = () => {
 				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
 					data: {
-						issuer: 'https://auth.atlassian.com',
+						issuer: ATLASSIAN_AUTH_SERVER,
 						authorization_endpoint: 'https://auth.atlassian.com/authorize',
 						token_endpoint: 'https://auth.atlassian.com/oauth/token',
 						registration_endpoint: 'https://auth.atlassian.com/dcr/register',
@@ -5627,12 +5753,13 @@ describe('OauthService', () => {
 				mockProtectedResourceDiscovery(); // no scopes_supported on the resource
 				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
 					data: {
-						issuer: 'https://auth.atlassian.com',
+						issuer: ATLASSIAN_AUTH_SERVER,
 						authorization_endpoint: 'https://auth.atlassian.com/authorize',
 						token_endpoint: 'https://auth.atlassian.com/oauth/token',
 						registration_endpoint: 'https://auth.atlassian.com/dcr/register',
 						grant_types_supported: ['authorization_code', 'refresh_token'],
 						token_endpoint_auth_methods_supported: ['client_secret_basic'],
+						code_challenge_methods_supported: ['S256'],
 						scopes_supported: ['openid', 'profile'],
 					},
 				});
@@ -5649,7 +5776,7 @@ describe('OauthService', () => {
 			const mockAuthServerWithScopes = (scopes: string[]) => {
 				vi.mocked(httpClientMock.get).mockResolvedValueOnce({
 					data: {
-						issuer: 'https://auth.atlassian.com',
+						issuer: ATLASSIAN_AUTH_SERVER,
 						authorization_endpoint: 'https://auth.atlassian.com/authorize',
 						token_endpoint: 'https://auth.atlassian.com/oauth/token',
 						registration_endpoint: 'https://auth.atlassian.com/dcr/register',
