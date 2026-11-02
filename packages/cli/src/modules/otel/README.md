@@ -68,27 +68,15 @@ n8n sends the headers of that setup.
 
 `N8N_OTEL_TRACES_INJECT_OUTBOUND` decides whether n8n adds any header at all. It is the one
 switch an operator has for "n8n may put tracing headers on my outbound calls", so no header
-goes around it. `OTEL_PROPAGATORS` names the headers n8n writes.
+goes around it. `OTEL_PROPAGATORS` names the headers n8n writes while the switch is on:
 
-`OTEL_PROPAGATORS` names the outbound headers, so where it is set it also decides the switch,
-over the setting in the UI. An empty value counts as unset, as the OpenTelemetry SDK reads it. A value that names nothing n8n carries, such as `none` or `b3`,
-writes no header, so the switch reads off. `N8N_OTEL_TRACES_INJECT_OUTBOUND` can still veto.
-The switch therefore reads on only when `OTEL_PROPAGATORS` names a header that n8n writes. It
-does not promise that each request carries a header. With `OTEL_PROPAGATORS=baggage`, the switch
-reads on, but n8n writes `baggage` only when the execution has caller baggage or the
-`otel.configure` hook adds entries. An execution with neither sends no header. Either variable
-locks the switch in the UI, and the tooltip on the setting names both.
-
-| `N8N_OTEL_TRACES_INJECT_OUTBOUND` | `OTEL_PROPAGATORS` | Switch       | Headers                                |
-| --------------------------------- | ------------------ | ------------ | -------------------------------------- |
-| not set                           | not set            | the UI tells | `traceparent`, `tracestate`, `baggage` |
-| not set                           | `tracecontext`     | on, locked   | `traceparent`, `tracestate`            |
-| not set                           | `baggage`          | on, locked   | `baggage`, only with entries           |
-| not set                           | `none` or `b3`     | off, locked  | none                                   |
-| `false`                           | anything           | off, locked  | none                                   |
-| `true`                            | not set            | on, locked   | `traceparent`, `tracestate`, `baggage` |
-| `true`                            | `tracecontext`     | on, locked   | `traceparent`, `tracestate`            |
-| `true`                            | `none` or `b3`     | off, locked  | none                                   |
+| `N8N_OTEL_TRACES_INJECT_OUTBOUND` | `OTEL_PROPAGATORS`      | Headers                                |
+| --------------------------------- | ----------------------- | -------------------------------------- |
+| off                               | anything                | none                                   |
+| on                                | not set                 | `traceparent`, `tracestate`, `baggage` |
+| on                                | `tracecontext`          | `traceparent`, `tracestate`            |
+| on                                | `baggage`               | `baggage`, when the execution has entries |
+| on                                | `none`                  | none                                   |
 
 `OTEL_PROPAGATORS` is the standard OpenTelemetry variable, and n8n takes the default the
 specification gives, `tracecontext,baggage`. It carries two names: `tracecontext` writes

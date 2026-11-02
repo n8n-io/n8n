@@ -149,10 +149,8 @@ function onProtocolChange(value: unknown) {
 }
 
 function envTooltip(field: keyof typeof OTEL_FIELD_ENV_VARS): string {
-	const envVars = [OTEL_FIELD_ENV_VARS[field]].flat();
 	const envVariable = i18n.baseText('settings.opentelemetry.envVarTooltip', {
-		interpolate: { envVars: envVars.join(', ') },
-		adjustToNumber: envVars.length,
+		interpolate: { envVar: OTEL_FIELD_ENV_VARS[field] },
 	});
 
 	return isEnvManaged(field)
