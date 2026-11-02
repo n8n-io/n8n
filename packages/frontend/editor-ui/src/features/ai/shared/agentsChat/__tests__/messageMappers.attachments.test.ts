@@ -60,3 +60,88 @@ describe('convertDbMessages — file parts', () => {
 		expect(message.attachments).toBeUndefined();
 	});
 });
+
+describe('convertDbMessages — reply files', () => {
+	const file = {
+		fileId: 'att-1',
+		fileName: 'report.pdf',
+		mimeType: 'application/pdf',
+		sizeBytes: 2048,
+	};
+
+	it('shows the files of an n8n Chat respond on the assistant message', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm-1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'chat_action',
+						input: {
+							action: 'respond',
+							input: { message: { text: 'Report' }, fileIds: ['att-1'] },
+						},
+						state: 'resolved',
+						output: { ok: true, files: [file] },
+					},
+					{ type: 'text', text: 'Here is the report.' },
+				],
+			},
+		];
+
+		const [message] = convertDbMessages(dbMessages);
+
+		expect(message.attachments).toEqual([file]);
+	});
+
+	it('reads the files of a batched respond', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm-1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'chat_action',
+						input: {},
+						state: 'resolved',
+						output: {
+							ok: true,
+							results: [{ action: 'respond', result: { ok: true, files: [file] } }],
+						},
+					},
+				],
+			},
+		];
+
+		const [message] = convertDbMessages(dbMessages);
+
+		expect(message.attachments).toEqual([file]);
+	});
+
+	it('ignores the files of other tools', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm-1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'make_report',
+						input: {},
+						state: 'resolved',
+						output: { ok: true, files: [file] },
+					},
+				],
+			},
+		];
+
+		const [message] = convertDbMessages(dbMessages);
+
+		expect(message.attachments).toBeUndefined();
+	});
+});

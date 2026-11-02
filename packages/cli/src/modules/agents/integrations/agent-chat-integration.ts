@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
+import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';
 import type { IntegrationErrorCode } from './integration-error-codes';
@@ -805,6 +806,8 @@ export interface PlatformActionParams
 	extends Omit<IntegrationActionParams, 'awaitResponse' | 'runId' | 'toolCallId'> {
 	/** `undefined` only for integrations with `requiresChatInstance === false`. */
 	chat: ChatInstance | undefined;
+	/** The files of `input.fileIds`, after the read check. Set only for integrations with `requiresChatInstance === false`. */
+	files?: AgentChatAttachment[];
 }
 
 /**

@@ -1,9 +1,10 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
-import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentToolOutputFile, RichCardComponentType } from '@n8n/api-types';
 import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { AgentChatAttachment } from '../../../entities/agent-chat-attachment.entity';
 import {
 	AgentChatIntegration,
 	type PlatformActionParams,
@@ -74,8 +75,12 @@ export class N8nChatIntegration extends AgentChatIntegration {
 
 	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond']);
 
+	// The chat shows stored files and loads no bytes. `AgentOutboundFiles.check` still applies the channel cap.
+	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: Number.MAX_SAFE_INTEGER };
+
 	readonly actionToolGuidance = [
-		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input.',
+		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input, or with fileIds, to show files with your reply.',
+		'To send files, call respond with fileIds and a short message.text. The files show on your reply. Write your reply as the message for the files, and do not mention fileIds.',
 	];
 
 	constructor(private readonly personRepository: PersonRepository) {
@@ -102,10 +107,19 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		if (!parsed.success) {
 			return integrationError(INTEGRATION_ERROR_CODES.ACTION_FAILED, parsed.error.message);
 		}
+		// The chat UI shows these files on the reply. It reads them from this result.
+		const files = (params.files ?? []).map(toOutputFile);
 		// Text-only responds deliver nothing in the in-app chat (the agent's
 		// normal reply IS this channel) — returning ok would trick the model
 		// into believing the text reached the user. Fail with a self-correcting
 		// message instead.
+		if (!parsed.data.message.card && files.length > 0) {
+			return {
+				ok: true,
+				files,
+				note: 'The files show with your reply. Write your reply as the message for the files, and do not mention fileIds.',
+			};
+		}
 		if (!parsed.data.message.card) {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.ACTION_FAILED,
@@ -125,6 +139,7 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		// parse guards direct executor calls.
 		return {
 			ok: true,
+			...(files.length > 0 ? { files } : {}),
 			messageContext: {
 				...params.currentMessageContext,
 				messageId: undefined,
@@ -165,4 +180,13 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		}
 		return unsupportedQuery(this.type, params.query);
 	}
+}
+
+function toOutputFile(file: AgentChatAttachment): AgentToolOutputFile {
+	return {
+		fileId: file.id,
+		fileName: file.fileName,
+		mimeType: file.mimeType,
+		sizeBytes: file.fileSizeBytes,
+	};
 }
