@@ -985,6 +985,7 @@ describe('AssistantAgentThreadView', () => {
 				authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
 			});
 			const { unmount } = await renderNewThread();
+			expect(sendMessageFromOutside).toHaveBeenCalledWith('Adjust template 42', []);
 			unmount();
 			sendMessageFromOutside.mockReset();
 
