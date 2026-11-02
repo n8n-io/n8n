@@ -38,7 +38,8 @@ function makePlan(
 		featureOverrides: {},
 		validFrom: makeDateWithHourOffset(startedHoursAgo),
 		validTo: makeDateWithHourOffset(1),
-	} as unknown as TEntitlement;
+		isFloatable: false,
+	};
 }
 
 const enterprise = makePlan('enterprise', 'Enterprise', -2, true);
@@ -369,12 +370,40 @@ describe('License', () => {
 			expect(license.getPlanName()).toBe('Community');
 		});
 
+		it('returns Community when the license manager is not initialized', () => {
+			const uninitialized = new License(mockLogger(), instanceSettings, mock(), mock(), mock());
+
+			expect(uninitialized.getPlanName()).toBe('Community');
+		});
+
+		it('returns Community when the cert is invalid even though entitlements are in date', () => {
+			mockEntitlements(license, [enterprise]);
+			vi.spyOn(license, 'getValue').mockReturnValue(undefined);
+
+			expect(license.getPlanName()).toBe('Community');
+			expect(license.isEnterprisePlan()).toBe(false);
+		});
+
 		describe('when no product is marked as a main plan', () => {
 			it('uses the paid plan over a newer Registered Community entitlement', () => {
 				mockEntitlements(license, [unmarkedEnterprise, registeredCommunity]);
 
 				expect(license.getPlanName()).toBe('Enterprise');
 				expect(license.isEnterprisePlan()).toBe(true);
+			});
+
+			it('uses the newest paid plan when there are several', () => {
+				const business = makePlan('business', 'Business', -3, undefined);
+				mockEntitlements(license, [business, unmarkedEnterprise, registeredCommunity]);
+
+				expect(license.getPlanName()).toBe('Enterprise');
+			});
+
+			it('matches Registered Community regardless of case', () => {
+				const lowercase = makePlan('rc', 'registered community', -1, undefined);
+				mockEntitlements(license, [unmarkedEnterprise, lowercase]);
+
+				expect(license.getPlanName()).toBe('Enterprise');
 			});
 
 			it('ignores a newer add-on that is explicitly not a main plan', () => {

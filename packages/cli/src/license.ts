@@ -36,8 +36,8 @@ export type FeatureReturnType = Partial<
 
 type LicenseRefreshCallback = (cert: string) => void;
 
-/** A free add-on that can be activated next to a paid plan. The frontend matches the same name. */
-const REGISTERED_COMMUNITY_PLAN_NAME = 'Registered Community';
+/** A free add-on that can be activated next to a paid plan. Lowercased, as the frontend compares it. */
+const REGISTERED_COMMUNITY_PLAN_NAME = 'registered community';
 
 /** Same precedence as the SDK's merge for a single entitlement: overrides win over features. */
 function entitlementPlanName(entitlement: TEntitlement): string | undefined {
@@ -46,7 +46,9 @@ function entitlementPlanName(entitlement: TEntitlement): string | undefined {
 }
 
 function isMainPlanFlag(entitlement: TEntitlement): boolean | undefined {
-	return (entitlement.productMetadata?.terms as { isMainPlan?: boolean } | undefined)?.isMainPlan;
+	const terms = entitlement.productMetadata?.terms;
+	if (typeof terms !== 'object' || terms === null || !('isMainPlan' in terms)) return undefined;
+	return typeof terms.isMainPlan === 'boolean' ? terms.isMainPlan : undefined;
 }
 
 @Service()
@@ -515,18 +517,20 @@ export class License implements LicenseProvider {
 	/**
 	 * The SDK merges all active entitlements and lets the newest one win, so an add-on that
 	 * started later (such as Registered Community) would otherwise rename a paid plan.
-	 * The plan name therefore comes from the plan entitlement first.
 	 */
 	getPlanName(): string {
 		const mergedPlanName = this.getValue('planName');
+		// Empty when the cert is missing, invalid or expired; the entitlements alone can't tell.
+		if (mergedPlanName === undefined) return 'Community';
+
 		const planEntitlement = this.getPlanEntitlement();
 		const planName = planEntitlement && entitlementPlanName(planEntitlement);
 
-		if (planEntitlement && planName && mergedPlanName && planName !== mergedPlanName) {
+		if (planEntitlement && planName && planName !== mergedPlanName) {
 			this.logPlanNameMismatch(planEntitlement, planName, mergedPlanName);
 		}
 
-		return planName ?? mergedPlanName ?? 'Community';
+		return planName ?? mergedPlanName;
 	}
 
 	/**
@@ -542,7 +546,7 @@ export class License implements LicenseProvider {
 				const planName = entitlementPlanName(entitlement);
 				return (
 					planName !== undefined &&
-					planName !== REGISTERED_COMMUNITY_PLAN_NAME &&
+					planName.toLowerCase() !== REGISTERED_COMMUNITY_PLAN_NAME &&
 					isMainPlanFlag(entitlement) !== false
 				);
 			})
