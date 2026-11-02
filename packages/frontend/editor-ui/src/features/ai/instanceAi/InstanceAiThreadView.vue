@@ -244,22 +244,21 @@ watch(
 );
 
 // --- Canvas / data table preview ---
+const appTargets = computed(() =>
+	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
+);
+const requestedAppId = computed(() => {
+	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
+	return typeof appId === 'string' && appTargets.value.some((target) => target.appId === appId)
+		? appId
+		: undefined;
+});
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
-	initialAppId: () => {
-		const requestedAppId = route.query[INSTANCE_AI_APP_ID_QUERY];
-		const targets = getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId));
-		if (
-			typeof requestedAppId === 'string' &&
-			targets.some((target) => target.appId === requestedAppId)
-		) {
-			return requestedAppId;
-		}
-		return targets[0]?.appId;
-	},
+	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		load: async () => (await fetchThreadTabs(rootStore.restApiContext, props.threadId)).state,
 		save: async (state) => {
@@ -267,6 +266,13 @@ const preview = useCanvasPreview({
 		},
 	},
 });
+watch(
+	[requestedAppId, () => preview.tabsLoaded.value],
+	([appId, tabsLoaded]) => {
+		if (appId && tabsLoaded) preview.openAppPreview(appId);
+	},
+	{ immediate: true },
+);
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
