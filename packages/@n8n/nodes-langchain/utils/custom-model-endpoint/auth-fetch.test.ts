@@ -272,7 +272,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 			]);
 		});
 
-		it('reports the live access token as a secret once one has been minted', async () => {
+		it('reports every minted access token as a secret', async () => {
 			const { fetchImpl } = routedFetch([200]);
 			const { fetch: authFetch, secrets } = createCustomModelEndpointAuthFetch(
 				ctx,

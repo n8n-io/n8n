@@ -10,8 +10,8 @@ const ASSUMED_LIFETIME_SECONDS = 3600;
 export interface AccessTokenSource {
 	getToken: () => Promise<string>;
 	forgetToken: () => void;
-	/** The token in hand, so a gateway that echoes it back can be redacted. */
-	currentToken: () => string | undefined;
+	/** Every token minted here. A request carrying the old one can still be in flight. */
+	mintedTokens: () => string[];
 }
 
 interface CachedToken {
@@ -103,6 +103,7 @@ export function createClientCredentialsTokenSource(
 ): AccessTokenSource {
 	let cached: CachedToken | undefined;
 	let inFlight: Promise<CachedToken> | undefined;
+	const minted = new Set<string>();
 
 	const request = async (): Promise<CachedToken> => {
 		const response = await fetchToken(login.tokenUrl, clientCredentialsTokenRequest(login));
@@ -113,7 +114,9 @@ export function createClientCredentialsTokenSource(
 				description: 'Check the token URL, client ID, client secret and scope on the credential.',
 			});
 		}
-		return readToken(text);
+		const token = readToken(text);
+		minted.add(token.accessToken);
+		return token;
 	};
 
 	return {
@@ -133,6 +136,6 @@ export function createClientCredentialsTokenSource(
 			cached = undefined;
 		},
 
-		currentToken: () => cached?.accessToken,
+		mintedTokens: () => [...minted],
 	};
 }

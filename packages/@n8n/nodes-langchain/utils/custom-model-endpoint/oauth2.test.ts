@@ -162,6 +162,26 @@ describe('createClientCredentialsTokenSource', () => {
 		);
 	});
 
+	it('redacts the secret as the form body writes it, not only as it was typed', async () => {
+		// '+', '/' and a space are all rewritten by URLSearchParams
+		const awkward = 'cs a+b/c=9f2a71c4';
+		const encoded = new URLSearchParams({ v: awkward }).toString().slice(2);
+		const { fetchImpl } = granting({ error_description: `Rejected ${encoded}` }, 401);
+		const source = createClientCredentialsTokenSource(
+			login({ clientSecret: awkward, sendCredentialsIn: 'body' }),
+			fetchImpl,
+		);
+
+		const error = await source.getToken().then(
+			() => undefined,
+			(reason: Error) => reason,
+		);
+
+		expect(encoded).not.toBe(awkward);
+		expect(error?.message).not.toContain(encoded);
+		expect(error?.message).toContain('[redacted]');
+	});
+
 	it('fails when the answer carries no access token', async () => {
 		const { fetchImpl } = granting({ token_type: 'Bearer' });
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
@@ -175,14 +195,14 @@ describe('createClientCredentialsTokenSource', () => {
 		expect(redirectOf(calls)).toBe('manual');
 	});
 
-	it('reports the token it holds, so a gateway echoing it can be redacted', async () => {
+	it('keeps reporting a forgotten token, because a request carrying it can still be in flight', async () => {
 		const { fetchImpl } = granting(GRANT);
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
 
-		expect(source.currentToken()).toBeUndefined();
+		expect(source.mintedTokens()).toEqual([]);
 		await source.getToken();
-		expect(source.currentToken()).toBe('tok-abc');
+		expect(source.mintedTokens()).toEqual(['tok-abc']);
 		source.forgetToken();
-		expect(source.currentToken()).toBeUndefined();
+		expect(source.mintedTokens()).toEqual(['tok-abc']);
 	});
 });

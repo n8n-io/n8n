@@ -28,7 +28,9 @@ export function createEndpointBaseFetch(
 			input,
 			init,
 			egressFilter,
-			timeoutOptions: { headersTimeout: timeout, bodyTimeout: timeout },
+			...(timeout !== undefined && {
+				timeoutOptions: { headersTimeout: timeout, bodyTimeout: timeout },
+			}),
 		});
 }
 
@@ -93,14 +95,12 @@ export function createCustomModelEndpointAuthFetch(
 				)
 			: undefined;
 
-	const authorization = tokenSource
-		? async () => ({ authorization: `Bearer ${await tokenSource.getToken()}` })
-		: undefined;
-
-	const resolveHeaders = async () => ({
-		...buildRequestHeaders({ endpoint, requestHeaders }),
-		...(await authorization?.()),
-	});
+	const resolveHeaders = async () =>
+		buildRequestHeaders({
+			endpoint,
+			requestHeaders,
+			bearerToken: await tokenSource?.getToken(),
+		});
 
 	const authFetch = createRefreshingAuthFetch({
 		baseFetch,
@@ -120,9 +120,6 @@ export function createCustomModelEndpointAuthFetch(
 			const stripped = withoutInheritedAuthorization(input, init);
 			return await authFetch(stripped.input, stripped.init);
 		},
-		secrets: () => {
-			const token = tokenSource?.currentToken();
-			return token ? [...endpointSecrets(endpoint), token] : endpointSecrets(endpoint);
-		},
+		secrets: () => [...endpointSecrets(endpoint), ...(tokenSource?.mintedTokens() ?? [])],
 	};
 }
