@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
+import type { TEntitlement } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import type { InstanceSettings } from 'n8n-core';
 import type { MockedClass } from 'vitest';
@@ -21,6 +22,42 @@ const MOCK_MAIN_PLAN_ID = '1b765dc4-d39d-4ffe-9885-c56dd67c4b26';
 
 function makeDateWithHourOffset(offsetInHours: number): Date {
 	return new Date(Date.now() + offsetInHours * 60 * 60 * 1000);
+}
+
+function makePlan(
+	id: string,
+	planName: string | undefined,
+	startedHoursAgo: number,
+	isMainPlan: boolean | undefined,
+): TEntitlement {
+	return {
+		id,
+		productId: `${id}-product`,
+		productMetadata: isMainPlan === undefined ? {} : { terms: { isMainPlan } },
+		features: planName ? { planName } : {},
+		featureOverrides: {},
+		validFrom: makeDateWithHourOffset(startedHoursAgo),
+		validTo: makeDateWithHourOffset(1),
+	} as unknown as TEntitlement;
+}
+
+const enterprise = makePlan('enterprise', 'Enterprise', -2, true);
+// Shaped like production: neither product carries `terms`.
+const unmarkedEnterprise = makePlan('enterprise', 'Enterprise', -2, undefined);
+const registeredCommunity = makePlan('registered-community', 'Registered Community', -1, undefined);
+
+/** Mocks the active entitlements and the SDK's merged feature value, where the newest entitlement wins. */
+function mockEntitlements(license: License, entitlements: TEntitlement[]) {
+	vi.spyOn(license, 'getCurrentEntitlements').mockImplementation(() => [...entitlements]);
+	const merged = [...entitlements]
+		.sort((a, b) => a.validFrom.getTime() - b.validFrom.getTime())
+		.reduce<Record<string, unknown>>(
+			(features, e) => ({ ...features, ...e.features, ...e.featureOverrides }),
+			{},
+		);
+	vi.spyOn(license, 'getValue').mockImplementation(
+		(feature) => merged[feature] as ReturnType<License['getValue']>,
+	);
 }
 
 const licenseConfig: GlobalConfig['license'] = {
@@ -278,6 +315,129 @@ describe('License', () => {
 
 		it('returns false when the license has no plan', () => {
 			expect(license.isEnterprisePlan()).toBe(false);
+		});
+
+		it('returns true for an Enterprise main plan with a newer Registered Community entitlement', () => {
+			mockEntitlements(license, [enterprise, registeredCommunity]);
+
+			expect(license.isEnterprisePlan()).toBe(true);
+		});
+	});
+
+	describe('getPlanName', () => {
+		it('uses the main plan over a newer entitlement that is not a main plan', () => {
+			mockEntitlements(license, [enterprise, registeredCommunity]);
+
+			expect(license.getPlanName()).toBe('Enterprise');
+		});
+
+		it('uses the newest main plan when there are several', () => {
+			const business = makePlan('business', 'Business', -3, true);
+			mockEntitlements(license, [business, enterprise]);
+
+			expect(license.getPlanName()).toBe('Enterprise');
+		});
+
+		it('uses the only entitlement', () => {
+			mockEntitlements(license, [makePlan('business', 'Business', -1, true)]);
+
+			expect(license.getPlanName()).toBe('Business');
+		});
+
+		it('falls back to the merged plan name when there is no main plan', () => {
+			mockEntitlements(license, [registeredCommunity]);
+
+			expect(license.getPlanName()).toBe('Registered Community');
+		});
+
+		it('falls back to the merged plan name when the main plan has no plan name', () => {
+			mockEntitlements(license, [makePlan('main', undefined, -2, true), registeredCommunity]);
+
+			expect(license.getPlanName()).toBe('Registered Community');
+		});
+
+		it('prefers the main plan feature override', () => {
+			const overridden = { ...enterprise, featureOverrides: { planName: 'Enterprise Trial' } };
+			mockEntitlements(license, [overridden, registeredCommunity]);
+
+			expect(license.getPlanName()).toBe('Enterprise Trial');
+		});
+
+		it('returns Community when there are no entitlements', () => {
+			mockEntitlements(license, []);
+
+			expect(license.getPlanName()).toBe('Community');
+		});
+
+		describe('when no product is marked as a main plan', () => {
+			it('uses the paid plan over a newer Registered Community entitlement', () => {
+				mockEntitlements(license, [unmarkedEnterprise, registeredCommunity]);
+
+				expect(license.getPlanName()).toBe('Enterprise');
+				expect(license.isEnterprisePlan()).toBe(true);
+			});
+
+			it('ignores a newer add-on that is explicitly not a main plan', () => {
+				const ldapBeta = makePlan('ldap-beta', 'LDAP beta', -1, false);
+				mockEntitlements(license, [unmarkedEnterprise, ldapBeta]);
+
+				expect(license.getPlanName()).toBe('Enterprise');
+			});
+		});
+
+		describe('plan name mismatch log', () => {
+			let logger: ReturnType<typeof mock<Logger>>;
+
+			beforeEach(async () => {
+				logger = mock<Logger>();
+				logger.scoped.mockReturnValue(logger);
+				license = new License(
+					logger,
+					instanceSettings,
+					mock(),
+					mock(),
+					mock<GlobalConfig>({ license: licenseConfig, multiMainSetup: { enabled: false } }),
+				);
+				await license.init();
+			});
+
+			it('logs a disagreement once with both plans and entitlement ids', () => {
+				mockEntitlements(license, [enterprise, registeredCommunity]);
+
+				license.getPlanName();
+				license.getPlanName();
+				license.getPlanName();
+
+				expect(logger.info).toHaveBeenCalledTimes(1);
+				expect(logger.info).toHaveBeenCalledWith(
+					'License has another active entitlement that names a different plan',
+					{
+						planName: 'Enterprise',
+						mergedPlanName: 'Registered Community',
+						planEntitlementId: 'enterprise',
+						overridingEntitlementIds: ['registered-community'],
+					},
+				);
+			});
+
+			it('logs when the plan comes from the fallback', () => {
+				mockEntitlements(license, [unmarkedEnterprise, registeredCommunity]);
+
+				license.getPlanName();
+
+				expect(logger.info).toHaveBeenCalledWith(
+					'License has another active entitlement that names a different plan',
+					expect.objectContaining({ planName: 'Enterprise', planEntitlementId: 'enterprise' }),
+				);
+			});
+
+			it('does not log when the plans agree', () => {
+				mockEntitlements(license, [enterprise]);
+
+				license.getPlanName();
+
+				expect(logger.info).not.toHaveBeenCalled();
+			});
 		});
 	});
 

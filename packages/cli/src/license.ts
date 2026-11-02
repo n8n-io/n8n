@@ -36,6 +36,19 @@ export type FeatureReturnType = Partial<
 
 type LicenseRefreshCallback = (cert: string) => void;
 
+/** A free add-on that can be activated next to a paid plan. The frontend matches the same name. */
+const REGISTERED_COMMUNITY_PLAN_NAME = 'Registered Community';
+
+/** Same precedence as the SDK's merge for a single entitlement: overrides win over features. */
+function entitlementPlanName(entitlement: TEntitlement): string | undefined {
+	const planName = entitlement.featureOverrides?.planName ?? entitlement.features?.planName;
+	return typeof planName === 'string' ? planName : undefined;
+}
+
+function isMainPlanFlag(entitlement: TEntitlement): boolean | undefined {
+	return (entitlement.productMetadata?.terms as { isMainPlan?: boolean } | undefined)?.isMainPlan;
+}
+
 @Service()
 export class License implements LicenseProvider {
 	private manager: LicenseManager | undefined;
@@ -45,6 +58,8 @@ export class License implements LicenseProvider {
 	private refreshCallbacks: LicenseRefreshCallback[] = [];
 
 	private hasWarnedShortDeviceFingerprint = false;
+
+	private readonly loggedPlanNameMismatches = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -455,9 +470,7 @@ export class License implements LicenseProvider {
 
 		entitlements.sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime());
 
-		return entitlements.find(
-			(entitlement) => (entitlement.productMetadata?.terms as { isMainPlan?: boolean })?.isMainPlan,
-		);
+		return entitlements.find((entitlement) => isMainPlanFlag(entitlement));
 	}
 
 	getConsumerId() {
@@ -499,8 +512,60 @@ export class License implements LicenseProvider {
 		return this.getValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
 
+	/**
+	 * The SDK merges all active entitlements and lets the newest one win, so an add-on that
+	 * started later (such as Registered Community) would otherwise rename a paid plan.
+	 * The plan name therefore comes from the plan entitlement first.
+	 */
 	getPlanName(): string {
-		return this.getValue('planName') ?? 'Community';
+		const mergedPlanName = this.getValue('planName');
+		const planEntitlement = this.getPlanEntitlement();
+		const planName = planEntitlement && entitlementPlanName(planEntitlement);
+
+		if (planEntitlement && planName && mergedPlanName && planName !== mergedPlanName) {
+			this.logPlanNameMismatch(planEntitlement, planName, mergedPlanName);
+		}
+
+		return planName ?? mergedPlanName ?? 'Community';
+	}
+
+	/**
+	 * The main plan if there is one. Sales-led products such as Enterprise and Business are not
+	 * marked as main plans, so otherwise the newest entitlement that names a plan and is not an add-on.
+	 */
+	private getPlanEntitlement(): TEntitlement | undefined {
+		const mainPlan = this.getMainPlan();
+		if (mainPlan) return mainPlan;
+
+		return this.getCurrentEntitlements()
+			.filter((entitlement) => {
+				const planName = entitlementPlanName(entitlement);
+				return (
+					planName !== undefined &&
+					planName !== REGISTERED_COMMUNITY_PLAN_NAME &&
+					isMainPlanFlag(entitlement) !== false
+				);
+			})
+			.sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime())[0];
+	}
+
+	private logPlanNameMismatch(
+		planEntitlement: TEntitlement,
+		planName: string,
+		mergedPlanName: string,
+	) {
+		const key = `${planName}|${mergedPlanName}`;
+		if (this.loggedPlanNameMismatches.has(key)) return;
+		this.loggedPlanNameMismatches.add(key);
+
+		this.logger.info('License has another active entitlement that names a different plan', {
+			planName,
+			mergedPlanName,
+			planEntitlementId: planEntitlement.id,
+			overridingEntitlementIds: this.getCurrentEntitlements()
+				.filter((entitlement) => entitlementPlanName(entitlement) === mergedPlanName)
+				.map((entitlement) => entitlement.id),
+		});
 	}
 
 	/** Uses `getPlanName()` so that overrides of it, such as in E2E mode, also apply. */
