@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
 	analyzePackage,
+	buildReport,
 	buildScanConfig,
 	EXIT_CODES,
 	findPackageRoot,
@@ -412,6 +413,14 @@ describe('analyzePackage', () => {
 
 		expect(result.passed).toBe(false);
 		expect(result.details).toContain('no-console');
+		expect(result.check).toBe('eslint');
+		expect(result.findings).toContainEqual({
+			file: path.join('nodes', 'Foo', 'Foo.node.ts'),
+			line: 1,
+			column: 1,
+			rule: 'no-console',
+			message: 'Unexpected console statement.',
+		});
 	});
 
 	it('returns passed when the package contains no lintable files', async () => {
@@ -447,6 +456,45 @@ describe('getExitCode', () => {
 		expect(getExitCode({ ...failed, error: new Error('npm pack failed') })).toBe(
 			EXIT_CODES.INTERNAL_ERROR,
 		);
+	});
+});
+
+describe('buildReport', () => {
+	it('reports the status that matches the exit code', () => {
+		const finding = {
+			file: 'package.json',
+			line: 1,
+			column: 1,
+			rule: '@n8n/community-nodes/no-overrides-field',
+			message: 'Remove the overrides field',
+			origin: 'package',
+		} as const;
+
+		expect(buildReport('n8n-nodes-foo', { version: '1.0.0', passed: true })).toEqual({
+			package: 'n8n-nodes-foo',
+			version: '1.0.0',
+			status: 'passed',
+			check: null,
+			message: null,
+			findings: [],
+		});
+		expect(
+			buildReport('n8n-nodes-foo', {
+				version: '1.0.0',
+				passed: false,
+				check: 'eslint',
+				message: 'ESLint violations found',
+				findings: [finding],
+			}),
+		).toMatchObject({ status: 'failed', check: 'eslint', findings: [finding] });
+		expect(
+			buildReport('n8n-nodes-foo', {
+				version: null,
+				passed: false,
+				message: 'Analysis failed: npm pack failed',
+				error: new Error('npm pack failed'),
+			}),
+		).toMatchObject({ status: 'error', message: 'Analysis failed: npm pack failed' });
 	});
 });
 

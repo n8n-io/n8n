@@ -34,16 +34,47 @@ type SourceRepo = {
 	readonly gitCommit: string;
 };
 
+export type Finding = {
+	readonly file: string;
+	readonly line: number;
+	readonly column: number;
+	readonly rule: string | null;
+	readonly message: string;
+	/** Which download the file is in: the attested source repository or the npm tarball. */
+	readonly origin?: 'source' | 'package';
+};
+
+export type Check = 'provenance' | 'source' | 'eslint';
+
 export type AnalysisResult =
-	| { readonly passed: true; readonly message?: string; readonly details?: never }
+	| {
+			readonly passed: true;
+			readonly message?: string;
+			readonly details?: never;
+			readonly findings?: never;
+			readonly check?: never;
+	  }
 	| {
 			readonly passed: false;
 			readonly message: string;
 			readonly details?: string;
+			readonly findings?: readonly Finding[];
+			/** The check that did not pass. Not set when the scan failed before the first check. */
+			readonly check?: Check;
 			readonly error?: unknown;
 	  };
 
-const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+export type ScanReport = {
+	readonly package: string;
+	readonly version: string | null;
+	readonly status: 'passed' | 'failed' | 'error';
+	readonly check: Check | null;
+	readonly message: string | null;
+	readonly findings: readonly Finding[];
+};
+
+export const errorMessage = (error: unknown) =>
+	error instanceof Error ? error.message : String(error);
 
 const field = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
 
@@ -60,6 +91,24 @@ export const getExitCode = (result: AnalysisResult) => {
 	if (result.passed) return EXIT_CODES.SCAN_SUCCEEDED;
 	return result.error === undefined ? EXIT_CODES.SCAN_FAILED : EXIT_CODES.INTERNAL_ERROR;
 };
+
+const STATUSES = {
+	[EXIT_CODES.SCAN_SUCCEEDED]: 'passed',
+	[EXIT_CODES.SCAN_FAILED]: 'failed',
+	[EXIT_CODES.INTERNAL_ERROR]: 'error',
+} as const;
+
+export const buildReport = (
+	packageName: string,
+	result: AnalysisResult & { version: string | null },
+): ScanReport => ({
+	package: packageName,
+	version: result.version,
+	status: STATUSES[getExitCode(result)],
+	check: result.check ?? null,
+	message: result.message ?? null,
+	findings: result.findings ?? [],
+});
 
 /**
  * Checks if the given childPath is contained within the parentPath. Resolves
@@ -416,8 +465,20 @@ export const analyzePackage = async (
 			const formattedResults = await formatter.format(results);
 			return {
 				passed: false,
+				check: 'eslint',
 				message: 'ESLint violations found',
 				details: formattedResults,
+				findings: violations.flatMap((result) =>
+					result.messages
+						.filter((message) => message.severity === 2)
+						.map((message) => ({
+							file: path.relative(packageDir, result.filePath),
+							line: message.line,
+							column: message.column,
+							rule: message.ruleId,
+							message: message.message,
+						})),
+				),
 			};
 		}
 
@@ -426,6 +487,7 @@ export const analyzePackage = async (
 		console.error(error);
 		return {
 			passed: false,
+			check: 'eslint',
 			message: `Analysis failed: ${errorMessage(error)}`,
 			error,
 		};
@@ -457,6 +519,7 @@ export const analyzePackageByName = async (
 				packageName,
 				version: exactVersion,
 				...provenanceResult,
+				check: 'provenance',
 			};
 		}
 
@@ -496,6 +559,7 @@ export const analyzePackageByName = async (
 					packageName,
 					version: exactVersion,
 					passed: false,
+					check: 'source',
 					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
 					error: sourceError,
 				};
@@ -505,6 +569,7 @@ export const analyzePackageByName = async (
 				packageName,
 				version: exactVersion,
 				passed: false,
+				check: 'source',
 				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
 			};
 		}
@@ -533,6 +598,10 @@ export const analyzePackageByName = async (
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
 		const failures = [sourceResult, distResult].filter((r) => !r.passed);
 		const firstFailure = failures.find((r) => r.error !== undefined) ?? failures[0];
+		const findings = [
+			...(sourceResult.findings ?? []).map((f) => ({ ...f, origin: 'source' as const })),
+			...(distResult.findings ?? []).map((f) => ({ ...f, origin: 'package' as const })),
+		];
 		const analysisResult: AnalysisResult = firstFailure
 			? {
 					passed: false,
@@ -542,6 +611,8 @@ export const analyzePackageByName = async (
 							.map((r) => r.details)
 							.filter(Boolean)
 							.join('\n') || undefined,
+					findings,
+					check: firstFailure.check,
 					error: firstFailure.error,
 				}
 			: { passed: true };
