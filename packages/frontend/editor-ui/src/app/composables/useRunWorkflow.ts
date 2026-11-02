@@ -33,7 +33,6 @@ import {
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
@@ -83,7 +82,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const uiStore = useUIStore();
 	const agentRequestStore = useAgentRequestStore();
 
-	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowRunner = useRunWorkflowApi();
 	const workflowDocumentStore =
