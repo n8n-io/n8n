@@ -126,7 +126,8 @@ export class McpProtectedResource implements ProtectedResource {
 							(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
 							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
-							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)),
+							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
+							(credentialDescriptionsEnabled || tool !== 'update_credential_description'),
 					),
 				]),
 		);
