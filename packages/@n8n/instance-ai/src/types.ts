@@ -2233,6 +2233,8 @@ export interface OrchestrationContext {
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
+	/** Workspace root to use when `workspaceRoot` does not exist in the sandbox. */
+	fallbackWorkspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** The current user message being processed — needed because memory history only

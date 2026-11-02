@@ -210,6 +210,9 @@ export async function createInstanceAgent(
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
 					: undefined,
+			fallbackWorkspaceRoot: orchestrationContext?.workspace
+				? orchestrationContext.fallbackWorkspaceRoot
+				: undefined,
 		},
 	);
 

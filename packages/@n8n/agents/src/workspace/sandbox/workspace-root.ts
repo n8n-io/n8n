@@ -6,6 +6,14 @@ export const DAYTONA_HOME = '/home/daytona';
 export const DAYTONA_WORKSPACE_ROOT = `${DAYTONA_HOME}/${WORKSPACE_DIR}`;
 export const N8N_SANDBOX_HOME = '/home/user';
 export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
+/**
+ * Workspace root that is the same on every provider: the n8n sandbox service
+ * uses it natively, and current Daytona snapshots bake the workspace there.
+ * Sandboxes from older Daytona snapshots use {@link DAYTONA_WORKSPACE_ROOT}.
+ */
+export const PORTABLE_WORKSPACE_ROOT = N8N_SANDBOX_WORKSPACE_ROOT;
+
+const DETECT_DAYTONA_WORKSPACE_ROOT_COMMAND = `if [ -d '${PORTABLE_WORKSPACE_ROOT}' ]; then echo '${PORTABLE_WORKSPACE_ROOT}'; else echo '${DAYTONA_WORKSPACE_ROOT}'; fi`;
 
 export function getSandboxHome(provider: SandboxProvider): string {
 	switch (provider) {
@@ -70,10 +78,15 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 		return initializedLocalRoot;
 	}
 
-	// The Daytona image bakes the workspace at this path, so asking for $HOME only costs a round trip.
+	// The Daytona home is fixed, but the snapshot decides where the workspace is baked.
 	if (workspace.sandbox?.provider === 'daytona') {
-		workspaceRootCache.set(workspace, DAYTONA_WORKSPACE_ROOT);
-		return DAYTONA_WORKSPACE_ROOT;
+		const result = await runInSandbox(workspace, DETECT_DAYTONA_WORKSPACE_ROOT_COMMAND);
+		const root =
+			result.stdout.trim() === PORTABLE_WORKSPACE_ROOT
+				? PORTABLE_WORKSPACE_ROOT
+				: DAYTONA_WORKSPACE_ROOT;
+		workspaceRootCache.set(workspace, root);
+		return root;
 	}
 
 	const result = await runInSandbox(workspace, 'echo $HOME');

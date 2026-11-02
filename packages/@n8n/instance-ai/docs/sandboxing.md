@@ -273,6 +273,13 @@ end with a cancelled status; their underlying work can finish independently.
 Provider-side automatic stop and deletion are not reported. They require
 provider notifications or polling.
 
+## Workspace root
+
+Both providers use `/home/user/workspace` as the workspace root, so the prompt
+is the same on both. Daytona sandboxes from snapshots built before this change
+use `/home/daytona/workspace`. The tools detect the root of each sandbox, and
+the prompt names the Daytona path as the fallback.
+
 ## Configuration
 
 | Variable                                        | Default                   | Purpose                                                                       |

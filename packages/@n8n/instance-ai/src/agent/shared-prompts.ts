@@ -25,9 +25,15 @@ export const ASK_USER_FALLBACK =
 	ASK_USER_RULES +
 	' Before the first `workflow_builder_build_workflow` call, use `ask_user` only for choices that change the workflow intent or topology, such as the missing destination service for "send my team a summary". But when the open choice is which service to use for a capability the user did not name (e.g. web search, scraping, a cloud browser), do not ask yet — first discover coverage with `search_nodes` / `search_nodes(gatewayCreditsOnly=true)`. If a node covered by Gateway credits satisfies the capability and the user has no credential for a comparable tool, use it and do not ask. Only ask when discovery surfaces no covered option and the choice genuinely changes the workflow. Do not use `ask_user` before the first build for missing setup values after the service is already known, such as notification recipients, account labels or IDs, channel IDs, resource IDs, credential choices, or credential fields; use placeholders or unresolved `newCredential()` calls and leave them for post-build workflow setup.';
 
-export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
+export function getSandboxWorkspaceSection(
+	workspaceRoot?: string,
+	fallbackWorkspaceRoot?: string,
+): string {
+	const fallback = fallbackWorkspaceRoot
+		? ` If \`${workspaceRoot}\` does not exist, the workspace root is \`${fallbackWorkspaceRoot}\`. Prefer relative paths, because commands start in the workspace root.`
+		: '';
 	const isolation = workspaceRoot
-		? `Cloud sandbox with isolated execution (TypeScript runtime). Filesystem access is scoped to \`${workspaceRoot}\`. Paths are relative to the workspace root unless you pass an absolute path under that root.`
+		? `Cloud sandbox with isolated execution (TypeScript runtime). Filesystem access is scoped to \`${workspaceRoot}\`. Paths are relative to the workspace root unless you pass an absolute path under that root.${fallback}`
 		: 'Cloud sandbox with isolated execution (TypeScript runtime).';
 
 	return `## Sandbox workspace
