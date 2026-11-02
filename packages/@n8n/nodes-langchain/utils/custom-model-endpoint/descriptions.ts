@@ -94,14 +94,8 @@ const sharedOptions: INodeProperties[] = [
 		name: 'maxTokens',
 		type: 'number',
 		default: -1,
-		description: 'Sends max_tokens. Use Maximum Completion Tokens instead for a reasoning model.',
-	},
-	{
-		displayName: 'Maximum Completion Tokens',
-		name: 'maxCompletionTokens',
-		type: 'number',
-		default: -1,
-		description: 'Sends max_completion_tokens, which newer and reasoning models expect',
+		description:
+			'The cap on the tokens generated. Sent as max_completion_tokens for a reasoning model and as max_tokens otherwise. Use Extra Body to force a different field.',
 	},
 	{
 		displayName: 'Max Retries',

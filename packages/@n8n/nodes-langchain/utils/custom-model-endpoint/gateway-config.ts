@@ -13,8 +13,11 @@ export const OPENAI_CREDENTIAL = 'openAiApi';
 
 export type AcceptedCredential = typeof CUSTOM_MODEL_ENDPOINT_CREDENTIAL | typeof OPENAI_CREDENTIAL;
 
-/** Both nodes take either credential and have no Authentication field, so the choice is whichever one the user filled in. */
+/** The Authentication field decides. A node saved before it existed falls back to whichever credential is attached. */
 export function pickCredentialType(node: INode): AcceptedCredential {
+	const chosen = node.parameters?.authentication;
+	if (chosen === CUSTOM_MODEL_ENDPOINT_CREDENTIAL || chosen === OPENAI_CREDENTIAL) return chosen;
+
 	const configured = node.credentials ?? {};
 	if (CUSTOM_MODEL_ENDPOINT_CREDENTIAL in configured) return CUSTOM_MODEL_ENDPOINT_CREDENTIAL;
 	if (OPENAI_CREDENTIAL in configured) return OPENAI_CREDENTIAL;
@@ -33,6 +36,17 @@ export function readEndpointCredential(
 		: readCustomModelEndpointCredential(data);
 }
 
+/** Without this the client falls back to its own default host, which is not the user's gateway. */
+function assertAbsoluteHttpUrl(baseUrl: string): void {
+	const parsed = URL.parse(baseUrl);
+	if (parsed === null || !['http:', 'https:'].includes(parsed.protocol)) {
+		throw new UserError('The credential has no usable Base URL', {
+			description:
+				'Set Base URL to the root of your gateway, such as https://gateway.example.com/v1.',
+		});
+	}
+}
+
 /**
  * The transport both nodes share: the gateway's own base URL, and one fetch that
  * carries the credential, reshapes the gateway's errors, and honours the proxy
@@ -49,6 +63,7 @@ export function createCustomModelEndpointConfig(
 	},
 ): { configuration: ClientOptions; endpoint: EndpointCredential } {
 	const endpoint = readEndpointCredential(options.credentialType, credential);
+	assertAbsoluteHttpUrl(endpoint.baseUrl);
 	const egressFilter = ctx.helpers.getSecureEgressFilter();
 
 	const transport = createCustomModelEndpointAuthFetch(ctx, credential, {

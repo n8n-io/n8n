@@ -70,6 +70,18 @@ describe('pickCredentialType', () => {
 		expect(pickCredentialType(nodeWith(credentials))).toBe(expected);
 	});
 
+	it.each([
+		['the custom one', CUSTOM_MODEL_ENDPOINT_CREDENTIAL],
+		['the OpenAI one', OPENAI_CREDENTIAL],
+	])('follows the Authentication field to %s, whatever is attached', (_name, chosen) => {
+		const node = {
+			...nodeWith({ [OPENAI_CREDENTIAL]: {}, [CUSTOM_MODEL_ENDPOINT_CREDENTIAL]: {} }),
+			parameters: { authentication: chosen },
+		} as unknown as INode;
+
+		expect(pickCredentialType(node)).toBe(chosen);
+	});
+
 	it('asks for a credential when the node has none', () => {
 		expect(() => pickCredentialType(nodeWith(undefined))).toThrow('no credential');
 	});
@@ -148,6 +160,20 @@ describe('createCustomModelEndpointConfig', () => {
 
 		expect(configuration.baseURL).toBe('https://gateway.example.com/v1');
 		expect(endpoint.login.type).toBe('none');
+	});
+
+	it.each([
+		['is empty', ''],
+		['is not a URL at all', 'my-gateway'],
+		['names a scheme the client cannot call', 'ftp://gateway.example.com'],
+	])('refuses a base URL that %s, rather than falling back to another host', (_name, url) => {
+		expect(() =>
+			createCustomModelEndpointConfig(
+				contextWith(filterFrom(vi.fn(async () => ({ ok: true })))),
+				{ url, authentication: 'none' },
+				{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
+			),
+		).toThrow('no usable Base URL');
 	});
 
 	it('checks the target against the egress filter before the request leaves', async () => {
