@@ -545,6 +545,27 @@ describe('DELETE /trusted-sources/:id', () => {
 		});
 	});
 
+	it('deletes a source whose config cannot be read', async () => {
+		const { id } = await createSource();
+		await bind(id, 'alice');
+		await rows.update(id, { config: 'unreadable' });
+		// A cached copy from before the change would hide the unreadable row.
+		await cacheService.reset();
+		expect(await store.getById(id)).toBeUndefined();
+
+		const response = await ownerAgent.delete(`/trusted-sources/${id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(await rows.findOneBy({ id })).toBeNull();
+		expect(await bindings.countBy({ sourceId: id })).toBe(0);
+		expect(await store.getById(id)).toBeUndefined();
+		expect(emit).toHaveBeenCalledWith('trusted-source-deleted', {
+			user: expect.objectContaining({ id: owner.id }),
+			sourceId: id,
+			issuer: ISSUER,
+		});
+	});
+
 	it('works without the license', async () => {
 		const { id } = await createSource();
 		testServer.license.disable(LICENSE);
@@ -562,6 +583,23 @@ describe('DELETE /trusted-sources/:id', () => {
 		expect(response.body.message).toMatch(/system-managed/);
 		expect(await rows.findOneBy({ id: SYSTEM_ID })).not.toBeNull();
 		expect(emit).not.toHaveBeenCalledWith('trusted-source-deleted', expect.anything());
+	});
+
+	it('refuses the system source when its config cannot be read', async () => {
+		const { config } = await rows.findOneByOrFail({ id: SYSTEM_ID });
+		await rows.update(SYSTEM_ID, { config: 'unreadable' });
+
+		try {
+			const response = await ownerAgent.delete(`/trusted-sources/${SYSTEM_ID}`);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toMatch(/system-managed/);
+			expect(await rows.findOneBy({ id: SYSTEM_ID })).not.toBeNull();
+			expect(emit).not.toHaveBeenCalledWith('trusted-source-deleted', expect.anything());
+		} finally {
+			// Later tests share the system row.
+			await rows.update(SYSTEM_ID, { config });
+		}
 	});
 
 	it('answers 404 for an unknown id', async () => {
