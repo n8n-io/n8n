@@ -122,9 +122,7 @@ export class StepSettledHandler {
 		if (step.status === 'failed' && step.error) return step.error;
 		// If a different step failed, find it. Note: it's possible multiple steps
 		// may have failed - we choose any for now.
-		const failed = (await this.stepStore.loadAllSteps(execution.id)).find(
-			(row) => row.status === 'failed' && row.error,
-		);
+		const failed = (await this.stepStore.loadFailedSteps(execution.id)).find((row) => row.error);
 		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 

@@ -116,13 +116,20 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 			member,
 		);
 
+	const productionParent = () => ({ ...request('').parent, mode: 'trigger' as const });
+
 	const request = (
 		workflowId: string,
 		overrides: Partial<ResolveSubWorkflowRequest> = {},
 	): ResolveSubWorkflowRequest => ({
 		workflowId,
 		executionId: SUB_EXECUTION_ID,
-		parent: { executionId: 'exec-parent', workflowId: parent.id, mode: 'manual' },
+		parent: {
+			executionId: '01a03900-0000-7000-8000-00000000000a',
+			workflowId: parent.id,
+			mode: 'manual',
+			node: { id: 'call', name: 'Call', type: 'n8n-nodes-base.executeWorkflow', typeVersion: 1 },
+		},
 		context: { userId: member.id },
 		items: [{ json: { a: 1 } }],
 		...overrides,
@@ -183,13 +190,7 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 				},
 			},
 		);
-		const production = {
-			executionId: 'exec-parent',
-			workflowId: parent.id,
-			mode: 'trigger' as const,
-		};
-
-		const published = await resolve(request(workflow.id, { parent: production }));
+		const published = await resolve(request(workflow.id, { parent: productionParent() }));
 		const draft = await resolve(request(workflow.id));
 
 		expect(published.graph.nodes.map(({ name }) => name)).toEqual([TRIGGER_NAME, 'Set']);
@@ -199,7 +200,13 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 	it('refuses a sub-workflow whose caller policy excludes the parent', async () => {
 		const workflow = await subWorkflow({ settings: { engineType: 'v2', callerPolicy: 'none' } });
 
-		await expect(resolve(request(workflow.id))).rejects.toThrow(UserError);
+		const refusal = resolve(request(workflow.id));
+
+		await expect(refusal).rejects.toThrow(UserError);
+		// v1's explanation of the denial travels as the description, as the node shows it.
+		await expect(refusal).rejects.toMatchObject({
+			description: expect.stringContaining('limits which workflows it can be called by'),
+		});
 	});
 
 	it('refuses a sub-workflow that does not run on engine v2', async () => {
@@ -214,6 +221,12 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 		await expect(resolve(request(workflow.id))).rejects.toThrow(/Execute Workflow Trigger/);
 	});
 
+	it('refuses a sub-workflow whose trigger is disabled', async () => {
+		const workflow = await subWorkflow({ nodes: [{ ...triggerNode, disabled: true }, setNode] });
+
+		await expect(resolve(request(workflow.id))).rejects.toThrow(/is disabled/);
+	});
+
 	it('refuses an unknown workflow id', async () => {
 		await expect(resolve(request('missing'))).rejects.toThrow(/does not exist/);
 	});
@@ -221,13 +234,9 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 	it('refuses an unpublished sub-workflow for a production run', async () => {
 		const workflow = await subWorkflow({});
 
-		await expect(
-			resolve(
-				request(workflow.id, {
-					parent: { executionId: 'exec-parent', workflowId: parent.id, mode: 'trigger' },
-				}),
-			),
-		).rejects.toThrow(/not active/);
+		await expect(resolve(request(workflow.id, { parent: productionParent() }))).rejects.toThrow(
+			/not active/,
+		);
 	});
 
 	it('refuses a credentials token', async () => {

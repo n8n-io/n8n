@@ -48,6 +48,12 @@ export function useSkillVersions(
 		}
 	}
 
+	/** Loads the list again, for example after a save added a version. */
+	async function reloadVersions() {
+		versionsOf = undefined;
+		await loadVersions();
+	}
+
 	async function fetchVersion(version: number): Promise<SkillVersionDetail | undefined> {
 		const id = toValue(skillId);
 		if (!id) return undefined;
@@ -126,6 +132,7 @@ export function useSkillVersions(
 		versions,
 		viewedVersion,
 		loadVersions,
+		reloadVersions,
 		fetchVersion,
 		openVersion,
 		comparison,

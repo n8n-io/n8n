@@ -63,7 +63,7 @@ export interface ExecutionSnapshot {
 	 * render the execution against the workflow that ran, not the current one.
 	 */
 	workflow: WorkflowDocument;
-	/** The execution that started this one, or `null` for a top-level one. */
+	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
 	createdAt: string;
 	updatedAt: string;

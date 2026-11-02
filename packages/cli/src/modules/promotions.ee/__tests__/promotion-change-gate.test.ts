@@ -20,6 +20,11 @@ import type { PromotionReviewGateService } from '../promotion-review-gate.servic
 import type { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput } from '../promotions.types';
 
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+
 const userWith = (...scopes: Scope[]) =>
 	mock<User>({
 		role: mock<Role>({ scopes: scopes.map((slug) => mock<DbScope>({ slug })) }),

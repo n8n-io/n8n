@@ -24,6 +24,7 @@ import type {
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { SupplyDataContext } from './supply-data-context';
 import {
 	getBinaryHelperFunctions,
 	getNodeBinaryHelperFunctions,
@@ -264,6 +265,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			runExecutionData,
 			this.runIndex,

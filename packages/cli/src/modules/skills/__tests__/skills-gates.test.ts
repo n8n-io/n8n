@@ -92,7 +92,6 @@ describe('skills gates', () => {
 		const { proxy } = createGates();
 
 		expect(await proxy.findAgents(['agent-1'])).toEqual(new Map());
-		expect(await proxy.findAgentIdsInProjects(['project-1'])).toEqual([]);
 		expect(await proxy.findUsage('skill-1')).toEqual({ drafts: [], pins: [], hiddenAgents: 0 });
 		expect(await proxy.countUsingAgents(['skill-1'])).toEqual(new Map());
 		expect(await proxy.findUsingAgentIds('skill-1')).toEqual([]);
@@ -109,12 +108,10 @@ describe('skills gates', () => {
 		proxy.register(usage);
 
 		expect(await proxy.findAgents([])).toEqual(new Map());
-		expect(await proxy.findAgentIdsInProjects([])).toEqual([]);
 		expect(await proxy.countUsingAgents([])).toEqual(new Map());
 		await proxy.refreshAgents([]);
 
 		expect(usage.findAgents).not.toHaveBeenCalled();
-		expect(usage.findAgentIdsInProjects).not.toHaveBeenCalled();
 		expect(usage.countUsingAgents).not.toHaveBeenCalled();
 		expect(usage.refreshAgents).not.toHaveBeenCalled();
 	});
@@ -126,7 +123,6 @@ describe('skills gates', () => {
 		const usedBy = { drafts: [], pins: [], hiddenAgents: 2 };
 		const counts = new Map([['skill-1', 3]]);
 		usage.findAgents.mockResolvedValue(agents);
-		usage.findAgentIdsInProjects.mockResolvedValue(['agent-1']);
 		usage.findUsage.mockResolvedValue(usedBy);
 		usage.countUsingAgents.mockResolvedValue(counts);
 		usage.findUsingAgentIds.mockResolvedValue(['agent-1']);
@@ -135,7 +131,6 @@ describe('skills gates', () => {
 		const ctx = { trx: undefined };
 
 		expect(await proxy.findAgents(['agent-1'], ctx)).toBe(agents);
-		expect(await proxy.findAgentIdsInProjects(['project-1'], ctx)).toEqual(['agent-1']);
 		expect(await proxy.findUsage('skill-1', ['project-1'], ctx)).toBe(usedBy);
 		expect(await proxy.findUsage('skill-1')).toBe(usedBy);
 		expect(await proxy.countUsingAgents(['skill-1'], ctx)).toBe(counts);
@@ -145,7 +140,6 @@ describe('skills gates', () => {
 		await proxy.refreshAgents(['agent-1'], 'push-ref');
 
 		expect(usage.findAgents).toHaveBeenCalledWith(['agent-1'], ctx);
-		expect(usage.findAgentIdsInProjects).toHaveBeenCalledWith(['project-1'], ctx);
 		expect(usage.findUsage).toHaveBeenCalledWith('skill-1', ['project-1'], ctx);
 		expect(usage.findUsage).toHaveBeenCalledWith('skill-1', 'all', {});
 		expect(usage.countUsingAgents).toHaveBeenCalledWith(['skill-1'], ctx);

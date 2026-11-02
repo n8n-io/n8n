@@ -235,7 +235,7 @@ export class StepReadyHandler {
 		if (
 			started.kind === 'error' &&
 			started.error instanceof InvalidParentLinkError &&
-			started.error.reason === 'execution-ended'
+			started.error.reason === 'execution-not-live'
 		) {
 			return { kind: 'parent-ended' };
 		}
@@ -269,11 +269,7 @@ export class StepReadyHandler {
 		}
 	}
 
-	/**
-	 * How the step produces its result. A replay needs no executor: looking one
-	 * up would fail a step this worker can serve, since a resume is announced to
-	 * every worker, including one that carries no shim.
-	 */
+	/** How the step produces its result. */
 	private async dispatchFor(
 		step: StepRecord,
 		node: GraphNode,

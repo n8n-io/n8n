@@ -66,6 +66,7 @@ function makeExecutionStore(
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi
 			.fn()
@@ -129,6 +130,7 @@ function makeStepStore(
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
+		loadFailedSteps: vi.fn().mockResolvedValue([]),
 		...overrides,
 	} satisfies StepStore;
 }
@@ -696,13 +698,7 @@ describe('StepSettledHandler sub-executions', () => {
 				countSettledSteps: vi.fn().mockResolvedValue(5),
 				// Clean at planning time, failed by the time the count is checked.
 				hasFailedSteps: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(true),
-				loadAllSteps: vi
-					.fn()
-					.mockResolvedValue([
-						row('trigger', 'completed', [[]]),
-						{ ...row('b', 'failed', null), error },
-						row('m', 'completed', [[{ json: { done: true } }]]),
-					]),
+				loadFailedSteps: vi.fn().mockResolvedValue([{ ...row('b', 'failed', null), error }]),
 			},
 		);
 		const { handler } = makeHandler(stepStore, {

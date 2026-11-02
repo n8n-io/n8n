@@ -8,7 +8,7 @@ import type {
 	ResponseType,
 } from 'axios';
 import axios from 'axios';
-import { jsonParse } from 'n8n-workflow';
+import { BaseError, jsonParse } from 'n8n-workflow';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IRestApiContext } from './types';
@@ -23,7 +23,7 @@ export class MfaRequiredError extends Error {
 	}
 }
 
-export class ResponseError extends Error {
+export class ResponseError extends BaseError {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -59,6 +59,7 @@ export class ResponseError extends Error {
 		} = {},
 	) {
 		super(message);
+		// Set explicitly, because minification renames the class.
 		this.name = 'ResponseError';
 
 		const { errorCode, httpStatusCode, stack, meta, hint } = options;

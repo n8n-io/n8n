@@ -11,16 +11,16 @@ import type {
 } from './engine-sub-workflow.contract';
 import { SUB_WORKFLOWS_RESOLVE_PATH } from './engine-v2.constants';
 
-/** The message a control plane error response carries, if any. */
-function messageOf(body: unknown): string | undefined {
-	return isRecord(body) && typeof body.message === 'string' ? body.message : undefined;
+/** The message and hint a control plane error response carries, if any. */
+function errorTextOf(body: unknown): { message?: string; hint?: string } {
+	if (!isRecord(body)) return {};
+	return {
+		message: typeof body.message === 'string' ? body.message : undefined,
+		hint: typeof body.hint === 'string' ? body.hint : undefined,
+	};
 }
 
-/**
- * Asks the control plane server for the graph of a sub-workflow a step calls.
- * Over HTTP even in-process, so the data plane never reads the workflow
- * store or applies the caller policy itself.
- */
+/** Asks the control plane server for the graph of a sub-workflow a step calls. */
 @Service()
 export class EngineSubWorkflowClient {
 	private readonly http: HttpRequestClient;
@@ -30,9 +30,8 @@ export class EngineSubWorkflowClient {
 	}
 
 	/**
-	 * A refusal (4xx) is the caller's to fix, so it reaches the node with the
-	 * control plane's message. A 401 is the planes disagreeing on the secret or
-	 * the scope, and anything else is the platform's: both are operational.
+	 * Resolves the sub-workflow the request names: its graph, workflow document
+	 * and trigger outputs. `signal` aborts the request when the step is cancelled.
 	 */
 	async resolve(
 		request: ResolveSubWorkflowRequest,
@@ -54,11 +53,18 @@ export class EngineSubWorkflowClient {
 
 		// 3xx too: redirects are not followed, so one is a misconfiguration.
 		if (response.statusCode >= 300) {
+			const text = errorTextOf(response.body);
 			const message =
-				messageOf(response.body) ??
+				text.message ??
 				`Control plane refused to resolve sub-workflow "${request.workflowId}" with ${response.statusCode}`;
-			const callerCanFix = response.statusCode < 500 && response.statusCode !== 401;
-			throw callerCanFix ? new UserError(message) : new OperationalError(message);
+			// Only a 4xx names a problem the caller can fix, and a 401 names a
+			// disagreement between the planes rather than with the caller.
+			const callerCanFix =
+				response.statusCode >= 400 && response.statusCode < 500 && response.statusCode !== 401;
+			// The hint is v1's description of the refusal, which the node shows the user.
+			throw callerCanFix
+				? new UserError(message, { description: text.hint })
+				: new OperationalError(message);
 		}
 
 		if (!isResolveSubWorkflowResponse(response.body)) {

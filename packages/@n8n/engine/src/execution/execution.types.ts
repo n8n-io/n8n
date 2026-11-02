@@ -49,8 +49,8 @@ export interface CallerContext {
 }
 
 /**
- * The execution that started this one, and the step that asked for it. Only
- * the engine's own start path sets it: a caller over HTTP cannot claim a
+ * The parent execution and the parent step that asked for this execution.
+ * Only the engine's own start path sets it: a caller over HTTP cannot claim a
  * parent.
  */
 export interface ParentLink {

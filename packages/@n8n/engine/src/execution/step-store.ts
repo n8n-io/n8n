@@ -267,4 +267,7 @@ export interface StepStore {
 
 	/** Whether any of the execution's steps failed. */
 	hasFailedSteps(executionId: string): Promise<boolean>;
+
+	/** The execution's failed steps, by node and then by pass. */
+	loadFailedSteps(executionId: string): Promise<StepRecord[]>;
 }

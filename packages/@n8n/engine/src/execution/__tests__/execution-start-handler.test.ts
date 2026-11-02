@@ -26,6 +26,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
@@ -62,6 +63,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
+		loadFailedSteps: vi.fn().mockResolvedValue([]),
 	};
 }
 

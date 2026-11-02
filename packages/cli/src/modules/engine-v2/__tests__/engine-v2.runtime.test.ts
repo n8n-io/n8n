@@ -81,7 +81,9 @@ const mocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@n8n/engine', () => ({
+// Partial: the sub-workflow client's contract reads the engine's schemas at import.
+vi.mock('@n8n/engine', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/engine')>()),
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,

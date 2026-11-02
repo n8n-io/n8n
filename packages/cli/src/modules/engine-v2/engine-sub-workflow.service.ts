@@ -14,19 +14,18 @@ import {
 	Node,
 	OperationalError,
 	SubworkflowOperationError,
-	UnexpectedError,
 	UserError,
 	Workflow,
 } from 'n8n-workflow';
 
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import { toWorkflowDocument } from '@/executions/execution-data/types';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
 } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
+import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import { findSubworkflowStart, withExpressionIsolate } from '@/utils';
 import {
 	getBase,
@@ -40,16 +39,16 @@ import type {
 	ResolveSubWorkflowResponse,
 } from './engine-sub-workflow.contract';
 
-/** The calling node as the policy denial names it. Only its identity travels. */
-function toCallerNode(node: ResolveSubWorkflowRequest['parent']['node']): INode | undefined {
-	return node ? { ...node, position: [0, 0], parameters: {} } : undefined;
+/** Get the node that called this sub-workflow, for policy checks. */
+function toCallerNode(node: ResolveSubWorkflowRequest['parent']['node']): INode {
+	return { ...node, position: [0, 0], parameters: {} };
 }
 
 /**
- * Resolves a sub-workflow for the engine v2 data plane: which version runs,
- * whether the parent may call it, and what the parent's items become at its
- * trigger. The data plane cannot load a workflow or apply a policy, so this is
- * the only place a sub-workflow is resolved. Starting the sub-execution is the engine's.
+ * Resolves a sub-workflow for the engine v2 data plane:
+ * - resolve the sub-workflow version
+ * - check that the call is allowed
+ * - run the trigger
  */
 @Service()
 export class EngineSubWorkflowService {
@@ -61,29 +60,32 @@ export class EngineSubWorkflowService {
 	) {}
 
 	async resolve({
-		workflowId,
-		executionId,
+		workflowId: subWorkflowId,
+		executionId: subExecutionId,
 		parent,
 		context,
 		items,
 	}: ResolveSubWorkflowRequest): Promise<ResolveSubWorkflowResponse> {
-		const workflowData = await this.load(workflowId, parent);
-		await this.assertCallable(workflowData, parent, context);
-		const trigger = this.findTrigger(workflowData);
-		const outputs = await this.runTrigger(workflowData, trigger, items, executionId, context);
-
-		// Lazily imported: a top-level import would pull the v1 step executor and
-		// its dependencies into every n8n process, including ones with the module off.
-		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
-		const slots = toStepOutputs(outputs);
+		const subWorkflowData = await this.load(subWorkflowId, parent);
+		await this.assertCallable(subWorkflowData, parent, context);
+		const trigger = this.findTrigger(subWorkflowData);
+		// We run the trigger here so the execution receives the trigger output like any other execution.
+		const triggerOutputs = await this.runTrigger(
+			subWorkflowData,
+			trigger,
+			items,
+			subExecutionId,
+			context,
+		);
 
 		return {
-			workflowId: workflowData.id,
-			graph: new V1WorkflowConverter().convert(workflowData, trigger.name),
-			workflow: toWorkflowDocument(workflowData),
-			// The wire schema rejects an empty array; `null` is how "no slots" is sent.
-			triggerOutputs: slots.length === 0 ? null : slots,
-			returnLastRunOnly: triggerReturnsLastRunOnly(workflowData.nodes),
+			workflowId: subWorkflowData.id,
+			...(await toEngineWorkflowPayload({
+				workflowData: subWorkflowData,
+				triggerName: trigger.name,
+				triggerOutputs,
+			})),
+			returnLastRunOnly: triggerReturnsLastRunOnly(subWorkflowData.nodes),
 		};
 	}
 
@@ -92,10 +94,7 @@ export class EngineSubWorkflowService {
 		workflowId: string,
 		parent: ResolveSubWorkflowRequest['parent'],
 	): Promise<IWorkflowBase> {
-		const exists = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			select: ['id'],
-		});
+		const exists = await this.workflowRepository.exists({ where: { id: workflowId } });
 		if (!exists) throw new NotFoundError(`Workflow "${workflowId}" does not exist`);
 
 		const info = { id: workflowId };
@@ -105,35 +104,33 @@ export class EngineSubWorkflowService {
 		try {
 			return await getPublishedWorkflowData(info, parent.workflowId);
 		} catch (error) {
-			// Both say the same thing: there is no published version to run.
-			if (error instanceof OperationalError || error instanceof UnexpectedError) {
-				throw new BadRequestError(error.message);
-			}
+			// The workflow exists, so the only expected failure is that it has no published version.
+			if (error instanceof OperationalError) throw new BadRequestError(error.message);
 			throw error;
 		}
 	}
 
-	/**
-	 * The checks v1 runs before a sub-execution starts, in the same order. Each refusal
-	 * becomes a response the node can show.
-	 */
+	/** The checks v1 runs before a sub-execution starts. */
 	private async assertCallable(
-		workflowData: IWorkflowBase,
+		subWorkflowData: IWorkflowBase,
 		parent: ResolveSubWorkflowRequest['parent'],
 		context: ResolveSubWorkflowRequest['context'],
 	): Promise<void> {
 		try {
-			await this.policyChecker.check(
-				workflowData,
-				parent.workflowId,
-				toCallerNode(parent.node),
-				context.userId,
-			);
-			await this.credentialsPermissionChecker.check(
-				workflowData.id,
-				workflowData.nodes,
-				context.userId,
-			);
+			// Independent checks. When both refuse, the first rejection is the one reported.
+			await Promise.all([
+				this.policyChecker.check(
+					subWorkflowData,
+					parent.workflowId,
+					toCallerNode(parent.node),
+					context.userId,
+				),
+				this.credentialsPermissionChecker.check(
+					subWorkflowData.id,
+					subWorkflowData.nodes,
+					context.userId,
+				),
+			]);
 		} catch (error) {
 			if (error instanceof SubworkflowPolicyDenialError) {
 				throw new ForbiddenError(error.message, error.description ?? undefined);
@@ -142,31 +139,40 @@ export class EngineSubWorkflowService {
 			throw error;
 		}
 
-		if (workflowData.settings?.engineType !== 'v2') {
+		if (subWorkflowData.settings?.engineType !== 'v2') {
 			throw new BadRequestError(
-				`The sub-workflow "${workflowData.name}" runs on engine v1, and a workflow on engine v2 cannot call it yet`,
+				`The sub-workflow "${subWorkflowData.name}" runs on engine v1, and a workflow on engine v2 cannot call it yet`,
 			);
 		}
 	}
 
-	private findTrigger(workflowData: IWorkflowBase): INode {
+	private findTrigger(subWorkflowData: IWorkflowBase): INode {
+		let trigger: INode;
 		try {
-			return findSubworkflowStart(workflowData.nodes);
+			trigger = findSubworkflowStart(subWorkflowData.nodes);
 		} catch (error) {
 			if (error instanceof SubworkflowOperationError) {
 				throw new BadRequestError(`${error.message}: ${error.description}`);
 			}
 			throw error;
 		}
+		// The finder does not skip disabled nodes, and the converter drops them from the graph.
+		if (trigger.disabled) {
+			throw new BadRequestError(
+				`The trigger "${trigger.name}" of sub-workflow "${subWorkflowData.name}" is disabled`,
+			);
+		}
+		return trigger;
 	}
 
 	/**
 	 * Runs the trigger node with the parent's items, as v1 runs it as the first
-	 * node of the sub-workflow. Its execute method maps the items onto the fields the
-	 * trigger declares. A start node without one passes the items through.
+	 * node of the sub-workflow. Its execute method maps the items onto the fields
+	 * the trigger declares. The legacy Start node has no execute method, so the
+	 * items pass through unchanged.
 	 */
 	private async runTrigger(
-		workflowData: IWorkflowBase,
+		subWorkflowData: IWorkflowBase,
 		trigger: INode,
 		items: INodeExecutionData[],
 		executionId: string,
@@ -177,17 +183,17 @@ export class EngineSubWorkflowService {
 		if (typeof execute !== 'function') return [items];
 
 		const workflow = new Workflow({
-			id: workflowData.id,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: false,
+			id: subWorkflowData.id,
+			name: subWorkflowData.name,
+			nodes: subWorkflowData.nodes,
+			connections: subWorkflowData.connections,
+			active: subWorkflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
-			settings: workflowData.settings,
+			settings: subWorkflowData.settings,
 		});
 		const additionalData = await getBase({
 			userId: context.userId,
-			workflowId: workflowData.id,
+			workflowId: subWorkflowData.id,
 			projectId: context.projectId,
 		});
 		// The trigger runs as the sub-execution's first node, so `$execution.id` is the sub-execution's.

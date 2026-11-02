@@ -560,6 +560,8 @@ export interface AgentMessageAuthor {
 }
 
 export interface AgentPersistedMessageDto {
+	/** A saved acknowledgement of Stop all tasks. */
+	stopReport?: boolean;
 	/** Background results that started this turn. */
 	backgroundTaskSignal?: AgentBackgroundJobSignal;
 	id: string;
@@ -720,6 +722,8 @@ export interface SystemAgentThreadSummary {
 	title: string | null;
 	updatedAt: string;
 	projectId: string;
+	/** The memory metadata of the thread, such as the agent that an Assistant thread builds. */
+	metadata?: Record<string, unknown>;
 }
 
 /** One page of the user's own threads with one system agent, newest first. */

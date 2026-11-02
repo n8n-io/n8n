@@ -7,9 +7,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
-import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
+import type { EngineDataTablesController } from '../engine-data-tables.controller';
 import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
+import type { EngineSubWorkflowController } from '../engine-sub-workflow.controller';
 
 const authSecret = 'a'.repeat(32);
 
@@ -28,6 +29,7 @@ describe('EngineControlPlaneServer', () => {
 	let serverLogger: Logger;
 	let pushRelay: EngineLifecycleEventPushRelay;
 	let credentialsController: EngineCredentialsController;
+	let dataTablesController: EngineDataTablesController;
 	let baseUrl: string;
 
 	const engineConfig = (overrides: Partial<EngineConfig> = {}) =>
@@ -43,11 +45,13 @@ describe('EngineControlPlaneServer', () => {
 		serverLogger = mock<Logger>();
 		pushRelay = mock<EngineLifecycleEventPushRelay>();
 		credentialsController = mock<EngineCredentialsController>();
+		dataTablesController = mock<EngineDataTablesController>();
 		const controller = new EngineLifecycleEventController(pushRelay);
 		server = new EngineControlPlaneServer(
 			engineConfig(),
 			controller,
 			credentialsController,
+			dataTablesController,
 			mock<EngineSubWorkflowController>(),
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
@@ -68,6 +72,12 @@ describe('EngineControlPlaneServer', () => {
 
 	const postResolve = (body: unknown, token?: string) => {
 		const req = request(baseUrl).post('/internal/credentials/resolve');
+		if (token) req.set('Authorization', `Bearer ${token}`);
+		return req.send(body as object);
+	};
+
+	const postDataTableCall = (body: unknown, token?: string) => {
+		const req = request(baseUrl).post('/internal/data-tables/call');
 		if (token) req.set('Authorization', `Bearer ${token}`);
 		return req.send(body as object);
 	};
@@ -181,6 +191,46 @@ describe('EngineControlPlaneServer', () => {
 
 			expect(response.status).toBe(401);
 			expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('data table call route', () => {
+		const body = { call: { kind: 'getColumns', dataTableId: 'dt-1' } };
+
+		beforeEach(() => {
+			vi.mocked(dataTablesController.call).mockImplementation(
+				async (_req: Request, res: Response) => {
+					res.status(200).json({ data: [] });
+				},
+			);
+		});
+
+		it('hands an authenticated request with its parsed body to the controller', async () => {
+			const response = await postDataTableCall(
+				body,
+				mintActionToken(authSecret, 'data-tables:use'),
+			);
+
+			expect(response.status).toBe(200);
+			expect(dataTablesController.call).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ body }),
+				expect.anything(),
+			);
+		});
+
+		it.each([
+			['no token', undefined],
+			['a lifecycle token', mintActionToken(authSecret, 'lifecycle-events:write')],
+			['a credentials token', mintActionToken(authSecret, 'credentials:read')],
+			[
+				'a token signed with a different secret',
+				mintActionToken('b'.repeat(32), 'data-tables:use'),
+			],
+		])('rejects %s before the controller sees it', async (_label, token) => {
+			const response = await postDataTableCall(body, token);
+
+			expect(response.status).toBe(401);
+			expect(dataTablesController.call).not.toHaveBeenCalled();
 		});
 	});
 
