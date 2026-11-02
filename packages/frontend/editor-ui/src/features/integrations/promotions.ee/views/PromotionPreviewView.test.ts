@@ -1,11 +1,17 @@
 import { INBOX_VIEW } from '@n8n/frontend-constants/inbox';
 import { VIEWS } from '@n8n/frontend-constants/views';
-import { componentRegistry } from '@n8n/frontend-module-sdk';
+import {
+	capabilities,
+	capabilityRegistry,
+	componentRegistry,
+	type ProjectContext,
+} from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
 import userEvent from '@testing-library/user-event';
 import { render as renderToast, waitFor, within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
@@ -36,8 +42,11 @@ vi.mock('../components/preview/PromotionWorkflowDiff.vue', () => ({
 	},
 }));
 vi.mock('../promotionsSettings.api');
-// The projects store loads the project of the route on its own.
-vi.mock('@/features/collaboration/projects/projects.api');
+// The outcome reads the project after an apply.
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getProject: vi.fn(),
+}));
 // The editors are modals of the app. The test answers for them.
 vi.mock('../composables/usePromotionBindingCreation', () => ({
 	usePromotionBindingCreation: () => ({ createBinding, updateCheck: vi.fn() }),
@@ -184,10 +193,15 @@ const answerWorkflowDetails = () =>
 
 beforeEach(() => {
 	registerDiffSlotStubs();
+	capabilityRegistry.provide(
+		capabilities.projectContext,
+		mock<ProjectContext>({ currentProject: () => null }),
+	);
 });
 
 afterEach(() => {
 	componentRegistry.clear();
+	capabilityRegistry.clear();
 });
 
 describe('PromotionPreviewView', () => {

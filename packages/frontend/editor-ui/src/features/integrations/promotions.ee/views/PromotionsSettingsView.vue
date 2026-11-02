@@ -22,6 +22,7 @@ import {
 	N8nText,
 	useMessage,
 } from '@n8n/design-system';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -31,7 +32,6 @@ import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
-import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
@@ -63,7 +63,7 @@ const {
 	busy: switchBusy,
 	canSwitchBack,
 	switchTo: switchEnvironmentsVersion,
-} = useEnvironmentsVersionSwitch();
+} = capabilityRegistry.use(capabilities.environmentsSettings).useVersionSwitch();
 const {
 	busy: protectionBusy,
 	isProtected,

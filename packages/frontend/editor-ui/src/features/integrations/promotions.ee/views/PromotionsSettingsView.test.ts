@@ -1,3 +1,4 @@
+import { capabilities, capabilityRegistry, type ProjectContext } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -7,13 +8,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
+import { computed, reactive, ref } from 'vue';
 
-import {
-	getPreferences,
-	updatePreferences,
-} from '@/features/integrations/sourceControl.ee/sourceControl.api';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import {
 	invalidateInstancePromotionConnection,
 	useInstancePromotionConnection,
@@ -33,7 +29,17 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
-vi.mock('@/features/integrations/sourceControl.ee/sourceControl.api');
+
+// The protected instance setting of the shell.
+const shell = reactive({ isProtected: false });
+const switchTo = vi.fn();
+const environmentsSettings = {
+	isPromotionsEnabled: () => true,
+	isProtected: () => shell.isProtected,
+	loadPreferences: vi.fn<() => Promise<void>>(),
+	setProtected: vi.fn<(value: boolean) => Promise<void>>(),
+	useVersionSwitch: () => ({ busy: ref(false), canSwitchBack: computed(() => true), switchTo }),
+};
 
 const mockConfirm = vi.fn();
 
@@ -86,6 +92,16 @@ describe('PromotionsSettingsView', () => {
 		});
 		invalidateInstancePromotionConnection();
 		createTestingPinia({ stubActions: false });
+		shell.isProtected = false;
+		environmentsSettings.setProtected.mockImplementation(async (value) => {
+			shell.isProtected = value;
+		});
+		capabilityRegistry.provide(capabilities.environmentsSettings, environmentsSettings);
+		capabilityRegistry.provide(capabilities.projectContext, mock<ProjectContext>());
+	});
+
+	afterEach(() => {
+		capabilityRegistry.clear();
 	});
 
 	it.each(['project:create', 'promotions:apply'] as const)(
@@ -222,30 +238,14 @@ describe('PromotionsSettingsView', () => {
 		},
 	);
 
-	it('switches an instance without a v1 repository back to Environments v1 after confirmation', async () => {
+	// The shell asks for confirmation and saves the version.
+	it('switches the instance back to Environments v1', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		mockConfirm.mockResolvedValue('confirm');
-		useRBACStore().setGlobalScopes(['sourceControl:manage']);
-		const sourceControlStore = useSourceControlStore();
-		vi.mocked(getPreferences).mockResolvedValue({
-			...sourceControlStore.preferences,
-			connected: false,
-		});
-		vi.mocked(updatePreferences).mockResolvedValue({
-			...sourceControlStore.preferences,
-			connected: false,
-			environmentsVersion: 'v1',
-		});
 		renderView();
 
 		await userEvent.click(await screen.findByTestId('promotions-switch-to-v1'));
 
-		expect(mockConfirm).toHaveBeenCalledWith(expect.anything(), 'Switch back?', expect.anything());
-		await waitFor(() =>
-			expect(updatePreferences).toHaveBeenCalledWith(expect.anything(), {
-				environmentsVersion: 'v1',
-			}),
-		);
+		expect(switchTo).toHaveBeenCalledWith('v1');
 	});
 
 	it('keeps each card busy until its own retry finishes', async () => {
@@ -291,45 +291,35 @@ describe('PromotionsSettingsView', () => {
 		await waitFor(() => expect(applyMenu).toBeEnabled());
 	});
 
-	it('allows a toggle only after the current protection state loads, and saves branchReadOnly only', async () => {
+	it('allows a toggle only after the current protection state loads', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		const sourceControlStore = useSourceControlStore();
-		const preferences = Promise.withResolvers<SourceControlPreferences>();
-		vi.mocked(getPreferences).mockReturnValue(preferences.promise);
-		vi.mocked(updatePreferences).mockResolvedValue({
-			...sourceControlStore.preferences,
-			branchReadOnly: false,
-		});
+		const preferences = Promise.withResolvers<void>();
+		environmentsSettings.loadPreferences.mockReturnValue(preferences.promise);
 		renderView();
 
 		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
 		expect(toggle).toBeDisabled();
-		preferences.resolve({ ...sourceControlStore.preferences, branchReadOnly: true });
+		shell.isProtected = true;
+		preferences.resolve();
 		await waitFor(() => expect(toggle).toBeEnabled());
 		expect(toggle).toBeChecked();
 		await userEvent.click(toggle);
 
-		expect(updatePreferences).toHaveBeenCalledWith(expect.anything(), { branchReadOnly: false });
-		expect(sourceControlStore.preferences.branchReadOnly).toBe(false);
+		expect(environmentsSettings.setProtected).toHaveBeenCalledWith(false);
 		expect(toggle).not.toBeChecked();
 	});
 
 	it('keeps the protection state when saving fails', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		const sourceControlStore = useSourceControlStore();
-		vi.mocked(getPreferences).mockResolvedValue({
-			...sourceControlStore.preferences,
-			branchReadOnly: true,
-		});
-		vi.mocked(updatePreferences).mockRejectedValue(new Error('Request failed'));
+		shell.isProtected = true;
+		environmentsSettings.setProtected.mockRejectedValue(new Error('Request failed'));
 		renderView();
 
 		const toggle = await screen.findByRole('switch', { name: 'Protected instance' });
 		await waitFor(() => expect(toggle).toBeChecked());
 		await userEvent.click(toggle);
 
-		expect(updatePreferences).toHaveBeenCalled();
-		expect(sourceControlStore.preferences.branchReadOnly).toBe(true);
+		expect(environmentsSettings.setProtected).toHaveBeenCalled();
 		expect(toggle).toBeChecked();
 	});
 });

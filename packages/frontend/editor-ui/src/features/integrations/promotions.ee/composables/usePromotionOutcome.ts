@@ -1,9 +1,8 @@
 import type { PromotePackageResultDto } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { ResponseError } from '@n8n/rest-api-client';
-
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getProject, ResponseError } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { promoteSuccessToast, withMoveAndRenameNote } from '../promotionResult';
 import { promotionEventBus } from '../promotions.eventBus';
@@ -13,7 +12,7 @@ import type { AppliedResult } from '../promotions.types';
 export function usePromotionOutcome() {
 	const i18n = useI18n();
 	const toast = useToast();
-	const projectsStore = useProjectsStore();
+	const rootStore = useRootStore();
 
 	function showPromoted(projectId: string, result: PromotePackageResultDto) {
 		promotionEventBus.emit('promoted', { projectId });
@@ -61,7 +60,7 @@ export function usePromotionOutcome() {
 	// asks for a project the package removed.
 	async function announceApplied(projectId: string) {
 		try {
-			const project = await projectsStore.fetchProject(projectId);
+			const project = await getProject(rootStore.restApiContext, projectId);
 			promotionEventBus.emit('applied', { projectId, project });
 		} catch (error) {
 			if (error instanceof ResponseError && error.httpStatusCode === 404) {

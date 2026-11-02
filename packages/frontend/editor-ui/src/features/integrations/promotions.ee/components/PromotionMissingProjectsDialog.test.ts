@@ -1,4 +1,6 @@
+import { capabilities, capabilityRegistry, type ProjectContext } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
+import type * as RestApiClient from '@n8n/rest-api-client';
 import { ResponseError } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useRolesStore } from '@n8n/stores/roles.store';
@@ -8,17 +10,15 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 
-import type * as ProjectsApi from '@/features/collaboration/projects/projects.api';
-
 import PromotionMissingProjectsDialog from './PromotionMissingProjectsDialog.vue';
 
 const projectsApi = vi.hoisted(() => ({
-	createPublicProject: vi.fn<typeof ProjectsApi.createPublicProject>(),
-	addProjectMembers: vi.fn<typeof ProjectsApi.addProjectMembers>(),
+	createPublicProject: vi.fn<typeof RestApiClient.createPublicProject>(),
+	addProjectMembers: vi.fn<typeof RestApiClient.addProjectMembers>(),
 }));
 
-vi.mock('@/features/collaboration/projects/projects.api', async (importOriginal) => ({
-	...(await importOriginal()),
+vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	...projectsApi,
 }));
 
@@ -34,6 +34,11 @@ describe('PromotionMissingProjectsDialog', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		createTestingPinia();
+		capabilityRegistry.provide(capabilities.projectContext, mock<ProjectContext>());
+	});
+
+	afterEach(() => {
+		capabilityRegistry.clear();
 	});
 
 	it('keeps the dialog open when a project fails, and retries only that project', async () => {

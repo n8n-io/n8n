@@ -9,12 +9,14 @@ import {
 	N8nDialogTitle,
 	N8nText,
 } from '@n8n/design-system';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { ref, shallowRef } from 'vue';
 
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { withMoveAndRenameNote } from '../promotionResult';
 import { applyPromotion } from '../promotionsSettings.api';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
@@ -34,7 +36,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
-const projectsStore = useProjectsStore();
+const projectContext = capabilityRegistry.use(capabilities.projectContext);
+const usersStore = useUsersStore();
 
 const isSubmitting = ref(false);
 const blockedResult = shallowRef<BlockedApplyResult>();
@@ -87,9 +90,11 @@ function reportApplied(result: AppliedResult) {
 async function refreshProjects() {
 	try {
 		await Promise.all([
-			projectsStore.getMyProjects(),
-			projectsStore.getProjectsCount(),
-			...(projectsStore.globalProjectPermissions.list ? [projectsStore.getAllProjects()] : []),
+			projectContext.getMyProjects(),
+			projectContext.getProjectsCount(),
+			...(getResourcePermissions(usersStore.currentUser?.globalScopes).project.list
+				? [projectContext.getAllProjects()]
+				: []),
 		]);
 	} catch {
 		// The apply went through. A stale project list is fixed by the next page load.

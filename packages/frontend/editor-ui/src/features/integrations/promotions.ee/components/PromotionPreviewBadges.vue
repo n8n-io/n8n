@@ -2,14 +2,13 @@
 import type { PromotionDirection } from '@n8n/api-types';
 import { N8nBadge, N8nIcon, N8nTooltip, type IconName } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@n8n/rest-api-client';
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 import { useInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
@@ -19,13 +18,16 @@ import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 const i18n = useI18n();
 const router = useRouter();
 const usersStore = useUsersStore();
-const projectsStore = useProjectsStore();
-const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
+// The project header renders in editor tests that provide no capabilities. Then no badges show.
+const projectContext = capabilityRegistry.tryUse(capabilities.projectContext);
+const environmentsSettings = capabilityRegistry.tryUse(capabilities.environmentsSettings);
+const isPromotionsEnabled = computed(() => environmentsSettings?.isPromotionsEnabled() ?? false);
 
-const currentProjectId = computed(() => projectsStore.currentProject?.id);
-const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
+const currentProject = computed(() => projectContext?.currentProject() ?? null);
+const currentProjectId = computed(() => currentProject.value?.id);
+const isTeamProject = computed(() => currentProject.value?.type === ProjectTypes.Team);
 const projectPermissions = computed(
-	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
+	() => getResourcePermissions(currentProject.value?.scopes).project,
 );
 const promotionsPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).promotions,
@@ -71,19 +73,19 @@ const apply = usePromotionChangeCount(currentProjectId, 'apply', showApply);
 // The store's project id follows the route at once, the current project only once it loaded,
 // so a result for a project the user already left is dropped here.
 async function onPromotionApplied({ projectId, project }: PromotionEventBusEvents['applied']) {
-	if (project && projectsStore.currentProjectId === projectId) {
-		projectsStore.setCurrentProject(project);
+	if (project && projectContext?.currentProjectId() === projectId) {
+		projectContext.setCurrentProject(project);
 	}
 	await Promise.all([promote.refetch(), apply.refetch()]);
 }
 
 async function onPromoted({ projectId }: PromotionEventBusEvents['promoted']) {
-	if (projectsStore.currentProjectId !== projectId) return;
+	if (projectContext?.currentProjectId() !== projectId) return;
 	await promote.refetch();
 }
 
 async function onProjectRemoved({ projectId }: PromotionEventBusEvents['projectRemoved']) {
-	if (projectsStore.currentProjectId !== projectId) return;
+	if (projectContext?.currentProjectId() !== projectId) return;
 	await router.replace({ name: VIEWS.HOMEPAGE });
 }
 

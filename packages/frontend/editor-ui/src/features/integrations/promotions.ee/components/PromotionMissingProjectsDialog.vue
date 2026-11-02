@@ -18,9 +18,10 @@ import {
 } from '@n8n/design-system';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { PROJECT_ADMIN_ROLE_SLUG } from '@n8n/permissions';
-import { ResponseError } from '@n8n/rest-api-client';
+import { addProjectMembers, createPublicProject, ResponseError } from '@n8n/rest-api-client';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -28,12 +29,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { useDebounceFn } from '@vueuse/core';
 import { computed, onMounted, reactive, ref } from 'vue';
-
-import {
-	addProjectMembers,
-	createPublicProject,
-} from '@/features/collaboration/projects/projects.api';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 type RowState =
 	| { status: 'creating' | 'created' | 'already-exists' }
@@ -54,7 +49,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
-const projectsStore = useProjectsStore();
+const projectContext = capabilityRegistry.use(capabilities.projectContext);
 const rolesStore = useRolesStore();
 const usersStore = useUsersStore();
 const { next: nextSearch } = useLatestFetch();
@@ -233,7 +228,7 @@ async function assignAdmin(projectId: string): Promise<RowState> {
 // The project sidebar reads these, and this page does not reload them.
 async function refreshProjects() {
 	try {
-		await Promise.all([projectsStore.getMyProjects(), projectsStore.getProjectsCount()]);
+		await Promise.all([projectContext.getMyProjects(), projectContext.getProjectsCount()]);
 	} catch {
 		// The projects exist. A stale project list is fixed by the next page load.
 	}

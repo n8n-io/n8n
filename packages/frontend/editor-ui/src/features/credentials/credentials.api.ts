@@ -18,8 +18,6 @@ import type {
 import axios from 'axios';
 import type { CreateCredentialDto } from '@n8n/api-types';
 
-export { createPublicCredential } from '@n8n/rest-api-client';
-
 async function fetchCredentialTypesJsonWithRetry(url: string, retries = 5, delay = 500) {
 	for (let attempt = 0; attempt < retries; attempt++) {
 		const response = await axios.get(url, { withCredentials: true });

@@ -11,7 +11,6 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 type ShellSettingsItem = IMenuSettingItem & { order: number };
@@ -211,17 +210,6 @@ export function useSettingsItems() {
 				position: 'top',
 				available: !isPromotionsEnabled.value && canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
 				route: { to: { name: VIEWS.SOURCE_CONTROL } },
-			},
-			{
-				id: 'settings-promotions',
-				order: 20,
-				section: 'operations',
-				icon: 'git-branch',
-				label: i18n.baseText('settings.promotions.title'),
-				position: 'top',
-				available: isPromotionsEnabled.value && canUserAccessRouteByName(PROMOTIONS_SETTINGS_VIEW),
-				route: { to: { name: PROMOTIONS_SETTINGS_VIEW } },
-				preview: true,
 			},
 			{
 				id: 'settings-workersview',
