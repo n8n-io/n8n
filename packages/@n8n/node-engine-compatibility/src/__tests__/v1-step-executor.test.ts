@@ -670,7 +670,7 @@ describe('V1StepExecutor', () => {
 				const execution = replyExecutor(graph, {}).execute(replyStep(graph));
 
 				await expect(execution).rejects.toThrow(
-					'Node "Subject" needs a signed resume request, but engine v2 has no resume secret to sign it',
+					'Node "Subject" needs a signed resume URL or approval callback, but engine v2 has no resume secret to sign it',
 				);
 				await expect(execution).rejects.toBeInstanceOf(UserError);
 			},

@@ -105,7 +105,7 @@ export class UnsupportedWaitError extends UserError {
 export class MissingResumeSecretError extends UserError {
 	constructor(nodeName: string) {
 		super(
-			`Node "${nodeName}" needs a signed resume request, but engine v2 has no resume secret to sign it`,
+			`Node "${nodeName}" needs a signed resume URL or approval callback, but engine v2 has no resume secret to sign it`,
 		);
 	}
 }
