@@ -4,25 +4,26 @@ import { Service } from '@n8n/di';
 
 import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
-import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
+import { CallableWorkflowUnavailableError } from './callable-workflow-unavailable.error';
 
-export interface WorkflowToolWorkflowReference {
+export interface CallableWorkflowReference {
 	workflowId?: string;
 	workflowName: string;
 }
 
-export interface LoadWorkflowOptions {
+export interface LoadCallableWorkflowOptions {
 	/**
 	 * Load the published workflow version instead of the draft. Set for
-	 * production agent runs, mirroring how sub-workflows resolve referenced
-	 * workflows. Throws `WorkflowToolUnavailableError` when the workflow has
+	 * production runs, mirroring how sub-workflows resolve referenced
+	 * workflows. Throws `CallableWorkflowUnavailableError` when the workflow has
 	 * never been published.
 	 */
 	usePublishedVersion?: boolean;
 }
 
+/** Loads a workflow of a project that another feature runs as a callable, such as an agent tool. */
 @Service()
-export class WorkflowToolWorkflowLoader {
+export class CallableWorkflowLoader {
 	constructor(
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowsConfig: WorkflowsConfig,
@@ -31,8 +32,8 @@ export class WorkflowToolWorkflowLoader {
 
 	async loadWorkflow(
 		projectId: string,
-		reference: WorkflowToolWorkflowReference,
-		options: LoadWorkflowOptions = {},
+		reference: CallableWorkflowReference,
+		options: LoadCallableWorkflowOptions = {},
 	): Promise<WorkflowEntity | null> {
 		const workflow = await this.workflowRepository.findOneByAgentToolReference(
 			projectId,
@@ -44,7 +45,7 @@ export class WorkflowToolWorkflowLoader {
 		if (options.usePublishedVersion) {
 			const published = await this.resolvePublishedContent(workflow);
 			if (!published) {
-				throw new WorkflowToolUnavailableError(
+				throw new CallableWorkflowUnavailableError(
 					'not_published',
 					`Workflow "${workflow.name}" is not published. Publish it so the published agent can use it.`,
 				);

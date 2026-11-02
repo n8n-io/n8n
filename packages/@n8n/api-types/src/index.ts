@@ -14,6 +14,7 @@ export * from './agents/index';
 export * from './skills/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
+export * from './schemas/app-binding.schema';
 export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
