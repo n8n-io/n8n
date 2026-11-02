@@ -434,6 +434,26 @@ describe('executionData.store', () => {
 			expect(workflowData?.pinData?.OldName).toBeUndefined();
 		});
 
+		it('treats only own keys as entries when it renames a node named after an inherited property', () => {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(
+				createTestExecution({
+					data: {
+						resultData: {
+							runData: { Other: [{ executionIndex: 0, executionStatus: 'success', source: [] }] },
+							pinData: {},
+						},
+					} as never,
+				}),
+			);
+
+			expect(() => store.renameExecutionDataNode('toString', 'Renamed')).not.toThrow();
+
+			const resultData = store.execution?.data?.resultData;
+			expect(Object.keys(resultData?.runData ?? {})).toEqual(['Other']);
+			expect(Object.keys(resultData?.pinData ?? {})).toEqual([]);
+		});
+
 		it('replaces the workflowData reference so identity-gated consumers detect the rename', () => {
 			// The embedded workflowData snapshot is mutated in place, so consumers
 			// that only rebuild when its reference changes (e.g. the logs panel's

@@ -20,4 +20,23 @@ describe('renameRecordKey', () => {
 
 		expect(renameRecordKey(record, 'old', 'new')).toBe(record);
 	});
+
+	it.each([0, '', false, null, undefined])('should move a falsy value %s', (value) => {
+		const record: Record<string, unknown> = { old: value, other: 1 };
+
+		const result = renameRecordKey(record, 'old', 'new');
+
+		expect(result).toEqual({ other: 1, new: value });
+		expect(Object.hasOwn(result, 'old')).toBe(false);
+		expect(Object.hasOwn(result, 'new')).toBe(true);
+	});
+
+	it('should not treat an inherited property as an entry', () => {
+		const record: Record<string, unknown> = { other: 1 };
+
+		const result = renameRecordKey(record, 'toString', 'renamed');
+
+		expect(result).toBe(record);
+		expect(Object.hasOwn(result, 'renamed')).toBe(false);
+	});
 });
