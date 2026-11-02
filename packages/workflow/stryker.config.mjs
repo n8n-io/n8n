@@ -3,9 +3,11 @@ export default {
 	packageManager: 'pnpm',
 	testRunner: 'vitest',
 	plugins: ['@stryker-mutator/vitest-runner'],
-	// The normal vitest config in the `forks` pool. See vitest.stryker.config.ts.
 	vitest: {
 		configFile: 'vitest.stryker.config.ts',
+		// The vm engine needs `forks`: isolated-vm aborts the process when a worker
+		// thread that started an isolate exits (laverdet/isolated-vm#464).
+		pool: 'forks',
 	},
 	// No `progress` reporter: these runs are non-interactive, nobody watches the stream.
 	reporters: ['clear-text', 'json'],

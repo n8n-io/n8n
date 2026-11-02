@@ -6,7 +6,7 @@
  * package dir). That's the whole point: plain vitest packages (DI or not)
  * need no bespoke vitest config. Packages that DO need special handling ship
  * their own `stryker.config.mjs`, which mutate.mjs prefers over this default
- * (e.g. packages/workflow runs its vitest config in the `forks` pool).
+ * (e.g. packages/workflow runs its vitest config in the `forks` pool for the vm engine).
  *
  * Reporter paths are relative to the run cwd, so reports land in
  * <package-dir>/reports/mutation/ and mutate.mjs reads raw.json from there.
