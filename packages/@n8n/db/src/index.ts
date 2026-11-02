@@ -17,8 +17,6 @@ export {
 	dbNowLiteral,
 	dbNowPlusMsLiteral,
 	parseDbTime,
-	toDbTimestamp,
-	toSqliteTimestamp,
 } from './utils/dialect-time';
 export { toDialectQuery } from './utils/dialect-sql';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
