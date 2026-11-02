@@ -55,6 +55,9 @@ describe('AppBlueprintCard', () => {
 
 	it('cancels without starting a build', async () => {
 		const { emitted, getByTestId } = renderComponent({ props: { blueprint } });
+		const namespace = getByTestId('instance-ai-app-blueprint-namespace');
+		await userEvent.clear(namespace);
+		await userEvent.type(namespace, 'Not valid');
 
 		await userEvent.click(getByTestId('instance-ai-app-blueprint-cancel'));
 

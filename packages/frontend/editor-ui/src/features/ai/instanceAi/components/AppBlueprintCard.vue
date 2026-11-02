@@ -61,7 +61,7 @@ function cancel() {
 	emit('submit', {
 		kind: 'appBlueprint',
 		approved: false,
-		blueprint: editedBlueprint.value,
+		blueprint: props.blueprint,
 	});
 }
 </script>
