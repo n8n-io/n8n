@@ -2,7 +2,7 @@ import type { INode, NodeEgressFilter } from 'n8n-workflow';
 
 import { createCustomModelEndpointAuthFetch } from './auth-fetch';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
-import { endpointSecrets, wrapCustomModelEndpointErrorFetch } from './error-handling';
+import { wrapCustomModelEndpointErrorFetch } from './error-handling';
 import { listGatewayModels } from './models';
 import type { EndpointCredential, LoginMethod } from './types';
 
@@ -105,18 +105,19 @@ describe('listGatewayModels', () => {
 		);
 		const { calls, fetchImpl } = answering(openAiStyle);
 
-		const fetchModels = wrapCustomModelEndpointErrorFetch(
-			createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint,
-					egressFilter: allowAll,
-					baseFetch: fetchImpl,
-				},
-			),
-			{ secrets: endpointSecrets(endpoint) },
+		const transport = createCustomModelEndpointAuthFetch(
+			ctx,
+			{},
+			{
+				endpoint,
+				egressFilter: allowAll,
+				baseFetch: fetchImpl,
+			},
 		);
+
+		const fetchModels = wrapCustomModelEndpointErrorFetch(transport.fetch, {
+			secrets: transport.secrets,
+		});
 		await listGatewayModels(endpoint, fetchModels);
 
 		expect(Object.fromEntries(calls[0].headers)).toMatchObject({
