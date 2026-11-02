@@ -25,7 +25,7 @@ describe('OtelSettingsService', () => {
 		// Strip any OTel env vars inherited from the test runner so each test
 		// starts from a known state.
 		for (const key of Object.keys(process.env)) {
-			if (key.startsWith('N8N_OTEL_')) delete process.env[key];
+			if (key.startsWith('N8N_OTEL_') || key === 'OTEL_PROPAGATORS') delete process.env[key];
 		}
 		service = new OtelSettingsService(config, settingsRepository, logger);
 	});
@@ -138,6 +138,75 @@ describe('OtelSettingsService', () => {
 			expect(result.enabled).toBe(true);
 			expect(result.envManagedFields).toContain('exporterEndpoint');
 			expect(result.envManagedFields).not.toContain('enabled');
+		});
+
+		describe('OTEL_PROPAGATORS', () => {
+			const loadWith = async (propagators: string | undefined, persisted?: Partial<OtelConfig>) => {
+				settingsRepository.findByKey.mockResolvedValue(
+					persisted ? ({ value: JSON.stringify(persisted) } as Settings) : null,
+				);
+				if (propagators !== undefined) process.env.OTEL_PROPAGATORS = propagators;
+
+				const serviceWithEnv = new OtelSettingsService(
+					new OtelConfig(),
+					settingsRepository,
+					logger,
+				);
+				await serviceWithEnv.loadSettings();
+				return serviceWithEnv.getSettings();
+			};
+
+			it.each(['tracecontext,baggage', 'tracecontext', 'baggage'])(
+				'turns outbound injection on and locks it for %s',
+				async (propagators) => {
+					const result = await loadWith(propagators, { injectOutbound: false });
+
+					expect(result.injectOutbound).toBe(true);
+					expect(result.envManagedFields).toContain('injectOutbound');
+				},
+			);
+
+			it.each(['none', 'b3', 'traceparent'])(
+				'turns outbound injection off and locks it for %s, which writes no header',
+				async (propagators) => {
+					const result = await loadWith(propagators, { injectOutbound: true });
+
+					expect(result.injectOutbound).toBe(false);
+					expect(result.envManagedFields).toContain('injectOutbound');
+				},
+			);
+
+			// An empty value counts as unset, as the OpenTelemetry SDK reads it
+			it.each([
+				['the variable is unset', undefined],
+				['the variable is empty', ''],
+			])('leaves the setting to the DB when %s', async (_name, propagators) => {
+				const result = await loadWith(propagators, { injectOutbound: false });
+
+				expect(result.injectOutbound).toBe(false);
+				expect(result.envManagedFields).not.toContain('injectOutbound');
+			});
+
+			it.each([
+				['N8N_OTEL_TRACES_INJECT_OUTBOUND turns it off', 'tracecontext,baggage', false],
+				['the propagators write no header', 'none', true],
+			])('stays off when %s', async (_name, propagators, injectOutbound) => {
+				settingsRepository.findByKey.mockResolvedValue(null);
+				process.env.OTEL_PROPAGATORS = propagators;
+				process.env.N8N_OTEL_TRACES_INJECT_OUTBOUND = String(injectOutbound);
+
+				const configWithEnv = new OtelConfig();
+				configWithEnv.injectOutbound = injectOutbound;
+				const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
+
+				await serviceWithEnv.loadSettings();
+				const result = serviceWithEnv.getSettings();
+
+				expect(result.injectOutbound).toBe(false);
+				expect(result.envManagedFields.filter((field) => field === 'injectOutbound')).toEqual([
+					'injectOutbound',
+				]);
+			});
 		});
 
 		it('returns the persisted exporter protocol', async () => {

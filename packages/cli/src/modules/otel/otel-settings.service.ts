@@ -7,6 +7,8 @@ import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 import { OtelConfig } from './otel.config';
 import { OTEL_ENV_VARS } from './otel.constants';
 
+import { envPropagatorsWriteAHeader } from '@/observability/swappable-pipeline';
+
 export const OTEL_SETTINGS_KEY = 'features.otel';
 
 export type OtelSettingsResponse = OtelConfig & {
@@ -64,6 +66,8 @@ export class OtelSettingsService {
 
 	private envManagedFields: Array<keyof OtelConfig> = [];
 
+	private readonly propagatorsWriteAHeader = envPropagatorsWriteAHeader();
+
 	constructor(
 		private readonly config: OtelConfig,
 		private readonly settingsRepository: SettingsRepository,
@@ -91,12 +95,18 @@ export class OtelSettingsService {
 	async loadSettings(): Promise<OtelConfig> {
 		const persisted = await this.getPersistedSettings();
 
-		this.envManagedFields = (Object.keys(OTEL_ENV_VARS) as Array<keyof OtelConfig>).filter((key) =>
-			this.isEnvManaged(key),
+		const envManaged = new Set(
+			(Object.keys(OTEL_ENV_VARS) as Array<keyof OtelConfig>).filter((key) =>
+				this.isEnvManaged(key),
+			),
 		);
+		if (this.propagatorsWriteAHeader !== undefined) envManaged.add('injectOutbound');
+		this.envManagedFields = [...envManaged];
 
-		this.currentSettings = this.buildConfig((key) =>
-			this.isEnvManaged(key) ? this.config[key] : (persisted?.[key] ?? this.config[key]),
+		this.currentSettings = this.withPropagatorInjection(
+			this.buildConfig((key) =>
+				this.isEnvManaged(key) ? this.config[key] : (persisted?.[key] ?? this.config[key]),
+			),
 		);
 
 		return this.currentSettings;
@@ -214,6 +224,19 @@ export class OtelSettingsService {
 
 	private serializeHeaders(entries: HeaderEntry[]): string {
 		return entries.map(([key, value]) => `${key}=${value}`).join(',');
+	}
+
+	/**
+	 * `OTEL_PROPAGATORS` names the outbound headers, so where it is set it also
+	 * decides the switch, over the stored setting. `N8N_OTEL_TRACES_INJECT_OUTBOUND`
+	 * stays the one way to stop every header, so it can still veto. The switch
+	 * therefore never reads on while no header goes out.
+	 */
+	private withPropagatorInjection(settings: OtelConfig): OtelConfig {
+		if (this.propagatorsWriteAHeader === undefined) return settings;
+
+		const allowed = !this.isEnvManaged('injectOutbound') || settings.injectOutbound;
+		return { ...settings, injectOutbound: this.propagatorsWriteAHeader && allowed };
 	}
 
 	private isEnvManaged(key: keyof OtelConfig): boolean {

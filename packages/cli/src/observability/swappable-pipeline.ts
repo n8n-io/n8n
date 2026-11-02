@@ -72,6 +72,13 @@ export function propagatorNamesFromEnv(): string[] | undefined {
 
 export const DEFAULT_OUTBOUND_PROPAGATOR = propagatorFor(DEFAULT_PROPAGATOR_NAMES);
 
+export function envPropagatorsWriteAHeader(): boolean | undefined {
+	const names = propagatorNamesFromEnv();
+	if (!names) return undefined;
+
+	return propagatorFor(names).fields().length > 0;
+}
+
 export class SwappableSpanProcessor implements SpanProcessor {
 	private processors = TRACING_OFF.spanProcessors;
 

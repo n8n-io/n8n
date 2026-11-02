@@ -4068,7 +4068,7 @@
 	"settings.opentelemetry.title": "OpenTelemetry",
 	"settings.opentelemetry.description": "Export workflow and node spans to any OTLP collector. Every setting mirrors an n8n environment variable.",
 	"settings.opentelemetry.docsLink": "Learn more in the documentation",
-	"settings.opentelemetry.envVarTooltip": "Environment variable: {envVar}",
+	"settings.opentelemetry.envVarTooltip": "Environment variable: {envVars} | Environment variables: {envVars}",
 	"settings.opentelemetry.envVarManagedTooltip": "Managed via environment variable",
 	"settings.opentelemetry.status.label": "Status",
 	"settings.opentelemetry.status.disabledDescription": "Tracing is off. No traces leave this instance.",

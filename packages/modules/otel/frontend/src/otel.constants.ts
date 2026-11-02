@@ -35,6 +35,6 @@ export const OTEL_FIELD_ENV_VARS = {
 	includeNodeSpans: 'N8N_OTEL_TRACES_INCLUDE_NODE_SPANS',
 	emitWorkflowStartSpan: 'N8N_OTEL_TRACES_EMIT_WORKFLOW_START_SPAN',
 	emitNodeStartSpan: 'N8N_OTEL_TRACES_EMIT_NODE_START_SPAN',
-	injectOutbound: 'N8N_OTEL_TRACES_INJECT_OUTBOUND',
+	injectOutbound: ['N8N_OTEL_TRACES_INJECT_OUTBOUND', 'OTEL_PROPAGATORS'],
 	productionExecutionsOnly: 'N8N_OTEL_TRACES_PRODUCTION_ONLY',
 } as const;

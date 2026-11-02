@@ -647,6 +647,20 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(getByTestId('otel-exporter-protocol').querySelector('input')).toBeDisabled();
 	});
 
+	it('names every env var that manages a field, singular or plural', async () => {
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-inject-outbound')).toBeInTheDocument());
+
+		expect(
+			screen.getByLabelText('Environment variable: N8N_OTEL_EXPORTER_OTLP_PROTOCOL'),
+		).toBeInTheDocument();
+		expect(
+			screen.getByLabelText(
+				'Environment variables: N8N_OTEL_TRACES_INJECT_OUTBOUND, OTEL_PROPAGATORS',
+			),
+		).toBeInTheDocument();
+	});
+
 	it('invalidates a previous test result when the protocol changes', async () => {
 		const { getByTestId, getByText, queryByText } = render();
 		await waitFor(() => expect(getByTestId('otel-test-trace-button')).toBeInTheDocument());
