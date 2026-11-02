@@ -106,6 +106,25 @@ describe('translateSpans', () => {
 			}),
 		);
 	});
+
+	it('translates a multi-line span only when none of its lines changed', () => {
+		fc.assert(
+			fc.property(editsArb, ({ n, edits }) => {
+				const { next, hunks } = applyEdits(n, edits);
+				for (let lo = 0; lo < next.length; lo++) {
+					for (let hi = lo; hi < next.length; hi++) {
+						const lines = next.slice(lo, hi + 1);
+						// Unchanged means: every line is old, with no old line deleted between.
+						const unchanged = lines.every(
+							(old, k) => old !== null && (k === 0 || old === (lines[k - 1] ?? 0) + 1),
+						);
+						const span = translateSpans([{ lo: lo + 1, hi: hi + 1 }], hunks);
+						expect(span).toEqual(unchanged ? [{ lo: lines[0], hi: lines.at(-1) }] : null);
+					}
+				}
+			}),
+		);
+	});
 });
 
 describe('resolveSpans', () => {
@@ -140,6 +159,20 @@ describe('resolveSpans', () => {
 	it('falls back to the file when the map has no entry at the function start', () => {
 		expect(resolveSpans({ '2': ['outer.spec'] }, ranges, [{ lo: 12, hi: 12 }])).toBeNull();
 	});
+
+	it('gives a line where a nested function starts or ends to the enclosing function', () => {
+		// `return items.map((item) => item.id)` on line 12: the callback is one line.
+		const oneLine = [...ranges, { start: 12, end: 12 }];
+		const map = { ...fileMap, '12': ['inline.spec'] };
+		const outerAndNested = ['callback.spec', 'inline.spec', 'outer.spec'];
+		expect(resolveSpans(map, oneLine, [{ lo: 12, hi: 12 }])).toEqual(outerAndNested);
+		expect(resolveSpans(map, oneLine, [{ lo: 5, hi: 5 }])).toEqual(outerAndNested);
+		expect(resolveSpans(map, oneLine, [{ lo: 8, hi: 8 }])).toEqual(outerAndNested);
+	});
+
+	it('keeps the first line of a function that no other function encloses', () => {
+		expect(resolveSpans(fileMap, ranges, [{ lo: 22, hi: 22 }])).toEqual([]);
+	});
 });
 
 describe('resolveImpact with a scope', () => {
@@ -149,6 +182,15 @@ describe('resolveImpact with a scope', () => {
 		{ start: 10, end: 18 },
 		{ start: 20, end: 25 },
 	];
+
+	it('reports a fallback in a file that no spec ran as uncovered', () => {
+		const result = resolveImpact(
+			[{ file: 'g.ts', scope: { spans: [{ lo: 9, hi: 9 }], ranges } }],
+			{ 'g.ts': { '1': [], '10': [] } },
+			{ onUncovered: 'declare' },
+		);
+		expect(result).toMatchObject({ specs: [], uncovered: ['g.ts'] });
+	});
 
 	it('selects the specs of the changed function only', () => {
 		const result = resolveImpact(

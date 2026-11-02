@@ -99,14 +99,20 @@ function translateLine(line: number, hunks: DiffHunk[]): number | null {
 /**
  * Translate spans from the base commit to the map commit. `hunks` come from
  * `git diff <map-commit> <base> -- <file>`, so the new side is the base. Returns
- * null when any span touches a line that changed between the two commits.
+ * null when any line of a span changed between the two commits.
  */
 export function translateSpans(spans: LineSpan[], hunks: DiffHunk[]): LineSpan[] | null {
 	const out: LineSpan[] = [];
 	for (const { lo, hi } of spans) {
+		// The endpoints alone miss an edit inside a multi-line span.
+		const changedInside = hunks.some((h) =>
+			h.newCount > 0
+				? h.newStart <= hi && h.newStart + h.newCount - 1 >= lo
+				: h.newStart >= lo && h.newStart < hi,
+		);
 		const from = translateLine(lo, hunks);
 		const to = translateLine(hi, hunks);
-		if (from === null || to === null) return null;
+		if (changedInside || from === null || to === null) return null;
 		out.push({ lo: from, hi: to });
 	}
 	return out;
@@ -114,7 +120,9 @@ export function translateSpans(spans: LineSpan[], hunks: DiffHunk[]): LineSpan[]
 
 /**
  * The specs for the changed spans of one file, or null to fall back to the whole
- * file. A span resolves to the innermost function that contains all of it. The
+ * file. A span resolves to the innermost function that contains all of it, or
+ * to the enclosing function when the span touches a line where the inner one
+ * starts or ends. The
  * result is the union of the specs that ran that function or a function nested
  * in it. A nested function can run in a spec in which its parent did not run, for
  * example a callback that is stored and called later.
@@ -133,11 +141,29 @@ export function resolveSpans(
 		specs: fileMap[line],
 	}));
 	const specs = new Set<string>();
+	const contains = (r: FunctionRange, lo: number, hi: number) => r.start <= lo && r.end >= hi;
 	for (const { lo, hi } of spans) {
 		let owner: FunctionRange | undefined;
 		for (const r of ranges) {
-			if (r.start > lo || r.end < hi) continue;
+			if (!contains(r, lo, hi)) continue;
 			if (!owner || r.end - r.start < owner.end - owner.start) owner = r;
+		}
+		// The ranges are whole lines. On a line where a function starts or ends, an
+		// enclosing function can own code too, for example the `map` call around an
+		// inline callback. Such a span goes to the enclosing function.
+		while (owner && (owner.start >= lo || owner.end <= hi)) {
+			const inner = owner;
+			const outer = ranges
+				.filter(
+					(r) =>
+						contains(r, inner.start, inner.end) && (r.start < inner.start || r.end > inner.end),
+				)
+				.reduce<FunctionRange | undefined>(
+					(best, r) => (!best || r.end - r.start < best.end - best.start ? r : best),
+					undefined,
+				);
+			if (!outer) break;
+			owner = outer;
 		}
 		if (!owner || !fileMap[String(owner.start)]) return null;
 		for (const e of entries) {

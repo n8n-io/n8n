@@ -399,18 +399,21 @@ export function resolveImpact(
 		const addFile = () => {
 			for (const fnLine of fnStarts) for (const s of fileMap[String(fnLine)]) specs.add(s);
 		};
+		const noSpecRanFile = () => fnStarts.every((line) => fileMap[String(line)].length === 0);
 		if (scope) {
 			const scoped = resolveSpans(fileMap, scope.ranges, scope.spans);
 			if (scoped === null) addFile();
 			else for (const s of scoped) specs.add(s);
 			// Only functions that no spec ran changed: no E2E checks this change.
-			if (declare && scoped?.length === 0) uncovered.push(file);
+			if (declare && (scoped === null ? noSpecRanFile() : scoped.length === 0)) {
+				uncovered.push(file);
+			}
 			continue;
 		}
 		if (!lines || lines.length === 0) {
 			addFile();
 			// The map lists the file, but no spec ran any of its functions.
-			if (declare && fnStarts.every((line) => fileMap[String(line)].length === 0)) {
+			if (declare && noSpecRanFile()) {
 				uncovered.push(file);
 			}
 			continue;

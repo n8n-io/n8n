@@ -126,6 +126,8 @@ parses the file at the map commit to find the function ranges.
 
 The file falls back to file-level when:
 
+- `select` gets no base ref (`--base`), for example a local run without
+  `BASE_REF`;
 - the map has no `sha`, or CI cannot fetch that commit;
 - a changed line also changed between the map commit and the merge base;
 - a change is outside every function, for example an import, a class field, a
