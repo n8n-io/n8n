@@ -357,6 +357,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubConversationModel,
 		user: User,
 		trx: EntityManager,
+		ctx: OperationContext,
 		manual?: boolean,
 	): Promise<{ allowFileUploads: boolean; allowedFilesMimeTypes: string }> {
 		if (model.provider === 'n8n') {
@@ -364,7 +365,7 @@ export class ChatHubWorkflowService {
 				model.workflowId,
 				user,
 				manual ? ['workflow:execute'] : ['workflow:execute-chat'],
-				{ includeTags: false, includeParentFolder: false, includeActiveVersion: !manual, em: trx },
+				{ includeTags: false, includeParentFolder: false, includeActiveVersion: !manual, ctx },
 			);
 
 			if (manual) {
@@ -1497,17 +1498,17 @@ Respond the title only:`,
 		manual?: boolean,
 	) {
 		// This branch runs the user's own workflow rather than creating one, so it needs the
-		// caller's manager but no clearance.
+		// caller's transaction but no clearance.
 		return await this.workflowRepository.runInTransaction(
 			ctx,
-			async (trx) =>
+			async (_trx, txCtx) =>
 				await this.prepareWorkflowAgentWorkflowInTransaction(
 					user,
 					sessionId,
 					workflowId,
 					message,
 					attachments,
-					trx,
+					txCtx,
 					executionMetadata,
 					manual,
 				),
@@ -1520,7 +1521,7 @@ Respond the title only:`,
 		workflowId: string,
 		message: string,
 		attachments: IBinaryData[],
-		trx: EntityManager,
+		ctx: OperationContext,
 		executionMetadata: ChatHubAuthenticationMetadata,
 		manual?: boolean,
 	) {
@@ -1528,7 +1529,7 @@ Respond the title only:`,
 			workflowId,
 			user,
 			manual ? ['workflow:execute'] : ['workflow:execute-chat'],
-			{ includeTags: false, includeParentFolder: false, includeActiveVersion: !manual, em: trx },
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: !manual, ctx },
 		);
 
 		if (!workflow) {

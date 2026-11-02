@@ -1,120 +1,133 @@
 /* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
+import type { RoleService } from '@n8n/backend-services';
 import type {
 	FolderRepository,
 	OperationContext,
-	RoleRepository,
-	SharedWorkflow,
-	SharedWorkflowRepository,
+	User,
+	WorkflowAccessRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
-
-import type { RoleService } from '@n8n/backend-services';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
 
-/** Minimal projection of the row shape `findWorkflowIdsByFolder` selects. */
-type FolderRow = { workflow: { id: string; parentFolder: { id: string } | null } };
-
-function makeService(rows?: FolderRow[]) {
-	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	if (rows) {
-		sharedWorkflowRepository.find.mockResolvedValue(rows as unknown as SharedWorkflow[]);
-	}
+function makeService() {
+	const workflowAccessRepository = mock<WorkflowAccessRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const folderRepository = mock<FolderRepository>();
 	const roleService = mock<RoleService>();
-	const roleRepository = mock<RoleRepository>();
 	const service = new WorkflowFinderService(
-		sharedWorkflowRepository,
+		workflowAccessRepository,
 		folderRepository,
 		roleService,
 		workflowRepository,
-		roleRepository,
 	);
-	return {
-		service,
-		sharedWorkflowRepository,
-		workflowRepository,
-		folderRepository,
-		roleService,
-		roleRepository,
-	};
+	return { service, workflowAccessRepository, workflowRepository, folderRepository, roleService };
 }
 
-describe('WorkflowFinderService', () => {
-	it.each(['manager', 'context'])(
-		'keeps the history scope with the transaction %s',
-		async (kind) => {
-			const { service, roleService, roleRepository, sharedWorkflowRepository } = makeService();
-			const transaction =
-				kind === 'manager' ? { em: mock<EntityManager>() } : { ctx: mock<OperationContext>() };
-			roleService.rolesWithScope.mockResolvedValue([]);
-			roleRepository.findAll.mockResolvedValue([]);
+const member = { id: 'user-1', role: { slug: 'global:member', scopes: [] } } as unknown as User;
+const owner = {
+	id: 'owner-1',
+	role: { slug: 'global:owner', scopes: [{ slug: 'workflow:read' }] },
+} as unknown as User;
 
-			await service.findWorkflowForUser(
-				'workflow-1',
-				{ id: 'user-1', role: { slug: 'global:member', scopes: [] } } as never,
-				['workflow:read'],
-				{ ...transaction, includeActiveVersion: true, publishHistory: 'latestActivation' },
+describe('WorkflowFinderService', () => {
+	describe('findWorkflowForUser', () => {
+		it('loads the roles in the transaction of the context', async () => {
+			const { service, roleService, workflowAccessRepository } = makeService();
+			const ctx = mock<OperationContext>();
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:editor'] : ['workflow:editor'],
 			);
+			workflowAccessRepository.findRolesForAccessCheck.mockResolvedValue([]);
+
+			await service.findWorkflowForUser('workflow-1', member, ['workflow:read'], {
+				ctx,
+				includeActiveVersion: true,
+				publishHistory: 'latestActivation',
+			});
 
 			const loadRoles = roleService.rolesWithScope.mock.calls[0][2];
 			await loadRoles?.();
-			expect(roleRepository.findAll).toHaveBeenCalledWith(transaction.em ?? transaction.ctx);
-			expect(sharedWorkflowRepository.findWorkflowWithOptions).toHaveBeenCalledWith(
+			expect(workflowAccessRepository.findRolesForAccessCheck).toHaveBeenCalledWith(ctx);
+			expect(workflowAccessRepository.findWorkflowForUser).toHaveBeenCalledWith(
 				'workflow-1',
-				expect.objectContaining({
-					...transaction,
-					includeActiveVersion: true,
-					publishHistory: 'latestActivation',
-				}),
+				{ userId: 'user-1', projectRoles: ['project:editor'], workflowRoles: ['workflow:editor'] },
+				{ includeActiveVersion: true, publishHistory: 'latestActivation' },
+				ctx,
 			);
-		},
-	);
+		});
+
+		it('uses the cached roles without a context', async () => {
+			const { service, roleService } = makeService();
+			roleService.rolesWithScope.mockResolvedValue([]);
+
+			await service.findWorkflowForUser('workflow-1', member, ['workflow:read']);
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:read']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:read']);
+		});
+
+		it('does not filter by role for a user with a global scope', async () => {
+			const { service, roleService, workflowAccessRepository } = makeService();
+
+			await service.findWorkflowForUser('workflow-1', owner, ['workflow:read']);
+
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(workflowAccessRepository.findWorkflowForUser).toHaveBeenCalledWith(
+				'workflow-1',
+				null,
+				{},
+				undefined,
+			);
+		});
+	});
 
 	describe('findWorkflowIdsByFolder', () => {
 		it('returns an empty map without querying when no folder ids are given', async () => {
-			const { service, sharedWorkflowRepository } = makeService();
+			const { service, workflowAccessRepository } = makeService();
 
 			const result = await service.findWorkflowIdsByFolder([]);
 
 			expect(result.size).toBe(0);
-			expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
+			expect(workflowAccessRepository.findWorkflowParentFolderIds).not.toHaveBeenCalled();
 		});
 
 		it('groups workflow ids by their parent folder', async () => {
-			const { service, sharedWorkflowRepository } = makeService([
-				{ workflow: { id: 'w1', parentFolder: { id: 'f1' } } },
-				{ workflow: { id: 'w2', parentFolder: { id: 'f1' } } },
-				{ workflow: { id: 'w3', parentFolder: { id: 'f2' } } },
+			const { service, workflowAccessRepository } = makeService();
+			workflowAccessRepository.findWorkflowParentFolderIds.mockResolvedValue([
+				{ workflowId: 'w1', parentFolderId: 'f1' },
+				{ workflowId: 'w2', parentFolderId: 'f1' },
+				{ workflowId: 'w3', parentFolderId: 'f2' },
 			]);
 
 			const result = await service.findWorkflowIdsByFolder(['f1', 'f2']);
 
 			expect(result.get('f1')).toEqual(['w1', 'w2']);
 			expect(result.get('f2')).toEqual(['w3']);
-			expect(sharedWorkflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { workflow: expect.objectContaining({ isArchived: false }) },
-				}),
+			expect(workflowAccessRepository.findWorkflowParentFolderIds).toHaveBeenCalledWith(
+				['f1', 'f2'],
+				false,
 			);
 		});
 
 		it('includes archived workflows when requested', async () => {
-			const { service, sharedWorkflowRepository } = makeService([]);
+			const { service, workflowAccessRepository } = makeService();
+			workflowAccessRepository.findWorkflowParentFolderIds.mockResolvedValue([]);
 
 			await service.findWorkflowIdsByFolder(['f1'], { includeArchived: true });
 
-			const where = sharedWorkflowRepository.find.mock.calls[0][0]?.where;
-			expect(where).toEqual({ workflow: { parentFolder: expect.anything() } });
+			expect(workflowAccessRepository.findWorkflowParentFolderIds).toHaveBeenCalledWith(
+				['f1'],
+				true,
+			);
 		});
 
 		it('dedupes a workflow that surfaces via several share rows', async () => {
-			const { service } = makeService([
-				{ workflow: { id: 'w1', parentFolder: { id: 'f1' } } },
-				{ workflow: { id: 'w1', parentFolder: { id: 'f1' } } },
+			const { service, workflowAccessRepository } = makeService();
+			workflowAccessRepository.findWorkflowParentFolderIds.mockResolvedValue([
+				{ workflowId: 'w1', parentFolderId: 'f1' },
+				{ workflowId: 'w1', parentFolderId: 'f1' },
 			]);
 
 			const result = await service.findWorkflowIdsByFolder(['f1']);
@@ -123,9 +136,10 @@ describe('WorkflowFinderService', () => {
 		});
 
 		it('skips rows whose workflow has no parent folder', async () => {
-			const { service } = makeService([
-				{ workflow: { id: 'w1', parentFolder: null } },
-				{ workflow: { id: 'w2', parentFolder: { id: 'f1' } } },
+			const { service, workflowAccessRepository } = makeService();
+			workflowAccessRepository.findWorkflowParentFolderIds.mockResolvedValue([
+				{ workflowId: 'w1', parentFolderId: null },
+				{ workflowId: 'w2', parentFolderId: 'f1' },
 			]);
 
 			const result = await service.findWorkflowIdsByFolder(['f1']);
@@ -158,34 +172,47 @@ describe('WorkflowFinderService', () => {
 		});
 	});
 
-	describe('findOwnedWorkflowsBySourceWorkflowIds', () => {
-		it('merges workflows returned from different chunks', async () => {
-			const { service, sharedWorkflowRepository } = makeService();
-			sharedWorkflowRepository.find
-				.mockResolvedValueOnce([{ workflow: { id: 'first' } }] as never)
-				.mockResolvedValueOnce([{ workflow: { id: 'last' } }] as never);
-			const sourceWorkflowIds = Array.from({ length: 10_001 }, (_, index) => `source-${index}`);
+	describe('findAllWorkflowIdsForUser', () => {
+		it('expands the folder into its hierarchy and applies the access roles', async () => {
+			const { service, roleService, folderRepository, workflowAccessRepository } = makeService();
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:admin'] : ['workflow:owner'],
+			);
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue(['folder-2']);
+			workflowAccessRepository.findWorkflowIdsForUser.mockResolvedValue(['wf-1']);
 
-			const result = await service.findOwnedWorkflowsBySourceWorkflowIds(
+			const result = await service.findAllWorkflowIdsForUser(
+				member,
+				['workflow:read'],
+				'folder-1',
 				'project-1',
-				sourceWorkflowIds,
 			);
 
-			expect(sharedWorkflowRepository.find).toHaveBeenCalledTimes(2);
-			expect(result.map(({ id }) => id)).toEqual(['first', 'last']);
-			const secondChunkWhere = sharedWorkflowRepository.find.mock.calls[1][0]?.where as Array<{
-				workflow: { id?: { value: string[] }; sourceWorkflowId?: { value: string[] } };
-			}>;
-			expect(secondChunkWhere[0].workflow.sourceWorkflowId?.value).toEqual(['source-10000']);
-			expect(secondChunkWhere[1].workflow.id?.value).toEqual(['source-10000']);
+			expect(result).toEqual(['wf-1']);
+			expect(folderRepository.getAllFolderIdsInHierarchy).toHaveBeenCalledWith(
+				'folder-1',
+				'project-1',
+			);
+			expect(workflowAccessRepository.findWorkflowIdsForUser).toHaveBeenCalledWith(
+				{ userId: 'user-1', projectRoles: ['project:admin'], workflowRoles: ['workflow:owner'] },
+				{ projectId: 'project-1', parentFolderIds: ['folder-1', 'folder-2'] },
+			);
+		});
+	});
+
+	describe('findOwnedWorkflowsBySourceWorkflowIds', () => {
+		it('returns an empty list without querying when no ids are given', async () => {
+			const { service, workflowAccessRepository } = makeService();
+
+			await expect(service.findOwnedWorkflowsBySourceWorkflowIds('project-1', [])).resolves.toEqual(
+				[],
+			);
+			expect(workflowAccessRepository.findOwnedWorkflowsBySourceWorkflowIds).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('findWorkflowsForUser', () => {
-		const user = {
-			id: 'user-1',
-			role: { slug: 'global:member', scopes: [] },
-		} as never;
+		const user = member;
 
 		function setup() {
 			const ctx = makeService();
@@ -200,7 +227,7 @@ describe('WorkflowFinderService', () => {
 		}
 
 		it('resolves the roles for the requested scopes instead of materialising workflow ids', async () => {
-			const { service, workflowRepository, sharedWorkflowRepository, roleService } = setup();
+			const { service, workflowRepository, workflowAccessRepository, roleService } = setup();
 
 			await service.findWorkflowsForUser(user, ['workflow:read'], { offset: 0, limit: 10 });
 
@@ -216,7 +243,7 @@ describe('WorkflowFinderService', () => {
 				expect.objectContaining({ skip: 0, take: 10 }),
 			);
 			// The whole point: no `shared_workflow` scan feeding a `WHERE id IN (...)`.
-			expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
+			expect(workflowAccessRepository.findWorkflowIdsForUser).not.toHaveBeenCalled();
 			expect(workflowRepository.getManyAndCount).not.toHaveBeenCalled();
 		});
 

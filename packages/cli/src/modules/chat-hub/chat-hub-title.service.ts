@@ -8,7 +8,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { User } from '@n8n/db';
-import type { EntityManager } from '@n8n/db';
+import type { EntityManager, OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	OperationalError,
@@ -92,6 +92,7 @@ export class ChatHubTitleService {
 					incomingModel,
 					incomingCredentials,
 					trx,
+					ctx,
 				);
 
 			if (!credentialId || !projectId) {
@@ -154,6 +155,7 @@ export class ChatHubTitleService {
 		model: ChatHubConversationModel,
 		credentials: INodeCredentials,
 		trx: EntityManager,
+		ctx: OperationContext,
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
@@ -161,7 +163,7 @@ export class ChatHubTitleService {
 		projectId: string;
 	}> {
 		if (model.provider === 'n8n') {
-			return await this.resolveFromN8nWorkflow(user, model, trx);
+			return await this.resolveFromN8nWorkflow(user, model, ctx);
 		}
 
 		if (model.provider === 'custom-agent') {
@@ -186,7 +188,7 @@ export class ChatHubTitleService {
 	private async resolveFromN8nWorkflow(
 		user: User,
 		{ workflowId }: ChatHubN8nModel,
-		trx: EntityManager,
+		ctx: OperationContext,
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
@@ -197,7 +199,7 @@ export class ChatHubTitleService {
 			workflowId,
 			user,
 			['workflow:execute-chat'],
-			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, ctx },
 		);
 
 		if (!workflowEntity?.activeVersion) {

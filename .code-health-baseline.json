@@ -1577,14 +1577,6 @@
 				"hash": "db8f5c7d285b"
 			}
 		],
-		"packages/cli/src/workflows/workflow-finder.service.ts": [
-			{
-				"rule": "typeorm-persistence-boundary",
-				"line": 11,
-				"message": "Business logic imports TypeORM directly.",
-				"hash": "81b365efba5a"
-			}
-		],
 		"packages/cli/src/workflows/workflow-validation.service.ts": [
 			{
 				"rule": "typeorm-persistence-boundary",

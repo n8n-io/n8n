@@ -392,7 +392,7 @@ export class WorkflowCreationService {
 					user,
 					['workflow:read'],
 					{
-						em: transactionManager,
+						ctx,
 						includeTags: true,
 						includeParentFolder: true,
 						includeActiveVersion: true,

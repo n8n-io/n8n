@@ -35,8 +35,8 @@ async function shareWorkflowsToProject(
 }
 
 function expectWorkflowsMatch(
-	oldWorkflows: Array<Record<string, unknown> & { id: string }>,
-	newWorkflows: Array<Record<string, unknown> & { id: string }>,
+	oldWorkflows: Array<{ id: string }>,
+	newWorkflows: Array<{ id: string }>,
 ) {
 	// Sort by ID for consistent order-independent comparison
 	const oldSorted = [...oldWorkflows].sort((a, b) => a.id.localeCompare(b.id));
