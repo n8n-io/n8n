@@ -1,5 +1,5 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SecurityConfig } from '@n8n/config';
 import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
@@ -23,7 +23,6 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
-import { PostHogClient } from '@/posthog';
 import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';

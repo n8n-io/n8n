@@ -3,6 +3,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -25,7 +26,6 @@ import { GitHubSkillSourceClient } from '../../sources/github/github-skill-sourc
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
-import { PostHogClient } from '@/posthog';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';

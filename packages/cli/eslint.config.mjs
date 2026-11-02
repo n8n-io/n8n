@@ -93,7 +93,6 @@ const skillsModuleIsolation = {
 		// ESLint reads these as gitignore lines, which cannot re-include a file below an
 		// excluded folder, so `!@/permissions.ee` lets the last line re-include one file.
 		'@/*',
-		'!@/posthog',
 		'!@/telemetry',
 		'!@/permissions.ee',
 		'@/*/**',

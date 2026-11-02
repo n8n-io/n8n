@@ -1,7 +1,7 @@
 import type { LoginRequestDto } from '@n8n/api-types';
 import { ResolveSignupTokenQueryDto, SSO_LOGIN_REQUIRED_ERROR_CODE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { PersonRepository, UserRepository } from '@n8n/db';
@@ -19,7 +19,6 @@ import { AuthError, BadRequestError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
-import { PostHogClient } from '@/posthog';
 import type { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';

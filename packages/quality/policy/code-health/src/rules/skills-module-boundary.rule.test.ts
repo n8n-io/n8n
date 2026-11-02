@@ -109,7 +109,6 @@ import { SkillService } from '../../skills';`,
 		write(
 			`${modules}/skills/services/example.ts`,
 			`
-import { PostHogClient } from '@/posthog';
 import { Telemetry } from '../../../telemetry';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Skill } from '../database/entities/skill.entity';

@@ -1,6 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
-import { type EventService, JwtService, RedisClientService } from '@n8n/backend-services';
+import {
+	type EventService,
+	JwtService,
+	RedisClientService,
+	PostHogClient,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
@@ -28,7 +33,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
