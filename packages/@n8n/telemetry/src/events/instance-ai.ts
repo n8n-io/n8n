@@ -805,6 +805,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
 				),
 			...mentionContextProperties,
+			// Optional so the events of the current runtime stay as they are.
+			runtime: assistantRuntime.optional(),
 		}),
 	},
 	BUILDER_LISTED_WORKFLOWS: {

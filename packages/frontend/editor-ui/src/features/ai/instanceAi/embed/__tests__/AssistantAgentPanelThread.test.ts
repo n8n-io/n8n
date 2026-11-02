@@ -16,7 +16,6 @@ import {
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 } from '../../composables/useInstanceAiHandoff';
-import { USER_TYPED_MESSAGE } from '../../prefills';
 import AssistantAgentPanelThread from '../AssistantAgentPanelThread.vue';
 
 const {
@@ -26,6 +25,7 @@ const {
 	clearDraftIfMatches,
 	stagedChips,
 	removeChip,
+	telemetryTrack,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	sendMessageFromOutside: vi.fn(),
@@ -33,6 +33,11 @@ const {
 	clearDraftIfMatches: vi.fn(),
 	stagedChips: { current: [] as Array<{ id: string; label: string }> },
 	removeChip: vi.fn(),
+	telemetryTrack: vi.fn(),
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
 }));
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
@@ -86,6 +91,17 @@ function acceptMessage(context: Record<string, unknown>): void {
 	(panelProps.current.onMessageAccepted as AcceptMessage)({ clientContext: context });
 }
 
+/** The chat reports a send, and the test reads the message telemetry it caused. */
+function sendAndReadTelemetry(text: string): Record<string, unknown> | undefined {
+	telemetryTrack.mockClear();
+	(panelProps.current.onMessageSending as (payload: unknown) => void)({
+		text,
+		files: [],
+		isFirstMessage: false,
+	});
+	return telemetryTrack.mock.calls[0]?.[1];
+}
+
 async function render() {
 	const wrapper = mount(AssistantAgentPanelThread, {
 		props: { threadId: 'thread-1', subject, newSession: true },
@@ -102,6 +118,7 @@ describe('AssistantAgentPanelThread', () => {
 		setDraft.mockReset();
 		clearDraftIfMatches.mockReset();
 		removeChip.mockReset();
+		telemetryTrack.mockReset();
 		stagedChips.current = [];
 		clearPendingHandoffContext('thread-1');
 	});
@@ -188,6 +205,40 @@ describe('AssistantAgentPanelThread', () => {
 
 		expect(clearDraftIfMatches).toHaveBeenCalledWith('Fix the reply tone');
 		expect(getPendingComposerDraft('thread-1')).toBeNull();
+		expect(sendAndReadTelemetry('Something else')).toMatchObject({ prefill_type: null });
+	});
+
+	it('reports a sent hand-off draft as a pre-fill', async () => {
+		stashPendingComposerDraft('thread-1', {
+			text: 'Fix the reply tone',
+			prefillType: 'handoff_agent_change_request',
+		});
+		await render();
+
+		expect(sendAndReadTelemetry('Fix the reply tone')).toMatchObject({
+			prefill_type: 'handoff_agent_change_request',
+			prompt_modified: false,
+			runtime: 'agents',
+		});
+	});
+
+	it('reports a suggestion that the host sends as a pre-fill', async () => {
+		const wrapper = await render();
+
+		(wrapper.vm as unknown as { submitSuggestion: (payload: unknown) => void }).submitSuggestion({
+			prompt: 'Summarize my inbox',
+			suggestionId: 'summarize-inbox',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'suggestion_catalog',
+		});
+
+		expect(sendMessageFromOutside).toHaveBeenCalledWith('Summarize my inbox');
+		expect(sendAndReadTelemetry('Summarize my inbox')).toMatchObject({
+			prefill_type: 'suggestion_catalog',
+			prefill_id: 'summarize-inbox',
+			prompt_modified: false,
+		});
 	});
 
 	it('removes the chip when the message with the hand-off is accepted', async () => {
@@ -212,16 +263,20 @@ describe('AssistantAgentPanelThread', () => {
 		expect(wrapper.find('[data-test-id="instance-ai-handoff-context-chip"]').exists()).toBe(false);
 	});
 
-	it('sends the starter message with its references on the first message only', async () => {
+	it('sends the starter message with its references and authorship on the first message only', async () => {
 		const reference: InstanceAiResourceAttachment = { type: 'workflow', id: 'wf-1' };
 		stashPendingFirstMessage('thread-1', {
 			message: 'Add a Slack tool',
 			attachments: [reference],
-			authorship: USER_TYPED_MESSAGE,
+			authorship: { kind: 'prefill', prefillType: 'template_example', prefillId: 'slack' },
 		});
 		await render();
 
 		expect(sendMessageFromOutside).toHaveBeenCalledWith('Add a Slack tool');
+		expect(sendAndReadTelemetry('Add a Slack tool')).toMatchObject({
+			prefill_type: 'template_example',
+			prefill_id: 'slack',
+		});
 		const first = clientContext();
 		expect(first.attachments).toEqual([reference, subject]);
 		acceptMessage(first);

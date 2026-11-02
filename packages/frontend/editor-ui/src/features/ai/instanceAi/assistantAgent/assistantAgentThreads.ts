@@ -2,6 +2,10 @@ import type { InstanceAiAttachment, ProviderAttachmentCapabilities } from '@n8n/
 import { isRecord } from '@n8n/utils/is-record';
 import type { InjectionKey } from 'vue';
 
+import type { AssistantMentionCounts } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+
+import type { InstanceAiMessageAuthorship } from '../prefills';
+
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
 
@@ -90,6 +94,9 @@ export interface PendingAssistantAgentMessage {
 	files: File[];
 	/** Workflow and other resource references. They go to the agent in the client context. */
 	references: InstanceAiAttachment[];
+	/** Who wrote the text, for the message telemetry of the thread view. */
+	authorship: InstanceAiMessageAuthorship;
+	mentionCounts: AssistantMentionCounts;
 }
 
 let pendingMessage: PendingAssistantAgentMessage | undefined;

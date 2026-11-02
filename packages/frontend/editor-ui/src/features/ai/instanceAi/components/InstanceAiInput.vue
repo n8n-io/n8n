@@ -32,7 +32,7 @@ import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import type { ContextChip } from '../instanceAi.contextChip';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
-	USER_TYPED_MESSAGE,
+	resolveAuthorship,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillPayload,
@@ -502,23 +502,6 @@ function emitSubmittedMessage(
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
-}
-
-/**
- * The composer is the only place that knows whether the text came from a
- * pre-fill, so it resolves authorship for every send that leaves it.
- */
-function resolveAuthorship(
-	message: string,
-	prefill: ActivePrefill | null,
-): InstanceAiMessageAuthorship {
-	if (!prefill) return USER_TYPED_MESSAGE;
-	return {
-		kind: 'prefill',
-		prefillType: prefill.prefillType,
-		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
-		promptModified: message !== prefill.text.trim(),
-	};
 }
 
 function resetDraftComposer() {

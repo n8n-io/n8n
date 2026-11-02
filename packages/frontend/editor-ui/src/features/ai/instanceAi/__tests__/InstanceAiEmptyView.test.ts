@@ -1634,6 +1634,7 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.text).toBe('hello');
 			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['screenshot.png']);
 			expect(pendingMessage?.references).toEqual([]);
+			expect(pendingMessage?.authorship).toEqual(USER_TYPED_MESSAGE);
 		});
 
 		it('drops the first message and restores the draft when the navigation fails', async () => {
