@@ -1,4 +1,7 @@
 import type {
+	ApplyPackageResultDto,
+	ApplySelectionDto,
+	ContinueApplySelectionDto,
 	PromotePackageResultDto,
 	PromoteSelectionRequestDto,
 	PromotionDirection,
@@ -62,6 +65,34 @@ export async function promoteProjectSelection(
 		context,
 		'POST',
 		`/promotions/projects/${projectId}/promote`,
+		payload,
+	);
+}
+
+/** Applies only the chosen workflows into the destination project. */
+export async function applyProjectSelection(
+	context: PublicApiContext,
+	projectId: string,
+	payload: ApplySelectionDto,
+): Promise<ApplyPackageResultDto> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/projects/${projectId}/apply`,
+		payload,
+	);
+}
+
+/** Resumes a selective apply that paused on unresolved bindings, once they are created. */
+export async function continueApplyProjectSelection(
+	context: PublicApiContext,
+	projectId: string,
+	payload: ContinueApplySelectionDto,
+): Promise<ApplyPackageResultDto> {
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/projects/${projectId}/apply/continue`,
 		payload,
 	);
 }

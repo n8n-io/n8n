@@ -8,10 +8,13 @@ import { computed, ref, shallowRef, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
-import { promoteProjectSelection } from '../promotions.api';
+import {
+	applyProjectSelection,
+	continueApplyProjectSelection,
+	promoteProjectSelection,
+} from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
 import type { ApplyCheckResult } from '../promotions.types';
-import { applyProjectSelection, continueApplyProjectSelection } from '../promotionsSettings.api';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
 export type OperationRequest = {
