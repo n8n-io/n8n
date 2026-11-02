@@ -40,7 +40,7 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			'level' in errorObject &&
 			(errorObject.level === 'warning' || errorObject.level === 'info')
 		) {
-			// A plain `Error` has no level, so the error reporter would send this expected error to Sentry.
+			// Not for level `error`: the error reporter sends a `BaseError` without sanitizing its message.
 			error = new OperationalError(errorObject.message, { level: errorObject.level });
 		}
 
