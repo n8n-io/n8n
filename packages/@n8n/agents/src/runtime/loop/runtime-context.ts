@@ -186,7 +186,8 @@ export class RuntimeContextBuilder {
 		const previous = list.llmVisibleMessages().filter(isRuntimeSkillCatalog).at(-1);
 		if (previous?.data.content === content) return;
 		// Append changes to preserve cached history. Restore snapshots hidden by compaction.
-		list.addResponse([{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content } }]);
+		// Runtime context is input, so generated answers must not include it.
+		list.addInput([{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content } }]);
 	}
 
 	/** Build the current local tool view; deferred loads can change this between iterations. */
