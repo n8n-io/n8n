@@ -3084,7 +3084,22 @@ describe('WorkflowService', () => {
 					WORKFLOW_ID,
 					user,
 					undefined,
-					{ rejectReadOnlyNodeEdits: true },
+					{ rejectReadOnlyNodeEdits: true, unsentNodeFields: [] },
+				);
+			});
+
+			test('forwards the node fields the caller never sends to the credential guard', async () => {
+				await workflowService.update(user, updateData, WORKFLOW_ID, {
+					rejectReadOnlyNodeEdits: true,
+					unsentNodeFields: ['extendsCredential'],
+				});
+
+				expect(enterpriseWorkflowService.preventTampering).toHaveBeenCalledWith(
+					expect.anything(),
+					WORKFLOW_ID,
+					user,
+					undefined,
+					{ rejectReadOnlyNodeEdits: true, unsentNodeFields: ['extendsCredential'] },
 				);
 			});
 
@@ -3096,7 +3111,7 @@ describe('WorkflowService', () => {
 					WORKFLOW_ID,
 					user,
 					undefined,
-					{ rejectReadOnlyNodeEdits: false },
+					{ rejectReadOnlyNodeEdits: false, unsentNodeFields: [] },
 				);
 			});
 		});

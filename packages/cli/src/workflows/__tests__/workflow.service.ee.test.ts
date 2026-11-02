@@ -963,6 +963,11 @@ describe('EnterpriseWorkflowService', () => {
 			});
 
 			describe('extendsCredential', () => {
+				const unsentExtendsCredential = {
+					rejectReadOnlyNodeEdits: true,
+					unsentNodeFields: ['extendsCredential'],
+				};
+
 				it('keeps a read-only node whose stored version has extendsCredential and the submitted one does not', () => {
 					const previousNode = {
 						...httpNode(foreignCredential),
@@ -978,10 +983,31 @@ describe('EnterpriseWorkflowService', () => {
 						previousVersion,
 						accessible,
 						[],
-						rejectReadOnlyNodeEdits,
+						unsentExtendsCredential,
 					);
 
 					expect(result.nodes[0]).toEqual(previousNode);
+				});
+
+				it('rejects the same round trip when the caller does not list extendsCredential', () => {
+					const previousNode = {
+						...httpNode(foreignCredential),
+						extendsCredential: 'httpHeaderAuth',
+					};
+					const newNode = httpNode(foreignCredential);
+
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+					expect(() =>
+						service.validateWorkflowCredentialUsage(
+							newVersion,
+							previousVersion,
+							accessible,
+							[],
+							rejectReadOnlyNodeEdits,
+						),
+					).toThrow(/credentials in the 'Call' node/);
 				});
 
 				it('keeps a read-only node whose submitted extendsCredential matches the stored one', () => {
