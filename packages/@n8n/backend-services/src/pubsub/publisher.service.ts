@@ -5,17 +5,16 @@ import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'iore
 import { InstanceSettings } from 'n8n-core';
 import type { LogMetadata } from 'n8n-workflow';
 
-import { RedisClientService } from '@n8n/backend-services';
-
-import type { PubSub } from './pubsub.types';
 import {
 	COMMAND_PUBSUB_CHANNEL,
 	IMMEDIATE_COMMANDS,
 	SELF_SEND_COMMANDS,
 	WORKER_RESPONSE_PUBSUB_CHANNEL,
 	MCP_RELAY_PUBSUB_CHANNEL,
-} from '../constants';
+} from './pubsub.constants';
+import type { PubSub } from './pubsub.types';
 import type { McpRelayMessage } from './subscriber.service';
+import { RedisClientService } from '../services/redis-client.service';
 
 /**
  * Responsible for publishing messages into the pubsub channels used by scaling mode.

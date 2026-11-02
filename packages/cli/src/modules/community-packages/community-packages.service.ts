@@ -27,7 +27,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { toError } from '@/utils';
 
 import { getCommunityNodeTypes, type StrapiCommunityNodeType } from './community-node-types-utils';

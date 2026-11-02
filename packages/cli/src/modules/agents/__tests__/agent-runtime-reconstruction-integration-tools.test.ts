@@ -1,8 +1,9 @@
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
-import {
-	type CredentialsFinderService,
-	type EventService,
-	type ProjectScopeService,
+import type {
+	CredentialsFinderService,
+	EventService,
+	ProjectScopeService,
+	Publisher,
 } from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
@@ -30,7 +31,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { Telemetry } from '@/telemetry';

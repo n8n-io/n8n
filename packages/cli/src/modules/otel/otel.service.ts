@@ -30,7 +30,7 @@ import { withResourceAttributes } from './otel-span-exporter';
 import { N8N_VERSION } from '@/constants';
 import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import {
 	OUTBOUND_HEADERS_PROPAGATOR,
 	TRACING_OFF,

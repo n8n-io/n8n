@@ -2,7 +2,7 @@ import type { ExecutionsConfig } from '@n8n/config';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';

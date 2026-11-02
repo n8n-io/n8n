@@ -16,7 +16,7 @@ import { OtelService } from '../otel.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
 import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 // The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
 // checkEndpointReachability ignores the response and only catches network errors.
