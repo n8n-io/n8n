@@ -16,6 +16,7 @@ export {
 } from './auth';
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
+export { triggerOutputsSchema, workflowGraphSchema } from './server';
 export type {
 	CancelExecutionResponse,
 	EngineErrorResponse,
@@ -65,7 +66,7 @@ export type {
 	UndeliverableMessage,
 } from './response-channel';
 
-export { UnimplementedError } from './common';
+export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
 export { deriveLoops, isBatchStepConfig } from './graph';
