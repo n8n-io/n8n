@@ -36,8 +36,6 @@ export type {
 	CreateSandboxOptions,
 	DaytonaSandboxConfig,
 	N8nSandboxConfig,
-	MxcSandboxConfig,
-	RemoteSandboxProvider,
 	DisabledSandboxConfig,
 	ExecuteCommandOptions,
 	FileContent,

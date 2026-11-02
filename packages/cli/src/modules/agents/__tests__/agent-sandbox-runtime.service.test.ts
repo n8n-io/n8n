@@ -1,7 +1,6 @@
-import { canonicalizePath } from '@n8n/agents/sandbox';
+import { canonicalizePath, MxcLocalFilesystem, MxcSandbox } from '@n8n/agents/sandbox';
 import type {
 	DaytonaSandboxConfig,
-	RemoteSandboxProvider,
 	SandboxProvider,
 	WorkspaceFilesystem,
 	WorkspaceSandbox,
@@ -9,7 +8,7 @@ import type {
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { InstanceSettings } from 'n8n-core';
@@ -63,7 +62,7 @@ function makeAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 }
 
 function makeSandboxSettingsService(
-	provider: RemoteSandboxProvider = 'daytona',
+	provider: SandboxProvider = 'daytona',
 ): ReturnType<typeof mock<SandboxSettingsService>> {
 	const service = mock<SandboxSettingsService>();
 	service.isAgentSandboxEnabled.mockReturnValue(true);
@@ -375,10 +374,7 @@ describe('AgentSandboxRuntimeService', () => {
 		};
 		const n8nFolder = '/home/node/.n8n';
 
-		it('runs agent workspaces in a local mxc sandbox rooted at the filesystem base path', async () => {
-			createFilesystemMock.mockReturnValue(
-				mock<WorkspaceFilesystem>({ basePath: `/srv/agent-workspaces/${workspaceSandboxId}` }),
-			);
+		it('builds a local mxc workspace without the shared sandbox factory', async () => {
 			const service = makeService({
 				configOverrides: mxcConfig,
 				instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder }),
@@ -386,20 +382,16 @@ describe('AgentSandboxRuntimeService', () => {
 
 			const runtime = await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
 
-			expect(createSandboxMock).toHaveBeenCalledWith(
-				expect.objectContaining({
-					enabled: true,
-					provider: 'mxc',
-					id: workspaceSandboxId,
-					// Paths are compared as real paths. On macOS, /home is itself a link.
-					workspaceRoot: await canonicalizePath('/srv/agent-workspaces'),
-					readonlyPaths: ['/data/reports', '/data/exports'],
-					deniedPaths: [await canonicalizePath(n8nFolder)],
-				}),
-				expect.anything(),
-			);
+			// Paths are compared as real paths. On macOS, /home is itself a link.
+			const root = await canonicalizePath('/srv/agent-workspaces');
+			expect(createSandboxMock).not.toHaveBeenCalled();
 			expect(runtime.provider).toBe('mxc');
-			expect(runtime.workspaceRoot).toBe(`/srv/agent-workspaces/${workspaceSandboxId}`);
+			expect(runtime.sandbox).toBeInstanceOf(MxcSandbox);
+			expect(runtime.filesystem).toBeInstanceOf(MxcLocalFilesystem);
+			expect(runtime.workspaceRoot).toBe(join(root, workspaceSandboxId));
+			const sandbox = runtime.sandbox as MxcSandbox;
+			expect(sandbox.readonlyPaths).toEqual(['/data/reports', '/data/exports']);
+			expect(sandbox.deniedPaths).toContain(await canonicalizePath(n8nFolder));
 		});
 
 		it('refuses a workspace root inside the n8n user folder', async () => {
@@ -432,19 +424,6 @@ describe('AgentSandboxRuntimeService', () => {
 			}
 		});
 
-		it('does not touch local mxc folders when a knowledge sandbox is deleted', async () => {
-			const providers: string[] = [];
-			createSandboxMock.mockImplementation(async (config) => {
-				providers.push(config.provider);
-				return makeSandbox(config.provider, config.id);
-			});
-			const service = makeService({ configOverrides: mxcConfig });
-
-			await service.destroyKnowledgeSandbox(projectId, agentId);
-
-			expect(providers).not.toContain('mxc');
-		});
-
 		it('keeps the knowledge sandbox on the n8n Assistant provider', async () => {
 			const service = makeService({ configOverrides: mxcConfig });
 
@@ -456,20 +435,23 @@ describe('AgentSandboxRuntimeService', () => {
 			);
 		});
 
-		it('also deletes the local mxc workspace on teardown', async () => {
-			const destroyed: Array<{ provider: string; id: string }> = [];
-			createSandboxMock.mockImplementation(async (config) => {
-				const target = makeSandbox(config.provider, config.id);
-				target.deleteRemote.mockImplementation(async () => {
-					destroyed.push({ provider: config.provider, id: config.id });
+		it('deletes the local workspace folder with the workspace sandbox only', async () => {
+			const root = mkdtempSync(join(tmpdir(), 'mxc-teardown-test-'));
+			try {
+				const workspace = join(await canonicalizePath(root), workspaceSandboxId);
+				mkdirSync(workspace);
+				const service = makeService({
+					configOverrides: { ...mxcConfig, mxcWorkspaceRoot: root },
 				});
-				return target;
-			});
-			const service = makeService({ configOverrides: mxcConfig });
 
-			await service.destroyWorkspaceSandbox(projectId, agentId, principalHash);
+				await service.destroyKnowledgeSandbox(projectId, agentId);
+				expect(existsSync(workspace)).toBe(true);
 
-			expect(destroyed).toContainEqual({ provider: 'mxc', id: workspaceSandboxId });
+				await service.destroyWorkspaceSandbox(projectId, agentId, principalHash);
+				expect(existsSync(workspace)).toBe(false);
+			} finally {
+				rmSync(root, { recursive: true, force: true });
+			}
 		});
 	});
 

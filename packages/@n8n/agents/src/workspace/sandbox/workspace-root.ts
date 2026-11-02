@@ -13,9 +13,6 @@ export function getSandboxHome(provider: SandboxProvider): string {
 			return DAYTONA_HOME;
 		case 'n8n-sandbox':
 			return N8N_SANDBOX_HOME;
-		case 'mxc':
-			// Each mxc sandbox has its own host folder: use `MxcSandbox.workspaceDir`.
-			throw new Error('mxc sandboxes have no shared home folder');
 	}
 }
 

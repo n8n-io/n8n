@@ -3,9 +3,11 @@ import {
 	createFilesystem,
 	createSandbox,
 	getPromptWorkspaceRoot,
+	MxcLocalFilesystem,
+	MxcSandbox,
+	type MxcSandboxOptions,
 	type CommandResult,
 	type DaytonaSandboxConfig,
-	type MxcSandboxConfig,
 	type FilesystemLifecycleHook,
 	type N8nSandboxConfig,
 	type SandboxProvider,
@@ -19,7 +21,7 @@ import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
 import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { v5 as uuidv5 } from 'uuid';
 
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
@@ -61,8 +63,13 @@ interface SandboxStartOptions {
 	onFilesystemInit?: FilesystemLifecycleHook;
 }
 
-export interface AgentSandboxRuntime {
-	provider: SandboxProvider;
+/** `mxc` runs agent workspaces on this host. Only agent workspaces can use it. */
+export type AgentSandboxProvider = SandboxProvider | 'mxc';
+
+export interface AgentSandboxRuntime<
+	TProvider extends AgentSandboxProvider = AgentSandboxProvider,
+> {
+	provider: TProvider;
 	sandbox: WorkspaceSandbox;
 	filesystem: WorkspaceFilesystem;
 	workspaceRoot: string;
@@ -126,7 +133,10 @@ export function sanitizeSandboxErrorDetail(value: string): string {
 
 @Service()
 export class AgentSandboxRuntimeService {
-	private readonly pendingSandboxAcquisitions = new Map<string, Promise<AgentSandboxRuntime>>();
+	private readonly pendingSandboxAcquisitions = new Map<
+		string,
+		Promise<AgentSandboxRuntime<SandboxProvider>>
+	>();
 
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
@@ -141,11 +151,6 @@ export class AgentSandboxRuntimeService {
 				`Ignoring N8N_AGENTS_AI_SANDBOX_PROVIDER="${configured}". The only supported value is "mxc".`,
 			);
 		}
-	}
-
-	/** `mxc` is an agents-only opt-in. Otherwise agents share the n8n Assistant sandbox provider. */
-	private getWorkspaceProvider(): SandboxProvider {
-		return this.isMxcWorkspaceProvider() ? 'mxc' : this.sandboxSettingsService.getProvider();
 	}
 
 	private isMxcWorkspaceProvider(): boolean {
@@ -174,8 +179,9 @@ export class AgentSandboxRuntimeService {
 			`${WORKSPACE_SANDBOX_NAME_PREFIX}${sandboxId}`,
 			sandboxId,
 			buildWorkspaceLabels(projectId, agentId, principalHash),
-			this.isMxcWorkspaceProvider(),
 		);
+		if (this.isMxcWorkspaceProvider())
+			await this.destroyMxcWorkspace(projectId, agentId, sandboxId);
 	}
 
 	async destroyKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
@@ -199,7 +205,10 @@ export class AgentSandboxRuntimeService {
 		principalHash: AgentSandboxPrincipalHash,
 		options?: { onFilesystemInit?: FilesystemLifecycleHook },
 	): Promise<AgentSandboxRuntime> {
-		const provider = this.getWorkspaceProvider();
+		if (this.isMxcWorkspaceProvider()) {
+			return await this.acquireMxcWorkspace(projectId, agentId, principalHash, options);
+		}
+		const provider = this.sandboxSettingsService.getProvider();
 		const sandboxId = buildWorkspaceSandboxId({
 			instanceId: this.instanceSettings.instanceId,
 			projectId,
@@ -229,7 +238,10 @@ export class AgentSandboxRuntimeService {
 		);
 	}
 
-	async acquireKnowledgeSandbox(projectId: string, agentId: string): Promise<AgentSandboxRuntime> {
+	async acquireKnowledgeSandbox(
+		projectId: string,
+		agentId: string,
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		const provider = this.sandboxSettingsService.getProvider();
 		const sandboxId = buildKnowledgeSandboxId({
 			instanceId: this.instanceSettings.instanceId,
@@ -267,7 +279,7 @@ export class AgentSandboxRuntimeService {
 		cacheKey: string,
 		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
-	): Promise<AgentSandboxRuntime> {
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
 		if (!pending) {
@@ -301,6 +313,88 @@ export class AgentSandboxRuntimeService {
 		return await sandbox.executeCommand(command, [], { timeout });
 	}
 
+	/**
+	 * Local agent workspace in Microsoft Execution Containers. The sandbox and its filesystem
+	 * are cheap to build and start lazily on first use, like the remote workspace sandboxes.
+	 */
+	private async acquireMxcWorkspace(
+		projectId: string,
+		agentId: string,
+		principalHash: AgentSandboxPrincipalHash,
+		options?: { onFilesystemInit?: FilesystemLifecycleHook },
+	): Promise<AgentSandboxRuntime<'mxc'>> {
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const sandboxId = buildWorkspaceSandboxId({
+			instanceId: this.instanceSettings.instanceId,
+			projectId,
+			agentId,
+			principalHash,
+		});
+		const sandbox = new MxcSandbox(await this.resolveMxcSandboxOptions(sandboxId));
+		const filesystem = new MxcLocalFilesystem(
+			sandbox,
+			options?.onFilesystemInit ? { onInit: options.onFilesystemInit } : undefined,
+		);
+		return {
+			provider: 'mxc',
+			sandbox,
+			filesystem,
+			workspaceRoot: sandbox.workspaceDir,
+			cacheKey: `mxc:workspace:${sandboxId}`,
+		};
+	}
+
+	private async destroyMxcWorkspace(
+		projectId: string,
+		agentId: string,
+		sandboxId: string,
+	): Promise<void> {
+		try {
+			await new MxcSandbox(await this.resolveMxcSandboxOptions(sandboxId)).deleteRemote();
+		} catch (error) {
+			this.logger.warn('Failed to delete local mxc agent workspace', {
+				projectId,
+				agentId,
+				sandboxId,
+				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
+			});
+		}
+	}
+
+	private async resolveMxcSandboxOptions(sandboxId: string): Promise<MxcSandboxOptions> {
+		const { mxcWorkspaceRoot, mxcReadonlyPaths, mxcDenialsReportDir, sandboxTimeout } =
+			this.agentsConfig;
+		// Compare real paths, so that a symlinked root cannot point into the n8n user folder.
+		const workspaceRoot = await canonicalizePath(
+			resolve(mxcWorkspaceRoot.trim() || join(homedir(), 'n8n-agent-workspaces')),
+		);
+		const userFolder = await canonicalizePath(resolve(this.instanceSettings.n8nFolder));
+		const fromUserFolder = relative(userFolder, workspaceRoot);
+		const insideUserFolder =
+			fromUserFolder !== '..' &&
+			!fromUserFolder.startsWith(`..${sep}`) &&
+			!isAbsolute(fromUserFolder);
+		if (insideUserFolder) {
+			// Agent commands are denied access to the n8n user folder, so no workspace could work.
+			throw new OperationalError(
+				`N8N_AGENTS_MXC_WORKSPACE_ROOT must be outside the n8n user folder (${this.instanceSettings.n8nFolder}).`,
+			);
+		}
+		return {
+			id: sandboxId,
+			workspaceRoot,
+			readonlyPaths: mxcReadonlyPaths
+				.split(',')
+				.map((path) => path.trim())
+				.filter(Boolean),
+			// The n8n user folder holds the encryption key and the database.
+			deniedPaths: [userFolder],
+			...(mxcDenialsReportDir.trim() ? { denialsReportDir: mxcDenialsReportDir.trim() } : {}),
+			timeout: sandboxTimeout,
+			logger: this.logger,
+		};
+	}
+
 	isEnabled(): boolean {
 		return this.sandboxSettingsService.isAgentSandboxEnabled();
 	}
@@ -318,13 +412,11 @@ export class AgentSandboxRuntimeService {
 		daytonaName: string,
 		n8nSandboxId: string,
 		labels: Record<string, string>,
-		includeMxc = false,
 	): Promise<void> {
-		const sandboxes: Array<[SandboxProvider, string]> = [
+		const sandboxes = [
 			['daytona', daytonaName],
 			['n8n-sandbox', n8nSandboxId],
-		];
-		if (includeMxc) sandboxes.push(['mxc', n8nSandboxId]);
+		] as const;
 
 		for (const [provider, sandboxId] of sandboxes) {
 			await this.tryDestroySandbox(projectId, agentId, provider, sandboxId, labels);
@@ -342,9 +434,7 @@ export class AgentSandboxRuntimeService {
 			const config =
 				provider === 'daytona'
 					? await this.resolveDaytonaSandboxConfig(projectId, sandboxId, labels)
-					: provider === 'mxc'
-						? await this.resolveMxcSandboxConfig(sandboxId)
-						: await this.resolveN8nSandboxConfig(sandboxId);
+					: await this.resolveN8nSandboxConfig(sandboxId);
 			const sandbox = await createSandbox(config, { logger: this.logger });
 			// deleteRemote deletes by sandbox identity even though this instance never
 			// started it; destroy() is scoped to remotes the instance acquired.
@@ -373,25 +463,23 @@ export class AgentSandboxRuntimeService {
 		cacheKey: string,
 		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
-	): Promise<AgentSandboxRuntime> {
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const config =
 			provider === 'daytona'
 				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, lifecycle)
-				: provider === 'mxc'
-					? await this.resolveMxcSandboxConfig(n8nSandboxId)
-					: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
+				: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
 		return await this.startSandbox(config, projectId, agentId, cacheKey, startOptions);
 	}
 
 	private async startSandbox(
-		config: DaytonaSandboxConfig | N8nSandboxConfig | MxcSandboxConfig,
+		config: DaytonaSandboxConfig | N8nSandboxConfig,
 		projectId: string,
 		agentId: string,
 		cacheKey: string,
 		startOptions: SandboxStartOptions,
-	): Promise<AgentSandboxRuntime> {
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		const { provider } = config;
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox?._start) {
@@ -404,11 +492,7 @@ export class AgentSandboxRuntimeService {
 			sandbox,
 			startOptions.onFilesystemInit ? { onInit: startOptions.onFilesystemInit } : undefined,
 		);
-		const workspaceRoot =
-			provider === 'mxc' ? filesystem.basePath : getPromptWorkspaceRoot(provider);
-		if (!workspaceRoot) {
-			throw new UnexpectedError('The mxc sandbox filesystem has no workspace folder');
-		}
+		const workspaceRoot = getPromptWorkspaceRoot(provider);
 		this.logger.debug('Acquired agent sandbox', {
 			projectId,
 			agentId,
@@ -445,43 +529,6 @@ export class AgentSandboxRuntimeService {
 			timeout: this.agentsConfig.sandboxTimeout,
 			createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
 			...lifecycle,
-		};
-	}
-
-	/** Local workspace in Microsoft Execution Containers, with one host folder for each sandbox id. */
-	private async resolveMxcSandboxConfig(sandboxId: string): Promise<MxcSandboxConfig> {
-		const { mxcWorkspaceRoot, mxcReadonlyPaths, mxcDenialsReportDir, sandboxTimeout } =
-			this.agentsConfig;
-		// Compare real paths, so that a symlinked root cannot point into the n8n user folder.
-		const workspaceRoot = await canonicalizePath(
-			resolve(mxcWorkspaceRoot.trim() || join(homedir(), 'n8n-agent-workspaces')),
-		);
-		const userFolder = await canonicalizePath(resolve(this.instanceSettings.n8nFolder));
-		const fromUserFolder = relative(userFolder, workspaceRoot);
-		const insideUserFolder =
-			fromUserFolder !== '..' &&
-			!fromUserFolder.startsWith(`..${sep}`) &&
-			!isAbsolute(fromUserFolder);
-		if (insideUserFolder) {
-			// Agent commands are denied access to the n8n user folder, so no workspace could work.
-			throw new OperationalError(
-				`N8N_AGENTS_MXC_WORKSPACE_ROOT must be outside the n8n user folder (${this.instanceSettings.n8nFolder}).`,
-			);
-		}
-		return {
-			enabled: true,
-			provider: 'mxc',
-			id: sandboxId,
-			workspaceRoot,
-			readonlyPaths: mxcReadonlyPaths
-				.split(',')
-				.map((path) => path.trim())
-				.filter(Boolean),
-			// The n8n user folder holds the encryption key and the database.
-			deniedPaths: [userFolder],
-			logger: this.logger,
-			...(mxcDenialsReportDir.trim() ? { denialsReportDir: mxcDenialsReportDir.trim() } : {}),
-			timeout: sandboxTimeout,
 		};
 	}
 
