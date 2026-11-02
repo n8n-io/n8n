@@ -434,6 +434,8 @@ export {
 	taskItemSchema,
 	taskListSchema,
 	tasksUpdatePayloadSchema,
+	instanceContextPayloadSchema,
+	statusPayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
@@ -510,9 +512,6 @@ export {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
-	instanceAiThreadTabRefSchema,
-	instanceAiThreadTabSchema,
-	instanceAiThreadTabsStateSchema,
 	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -556,8 +555,6 @@ export {
 	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
-	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
-	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	MAX_INSTANCE_AI_NODES_PER_SET,
@@ -728,10 +725,6 @@ export type {
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
-	InstanceAiThreadTabRef,
-	InstanceAiThreadTab,
-	InstanceAiThreadTabsState,
-	InstanceAiThreadTabsResponse,
 	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
@@ -758,6 +751,22 @@ export type {
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
+
+export {
+	assistantArtifactTypeSchema,
+	assistantThreadTabRefSchema,
+	assistantThreadTabSchema,
+	assistantThreadTabsStateSchema,
+	MAX_ASSISTANT_THREAD_OPEN_TABS,
+	MAX_ASSISTANT_THREAD_CLOSED_TABS,
+} from './schemas/assistant-thread-tabs.schema';
+export type {
+	AssistantArtifactType,
+	AssistantThreadTabRef,
+	AssistantThreadTab,
+	AssistantThreadTabsState,
+	AssistantThreadTabsResponse,
+} from './schemas/assistant-thread-tabs.schema';
 
 export {
 	instanceAiSetupCredentialSelectionKey,

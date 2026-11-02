@@ -447,10 +447,11 @@ export class AgentChatController {
 			projectId,
 			userId: req.user.id,
 		});
+		// Agent output files (tool and sandbox) have no resource ID. The thread check below limits them to this user's own session.
 		if (
 			!attachment ||
-			attachment.source !== N8N_CHAT_PRODUCTION_SOURCE ||
-			attachment.resourceId !== productionChatMemoryResourceId(req.user.id)
+			(attachment.source === N8N_CHAT_PRODUCTION_SOURCE &&
+				attachment.resourceId !== productionChatMemoryResourceId(req.user.id))
 		) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
@@ -801,6 +802,14 @@ export class AgentChatController {
 					: {}),
 				startedAt: job.createdAt.toISOString(),
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
+				...(job.files?.length
+					? {
+							files: job.files.map((file) => ({
+								...file,
+								fileName: scrubSecretsInText(file.fileName),
+							})),
+						}
+					: {}),
 			})),
 		};
 	}
@@ -1009,7 +1018,12 @@ export class AgentChatController {
 	@Get('/:agentId/chat/attachments/:attachmentId')
 	@ProjectScope('agent:read')
 	async getChatAttachment(
-		req: AuthenticatedRequest<{ projectId: string; agentId: string; attachmentId: string }>,
+		req: AuthenticatedRequest<
+			{ projectId: string; agentId: string; attachmentId: string },
+			{},
+			{},
+			{ threadId?: string }
+		>,
 		res: Response,
 	) {
 		const { projectId, agentId, attachmentId } = req.params;
@@ -1020,6 +1034,7 @@ export class AgentChatController {
 			agentId,
 			projectId,
 			userId: req.user.id,
+			...(typeof req.query.threadId === 'string' ? { threadId: req.query.threadId } : {}),
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {

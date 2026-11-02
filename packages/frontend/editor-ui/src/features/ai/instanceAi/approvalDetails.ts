@@ -1,5 +1,7 @@
 import {
 	getDataTableCallAction,
+	getExecutionCallAction,
+	getWorkspaceCallAction,
 	resolveBuilderToolName,
 	type InstanceAiApprovalDetails,
 } from '@n8n/api-types';
@@ -334,11 +336,19 @@ export function formatApprovalTitle(params: {
 	const action = typeof args?.action === 'string' && !actionSelectsTool ? args.action : undefined;
 	// Data table tools share the phrases of the former multi-action tool, keyed by action.
 	const dataTableAction = getDataTableCallAction(toolName);
+	// Execution tools do the same with the former executions tool.
+	const executionAction = getExecutionCallAction(toolName);
+	// Workspace tools do the same with the former workspace tool.
+	const workspaceAction = getWorkspaceCallAction(toolName);
 	const keyBase = dataTableAction
 		? `instanceAi.tools.data_tables.${dataTableAction}`
-		: action
-			? `instanceAi.tools.${toolName}.${action}`
-			: `instanceAi.tools.${toolName}`;
+		: executionAction
+			? `instanceAi.tools.workflow_builder_executions.${executionAction}`
+			: workspaceAction
+				? `instanceAi.tools.workspace.${workspaceAction}`
+				: action
+					? `instanceAi.tools.${toolName}.${action}`
+					: `instanceAi.tools.${toolName}`;
 	if (resourceName) {
 		const namedKey = approvalTitleKeys.get(`${keyBase}.imperativeWithResource`);
 		if (namedKey) {

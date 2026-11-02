@@ -6,6 +6,7 @@ import { saveAs } from 'file-saver';
 import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
+	skillScopeSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
@@ -17,6 +18,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	N8nActionDropdown,
@@ -101,7 +103,7 @@ const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
-const { failedSkillReason } = useSkillSourceReasons();
+const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 
@@ -143,7 +145,6 @@ const scopeFilterOptions = computed(() =>
 		[
 			['instance', 'settings.context.skills.filter.instance'],
 			['project', 'settings.context.skills.filter.project'],
-			['agent', 'settings.context.skills.filter.agent'],
 		] as const
 	).map(([value, key]) => ({ value, label: i18n.baseText(key) })),
 );
@@ -154,7 +155,8 @@ function creatorLabel(creator: SkillUserDto): string {
 }
 
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
-	return scope === 'instance' || scope === 'project' || scope === 'agent' ? { scope } : {};
+	const parsed = skillScopeSchema.safeParse(scope);
+	return parsed.success ? { scope: parsed.data } : {};
 }
 
 // Paging, sort, search and filters run on the server: the count and the page both
@@ -176,7 +178,7 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 
 /**
  * Where a new skill can live: the instance, the personal project and the team projects
- * that the user may write to. An agent skill is made from inside its agent, not here.
+ * that the user may write to.
  */
 const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 	const options: AgentSkillModalScopeOption[] = [];
@@ -185,7 +187,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
-			target: { projectId: null, agentId: null },
+			target: { projectId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -194,7 +196,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
-			target: { projectId: personalProject.id, agentId: null },
+			target: { projectId: personalProject.id },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -203,7 +205,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
-			target: { projectId: project.id, agentId: null },
+			target: { projectId: project.id },
 		});
 	}
 	return options;
@@ -459,7 +461,7 @@ async function onCreate(
 	return undefined;
 }
 
-/** The value of the scope picker for a saved skill. An agent skill has no picker value of its own. */
+/** The value of the scope picker for a saved skill. */
 function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string {
 	if (skill.scope === 'project' && skill.projectId)
 		return `${PROJECT_SCOPE_PREFIX}${skill.projectId}`;
@@ -499,8 +501,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 			read_only: !detail.canEdit,
 		});
 		const currentValue = scopeValueOf(detail);
-		// The current scope is listed even when the user could not create a skill there,
-		// such as an agent skill, which is only made from inside its agent.
+		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
@@ -666,6 +667,50 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	onStopped?.();
 	showMessage({
 		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
+		type: 'success',
+	});
+	await load();
+}
+
+/**
+ * Check now: checks the whole source of the skill. The list reloads, so the badges of every
+ * skill of the source show what the check found.
+ */
+async function onCheckForUpdates(skill: SkillListItem) {
+	let result;
+	try {
+		result = await skillsStore.checkForUpdates(skill.id);
+	} catch (error) {
+		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
+		// The user cannot pick another credential here, so that reason gets its own text.
+		const text =
+			reason === 'credential_missing'
+				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
+				: reason !== undefined
+					? reasonText(reason)
+					: undefined;
+		showError(
+			text ? new Error(text) : error,
+			i18n.baseText('settings.context.skills.checkForUpdates.error'),
+		);
+		return;
+	}
+	const { label, updatesFound, throttled } = result;
+	showMessage({
+		title: throttled
+			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
+					interpolate: { label },
+				})
+			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
+					interpolate: { label },
+				}),
+		message:
+			updatesFound === 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.none')
+				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
+						interpolate: { count: updatesFound },
+						adjustToNumber: updatesFound,
+					}),
 		type: 'success',
 	});
 	await load();
@@ -842,6 +887,7 @@ onMounted(async () => {
 			@timeline="openEditModal($event, 'versions')"
 			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
+			@check-for-updates="onCheckForUpdates($event)"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"

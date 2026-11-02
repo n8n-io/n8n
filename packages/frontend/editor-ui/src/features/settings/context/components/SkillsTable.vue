@@ -21,7 +21,14 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'stopSyncing' | 'delete';
+type SkillAction =
+	| 'edit'
+	| 'timeline'
+	| 'compare'
+	| 'download'
+	| 'checkForUpdates'
+	| 'stopSyncing'
+	| 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -48,6 +55,7 @@ const emit = defineEmits<{
 	timeline: [skill: SkillListItem];
 	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
+	checkForUpdates: [skill: SkillListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -89,6 +97,16 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
 		},
+		// Only a synced skill that the user may change. It checks the whole source.
+		...(skill.canCheckForUpdates
+			? [
+					{
+						value: 'checkForUpdates' as const,
+						label: i18n.baseText('settings.context.skills.checkForUpdates.action'),
+						icon: 'refresh-cw' as const,
+					},
+				]
+			: []),
 		// Only a synced skill that the user may stop syncing.
 		...(skill.canStopSyncing
 			? [
@@ -115,8 +133,21 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else if (action === 'timeline') emit('timeline', skill);
 	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
+	else if (action === 'checkForUpdates') emit('checkForUpdates', skill);
 	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
+}
+
+/** The badge of a synced skill whose source has new content that waits for review. */
+const SYNC_BADGES = {
+	update_available: { variant: 'info', key: 'settings.context.skills.sync.updateAvailable' },
+	update_blocked: { variant: 'danger', key: 'settings.context.skills.sync.updateBlocked' },
+} as const;
+
+function syncBadgeOf({ syncState }: SkillListItem) {
+	if (syncState !== 'update_available' && syncState !== 'update_blocked') return undefined;
+	const { variant, key } = SYNC_BADGES[syncState];
+	return { variant, label: i18n.baseText(key), tooltip: i18n.baseText(`${key}.tooltip`) };
 }
 
 function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
@@ -191,12 +222,16 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
 							{{ item.name }}
 						</N8nText>
+						<N8nTooltip v-if="syncBadgeOf(item)" :content="syncBadgeOf(item)?.tooltip">
+							<N8nBadge
+								:variant="syncBadgeOf(item)?.variant"
+								:data-test-id="`skill-sync-badge-${item.syncState}`"
+							>
+								{{ syncBadgeOf(item)?.label }}
+							</N8nBadge>
+						</N8nTooltip>
 						<N8nTooltip
-							v-if="
-								props.showAssistantAvailability &&
-								item.scope !== 'agent' &&
-								item.availableToAssistant
-							"
+							v-if="props.showAssistantAvailability && item.availableToAssistant"
 							:content="i18n.baseText('settings.context.skills.assistant.label')"
 						>
 							<N8nBadge
@@ -208,7 +243,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							</N8nBadge>
 						</N8nTooltip>
 						<N8nTooltip
-							v-if="props.showMcpAvailability && item.scope !== 'agent' && item.availableToMCP"
+							v-if="props.showMcpAvailability && item.availableToMCP"
 							placement="right"
 							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
 						>

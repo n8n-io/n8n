@@ -50,7 +50,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
 | `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
-| `workspace` | 8 |
+| `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
@@ -343,7 +343,7 @@ this tool with `filePath`.
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
-| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
+| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `move_workflow_to_folder`. Advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
 conversation is bound to, and nothing can redirect it. The field used to exist and
@@ -1138,22 +1138,23 @@ resolve to the matching tool.
 
 ---
 
-## `workspace` (4 or 8 actions)
+## Workspace tools (4 or 8 tools)
 
-The registry always contains this tool. Without `workspaceService`, every call
-returns an unavailable error. Folder actions are present only when
+Each action of the former `workspace` tool is its own tool. The registry always
+contains the first four tools. Without `workspaceService`, every call returns an
+unavailable error. The folder tools are present only when
 `workspaceService.listFolders` is available.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
-| `tag-workflow` | Apply tags to a workflow |
-| `list-tags` | List available tags |
-| `cleanup-test-executions` | Remove test execution data |
-| `list-folders` | List folders (conditional) |
-| `create-folder` | Create a new folder (conditional) |
-| `delete-folder` | Delete a folder (conditional) |
-| `move-workflow-to-folder` | Move a workflow to a folder (conditional) |
+| `list_projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
+| `tag_workflow` | Apply tags to a workflow |
+| `list_tags` | List available tags |
+| `cleanup_test_executions` | Remove test execution data |
+| `list_folders` | List folders (conditional) |
+| `create_folder` | Create a new folder (conditional) |
+| `delete_folder` | Delete a folder (conditional) |
+| `move_workflow_to_folder` | Move a workflow to a folder (conditional) |
 
 ---
 

@@ -4,6 +4,7 @@
 
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	getExecutionCallAction,
 	isFormerDataTablesTool,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
@@ -601,7 +602,7 @@ function extractResourceIds(
 
 	if (
 		toolName === EXECUTION_TOOL_LEGACY ||
-		(toolName === DOMAIN_TOOL_IDS.EXECUTIONS && action === 'run')
+		getExecutionCallAction(toolName, action) === 'run'
 	) {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
