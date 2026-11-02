@@ -15,6 +15,7 @@ import type { AgentChatComposerAttachment } from '@/features/agents/utils/compos
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import type { ArtifactThread } from '../../artifactThread';
+import type { WorkflowFailuresReport } from '../../components/InstanceAiWorkflowPreview.vue';
 import { INSTANCE_AI_VIEW } from '../../constants';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
@@ -27,6 +28,7 @@ import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
 const {
 	panelProps,
+	panelSlots,
 	sendMessageFromOutside,
 	telemetryTrack,
 	previewProps,
@@ -36,6 +38,7 @@ const {
 	focusInput,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
+	panelSlots: { current: [] as string[] },
 	sendMessageFromOutside: vi.fn(),
 	telemetryTrack: vi.fn(),
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
@@ -73,6 +76,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 // The chat state that the stub panel exposes, as the real panel does.
 const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
+const isBusy = ref(false);
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
@@ -100,11 +104,14 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				composerAttachments,
 				messages: chatMessages,
 				isStreaming: ref(false),
+				isBusy,
 				isLoadingHistory,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
+				panelSlots.current = Object.keys(slots);
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
+					slots['inline-offers']?.(),
 					slots['composer-attachments']?.(),
 				]);
 			};
@@ -279,6 +286,8 @@ describe('AssistantAgentThreadView', () => {
 		composerAttachments.value = [];
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
+		isBusy.value = false;
+		panelSlots.current = [];
 		if (threadArea.width) threadArea.width.value = 0;
 		fetchTabs.mockReset().mockResolvedValue({ state: null });
 		saveTabs.mockReset().mockResolvedValue({ state: null });
@@ -517,6 +526,102 @@ describe('AssistantAgentThreadView', () => {
 		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', [], { context });
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		expect(clientContext()).not.toHaveProperty('context');
+	});
+
+	describe('fix with AI', () => {
+		const failureReport: WorkflowFailuresReport = {
+			workflowId: 'wf-1',
+			executionId: 'exec-1',
+			errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+		};
+
+		async function renderWithFailedRun(report = failureReport) {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			chatMessages.value = [buildMessage('tc-1')];
+			await flushPromises();
+
+			await reportFailure(report);
+			return result;
+		}
+
+		async function reportFailure(report: WorkflowFailuresReport) {
+			const onWorkflowFailures = previewProps.current?.onWorkflowFailures as (
+				report: WorkflowFailuresReport,
+			) => void;
+			onWorkflowFailures(report);
+			await flushPromises();
+		}
+
+		async function reportSuccess(workflowId: string) {
+			const onWorkflowSucceeded = previewProps.current?.onWorkflowSucceeded as (
+				workflowId: string,
+			) => void;
+			onWorkflowSucceeded(workflowId);
+			await flushPromises();
+		}
+
+		it('passes no offers to the chat without a failed run', async () => {
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(panelSlots.current).not.toContain('inline-offers');
+		});
+
+		it('offers a fix when a preview run fails', async () => {
+			const { getByTestId } = await renderWithFailedRun();
+
+			expect(getByTestId('instance-ai-fix-with-ai-panel')).toHaveTextContent('Extract Emails');
+		});
+
+		it('sends the fix prompt with the failed execution through the chat, and hides the offer', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = await renderWithFailedRun();
+
+			await user.click(getByTestId('instance-ai-fix-with-ai-button'));
+
+			expect(sendMessageFromOutside).toHaveBeenCalledOnce();
+			const [prompt, files, clientContext] = sendMessageFromOutside.mock.calls[0];
+			expect(prompt).toContain('Extract Emails');
+			expect(prompt).toContain('Intentional break');
+			expect(files).toEqual([]);
+			expect(clientContext).toEqual({
+				attachments: [{ type: 'workflow', id: 'wf-1', name: 'Untitled', executionId: 'exec-1' }],
+			});
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
+
+		it('hides the offer after dismiss until another run fails', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = await renderWithFailedRun();
+
+			await user.click(getByTestId('instance-ai-fix-with-ai-dismiss'));
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+
+			await reportFailure({ ...failureReport, executionId: 'exec-2' });
+			expect(getByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+		});
+
+		it('hides the offer while the chat is busy', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+
+			isBusy.value = true;
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
+
+		it('clears the offer when a later run of the same workflow succeeds', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+
+			await reportSuccess('wf-other');
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+
+			await reportSuccess('wf-1');
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
 	});
 
 	it('shows the stored title of the thread in the header', async () => {

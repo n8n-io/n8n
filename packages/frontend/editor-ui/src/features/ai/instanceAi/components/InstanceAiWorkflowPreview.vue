@@ -52,6 +52,8 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'initial-node-id-consumed': [];
 	'workflow-failures': [report: WorkflowFailuresReport];
+	/** A later run of the workflow succeeded, so an earlier failure is stale. */
+	'workflow-succeeded': [workflowId: string];
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
@@ -117,6 +119,7 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 	workflowId: () => props.workflowId,
 	executionResult: () => props.executionResult,
 	reportWorkflowFailures,
+	reportWorkflowSuccess: (workflowId) => emit('workflow-succeeded', workflowId),
 	paneElement: () => paneElement.value,
 });
 
