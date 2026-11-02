@@ -1,3 +1,5 @@
+import { BaseError } from '@n8n/errors';
+
 import type { IExecutionContext, IRedactionSetting } from './execution-context';
 import type {
 	IRedactedErrorInfo,
@@ -194,7 +196,8 @@ export const AI_EVENT_REDACTED_MESSAGE = '[AI event payload redacted by workflow
 /**
  * Decides whether output that leaves the execution-data pipeline (Code-node
  * console output, the error message on log-streaming and telemetry sinks,
- * AI event payloads, process-log error reports) is redacted for this run.
+ * AI event payloads, the error reports that reach the process log and Sentry
+ * through the error reporter) is redacted for this run.
  * Mirrors `ExecutionRedactionService.resolvePolicy`:
  * the `runtimeData.redaction` snapshot wins, the workflow setting is the
  * fallback; manual runs consult the manual channel, every other mode the
@@ -259,7 +262,36 @@ export function redactExecutionError(
 ): IRedactedErrorInfo {
 	const result: IRedactedErrorInfo = { type: error.name };
 	if (error.name === 'NodeApiError') {
-		result.httpCode = error.httpCode ?? null;
+		// `NodeApiError` also reads `httpCode` from response-body fields, so only
+		// a numeric HTTP status passes through.
+		const { httpCode } = error;
+		result.httpCode = httpCode && /^[1-5]\d{2}$/.test(httpCode) ? httpCode : null;
 	}
 	return result;
+}
+
+/**
+ * The error to hand to the error reporter while a redacted run executes: a
+ * copy that keeps only the error class and the call frames, so neither the
+ * process log nor Sentry receives the message, the description or the cause.
+ * The copy carries no `level` or `shouldReport`, so the checks that Sentry's
+ * `beforeSend` runs on an original n8n error run here instead: an error it
+ * would drop (`shouldReport` false, warning or info level) returns `undefined`,
+ * because its message is all it has.
+ */
+export function redactErrorReport(error: Error): Error | undefined {
+	if (
+		error instanceof BaseError &&
+		(!error.shouldReport || error.level === 'warning' || error.level === 'info')
+	) {
+		return undefined;
+	}
+	// Stack frames are in the format `<name>: <message>\n<call frames>`; the
+	// message can span lines, so only the call-frame lines are kept.
+	const errorClass = error.name || 'Error';
+	const sanitized = new Error(errorClass);
+	sanitized.name = errorClass;
+	const frames = (error.stack ?? '').split('\n').filter((line) => /^\s+at\s/.test(line));
+	sanitized.stack = [errorClass, ...frames].join('\n');
+	return sanitized;
 }

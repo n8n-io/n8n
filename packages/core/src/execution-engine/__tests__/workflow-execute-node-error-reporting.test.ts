@@ -14,6 +14,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ApplicationError,
 	NodeConnectionTypes,
+	NodeOperationError,
 	OperationalError,
 	UnexpectedError,
 	UserError,
@@ -217,6 +218,37 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 			expect(baseError.shouldReport).toBe(false);
 
 			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report a warning-level BaseError that Sentry would ignore', async () => {
+			// `NodeOperationError` keeps `shouldReport` true while it sets `level` to
+			// 'warning' after construction, so the level check must run here.
+			const node = createNodeData({ name: 'ThrowingNode', type: 'n8n-nodes-base.manualTrigger' });
+			const baseError = new NodeOperationError(node, 'secret value');
+			expect(baseError.shouldReport).toBe(true);
+			expect(baseError.level).toBe('warning');
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report an ApplicationError whose cause is an axios error', async () => {
+			const wrappedError = new ApplicationError('wrapper', { cause: createAxiosError() });
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report an ApplicationError whose cause must not reach Sentry', async () => {
+			const wrappedError = new ApplicationError('wrapper', {
+				cause: new OperationalError('secret value'),
+			});
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
 
 			expect(mockErrorReporter.error).not.toHaveBeenCalled();
 		});

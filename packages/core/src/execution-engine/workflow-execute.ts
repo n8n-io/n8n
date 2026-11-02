@@ -63,6 +63,7 @@ import {
 	applyDynamicCredentialsUsage,
 	hasExecutionRunNodes,
 	isExecutionOutputRedacted,
+	redactErrorReport,
 } from 'n8n-workflow';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
@@ -1966,24 +1967,26 @@ export class WorkflowExecute {
 	 * their class and call frames, because their message can hold user data.
 	 *
 	 * When the run's redaction policy covers the channel it executes on, every report
-	 * keeps only its class and call frames: the process log and Sentry are sinks the
-	 * redaction contract covers. An error that must not reach Sentry (`shouldReport`
-	 * false) is then dropped instead of logged, as its message is all it has.
+	 * goes through `redactErrorReport`: it keeps only the class and call frames, and an
+	 * error Sentry's `beforeSend` would drop is dropped here. A wrapped cause runs
+	 * through the same checks, so a cause that would be skipped raw is skipped redacted.
 	 */
 	private buildErrorReport(error: unknown, workflow: Workflow): Error | undefined {
 		const redacted = isExecutionOutputRedacted(this.runExecutionData, workflow.settings, this.mode);
+		return this.selectErrorReport(error, redacted);
+	}
 
+	private selectErrorReport(error: unknown, redacted: boolean): Error | undefined {
 		if (error instanceof ApplicationError) {
 			// Report any unhandled errors that were wrapped in by one of our error classes
 			if (!(error.cause instanceof Error)) return undefined;
-			return redacted ? this.sanitizeErrorReport(error.cause) : error.cause;
+			return redacted ? this.selectErrorReport(error.cause, true) : error.cause;
 		}
 
 		if (error instanceof BaseError) {
 			// BaseError subclasses specify shouldReport and level
 			// so always report and let beforeSend decide
-			if (!redacted) return error;
-			return error.shouldReport ? this.sanitizeErrorReport(error) : undefined;
+			return redacted ? redactErrorReport(error) : error;
 		}
 
 		// oxlint-disable-next-line typescript/no-deprecated
@@ -1995,21 +1998,7 @@ export class WorkflowExecute {
 
 		// Non-BaseError errors only report their class and call frames
 		// The full error is still stored in the execution resultData
-		return this.sanitizeErrorReport(error);
-	}
-
-	/**
-	 * A copy of `error` that keeps only its class and call frames.
-	 * Stack frames are in the format `<name>: <message>\n<call frames>`
-	 * they can span multiple lines, so we drop everything except call frame lines
-	 */
-	private sanitizeErrorReport(error: Error): Error {
-		const errorClass = error.name || 'Error';
-		const sanitized = new Error(errorClass);
-		sanitized.name = errorClass;
-		const frames = (error.stack ?? '').split('\n').filter((line) => /^\s+at\s/.test(line));
-		sanitized.stack = [errorClass, ...frames].join('\n');
-		return sanitized;
+		return redactErrorReport(error);
 	}
 
 	/**

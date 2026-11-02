@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -128,6 +129,50 @@ describe('processError', () => {
 		execution = await createExecution({ status: 'success', finished: true }, workflow);
 		hooks = new core.ExecutionLifecycleHooks('webhook', execution.id, workflow);
 		hooks.addHandler('workflowExecuteAfter', watcher.workflowExecuteAfter);
+	});
+
+	test('processError keeps the error message out of the log and the report when the workflow redacts the run', async () => {
+		const redactedWorkflow = await createWorkflow({ settings: { redactionPolicy: 'all' } }, owner);
+		const redactedExecution = await createExecution(
+			{ status: 'waiting', finished: false },
+			redactedWorkflow,
+		);
+		const redactedHooks = new core.ExecutionLifecycleHooks(
+			'webhook',
+			redactedExecution.id,
+			redactedWorkflow,
+		);
+		const activeExecutions = Container.get(ActiveExecutions);
+		await activeExecutions.add(
+			{ executionMode: 'webhook', workflowData: redactedWorkflow },
+			{ executionId: redactedExecution.id, expectedStatus: 'waiting' },
+		);
+		const postExecutePromise = activeExecutions.getPostExecutePromise(redactedExecution.id);
+		// The test server replaces the logger with a deep mock, so read the runner's own
+		// instances instead of spying on the container.
+		const { logger, errorReporter } = runner as unknown as {
+			logger: Logger;
+			errorReporter: core.ErrorReporter;
+		};
+		const reporterSpy = vi.spyOn(errorReporter, 'error').mockImplementation(() => {});
+
+		await runner.processError(
+			new Error('secret value') as ExecutionError,
+			new Date(),
+			'webhook',
+			redactedExecution.id,
+			redactedHooks,
+		);
+		await postExecutePromise;
+
+		expect(logger.error).toHaveBeenCalledWith(
+			`Problem with execution ${redactedExecution.id}: Error. Aborting.`,
+		);
+		expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain('secret value');
+		expect(reporterSpy).toHaveBeenCalledTimes(1);
+		const [reported] = reporterSpy.mock.calls[0] as [Error];
+		expect(reported.message).toBe('Error');
+		expect(reported.stack).not.toContain('secret value');
 	});
 
 	test('processError should return early in Bull stalled edge case', async () => {

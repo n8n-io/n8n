@@ -32,8 +32,10 @@ import {
 	createRunExecutionData,
 	ExecutionCancelledError,
 	hasExecutionRunNodes,
+	isExecutionOutputRedacted,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
+	redactErrorReport,
 	TimeoutExecutionCancelledError,
 	Workflow,
 	WorkflowOperationError,
@@ -291,8 +293,18 @@ export class WorkflowRunner {
 			}
 		}
 
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
+		// The run data is gone at this point, so the stored workflow setting decides;
+		// the instance floor is already enforced on that setting.
+		const redacted = isExecutionOutputRedacted(
+			undefined,
+			hooks?.workflowData.settings,
+			executionMode,
+		);
+		this.logger.error(
+			`Problem with execution ${executionId}: ${redacted ? error.name : error.message}. Aborting.`,
+		);
+		const toReport = redacted ? redactErrorReport(error) : error;
+		if (toReport) this.errorReporter.error(toReport, { executionId });
 
 		if (error instanceof MaxStalledCountError) {
 			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(

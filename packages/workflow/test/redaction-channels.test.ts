@@ -1,3 +1,5 @@
+import { BaseError, OperationalError, UnexpectedError } from '@n8n/errors';
+
 import type { IExecutionContext } from '../src/execution-context';
 import type { WorkflowSettings } from '../src/interfaces';
 import {
@@ -8,6 +10,7 @@ import {
 	mergeRedactionChannels,
 	isExecutionOutputRedacted,
 	policyToChannels,
+	redactErrorReport,
 	redactExecutionError,
 	redactionSettingToChannels,
 	shouldRedactExecutionOutput,
@@ -209,6 +212,48 @@ describe('redaction-channels', () => {
 				type: 'NodeApiError',
 				httpCode: null,
 			});
+		});
+
+		it.each(['500 Internal Server Error', 'ECONNRESET', '{"status":"secret"}', '', '42', '600'])(
+			'drops a status code that is not a numeric HTTP status (%j)',
+			(httpCode) => {
+				expect(redactExecutionError({ name: 'NodeApiError', httpCode })).toEqual({
+					type: 'NodeApiError',
+					httpCode: null,
+				});
+			},
+		);
+	});
+
+	describe('redactErrorReport', () => {
+		it('keeps only the class and the call frames of a plain error', () => {
+			const error = new Error('secret value\nsecond secret line');
+
+			const report = redactErrorReport(error);
+
+			expect(report).toBeInstanceOf(Error);
+			expect(report?.name).toBe('Error');
+			expect(report?.message).toBe('Error');
+			expect(report?.stack).not.toContain('secret');
+			expect(report?.stack).toMatch(/^Error\n\s+at /);
+		});
+
+		it('keeps the class of an n8n error that Sentry would report', () => {
+			const report = redactErrorReport(new UnexpectedError('secret value'));
+
+			expect(report?.name).toBe('UnexpectedError');
+			expect(report?.message).toBe('UnexpectedError');
+			expect(report?.stack).not.toContain('secret value');
+		});
+
+		class LeveledError extends BaseError {}
+
+		it.each([
+			['shouldReport false', new OperationalError('secret value')],
+			['warning level', new LeveledError('secret value', { level: 'warning', shouldReport: true })],
+			['info level', new LeveledError('secret value', { level: 'info', shouldReport: true })],
+		])('drops an n8n error that Sentry would ignore (%s)', (_case, error) => {
+			expect(redactErrorReport(error)).toBeUndefined();
 		});
 	});
 
