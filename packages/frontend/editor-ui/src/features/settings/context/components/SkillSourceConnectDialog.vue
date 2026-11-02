@@ -1,11 +1,8 @@
 <script lang="ts" setup>
 import type {
+	AgentSkill,
 	DiscoveredSkill,
-	SkillScanFinding,
-	SkillScanLocation,
-	SkillScanPart,
 	SkillScanSeverity,
-	SkillPreviewFile,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -51,6 +48,8 @@ import type { AgentSkillModalScopeOption } from '@/features/agents/components/Ag
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
+import SkillFilesView from './SkillFilesView.vue';
+import SkillFindingsList from './SkillFindingsList.vue';
 import { useSkillsStore } from '../skills.store';
 import {
 	PROJECT_SCOPE_PREFIX,
@@ -108,7 +107,7 @@ function repositoryKey(repository: SkillSourceRepositoryOption): string {
 const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
-const { reasonText, findingsText, ruleText } = useSkillSourceReasons();
+const { reasonText, findingsText } = useSkillSourceReasons();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 
@@ -865,13 +864,6 @@ function toggleGroup(group: SkillGroup) {
 
 const SEVERITY_ORDER = { blocked: 0, needs_review: 1, info: 2 } as const;
 
-/** The callout of a finding. The icon repeats the severity, so it does not rely on colour alone. */
-const SEVERITY_CALLOUTS = {
-	blocked: { theme: 'danger', icon: 'circle-x' },
-	needs_review: { theme: 'warning', icon: 'triangle-alert' },
-	info: { theme: 'info', icon: 'circle-alert' },
-} as const;
-
 /** The most severe findings first. */
 const previewFindings = computed(() =>
 	[...(previewSkill.value?.check?.findings ?? [])].sort(
@@ -879,184 +871,42 @@ const previewFindings = computed(() =>
 	),
 );
 
-const PART_LABELS = {
-	name: 'settings.context.skills.connect.preview.part.name',
-	description: 'settings.context.skills.connect.preview.part.description',
-	frontmatter: 'settings.context.skills.connect.preview.part.frontmatter',
-	instructions: 'settings.context.skills.connect.preview.part.instructions',
-} satisfies Record<SkillScanPart, BaseTextKey>;
-
-/** Only multi-line texts have useful line numbers: the instructions and the reference files. */
-function hasLineNumbers(location: SkillScanLocation): boolean {
-	return !location.part || location.part === 'instructions';
-}
-
-/**
- * Where a finding is, such as "SKILL.md (instructions)". The snippet gutter already shows the
- * line, so this text does not repeat it.
- */
-function locationText(finding: SkillScanFinding): string {
-	const file = finding.file ?? '';
-	const part = finding.location?.part;
-	if (!part) return file;
-	return i18n.baseText('settings.context.skills.connect.preview.locationPartOnly', {
-		interpolate: { file, part: i18n.baseText(PART_LABELS[part]) },
-	});
-}
-
-/** The callout text of a finding, such as "Hidden Unicode characters in references/files.md". */
-function findingTitle(finding: SkillScanFinding): string {
-	const name = ruleText(finding.rule);
-	if (!finding.file) return name;
-	return i18n.baseText('settings.context.skills.connect.check.findingInFile', {
-		interpolate: { finding: name, file: locationText(finding) },
-	});
-}
-
-/** The snippet lines, with the finding split out of its line so the template can mark it. */
-function snippetRows(location: SkillScanLocation) {
-	return location.snippet.map(({ line, text }) =>
-		line === location.line
-			? {
-					line,
-					isMatch: true,
-					before: text.slice(0, location.start),
-					match: text.slice(location.start, location.end),
-					after: text.slice(location.end),
-				}
-			: { line, isMatch: false, before: text, match: '', after: '' },
-	);
-}
-
-/** The marked text of a finding, as its snippet shows it. */
-function snippetMatch(location: SkillScanLocation): string {
-	const row = location.snippet.find(({ line }) => line === location.line);
-	return row?.text.slice(location.start, location.end) ?? '';
-}
-
-/** Where a finding is in the full view. `start` is -1 when only the line is known. */
-type FindingPlace = { file: string; line: number; start: number; end: number };
-
-/**
- * The line of a finding in its preview file. The instructions and the reference files keep the
- * line numbers of the finding. The name, description and frontmatter have numbers of their own,
- * so the marked text finds their line in the frontmatter of SKILL.md.
- */
-function placeFinding(
-	finding: SkillScanFinding,
-	file: SkillPreviewFile | undefined,
-	lines: string[],
-): FindingPlace | null {
-	const location = finding.location;
-	if (!location || !file) return null;
-	const match = snippetMatch(location);
-	let line = location.line;
-	if (location.part === 'instructions' && file.instructionsLine) {
-		line = file.instructionsLine + location.line - 1;
-	} else if (location.part) {
-		const headerEnd = (file.instructionsLine ?? lines.length + 1) - 1;
-		const index = match ? lines.slice(0, headerEnd).findIndex((text) => text.includes(match)) : -1;
-		if (index < 0) return null;
-		line = index + 1;
-	}
-	const text = lines[line - 1];
-	if (text === undefined) return null;
-	// A long snippet line is cut, so its offsets can differ from the full line.
-	const start =
-		text.slice(location.start, location.end) === match
-			? location.start
-			: match
-				? text.indexOf(match)
-				: -1;
-	return start < 0
-		? { file: file.path, line, start: -1, end: -1 }
-		: { file: file.path, line, start, end: start + match.length };
-}
-
-type PreviewSegment = { text: string; finding?: number };
-type PreviewRow = {
-	line: number;
-	segments: PreviewSegment[];
-	/** The indexes in `previewFindings` of the findings on this line, most severe first. */
-	findings: number[];
-	severity?: SkillScanSeverity;
-};
-
-/** One line, split so the template can mark each finding in it. Marks that overlap are dropped. */
-function previewRow(text: string, line: number, places: Array<[number, FindingPlace]>): PreviewRow {
-	const findings = places.map(([index]) => index);
-	const marks = places
-		.filter(([, place]) => place.end > place.start)
-		.sort(([, left], [, right]) => left.start - right.start);
-	const segments: PreviewSegment[] = [];
-	let at = 0;
-	for (const [index, { start, end }] of marks) {
-		if (start < at) continue;
-		if (start > at) segments.push({ text: text.slice(at, start) });
-		segments.push({ text: text.slice(start, end), finding: index });
-		at = end;
-	}
-	if (at < text.length || segments.length === 0) segments.push({ text: text.slice(at) });
-	const first = findings[0];
+/** The previewed skill in the shape of the skill modal: the instructions without the frontmatter. */
+const previewAgentSkill = computed<AgentSkill | null>(() => {
+	const skill = previewSkill.value;
+	if (!skill) return null;
+	const main = skill.previewFiles.find((file) => file.path === 'SKILL.md');
+	const text = main?.text ?? '';
+	const instructions = main?.instructionsLine
+		? text
+				.split('\n')
+				.slice(main.instructionsLine - 1)
+				.join('\n')
+		: text.replace(/^---\n[\s\S]*?\n---\n?/, '');
 	return {
-		line,
-		segments,
-		findings,
-		...(first !== undefined ? { severity: previewFindings.value[first].severity } : {}),
-	};
-}
-
-/** The full files of the previewed skill, with the line of each finding marked. */
-const previewView = computed(() => {
-	const files = previewSkill.value?.previewFiles ?? [];
-	const linesOf = new Map(files.map((file) => [file.path, file.text.split('\n')]));
-	const places = previewFindings.value.map((finding) =>
-		placeFinding(
-			finding,
-			files.find(({ path }) => path === finding.file),
-			linesOf.get(finding.file ?? '') ?? [],
-		),
-	);
-	const byLine = new Map<string, Array<[number, FindingPlace]>>();
-	places.forEach((place, index) => {
-		if (!place) return;
-		const key = lineKey(place.file, place.line);
-		byLine.set(key, [...(byLine.get(key) ?? []), [index, place]]);
-	});
-	return {
-		places,
-		files: files.map((file) => ({
-			path: file.path,
-			rows: (linesOf.get(file.path) ?? []).map((text, index) =>
-				previewRow(text, index + 1, byLine.get(lineKey(file.path, index + 1)) ?? []),
-			),
-		})),
+		name: skill.name ?? skill.location,
+		description: skill.description ?? '',
+		instructions: instructions.trim(),
+		references: skill.previewFiles
+			.filter((file) => file.path !== 'SKILL.md')
+			.map((file) => ({ path: file.path, content: file.text })),
 	};
 });
 
-function lineKey(file: string, line: number): string {
-	return `${file}:${line}`;
-}
+/** Findings that are not in a file of the preview, such as a file that n8n leaves out. */
+const outsideFindings = computed(() => {
+	const files = new Set([
+		'SKILL.md',
+		...(previewAgentSkill.value?.references ?? []).map((reference) => reference.path),
+	]);
+	return previewFindings.value.filter((finding) => !finding.file || !files.has(finding.file));
+});
 
-/** The finding that the user points at, in the list of findings or in the full view. */
-const activeFinding = ref<number | null>(null);
 const previewRef = ref<HTMLElement | null>(null);
 
 watch(previewKey, () => {
-	activeFinding.value = null;
 	if (previewRef.value) previewRef.value.scrollTop = 0;
 });
-
-/** Scrolls the full view to the line of a finding. */
-function goToFinding(index: number) {
-	const place = previewView.value.places[index];
-	if (!place) return;
-	const key = lineKey(place.file, place.line);
-	const rows = previewRef.value?.querySelectorAll<HTMLElement>('[data-line-key]') ?? [];
-	const row = [...rows].find((element) => element.dataset.lineKey === key);
-	row?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
-	activeFinding.value = index;
-}
 
 type SkillStatusKind = 'error' | 'warning' | 'info' | 'success';
 
@@ -1480,23 +1330,6 @@ function unavailableReason(skill: DiscoveredSkill): string {
 
 				<section ref="previewRef" :class="$style.preview" data-test-id="skill-source-preview">
 					<template v-if="previewSkill">
-						<!-- The highlighted row names the skill, so the preview names only its folder. -->
-						<div :class="$style.previewHeader">
-							<div :class="$style.previewPath">
-								<N8nIcon icon="folder-open" size="medium" color="text-light" />
-								<N8nText size="medium" color="text-light">{{ previewSkill.location }}</N8nText>
-							</div>
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								:href="previewSkill.webUrl"
-								target="_blank"
-								data-test-id="skill-source-preview-open"
-							>
-								<template #icon><N8nIcon icon="external-link" :size="16" /></template>
-								{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
-							</N8nButton>
-						</div>
 						<N8nCallout v-if="previewSkill.nameTaken" theme="info">
 							{{ nameTakenReason(previewSkill) }}
 						</N8nCallout>
@@ -1515,109 +1348,15 @@ function unavailableReason(skill: DiscoveredSkill): string {
 								{{ i18n.baseText('settings.context.skills.connect.preview.noIssues') }}
 							</N8nText>
 						</div>
-						<ul v-if="previewFindings.length > 0" :class="$style.findings">
-							<li
-								v-for="(finding, index) in previewFindings"
-								:key="index"
-								:class="$style.finding"
-								data-test-id="skill-source-preview-finding"
-							>
-								<!-- A finding with a line in the full view goes to that line. -->
-								<div
-									v-if="previewView.places[index]"
-									:class="[$style.findingLink, activeFinding === index && $style.findingActive]"
-									role="button"
-									tabindex="0"
-									data-test-id="skill-source-preview-finding-link"
-									@click="goToFinding(index)"
-									@keydown.enter.prevent="goToFinding(index)"
-									@keydown.space.prevent="goToFinding(index)"
-									@mouseenter="activeFinding = index"
-									@mouseleave="activeFinding = null"
-									@focus="activeFinding = index"
-									@blur="activeFinding = null"
-								>
-									<N8nCallout
-										:theme="SEVERITY_CALLOUTS[finding.severity].theme"
-										:icon="SEVERITY_CALLOUTS[finding.severity].icon"
-										icon-size="small"
-										slim
-										data-test-id="skill-source-preview-finding-callout"
-									>
-										{{ findingTitle(finding) }}
-										<template #trailingContent>
-											<N8nText size="small" color="text-light" :class="$style.findingLine">
-												{{
-													i18n.baseText('settings.context.skills.connect.preview.line', {
-														interpolate: { line: previewView.places[index]?.line ?? 0 },
-													})
-												}}
-											</N8nText>
-										</template>
-									</N8nCallout>
-								</div>
-								<N8nCallout
-									v-else
-									:theme="SEVERITY_CALLOUTS[finding.severity].theme"
-									:icon="SEVERITY_CALLOUTS[finding.severity].icon"
-									icon-size="small"
-									slim
-									data-test-id="skill-source-preview-finding-callout"
-								>
-									{{ findingTitle(finding) }}
-								</N8nCallout>
-								<!-- The snippet shows the problem, so the detail text is only for findings without one. -->
-								<N8nText v-if="!finding.location" size="small" color="text-base">
-									{{ finding.detail }}
-								</N8nText>
-								<!-- A finding that the full view cannot show keeps its snippet. -->
-								<pre v-else-if="!previewView.places[index]" :class="$style.snippet"><code><span
-									v-for="row in snippetRows(finding.location)"
-									:key="row.line"
-									:class="[
-										$style.snippetLine,
-										row.isMatch && [$style.snippetLineMatch, $style[`line-${finding.severity}`]],
-									]"
-								><span
-									v-if="hasLineNumbers(finding.location)"
-									:class="$style.lineNumber"
-								>{{ row.line }}</span><span :class="$style.lineText">{{ row.before }}<mark
-									v-if="row.isMatch"
-									:class="[$style.mark, $style[`mark-${finding.severity}`]]"
-								>{{ row.match }}</mark>{{ row.after }}</span></span></code></pre>
-							</li>
-						</ul>
-						<!-- The full skill, so the user reviews more than the findings. -->
-						<div
-							v-for="file in previewView.files"
-							:key="file.path"
-							:class="$style.file"
-							data-test-id="skill-source-preview-file"
-						>
-							<div :class="$style.fileHeader">
-								<N8nIcon icon="file-text" size="small" color="text-light" />
-								<N8nText size="small" bold color="text-base">{{ file.path }}</N8nText>
-							</div>
-							<pre :class="[$style.snippet, $style.fileBody]"><code><span
-								v-for="row in file.rows"
-								:key="row.line"
-								:data-line-key="lineKey(file.path, row.line)"
-								:class="[
-									$style.snippetLine,
-									row.severity && [$style.snippetLineMatch, $style[`line-${row.severity}`]],
-									activeFinding !== null && row.findings.includes(activeFinding) && $style.lineActive,
-								]"
-								@mouseenter="activeFinding = row.findings[0] ?? null"
-								@mouseleave="activeFinding = null"
-							><span :class="$style.lineNumber">{{ row.line }}</span><span :class="$style.lineText"><template
-								v-for="(segment, segmentIndex) in row.segments"
-								:key="segmentIndex"
-							><mark
-								v-if="segment.finding !== undefined"
-								:class="[$style.mark, $style[`mark-${previewFindings[segment.finding].severity}`]]"
-								:title="findingTitle(previewFindings[segment.finding])"
-							>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
-						</div>
+						<!-- A finding in a file shows in that file. The rest show here. -->
+						<SkillFindingsList v-if="outsideFindings.length > 0" :findings="outsideFindings" />
+						<!-- The full skill, as the skill modal shows it, so the user reviews more than the findings. -->
+						<SkillFilesView
+							:skill="previewAgentSkill"
+							:location="previewSkill.location"
+							:web-url="previewSkill.webUrl"
+							:findings="previewFindings"
+						/>
 						<N8nCallout
 							v-if="previewSkill.previewTruncated"
 							theme="info"
@@ -1845,6 +1584,8 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	border: var(--border);
 	/* The list and the preview read as one box, square where they meet. */
 	border-radius: var(--radius) 0 0 var(--radius);
+	/* The list is grey, and the active row is white, as the skill beside it. */
+	background-color: var(--background--subtle);
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 }
@@ -1878,7 +1619,7 @@ function unavailableReason(skill: DiscoveredSkill): string {
 /* The active row takes the colour of the preview, so the row and its preview read as one. */
 .itemActive,
 .itemActive:hover {
-	background-color: var(--background--subtle);
+	background-color: var(--background--surface);
 }
 
 .checkboxCell {
@@ -1931,8 +1672,7 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	/* The list draws the shared border. */
 	border-inline-start: 0;
 	border-radius: 0 var(--radius) var(--radius) 0;
-	/* The same colour as the snippets, so a snippet needs no box of its own. */
-	background-color: var(--background--subtle);
+	background-color: var(--background--surface);
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
 }
@@ -2111,7 +1851,7 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	background-color: var(--background--surface);
+	background-color: var(--background--subtle);
 	border-bottom: var(--border);
 
 	/* A second plugin starts with a line above, so the groups read apart. */

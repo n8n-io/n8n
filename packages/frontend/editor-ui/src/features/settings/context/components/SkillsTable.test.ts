@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+import type { SkillDetail, SkillListItem, SkillSourceListItem } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
@@ -348,51 +348,116 @@ describe('SkillsTable', () => {
 		expect(emitted('stopSyncing')).toEqual([[row]]);
 	});
 
-	it('emits checkForUpdates for a synced skill the user may check', async () => {
-		const row = skill({ source: 'github', canEdit: false, canCheckForUpdates: true });
-		const { getByTestId, emitted } = render([row]);
+	it('offers no update actions on a skill row', async () => {
+		const { getByTestId, queryByTestId } = render([
+			skill({
+				source: 'github',
+				canEdit: false,
+				canCheckForUpdates: true,
+				syncState: 'update_available',
+			}),
+		]);
 
+		expect(queryByTestId(/skill-sync-badge/)).toBeNull();
 		await openActions(getByTestId('skills-table'));
-		await waitFor(() =>
-			expect(document.querySelector('[data-test-id="action-checkForUpdates"]')).toHaveTextContent(
-				'Check for updates',
-			),
-		);
-		await userEvent.click(document.querySelector('[data-test-id="action-checkForUpdates"]')!);
-
-		expect(emitted('checkForUpdates')).toEqual([[row]]);
-	});
-
-	it('offers no Check for updates for a skill the user may not check', async () => {
-		const { getByTestId } = render([skill({ source: 'github', canEdit: false })]);
-
-		await openActions(getByTestId('skills-table'));
-
 		await waitFor(() =>
 			expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
 		);
-		expect(
-			document.querySelector('[data-test-id="action-checkForUpdates"]'),
-		).not.toBeInTheDocument();
+		expect(document.querySelector('[data-test-id="action-checkForUpdates"]')).toBeNull();
+		expect(document.querySelector('[data-test-id="action-reviewUpdate"]')).toBeNull();
 	});
 
-	it.each([
-		{ syncState: 'update_available' as const, text: 'Update available' },
-		{ syncState: 'update_blocked' as const, text: 'Update blocked' },
-	])('shows $text on a synced skill whose source has an update', ({ syncState, text }) => {
-		const { getByTestId } = render([skill({ source: 'github', syncState })]);
+	describe('source row', () => {
+		function source(overrides: Partial<SkillSourceListItem> = {}): SkillSourceListItem {
+			return {
+				id: 'src-1',
+				type: 'github',
+				label: 'acme/skills',
+				ref: 'main',
+				path: '',
+				webUrl: 'https://github.com/acme/skills',
+				scope: 'instance',
+				projectId: null,
+				projectName: null,
+				projectType: null,
+				skillCount: 1,
+				canAddSkills: false,
+				canDelete: false,
+				skillsInUse: 0,
+				updatesAvailable: 0,
+				updatesBlocked: 0,
+				lastCheckedAt: null,
+				canReview: false,
+				...overrides,
+			};
+		}
 
-		expect(getByTestId(`skill-sync-badge-${syncState}`)).toHaveTextContent(text);
+		function renderWithSource(row: SkillSourceListItem) {
+			return renderTable({
+				props: {
+					skills: [skill({ source: 'github', sourceId: row.id })],
+					itemsLength: 1,
+					loading: false,
+					sources: [row],
+				},
+			});
+		}
+
+		it('shows the updates of the source as one button next to its menu, and opens them', async () => {
+			const row = source({ updatesAvailable: 2, updatesBlocked: 1 });
+			const { getByTestId, emitted } = renderWithSource(row);
+
+			expect(getByTestId('skill-source-updates')).toHaveTextContent('3 updates');
+
+			await userEvent.click(getByTestId('skill-source-updates'));
+
+			expect(emitted('reviewUpdates')).toEqual([[row]]);
+			// The button does not fold the source.
+			expect(emitted('toggleSource')).toBeUndefined();
+		});
+
+		it('shows no updates for a source that is up to date', () => {
+			const { queryByTestId } = renderWithSource(source());
+
+			expect(queryByTestId('skill-source-updates')).toBeNull();
+		});
+
+		it('shows the new skills next to the menu, and opens Add more', async () => {
+			const row = source({ canAddSkills: true });
+			const { getByTestId, emitted } = renderTable({
+				props: {
+					skills: [skill({ source: 'github', sourceId: row.id })],
+					itemsLength: 1,
+					loading: false,
+					sources: [row],
+					newSkillCounts: { [row.id]: 5 },
+				},
+			});
+
+			expect(getByTestId('skill-group-new-skills')).toHaveTextContent('5 new');
+			await userEvent.click(getByTestId('skill-group-new-skills'));
+
+			expect(emitted('addMore')).toEqual([[row.id]]);
+			expect(emitted('toggleSource')).toBeUndefined();
+		});
+
+		it('offers Check for updates to a user who may review the source', async () => {
+			const row = source({ canReview: true });
+			const { getByTestId, emitted } = renderWithSource(row);
+
+			await userEvent.click(
+				getByTestId('skill-source-menu-src-1').querySelector('button') as HTMLElement,
+			);
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toHaveTextContent(
+					'Check for updates',
+				),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
+
+			expect(emitted('checkSource')).toEqual([[row]]);
+		});
 	});
-
-	it.each([{ syncState: 'up_to_date' as const }, { syncState: null }])(
-		'shows no sync badge for sync state $syncState',
-		({ syncState }) => {
-			const { queryByTestId } = render([skill({ syncState })]);
-
-			expect(queryByTestId(/skill-sync-badge/)).toBeNull();
-		},
-	);
 
 	it('emits download for any skill, also one the user cannot change', async () => {
 		const row = skill({ canEdit: false, canDelete: false });

@@ -33,10 +33,9 @@ import {
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
-	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
-import type { ActionDropdownItem, TableOptions, TabOptions } from '@n8n/design-system';
+import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -64,9 +63,7 @@ import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
-import SkillSourcesTable from '../components/SkillSourcesTable.vue';
 import SkillSourceUpdatesDialog from '../components/SkillSourceUpdatesDialog.vue';
-import SkillUpdateReviewDialog from '../components/SkillUpdateReviewDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -254,14 +251,11 @@ const emptySources = computed<SkillSourceListItem[]>(() => {
 /** The counts and the delete rule of a source change with its skills, so it reloads with them. */
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
-	sourcesLoading.value = true;
 	try {
 		await skillsStore.fetchSources();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.sources.error'));
 		return;
-	} finally {
-		sourcesLoading.value = false;
 	}
 	void checkForNewSkills();
 }
@@ -854,20 +848,6 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 	await Promise.all([load(), loadSources()]);
 }
 
-/**
- * Check now: checks the whole source of the skill. The list reloads, so the badges of every
- * skill of the source show what the check found.
- */
-async function onCheckForUpdates(skill: SkillListItem) {
-	try {
-		showCheckResult(await skillsStore.checkForUpdates(skill.id));
-	} catch (error) {
-		showCheckError(error);
-		return;
-	}
-	await Promise.all([load(), loadSources()]);
-}
-
 function showCheckError(error: unknown) {
 	const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
 	// The user cannot pick another credential here, so that reason gets its own text.
@@ -903,33 +883,9 @@ function showCheckResult({ label, updatesFound, throttled }: SkillSourceCheckRes
 	});
 }
 
-type SkillsTab = 'skills' | 'sources';
-
-const activeTab = ref<SkillsTab>('skills');
-const sourcesLoading = ref(false);
 const updatesSourceId = ref<string | null>(null);
 const updatesLabel = ref<string | undefined>();
 const updatesOpen = ref(false);
-const reviewSkillId = ref<string | null>(null);
-const reviewName = ref<string | undefined>();
-const reviewOpen = ref(false);
-
-const tabOptions = computed<Array<TabOptions<SkillsTab>>>(() => [
-	{ value: 'skills', label: i18n.baseText('settings.context.skills.tabs.skills') },
-	{
-		value: 'sources',
-		label: i18n.baseText('settings.context.skills.tabs.sources'),
-		// A dot when an update that the user may review can come in.
-		notification: skillsStore.sources.some(
-			(source) => source.canReview && source.updatesAvailable > 0,
-		),
-	},
-]);
-
-async function onTabChange(tab: SkillsTab) {
-	activeTab.value = tab;
-	if (tab === 'sources') await loadSources();
-}
 
 function openUpdates(sourceId: string, label?: string) {
 	updatesSourceId.value = sourceId;
@@ -937,38 +893,9 @@ function openUpdates(sourceId: string, label?: string) {
 	updatesOpen.value = true;
 }
 
-function openReview(skillId: string, name?: string) {
-	reviewSkillId.value = skillId;
-	reviewName.value = name;
-	reviewOpen.value = true;
-}
-
 /** A decision changed skills and badges: both lists reload. */
 async function onUpdatesChanged() {
 	await Promise.all([load(), loadSources()]);
-	// "Updates from" stays in step with the review that was opened from it.
-	if (updatesOpen.value && updatesSourceId.value) {
-		const sourceId = updatesSourceId.value;
-		updatesOpen.value = false;
-		openUpdates(sourceId, updatesLabel.value);
-	}
-}
-
-/** Stop syncing from the review: the same confirmation, then the review closes. */
-async function onStopSyncingFromReview(skillId: string) {
-	let skill: SkillListItem;
-	try {
-		skill =
-			skillsStore.skills.find((item) => item.id === skillId) ??
-			(await skillsStore.fetchSkill(skillId));
-	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.stopSyncing.error'));
-		return;
-	}
-	await onStopSyncing(skill, () => {
-		reviewOpen.value = false;
-	});
-	await loadSources();
 }
 
 async function onCheckSource(source: SkillSourceListItem) {
@@ -990,7 +917,7 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	// The filter options are not needed for the first page or the deep links below.
 	void loadFilterOptions();
-	// The sources load too, so the Sources tab shows its dot before the user opens it.
+	// The sources load too: they head the rows of their skills.
 	await Promise.all([load(), loadSources(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
@@ -1023,17 +950,8 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<N8nTabs
-			v-if="skillSyncEnabled"
-			:model-value="activeTab"
-			:options="tabOptions"
-			data-test-id="skills-tabs"
-			@update:model-value="onTabChange"
-		/>
-
 		<div :class="$style.toolbar">
 			<N8nInput
-				v-if="activeTab === 'skills'"
 				v-model="search"
 				:class="$style.search"
 				:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
@@ -1046,7 +964,6 @@ onMounted(async () => {
 				</template>
 			</N8nInput>
 			<ResourceFiltersDropdown
-				v-if="activeTab === 'skills'"
 				:model-value="filters"
 				:keys="FILTER_KEYS"
 				:reset="resetFilters"
@@ -1152,16 +1069,7 @@ onMounted(async () => {
 			/>
 		</div>
 
-		<SkillSourcesTable
-			v-if="activeTab === 'sources'"
-			:sources="skillsStore.sources"
-			:loading="sourcesLoading"
-			@review="openUpdates($event.id, $event.label)"
-			@check-now="onCheckSource"
-		/>
-
 		<SkillsTable
-			v-else
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
@@ -1178,13 +1086,13 @@ onMounted(async () => {
 			@timeline="openEditModal($event, 'versions')"
 			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
-			@review-update="openReview($event.id, $event.name)"
-			@check-for-updates="onCheckForUpdates($event)"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@add-more="openAddMore"
 			@toggle-source="onToggleSource"
 			@delete-source="onDeleteSource"
+			@review-updates="openUpdates($event.id, $event.label)"
+			@check-source="onCheckSource"
 			@update:options="onOptionsUpdate"
 		>
 			<template #empty>
@@ -1219,16 +1127,7 @@ onMounted(async () => {
 			v-model:open="updatesOpen"
 			:source-id="updatesSourceId"
 			:label="updatesLabel"
-			@review="openReview"
 			@changed="onUpdatesChanged"
-		/>
-		<SkillUpdateReviewDialog
-			v-if="skillSyncEnabled"
-			v-model:open="reviewOpen"
-			:skill-id="reviewSkillId"
-			:name="reviewName"
-			@changed="onUpdatesChanged"
-			@stop-syncing="onStopSyncingFromReview"
 		/>
 
 		<SkillSourceConnectDialog

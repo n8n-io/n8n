@@ -66,6 +66,20 @@ export type * from './components/N8nSwitch/Switch.types';
 export { createPasswordRules } from './components/N8nFormInput/validators';
 export { default as N8nMarkdownEditor } from './components/N8nMarkdownEditor/MarkdownEditor.vue';
 export type * from './components/N8nMarkdownEditor/MarkdownEditor.types';
+export {
+	attachMarkdownDiff,
+	attachMarkdownFindings,
+	changedWordRanges,
+	diffWords as diffMarkdownWords,
+	splitByRanges,
+	SKILL_DIFF_ADDED_CLASS,
+	SKILL_DIFF_REMOVED_CLASS,
+} from './components/N8nMarkdownEditor/markdownDiffPlugin';
+export type {
+	MarkdownFinding,
+	MarkdownFindingSeverity,
+	MarkdownFindingsOptions,
+} from './components/N8nMarkdownEditor/markdownDiffPlugin';
 export { default as N8nCodeBlock } from './components/N8nCodeBlock';
 export type * from './components/N8nCodeBlock';
 export { locale };

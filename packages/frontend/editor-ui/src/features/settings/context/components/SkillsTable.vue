@@ -27,15 +27,7 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction =
-	| 'edit'
-	| 'timeline'
-	| 'compare'
-	| 'download'
-	| 'reviewUpdate'
-	| 'checkForUpdates'
-	| 'stopSyncing'
-	| 'delete';
+type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'stopSyncing' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -75,13 +67,13 @@ const emit = defineEmits<{
 	timeline: [skill: SkillListItem];
 	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
-	reviewUpdate: [skill: SkillListItem];
-	checkForUpdates: [skill: SkillListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	addMore: [sourceId: string];
 	toggleSource: [sourceId: string];
 	deleteSource: [source: SkillSourceListItem];
+	reviewUpdates: [source: SkillSourceListItem];
+	checkSource: [source: SkillSourceListItem];
 	'update:options': [payload: TableOptions];
 }>();
 
@@ -121,26 +113,6 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
 		},
-		// A synced skill whose source has an update. A user who cannot review reads it.
-		...(hasUpdate(skill)
-			? [
-					{
-						value: 'reviewUpdate' as const,
-						label: i18n.baseText('settings.context.skills.actions.reviewUpdate'),
-						icon: 'list-checks' as const,
-					},
-				]
-			: []),
-		// Only a synced skill that the user may change. It checks the whole source.
-		...(skill.canCheckForUpdates
-			? [
-					{
-						value: 'checkForUpdates' as const,
-						label: i18n.baseText('settings.context.skills.checkForUpdates.action'),
-						icon: 'refresh-cw' as const,
-					},
-				]
-			: []),
 		// Only a synced skill that the user may stop syncing.
 		...(skill.canStopSyncing
 			? [
@@ -167,8 +139,6 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else if (action === 'timeline') emit('timeline', skill);
 	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
-	else if (action === 'reviewUpdate') emit('reviewUpdate', skill);
-	else if (action === 'checkForUpdates') emit('checkForUpdates', skill);
 	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
 }
@@ -205,7 +175,7 @@ function groupRowProps(sourceId: string) {
 	return { class: canFold(sourceId) ? $style.groupRowFoldable : undefined };
 }
 
-type SourceAction = 'add' | 'open' | 'delete';
+type SourceAction = 'checkNow' | 'open' | 'delete';
 
 function sourceActions(source: SkillSourceListItem) {
 	const items: Array<{
@@ -216,11 +186,13 @@ function sourceActions(source: SkillSourceListItem) {
 		tooltip?: string;
 		destructive?: boolean;
 	}> = [];
-	if (source.canAddSkills) {
+	// The new skills button on the row opens Add more, so the menu has no item for it.
+	// Check for updates looks at the whole source.
+	if (source.canReview) {
 		items.push({
-			value: 'add',
-			label: i18n.baseText('settings.context.skills.more.title'),
-			icon: 'plus',
+			value: 'checkNow',
+			label: i18n.baseText('settings.context.skills.sources.actions.checkNow'),
+			icon: 'refresh-cw',
 		});
 	}
 	items.push({
@@ -251,7 +223,7 @@ function sourceActions(source: SkillSourceListItem) {
 function onSourceAction(sourceId: string, action: string) {
 	const source = sourcesById.value.get(sourceId);
 	if (!source) return;
-	if (action === 'add') emit('addMore', source.id);
+	if (action === 'checkNow') emit('checkSource', source);
 	else if (action === 'delete') emit('deleteSource', source);
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
 }
@@ -302,19 +274,15 @@ function creatorName(creator: SkillUserDto): string {
 		: name;
 }
 
-const hasUpdate = (skill: SkillListItem) =>
-	skill.syncState === 'update_available' || skill.syncState === 'update_blocked';
+/** The updates of a source that wait for review. Zero hides the button. */
+function updateCount(sourceId: string): number {
+	const source = sourcesById.value.get(sourceId);
+	return (source?.updatesAvailable ?? 0) + (source?.updatesBlocked ?? 0);
+}
 
-/** The badge of a synced skill whose source has new content that waits for review. */
-const SYNC_BADGES = {
-	update_available: { variant: 'warning', key: 'settings.context.skills.sync.updateAvailable' },
-	update_blocked: { variant: 'danger', key: 'settings.context.skills.sync.updateBlocked' },
-} as const;
-
-function syncBadgeOf({ syncState }: SkillListItem) {
-	if (syncState !== 'update_available' && syncState !== 'update_blocked') return undefined;
-	const { variant, key } = SYNC_BADGES[syncState];
-	return { variant, label: i18n.baseText(key), tooltip: i18n.baseText(`${key}.tooltip`) };
+/** Yellow when an update can come in, red when the check blocked every update. */
+function updatesDot(sourceId: string): 'warning' | 'danger' {
+	return (sourcesById.value.get(sourceId)?.updatesAvailable ?? 0) > 0 ? 'warning' : 'danger';
 }
 
 function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
@@ -429,33 +397,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 					>
 						· {{ skillCount(group) }}
 					</N8nText>
-					<!-- The new skills follow the source name. Nothing comes after them in the cell, so
-					     their late answer moves nothing. -->
-					<N8nButton
-						v-if="newSkillCount(group) > 0"
-						variant="outline"
-						size="xsmall"
-						:class="$style.newSkills"
-						:title="i18n.baseText('settings.context.skills.more.title')"
-						:aria-label="
-							i18n.baseText('settings.context.skills.group.newSkills.label', {
-								interpolate: { count: newSkillCount(group) },
-								adjustToNumber: newSkillCount(group),
-							})
-						"
-						data-test-id="skill-group-new-skills"
-						@click.stop="emit('addMore', group)"
-					>
-						<template #icon>
-							<N8nStatusDot variant="warning" />
-						</template>
-						{{
-							i18n.baseText('settings.context.skills.group.newSkills', {
-								interpolate: { count: newSkillCount(group) },
-								adjustToNumber: newSkillCount(group),
-							})
-						}}
-					</N8nButton>
 				</div>
 			</template>
 
@@ -473,7 +414,59 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			</template>
 
 			<template #[`group.actions`]="{ group }">
-				<div v-if="sourcesById.has(group)" :class="$style.actions" @click.stop>
+				<div
+					v-if="sourcesById.has(group)"
+					:class="[$style.actions, $style.sourceActions]"
+					@click.stop
+				>
+					<!-- The new skills and the updates sit left of the menu, over the empty cells of the
+					     source row, so their late answer moves nothing. -->
+					<div
+						v-if="newSkillCount(group) > 0 || updateCount(group) > 0"
+						:class="$style.sourceStatus"
+					>
+						<N8nButton
+							v-if="newSkillCount(group) > 0"
+							variant="outline"
+							size="xsmall"
+							:title="i18n.baseText('settings.context.skills.more.title')"
+							:aria-label="
+								i18n.baseText('settings.context.skills.group.newSkills.label', {
+									interpolate: { count: newSkillCount(group) },
+									adjustToNumber: newSkillCount(group),
+								})
+							"
+							data-test-id="skill-group-new-skills"
+							@click="emit('addMore', group)"
+						>
+							<template #icon>
+								<N8nStatusDot variant="success" pulse />
+							</template>
+							{{
+								i18n.baseText('settings.context.skills.group.newSkills', {
+									interpolate: { count: newSkillCount(group) },
+								})
+							}}
+						</N8nButton>
+						<N8nButton
+							v-if="updateCount(group) > 0"
+							variant="outline"
+							size="xsmall"
+							:title="i18n.baseText('settings.context.skills.sources.actions.review')"
+							data-test-id="skill-source-updates"
+							@click="emit('reviewUpdates', sourcesById.get(group)!)"
+						>
+							<template #icon>
+								<N8nStatusDot :variant="updatesDot(group)" />
+							</template>
+							{{
+								i18n.baseText('settings.context.skills.group.updates', {
+									interpolate: { count: updateCount(group) },
+									adjustToNumber: updateCount(group),
+								})
+							}}
+						</N8nButton>
+					</div>
 					<N8nActionToggle
 						:actions="sourceActions(sourcesById.get(group)!)"
 						:data-test-id="`skill-source-menu-${group}`"
@@ -493,21 +486,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						>
 							{{ item.name }}
 						</N8nText>
-						<N8nTooltip v-if="syncBadgeOf(item)" :content="syncBadgeOf(item)?.tooltip">
-							<!-- The update opens its review, not the skill. -->
-							<N8nButton
-								variant="outline"
-								size="xsmall"
-								:class="$style.syncButton"
-								:data-test-id="`skill-sync-badge-${item.syncState}`"
-								@click.stop="emit('reviewUpdate', item)"
-							>
-								<template #icon>
-									<N8nStatusDot :variant="syncBadgeOf(item)!.variant" />
-								</template>
-								{{ syncBadgeOf(item)?.label }}
-							</N8nButton>
-						</N8nTooltip>
 						<N8nTooltip
 							v-if="props.showAssistantAvailability && item.availableToAssistant"
 							:content="i18n.baseText('settings.context.skills.assistant.label')"
@@ -649,6 +627,25 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	justify-content: flex-end;
 }
 
+/* As wide as the menu button, so the status buttons line up against the button, not the cell. */
+.sourceActions {
+	position: relative;
+	width: fit-content;
+	margin-inline-start: auto;
+}
+
+.sourceStatus {
+	position: absolute;
+	inset-inline-end: 100%;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	/* The same space between the status buttons and before the round menu button. */
+	gap: var(--spacing--2xs);
+	margin-inline-end: var(--spacing--2xs);
+	white-space: nowrap;
+}
+
 .row {
 	cursor: pointer;
 }
@@ -678,15 +675,6 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 .groupToggleSpace {
 	width: var(--spacing--xs);
 	flex-shrink: 0;
-}
-
-.syncButton {
-	flex-shrink: 0;
-}
-
-.newSkills {
-	flex-shrink: 0;
-	margin-inline-start: var(--spacing--2xs);
 }
 
 .heightSpacer {

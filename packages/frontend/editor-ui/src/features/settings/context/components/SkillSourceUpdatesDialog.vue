@@ -1,28 +1,37 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import type { SkillPendingUpdate, SkillSourceUpdates } from '@n8n/api-types';
+import type { SkillPendingUpdate, SkillScanFinding, SkillSourceUpdates } from '@n8n/api-types';
 import {
-	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
 	N8nDialog,
 	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nLoading,
+	N8nTabs,
 	N8nText,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import type { TabOptions } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
 
-import SkillDiffCount from '@/features/agents/components/skillVersions/SkillDiffCount.vue';
-import { diffSkills } from '@/features/agents/components/skillVersions/skillVersionDiff';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import SkillDiffCount from '@/features/agents/components/skillVersions/SkillDiffCount.vue';
+import {
+	countsByFile,
+	diffSkills,
+	type DiffSection,
+} from '@/features/agents/components/skillVersions/skillVersionDiff';
 
-import SkillScopeBadge from './SkillScopeBadge.vue';
-import { frontmatterDiff, useSkillSourceReasons } from '../skills.utils';
+import SkillFilesView from './SkillFilesView.vue';
+import SkillFindingsList from './SkillFindingsList.vue';
+import { frontmatterDiff, useSkillScopeDisplay, useSkillSourceReasons } from '../skills.utils';
 import { useSkillsStore } from '../skills.store';
 
 const props = defineProps<{
@@ -34,9 +43,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [open: boolean];
-	/** Opens the review of one update. */
-	review: [skillId: string, name: string];
-	/** Updates came in, so the lists reload. */
+	/** Updates came in or were skipped, so the lists reload. */
 	changed: [];
 }>();
 
@@ -44,11 +51,28 @@ const i18n = useI18n();
 const { showError, showMessage } = useToast();
 const skillsStore = useSkillsStore();
 const { reasonText } = useSkillSourceReasons();
+const { scopeDisplay } = useSkillScopeDisplay();
 
 const data = ref<SkillSourceUpdates | null>(null);
 const loading = ref(false);
 const accepting = ref(false);
+const skipping = ref<string | null>(null);
 const reviewedWarnings = ref(false);
+/** The skill ids of the updates to accept. */
+const selected = ref<string[]>([]);
+const previewId = ref<string | null>(null);
+
+type UpdateTab = 'review' | 'ready' | 'unavailable';
+
+const TABS: UpdateTab[] = ['review', 'ready', 'unavailable'];
+
+const TAB_LABELS = {
+	review: 'settings.context.skills.connect.tab.review',
+	ready: 'settings.context.skills.connect.tab.ready',
+	unavailable: 'settings.context.skills.connect.tab.unavailable',
+} satisfies Record<UpdateTab, BaseTextKey>;
+
+const activeTab = ref<UpdateTab>('review');
 
 /** Counts the loads, so an answer that arrives after a newer load is dropped. */
 let loadId = 0;
@@ -57,10 +81,15 @@ async function load() {
 	if (!props.sourceId) return;
 	const id = ++loadId;
 	loading.value = true;
-	reviewedWarnings.value = false;
 	try {
 		const loaded = await skillsStore.fetchSourceUpdates(props.sourceId);
-		if (id === loadId) data.value = loaded;
+		if (id !== loadId) return;
+		data.value = loaded;
+		reviewedWarnings.value = false;
+		// Every update that can come in starts picked, as in the import picker.
+		selected.value = loaded.updates.filter(isAcceptable).map((update) => update.skillId);
+		const tab = TABS.find((candidate) => byTab.value[candidate].length > 0) ?? 'review';
+		selectTab(tab);
 	} catch (error) {
 		if (id !== loadId) return;
 		showError(error, i18n.baseText('settings.context.skills.updates.error.load'));
@@ -79,40 +108,113 @@ watch(
 	{ immediate: true },
 );
 
-/** The updates that can come in: every update the security check did not block. */
-const ready = computed(() =>
+const canReview = computed(() => data.value?.source.canReview === true);
+
+/** An update that the check did not block and whose name is free. */
+function isAcceptable(update: SkillPendingUpdate): boolean {
+	return update.check.verdict !== 'blocked' && update.nameClash === null;
+}
+
+function tabOf(update: SkillPendingUpdate): UpdateTab {
+	if (!isAcceptable(update)) return 'unavailable';
+	return update.check.verdict === 'needs_review' ? 'review' : 'ready';
+}
+
+const byTab = computed(() => {
+	const tabs: Record<UpdateTab, SkillPendingUpdate[]> = { review: [], ready: [], unavailable: [] };
+	for (const update of data.value?.updates ?? []) tabs[tabOf(update)].push(update);
+	return tabs;
+});
+
+/** A tab with no updates is not shown. */
+const tabs = computed<Array<TabOptions<UpdateTab>>>(() =>
+	TABS.filter((tab) => byTab.value[tab].length > 0).map((tab) => ({
+		value: tab,
+		label: i18n.baseText(TAB_LABELS[tab], { interpolate: { count: byTab.value[tab].length } }),
+	})),
+);
+
+/** A new tab previews its first update, so the preview is never empty when a tab has updates. */
+function selectTab(tab: UpdateTab) {
+	activeTab.value = tab;
+	previewId.value = byTab.value[tab][0]?.skillId ?? null;
+}
+
+const preview = computed(
+	() => data.value?.updates.find((update) => update.skillId === previewId.value) ?? null,
+);
+
+function toggle(skillId: string, checked: boolean) {
+	selected.value = checked
+		? [...new Set([...selected.value, skillId])]
+		: selected.value.filter((id) => id !== skillId);
+}
+
+const selectedUpdates = computed(() =>
 	(data.value?.updates ?? []).filter(
-		(update) => update.check.verdict !== 'blocked' && update.nameClash === null,
+		(update) => isAcceptable(update) && selected.value.includes(update.skillId),
 	),
 );
 const needsReview = computed(() =>
-	ready.value.some((update) => update.check.verdict === 'needs_review'),
+	selectedUpdates.value.some((update) => update.check.verdict === 'needs_review'),
 );
-const canReview = computed(() => data.value?.source.canReview === true);
-
-const readOnlyText = computed(() => {
-	const source = data.value?.source;
-	if (!source || source.canReview) return '';
-	if (source.projectId === null) {
-		return i18n.baseText('settings.context.skills.updates.readOnly.global');
-	}
-	return i18n.baseText('settings.context.skills.updates.readOnly.project', {
-		interpolate: { scope: source.projectName ?? '' },
-	});
-});
-
-/** The lines that each update adds and removes, over every file, worked out once per load. */
-const counts = computed(
-	() => new Map((data.value?.updates ?? []).map((update) => [update.skillId, countOf(update)])),
+const canAccept = computed(
+	() =>
+		canReview.value &&
+		selectedUpdates.value.length > 0 &&
+		(!needsReview.value || reviewedWarnings.value),
 );
 
-function countOf(update: SkillPendingUpdate) {
-	if (!update.update) return undefined;
+/** The diff of an update, as the version compare shows it. The name shows only when it changes. */
+function sectionsOf(update: SkillPendingUpdate): DiffSection[] {
+	if (!update.update) return [];
 	const frontmatter = frontmatterDiff(update.currentFrontmatter, update.updateFrontmatter);
 	return [
-		...diffSkills(update.current, update.update),
-		...(frontmatter ? [frontmatter] : []),
-	].reduce(
+		...diffSkills(update.current, update.update).filter(
+			(section) => section.key !== 'name' || section.added + section.removed > 0,
+		),
+		...(frontmatter ? [{ key: 'frontmatter', ...frontmatter }] : []),
+	];
+}
+
+const sections = computed(
+	() => new Map((data.value?.updates ?? []).map((u) => [u.skillId, sectionsOf(u)])),
+);
+
+/** A left-out file is not a risk, so it shows with the files, not with the findings. */
+function isSkippedFile(finding: SkillScanFinding): boolean {
+	return finding.rule === 'file_skipped' && Boolean(finding.file);
+}
+
+function skippedFiles(update: SkillPendingUpdate) {
+	return update.check.findings
+		.filter(isSkippedFile)
+		.map((finding) => ({ path: finding.file ?? '', detail: finding.detail }));
+}
+
+function checkFindings(update: SkillPendingUpdate): SkillScanFinding[] {
+	return update.check.findings.filter((finding) => !isSkippedFile(finding));
+}
+
+/** The files that the files view lists for an update: its kept files, from the diff. */
+function filesOf(update: SkillPendingUpdate): Set<string> {
+	return new Set(Object.keys(countsByFile(sections.value.get(update.skillId) ?? [])));
+}
+
+/** Findings in a file that the files view shows, so they sit at the top of that file. */
+function fileFindings(update: SkillPendingUpdate): SkillScanFinding[] {
+	if (!update.update) return [];
+	const files = filesOf(update);
+	return checkFindings(update).filter((finding) => finding.file && files.has(finding.file));
+}
+
+function otherFindings(update: SkillPendingUpdate): SkillScanFinding[] {
+	const inFiles = new Set(fileFindings(update));
+	return checkFindings(update).filter((finding) => !inFiles.has(finding));
+}
+
+function countOf(skillId: string) {
+	return (sections.value.get(skillId) ?? []).reduce(
 		(total, section) => ({
 			added: total.added + section.added,
 			removed: total.removed + section.removed,
@@ -121,18 +223,51 @@ function countOf(update: SkillPendingUpdate) {
 	);
 }
 
+const sourceLine = computed(() => {
+	const source = data.value?.source;
+	return source ? [source.label, source.ref].filter(Boolean).join(' · ') : (props.label ?? '');
+});
+
 const commitLine = computed(() => {
 	const commit = data.value?.commit;
 	if (!commit) return '';
 	return [commit.message, commit.author].filter(Boolean).join(' · ');
 });
 
-async function onUpdateAll() {
+const scopeLabel = computed(() => {
+	const source = data.value?.source;
+	if (!source) return '';
+	return scopeDisplay({
+		scope: source.projectId ? 'project' : 'instance',
+		projectId: source.projectId,
+		projectName: source.projectName,
+		projectType: source.projectType,
+		agentName: null,
+	}).label;
+});
+
+const readOnlyText = computed(() => {
+	const source = data.value?.source;
+	if (!source || source.canReview) return '';
+	if (source.projectId === null) {
+		return i18n.baseText('settings.context.skills.updates.readOnly.global');
+	}
+	return i18n.baseText('settings.context.skills.updates.readOnly.project', {
+		interpolate: { scope: scopeLabel.value },
+	});
+});
+
+function errorOf(error: unknown) {
+	const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
+	return reason !== undefined ? new Error(reasonText(reason)) : error;
+}
+
+async function onAccept() {
 	if (!props.sourceId || !data.value) return;
 	accepting.value = true;
 	try {
 		const result = await skillsStore.acceptSourceUpdates(props.sourceId, {
-			updates: ready.value.map(({ skillId, contentHash }) => ({ skillId, contentHash })),
+			updates: selectedUpdates.value.map(({ skillId, contentHash }) => ({ skillId, contentHash })),
 			reviewedWarnings: reviewedWarnings.value,
 		});
 		const nameOf = (skillId: string) =>
@@ -162,140 +297,230 @@ async function onUpdateAll() {
 		emit('changed');
 		emit('update:open', false);
 	} catch (error) {
-		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
-		showError(
-			reason !== undefined ? new Error(reasonText(reason)) : error,
-			i18n.baseText('settings.context.skills.updates.error.accept'),
-		);
+		showError(errorOf(error), i18n.baseText('settings.context.skills.updates.error.accept'));
 	} finally {
 		accepting.value = false;
 	}
 }
 
-function openInGitHub() {
-	if (data.value) window.open(data.value.source.webUrl, '_blank', 'noopener');
+/** Skip hides this content until the source changes again. The dialog stays open on the rest. */
+async function onSkip(update: SkillPendingUpdate) {
+	skipping.value = update.skillId;
+	try {
+		await skillsStore.skipSkillUpdate(update.skillId, { contentHash: update.contentHash });
+		showMessage({
+			title: i18n.baseText('settings.context.skills.review.skipped'),
+			type: 'success',
+		});
+		emit('changed');
+		await load();
+		if (data.value?.updates.length === 0) emit('update:open', false);
+	} catch (error) {
+		showError(errorOf(error), i18n.baseText('settings.context.skills.review.error.skip'));
+		if (error instanceof ResponseError && error.meta?.reason === 'stale') await load();
+	} finally {
+		skipping.value = null;
+	}
 }
 </script>
 
 <template>
 	<N8nDialog
 		:open="open"
-		:header="
-			i18n.baseText('settings.context.skills.updates.title', {
-				interpolate: { label: data?.source.label ?? props.label ?? '' },
-			})
-		"
-		size="medium"
+		size="full"
+		:container-class="$style.wideDialog"
 		data-test-id="skill-source-updates-dialog"
 		@update:open="emit('update:open', $event)"
 	>
-		<N8nDialogBody :class="$style.body">
+		<N8nDialogHeader :class="$style.headerWithTabs">
+			<div :class="$style.headerMain">
+				<N8nDialogTitle>
+					{{
+						i18n.baseText('settings.context.skills.updates.title', {
+							interpolate: { label: data?.source.label ?? props.label ?? '' },
+						})
+					}}
+				</N8nDialogTitle>
+				<N8nDialogDescription :class="[$style.description, $style.source]">
+					<N8nIcon icon="git-branch" size="small" />
+					<span>{{ sourceLine }}</span>
+					<template v-if="commitLine">
+						<span aria-hidden="true">·</span>
+						<span data-test-id="skill-source-updates-commit">
+							{{
+								i18n.baseText('settings.context.skills.updates.latestCommit', {
+									interpolate: { commit: commitLine },
+								})
+							}}
+							<template v-if="data?.commit?.date">
+								· <TimeAgo :date="data.commit.date" />
+							</template>
+						</span>
+					</template>
+				</N8nDialogDescription>
+				<N8nTabs
+					v-if="data && tabs.length > 0"
+					:model-value="activeTab"
+					:options="tabs"
+					:class="$style.tabs"
+					data-test-id="skill-source-updates-tabs"
+					@update:model-value="selectTab"
+				/>
+			</div>
+		</N8nDialogHeader>
+
+		<N8nDialogBody :class="[$style.body, $style.bodyWithTabs]">
 			<!-- The commit details come from GitHub, so the first load can take a moment. -->
 			<N8nLoading
 				v-if="loading && !data"
 				variant="p"
-				:rows="4"
+				:rows="6"
 				data-test-id="skill-source-updates-loading"
 			/>
-			<template v-if="data">
-				<div :class="$style.source">
-					<N8nIcon icon="github" size="small" />
-					<N8nText size="small" color="text-light">
-						{{ [data.source.label, data.source.ref].filter(Boolean).join(' · ') }}
-					</N8nText>
-					<SkillScopeBadge
-						:skill="{
-							scope: data.source.projectId ? 'project' : 'instance',
-							projectId: data.source.projectId,
-							projectName: data.source.projectName,
-							projectType: data.source.projectType,
-							agentName: null,
-						}"
-					/>
-				</div>
-				<N8nText
-					v-if="commitLine"
-					size="small"
-					color="text-light"
-					data-test-id="skill-source-updates-commit"
+			<template v-else-if="data">
+				<N8nCallout
+					v-if="!canReview"
+					theme="info"
+					slim
+					icon-size="small"
+					data-test-id="skill-source-updates-read-only"
 				>
-					{{
-						i18n.baseText('settings.context.skills.updates.latestCommit', {
-							interpolate: { commit: commitLine },
-						})
-					}}
-					<template v-if="data.commit?.date"> · <TimeAgo :date="data.commit.date" /></template>
-				</N8nText>
-				<N8nText v-if="canReview" tag="p" size="small">
-					{{ i18n.baseText('settings.context.skills.updates.description') }}
-				</N8nText>
-				<N8nCallout v-else theme="info" data-test-id="skill-source-updates-read-only">
 					{{ readOnlyText }}
 				</N8nCallout>
-
 				<N8nText v-if="data.updates.length === 0" color="text-light">
 					{{ i18n.baseText('settings.context.skills.updates.empty') }}
 				</N8nText>
-				<ul :class="$style.rows">
-					<li v-for="update in data.updates" :key="update.skillId">
-						<button
-							type="button"
-							:class="$style.row"
+				<div v-else :class="$style.picker">
+					<ul :class="$style.list" data-test-id="skill-source-updates-list">
+						<li
+							v-for="update in byTab[activeTab]"
+							:key="update.skillId"
+							:class="[
+								$style.item,
+								previewId === update.skillId && $style.itemActive,
+								!isAcceptable(update) && $style.disabled,
+							]"
+							role="button"
+							tabindex="0"
+							:aria-pressed="previewId === update.skillId"
 							data-test-id="skill-source-update-row"
-							@click="emit('review', update.skillId, update.name)"
+							@click="previewId = update.skillId"
+							@keydown.enter.self.prevent="previewId = update.skillId"
+							@keydown.space.self.prevent="previewId = update.skillId"
 						>
-							<div :class="$style.rowText">
-								<N8nText size="medium" color="text-dark">{{ update.name }}</N8nText>
-								<N8nText size="small" color="text-light">{{ update.location }}</N8nText>
+							<!-- The checkbox picks the update. The rest of the row only previews it. -->
+							<span v-if="canReview" :class="$style.checkboxCell" @click.stop @keydown.stop>
+								<N8nCheckbox
+									:model-value="isAcceptable(update) && selected.includes(update.skillId)"
+									:disabled="!isAcceptable(update)"
+									:aria-label="update.name"
+									data-test-id="skill-source-update-checkbox"
+									@update:model-value="toggle(update.skillId, $event)"
+								/>
+							</span>
+							<div :class="$style.itemText">
+								<N8nText bold>{{ update.name }}</N8nText>
+								<N8nText size="small" color="text-light" :class="$style.clamp">
+									{{ update.location }}
+								</N8nText>
 							</div>
-							<N8nBadge v-if="update.check.verdict === 'needs_review'" variant="warning">
-								{{ i18n.baseText('settings.context.skills.updates.tag.needsReview') }}
-							</N8nBadge>
-							<N8nBadge v-else-if="update.check.verdict === 'blocked'" variant="danger">
-								{{ i18n.baseText('settings.context.skills.updates.tag.blocked') }}
-							</N8nBadge>
-							<SkillDiffCount :count="counts.get(update.skillId)" hide-zero />
-							<N8nIcon icon="chevron-right" size="small" />
-						</button>
-					</li>
-				</ul>
+							<SkillDiffCount :count="countOf(update.skillId)" hide-zero />
+						</li>
+					</ul>
 
-				<N8nCheckbox
-					v-if="canReview && needsReview"
-					v-model="reviewedWarnings"
-					:label="i18n.baseText('settings.context.skills.updates.reviewedWarnings')"
-					data-test-id="skill-source-updates-reviewed"
-				/>
+					<section :class="$style.preview" data-test-id="skill-source-update-preview">
+						<template v-if="preview">
+							<!-- The list and the file headers name the skill, and each file links to GitHub. -->
+							<div v-if="canReview" :class="$style.previewHeader">
+								<N8nButton
+									variant="ghost"
+									size="medium"
+									:loading="skipping === preview.skillId"
+									:disabled="skipping !== null || accepting"
+									data-test-id="skill-source-update-skip"
+									@click="onSkip(preview)"
+								>
+									<template #icon><N8nIcon icon="eye-off" :size="16" /></template>
+									{{ i18n.baseText('settings.context.skills.review.skip') }}
+								</N8nButton>
+							</div>
+							<N8nCallout
+								v-if="preview.nameClash"
+								theme="danger"
+								slim
+								icon-size="small"
+								data-test-id="skill-update-name-clash"
+							>
+								{{
+									i18n.baseText(
+										preview.nameClash.where === 'agent'
+											? 'settings.context.skills.review.nameClash.agent'
+											: 'settings.context.skills.review.nameClash',
+										{ interpolate: { name: preview.nameClash.name, scope: scopeLabel } },
+									)
+								}}
+							</N8nCallout>
+							<N8nCallout
+								v-if="!preview.update"
+								theme="warning"
+								slim
+								icon-size="small"
+								data-test-id="skill-update-unreadable"
+							>
+								{{ i18n.baseText('settings.context.skills.review.unreadable') }}
+							</N8nCallout>
+							<!-- The skill comes first: the change, as the version compare shows it, one file after
+							     the other, then the files that n8n leaves out. The check follows. -->
+							<SkillFilesView
+								v-else
+								:skill="preview.update"
+								:compare-from="preview.current"
+								:sections="sections.get(preview.skillId) ?? []"
+								:location="preview.location"
+								:web-url="preview.webUrl"
+								:skipped-files="skippedFiles(preview)"
+								:findings="fileFindings(preview)"
+								data-test-id="skill-update-diff"
+							/>
+							<!-- A finding in a file shows in that file. The rest, such as a finding about the
+							     whole skill, show here. -->
+							<SkillFindingsList
+								v-if="otherFindings(preview).length > 0"
+								:findings="otherFindings(preview)"
+							/>
+							<div v-if="checkFindings(preview).length === 0" :class="$style.noIssues">
+								<N8nIcon icon="circle-check" color="success" size="small" />
+								<N8nText size="small">
+									{{ i18n.baseText('settings.context.skills.connect.preview.noIssues') }}
+								</N8nText>
+							</div>
+						</template>
+					</section>
+				</div>
 			</template>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
-			<N8nButton
-				variant="ghost"
-				icon="external-link"
-				:label="i18n.baseText('settings.context.skills.sources.actions.openInGitHub')"
-				:disabled="!data"
-				@click="openInGitHub"
-			/>
 			<span :class="$style.spacer" />
-			<template v-if="canReview && ready.length > 0">
-				<N8nButton
-					variant="outline"
-					:label="i18n.baseText('settings.context.skills.updates.later')"
-					:disabled="accepting"
-					data-test-id="skill-source-updates-later"
-					@click="emit('update:open', false)"
+			<template v-if="canReview && (data?.updates.length ?? 0) > 0">
+				<N8nCheckbox
+					v-if="needsReview"
+					v-model="reviewedWarnings"
+					:label="i18n.baseText('settings.context.skills.updates.reviewedWarnings')"
+					:class="$style.reviewed"
+					data-test-id="skill-source-updates-reviewed"
 				/>
 				<N8nButton
 					:label="
-						i18n.baseText('settings.context.skills.updates.updateAll', {
-							interpolate: { count: ready.length },
+						i18n.baseText('settings.context.skills.updates.updateSelected', {
+							interpolate: { count: selectedUpdates.length },
+							adjustToNumber: selectedUpdates.length,
 						})
 					"
-					:disabled="needsReview && !reviewedWarnings"
+					:disabled="!canAccept || skipping !== null"
 					:loading="accepting"
-					data-test-id="skill-source-updates-update-all"
-					@click="onUpdateAll"
+					data-test-id="skill-source-updates-accept"
+					@click="onAccept"
 				/>
 			</template>
 			<N8nButton
@@ -310,57 +535,154 @@ function openInGitHub() {
 </template>
 
 <style lang="scss" module>
+/* The same frame as the import picker. */
+.wideDialog.wideDialog {
+	--dialog--max-width: min(75rem, calc(100dvw - var(--spacing--lg)));
+}
+
+.headerWithTabs {
+	border-bottom: var(--border);
+	padding-block-end: 0;
+}
+
+.headerMain {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	width: 100%;
+}
+
+.description {
+	margin: 0;
+}
+
+.source {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--text-color--subtler);
+}
+
+.tabs {
+	margin-top: var(--spacing--2xs);
+}
+
 .body {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 }
 
-.source {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.bodyWithTabs {
+	padding-block-start: var(--n8n-dialog-region--padding, var(--spacing--md));
 }
 
-.rows {
+.picker {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+	height: min(65vh, 44rem);
+	min-height: 0;
+}
+
+.list {
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
 	margin: 0;
 	padding: 0;
+	overflow-y: auto;
 	list-style: none;
 	border: var(--border);
-	border-radius: var(--radius);
+	border-radius: var(--radius) 0 0 var(--radius);
+	/* The list is grey, and the active row is white, as the skill beside it. */
+	background-color: var(--background--subtle);
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
-.rows > li + li {
-	border-top: var(--border);
-}
-
-/* A native button, so a keyboard user can open the review too. */
-.row {
+.item {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: var(--spacing--xs);
-	width: 100%;
 	padding: var(--spacing--xs) var(--spacing--sm);
-	border: none;
-	background: none;
-	color: inherit;
-	font: inherit;
-	text-align: left;
 	cursor: pointer;
 
-	&:hover,
+	& + & {
+		border-top: var(--border);
+	}
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+
 	&:focus-visible {
-		background: var(--color--background--light-2);
+		outline: var(--focus--border-width, 2px) solid var(--color--primary);
+		outline-offset: -2px;
 	}
 }
 
-.rowText {
+.itemActive,
+.itemActive:hover {
+	background-color: var(--background--surface);
+}
+
+.checkboxCell {
+	display: flex;
+	padding-top: var(--spacing--5xs);
+}
+
+.disabled .itemText {
+	opacity: 0.7;
+}
+
+.itemText {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+	gap: var(--spacing--5xs);
 	min-width: 0;
+}
+
+.clamp {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+.preview {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	min-height: 0;
+	padding: var(--spacing--sm);
+	overflow-y: auto;
+	border: var(--border);
+	border-inline-start: 0;
+	border-radius: 0 var(--radius) var(--radius) 0;
+	background-color: var(--background--surface);
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
+}
+
+.previewHeader {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--xs);
+}
+
+.noIssues {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.reviewed {
+	align-self: center;
+	margin-inline-end: var(--spacing--xs);
 }
 
 .spacer {

@@ -1096,12 +1096,20 @@ describe('SettingsSkillsView', () => {
 				canAddSkills: true,
 				canDelete: false,
 				skillsInUse: 0,
+				updatesAvailable: 0,
+				updatesBlocked: 0,
+				lastCheckedAt: null,
+				canReview: false,
 				...overrides,
 			};
 		}
 
 		it('heads the rows of each source, and opens Add more from it', async () => {
 			enableSkillSync();
+			skillsStore.checkSourceForNewSkills.mockImplementation(async (id: string) => {
+				skillsStore.newSkillCounts = { ...skillsStore.newSkillCounts, [id]: 2 };
+				return 2;
+			});
 			skillsStore.fetchSources.mockImplementation(async () => {
 				skillsStore.sources = [source()];
 				return skillsStore.sources;
@@ -1135,8 +1143,11 @@ describe('SettingsSkillsView', () => {
 			);
 			expect(view.queryByTestId('skill-source-tabs')).not.toBeInTheDocument();
 
+			// The menu has no Add more: the new skills button on the row opens it.
 			await userEvent.click(view.getByTestId('skill-source-menu-src-1').querySelector('button')!);
-			await userEvent.click(await view.findByText('Add more skills'));
+			await view.findByText('Open in GitHub');
+			expect(view.queryByText('Add more skills')).not.toBeInTheDocument();
+			await userEvent.click(await view.findByTestId('skill-group-new-skills'));
 			expect(view.getByTestId('connect-dialog-stub')).toHaveAttribute('data-source-id', 'src-1');
 
 			skillsStore.fetchSources.mockClear();
@@ -1318,7 +1329,7 @@ describe('SettingsSkillsView', () => {
 			const view = renderWithDialogStub();
 
 			const link = await view.findByTestId('skill-group-new-skills');
-			expect(link).toHaveTextContent('2 new skills');
+			expect(link).toHaveTextContent('2 new');
 			expect(link).toHaveAccessibleName('2 new skills to add');
 			// A source the user cannot add to has nothing to offer, so n8n does not check it.
 			expect(skillsStore.checkSourceForNewSkills).toHaveBeenCalledTimes(1);
@@ -1423,19 +1434,14 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().syncedFrom).toEqual(syncedFrom);
 		});
 
-		describe('Sources tab and reviews', () => {
+		describe('Updates from a source row', () => {
 			const UpdatesStub = {
 				name: 'SkillSourceUpdatesDialog',
 				props: ['open', 'sourceId'],
-				emits: ['update:open', 'review', 'changed'],
+				emits: ['update:open', 'changed'],
 				template: `<div v-if="open" data-test-id="updates-stub">{{ sourceId }}</div>`,
 			};
-			const ReviewStub = {
-				name: 'SkillUpdateReviewDialog',
-				props: ['open', 'skillId'],
-				emits: ['update:open', 'changed', 'stopSyncing'],
-				template: `<div v-if="open" data-test-id="review-stub">{{ skillId }}<button data-test-id="review-stub-stop" @click="$emit('stopSyncing', skillId)" /></div>`,
-			};
+
 			const source = {
 				id: 'src-1',
 				type: 'github' as const,
@@ -1443,10 +1449,14 @@ describe('SettingsSkillsView', () => {
 				ref: 'main',
 				path: '',
 				webUrl: 'https://github.com/acme/skills',
+				scope: 'instance' as const,
 				projectId: null,
 				projectName: null,
 				projectType: null,
 				skillCount: 2,
+				canAddSkills: false,
+				canDelete: false,
+				skillsInUse: 0,
 				updatesAvailable: 1,
 				updatesBlocked: 0,
 				lastCheckedAt: null,
@@ -1456,116 +1466,60 @@ describe('SettingsSkillsView', () => {
 			const renderWithStubs = () =>
 				renderView({
 					global: {
-						stubs: { SkillSourceUpdatesDialog: UpdatesStub, SkillUpdateReviewDialog: ReviewStub },
+						stubs: { SkillSourceUpdatesDialog: UpdatesStub },
 					},
 				});
 
-			it('shows no tabs when the flag is off', () => {
-				const { queryByTestId } = renderView();
-
-				expect(queryByTestId('skills-tabs')).toBeNull();
-			});
-
-			it('lists the sources on the Sources tab and opens the updates of one', async () => {
+			/** A synced skill with an update, under the row of its source. */
+			function withSourceUpdate(overrides: Partial<SkillListItem> = {}) {
 				enableSkillSync();
 				skillsStore.fetchSources.mockImplementation(async () => {
 					skillsStore.sources = [source];
 					return [source];
 				});
-				const { getByTestId, getByText, findByTestId } = renderWithStubs();
-
-				await userEvent.click(getByText('Sources'));
-				await waitFor(() => expect(skillsStore.fetchSources).toHaveBeenCalled());
-				await userEvent.click(await findByTestId('skill-source-label'));
-
-				expect(getByTestId('updates-stub')).toHaveTextContent('src-1');
-			});
-
-			it('opens the review from the badge of a skill with an update', async () => {
-				enableSkillSync();
-				skillsStore.skills = [skill({ source: 'github', syncState: 'update_available' })];
-				skillsStore.count = 1;
-				const { findByTestId, getByTestId } = renderWithStubs();
-
-				await userEvent.click(await findByTestId('skill-sync-badge-update_available'));
-
-				expect(getByTestId('review-stub')).toHaveTextContent('s1');
-			});
-
-			it('stops syncing from the review with the same confirmation, and closes it', async () => {
-				enableSkillSync();
 				skillsStore.skills = [
-					skill({ source: 'github', syncState: 'update_available', canStopSyncing: true }),
+					skill({
+						source: 'github',
+						sourceId: 'src-1',
+						syncState: 'update_available',
+						...overrides,
+					}),
 				];
 				skillsStore.count = 1;
-				skillsStore.stopSyncingSkill.mockResolvedValue(undefined);
+			}
+
+			it('opens the updates of a source from its row', async () => {
+				withSourceUpdate();
 				const { findByTestId, getByTestId, queryByTestId } = renderWithStubs();
 
-				await userEvent.click(await findByTestId('skill-sync-badge-update_available'));
-				await userEvent.click(getByTestId('review-stub-stop'));
+				await userEvent.click(await findByTestId('skill-source-updates'));
 
-				await waitFor(() => expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1'));
-				expect(confirmMock).toHaveBeenCalledWith(
-					expect.stringContaining('You cannot undo this.'),
-					'Stop syncing research-search?',
-					expect.anything(),
-				);
-				await waitFor(() => expect(queryByTestId('review-stub')).toBeNull());
-			});
-
-			it('checks a source from the Sources tab and reloads both lists', async () => {
-				enableSkillSync();
-				skillsStore.fetchSources.mockImplementation(async () => {
-					skillsStore.sources = [source];
-					return [source];
-				});
-				skillsStore.checkSource.mockResolvedValue({
-					label: 'acme/skills',
-					updatesFound: 1,
-					throttled: false,
-					lastCheckedAt: '2026-10-29T12:00:00.000Z',
-				});
-				const { getByText, findByTestId } = renderWithStubs();
-
-				await userEvent.click(getByText('Sources'));
-				await userEvent.click(
-					(await findByTestId('skill-source-actions')).querySelector('button')!,
-				);
-				await waitFor(() =>
-					expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
-				);
-				skillsStore.fetchSkills.mockClear();
-				skillsStore.fetchSources.mockClear();
-				await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
-
-				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
-				expect(skillsStore.fetchSources).toHaveBeenCalled();
-				expect(skillsStore.checkSource).toHaveBeenCalledWith('src-1');
-				expect(showMessageMock).toHaveBeenCalledWith(
-					expect.objectContaining({
-						title: 'Checked acme/skills',
-						message: '1 skill has an update.',
-					}),
-				);
+				expect(getByTestId('updates-stub')).toHaveTextContent('src-1');
+				// The skill row has no update button of its own.
+				expect(queryByTestId(/skill-sync-badge/)).toBeNull();
 			});
 		});
 
-		describe('check for updates', () => {
+		describe('Check for updates from a source row', () => {
 			async function clickCheck() {
+				enableSkillSync();
+				skillsStore.fetchSources.mockImplementation(async () => {
+					skillsStore.sources = [source({ canReview: true })];
+					return skillsStore.sources;
+				});
 				skillsStore.skills = [
-					skill({ source: 'github', canEdit: false, canCheckForUpdates: true }),
+					skill({ source: 'github', sourceId: 'src-1', canEdit: false, canCheckForUpdates: true }),
 				];
 				skillsStore.count = 1;
-				const view = renderView();
+				const view = renderWithDialogStub();
+				const menu = await view.findByTestId('skill-source-menu-src-1');
 				await new Promise(process.nextTick);
 				skillsStore.fetchSkills.mockClear();
-				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await userEvent.click(menu.querySelector('button')!);
 				await waitFor(() =>
-					expect(
-						document.querySelector('[data-test-id="action-checkForUpdates"]'),
-					).toBeInTheDocument(),
+					expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
 				);
-				await userEvent.click(document.querySelector('[data-test-id="action-checkForUpdates"]')!);
+				await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
 			}
 
 			it.each([
@@ -1590,7 +1544,7 @@ describe('SettingsSkillsView', () => {
 			])(
 				'says what the check found ($updatesFound, throttled $throttled) and reloads the list',
 				async ({ updatesFound, throttled, title, message }) => {
-					skillsStore.checkForUpdates.mockResolvedValue({
+					skillsStore.checkSource.mockResolvedValue({
 						label: 'acme/skills',
 						updatesFound,
 						throttled,
@@ -1600,7 +1554,7 @@ describe('SettingsSkillsView', () => {
 					await clickCheck();
 					await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 
-					expect(skillsStore.checkForUpdates).toHaveBeenCalledWith('s1');
+					expect(skillsStore.checkSource).toHaveBeenCalledWith('src-1');
 					expect(showMessageMock).toHaveBeenCalledWith({ title, message, type: 'success' });
 				},
 			);
@@ -1615,7 +1569,7 @@ describe('SettingsSkillsView', () => {
 					text: 'The credential of this source no longer exists, or this scope can no longer use it.',
 				},
 			])('shows the text of $reason when the check fails', async ({ reason, text }) => {
-				skillsStore.checkForUpdates.mockRejectedValue(
+				skillsStore.checkSource.mockRejectedValue(
 					new ResponseError('Server text', { meta: { reason } }),
 				);
 
@@ -1628,7 +1582,7 @@ describe('SettingsSkillsView', () => {
 
 			it('keeps the error of a failure without a reason', async () => {
 				const error = new Error('Network down');
-				skillsStore.checkForUpdates.mockRejectedValue(error);
+				skillsStore.checkSource.mockRejectedValue(error);
 
 				await clickCheck();
 				await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
