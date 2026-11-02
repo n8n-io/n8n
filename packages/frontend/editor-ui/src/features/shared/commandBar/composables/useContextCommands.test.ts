@@ -104,4 +104,14 @@ describe('useContextCommands', () => {
 		void match?.handler?.();
 		expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
 	});
+
+	it('finds both entries with a "context" search', () => {
+		skillsEnabled.value = true;
+		preferencesEnabled.value = true;
+		const { commands } = useContextCommands();
+
+		const matchIds = rankItems(commands.value, 'context').map(({ id }) => id);
+		expect(matchIds).toHaveLength(2);
+		expect(matchIds).toEqual(expect.arrayContaining(['context-skills', 'context-preferences']));
+	});
 });
