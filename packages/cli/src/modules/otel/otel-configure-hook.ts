@@ -30,6 +30,11 @@ export class OtelConfigureHook {
 
 	constructor(private readonly logger: Logger) {}
 
+	clear(): void {
+		this.resourceAttributeMappers.length = 0;
+		this.outboundBaggageMappers.length = 0;
+	}
+
 	mapResourceAttributes(spanAttributes: Attributes): Record<string, string> {
 		return this.runMappers(this.resourceAttributeMappers, spanAttributes, 'resource attribute');
 	}

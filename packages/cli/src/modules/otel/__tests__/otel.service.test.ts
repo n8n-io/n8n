@@ -193,6 +193,7 @@ describe('OtelService', () => {
 	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let externalHooks: ReturnType<typeof mock<ExternalHooks>>;
+	let configureHook: ReturnType<typeof mock<OtelConfigureHook>>;
 	let service: OtelService;
 
 	const createService = (sdk: OtelSdk) =>
@@ -205,7 +206,7 @@ describe('OtelService', () => {
 			moduleRegistry,
 			publisher,
 			externalHooks,
-			mock<OtelConfigureHook>(),
+			configureHook,
 		);
 
 	beforeEach(() => {
@@ -225,6 +226,7 @@ describe('OtelService', () => {
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
 		externalHooks = mock<ExternalHooks>();
+		configureHook = mock<OtelConfigureHook>();
 		service = createService(otelSdk);
 	});
 	afterEach(() => vi.restoreAllMocks());
@@ -288,6 +290,7 @@ describe('OtelService', () => {
 			await service.init();
 			await flushPromises();
 
+			expect(configureHook.clear).toHaveBeenCalledTimes(1);
 			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'The otel.configure external hook failed, so n8n starts without it',
