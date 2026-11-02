@@ -72,6 +72,8 @@ test.describe(
 					mainZeroApi.enableFeature('promotions'),
 					mainOneApi.enableFeature('promotions'),
 				]);
+				// Promote exports team projects, and the project route needs these features.
+				await mainZeroApi.enableProjectFeatures();
 				await mainZeroApi.setMaxTeamProjectsQuota(-1);
 
 				const { rawApiKey } = await mainZeroApi.publicApi.createApiKey(
