@@ -238,7 +238,9 @@ defineExpose({
 		@update:streaming="onStreamingChange"
 	>
 		<template v-if="slots.empty" #empty-state>
-			<slot name="empty" />
+			<div :class="$style.emptyState">
+				<slot name="empty" />
+			</div>
 		</template>
 		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
 			<InstanceAiResourceChip
@@ -273,3 +275,10 @@ defineExpose({
 		</template>
 	</AgentChatPanel>
 </template>
+
+<style lang="scss" module>
+/* Matches the message list padding of `InstanceAiConversation`. */
+.emptyState {
+	padding: var(--spacing--sm) var(--spacing--lg);
+}
+</style>
