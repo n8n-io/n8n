@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  s_f6ecac1d27039d::t_d36505a0796849 6,141-146
+packages/cli/src/modules/agents/integrations/__tests__/agent-outbound-files.service.test.ts
+  ai_agent 9-12,393-407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0347f8ca73d3c30c0c675cc1bd03382ecc6dbe67",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
