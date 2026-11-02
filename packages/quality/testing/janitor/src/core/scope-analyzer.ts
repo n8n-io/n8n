@@ -7,7 +7,7 @@
 import { existsSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
-import { matchesGlobalTrigger } from './global-triggers.js';
+import { matchesGlobalTrigger, matchesSinkPackage } from './global-triggers.js';
 import { toPosix } from './path-utils.js';
 
 // Bailout patterns are centralised here (vs the original DEVP-194 spec's
@@ -52,6 +52,10 @@ export interface ComputeScopeOptions {
 	 *  changed and we must run the full suite (a scoped `vitest related` run
 	 *  can't see the cross-package change). `null`/undefined = no signal. */
 	affectedPackages?: string[] | null;
+	/** Packages affected by the changed files in sink packages (`@n8n/db`,
+	 *  `workflow`, `core`, `vitest-config`): those packages and their transitive
+	 *  dependents. `null`/undefined = no signal → a sink change runs full. */
+	sinkAffectedPackages?: string[] | null;
 }
 
 export type ScopeResult =
@@ -64,14 +68,28 @@ export function computeScope(options: ComputeScopeOptions): ScopeResult {
 		return { kind: 'full', reason: 'No CHANGED_FILES signal (local dev)' };
 	}
 
-	// Workspace-wide triggers (lockfile, root manifest, universal sinks like
-	// @n8n/db / workflow / core) force RUN_FULL regardless of which package we
-	// are scoping. The dep-graph in affected-packages lists the package as
-	// affected, but the in-package filter below would otherwise SKIP it because
-	// the trigger file lives outside the package — a silent false green.
+	// Workspace-wide triggers (lockfile, root manifest) force RUN_FULL regardless
+	// of which package we are scoping. The dep-graph in affected-packages lists
+	// the package as affected, but the in-package filter below would otherwise
+	// SKIP it because the trigger file lives outside the package — a silent
+	// false green.
 	const globalTrigger = options.changedFiles.find(matchesGlobalTrigger);
 	if (globalTrigger) {
 		return { kind: 'full', reason: 'Global trigger changed', trigger: globalTrigger };
+	}
+
+	// A sink package change (@n8n/db, workflow, core, vitest-config) forces
+	// RUN_FULL in that package and its dependents, even when they have their
+	// own changes to scope. Other packages cannot load the changed code.
+	const sinkTrigger = options.changedFiles.find(matchesSinkPackage);
+	if (sinkTrigger) {
+		const dependsOnSink =
+			!options.packageName ||
+			!options.sinkAffectedPackages ||
+			options.sinkAffectedPackages.includes(options.packageName);
+		if (dependsOnSink) {
+			return { kind: 'full', reason: 'Sink package changed', trigger: sinkTrigger };
+		}
 	}
 
 	const absolute = isAbsolute(options.packageDir)
