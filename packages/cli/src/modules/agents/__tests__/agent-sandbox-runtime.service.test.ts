@@ -424,6 +424,29 @@ describe('AgentSandboxRuntimeService', () => {
 			}
 		});
 
+		it('refuses a read-only path that is a symlink into the n8n user folder', async () => {
+			const base = mkdtempSync(join(tmpdir(), 'mxc-readonly-test-'));
+			try {
+				const userFolder = join(base, '.n8n');
+				mkdirSync(userFolder);
+				symlinkSync(userFolder, join(base, 'reports'));
+				const service = makeService({
+					configOverrides: {
+						...mxcConfig,
+						mxcWorkspaceRoot: join(base, 'workspaces'),
+						mxcReadonlyPaths: join(base, 'reports'),
+					},
+					instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder: userFolder }),
+				});
+
+				await expect(
+					service.acquireWorkspaceSandbox(projectId, agentId, principalHash),
+				).rejects.toThrow(/must not include the n8n user folder/);
+			} finally {
+				rmSync(base, { recursive: true, force: true });
+			}
+		});
+
 		it('keeps the knowledge sandbox on the n8n Assistant provider', async () => {
 			const service = makeService({ configOverrides: mxcConfig });
 

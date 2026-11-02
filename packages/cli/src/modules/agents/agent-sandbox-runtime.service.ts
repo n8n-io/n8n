@@ -63,6 +63,11 @@ interface SandboxStartOptions {
 	onFilesystemInit?: FilesystemLifecycleHook;
 }
 
+function isInsideFolder(path: string, folder: string): boolean {
+	const fromFolder = relative(folder, path);
+	return fromFolder !== '..' && !fromFolder.startsWith(`..${sep}`) && !isAbsolute(fromFolder);
+}
+
 /** `mxc` runs agent workspaces on this host. Only agent workspaces can use it. */
 export type AgentSandboxProvider = SandboxProvider | 'mxc';
 
@@ -369,24 +374,29 @@ export class AgentSandboxRuntimeService {
 			resolve(mxcWorkspaceRoot.trim() || join(homedir(), 'n8n-agent-workspaces')),
 		);
 		const userFolder = await canonicalizePath(resolve(this.instanceSettings.n8nFolder));
-		const fromUserFolder = relative(userFolder, workspaceRoot);
-		const insideUserFolder =
-			fromUserFolder !== '..' &&
-			!fromUserFolder.startsWith(`..${sep}`) &&
-			!isAbsolute(fromUserFolder);
-		if (insideUserFolder) {
+		if (isInsideFolder(workspaceRoot, userFolder)) {
 			// Agent commands are denied access to the n8n user folder, so no workspace could work.
 			throw new OperationalError(
 				`N8N_AGENTS_MXC_WORKSPACE_ROOT must be outside the n8n user folder (${this.instanceSettings.n8nFolder}).`,
 			);
 		}
+		// Grant real paths only, so that a symlink alias cannot expose the n8n user folder.
+		const readonlyPaths = await Promise.all(
+			mxcReadonlyPaths
+				.split(',')
+				.map((path) => path.trim())
+				.filter(Boolean)
+				.map(async (path) => await canonicalizePath(resolve(path))),
+		);
+		if (readonlyPaths.some((path) => isInsideFolder(path, userFolder))) {
+			throw new OperationalError(
+				`N8N_AGENTS_MXC_READONLY_PATHS must not include the n8n user folder (${this.instanceSettings.n8nFolder}).`,
+			);
+		}
 		return {
 			id: sandboxId,
 			workspaceRoot,
-			readonlyPaths: mxcReadonlyPaths
-				.split(',')
-				.map((path) => path.trim())
-				.filter(Boolean),
+			readonlyPaths,
 			// The n8n user folder holds the encryption key and the database.
 			deniedPaths: [userFolder],
 			...(mxcDenialsReportDir.trim() ? { denialsReportDir: mxcDenialsReportDir.trim() } : {}),
