@@ -1,3 +1,6 @@
+import { isRecord } from '@n8n/utils/is-record';
+
+import { AGENT_LANGCHAIN_NODE_TYPE } from './constants';
 import type { INode } from './interfaces';
 
 const MAX_TOOL_NAME_LENGTH = 64;
@@ -18,4 +21,22 @@ export function nodeNameToToolName(nodeOrName: INode | string): string {
 	}
 
 	return toolName;
+}
+
+/** Keep Tool Availability rules linked to their sources after node IDs change. */
+export function remapToolAvailabilitySourceIds(
+	nodes: ReadonlyArray<{ type: string; parameters?: unknown }>,
+	nodeIdMap: ReadonlyMap<string, string>,
+): void {
+	for (const node of nodes) {
+		if (node.type !== AGENT_LANGCHAIN_NODE_TYPE || !isRecord(node.parameters)) continue;
+
+		const availability = node.parameters.toolAvailability;
+		if (!isRecord(availability) || !Array.isArray(availability.rules)) continue;
+
+		for (const rule of availability.rules.filter(isRecord)) {
+			if (typeof rule.sourceNodeId !== 'string') continue;
+			rule.sourceNodeId = nodeIdMap.get(rule.sourceNodeId) ?? rule.sourceNodeId;
+		}
+	}
 }

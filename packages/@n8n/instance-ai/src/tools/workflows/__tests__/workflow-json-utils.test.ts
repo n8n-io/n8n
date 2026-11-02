@@ -376,6 +376,83 @@ describe('preserveExistingNodeIds', () => {
 		expect(rebuilt.nodeGroups?.[0]?.nodeIds).toEqual(['saved-added']);
 	});
 
+	it.each([3, 3.1])(
+		'remaps Agent V%s tool availability rules onto recovered source IDs',
+		async (typeVersion) => {
+			const tool = {
+				...node('saved-tool', 'Calculator'),
+				type: '@n8n/n8n-nodes-langchain.toolCalculator',
+			};
+			const agent = {
+				...node('saved-agent', 'Agent'),
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion,
+			};
+			const saved: WorkflowJSON = {
+				name: 'Saved',
+				nodes: [tool, agent],
+				connections: {
+					Calculator: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+			const rebuilt: WorkflowJSON = {
+				...saved,
+				nodes: [
+					{ ...tool, id: 'compiled-tool' },
+					{
+						...agent,
+						parameters: {
+							toolAvailability: {
+								rules: [{ sourceNodeId: 'compiled-tool', available: '={{ $json.allowTool }}' }],
+							},
+						},
+					},
+				],
+			};
+
+			await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+			expect(rebuilt.nodes[0].id).toBe('saved-tool');
+			expect(rebuilt.nodes[1].parameters).toEqual({
+				toolAvailability: {
+					rules: [{ sourceNodeId: 'saved-tool', available: '={{ $json.allowTool }}' }],
+				},
+			});
+			expect(rebuilt.connections).toEqual(saved.connections);
+		},
+	);
+
+	it.each([undefined, 'wf-1'])(
+		'keeps tool availability references when source IDs do not change (workflow: %s)',
+		async (workflowId) => {
+			const workflow: WorkflowJSON = {
+				name: 'Agent workflow',
+				nodes: [
+					{
+						...node('tool', 'Calculator'),
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
+					},
+					{
+						...node('agent', 'Agent'),
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3.1,
+						parameters: {
+							toolAvailability: { rules: [{ sourceNodeId: 'tool', available: false }] },
+						},
+					},
+				],
+				connections: {
+					Calculator: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				},
+			};
+			const original = structuredClone(workflow);
+
+			await preserveExistingNodeIds(workflow, workflowId, contextWithExisting(original));
+
+			expect(workflow).toEqual(original);
+		},
+	);
+
 	it('keeps every id unique after recovery', async () => {
 		const saved: WorkflowJSON = {
 			name: 'Saved',
