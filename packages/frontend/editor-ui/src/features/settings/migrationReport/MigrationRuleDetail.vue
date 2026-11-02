@@ -27,6 +27,7 @@ import {
 	N8nSelectedItemsInfo,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nStatusDot,
 	N8nText,
 	N8nTooltip,
 	N8nUserSelect,
@@ -45,11 +46,14 @@ import orderBy from 'lodash/orderBy';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import FindingStateSelect from './components/FindingStateSelect.vue';
+import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
+	isUnresolvedState,
 	matchesWorkflowFilters,
 	PERSONAL_PROJECTS,
 	type WorkflowFilters,
@@ -223,15 +227,9 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 			width: 240,
 		},
 		{
-			title: i18n.baseText('settings.migrationReport.detail.table.project'),
-			key: 'homeProjectName',
-			value: projectLabel,
-			width: 160,
-		},
-		{
 			title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 			key: 'issues',
-			width: 160,
+			width: 200,
 			disableSort: true,
 		},
 		{
@@ -249,7 +247,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.state'),
 			key: 'status',
-			width: 140,
+			width: 150,
 		},
 	];
 
@@ -495,8 +493,11 @@ async function notifyOwners(
 		const notifiedAt = new Date();
 		state.value = {
 			...state.value,
+			// The server marks only an open or notified finding, so a fix that is not published keeps its state.
 			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
-				notified.has(row.id) ? { ...row, status: 'notified', notifiedAt } : row,
+				notified.has(row.id) && row.status !== 'fixed_unpublished'
+					? { ...row, status: 'notified', notifiedAt }
+					: row,
 			),
 		};
 		return result;
@@ -693,10 +694,8 @@ function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus 
 	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
 }
 
-// A notified finding still needs a fix, so it counts as open.
 function isUnresolved(workflow: AffectedWorkflow): boolean {
-	const findingStatus = findingState(workflow);
-	return findingStatus === 'open' || findingStatus === 'notified';
+	return isUnresolvedState(findingState(workflow));
 }
 
 const wontFixCount = computed(
@@ -781,12 +780,11 @@ watch(filteredWorkflows, (workflows) => {
 	if (kept.length !== selectedWorkflowIds.value.length) selectedWorkflowIds.value = kept;
 });
 
-// The owner and project cells show a label, so they sort by that label.
+// The owner cell shows a label, so it sorts by that label and not by the owner object.
 // Dates come from JSON as strings, and a workflow that never ran has no date.
 // A timestamp sorts them right, with a missing date as the oldest.
 const sortValues: Record<string, (workflow: AffectedWorkflow) => string | number> = {
 	owner: ownerLabel,
-	homeProjectName: (workflow) => projectLabel(workflow).toLowerCase(),
 	lastExecutedAt: (workflow) =>
 		workflow.lastExecutedAt ? new Date(workflow.lastExecutedAt).getTime() : 0,
 	lastUpdatedAt: (workflow) => new Date(workflow.lastUpdatedAt).getTime(),
@@ -799,6 +797,29 @@ const sortedWorkflows = computed(() => {
 	const { id, desc } = sortBy.value[0];
 	return orderBy(filteredWorkflows.value, [sortValues[id] ?? id], [desc ? 'desc' : 'asc']);
 });
+
+const page = ref(0);
+const itemsPerPage = ref(25);
+
+const pagedWorkflows = computed(() =>
+	sortedWorkflows.value.slice(
+		page.value * itemsPerPage.value,
+		(page.value + 1) * itemsPerPage.value,
+	),
+);
+
+watch([searchQuery, workflowFilters, sortBy], () => {
+	page.value = 0;
+});
+
+// Resolving rows can empty the last page, so the page moves back to the last one with rows.
+watch(
+	() => sortedWorkflows.value.length,
+	(length) => {
+		const lastPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
+		if (page.value > lastPage) page.value = lastPage;
+	},
+);
 </script>
 
 <template>
@@ -836,6 +857,14 @@ const sortedWorkflows = computed(() => {
 				</N8nBadge>
 			</template>
 		</N8nSettingsPageHeader>
+
+		<HowToFixPanel
+			v-if="!isLoading"
+			:class="$style.howToFix"
+			:recommendations="state.recommendations"
+			:documentation-url="state.ruleDocumentationUrl"
+			:migratable="state.migratable"
+		/>
 
 		<div
 			v-if="!isLoading && unusedOpenWorkflows.length > 0"
@@ -916,42 +945,70 @@ const sortedWorkflows = computed(() => {
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			v-model:selection="selectedWorkflowIds"
+			v-model:page="page"
+			v-model:items-per-page="itemsPerPage"
 			show-select
 			:item-selectable="isSelectable"
-			:items-per-page="sortedWorkflows.length + 1"
-			:items="sortedWorkflows"
+			:items="pagedWorkflows"
 			:items-length="sortedWorkflows.length"
 			:headers="tableHeaders"
 			:loading="isLoading"
 		>
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.cellStack">
-					<N8nLink
-						theme="text"
-						:to="workflowUrl(item)"
-						new-window
-						:title="item.name"
-						:class="[$style.truncate, $style.workflowName]"
-						data-test-id="migration-workflow-name-link"
-					>
-						{{ item.name }}
-					</N8nLink>
-					<N8nText size="small" color="text-light">
-						{{
-							item.active
-								? i18n.baseText('settings.migrationReport.detail.table.published')
-								: i18n.baseText('settings.migrationReport.detail.table.notPublished')
-						}}
-						·
-						<I18nT
-							keypath="settings.migrationReport.detail.table.updated"
-							tag="span"
-							scope="global"
+					<div :class="$style.nameRow">
+						<N8nTooltip
+							v-if="item.active"
+							:content="i18n.baseText('settings.migrationReport.detail.table.published')"
 						>
-							<template #time>
-								<TimeAgo :date="item.lastUpdatedAt.toString()" />
-							</template>
-						</I18nT>
+							<span
+								:class="$style.publishedDot"
+								role="img"
+								:aria-label="i18n.baseText('settings.migrationReport.detail.table.published')"
+								data-test-id="migration-workflow-published"
+							>
+								<N8nStatusDot variant="success" />
+							</span>
+						</N8nTooltip>
+						<N8nLink
+							theme="text"
+							:to="workflowUrl(item)"
+							new-window
+							:title="item.name"
+							:class="[$style.truncate, $style.workflowName]"
+							data-test-id="migration-workflow-name-link"
+						>
+							{{ item.name }}
+						</N8nLink>
+					</div>
+					<N8nText size="small" color="text-light" :class="$style.nameDetails">
+						<span
+							:class="$style.project"
+							:title="projectLabel(item)"
+							data-test-id="migration-workflow-project"
+						>
+							<ProjectIcon
+								:icon="{
+									type: 'icon',
+									value: item.homeProjectType === 'personal' ? 'user' : 'layers',
+								}"
+								border-less
+								size="mini"
+							/>
+							<span :class="$style.truncate">{{ projectLabel(item) }}</span>
+						</span>
+						<span :class="$style.updated">
+							·
+							<I18nT
+								keypath="settings.migrationReport.detail.table.updated"
+								tag="span"
+								scope="global"
+							>
+								<template #time>
+									<TimeAgo :date="item.lastUpdatedAt.toString()" />
+								</template>
+							</I18nT>
+						</span>
 					</N8nText>
 				</div>
 			</template>
@@ -963,18 +1020,6 @@ const sortedWorkflows = computed(() => {
 						</N8nLink>
 						<template v-if="index < item.issues.length - 1">, </template>
 					</template>
-				</div>
-			</template>
-			<template #[`item.homeProjectName`]="{ item }">
-				<div :class="$style.cellStack">
-					<N8nText
-						color="text-dark"
-						:class="$style.truncate"
-						:title="projectLabel(item)"
-						data-test-id="migration-workflow-project"
-					>
-						{{ projectLabel(item) }}
-					</N8nText>
 				</div>
 			</template>
 			<template #[`item.numberOfExecutions`]="{ item }">
@@ -1147,6 +1192,10 @@ const sortedWorkflows = computed(() => {
 	margin-inline: auto;
 }
 
+.howToFix {
+	margin-bottom: var(--spacing--md);
+}
+
 .unusedCallout {
 	display: flex;
 	align-items: center;
@@ -1181,6 +1230,37 @@ const sortedWorkflows = computed(() => {
 /* The ellipsis takes the anchor color, so match it to the link text. */
 .workflowName {
 	color: var(--color--text);
+}
+
+/* A dot before the name shows the published state, so the second line has room for the project. */
+.nameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.publishedDot {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+
+.nameDetails {
+	display: flex;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
+
+/* A long project name truncates, so the updated time stays in view. */
+.project {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.updated {
+	flex-shrink: 0;
 }
 
 .nodeNames {

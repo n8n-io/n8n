@@ -42,6 +42,12 @@ import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 
+// These dependencies are injected as mocks. Do not load their implementation graphs.
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs/promises')>();
 	return { ...fs, rm: vi.fn(fs.rm), stat: vi.fn(fs.stat) };

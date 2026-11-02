@@ -213,13 +213,22 @@ describe('POST /trusted-sources', () => {
 		expect(await rows.countBy({ managedBy: 'admin' })).toBe(1);
 	});
 
-	it('emits trusted-source-created with the actor and the source', async () => {
-		const { id } = await createSource();
+	it('emits trusted-source-created with the actor, the source and the config facets', async () => {
+		const { id } = await createSource({ config: withClient('top-secret') });
 
 		expect(emit).toHaveBeenCalledWith('trusted-source-created', {
 			user: expect.objectContaining({ id: owner.id }),
 			sourceId: id,
 			issuer: ISSUER,
+			facets: {
+				discoveryMode: 'auto',
+				clientKind: 'registered',
+				surfaces: ['public-api'],
+				identitySubject: 'binding',
+				linkByEmail: 'verified-only',
+				provisionHuman: 'off',
+				roleMappingMode: 'off',
+			},
 		});
 	});
 
@@ -351,7 +360,30 @@ describe('PATCH /trusted-sources/:id', () => {
 			user: expect.objectContaining({ id: owner.id }),
 			sourceId: id,
 			issuer: ISSUER,
+			facets: {
+				discoveryMode: 'auto',
+				clientKind: null,
+				surfaces: ['public-api'],
+				identitySubject: 'binding',
+				linkByEmail: 'verified-only',
+				provisionHuman: 'off',
+				roleMappingMode: 'off',
+			},
 		});
+	});
+
+	it('emits trusted-source-updated with the facets of the config after the change', async () => {
+		const { id } = await createSource();
+
+		const response = await ownerAgent
+			.patch(`/trusted-sources/${id}`)
+			.send({ config: withClient('s3cret') });
+
+		expect(response.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'trusted-source-updated',
+			expect.objectContaining({ facets: expect.objectContaining({ clientKind: 'registered' }) }),
+		);
 	});
 
 	it('answers an empty body with the current source, writes nothing and emits nothing', async () => {

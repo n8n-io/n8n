@@ -1,5 +1,5 @@
 import { DataTableFilter, ListDataTableContentQueryDto } from '@n8n/api-types';
-import { withTransaction } from '@n8n/db';
+import { BaseRepository, type OperationContext, TransactionRunner, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	DataSource,
@@ -26,6 +26,7 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
+import { DataTable } from './data-table.entity';
 import { DataTableUserTableName } from './data-table.types';
 import {
 	escapeLikeSpecials,
@@ -142,9 +143,26 @@ function getConditionAndParams(
 	throw new Error(`Unsupported filter condition: ${filter.condition}`);
 }
 
+/**
+ * Rows live in one user table per data table, so there is no entity of their own.
+ * The table exists only to resolve the manager of an `OperationContext`.
+ */
+class DataTableRowsTable extends BaseRepository<DataTable> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(DataTable, dataSource.manager, transactionRunner);
+	}
+}
+
 @Service()
 export class DataTableRowsRepository {
-	constructor(private dataSource: DataSource) {}
+	private readonly table: DataTableRowsTable;
+
+	constructor(
+		private dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+	) {
+		this.table = new DataTableRowsTable(dataSource, transactionRunner);
+	}
 
 	async insertRowsBulk(
 		table: DataTableUserTableName,
@@ -570,9 +588,9 @@ export class DataTableRowsRepository {
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
 		columns: DataTableColumn[],
-		trx?: EntityManager,
+		ctx: OperationContext,
 	) {
-		const em = trx ?? this.dataSource.manager;
+		const em = this.table.managerFor(ctx);
 
 		const [countQuery, query] = this.getManyQuery(dataTableId, dto, columns, em);
 		const data: DataTableRowsReturn = await query.select('*').getRawMany();

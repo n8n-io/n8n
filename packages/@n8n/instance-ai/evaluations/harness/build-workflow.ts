@@ -54,7 +54,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
-import { restoreRecordedRuns } from './recorded-runs';
+import { restoreRecordedRuns, seedNodeNamesById } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -307,8 +307,13 @@ export interface BuildResult {
 	 *  rows into the table the built workflow actually bound.
 	 *  Absent when the case declares no scenario seed tables. */
 	seededScenarioTableIdsByName?: Record<string, string>;
+	/** The thread that seeds scenario table rows when the build has no Instance AI
+	 *  thread of its own (MCP builds). The server scopes row seeding to a thread's
+	 *  project. */
+	seedThreadId?: string;
 	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
-	 *  fed to the build-expectations judge context. Empty/undefined for prebuilt runs. */
+	 *  or from `create_agent` results on MCP builds. Fed to the build-expectations
+	 *  judge context. Empty/undefined for prebuilt runs. */
 	artifactRefs?: ArtifactRef[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
@@ -1036,6 +1041,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						threadId,
 						recordedRuns: config.seed.recordedRuns,
 						seedWorkflows: seedWorkflowsBySeedId,
+						seedNodeNames: seedNodeNamesById(config.seed.workflows),
 						logger,
 						laneTag: config.laneTag,
 					});

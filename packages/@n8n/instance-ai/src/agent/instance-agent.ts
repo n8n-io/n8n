@@ -224,9 +224,10 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.version,
 	);
 	setTraceModelId(orchestrationContext?.tracing, modelId);
+	const functionId = 'instance-ai.orchestrator';
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
-		functionId: 'instance-ai.orchestrator',
+		functionId,
 		executionMode: 'foreground',
 		metadata: modelIdTraceMetadata(modelId),
 	});
@@ -243,6 +244,7 @@ export async function createInstanceAgent(
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
+	if (options.requestLabels) agent.functionId(functionId);
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}

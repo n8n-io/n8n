@@ -7,8 +7,7 @@ import { SkillUsage, type SkillAgent } from './skill-usage.contracts';
 /**
  * Holds the `SkillUsage` of the agents module, which registers it on init. Services that
  * the container creates before then still get a working instance. Until the registration
- * (the agents module is off), no agent uses a skill and an agent skill has no project, so
- * only the global scope can reach it.
+ * (the agents module is off), no agent uses a skill.
  */
 @Service()
 export class SkillUsageProxy extends SkillUsage {
@@ -26,11 +25,6 @@ export class SkillUsageProxy extends SkillUsage {
 	async findAgents(agentIds: string[], ctx: OperationContext = {}) {
 		if (!this.impl || agentIds.length === 0) return new Map<string, SkillAgent>();
 		return await this.impl.findAgents(agentIds, ctx);
-	}
-
-	async findAgentIdsInProjects(projectIds: string[], ctx: OperationContext = {}) {
-		if (!this.impl || projectIds.length === 0) return [];
-		return await this.impl.findAgentIdsInProjects(projectIds, ctx);
 	}
 
 	async findUsage(

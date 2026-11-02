@@ -936,3 +936,52 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 		expect(saveSpy).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('MemoryOrchestrator budget estimate', () => {
+	it('does not count the bytes of a file in a tool output', async () => {
+		const counted: string[] = [];
+		const { orchestrator } = buildOrchestrator(
+			new InMemoryMemory(),
+			{ observerThresholdTokens: 100_000, observe: vi.fn(), observationLogTailLimit: 20 },
+			async (text) => {
+				counted.push(text);
+				return await Promise.resolve(text.length);
+			},
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('Read the image')]);
+		list.addResponse([
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'call-1',
+						toolName: 'read_binary_data',
+						input: { fileId: 'file-1' },
+						state: 'resolved',
+						output: {
+							type: 'content',
+							value: [
+								{ type: 'text', text: '{"fileId":"file-1"}' },
+								{
+									type: 'file',
+									mediaType: 'image/png',
+									fileRef: { id: 'file-1' },
+									data: new Uint8Array(10_000),
+								},
+							],
+						},
+					},
+				],
+			} as unknown as AgentMessage,
+		]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		const text = counted.join('\n');
+		expect(text).toContain('file-1');
+		expect(text).not.toContain('"data"');
+		expect(text.length).toBeLessThan(1_000);
+	});
+});

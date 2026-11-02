@@ -52,6 +52,7 @@ import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.v
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiTestAgentPreviewPanel from './components/InstanceAiTestAgentPreviewPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import InstanceAiResourcePicker from './components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from './components/InstanceAiConversation.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -66,6 +67,7 @@ import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
+import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -348,6 +350,7 @@ provide(CloudBrowserLiveViewsKey, cloudBrowserLiveViews.views);
 provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
+provide('openAppPreview', preview.openAppPreview);
 provide('pendingComposerContext', handoffContext);
 provide(
 	'dismissPendingComposerContext',
@@ -358,6 +361,10 @@ provide(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
+// Wait for the stored tabs: a resource opened before they load replaces them.
+const showOpenResourcePicker = computed(
+	() => preview.tabsLoaded.value && !preview.isPreviewVisible.value && !hasPreviewTabs.value,
+);
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
 });
@@ -804,7 +811,35 @@ function handleNewThreadClick() {
 								/>
 							</Transition>
 						</N8nTooltip>
+						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
+						<InstanceAiResourcePicker
+							v-if="showOpenResourcePicker && thread.projectId"
+							:project-id="thread.projectId"
+							:excluded-tabs="preview.openTabs.value.filter(isArtifactTab)"
+							placement="bottom-end"
+							content-test-id="instance-ai-open-resource-picker"
+							@select="preview.openTab"
+						>
+							<template #trigger>
+								<N8nTooltip
+									:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+									as-child
+								>
+									<N8nIconButton
+										icon="square-plus"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-open-resource"
+										:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+									/>
+								</N8nTooltip>
+							</template>
+						</InstanceAiResourcePicker>
 						<N8nTooltip
+							v-else
 							:content="artifactsPreviewToggleLabel"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"
@@ -1026,6 +1061,14 @@ function handleNewThreadClick() {
 								:class="$style.previewSlot"
 								:skill-id="preview.activeSkillId.value"
 								:refresh-key="preview.skillRefreshKey.value"
+							/>
+							<InstanceAiAppPreview
+								v-if="preview.isPreviewVisible.value && preview.activeApp.value"
+								:class="$style.previewSlot"
+								:project-id="preview.activeApp.value.projectId"
+								:app-id="preview.activeApp.value.id"
+								:refresh-key="preview.appRefreshKey.value"
+								@deleted="preview.closeTab"
 							/>
 						</div>
 					</TabsRoot>

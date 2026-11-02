@@ -2,6 +2,7 @@ import { sleep } from 'zx';
 
 import { AuthenticatedN8nApiClient } from '@/n8n-api-client/authenticated-n8n-api-client';
 import type { N8nApiClient } from '@/n8n-api-client/n8n-api-client';
+import type { WorkflowEngineType } from '@/n8n-api-client/n8n-api-client.types';
 import type { ScenarioDataFileLoader } from '@/scenario/scenario-data-loader';
 import { ScenarioDataImporter } from '@/test-execution/scenario-data-importer';
 import type { Scenario } from '@/types/scenario';
@@ -21,6 +22,7 @@ export class ScenarioRunner {
 			password: string;
 		},
 		private readonly scenarioPrefix: string,
+		private readonly engineType?: WorkflowEngineType,
 	) {}
 
 	async runManyScenarios(scenarios: Scenario[]) {
@@ -34,7 +36,7 @@ export class ScenarioRunner {
 			this.n8nClient,
 			this.ownerConfig,
 		);
-		const testDataImporter = new ScenarioDataImporter(authenticatedN8nClient);
+		const testDataImporter = new ScenarioDataImporter(authenticatedN8nClient, this.engineType);
 
 		for (const scenario of scenarios) {
 			await this.runSingleTestScenario(testDataImporter, scenario);
@@ -43,6 +45,13 @@ export class ScenarioRunner {
 
 	private async runSingleTestScenario(testDataImporter: ScenarioDataImporter, scenario: Scenario) {
 		const scenarioRunName = this.formTestScenarioRunName(scenario);
+		if (this.engineType && !scenario.supportedEngines.includes(this.engineType)) {
+			console.log(
+				`Skipping scenario ${scenarioRunName}: it does not support engine ${this.engineType}`,
+			);
+			return;
+		}
+
 		console.log('Running scenario:', scenarioRunName);
 
 		console.log('Loading and importing data');

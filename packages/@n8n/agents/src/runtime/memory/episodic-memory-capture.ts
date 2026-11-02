@@ -207,6 +207,7 @@ export interface RunEpisodicMemoryCandidateProcessorOpts {
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	modelFetch?: typeof globalThis.fetch;
+	functionId?: string;
 	agentName?: string;
 	/**
 	 * Receives each episodic model call's usage the moment it resolves — once
@@ -569,6 +570,7 @@ async function buildConsolidatorInput(
 		})),
 		executionCounter: opts.executionCounter,
 		modelFetch: opts.modelFetch,
+		functionId: opts.functionId,
 	};
 }
 

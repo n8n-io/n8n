@@ -124,7 +124,7 @@ graph TD
     O -->|direct| T1[workflows]
     O -->|direct| T2[executions]
     O -->|direct| T3[credentials]
-    O -->|direct| T5[data_tables]
+    O -->|direct| T5[data table tools]
     O -->|direct| T8[nodes]
     O -->|direct| T9[workspace files]
 
@@ -136,7 +136,7 @@ graph TD
 - Execution triggers (`workflow_builder_executions(action="run")`)
 - Workflow building (`workflow-builder` skill + workspace files + `workflow_builder_build_workflow`)
 - Verification and credential application (workflow_builder_verify_built_workflow, workflow_builder_apply_workflow_credentials)
-- Data-table work (`data-table-manager` skill + `data_tables` / `parse-file`)
+- Data-table work (`data-table-manager` skill + the data table tools / `parse-file`)
 - Config-based evaluations (`config-evals` skill + `eval-config`)
 
 ## Package Responsibilities
@@ -334,7 +334,7 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
 
 - **Core tools** (always-loaded when registered, as selected by
   `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `ask_user`, the workflow tools,
-  `workflow_builder_executions`, the credential tools, `data_tables`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
+  `workflow_builder_executions`, the credential tools, the data table tools, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
   `search_models`, `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
   `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
   context or feature is available.
