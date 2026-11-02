@@ -361,6 +361,7 @@ it.each(['loose', 'project'] as const)(
 			const history = await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
 				saved!.versionId!,
 				localId,
+				{},
 			);
 			expect(history).not.toBeNull();
 			expect(await Container.get(AgentDefinitionService).readVersion(history!)).toMatchObject({
@@ -735,7 +736,7 @@ it('shares conflict, ID, and publication policies across mixed content', async (
 	]);
 	for (const { localId } of initial.agents) {
 		const saved = await agents.findById(localId);
-		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0);
+		const versions = await Container.get(AgentHistoryRepository).findByAgentId(localId, 10, 0, {});
 		expect(versions).toHaveLength(2);
 		expect(versions.map(({ versionId }) => versionId)).toContain(saved!.versionId);
 	}

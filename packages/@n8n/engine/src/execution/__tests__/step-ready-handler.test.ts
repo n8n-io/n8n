@@ -137,9 +137,11 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
+		loadFailedSteps: vi.fn().mockResolvedValue([]),
 		suspendStep: vi.fn().mockResolvedValue(true),
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
@@ -1338,6 +1340,28 @@ describe('StepReadyHandler sub-executions', () => {
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('runs the node again with the sub-execution result when a sub-execution resume dispatches the step', async () => {
+		const cause = {
+			kind: 'subExecution' as const,
+			executionId: 'exec-sub',
+			status: 'completed' as const,
+			result: [{ nodeId: 'x', iteration: 0, outputs: [[{ json: { from: 'sub-execution' } }]] }],
+		};
+		const stepStore = makeStepStore({ waitDeclaration: subExecutionWait, resumeCause: cause });
+		const executor = makeExecutor({ outputs: [[{ json: { shaped: true } }]] });
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		// The node runs again, with its inputs and the sub-execution's result.
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [{}], resume: cause }),
+		);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { shaped: true } }]]);
 	});
 });
 

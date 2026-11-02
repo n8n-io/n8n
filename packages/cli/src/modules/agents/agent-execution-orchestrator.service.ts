@@ -1048,6 +1048,7 @@ export class AgentExecutionOrchestratorService {
 					abortSignal,
 					delivery,
 					messageContext?.interactingUserId,
+					memory.threadId,
 				),
 		);
 		for await (const _chunk of stream) {
@@ -1060,6 +1061,7 @@ export class AgentExecutionOrchestratorService {
 		abortSignal: AbortSignal,
 		delivery?: { bridge: AgentChatBridge; threadId: string },
 		cardRecipientId?: string,
+		agentThreadId?: string,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const chunks: AgentExecutionStreamChunk[] = [];
 		let runError: unknown;
@@ -1077,7 +1079,12 @@ export class AgentExecutionOrchestratorService {
 		}
 		abortSignal.throwIfAborted();
 		if (delivery)
-			await delivery.bridge.deliverWakeResponse(delivery.threadId, chunks, cardRecipientId);
+			await delivery.bridge.deliverWakeResponse(
+				delivery.threadId,
+				chunks,
+				cardRecipientId,
+				agentThreadId,
+			);
 	}
 
 	private async getWakeDelivery(
