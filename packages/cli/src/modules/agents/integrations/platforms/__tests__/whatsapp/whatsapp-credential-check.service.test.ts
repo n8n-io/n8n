@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { UrlService } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
@@ -37,13 +38,23 @@ interface GraphReply {
 	body: unknown;
 }
 
-type Route = 'phone' | 'debugToken' | 'phoneNumbers' | 'profile';
+type Route =
+	| 'phone'
+	| 'debugToken'
+	| 'phoneNumbers'
+	| 'profile'
+	| 'businesses'
+	| 'systemUsers'
+	| 'subscribedApps';
 
 const ok = (body: unknown): GraphReply => ({ statusCode: 200, body });
 
 function routeOf(url: string): Route {
 	if (url.endsWith('/debug_token')) return 'debugToken';
 	if (url.endsWith('/phone_numbers')) return 'phoneNumbers';
+	if (url.endsWith('/businesses')) return 'businesses';
+	if (url.endsWith('/system_users')) return 'systemUsers';
+	if (url.endsWith('/subscribed_apps')) return 'subscribedApps';
 	if (url.endsWith('/whatsapp_business_profile')) return 'profile';
 	return 'phone';
 }
@@ -65,6 +76,9 @@ describe('WhatsAppCredentialCheckService', () => {
 				ok({ display_phone_number: '+1 555-010-0199', verified_name: 'Acme Corp' }),
 			debugToken: async () => ok({ data: { expires_at: 0 } }),
 			phoneNumbers: async () => ok({ data: [{ id: 'other-number' }, { id: PHONE_NUMBER_ID }] }),
+			businesses: async () => ok({ data: [{ id: 'business-1' }] }),
+			systemUsers: async () => ok({ data: [{ id: 'sys-1', role: 'ADMIN' }] }),
+			subscribedApps: async () => ok({ data: [] }),
 			profile: async () =>
 				ok({
 					data: [
@@ -87,6 +101,7 @@ describe('WhatsAppCredentialCheckService', () => {
 			outboundHttp,
 			logger,
 			agentsConfig,
+			mock<UrlService>({ getWebhookBaseUrl: () => 'https://n8n.example.com/' }),
 		);
 	});
 
@@ -113,6 +128,82 @@ describe('WhatsAppCredentialCheckService', () => {
 
 		await expect(check()).rejects.toThrow(NotFoundError);
 		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('rejects a token from an Employee system user', async () => {
+		replies.debugToken = async () =>
+			ok({ data: { expires_at: 0, type: 'SYSTEM_USER', user_id: 'sys-1' } });
+		replies.systemUsers = async () => ok({ data: [{ id: 'sys-1', role: 'EMPLOYEE' }] });
+		replies.phoneNumbers = async () => ({ statusCode: 403, body: { error: { code: 10 } } });
+
+		expect(await check()).toEqual({ status: 'failed', reason: 'employeeSystemUser' });
+	});
+
+	describe('when Meta does not give the system user role', () => {
+		const systemUserToken = () =>
+			ok({ data: { expires_at: 0, type: 'SYSTEM_USER', user_id: 'sys-1' } });
+
+		beforeEach(() => {
+			replies.debugToken = async () => systemUserToken();
+			replies.systemUsers = async () => ({ statusCode: 403, body: { error: { code: 10 } } });
+		});
+
+		it.each([10, 200, 299])('reports insufficient access on permission error %i', async (code) => {
+			replies.subscribedApps = async () => ({ statusCode: 403, body: { error: { code } } });
+			replies.phone = async () => ({ statusCode: 403, body: { error: { code } } });
+
+			expect(await check()).toEqual({ status: 'failed', reason: 'insufficientAccess' });
+		});
+
+		it('reports insufficient access when Meta cannot load the account for the token', async () => {
+			replies.subscribedApps = async () => ({
+				statusCode: 400,
+				body: { error: { code: 100, error_subcode: 33 } },
+			});
+
+			expect(await check()).toEqual({ status: 'failed', reason: 'insufficientAccess' });
+		});
+
+		it.each([
+			['an expired token', { statusCode: 400, body: { error: { code: 190 } } }],
+			['an outage', { statusCode: 500, body: {} }],
+			['an unrelated error', { statusCode: 400, body: { error: { code: 100 } } }],
+		])('does not report insufficient access on %s', async (_name, reply) => {
+			replies.subscribedApps = async () => reply;
+
+			expect((await check()).status).toBe('ok');
+		});
+
+		it('passes when the probe cannot reach Meta', async () => {
+			replies.subscribedApps = async () => {
+				throw new Error('socket hang up');
+			};
+
+			expect((await check()).status).toBe('ok');
+		});
+
+		it('does not probe a token that is not a system user token', async () => {
+			replies.debugToken = async () => ok({ data: { expires_at: 0 } });
+
+			await check();
+
+			expect(callsTo('subscribedApps')).toHaveLength(0);
+		});
+
+		it('does not probe when Meta gives the role', async () => {
+			replies.systemUsers = async () => ok({ data: [{ id: 'sys-1', role: 'ADMIN' }] });
+
+			await check();
+
+			expect(callsTo('subscribedApps')).toHaveLength(0);
+		});
+	});
+
+	it('accepts a token from an Admin system user', async () => {
+		replies.debugToken = async () =>
+			ok({ data: { expires_at: 0, type: 'SYSTEM_USER', user_id: 'sys-1' } });
+
+		expect((await check()).status).toBe('ok');
 	});
 
 	it.each([
@@ -311,4 +402,53 @@ describe('WhatsAppCredentialCheckService', () => {
 			});
 		},
 	);
+
+	describe('isCallbackInOtherApp', () => {
+		const AGENT_ID = 'agent-1';
+		const ownUrl = `https://n8n.example.com/rest/projects/${PROJECT_ID}/agents/v2/${AGENT_ID}/webhooks/whatsapp`;
+		const run = async () =>
+			await service.isCallbackInOtherApp(user, PROJECT_ID, CREDENTIAL_ID, AGENT_ID);
+		const withSubscriptions = (data: unknown[]) => {
+			replies.debugToken = async () => ok({ data: { expires_at: 0, app_id: 'app-1' } });
+			replies.phone = async () => ok({ data });
+		};
+
+		it('is false when the credential’s app holds this agent’s callback URL', async () => {
+			withSubscriptions([{ object: 'whatsapp_business_account', callback_url: ownUrl }]);
+
+			expect(await run()).toBe(false);
+		});
+
+		it('is true when the credential’s app holds another callback URL', async () => {
+			withSubscriptions([
+				{ object: 'whatsapp_business_account', callback_url: 'https://other.example.com/hook' },
+			]);
+
+			expect(await run()).toBe(true);
+		});
+
+		it('is true when the credential’s app holds this agent’s path on another host', async () => {
+			withSubscriptions([
+				{
+					object: 'whatsapp_business_account',
+					callback_url: ownUrl.replace('n8n.example.com', 'old-tunnel.example.com'),
+				},
+			]);
+
+			expect(await run()).toBe(true);
+		});
+
+		it('is true when the credential’s app has no WhatsApp callback URL', async () => {
+			withSubscriptions([]);
+
+			expect(await run()).toBe(true);
+		});
+
+		it('is false when Meta does not answer', async () => {
+			replies.debugToken = async () => ok({ data: { expires_at: 0, app_id: 'app-1' } });
+			replies.phone = async () => ({ statusCode: 500, body: {} });
+
+			expect(await run()).toBe(false);
+		});
+	});
 });

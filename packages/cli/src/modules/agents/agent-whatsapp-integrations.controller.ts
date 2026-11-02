@@ -3,8 +3,9 @@ import type {
 	WhatsAppMetaStatus,
 	WhatsAppWebhookStatus,
 } from '@n8n/api-types';
+import { WhatsAppWebhookStatusQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
+import { Delete, Get, Param, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 
@@ -61,9 +62,19 @@ export class AgentWhatsAppIntegrationsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
+		@Query query: WhatsAppWebhookStatusQueryDto,
 	): Promise<WhatsAppWebhookStatus> {
 		await this.assertAgentExists(req.params.projectId, agentId);
-		return { verified: await this.webhookVerification.isVerified(agentId) };
+		const verified = await this.webhookVerification.isVerified(agentId);
+		if (!verified || !query.credentialId) return { verified };
+
+		const appMismatch = await this.credentialCheckService.isCallbackInOtherApp(
+			req.user,
+			req.params.projectId,
+			query.credentialId,
+			agentId,
+		);
+		return { verified, appMismatch };
 	}
 
 	/**

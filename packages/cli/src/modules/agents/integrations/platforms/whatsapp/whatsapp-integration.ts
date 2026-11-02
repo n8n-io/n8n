@@ -409,8 +409,14 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (mode !== 'subscribe' || !token || !challenge) return undefined;
 
 		if (token !== this.deriveVerifyToken(context.agentId)) {
+			this.logger.debug('[WhatsAppIntegration] Refused a webhook handshake: wrong verify token', {
+				agentId: context.agentId,
+			});
 			return { status: 403, body: 'Forbidden', raw: true };
 		}
+		this.logger.debug('[WhatsAppIntegration] Accepted a webhook handshake', {
+			agentId: context.agentId,
+		});
 		// Recorded so the setup can confirm the step. Not awaited, because Meta
 		// times out the handshake and the record is only for display.
 		void this.webhookVerification.markVerified(context.agentId);
@@ -866,7 +872,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		return this.requireCredentialField(
 			credential,
 			'businessAccountId',
-			'The WhatsApp credential is missing a WhatsApp Business Account ID.',
+			'The WhatsApp credential is missing a Messaging account ID.',
 		);
 	}
 

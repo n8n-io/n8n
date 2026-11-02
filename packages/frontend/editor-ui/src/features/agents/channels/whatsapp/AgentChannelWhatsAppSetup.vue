@@ -85,6 +85,8 @@ const WEBHOOK_POLL_MS = 3 * TIME.SECOND;
 const verifyToken = shallowRef('');
 
 const webhookVerified = ref(false);
+// The handshake arrived, but from a Meta app other than the credential's.
+const webhookAppMismatch = ref(false);
 let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let unmounted = false;
 // Set when the status check found no saved agent. Picking a credential saves it.
@@ -148,6 +150,8 @@ type CredentialCheckFailure = Extract<CredentialCheckResult, { status: 'failed' 
 const CHECK_FAILURE_REASON = {
 	incomplete: 'incomplete',
 	temporaryToken: 'temporary_token',
+	employeeSystemUser: 'employee_system_user',
+	insufficientAccess: 'insufficient_access',
 	mismatch: 'mismatch',
 	unreachable: 'unreachable',
 	notFound: 'not_found',
@@ -252,9 +256,11 @@ async function pollWebhookStatus(run: number) {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
+			credentialId.value || undefined,
 		);
 		if (isWebhookRunStale(run)) return;
-		webhookVerified.value = status.verified;
+		webhookAppMismatch.value = status.appMismatch === true;
+		webhookVerified.value = status.verified && !webhookAppMismatch.value;
 	} catch (error) {
 		if (isWebhookRunStale(run)) return;
 		if (isAgentMissing(error)) {
@@ -320,6 +326,7 @@ function restartWebhookCheck() {
 	clearTimeout(pollTimer);
 	waitingForAgent = false;
 	webhookVerified.value = false;
+	webhookAppMismatch.value = false;
 	void resetThenPollWebhookStatus(++webhookRun);
 }
 
@@ -577,6 +584,14 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 						>
 							<N8nIcon icon="check" size="small" />
 							{{ i18n.baseText('agents.channels.whatsapp.setup.verify.verified') }}
+						</N8nText>
+						<N8nText
+							v-else-if="webhookAppMismatch"
+							size="small"
+							:class="$style.error"
+							data-testid="whatsapp-webhook-app-mismatch"
+						>
+							{{ i18n.baseText('agents.channels.whatsapp.setup.verify.failed.appMismatch') }}
 						</N8nText>
 						<N8nText
 							v-else-if="credentialId"

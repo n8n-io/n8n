@@ -37,8 +37,23 @@ describe('WhatsApp channel API', () => {
 			context,
 			'GET',
 			'/projects/p/agents/v2/a/integrations/whatsapp/webhook-status',
+			undefined,
 		);
 		expect(result).toEqual({ verified: true });
+	});
+
+	it('sends the credential with the webhook status so the app can be compared', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ verified: true, appMismatch: true });
+
+		const result = await getWhatsAppWebhookStatus(context, 'p', 'a', 'cred-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/p/agents/v2/a/integrations/whatsapp/webhook-status',
+			{ credentialId: 'cred-1' },
+		);
+		expect(result).toEqual({ verified: true, appMismatch: true });
 	});
 
 	it('encodes each ID as one path segment', async () => {
@@ -56,6 +71,7 @@ describe('WhatsApp channel API', () => {
 			context,
 			'GET',
 			'/projects/p%2F1/agents/v2/a%3F2/integrations/whatsapp/webhook-status',
+			undefined,
 		);
 	});
 });
