@@ -15,12 +15,16 @@ import { N8nAlertDialog } from '../N8nAlertDialog';
 import N8nButton from '../N8nButton/Button.vue';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nIconButton from '../N8nIconButton';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nInput from '../N8nInput/Input.vue';
 import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
+import N8nMenuItem from '../N8nMenuItem';
+import N8nModalSidebar from '../N8nModalSidebar';
 import N8nSwitch2 from '../N8nSwitch/Switch.vue';
 import N8nSelect2 from '../../v2/components/Select/Select.vue';
 import N8nText from '../N8nText/Text.vue';
+import type { IMenuItem } from '../../types';
 
 const meta = {
 	title: 'Core/Dialog',
@@ -670,6 +674,195 @@ export const Sidebar: Story = {
 					</N8nDialogClose>
 					<N8nButton label="Save" />
 				</N8nDialogFooter>
+			</N8nDialog>
+		</div>
+		`,
+	}),
+	args: {},
+} satisfies Story;
+
+type PluginFileSection = {
+	id: string;
+	label: string;
+	addLabel: string;
+	items: IMenuItem[];
+};
+
+const pluginReadme: IMenuItem = { id: 'readme', label: 'README.md', icon: 'file-text' };
+
+const pluginFileSections: PluginFileSection[] = [
+	{
+		id: 'skills',
+		label: 'Skills',
+		addLabel: 'Add skill',
+		items: [
+			{ id: 'skill-search', label: 'search', icon: 'book-open' },
+			{ id: 'skill-recruiting', label: 'recruiting', icon: 'book-open' },
+			{ id: 'skill-studies', label: 'studies', icon: 'book-open' },
+			{ id: 'skill-survey', label: 'survey-insights', icon: 'book-open' },
+		],
+	},
+	{
+		id: 'workflows',
+		label: 'Workflows',
+		addLabel: 'Add workflow',
+		items: [
+			{ id: 'wf-search', label: 'Hybrid search', icon: 'workflow' },
+			{ id: 'wf-transcript', label: 'Get transcript', icon: 'workflow' },
+			{ id: 'wf-recruit', label: 'Recruiting wizard', icon: 'workflow' },
+			{ id: 'wf-project', label: 'Create project', icon: 'workflow' },
+			{ id: 'wf-report', label: 'Monthly report', icon: 'workflow' },
+		],
+	},
+	{
+		id: 'agents',
+		label: 'Sub-agents',
+		addLabel: 'Add sub-agent',
+		items: [{ id: 'agent-research', label: 'Research agent', icon: 'bot' }],
+	},
+	{
+		id: 'tables',
+		label: 'Data tables',
+		addLabel: 'Add data table',
+		items: [
+			{ id: 'table-transcripts', label: 'Transcripts', icon: 'table' },
+			{ id: 'table-candidates', label: 'Candidates', icon: 'table' },
+			{ id: 'table-responses', label: 'Responses', icon: 'table' },
+		],
+	},
+	{
+		id: 'mcps',
+		label: 'MCPs',
+		addLabel: 'Add MCP',
+		items: [
+			{ id: 'mcp-slack', label: 'Slack', icon: 'plug' },
+			{ id: 'mcp-notion', label: 'Notion', icon: 'plug' },
+			{ id: 'mcp-gmail', label: 'Gmail', icon: 'plug' },
+		],
+	},
+	{
+		id: 'credentials',
+		label: 'Credentials',
+		addLabel: 'Add credential',
+		items: [
+			{ id: 'cred-slack', label: 'Slack account', icon: 'key-round' },
+			{ id: 'cred-gmail', label: 'Gmail account', icon: 'key-round' },
+			{ id: 'cred-notion', label: 'Notion account', icon: 'key-round' },
+		],
+	},
+];
+
+const pluginFiles = [pluginReadme, ...pluginFileSections.flatMap((section) => section.items)];
+
+const pluginFileDetails: Record<string, string> = {
+	readme:
+		'This plugin packages search, recruiting, and study tools. An agent that installs it can answer a question with a cited source, invite people, and read the monthly survey.',
+	'skill-search': 'When to search the corpus, and how to cite a result.',
+	'skill-recruiting': 'Who can be invited, and how often.',
+	'skill-studies': 'How a study moves from draft to close-out.',
+	'skill-survey': 'How to read the monthly survey, including its bias.',
+	'wf-search': 'Search sessions, calls, and forum threads in one step.',
+	'wf-transcript': 'Load one session and the text around a quote.',
+	'wf-recruit': 'Pick an audience, review the batch, and send invites.',
+	'wf-project': 'Draft the script and create the project folder.',
+	'wf-report': 'Group the month’s comments by theme.',
+	'agent-research': 'A sub-agent that reads the corpus and writes a brief.',
+	'table-transcripts': 'Session rows the search workflows read.',
+	'table-candidates': 'People who can be invited to a study.',
+	'table-responses': 'Survey comments for the monthly report.',
+	'mcp-slack': 'Slack tools this plugin can call.',
+	'mcp-notion': 'Notion tools this plugin can call.',
+	'mcp-gmail': 'Gmail tools this plugin can call.',
+	'cred-slack': 'The Slack account this plugin uses.',
+	'cred-gmail': 'The Gmail account this plugin uses.',
+	'cred-notion': 'The Notion account this plugin uses.',
+};
+
+export const ModalSidebar: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'N8nModalSidebar sits in the dialog body. The body does not scroll. The sidebar and the main area scroll on their own. The rows are menu items.',
+			},
+		},
+	},
+	render: () => ({
+		components: {
+			N8nDialog,
+			N8nDialogBody,
+			N8nDialogHeader,
+			N8nDialogTitle,
+			N8nButton,
+			N8nIconButton,
+			N8nMenuItem,
+			N8nModalSidebar,
+			N8nText,
+		},
+		setup() {
+			const isOpen = ref(false);
+			const width = ref(240);
+			const activeId = ref(pluginReadme.id);
+			return {
+				isOpen,
+				width,
+				activeId,
+				pluginReadme,
+				pluginFileSections,
+				pluginFiles,
+				pluginFileDetails,
+			};
+		},
+		template: `
+		<div>
+			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
+
+			<N8nDialog v-model:open="isOpen" size="full" aria-label="Research plugin" style="height: 70vh;">
+				<N8nDialogHeader style="flex-direction: row; align-items: center; gap: var(--spacing--xs);">
+					<N8nDialogTitle style="flex: 1; min-width: 0;">Research plugin</N8nDialogTitle>
+					<N8nButton label="Publish" />
+				</N8nDialogHeader>
+
+				<N8nDialogBody style="padding: 0; overflow: hidden; border-block: var(--border);">
+					<div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
+						<N8nModalSidebar v-model:width="width" label="Plugin files" :min-width="180" :max-width="360">
+							<div style="display: flex; flex-direction: column; padding: var(--spacing--2xs) 0;">
+								<div style="padding: 0 var(--spacing--3xs) var(--spacing--2xs);">
+									<N8nMenuItem
+										:item="pluginReadme"
+										:active="activeId === pluginReadme.id"
+										@click="activeId = pluginReadme.id"
+									/>
+								</div>
+								<section v-for="section in pluginFileSections" :key="section.id">
+									<div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--4xs); margin: var(--spacing--4xs) var(--spacing--3xs) 0; padding: var(--spacing--4xs) var(--spacing--3xs);">
+										<N8nText size="small" color="text-light" bold>{{ section.label }}</N8nText>
+										<N8nIconButton
+											icon="plus"
+											variant="ghost"
+											size="xsmall"
+											:aria-label="section.addLabel"
+										/>
+									</div>
+									<div style="display: flex; flex-direction: column; padding: var(--spacing--2xs) var(--spacing--3xs);">
+										<N8nMenuItem
+											v-for="item in section.items"
+											:key="item.id"
+											:item="item"
+											:active="item.id === activeId"
+											@click="activeId = item.id"
+										/>
+									</div>
+								</section>
+							</div>
+						</N8nModalSidebar>
+
+						<div style="flex: 1; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--spacing--sm); padding: var(--spacing--md);">
+							<N8nText bold size="large">{{ pluginFiles.find((item) => item.id === activeId)?.label }}</N8nText>
+							<N8nText size="small" color="text-base">{{ pluginFileDetails[activeId] }}</N8nText>
+						</div>
+					</div>
+				</N8nDialogBody>
 			</N8nDialog>
 		</div>
 		`,

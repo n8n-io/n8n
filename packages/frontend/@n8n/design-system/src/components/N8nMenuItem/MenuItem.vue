@@ -21,7 +21,24 @@ const props = defineProps<{
 	level?: number;
 	open?: boolean;
 	ariaLabel?: string;
+	/**
+	 * Marks this row as the current item in a set.
+	 * Set it when the row is the open page or version.
+	 */
+	ariaCurrent?: boolean | 'page' | 'step' | 'location' | 'date' | 'time' | 'true' | 'false';
 	scrollLabelOnOverflow?: boolean;
+	/**
+	 * Removes the gap under the item and lets the parent set the width.
+	 * Use it when the item sits beside other controls.
+	 */
+	flush?: boolean;
+}>();
+
+defineSlots<{
+	/** Replaces the icon. */
+	icon?: () => unknown;
+	/** Replaces the label and the badges. */
+	label?: () => unknown;
 }>();
 
 // The click carries its event, so a trigger that wraps the item (as-child) can read it.
@@ -111,15 +128,17 @@ const tooltipPlacement = computed(() => {
 </script>
 
 <template>
-	<div :data-test-id="item.id" :class="$style.menuItemWrapper">
+	<div :data-test-id="item.id" :class="[$style.menuItemWrapper, props.flush && $style.flush]">
 		<N8nTooltip :placement="tooltipPlacement" :disabled="tooltipDisabled" :show-after="500">
 			<template #content>
 				{{ tooltipContent }}
 			</template>
 
-			<N8nRoute
+			<!-- A command with no route is a button, so it stays in the tab order. -->
+			<component
+				:is="to ? N8nRoute : 'button'"
+				v-bind="to ? { to } : { type: 'button' }"
 				:id="item.id"
-				:to="to"
 				role="menuitem"
 				:class="[
 					$style.menuItem,
@@ -131,7 +150,9 @@ const tooltipPlacement = computed(() => {
 					},
 				]"
 				:aria-label="props.ariaLabel ?? props.item.label"
-				:aria-disabled="item.disabled"
+				:aria-current="ariaCurrent || undefined"
+				:aria-disabled="item.disabled || undefined"
+				:tabindex="item.disabled ? -1 : undefined"
 				data-test-id="menu-item"
 				@click="handleClick"
 			>
@@ -154,35 +175,37 @@ const tooltipPlacement = computed(() => {
 					</slot>
 				</div>
 				<div :class="$style.menuItemLabel">
-					<div
-						v-if="!compact"
-						ref="menuItemTextViewport"
-						:class="[
-							$style.menuItemTextViewport,
-							{
-								[$style.scrollLabelOnOverflow]: props.scrollLabelOnOverflow,
-								[$style.labelOverflowing]: isLabelOverflowing,
-							},
-						]"
-						:style="
-							isLabelOverflowing
-								? { '--menu-item--label-overflow': labelOverflowDistance }
-								: undefined
-						"
-					>
-						<N8nText
-							ref="menuItemText"
-							:class="$style.menuItemText"
-							:color="item.disabled ? 'text-light' : 'text-dark'"
+					<slot name="label">
+						<div
+							v-if="!compact"
+							ref="menuItemTextViewport"
+							:class="[
+								$style.menuItemTextViewport,
+								{
+									[$style.scrollLabelOnOverflow]: props.scrollLabelOnOverflow,
+									[$style.labelOverflowing]: isLabelOverflowing,
+								},
+							]"
+							:style="
+								isLabelOverflowing
+									? { '--menu-item--label-overflow': labelOverflowDistance }
+									: undefined
+							"
 						>
-							{{ item.label }}
-						</N8nText>
-					</div>
-					<PreviewBadge v-if="!compact && item.preview" />
-					<NewBadge v-if="!compact && item.new" :class="$style.newBadge" />
-					<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
-						{{ item.creditsTag }}
-					</N8nBadge>
+							<N8nText
+								ref="menuItemText"
+								:class="$style.menuItemText"
+								:color="item.disabled ? 'text-light' : 'text-dark'"
+							>
+								{{ item.label }}
+							</N8nText>
+						</div>
+						<PreviewBadge v-if="!compact && item.preview" />
+						<NewBadge v-if="!compact && item.new" :class="$style.newBadge" />
+						<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
+							{{ item.creditsTag }}
+						</N8nBadge>
+					</slot>
 				</div>
 				<N8nIcon
 					v-if="item.children && !compact"
@@ -190,7 +213,7 @@ const tooltipPlacement = computed(() => {
 					:size="12"
 					color="text-light"
 				/>
-			</N8nRoute>
+			</component>
 		</N8nTooltip>
 	</div>
 </template>
@@ -205,6 +228,11 @@ const tooltipPlacement = computed(() => {
 	width: 100%;
 	max-width: 100%;
 	margin-bottom: var(--spacing--5xs);
+
+	&.flush {
+		width: auto;
+		margin-bottom: 0;
+	}
 }
 
 .menuItem {
@@ -212,8 +240,14 @@ const tooltipPlacement = computed(() => {
 	align-items: center;
 	justify-content: center;
 	// Match the height of items with icons (24px icon + 2 * 4px padding), so
-	// icon-less items (e.g. modal sidebar tabs) don't render shorter.
-	height: var(--spacing--xl);
+	// icon-less items don't render shorter. min-height lets a custom label grow.
+	min-height: var(--spacing--xl);
+	// A command with no route renders a button. Clear the user-agent button styles.
+	appearance: none;
+	background-color: transparent;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
 	padding: var(--spacing--4xs);
 	gap: var(--spacing--4xs);
 	color: var(--text-color);

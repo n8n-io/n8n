@@ -8,7 +8,11 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['success', 'warning', 'danger'],
+			options: ['success', 'warning', 'danger', 'neutral'],
+		},
+		appearance: {
+			control: 'select',
+			options: ['fill', 'outline'],
 		},
 		pulse: {
 			control: 'boolean',
@@ -18,7 +22,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A small decorative status indicator dot. Pair it with text that carries the meaning; the dot itself is hidden from assistive technology.',
+					'A small decorative status indicator dot. Pair it with text that carries the meaning. The dot itself is hidden from assistive technology. Each color can be filled or an outline ring.',
 			},
 		},
 	},
@@ -35,24 +39,40 @@ export const Default = {
 	}),
 	args: {
 		variant: 'success',
+		appearance: 'fill',
 		pulse: false,
 	},
 } satisfies Story;
+
+const rowStyle =
+	'display: flex; align-items: center; gap: var(--spacing--2xs); font-size: var(--font-size--sm);';
+
+const headingStyle =
+	'margin: 0 0 var(--spacing--xs); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);';
 
 export const Variants = {
 	render: () => ({
 		components: { N8nStatusDot },
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 16px">
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<N8nStatusDot variant="success" /> Success
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<N8nStatusDot variant="warning" /> Warning
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<N8nStatusDot variant="danger" /> Danger
-			</div>
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<section>
+				<h3 style="${headingStyle}">Solid</h3>
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
+					<div style="${rowStyle}"><N8nStatusDot variant="success" appearance="fill" /> Success</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="warning" appearance="fill" /> Warning</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="danger" appearance="fill" /> Danger</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="neutral" appearance="fill" /> Neutral</div>
+				</div>
+			</section>
+			<section>
+				<h3 style="${headingStyle}">Outline</h3>
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
+					<div style="${rowStyle}"><N8nStatusDot variant="success" appearance="outline" /> Success</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="warning" appearance="outline" /> Warning</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="danger" appearance="outline" /> Danger</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="neutral" appearance="outline" /> Neutral</div>
+				</div>
+			</section>
 		</div>
 		`,
 	}),
@@ -62,13 +82,25 @@ export const Pulsing = {
 	render: () => ({
 		components: { N8nStatusDot },
 		template: `
-		<div style="display: flex; flex-direction: column; gap: 16px">
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<N8nStatusDot variant="success" pulse /> Enabled
-			</div>
-			<div style="display: flex; align-items: center; gap: 8px;">
-				<N8nStatusDot variant="danger" /> Disabled
-			</div>
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<section>
+				<h3 style="${headingStyle}">Solid</h3>
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
+					<div style="${rowStyle}"><N8nStatusDot variant="success" appearance="fill" pulse /> Success</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="warning" appearance="fill" pulse /> Warning</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="danger" appearance="fill" pulse /> Danger</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="neutral" appearance="fill" pulse /> Neutral</div>
+				</div>
+			</section>
+			<section>
+				<h3 style="${headingStyle}">Outline</h3>
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
+					<div style="${rowStyle}"><N8nStatusDot variant="success" appearance="outline" pulse /> Success</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="warning" appearance="outline" pulse /> Warning</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="danger" appearance="outline" pulse /> Danger</div>
+					<div style="${rowStyle}"><N8nStatusDot variant="neutral" appearance="outline" pulse /> Neutral</div>
+				</div>
+			</section>
 		</div>
 		`,
 	}),
