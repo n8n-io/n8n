@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { IRedactedFieldMarker } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@n8n/backend-services';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { RedactionContext } from '../../execution-redaction.interfaces';
 import { NodeDefinedFieldRedactionStrategy } from '../node-defined-field-redaction.strategy';
@@ -64,7 +64,7 @@ const REDACTED_MARKER: IRedactedFieldMarker = {
 
 describe('NodeDefinedFieldRedactionStrategy', () => {
 	const logger = mockInstance(Logger);
-	const nodeTypes = mockInstance(NodeTypes);
+	const nodeTypes = mockInstance(NodeTypesProxy);
 	let strategy: NodeDefinedFieldRedactionStrategy;
 
 	const mockNodeDescription = (sensitiveOutputFields: string[]) => ({

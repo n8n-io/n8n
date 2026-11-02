@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneClient } from '../engine-control-plane-client';
@@ -106,7 +106,7 @@ describe('EngineV2Runtime', () => {
 			...overrides,
 		});
 
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 
 	let controlPlaneClient: EngineControlPlaneClient;
 	let credentialsClient: EngineCredentialsClient;

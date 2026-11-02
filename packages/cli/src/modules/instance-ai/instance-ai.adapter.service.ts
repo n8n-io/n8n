@@ -38,6 +38,7 @@ import {
 	FolderFinderService,
 	InstanceWriteAccessService,
 	AiPreferenceService,
+	NodeTypesProxy,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -163,6 +164,7 @@ import {
 	createRunExecutionData,
 	calculateWorkflowChecksum,
 	isMcpAiGatewayAuthentication,
+	type INodeTypes,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -221,7 +223,6 @@ import {
 } from '@/node-catalog';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PostHogClient } from '@/posthog';
@@ -327,7 +328,7 @@ function resolveDisplayedDefaults(
  * the same way they will. A node type that does not load is not a tool here:
  * the run fails on the missing type either way.
  */
-function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+function isToolNode(nodeTypes: INodeTypes, node: INode): boolean {
 	try {
 		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		return NodeHelpers.isTool(description, node.parameters);
@@ -490,7 +491,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -5085,7 +5086,7 @@ function extractNodeErrors(
 export async function extractExecutionResult(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionResult> {
 	return (await extractExecutionOutcome(execution, includeOutputData, nodeTypes)).result;
 }
@@ -5172,7 +5173,7 @@ function foldToolExecutorRun(
 export async function extractExecutionOutcome(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 	/**
 	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
 	 * the result has to be told which node the caller actually asked for.
@@ -5483,7 +5484,7 @@ function capItem(item: unknown): unknown {
  */
 function buildExecutionWorkflow(
 	workflowData: IWorkflowBase | undefined,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Workflow | undefined {
 	if (!workflowData || !nodeTypes) return undefined;
 	try {
@@ -5531,7 +5532,7 @@ export async function extractNodeOutput(
 	execution: IExecutionResponse,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<NodeOutputResult> {
 	const executionId = execution.id;
 	const runData = execution.data?.resultData?.runData;
@@ -5735,7 +5736,7 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 export async function extractExecutionDebugInfo(
 	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionDebugInfo> {
 	const baseResult = await extractExecutionResult(execution, includeOutputData, nodeTypes);
 

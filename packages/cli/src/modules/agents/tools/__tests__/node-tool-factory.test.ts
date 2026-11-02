@@ -5,6 +5,7 @@ import { hasPolicyRefusalMarker } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
@@ -21,10 +22,10 @@ const violation = (overrides: Partial<PolicyViolation> = {}): PolicyViolation =>
 	...overrides,
 });
 
-// The node-tool-factory imports the DI `Container` to look up NodeTypes inside
+// The node-tool-factory imports the DI `Container` to look up NodeTypesProxy inside
 // `resolveInputSchema` (for auto-seeding a `{ input: string }` schema on
-// native tools). In the unit-test scope the container isn't registered and
-// `Container.get(NodeTypes)` throws — the function's own `try/catch` swallows
+// native tools). In the unit-test scope the proxy has no provider, so the
+// lookup throws — the function's own `try/catch` swallows
 // that and falls back to an empty schema. The test doesn't need a real executor
 // either; the handler isn't invoked.
 const mockCtx = {
@@ -70,6 +71,8 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		const getByNameAndVersion = vi.fn().mockReturnValue({
 			description: { description: 'HTTP Request Tool' },
 		});
+		Container.set(NodeTypesProxy, { getByNameAndVersion } as unknown as NodeTypesProxy);
+		// `resolveToolNodeType` in cli looks up `NodeTypes` directly.
 		Container.set(NodeTypes, { getByNameAndVersion } as unknown as NodeTypes);
 
 		const tool = await resolveNodeTool(
@@ -147,12 +150,12 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	it('uses the introspected supplyData schema directly', async () => {
 		const inputSchema = z.object({ query: z.string() });
 		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(inputSchema);
-		Container.set(NodeTypes, {
+		Container.set(NodeTypesProxy, {
 			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Search Wikipedia' },
 				supplyData: vi.fn(),
 			}),
-		} as unknown as NodeTypes);
+		} as unknown as NodeTypesProxy);
 
 		const tool = await resolveNodeTool(
 			{
@@ -176,12 +179,12 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	it('uses a string-compatible object schema when native string tool introspection returns null', async () => {
 		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
 		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(null);
-		Container.set(NodeTypes, {
+		Container.set(NodeTypesProxy, {
 			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Think about something' },
 				supplyData: vi.fn(),
 			}),
-		} as unknown as NodeTypes);
+		} as unknown as NodeTypesProxy);
 
 		const tool = await resolveNodeTool(
 			{
@@ -455,9 +458,9 @@ describe('resolveNodeTool → file input', () => {
 		const toBinary = vi.fn().mockResolvedValue({ binary, stored });
 		Container.set(AgentFileBridge, { toBinary, adoptFromItems } as unknown as AgentFileBridge);
 		// A node without supplyData gets the passthrough schema, which takes files.
-		Container.set(NodeTypes, {
+		Container.set(NodeTypesProxy, {
 			getByNameAndVersion: () => ({ description: {} }),
-		} as unknown as NodeTypes);
+		} as unknown as NodeTypesProxy);
 		const tool = await resolveNodeTool(baseToolSchema, {
 			executor: { executeInline } as unknown as EphemeralNodeExecutor,
 			projectId: 'p1',
