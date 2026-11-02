@@ -4,6 +4,7 @@ import {
 	AuthIdentity,
 	AuthIdentityRepository,
 	GLOBAL_MEMBER_ROLE,
+	isPerson,
 	PersonRepository,
 	UserRepository,
 	type Person,
@@ -371,17 +372,17 @@ export class IdentityResolutionService {
 	): Promise<User> {
 		let needsReload = false;
 
-		// Sync profile fields (firstName, lastName)
-		const profileUpdates: Pick<Partial<User>, 'firstName' | 'lastName'> = {};
+		// Sync profile fields (firstName, lastName). Only a person has a name.
+		const profileUpdates: Pick<Partial<Person>, 'firstName' | 'lastName'> = {};
 
-		if (claims.given_name !== undefined) {
+		if (isPerson(user) && claims.given_name !== undefined) {
 			const trimmed = trimName(claims.given_name);
 			if (trimmed !== user.firstName) {
 				profileUpdates.firstName = trimmed;
 			}
 		}
 
-		if (claims.family_name !== undefined) {
+		if (isPerson(user) && claims.family_name !== undefined) {
 			const trimmed = trimName(claims.family_name);
 			if (trimmed !== user.lastName) {
 				profileUpdates.lastName = trimmed;

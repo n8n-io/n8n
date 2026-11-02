@@ -4,7 +4,7 @@ import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings, User } from '@n8n/db';
-import { AuthIdentityRepository, SettingsRepository, UserRepository } from '@n8n/db';
+import { AuthIdentityRepository, Person, SettingsRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { Client } from 'ldapts';
@@ -456,7 +456,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
-				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				find: vi.fn().mockResolvedValue([{ user: Object.assign(new Person(), { id: 'userId' }) }]),
 				delete: vi.fn(),
 			});
 
@@ -514,7 +514,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			mockInstance(AuthIdentityRepository, {
-				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				find: vi.fn().mockResolvedValue([{ user: Object.assign(new Person(), { id: 'userId' }) }]),
 				delete: vi.fn(),
 			});
 
@@ -544,7 +544,7 @@ describe('LdapService', () => {
 		it('should update the LDAP login label in the config', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 			mockInstance(AuthIdentityRepository, {
-				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				find: vi.fn().mockResolvedValue([{ user: Object.assign(new Person(), { id: 'userId' }) }]),
 				delete: vi.fn(),
 			});
 			const cipherMock = mock<Cipher>({
@@ -1873,7 +1873,7 @@ describe('LdapService', () => {
 
 			const userRepository = mockInstance(UserRepository);
 			userRepository.findManyByEmail.mockImplementation(async (emails: string[]) =>
-				emails.filter((email) => email === lastEmail).map((email) => ({ email }) as User),
+				emails.filter((email) => email === lastEmail).map((email) => ({ email }) as Person),
 			);
 
 			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries });
@@ -1894,7 +1894,7 @@ describe('LdapService', () => {
 			expect(processUsers).toHaveBeenCalledTimes(1);
 			const [createArg] = (processUsers as Mock).mock.calls[0];
 			expect(createArg).toHaveLength(searchEntries.length - 1);
-			expect(createArg.some(([, user]: [string, User]) => user.email === lastEmail)).toBe(false);
+			expect(createArg.some(([, user]: [string, Person]) => user.email === lastEmail)).toBe(false);
 		});
 	});
 
@@ -1917,7 +1917,7 @@ describe('LdapService', () => {
 
 	describe('handleLogin()', () => {
 		describe('enforceEmailUniqueness', () => {
-			const mockUser: User = mock<User>({
+			const mockPerson: Person = mock<Person>({
 				email: 'jdoe@example.com',
 				firstName: 'John',
 				lastName: 'Doe',
@@ -1945,7 +1945,7 @@ describe('LdapService', () => {
 				mockedGetAuthIdentity.mockResolvedValue(null);
 
 				const mockedCreateLdapUserOnLocalDb = createLdapUserOnLocalDb as Mock;
-				mockedCreateLdapUserOnLocalDb.mockResolvedValue(mockUser);
+				mockedCreateLdapUserOnLocalDb.mockResolvedValue(mockPerson);
 
 				const mockedGetUserByEmail = getUserByEmail as Mock;
 				mockedGetUserByEmail.mockResolvedValue(null);
@@ -1960,7 +1960,7 @@ describe('LdapService', () => {
 				await ldapService.init();
 
 				const result = await ldapService.handleLogin('jdoe', 'password');
-				expect(result).toEqual(mockUser);
+				expect(result).toEqual(mockPerson);
 			});
 
 			it('should not allow login when duplicates exist and enforcement is enabled', async () => {

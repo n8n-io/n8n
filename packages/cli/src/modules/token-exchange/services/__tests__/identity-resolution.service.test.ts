@@ -5,7 +5,7 @@ import {
 	type AuthIdentity,
 	type AuthIdentityRepository,
 	type EntityManager,
-	type User,
+	Person,
 	type PersonRepository,
 	type UserRepository,
 } from '@n8n/db';
@@ -45,13 +45,12 @@ const service = new IdentityResolutionService(
 
 const CUSTOM_ROLE = 'global:custom-abc123';
 
-function makeUser(roleSlug: string): User {
-	return {
-		...mock<User>(),
+function makeUser(roleSlug: string): Person {
+	return Object.assign(new Person(), {
 		id: 'user-id',
 		email: 'user@example.com',
-		role: { ...mock<User['role']>(), slug: roleSlug },
-	} as User;
+		role: { ...mock<Person['role']>(), slug: roleSlug },
+	});
 }
 
 function makeClaims(overrides: Partial<ExternalTokenClaims> = {}): ExternalTokenClaims {
@@ -95,7 +94,7 @@ describe('IdentityResolutionService', () => {
 					await runInTransaction(trx),
 			);
 			userRepository.createUserWithProject.mockResolvedValue({
-				user: mock<User>({ id: 'new-user-1' }),
+				user: mock<Person>({ id: 'new-user-1' }),
 				project: mock(),
 			});
 		});
@@ -179,10 +178,13 @@ describe('IdentityResolutionService', () => {
 
 	describe('role sync (existing user resolved by identity)', () => {
 		function mockLinkedUser(currentRoleSlug: string) {
-			const user = mock<User>({ id: 'existing-1', role: { slug: currentRoleSlug } });
-			authIdentityRepository.findOne.mockResolvedValueOnce(mock<AuthIdentity>({ user }));
-			userRepository.findByIdWithRole.mockResolvedValue(user);
-			return user;
+			const person = Object.assign(new Person(), {
+				id: 'existing-1',
+				role: mock<Person['role']>({ slug: currentRoleSlug }),
+			});
+			authIdentityRepository.findOne.mockResolvedValueOnce(mock<AuthIdentity>({ user: person }));
+			userRepository.findByIdWithRole.mockResolvedValue(person);
+			return person;
 		}
 
 		it('changes to a licensed custom role and emits an update event', async () => {

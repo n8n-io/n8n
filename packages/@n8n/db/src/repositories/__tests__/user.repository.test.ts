@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 
 import { GLOBAL_OWNER_ROLE } from '../../constants';
-import { User } from '../../entities';
+import { Person, User } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { UserRepository } from '../user.repository';
 
@@ -34,7 +34,8 @@ describe('UserRepository', () => {
 
 			const result = await userRepository.hasClaimedInstanceOwner();
 
-			expect(entityManager.exists).toHaveBeenCalledWith(User, {
+			// Only a person has a password or a login date.
+			expect(entityManager.exists).toHaveBeenCalledWith(Person, {
 				where: [
 					{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
 					{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },

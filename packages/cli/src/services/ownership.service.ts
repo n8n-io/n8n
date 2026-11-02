@@ -4,6 +4,7 @@ import { CacheService, EventService, WorkflowProjectService } from '@n8n/backend
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
+	isPerson,
 	Person,
 	Project,
 	User,
@@ -247,12 +248,13 @@ export class OwnershipService {
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let shellUser = await this.userRepository.findOne({
+		const shellUser = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			relations: ['role'],
 		});
 
-		if (!shellUser) {
+		// The owner is always a person.
+		if (!shellUser || !isPerson(shellUser)) {
 			this.logger.error('Could not find shell user with global:owner role');
 			throw new BadRequestError('Instance owner shell user not found');
 		}
@@ -265,7 +267,8 @@ export class OwnershipService {
 			? password
 			: await this.passwordUtility.hash(password);
 
-		shellUser = await this.userRepository.save(shellUser, { transaction: false });
+		// `save` updates the instance in place.
+		await this.userRepository.save(shellUser, { transaction: false });
 
 		this.logger.info('Owner was set up successfully');
 		this.eventService.emit('instance-owner-setup', { userId: shellUser.id });

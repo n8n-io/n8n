@@ -3,8 +3,14 @@ import { ResolveSignupTokenQueryDto, SSO_LOGIN_REQUIRED_ERROR_CODE } from '@n8n/
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest, User } from '@n8n/db';
-import { PersonRepository, UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
+import {
+	Person,
+	PersonRepository,
+	ServiceAccount,
+	ServiceAccountDetails,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -65,7 +71,7 @@ describe('AuthController', () => {
 
 			const browserId = '1';
 
-			const member = mock<User>({
+			const member = mock<Person>({
 				id: '123',
 				role: { slug: 'global:member' },
 				mfaEnabled: false,
@@ -117,7 +123,7 @@ describe('AuthController', () => {
 		});
 
 		it('should not allow members to login with email if "OIDC" is the authentication method', async () => {
-			const member = mock<User>({
+			const member = mock<Person>({
 				id: '123',
 				role: { slug: 'global:member' },
 				mfaEnabled: false,
@@ -193,7 +199,7 @@ describe('AuthController', () => {
 		it('should allow owners to login with email if "OIDC" is the authentication method', async () => {
 			config.set('userManagement.authenticationMethod', 'oidc');
 
-			const member = mock<User>({
+			const member = mock<Person>({
 				id: '123',
 				role: { slug: 'global:owner' },
 				mfaEnabled: false,
@@ -416,13 +422,13 @@ describe('AuthController', () => {
 			});
 			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id,
 					password: 'Password123!',
 				}),
 			);
 			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id,
 					password: 'Password123!',
 				}),
@@ -468,14 +474,14 @@ describe('AuthController', () => {
 			});
 			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id,
 					email: undefined,
 					password: null,
 				}),
 			);
 			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id,
 					email: undefined,
 					password: null,
@@ -520,7 +526,7 @@ describe('AuthController', () => {
 			});
 			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id,
 					email: 'inviter@example.com',
 					firstName: 'Inviter first name',
@@ -529,7 +535,7 @@ describe('AuthController', () => {
 				}),
 			);
 			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id,
 					email: 'inviter@example.com',
 					firstName: 'Inviter first name',
@@ -580,7 +586,7 @@ describe('AuthController', () => {
 			});
 			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
 			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id: inviterId,
 					email: 'inviter@example.com',
 					firstName: 'Inviter first name',
@@ -589,7 +595,7 @@ describe('AuthController', () => {
 				}),
 			);
 			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(
-				mock<User>({
+				Object.assign(new Person(), {
 					id: inviteeId,
 					email: 'invitee@example.com',
 					firstName: 'Invitee first name',
@@ -707,6 +713,46 @@ describe('AuthController', () => {
 			const promise = authController.resolveSignupToken(req, res, payload);
 			await expect(promise).rejects.toThrow(BadRequestError);
 			await expect(promise).rejects.toThrow('Token is required');
+		});
+
+		it('lets a service account invite and returns its name as the inviter', async () => {
+			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			const inviteeId = uuidv4();
+			const authController = new AuthController(
+				logger,
+				authService,
+				mfaService,
+				userService,
+				license,
+				userRepository,
+				personRepository,
+				eventService,
+				authHandlerRegistry,
+				postHog,
+			);
+			vi.mocked(userService.getInvitationIdsFromPayload).mockResolvedValue({
+				inviterId: 'sa-1',
+				inviteeId,
+			});
+			vi.mocked(license.isWithinUsersLimit).mockReturnValue(true);
+			vi.mocked(userRepository.findByIdWithRole).mockResolvedValue(
+				Object.assign(new ServiceAccount(), {
+					id: 'sa-1',
+					details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+				}),
+			);
+			vi.mocked(personRepository.findByIdWithRole).mockResolvedValue(
+				Object.assign(new Person(), { id: inviteeId, password: null }),
+			);
+			const payload = new ResolveSignupTokenQueryDto({ token: 'valid-jwt-token' });
+
+			const result = await authController.resolveSignupToken(
+				mock<AuthlessRequest>({ body: payload }),
+				mock<Response>(),
+				payload,
+			);
+
+			expect(result).toEqual({ inviter: { firstName: 'Deploy bot', lastName: null } });
 		});
 	});
 

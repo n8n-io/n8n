@@ -1,10 +1,10 @@
 import { CommunityRegisteredRequestDto } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, isPerson } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import type { AxiosError } from 'axios';
 import { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { LicenseRequest } from '@/requests';
 import { UrlService } from '@n8n/backend-services';
 
@@ -26,6 +26,8 @@ export class LicenseController {
 	@Post('/enterprise/request_trial')
 	@GlobalScope('license:manage')
 	async requestEnterpriseTrial(req: AuthenticatedRequest) {
+		if (!isPerson(req.user)) throw new ForbiddenError('Only a person can request a trial');
+
 		try {
 			await this.licenseService.requestEnterpriseTrial(req.user);
 		} catch (error: unknown) {
@@ -61,6 +63,9 @@ export class LicenseController {
 	async activateLicense(req: LicenseRequest.Activate) {
 		const { activationKey, eulaUri } = req.body;
 		if (eulaUri) {
+			if (!isPerson(req.user)) {
+				throw new ForbiddenError('Only a person can accept the license terms');
+			}
 			await this.licenseService.activateLicense(activationKey, eulaUri, req.user.email);
 		} else {
 			await this.licenseService.activateLicense(activationKey);

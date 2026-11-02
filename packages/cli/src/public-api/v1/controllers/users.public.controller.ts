@@ -11,7 +11,7 @@ import {
 	userUuidParamSchema,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import type { AuthenticatedRequest, User } from '@n8n/db';
+import { isPerson, type AuthenticatedRequest, type User } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -46,8 +46,20 @@ const tags = ['User'];
 const userProperties = ['id', 'email', 'firstName', 'lastName', 'isPending', 'mfaEnabled'] as const;
 
 function toPublicApiUser(user: User, options?: { includeRole: boolean }): UserPublicDto {
+	const { id } = user;
+	// A service account has no email, no name and no MFA, and never waits for an invite.
+	const fields = isPerson(user)
+		? pick(user, ...userProperties)
+		: {
+				id,
+				email: null,
+				firstName: null,
+				lastName: null,
+				isPending: false,
+				mfaEnabled: false,
+			};
 	const publicApiUser = {
-		...pick(user, ...userProperties),
+		...fields,
 		createdAt: user.createdAt.toISOString(),
 		updatedAt: user.updatedAt.toISOString(),
 	};
