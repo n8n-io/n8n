@@ -1,4 +1,8 @@
-import type { TransferWorkflowBodyDto } from '@n8n/api-types';
+import type {
+	FolderTransferResult,
+	TransferWorkflowBodyDto,
+	WorkflowTransferResult,
+} from '@n8n/api-types';
 import type { IShareWorkflowsPayload, IWorkflowsShareResponse } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -21,7 +25,7 @@ export async function moveWorkflowToProject(
 	context: IRestApiContext,
 	id: string,
 	body: TransferWorkflowBodyDto,
-): Promise<void> {
+): Promise<WorkflowTransferResult | undefined> {
 	return await makeRestApiRequest(context, 'PUT', `/workflows/${id}/transfer`, body);
 }
 
@@ -32,7 +36,7 @@ export async function moveFolderToProject(
 	destinationProjectId: string,
 	destinationParentFolderId?: string,
 	shareCredentials?: string[],
-): Promise<void> {
+): Promise<FolderTransferResult> {
 	return await makeRestApiRequest(
 		context,
 		'PUT',
