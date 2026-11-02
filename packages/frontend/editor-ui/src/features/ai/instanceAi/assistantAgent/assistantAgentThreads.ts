@@ -1,6 +1,15 @@
-import type { InstanceAiAttachment, ProviderAttachmentCapabilities } from '@n8n/api-types';
+import type {
+	InstanceAiAttachment,
+	InstanceAiThreadOrigin,
+	InstanceAiThreadSource,
+	ProviderAttachmentCapabilities,
+} from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse } from 'n8n-workflow';
 import type { InjectionKey } from 'vue';
+import { z } from 'zod';
 
 /** Id of the n8n Assistant system agent on the agents runtime. */
 export const ASSISTANT_AGENT_ID = 'assistant';
@@ -42,12 +51,65 @@ export function forgetAssistantAgentThread(threadId: string): void {
 	knownAgentThreads.delete(threadId);
 }
 
+export function isKnownAssistantAgentThread(threadId: string): boolean {
+	return knownAgentThreads.has(threadId);
+}
+
+const launchMarkerSchema = z.object({ projectId: z.string().min(1) });
+
+/** A new Assistant agent thread: its project, and where it came from for telemetry. */
+export interface AssistantAgentThreadLaunch {
+	projectId: string;
+	source: InstanceAiThreadSource;
+	origin: InstanceAiThreadOrigin;
+	templateId?: string;
+}
+
+const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`;
+
+/**
+ * Marks a new thread as an Assistant agent thread, and tracks its launch. The
+ * server knows the thread only after its first message, so the marker is in
+ * localStorage: a hand-off can open the thread in a new tab, or before the user
+ * sends anything. The launch is tracked here, when the thread is created, as the
+ * current runtime does, so both runtimes count the same launches.
+ *
+ * Temporary: the marker exists because both Assistant runtimes share the thread
+ * URL. When the current runtime is removed, move the project and the launch
+ * fields into the hand-off stash and remove the marker (AST-1898).
+ */
+export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAgentThreadLaunch) {
+	rememberAssistantAgentThread(threadId, launch.projectId);
+	localStorage.setItem(launchKey(threadId), JSON.stringify({ projectId: launch.projectId }));
+	useTelemetry().track('User launched Instance AI thread', {
+		thread_id: threadId,
+		instance_id: useRootStore().instanceId,
+		source: launch.source,
+		origin: launch.origin,
+		...(launch.templateId ? { template_id: launch.templateId } : {}),
+		runtime: 'agents',
+	});
+}
+
+/** The project of a new thread that the server does not know yet. */
+export function getAssistantAgentLaunch(threadId: string): { projectId: string } | undefined {
+	const raw = localStorage.getItem(launchKey(threadId));
+	if (!raw) return undefined;
+	const parsed = launchMarkerSchema.safeParse(jsonParse(raw, { fallbackValue: null }));
+	return parsed.success ? parsed.data : undefined;
+}
+
+/** Clear the marker once the server has the thread, or when the thread is dropped. */
+export function clearAssistantAgentLaunch(threadId: string): void {
+	localStorage.removeItem(launchKey(threadId));
+}
+
 /** The runtime of a thread when it is known without a request, else `undefined`. */
 export function knownAssistantThreadRuntime(
 	threadId: string,
 	options: { assistantAgentEnabled: boolean; isAssistantThread: (threadId: string) => boolean },
 ): AssistantThreadRuntime | undefined {
-	const projectId = knownAgentThreads.get(threadId);
+	const projectId = knownAgentThreads.get(threadId) ?? getAssistantAgentLaunch(threadId)?.projectId;
 	if (projectId) return { kind: 'assistant-agent', projectId };
 	if (!options.assistantAgentEnabled || options.isAssistantThread(threadId)) {
 		return { kind: 'assistant' };

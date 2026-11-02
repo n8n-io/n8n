@@ -1334,6 +1334,11 @@ function setDraft(text: string) {
 	inputText.value = text;
 }
 
+/** Clears the composer only while it still holds this text, so the user's edits stay. */
+function clearDraftIfMatches(text: string) {
+	if (inputText.value === text) inputText.value = '';
+}
+
 function openFilePicker() {
 	chatInput.value?.openFilePicker();
 }
@@ -1393,6 +1398,7 @@ defineExpose({
 	clearBudgetStops,
 	isDirty,
 	setDraft,
+	clearDraftIfMatches,
 	openFilePicker,
 	getInputElement,
 	insertText,
@@ -1403,6 +1409,10 @@ defineExpose({
 	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
 	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
+	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
+	isBusy: computed(
+		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,
+	),
 	isLoadingHistory: computed(() => isLoadingHistory.value),
 });
 
@@ -1488,7 +1498,8 @@ onBeforeUnmount(() => {
 				!isStreaming &&
 				!stopNotice &&
 				!preparingSummary &&
-				!summaryMissing
+				!summaryMissing &&
+				!$slots['inline-offers']
 			"
 		>
 			<slot name="empty-state">
@@ -1522,8 +1533,10 @@ onBeforeUnmount(() => {
 			<template v-if="$slots['message-actions']" #message-actions="actionProps">
 				<slot name="message-actions" v-bind="actionProps" />
 			</template>
-			<template v-if="stopNotice" #status>
+			<!-- Host offers end the transcript, so they share its column and scroll with it. -->
+			<template v-if="stopNotice || $slots['inline-offers']" #status>
 				<AgentChatTaskStopNotice
+					v-if="stopNotice"
 					:status="stopNotice"
 					:retry-disabled="stopDisabled"
 					:trace-route="
@@ -1531,10 +1544,9 @@ onBeforeUnmount(() => {
 					"
 					@retry="stopTasks"
 				/>
+				<slot name="inline-offers" />
 			</template>
 		</AgentChatMessageList>
-
-		<slot name="inline-offers" />
 
 		<div :class="$style.inputArea">
 			<slot name="above-input" />

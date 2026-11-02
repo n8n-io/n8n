@@ -329,6 +329,7 @@ export class AgentMessageQueueConsumer {
 		send: (event: AgentSseEvent) => void,
 	): Promise<void> {
 		const { thread, admission, payload } = claim;
+		if (payload.kind !== 'n8n_chat') return;
 		const stream = this.orchestrator.executeForN8nChatPublished({
 			agentId: thread.agentId,
 			projectId: thread.projectId,
@@ -336,6 +337,8 @@ export class AgentMessageQueueConsumer {
 			message: payload.message,
 			memory: { threadId: thread.id, resourceId: payload.resourceId },
 			attachments: payload.attachments,
+			pauseReport: Boolean(payload.stopReportId),
+			hideUserMessageFromTranscript: payload.hidden,
 			sessionMode: 'existing',
 			admittedExecution: admission,
 			abortSignal: signal,

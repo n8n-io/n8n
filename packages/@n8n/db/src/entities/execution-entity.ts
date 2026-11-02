@@ -129,6 +129,10 @@ export class ExecutionEntity {
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	binaryDataSizeBytes: number;
 
+	/** Resume attempts since the execution last entered `waiting` or `new`. Reset once it runs. */
+	@Column({ type: 'smallint', default: 0 })
+	resumeAttempts: number;
+
 	/**
 	 * Version id of the workflow this execution ran, denormalized from the data
 	 * bundle so it can be queried without loading the bundle. `null` when the

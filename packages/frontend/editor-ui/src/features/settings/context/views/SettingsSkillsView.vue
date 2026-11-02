@@ -490,8 +490,8 @@ function scopeLock(
 	return {};
 }
 
-/** `show` opens the editor with the Versions panel or with the latest two versions compared. */
-async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' | 'compare') {
+/** `show` opens the editor with the Versions panel. */
+async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions') {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
@@ -523,7 +523,6 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 			existingSkillNames: [],
 			latestVersion: detail.latestVersion,
 			initialVersionsOpen: show === 'versions',
-			initialCompare: show === 'compare',
 			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
 			deleteDisabledReason: deleteBlockedReason(detail),
 			...(detail.syncedFrom?.canStopSyncing
@@ -885,7 +884,6 @@ onMounted(async () => {
 			:show-mcp-availability="mcpSkillsEnabled"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"
-			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
 			@check-for-updates="onCheckForUpdates($event)"
 			@stop-syncing="onStopSyncing($event)"
