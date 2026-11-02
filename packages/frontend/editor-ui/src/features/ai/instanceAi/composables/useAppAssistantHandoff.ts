@@ -33,9 +33,12 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 			projectId: input.projectId,
 			...(input.appName ? { name: input.appName } : {}),
 		};
+		const originRoute = router.currentRoute.value;
+		const isOriginRouteActive = () => router.currentRoute.value === originRoute;
 
 		try {
 			const loaded = await store.loadThreads();
+			if (!isOriginRouteActive()) return true;
 			if (!loaded) throw new Error(i18n.baseText('instanceAi.handoff.openFailed.message'));
 			const existing = store.threads.find((thread) =>
 				threadTargetsSubject(thread.metadata, subject),
@@ -47,6 +50,7 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 					origin: 'internal',
 					sourceContext: { appId: input.appId },
 				}));
+			if (!isOriginRouteActive()) return true;
 			await router.replace({
 				name: INSTANCE_AI_THREAD_VIEW,
 				params: { threadId },
@@ -54,6 +58,7 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 			});
 			return true;
 		} catch (error) {
+			if (!isOriginRouteActive()) return true;
 			toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
 			return false;
 		}

@@ -8,13 +8,14 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../constants';
 import { provisionSubjectThread } from '../composables/useInstanceAiHandoff';
 
-const { push, replace, showError } = vi.hoisted(() => ({
+const { currentRoute, push, replace, showError } = vi.hoisted(() => ({
+	currentRoute: { value: {} as object },
 	push: vi.fn(),
 	replace: vi.fn(),
 	showError: vi.fn(),
 }));
 
-vi.mock('vue-router', () => ({ useRouter: () => ({ push, replace }) }));
+vi.mock('vue-router', () => ({ useRouter: () => ({ currentRoute, push, replace }) }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
 vi.mock('../composables/useInstanceAiHandoff', () => ({ provisionSubjectThread: vi.fn() }));
 
@@ -25,6 +26,10 @@ describe('useAppAssistantHandoff', () => {
 		setActivePinia(createTestingPinia());
 		store = mockedStore(useInstanceAiStore);
 		store.loadThreads.mockResolvedValue(true);
+		currentRoute.value = {
+			name: 'AppDetailView',
+			params: { appId: '019a4012-272c-7313-91af-5c94a3d819a9', projectId: 'project-1' },
+		};
 	});
 
 	it('opens the newest thread linked to the App', async () => {
@@ -78,6 +83,54 @@ describe('useAppAssistantHandoff', () => {
 			params: { threadId: 'thread-2' },
 			query: { appId: '019a4012-272c-7313-91af-5c94a3d819a9' },
 		});
+	});
+
+	it('does not open a thread after the user leaves while threads load', async () => {
+		const loading = Promise.withResolvers<boolean>();
+		store.loadThreads.mockReturnValue(loading.promise);
+		const result = useAppAssistantHandoff().openApp({
+			appId: '019a4012-272c-7313-91af-5c94a3d819a9',
+			projectId: 'project-1',
+		});
+
+		currentRoute.value = { name: 'ProjectApps' };
+		loading.resolve(true);
+
+		await expect(result).resolves.toBe(true);
+		expect(provisionSubjectThread).not.toHaveBeenCalled();
+		expect(replace).not.toHaveBeenCalled();
+	});
+
+	it('does not open a provisioned thread after the user leaves', async () => {
+		const provisioning = Promise.withResolvers<string>();
+		vi.mocked(provisionSubjectThread).mockReturnValue(provisioning.promise);
+		const result = useAppAssistantHandoff().openApp({
+			appId: '019a4012-272c-7313-91af-5c94a3d819a9',
+			projectId: 'project-1',
+		});
+		await vi.waitFor(() => expect(provisionSubjectThread).toHaveBeenCalledOnce());
+
+		currentRoute.value = { name: 'ProjectApps' };
+		provisioning.resolve('thread-2');
+
+		await expect(result).resolves.toBe(true);
+		expect(replace).not.toHaveBeenCalled();
+	});
+
+	it('does not report a handoff failure after the user leaves', async () => {
+		const provisioning = Promise.withResolvers<string>();
+		vi.mocked(provisionSubjectThread).mockReturnValue(provisioning.promise);
+		const result = useAppAssistantHandoff().openApp({
+			appId: '019a4012-272c-7313-91af-5c94a3d819a9',
+			projectId: 'project-1',
+		});
+		await vi.waitFor(() => expect(provisionSubjectThread).toHaveBeenCalledOnce());
+
+		currentRoute.value = { name: 'ProjectApps' };
+		provisioning.reject(new Error('Failed to provision'));
+
+		await expect(result).resolves.toBe(true);
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('opens the wide empty state for a new App', async () => {

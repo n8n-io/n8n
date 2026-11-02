@@ -6,8 +6,8 @@ export const createAppAssistantHandoff = declareCapability<() => AppAssistantHan
 	'create-app-assistant-handoff',
 	{
 		fallback: () => ({
-			openApp: () => Promise.resolve(false),
-			createApp: () => Promise.resolve(),
+			openApp: async () => false,
+			createApp: async () => {},
 		}),
 	},
 );
