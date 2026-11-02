@@ -33,7 +33,6 @@ import { searchModels } from '@utils/custom-model-endpoint/models';
 
 interface Options {
 	maxTokens?: number;
-	maxCompletionTokens?: number;
 	frequencyPenalty?: number;
 	presencePenalty?: number;
 	temperature?: number;
@@ -110,11 +109,29 @@ export class LmChatCustomEndpoint implements INodeType {
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
-			{ name: CUSTOM_MODEL_ENDPOINT_CREDENTIAL, required: false },
-			{ name: OPENAI_CREDENTIAL, required: false },
+			{
+				name: CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
+				required: true,
+				displayOptions: { show: { authentication: [CUSTOM_MODEL_ENDPOINT_CREDENTIAL] } },
+			},
+			{
+				name: OPENAI_CREDENTIAL,
+				required: true,
+				displayOptions: { show: { authentication: [OPENAI_CREDENTIAL] } },
+			},
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{ name: 'Custom Model Endpoint', value: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
+					{ name: 'OpenAI', value: OPENAI_CREDENTIAL },
+				],
+				default: CUSTOM_MODEL_ENDPOINT_CREDENTIAL,
+			},
 			modelField,
 			...requestHeaderFields,
 			chatModelOptions,
@@ -162,7 +179,6 @@ export class LmChatCustomEndpoint implements INodeType {
 				model,
 				configuration,
 				maxTokens: limitOrUnset(options.maxTokens),
-				maxCompletionTokens: limitOrUnset(options.maxCompletionTokens),
 				frequencyPenalty: options.frequencyPenalty,
 				presencePenalty: options.presencePenalty,
 				temperature: options.temperature,
