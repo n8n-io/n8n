@@ -309,29 +309,43 @@ describe('AssistantAgentProvider', () => {
 		});
 
 		describe('attached agent', () => {
+			type ThreadPatchArgs = {
+				threadId: string;
+				update: (current: {
+					id: string;
+					metadata?: Record<string, unknown>;
+				}) => { metadata?: Record<string, unknown> } | null | undefined;
+			};
+
+			/** A turn whose memory behaves like `N8nMemory`: a patch replaces the metadata,
+			 *  and it returns `null` when the thread row does not exist yet. */
 			function agentTurn(
 				agent: Record<string, unknown>,
 				metadata: Record<string, unknown> | undefined = undefined,
 			) {
 				const memory = mock<SystemAgentStartTurn['memory']>();
-				memory.getThread.mockResolvedValue(
-					metadata
-						? ({ id: 'thread-1', metadata } as Awaited<ReturnType<typeof memory.getThread>>)
-						: null,
-				);
+				const written: { metadata?: Record<string, unknown> } = {};
+				const patchThread = vi.fn(async ({ threadId, update }: ThreadPatchArgs) => {
+					if (!metadata) return null;
+					const patch = update({ id: threadId, metadata: { ...metadata } });
+					if (patch?.metadata) written.metadata = patch.metadata;
+					return { id: threadId, metadata: written.metadata ?? metadata };
+				});
+				Object.assign(memory, { patchThread });
 				const base = startTurn();
-				return startTurn({
+				const turn = startTurn({
 					memory,
 					options: {
 						...base.options,
 						request: { attachments: [{ type: 'agent', projectId: 'project-1', ...agent }] },
 					},
 				});
+				return { turn, written };
 			}
 
 			it('binds a saved agent to a new thread', async () => {
 				const { provider } = setup();
-				const turn = agentTurn({ id: 'agent-1', name: 'Triage' });
+				const { turn } = agentTurn({ id: 'agent-1', name: 'Triage' });
 
 				await provider.prepareTurn(turn);
 
@@ -351,37 +365,36 @@ describe('AssistantAgentProvider', () => {
 
 			it('marks a pending agent, so the build reuses its id', async () => {
 				const { provider } = setup();
-				const turn = agentTurn({ id: 'agent-new', pending: true }, { emoji: '🤖' });
+				const { turn, written } = agentTurn({ id: 'agent-new', pending: true }, { emoji: '🤖' });
 
 				await provider.prepareTurn(turn);
 
-				expect(turn.memory.saveThread).toHaveBeenCalledWith(
-					expect.objectContaining({
-						metadata: {
-							emoji: '🤖',
-							instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
-						},
-					}),
-				);
+				expect(written.metadata).toEqual({
+					emoji: '🤖',
+					instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
+				});
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
 			});
 
-			it('binds the pending agent once the editor saved it', async () => {
+			it('replaces the pending marker with the binding once the editor saved the agent', async () => {
 				const { provider } = setup();
-				const turn = agentTurn(
+				const { turn, written } = agentTurn(
 					{ id: 'agent-new' },
-					{ instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' } },
+					{
+						emoji: '🤖',
+						instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
+					},
 				);
 
 				await provider.prepareTurn(turn);
 
-				expect(turn.memory.saveThread).toHaveBeenCalledWith(
-					expect.objectContaining({
-						metadata: {
-							instanceAiAgentBuilderTarget: { agentId: 'agent-new', projectId: 'project-1' },
-							instanceAiAgentBuilderTargets: {},
-						},
-					}),
-				);
+				// The whole metadata is written, so the pending marker is gone.
+				expect(written.metadata).toEqual({
+					emoji: '🤖',
+					instanceAiAgentBuilderTarget: { agentId: 'agent-new', projectId: 'project-1' },
+					instanceAiAgentBuilderTargets: {},
+				});
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
 			});
 
 			it.each([
@@ -403,10 +416,11 @@ describe('AssistantAgentProvider', () => {
 				['the agent is in another project', { id: 'agent-2', projectId: 'project-2' }, undefined],
 			])('keeps the thread metadata when %s', async (_case, agent, metadata) => {
 				const { provider } = setup();
-				const turn = agentTurn(agent, metadata);
+				const { turn, written } = agentTurn(agent, metadata);
 
 				await provider.prepareTurn(turn);
 
+				expect(written.metadata).toBeUndefined();
 				expect(turn.memory.saveThread).not.toHaveBeenCalled();
 			});
 		});

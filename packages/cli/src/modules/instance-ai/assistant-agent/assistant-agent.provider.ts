@@ -16,6 +16,7 @@ import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	modelConfigId,
+	patchThread,
 	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
 	withAttachedAgentTarget,
@@ -403,10 +404,19 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
 		);
 		if (!attached || attached.projectId !== turn.thread.projectId) return;
-		const current = await turn.memory.getThread(turn.thread.id);
-		const metadata = withAttachedAgentTarget(current?.metadata ?? {}, attached);
-		if (!metadata) return;
+		// A patch replaces the metadata, so binding a saved agent drops its pending marker.
+		// `saveThread` merges, and a leftover marker makes a later build adopt this agent.
+		const patched = await patchThread(turn.memory, {
+			threadId: turn.thread.id,
+			update: ({ metadata }) => {
+				const next = withAttachedAgentTarget(metadata ?? {}, attached);
+				return next ? { metadata: next } : null;
+			},
+		});
+		if (patched) return;
 		// The first turn saves its messages after this, so the thread row can be missing here.
+		const metadata = withAttachedAgentTarget({}, attached);
+		if (!metadata) return;
 		await turn.memory.saveThread({ id: turn.thread.id, resourceId: turn.resourceId, metadata });
 	}
 
