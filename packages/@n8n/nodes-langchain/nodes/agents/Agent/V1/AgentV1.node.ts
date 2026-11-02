@@ -326,7 +326,7 @@ export class AgentV1 implements INodeType {
 			properties: [
 				{
 					displayName:
-						"This node is using Agent that has been deprecated. Please switch to using 'Tools Agent' instead.",
+						'This agent type is deprecated and is removed in n8n v3. Replace this node with an AI Agent node on the latest version, then reconnect its model, memory and tools.',
 					name: 'deprecated',
 					type: 'notice',
 					default: '',
