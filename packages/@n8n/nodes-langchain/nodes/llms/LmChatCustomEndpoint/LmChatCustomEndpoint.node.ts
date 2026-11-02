@@ -15,6 +15,7 @@ import {
 
 import { parseExtraBody } from '../shared/extra-body';
 
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { n8nContextHeaders } from '@utils/custom-model-endpoint/context-headers';
 import {
 	createCustomModelEndpointConfig,
@@ -174,29 +175,29 @@ export class LmChatCustomEndpoint implements INodeType {
 			requestHeaders,
 		});
 
-		return {
-			response: new ChatOpenAI({
-				// The fetch strips this: a gateway reading its key elsewhere must not see it
-				apiKey: 'custom-model-endpoint',
-				model,
-				configuration,
-				maxTokens: limitOrUnset(options.maxTokens),
-				frequencyPenalty: options.frequencyPenalty,
-				presencePenalty: options.presencePenalty,
-				temperature: options.temperature,
-				topP: options.topP,
-				stop: options.stop ? options.stop.split(',').map((item) => item.trim()) : undefined,
-				timeout: options.timeout,
-				maxRetries: options.maxRetries ?? 2,
-				modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex),
-				callbacks: [new N8nLlmTracing(this)],
-				onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: unknown) => {
-					const { status } = error as { status?: number };
-					// A connection error or a timeout carries no status, and the default
-					// handler already knows which of those are worth another attempt
-					if (status !== undefined && !shouldRetry(status)) throw error;
-				}),
+		const chatModel = new ChatOpenAI({
+			// The fetch strips this: a gateway reading its key elsewhere must not see it
+			apiKey: 'custom-model-endpoint',
+			model,
+			configuration,
+			maxTokens: limitOrUnset(options.maxTokens),
+			frequencyPenalty: options.frequencyPenalty,
+			presencePenalty: options.presencePenalty,
+			temperature: options.temperature,
+			topP: options.topP,
+			stop: options.stop ? options.stop.split(',').map((item) => item.trim()) : undefined,
+			timeout: options.timeout,
+			maxRetries: options.maxRetries ?? 2,
+			modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex),
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: unknown) => {
+				const { status } = error as { status?: number };
+				// A connection error or a timeout carries no status, and the default
+				// handler already knows which of those are worth another attempt
+				if (status !== undefined && !shouldRetry(status)) throw error;
 			}),
-		};
+		});
+
+		return { response: wrapChatModelMessageInput(chatModel) };
 	}
 }
