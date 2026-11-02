@@ -3,9 +3,11 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import { promotionDisplayNameSchema } from './promotion-common.dto';
+import { promotionGitResultSchema } from './promotion-operations.dto';
 import { promotionProviderSummarySchema } from './promotion-provider.dto';
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
+import { serializedProjectSchema } from '../packages/project.schema';
 import { publicApiPaginationSchema } from '../pagination/pagination.dto';
 
 export const promotionDirectionSchema = z.enum(['apply', 'promote']);
@@ -246,4 +248,12 @@ export class PromotionEnvironmentProjectPublicDto extends Z.class(
 
 export class PromotionEnvironmentProjectListPublicDto extends Z.class({
 	projectIds: z.array(n8nIdSchema),
+}) {}
+
+/** Projects in the Apply package whose IDs do not exist on this instance. */
+export class PromotionMissingProjectListPublicDto extends Z.class({
+	environmentId: n8nIdSchema,
+	/** `null` when the branch has no package yet. */
+	git: promotionGitResultSchema.nullable(),
+	data: z.array(serializedProjectSchema),
 }) {}

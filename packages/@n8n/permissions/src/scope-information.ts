@@ -203,7 +203,7 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'promotions:read': {
 		displayName: 'Read promotion setup',
 		description:
-			'Allows reading promotion providers, environments, and the projects linked to each environment.',
+			'Allows reading promotion providers, environments, the projects linked to each environment, and the Apply package projects that are missing on this instance.',
 	},
 	'promotions:update': {
 		displayName: 'Update promotion setup',
