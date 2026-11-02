@@ -3,8 +3,9 @@ import { types } from 'node:util';
 import { defineOwnValue, isPlainObject } from '../runtime/transfer';
 
 /**
- * Copy proxy dates, arrays, and plain objects after structured clone fails.
- * Keep shared references and cycles without changing the source data.
+ * Copy proxy dates and all traversed arrays and plain objects, with or without
+ * proxies. Read own enumerable properties into data properties. Let getter
+ * errors propagate. Keep shared references and cycles without changing the source.
  */
 export function copyProxies(value: unknown, seen = new Map<object, object>()): unknown {
 	if (typeof value !== 'object' || value === null) {

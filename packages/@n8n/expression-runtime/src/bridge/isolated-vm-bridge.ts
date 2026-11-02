@@ -51,8 +51,11 @@ function producedCachedData(script: ivm.Script): ivm.ExternalCopy<ArrayBuffer> |
 }
 
 /**
- * Let native copying handle ordinary values. Only rejected values need a
- * proxy walk before the callback copies them into the isolate.
+ * Try native copying first. After any copy failure, normalize every traversed
+ * array and plain object, with or without proxies. The fallback reads own
+ * enumerable properties, so getters become data properties. Getter errors
+ * propagate to the caller. Other types keep their native transfer rules,
+ * except for proxy dates, which copyProxies also copies.
  */
 function copyIntoIsolate(value: unknown): unknown {
 	if (typeof value !== 'object' || value === null) {
@@ -360,11 +363,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * zod parse failures — are caught and returned as sentinels instead of
 	 * crossing the isolate boundary.
 	 *
-	 * Return-value note: the dispatcher returns plain, structured-clone-able
-	 * data. Results cross into the isolate through an ivm.Callback, which
-	 * copies them via the structured-clone algorithm — JSON-shaped values,
-	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
-	 * non-cloneable values.
+	 * Return-value note: copyIntoIsolate returns an ExternalCopyInto handle
+	 * when native object copying succeeds. The callback consumes that handle
+	 * in the guest. After a native copy failure, it returns the normalized
+	 * value for the callback to copy. Primitives and error sentinels also use
+	 * the callback's copy path. Unsupported values still fail native transfer.
 	 *
 	 * @private
 	 */

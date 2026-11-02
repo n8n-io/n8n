@@ -103,17 +103,79 @@ describe('IsolatedVmBridge', () => {
 			await bridge.dispose();
 		});
 
-		it.each([
-			{ name: 'Map', value: new Map([['id', 42]]) },
-			{ name: 'typed array', value: new Uint8Array([42]) },
-		])('reports a transfer failure for a proxied $name in an item', ({ value }) => {
-			const item = { json: { value: new Proxy(value, {}) } };
+		it('transfers a plain object with a getter after native copying fails', async () => {
+			const { default: ivm } = await import('isolated-vm');
+			const readValue = vi.fn(() => 42);
+			const item = {
+				json: {
+					get value() {
+						return readValue();
+					},
+				},
+			};
+
+			expect(() => new ivm.ExternalCopy(item).release()).toThrow('illegal access');
+			expect(readValue).not.toHaveBeenCalled();
+			expect(
+				bridge.execute(
+					'return Object.getOwnPropertyDescriptor(this.$("Source").first().json, "value");',
+					{ $: () => ({ first: () => item }) },
+				),
+			).toEqual({ value: 42, writable: true, enumerable: true, configurable: true });
+			expect(Object.getOwnPropertyDescriptor(item.json, 'value')?.get).toBeTypeOf('function');
+		});
+
+		it('propagates a getter error from the fallback for a plain object', () => {
+			const readValue = vi
+				.fn((): number => {
+					throw new Error('Cannot read item value');
+				})
+				// The error scan reads the getter before the transfer fallback reads it.
+				.mockReturnValueOnce(42);
+			const item = {
+				json: {
+					get value() {
+						return readValue();
+					},
+				},
+			};
 
 			expect(() =>
 				bridge.execute('return this.$("Source").first().json.value;', {
 					$: () => ({ first: () => item }),
 				}),
-			).toThrow();
+			).toThrow('Expression evaluation failed: Cannot read item value');
+			expect(readValue).toHaveBeenCalledTimes(2);
+		});
+
+		describe.each([
+			{ name: 'Map', value: new Map([['id', 42]]), readValue: 'value.get("id")' },
+			{ name: 'Uint8Array', value: new Uint8Array([42]), readValue: 'value[0]' },
+		])('$name in an item', ({ name, value, readValue }) => {
+			const expression = `
+				const value = this.$("Source").first().json.value;
+				return value instanceof ${name} && ${readValue};
+			`;
+
+			it('preserves the type and value without a proxy', () => {
+				const item = { json: { value } };
+
+				expect(
+					bridge.execute(expression, {
+						$: () => ({ first: () => item }),
+					}),
+				).toBe(42);
+			});
+
+			it('reports a native transfer failure with a proxy', () => {
+				const item = { json: { value: new Proxy(value, {}) } };
+
+				expect(() =>
+					bridge.execute(expression, {
+						$: () => ({ first: () => item }),
+					}),
+				).toThrow(/could not be cloned/);
+			});
 		});
 
 		it.each(['this.$json.error', 'this.$json.errors[0]'])(

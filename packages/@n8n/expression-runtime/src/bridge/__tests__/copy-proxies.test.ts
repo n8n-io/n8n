@@ -16,9 +16,16 @@ describe('copyProxies', () => {
 		expect(copyProxies(undefined)).toBe(undefined);
 	});
 
-	it('preserves data without proxies', () => {
+	it('copies every plain container without proxies', () => {
 		const value = [{ json: { id: 42, nested: [1, { a: 2 }] } }];
-		expect(copyProxies(value)).toStrictEqual(value);
+		const result = copyProxies(value) as typeof value;
+
+		expect(result).toStrictEqual(value);
+		expect(result).not.toBe(value);
+		expect(result[0]).not.toBe(value[0]);
+		expect(result[0].json).not.toBe(value[0].json);
+		expect(result[0].json.nested).not.toBe(value[0].json.nested);
+		expect(result[0].json.nested[1]).not.toBe(value[0].json.nested[1]);
 	});
 
 	it('copies a proxy object to a plain object', () => {
