@@ -61,7 +61,7 @@ describe('N8nMemory', () => {
 	let transactionObservationFind: Mock;
 	let transactionObservationSave: Mock;
 	let transactionObservationUpdate: Mock;
-	let transactionMemoryEntryUpdate: Mock;
+	let transactionMemoryEntryDelete: Mock;
 	let transactionMemoryEntrySourceFind: Mock;
 
 	beforeEach(() => {
@@ -115,7 +115,7 @@ describe('N8nMemory', () => {
 			value: { transaction: observationRunInTransaction },
 		});
 
-		transactionMemoryEntryUpdate = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
+		transactionMemoryEntryDelete = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
 		transactionMemoryEntrySourceFind = vi.fn().mockResolvedValue([]);
 		runInTransaction = vi.fn(
 			async (
@@ -128,7 +128,7 @@ describe('N8nMemory', () => {
 					delete: transactionDelete,
 					getRepository: vi.fn((entity) => {
 						if (entity === AgentMemoryEntryEntity) {
-							return { update: transactionMemoryEntryUpdate };
+							return { delete: transactionMemoryEntryDelete };
 						}
 						return { find: transactionMemoryEntrySourceFind };
 					}),
@@ -487,7 +487,7 @@ describe('N8nMemory', () => {
 			expect(threadRepository.delete).not.toHaveBeenCalled();
 		});
 
-		it('drops active episodic entries that lose their last source when deleting a thread', async () => {
+		it('deletes episodic entries that lose their last source when deleting a thread', async () => {
 			transactionMemoryEntrySourceFind
 				.mockResolvedValueOnce([
 					makeMemoryEntrySourceEntity({
@@ -520,10 +520,10 @@ describe('N8nMemory', () => {
 				select: { memoryEntryId: true },
 				where: { agentId: 'agent-1', memoryEntryId: In(['orphaned-memory', 'shared-memory']) },
 			});
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', id: In(['orphaned-memory']), status: 'active' },
-				{ status: 'dropped', supersededBy: null },
-			);
+			expect(transactionMemoryEntryDelete).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				id: In(['orphaned-memory']),
+			});
 		});
 
 		it('does not clean up episodic source rows owned by another agent', async () => {
@@ -539,9 +539,8 @@ describe('N8nMemory', () => {
 				AgentMemoryEntrySourceEntity,
 				expect.objectContaining({ threadId: 'thread-1' }),
 			);
-			expect(transactionMemoryEntryUpdate).not.toHaveBeenCalledWith(
+			expect(transactionMemoryEntryDelete).not.toHaveBeenCalledWith(
 				expect.objectContaining({ id: In(['other-agent-memory']) }),
-				expect.anything(),
 			);
 		});
 
@@ -594,7 +593,7 @@ describe('N8nMemory', () => {
 			expect(threadRepository.delete).not.toHaveBeenCalled();
 		});
 
-		it('drops source-less episodic entries when deleting threads by prefix', async () => {
+		it('deletes source-less episodic entries when deleting threads by prefix', async () => {
 			transactionMemoryEntrySourceFind
 				.mockResolvedValueOnce([
 					makeMemoryEntrySourceEntity({
@@ -615,10 +614,10 @@ describe('N8nMemory', () => {
 				threadId,
 				agentId: 'agent-1',
 			});
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', id: In(['prefix-orphaned-memory']), status: 'active' },
-				{ status: 'dropped', supersededBy: null },
-			);
+			expect(transactionMemoryEntryDelete).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				id: In(['prefix-orphaned-memory']),
+			});
 		});
 	});
 

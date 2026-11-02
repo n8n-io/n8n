@@ -394,12 +394,9 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../composables/agentTelemetry.utils', () => ({
 	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
-		instructions: '',
-		tools: [],
 		skills: [],
 		triggers: [],
 		memory: null,
-		model: null,
 		config_version: 'test-version',
 	}),
 }));
@@ -510,10 +507,13 @@ describe('AgentChatPanel', () => {
 			expect(trackSubmittedMessageMock).toHaveBeenCalledWith({
 				agentId: 'a1',
 				status: 'draft',
-				agentConfig: expect.objectContaining({
-					instructions: 'Help.',
+				agentConfig: {
+					skills: [],
+					tasks: [],
+					triggers: [],
+					memory: null,
 					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
-				}),
+				},
 			});
 		} finally {
 			vi.unstubAllGlobals();
@@ -3330,14 +3330,10 @@ describe('AgentChatPanel', () => {
 		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
 		await wrapper.setProps({ continueSessionId: 'session-2' });
 		fingerprint.resolve({
-			instructions: '',
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();
@@ -3362,14 +3358,10 @@ describe('AgentChatPanel', () => {
 
 		busy.value = true;
 		fingerprint.resolve({
-			instructions: '',
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();

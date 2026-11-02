@@ -271,7 +271,7 @@ export class N8nMemoryImpl
 
 	async deleteThread(threadId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.threadRepository.runInTransaction(ctx, async (trx) => {
-			await this.dropEpisodicEntriesWithoutSources(trx, threadId);
+			await this.deleteEpisodicEntriesWithoutSources(trx, threadId);
 			const observationScope = { agentId: this.agentId, observationScopeId: threadId };
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
@@ -292,7 +292,7 @@ export class N8nMemoryImpl
 
 	private async deleteThreadsMatching(observationScopeId: FindOperator<string>): Promise<void> {
 		await this.threadRepository.manager.transaction(async (trx) => {
-			await this.dropEpisodicEntriesWithoutSources(trx, observationScopeId);
+			await this.deleteEpisodicEntriesWithoutSources(trx, observationScopeId);
 			const observationScope = { agentId: this.agentId, observationScopeId };
 			await trx.delete(AgentObservationEntity, observationScope);
 			await trx.delete(AgentObservationCursorEntity, observationScope);
@@ -301,7 +301,7 @@ export class N8nMemoryImpl
 		});
 	}
 
-	private async dropEpisodicEntriesWithoutSources(
+	private async deleteEpisodicEntriesWithoutSources(
 		trx: EntityManager,
 		threadId: string | FindOperator<string>,
 	): Promise<void> {
@@ -327,10 +327,7 @@ export class N8nMemoryImpl
 		const orphanedEntryIds = affectedEntryIds.filter((id) => !entriesWithSources.has(id));
 		if (orphanedEntryIds.length === 0) return;
 
-		await entryRepo.update(
-			{ agentId: this.agentId, id: In(orphanedEntryIds), status: 'active' },
-			droppedLifecycleState(),
-		);
+		await entryRepo.delete({ agentId: this.agentId, id: In(orphanedEntryIds) });
 	}
 
 	// ── Message persistence ──────────────────────────────────────────────

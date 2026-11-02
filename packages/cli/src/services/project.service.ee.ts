@@ -310,6 +310,7 @@ export class ProjectService {
 
 				await agentKnowledgeService.destroyKnowledgeSandbox(project.id, agent.id);
 				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
+				await agentExecutionService.deleteMemoryThreadsForAgent(agent.id);
 			}
 		}
 

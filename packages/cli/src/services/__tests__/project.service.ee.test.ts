@@ -1043,6 +1043,11 @@ describe('ProjectService', () => {
 			);
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-1');
 			expect(agentExecutionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith('agent-2');
+			expect(agentExecutionService.deleteMemoryThreadsForAgent).toHaveBeenCalledWith('agent-1');
+			expect(agentExecutionService.deleteMemoryThreadsForAgent).toHaveBeenCalledWith('agent-2');
+			expect(
+				agentExecutionService.deleteMemoryThreadsForAgent.mock.invocationCallOrder[1],
+			).toBeLessThan(projectRepository.remove.mock.invocationCallOrder[0]);
 		});
 
 		describe('migrating end-user credentials', () => {

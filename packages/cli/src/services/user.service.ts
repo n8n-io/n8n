@@ -682,9 +682,7 @@ export class UserService {
 			await ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
 		}
 
-		// Private module resources (e.g. system agent sessions) belong to the
-		// user, not to a project. Delete them also on transfer, and before the
-		// delete transaction, which sets their owner column to null.
+		// Clean up user-owned module data before account deletion, including on transfer.
 		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
 
 		await this.getManager().transaction(async (trx) => {

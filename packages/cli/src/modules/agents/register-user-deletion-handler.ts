@@ -1,23 +1,28 @@
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
-import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
+import { AgentMemoryEntryRepository } from './repositories/agent-memory-entry.repository';
+import {
+	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
+	systemChatMemoryResourceId,
+} from './utils/agent-memory-scope';
 
-/**
- * Delete the private system agent sessions of a user before the user is
- * deleted, with or without a transferee. It does not check the Agents feature
- * toggle: sessions created while it was on must go too.
- *
- * Agents and their shared sessions are not transferred or deleted here (see
- * `ownership-transfer.manifest.json`), so the project-keyed methods do nothing.
- */
+/** Stop recall of a deleted user's private memories. Keep sessions and trace evidence. */
 export function registerUserDeletionHandler() {
 	Container.get(OwnershipTransferHandlerRegistry).register({
-		resource: 'agent-system-sessions',
+		resource: 'agent-user-memory',
 		transferAll: async () => {},
 		deleteAll: async () => {},
 		deleteAllForUser: async (userId) => {
-			await Container.get(SystemAgentExecutionService).deleteThreadsOfUser(userId);
+			await Container.get(AgentMemoryEntryRepository).retireUserScopes(
+				[
+					draftChatMemoryResourceId(userId),
+					productionChatMemoryResourceId(userId),
+					systemChatMemoryResourceId(userId),
+				],
+				{},
+			);
 		},
 	});
 }

@@ -303,6 +303,54 @@ describe('N8nMemoryImpl', () => {
 		return { entry, source };
 	}
 
+	describe('deleteThread', () => {
+		it.each(['active', 'dropped', 'superseded', 'deleted'] as const)(
+			'removes an orphaned %s entry and permits a later capture',
+			async (status) => {
+				const scope = { resourceId: 'user-1', threadId: 'deleted-thread' };
+				const { entry } = await captureEntry(memory, scope);
+				await entryRepository.update(entry.id, { status });
+
+				await memory.deleteThread(scope.threadId);
+
+				expect(await entryRepository.findOneBy({ id: entry.id })).toBeNull();
+				expect(await memory.episodic.getEntrySources([entry.id])).toEqual([]);
+				expect(await memory.getThread(scope.threadId)).toBeNull();
+				const { entry: capturedAgain } = await captureEntry(memory, {
+					...scope,
+					threadId: 'new-thread',
+				});
+				expect(capturedAgain).toMatchObject({
+					content: entry.content,
+					embedding: entry.embedding,
+					status: 'active',
+				});
+			},
+		);
+
+		it('keeps entries with another session source and entries of another agent', async () => {
+			const scope = { resourceId: 'user-1', threadId: 'deleted-thread' };
+			const { entry } = await captureEntry(memory, scope);
+			await captureEntry(memory, { ...scope, threadId: 'kept-thread' });
+			const { entry: other } = await captureEntry(otherMemory, {
+				...scope,
+				threadId: 'other-thread',
+			});
+
+			await memory.deleteThread(scope.threadId);
+
+			expect(await entryRepository.findOneBy({ id: entry.id })).toMatchObject({
+				status: 'active',
+				content: entry.content,
+				embedding: entry.embedding,
+			});
+			expect(await memory.episodic.getEntrySources([entry.id])).toEqual([
+				expect.objectContaining({ threadId: 'kept-thread' }),
+			]);
+			expect(await entryRepository.findOneBy({ id: other.id })).toMatchObject(other);
+		});
+	});
+
 	describe('saveThread', () => {
 		it('keeps every write when saves and patches run at the same time', async () => {
 			await memory.saveThread({ id: 'thread-1', resourceId: 'user-1', metadata: { count: 0 } });
