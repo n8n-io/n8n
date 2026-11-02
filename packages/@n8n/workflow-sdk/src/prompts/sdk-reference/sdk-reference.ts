@@ -1,25 +1,27 @@
 /**
- * SDK reference content for MCP workflow builder tools.
+ * Full SDK reference document, assembled from the prompt constants.
  *
- * Imports the raw (unescaped) prompt constants from the workflow-sdk package
- * and assembles them into structured SDK reference documentation.
- * Served both as an MCP resource and via the n8n_get_workflow_sdk_reference tool.
+ * The MCP `get_workflow_sdk_reference` tool serves it, and the package README
+ * embeds it, so both read the same text.
  */
 
-import { SDK_IMPORT_STATEMENT } from '@n8n/ai-workflow-builder';
-import {
-	EXPRESSION_REFERENCE,
-	WORKFLOW_SDK_PATTERNS,
-	WORKFLOW_PATTERNS_DETAILED,
-	ADDITIONAL_FUNCTIONS,
-	WORKFLOW_RULES,
-	NODE_GROUPS_REFERENCE,
-	SDK_LANGUAGE_REFERENCE,
-} from '@n8n/workflow-sdk/prompts/sdk-reference';
+import { ADDITIONAL_FUNCTIONS } from './additional-functions';
+import { EXPRESSION_REFERENCE } from './expressions';
+import { NODE_GROUPS_REFERENCE, SDK_LANGUAGE_REFERENCE } from './sdk-language';
+import { WORKFLOW_PATTERNS_DETAILED } from './workflow-patterns-detailed';
+import { WORKFLOW_SDK_PATTERNS } from './workflow-patterns';
+import { WORKFLOW_RULES } from './workflow-rules';
 
-// NOTE: CODING_GUIDELINES and DESIGN_GUIDANCE are MCP-only constants defined
-// below. They are NOT shared with the code-builder agent (which has its own
-// inline copy in its step-by-step prompt).
+/**
+ * Comprehensive import statement with all available SDK functions.
+ * This is prepended to workflow code so the LLM knows what's available.
+ */
+export const SDK_IMPORT_STATEMENT =
+	"import { workflow, node, trigger, sticky, placeholder, newCredential, ifElse, switchCase, merge, splitInBatches, nextBatch, languageModel, memory, tool, outputParser, embedding, embeddings, vectorStore, retriever, documentLoader, textSplitter, reranker, fromAi, expr } from '@n8n/workflow-sdk';";
+
+// NOTE: CODING_GUIDELINES and DESIGN_GUIDANCE are only part of this reference.
+// They are NOT shared with the code-builder agent (which has its own inline
+// copy in its step-by-step prompt).
 
 const CODING_GUIDELINES = `Rules:
 - Use exact parameter names and structures from the type definitions.

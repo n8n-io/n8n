@@ -1,9 +1,8 @@
 /**
- * Comprehensive import statement with all available SDK functions.
- * This is prepended to workflow code so the LLM knows what's available.
+ * Re-export the SDK import statement from the shared @n8n/workflow-sdk/prompts package,
+ * so the code builder and the published SDK reference list the same functions.
  */
-export const SDK_IMPORT_STATEMENT =
-	"import { workflow, node, trigger, sticky, placeholder, newCredential, ifElse, switchCase, merge, splitInBatches, nextBatch, languageModel, memory, tool, outputParser, embedding, embeddings, vectorStore, retriever, documentLoader, textSplitter, reranker, fromAi, expr } from '@n8n/workflow-sdk';";
+export { SDK_IMPORT_STATEMENT } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 /**
  * Strip import statements from workflow code.

@@ -9,3 +9,8 @@ export {
 	SDK_LANGUAGE_REFERENCE,
 	buildSdkLanguageReference,
 } from './sdk-language';
+export {
+	SDK_IMPORT_STATEMENT,
+	getSdkReferenceContent,
+	type SdkReferenceSection,
+} from './sdk-reference';
