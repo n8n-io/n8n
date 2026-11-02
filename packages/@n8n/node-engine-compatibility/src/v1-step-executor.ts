@@ -219,7 +219,8 @@ export class V1StepExecutor implements IStepExecutor {
 				// The node's own error is the one to report. The response channel
 				// already tells the caller when it cannot carry the error chunk.
 			}
-			// A run that failed owes no sub-execution, whichever way the node reports it.
+			// The node failed, so do not start a sub-execution it may have declared
+			// before failing. This holds for continueOnFail too.
 			context.subWorkflowCalls.declaration = undefined;
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
