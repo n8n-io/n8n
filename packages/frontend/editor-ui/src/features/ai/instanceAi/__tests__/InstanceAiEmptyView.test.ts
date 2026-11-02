@@ -621,6 +621,20 @@ const InstanceAiInputStub = defineComponent({
 				h(
 					'button',
 					{
+						'data-test-id': 'instance-ai-input-stub-attach-unsupported-file',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'file',
+								data: btoa('zip content'),
+								mimeType: 'application/zip',
+								fileName: 'archive.zip',
+							}),
+					},
+					'attach unsupported',
+				),
+				h(
+					'button',
+					{
 						'data-test-id': 'instance-ai-input-stub-attach-image',
 						onClick: () =>
 							stagedFileAttachments.value.push({
@@ -1678,7 +1692,7 @@ describe('InstanceAiEmptyView', () => {
 		it('keeps the draft and reports the file when the message has only an unsupported file', async () => {
 			const { getByTestId } = renderView();
 
-			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-unsupported-file'));
 			await fireEvent.click(getByTestId('instance-ai-input-stub-submit-empty'));
 			await flushPromises();
 
@@ -1686,7 +1700,7 @@ describe('InstanceAiEmptyView', () => {
 			expect(acceptDraftMock).not.toHaveBeenCalled();
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
 			expect(showMessageMock).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('archive.zip') }),
 			);
 		});
 
@@ -1694,7 +1708,7 @@ describe('InstanceAiEmptyView', () => {
 			pushMock.mockResolvedValue(undefined);
 			const { getByTestId } = renderView();
 
-			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-unsupported-file'));
 			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 			await flushPromises();
 
@@ -1703,8 +1717,21 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.text).toBe('hello');
 			expect(pendingMessage?.files).toEqual([]);
 			expect(showMessageMock).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('archive.zip') }),
 			);
+		});
+
+		it('hands off a text file that parse-file reads', async () => {
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
+			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['context.txt']);
+			expect(showMessageMock).not.toHaveBeenCalled();
 		});
 	});
 

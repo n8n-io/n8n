@@ -104,6 +104,12 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		/** Replaces the model-derived attachment support, for pages that get no model. */
 		attachmentCapabilities?: ProviderAttachmentCapabilities;
+		/**
+		 * Replaces the accepted file types, as an `accept` string. Use it for a
+		 * host whose agent reads more types than its model, for example with a
+		 * file tool.
+		 */
+		acceptedMimeTypes?: string;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canSendToAssistant?: boolean;
@@ -166,6 +172,7 @@ const props = withDefaults(
 		clientContext: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
+		acceptedMimeTypes: undefined,
 		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
 	},
@@ -756,10 +763,12 @@ const attachmentCapabilities = computed(() => {
 	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
 const showAttach = computed(() => {
+	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes.length > 0;
 	const capabilities = attachmentCapabilities.value;
 	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
 });
 const acceptedMimeTypes = computed(() => {
+	if (props.acceptedMimeTypes !== undefined) return props.acceptedMimeTypes;
 	const capabilities = attachmentCapabilities.value;
 	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
 });

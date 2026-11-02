@@ -124,7 +124,7 @@ import {
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	clearAssistantAgentLaunch,
 	discardPendingAssistantAgentMessage,
 	stashAssistantAgentLaunch,
@@ -927,7 +927,7 @@ async function startAssistantAgentThread(
 	restoreDraft: () => boolean,
 	acceptDraft: () => void,
 ) {
-	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
+	const acceptString = ASSISTANT_AGENT_ACCEPTED_MIME_TYPES;
 	const fileAttachments: InstanceAiFileAttachment[] = [];
 	for (const attachment of attachments ?? []) {
 		if (attachment.type !== 'file') continue;
