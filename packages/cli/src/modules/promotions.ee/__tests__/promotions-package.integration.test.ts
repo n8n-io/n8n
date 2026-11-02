@@ -3661,6 +3661,90 @@ describe('Promote from a clean checkout', () => {
 		},
 	);
 
+	it('keeps the unpushed commit of a failed first promote off the branch that a later promote creates', async () => {
+		const bareDir = path.join(testRoot, 'empty-remote.git');
+		await createFixtureGit().raw(['init', '--bare', bareDir]);
+		const environments = await createInstanceEnvironments(bareDir);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+		const checkoutGit = createFixtureGit(workingDirectory.paths(environmentId).repositoryFolder);
+
+		// The remote refuses the first push, after the promote made its local commit.
+		const preReceiveHook = path.join(bareDir, 'hooks', 'pre-receive');
+		await writeFile(preReceiveHook, '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+		await expect(
+			service.promote(environments.promote.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'Failed promotion',
+			}),
+		).rejects.toThrow();
+		const unpushedCommit = (
+			await checkoutGit.raw(['for-each-ref', '--format=%(objectname)', 'refs/heads/main'])
+		).trim();
+		expect(unpushedCommit).toMatch(/^[0-9a-f]{40}$/);
+
+		await rm(preReceiveHook);
+		const result = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'First promotion',
+		});
+
+		const remoteGit = createFixtureGit(bareDir);
+		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
+			result.git.commitSha,
+		]);
+		expect((await remoteGit.raw(['log', '--format=%s', 'main'])).trim()).toBe('First promotion');
+	});
+
+	it('commits nothing that an earlier selective promote left in the checkout before the branch exists', async () => {
+		const bareDir = path.join(testRoot, 'empty-remote.git');
+		await createFixtureGit().raw(['init', '--bare', bareDir]);
+		const environments = await createInstanceEnvironments(bareDir);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
+		const { repositoryFolder } = workingDirectory.paths(environmentId);
+		const checkoutGit = createFixtureGit(repositoryFolder);
+		await checkoutGit.addConfig('user.name', 'Earlier attempt');
+		await checkoutGit.addConfig('user.email', 'earlier@example.com');
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1']);
+
+		// A promote that stops before its push leaves a local commit and untracked package files.
+		const committedLeftover = path.join(
+			repositoryFolder,
+			'n8n',
+			'projects',
+			'old',
+			'workflow.json',
+		);
+		await mkdir(path.dirname(committedLeftover), { recursive: true });
+		await writeFile(committedLeftover, '{"id":"committed-leftover"}');
+		await checkoutGit.add(['--all', '--', 'n8n']);
+		await checkoutGit.commit('Unpushed promotion');
+		const untrackedLeftover = path.join(
+			repositoryFolder,
+			'n8n',
+			'projects',
+			'new',
+			'workflow.json',
+		);
+		await mkdir(path.dirname(untrackedLeftover), { recursive: true });
+		await writeFile(untrackedLeftover, '{"id":"untracked-leftover"}');
+
+		const result = await promoteSelection(project.id, workflows[0].id, 'Add w1');
+
+		const remoteGit = createFixtureGit(bareDir);
+		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
+			result.git.commitSha,
+		]);
+		const paths = await committedPaths(bareDir, result.git.commitSha);
+		expect(paths).not.toContain('n8n/projects/old/workflow.json');
+		expect(paths).not.toContain('n8n/projects/new/workflow.json');
+		const { dir } = await inspectBranch(bareDir);
+		expect((await readBranchEntities(dir, 'workflow.json')).map((w) => w.id)).toEqual([
+			workflows[0].id,
+		]);
+	});
+
 	it('promotes when an earlier Git process left the index lock file', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);

@@ -422,6 +422,40 @@ export class PromotionsGitService {
 	}
 
 	/**
+	 * Empties the local base branch before the first push of a branch that the remote does not hold.
+	 * Without a remote-tracking ref, this checkout never saw the branch on the remote, so a local
+	 * commit or package file is left from an earlier attempt that was never pushed. A remote-tracking
+	 * ref means the branch was deleted on the remote, so the local branch stays as it is.
+	 */
+	async prepareCheckoutForFirstPush({
+		paths,
+		branchName,
+		environmentId,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'>): Promise<void> {
+		try {
+			await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const trackingRef = `refs/remotes/origin/${branchName}`;
+				const tracked = (
+					await git.raw(['for-each-ref', '--format=%(objectname)', trackingRef])
+				).trim();
+				if (tracked) return;
+
+				const localBranch = `refs/heads/${branchName}`;
+				const head = (
+					await git.raw(['for-each-ref', '--format=%(objectname)', localBranch])
+				).trim();
+				if (head) await git.raw(['update-ref', '-d', localBranch]);
+				await git.raw(['read-tree', '--empty']);
+				// The files of a removed commit are now untracked, so this also removes them.
+				await git.raw(['clean', '-ffdx', '--', PACKAGE_SUBFOLDER]);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
 	 * Removes the Git lock files that only a write takes. Git cannot remove them after a SIGKILL,
 	 * and a leftover file makes every later `git add` and `reset --hard` fail. Call it only under
 	 * the environment lock, before the first write. Reads run without that lock, but a fetch takes

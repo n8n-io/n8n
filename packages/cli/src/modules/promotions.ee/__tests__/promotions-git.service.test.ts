@@ -777,6 +777,58 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 	});
 
+	describe('prepareCheckoutForFirstPush', () => {
+		const call = async () =>
+			await gitService.prepareCheckoutForFirstPush({ paths, branchName: 'main', environmentId });
+
+		const trackingRefCall = ['for-each-ref', '--format=%(objectname)', 'refs/remotes/origin/main'];
+		const localBranchCall = ['for-each-ref', '--format=%(objectname)', 'refs/heads/main'];
+
+		it('removes the local branch, empties the index, and cleans the package folder', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('c'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[trackingRefCall],
+				[localBranchCall],
+				[['update-ref', '-d', 'refs/heads/main']],
+				[['read-tree', '--empty']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
+		it('keeps a branch with no commits as it is, and still cleans the package folder', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[trackingRefCall],
+				[localBranchCall],
+				[['read-tree', '--empty']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
+		it('keeps the local branch when the checkout saw the branch on the remote before', async () => {
+			mockGit.raw.mockResolvedValueOnce('d'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([[trackingRefCall]]);
+		});
+
+		it('contacts no remote', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.listRemote).not.toHaveBeenCalled();
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('removeLeftoverLockFiles', () => {
 		const call = async () =>
 			await gitService.removeLeftoverLockFiles({ paths, branchName: 'main', environmentId });

@@ -1315,8 +1315,9 @@ export class PromotionsService {
 	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
 	 * Otherwise the push targets the base branch, and this resets the checkout to the
-	 * latest base too, because a merged review can move it. `baseCommitSha` is the base
-	 * commit the checkout was reset to.
+	 * latest base too, because a merged review can move it. When the remote does not hold
+	 * the base branch, this returns no target, and before a first push it empties the local
+	 * branch. `baseCommitSha` is the base commit the checkout was reset to.
 	 */
 	private async prepareTargetBranch(
 		input: PromotionOperationInput,
@@ -1332,8 +1333,12 @@ export class PromotionsService {
 			environmentId: input.environmentId,
 		};
 		if (!input.config.settings.createBranchOnPromotion) {
-			// Without a remote branch there is nothing to reset to. The push creates it.
-			if (!(await this.gitService.hasRemoteBranch(checkout))) return undefined;
+			// Without a remote branch there is nothing to reset to. The push creates it, and a first
+			// push starts from an empty branch, so nothing an earlier attempt left locally reaches it.
+			if (!(await this.gitService.hasRemoteBranch(checkout))) {
+				await this.gitService.prepareCheckoutForFirstPush(checkout);
+				return undefined;
+			}
 			const { commitSha } = await this.gitService.prepareCheckoutForPromotion(checkout);
 			return { baseCommitSha: commitSha };
 		}

@@ -725,6 +725,24 @@ describe('PromotionsService', () => {
 				expect(gitService.commitAndPush).toHaveBeenCalled();
 			});
 
+			it('prepares the checkout for a first push before the export when the remote does not hold the branch', async () => {
+				gitService.listBranchTree.mockRejectedValue(new Error("couldn't find remote ref staging"));
+				gitService.hasRemoteBranch.mockResolvedValue(false);
+
+				await service.promote(ENVIRONMENT_ID, actor, {
+					canExportVariableValues: true,
+					commitMessage: 'first promote',
+				});
+
+				expect(gitService.prepareCheckoutForFirstPush).toHaveBeenCalledOnce();
+				expect(gitService.prepareCheckoutForFirstPush).toHaveBeenCalledWith(
+					expect.objectContaining({ environmentId: ENVIRONMENT_ID }),
+				);
+				expect(gitService.prepareCheckoutForFirstPush.mock.invocationCallOrder[0]).toBeLessThan(
+					n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+				);
+			});
+
 			it('refuses a promote when the branch exists but cannot be read', async () => {
 				const readFailure = new BadRequestError('Could not complete the Git operation');
 				// A direct promote reads the branch when it resets the checkout to it.
@@ -832,6 +850,8 @@ describe('PromotionsService', () => {
 			expect(gitService.prepareCheckoutForPromotion.mock.invocationCallOrder[0]).toBeLessThan(
 				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
 			);
+			// The remote holds the branch, so the local branch keeps its commits.
+			expect(gitService.prepareCheckoutForFirstPush).not.toHaveBeenCalled();
 			// The stale package is gone; only the freshly written one remains.
 			await expect(stat(path.join(packageFolder, 'stale.json'))).rejects.toThrow();
 			await expect(stat(stagingFolder)).rejects.toThrow();
