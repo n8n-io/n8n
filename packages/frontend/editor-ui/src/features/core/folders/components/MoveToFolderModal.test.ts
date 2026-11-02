@@ -1,3 +1,4 @@
+import { shallowRef, toValue, type MaybeRefOrGetter } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, screen, within } from '@testing-library/vue';
@@ -16,7 +17,11 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FolderTransferResult, FrontendSettings } from '@n8n/api-types';
+import type {
+	TransferPreview,
+	TransferPreviewTarget,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import type {
 	ICredentialsResponse,
@@ -35,6 +40,34 @@ import type { WorkflowListEventMap } from '../folders.types';
 import * as workflowDependenciesApi from '@/app/api/workflow-dependencies';
 
 vi.mock('@/app/api/workflow-dependencies');
+
+const transferPreviewMock = vi.hoisted(() => ({
+	preview: undefined as { value: unknown } | undefined,
+	target: undefined as MaybeRefOrGetter<unknown>,
+	destination: undefined as MaybeRefOrGetter<unknown>,
+}));
+
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>();
+	return {
+		...actual,
+		useTransferPreview: (
+			target: MaybeRefOrGetter<unknown>,
+			destination: MaybeRefOrGetter<unknown>,
+		) => {
+			transferPreviewMock.target = target;
+			transferPreviewMock.destination = destination;
+			return { preview: transferPreviewMock.preview };
+		},
+	};
+});
+
+const toastMock = vi.hoisted(() => ({ showForWorkflow: vi.fn(), showForFolder: vi.fn() }));
+
+vi.mock('@/app/composables/useUnpublishedByMoveToast', () => ({
+	useUnpublishedByMoveToast: () => toastMock,
+}));
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -150,6 +183,7 @@ const mockEventBus = {
 
 describe('MoveToFolderModal', () => {
 	beforeEach(() => {
+		transferPreviewMock.preview = shallowRef<TransferPreview | null>(null);
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
 		uiStore.modalStateById = {
@@ -1083,6 +1117,217 @@ describe('MoveToFolderModal', () => {
 				shareUsedCredentials: false,
 				areAllUsedCredentialsShareable: true,
 			},
+		});
+	});
+
+	describe('transfer policy warning', () => {
+		const unpublishPreview: TransferPreview = {
+			restricted: [],
+			unpublishReasons: [
+				{
+					kind: 'node-type-unavailable',
+					checkId: 'node-type-availability',
+					message: 'blocked',
+					subject: 'n8n-nodes-base.slack',
+					subjectType: 'nodeType',
+					scope: 'instance',
+				},
+			],
+			workflowsToUnpublish: [],
+			checkFailed: false,
+		};
+
+		const setPreview = (preview: TransferPreview | null) => {
+			(transferPreviewMock.preview as ReturnType<typeof shallowRef>).value = preview;
+		};
+		const currentTarget = () => toValue(transferPreviewMock.target) as TransferPreviewTarget | null;
+		const currentDestination = () => toValue(transferPreviewMock.destination);
+
+		const renderModal = (resourceType: 'workflow' | 'folder', resource = TEST_WORKFLOW_RESOURCE) =>
+			renderComponent({
+				props: { data: { resource, resourceType, workflowListEventBus: mockEventBus } },
+			});
+
+		const selectTeamProject = async (getByTestId: (id: string) => HTMLElement) => {
+			const projectSelect = getByTestId('project-sharing-select');
+			await userEvent.click(projectSelect);
+			const items = await getDropdownItems(projectSelect);
+			const teamProject = [...items].find(
+				(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[0].name,
+			);
+			await userEvent.click(teamProject as Element);
+		};
+
+		beforeEach(() => {
+			settingsStore.settings = enableSharing;
+		});
+
+		it('should not build a preview target while the project is unchanged', async () => {
+			const { getByTestId } = renderModal('workflow');
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			expect(currentTarget()).toBeNull();
+		});
+
+		it('should build a workflow target once another project is selected', async () => {
+			const { getByTestId } = renderModal('workflow');
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			await selectTeamProject(getByTestId);
+
+			expect(currentTarget()).toEqual({ resourceType: 'workflow', id: TEST_WORKFLOW_RESOURCE.id });
+			expect(currentDestination()).toBe(teamProjects[0].id);
+		});
+
+		it('should build a folder target with the source project once another project is selected', async () => {
+			const { getByTestId } = renderModal('folder', TEST_FOLDER_RESOURCE);
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			await selectTeamProject(getByTestId);
+
+			expect(currentTarget()).toEqual({
+				resourceType: 'folder',
+				id: TEST_FOLDER_RESOURCE.id,
+				projectId: personalProject.id,
+			});
+			expect(currentDestination()).toBe(teamProjects[0].id);
+		});
+
+		it('should drop the target when the folder has no known source project', async () => {
+			projectsStore.currentProject = null;
+			const { getByTestId } = renderModal('folder', TEST_FOLDER_RESOURCE);
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			await selectTeamProject(getByTestId);
+
+			expect(currentTarget()).toBeNull();
+		});
+
+		it('should not render the warning when there is no preview', async () => {
+			const { getByTestId, queryByTestId } = renderModal('workflow');
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			expect(queryByTestId('transfer-policy-warning')).not.toBeInTheDocument();
+		});
+
+		it('should name the destination project in the warning', async () => {
+			setPreview(unpublishPreview);
+			const { getByTestId } = renderModal('workflow');
+			await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+			await selectTeamProject(getByTestId);
+
+			expect(getByTestId('transfer-policy-warning')).toHaveTextContent(
+				getTruncatedProjectName(teamProjects[0].name),
+			);
+		});
+
+		describe('unpublished-by-move toast', () => {
+			const submitTransfer = async (
+				resourceType: 'workflow' | 'folder',
+				resource: typeof TEST_WORKFLOW_RESOURCE,
+			) => {
+				const { getByTestId } = renderModal(resourceType, resource);
+				await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+				await selectTeamProject(getByTestId);
+
+				const submitButton = getByTestId('confirm-move-folder-button');
+				await waitFor(() => expect(submitButton).toBeEnabled());
+				await userEvent.click(submitButton);
+			};
+
+			it('should pass the workflow result, name and project name to the toast', async () => {
+				const result = { unpublishReasons: unpublishPreview.unpublishReasons };
+				projectsStore.moveResourceToProject = vi.fn().mockResolvedValue(result);
+
+				await submitTransfer('workflow', TEST_WORKFLOW_RESOURCE);
+
+				await waitFor(() =>
+					expect(toastMock.showForWorkflow).toHaveBeenCalledWith(
+						result,
+						TEST_WORKFLOW_RESOURCE.name,
+						getTruncatedProjectName(teamProjects[0].name),
+					),
+				);
+				expect(toastMock.showForFolder).not.toHaveBeenCalled();
+			});
+
+			it('should pass the folder result and project name to the toast', async () => {
+				const result: FolderTransferResult = {
+					unpublishedWorkflows: [{ id: 'w1', name: 'Flow', unpublishReasons: [] }],
+				};
+				foldersStore.moveFolderToProject = vi.fn().mockResolvedValue(result);
+
+				await submitTransfer('folder', TEST_FOLDER_RESOURCE);
+
+				await waitFor(() =>
+					expect(toastMock.showForFolder).toHaveBeenCalledWith(
+						result,
+						getTruncatedProjectName(teamProjects[0].name),
+					),
+				);
+				expect(toastMock.showForWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should name the project chosen at submit when the user picks another one mid-move', async () => {
+				const result = { unpublishReasons: unpublishPreview.unpublishReasons };
+				let finishMove: (value: typeof result) => void = () => {};
+				projectsStore.moveResourceToProject = vi.fn(
+					async () => await new Promise<typeof result>((resolve) => (finishMove = resolve)),
+				);
+				const { getByTestId } = renderModal('workflow');
+				await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+				await selectTeamProject(getByTestId);
+				const submitButton = getByTestId('confirm-move-folder-button');
+				await waitFor(() => expect(submitButton).toBeEnabled());
+				await userEvent.click(submitButton);
+				await waitFor(() => expect(projectsStore.moveResourceToProject).toHaveBeenCalled());
+
+				const projectSelect = getByTestId('project-sharing-select');
+				await userEvent.click(projectSelect);
+				const items = await getDropdownItems(projectSelect);
+				const otherProject = [...items].find(
+					(item) => item.querySelector('p')?.textContent?.trim() === teamProjects[1].name,
+				);
+				await userEvent.click(otherProject as Element);
+				finishMove(result);
+
+				await waitFor(() =>
+					expect(toastMock.showForWorkflow).toHaveBeenCalledWith(
+						result,
+						TEST_WORKFLOW_RESOURCE.name,
+						getTruncatedProjectName(teamProjects[0].name),
+					),
+				);
+			});
+
+			it('should not show the toast when the transfer fails', async () => {
+				projectsStore.moveResourceToProject = vi.fn().mockRejectedValue(new Error('nope'));
+
+				await submitTransfer('workflow', TEST_WORKFLOW_RESOURCE);
+
+				await waitFor(() => expect(projectsStore.moveResourceToProject).toHaveBeenCalled());
+				expect(toastMock.showForWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should not show the toast for a move inside the same project', async () => {
+				const { getByTestId } = renderModal('workflow');
+				await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
+
+				const folderSelect = getByTestId('move-to-folder-dropdown');
+				foldersStore.fetchFoldersAvailableForMove = vi.fn().mockResolvedValue([folder]);
+				await userEvent.click(folderSelect);
+				const items = await getDropdownItems(folderSelect);
+				await userEvent.click(items[items.length - 1]);
+
+				const submitButton = getByTestId('confirm-move-folder-button');
+				await waitFor(() => expect(submitButton).toBeEnabled());
+				await userEvent.click(submitButton);
+
+				await waitFor(() => expect(workflowsStore.updateWorkflow).toHaveBeenCalled());
+				expect(toastMock.showForWorkflow).not.toHaveBeenCalled();
+				expect(toastMock.showForFolder).not.toHaveBeenCalled();
+			});
 		});
 	});
 });
