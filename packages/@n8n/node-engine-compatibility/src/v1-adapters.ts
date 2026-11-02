@@ -4,7 +4,13 @@
  */
 
 import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
-import type { GraphNode, StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	GraphNode,
+	StepExecutionContext,
+	StepSlots,
+	SubExecutionResumeCause,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
 	CallbackManager,
@@ -28,6 +34,7 @@ import {
 	WorkflowExecuteModeList,
 } from 'n8n-workflow';
 
+import { supplySubExecutionResult } from './sub-execution-result';
 import type { SubWorkflowCalls } from './sub-workflow-calls';
 import {
 	MAIN_CONNECTION_TYPE,
@@ -281,11 +288,14 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 
 	/** Set right after construction: the sub-workflow calls of this run. */
 	subWorkflowCalls!: SubWorkflowCalls;
+	/** Set when this run follows the end of the step's sub-execution. */
+	subExecutionResume?: SubExecutionResumeCause;
 
 	/**
 	 * Do not call super. Core hands the call to the host, which runs the sub-execution
-	 * in the process. The engine starts the sub-execution, so the call is recorded and
-	 * the host only resolves the workflow.
+	 * in the process. The engine starts the sub-execution instead: on the first run the
+	 * call is recorded for it, and on the run after the sub-execution ended the same
+	 * call is answered from the result.
 	 */
 	async executeWorkflow(
 		workflowInfo: IExecuteWorkflowInfo,
@@ -293,7 +303,8 @@ export class DurableWaitExecuteContext extends ExecuteContext {
 		_parentCallbackManager?: CallbackManager,
 		options?: { doNotWaitToFinish?: boolean; returnLastRunOnly?: boolean },
 	): Promise<ExecuteWorkflowData> {
-		return await this.subWorkflowCalls.call(workflowInfo, inputData ?? [], options);
+		if (this.subExecutionResume) return supplySubExecutionResult(this.subExecutionResume, options);
+		return await this.subWorkflowCalls.declareSubExecution(workflowInfo, inputData ?? [], options);
 	}
 
 	async putExecutionToWait(
@@ -316,6 +327,7 @@ export function toV1ExecuteContext({
 	itemsByConnection,
 	resumeToken,
 	subWorkflowCalls,
+	subExecutionResume,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
@@ -356,5 +368,6 @@ export function toV1ExecuteContext({
 		[],
 	);
 	context.subWorkflowCalls = subWorkflowCalls;
+	context.subExecutionResume = subExecutionResume;
 	return context;
 }

@@ -1,6 +1,7 @@
 import type {
 	StepExecutionContext,
 	StepSlots,
+	SubExecutionResumeCause,
 	TriggerOutputs,
 	WorkflowDocument,
 	WorkflowGraph,
@@ -90,6 +91,12 @@ export interface SubWorkflowResolveResult {
 	triggerOutputs: TriggerOutputs | null;
 }
 
+/** The options of `executeWorkflow` that the shim reads. */
+export interface CallOptions {
+	doNotWaitToFinish?: boolean;
+	returnLastRunOnly?: boolean;
+}
+
 export type SubWorkflowResolver = (
 	request: SubWorkflowResolveRequest,
 ) => Promise<SubWorkflowResolveResult>;
@@ -124,6 +131,7 @@ export interface CreateExecuteContextParams {
 	stepContext: StepExecutionContext;
 	resumeToken?: string;
 	subWorkflowCalls: SubWorkflowCalls;
+	subExecutionResume?: SubExecutionResumeCause;
 }
 
 export interface RunNodeParams {

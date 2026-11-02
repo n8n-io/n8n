@@ -3,7 +3,8 @@ import type { INode } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RepeatedSubWorkflowCallError } from '../errors';
-import { SubWorkflowCalls, toSubWorkflowOutput } from '../sub-workflow-calls';
+import { toSubWorkflowOutput } from '../sub-execution-result';
+import { SubWorkflowCalls } from '../sub-workflow-calls';
 
 const node: INode = {
 	id: 'n',
@@ -28,10 +29,10 @@ const resolved = { workflowId: 'sub-workflow', graph, workflow: {}, triggerOutpu
 describe('SubWorkflowCalls', () => {
 	it('drops the detached sub-execution too when a second call fails the run', async () => {
 		const calls = new SubWorkflowCalls(node, stepContext, vi.fn().mockResolvedValue(resolved));
-		await calls.call({ id: 'sub-workflow' }, [], { doNotWaitToFinish: true });
+		await calls.declareSubExecution({ id: 'sub-workflow' }, [], { doNotWaitToFinish: true });
 		expect(calls.declaration).toMatchObject({ awaited: false });
 
-		await expect(calls.call({ id: 'sub-workflow' }, [])).rejects.toThrow(
+		await expect(calls.declareSubExecution({ id: 'sub-workflow' }, [])).rejects.toThrow(
 			RepeatedSubWorkflowCallError,
 		);
 

@@ -135,12 +135,8 @@ export class V1StepExecutor implements IStepExecutor {
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
-			subWorkflowCalls: new SubWorkflowCalls(
-				node,
-				request.context,
-				this.deps.resolveSubWorkflow,
-				request.resume,
-			),
+			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
+			subExecutionResume: request.resume,
 		});
 
 		return await workflow.expression.withIsolate(async () => {
