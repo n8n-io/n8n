@@ -81,8 +81,9 @@ export function computeScope(options: ComputeScopeOptions): ScopeResult {
 	// With a lockfile impact signal, a lockfile change forces RUN_FULL only in
 	// the packages whose resolved dependencies changed. `vitest related` cannot
 	// see a dependency change, so those packages run full even with their own
-	// changes to scope.
-	const lockfileImpact = options.lockfileImpactedPackages;
+	// changes to scope. Without a package name, the impact list cannot be
+	// matched, so the lockfile stays a global trigger.
+	const lockfileImpact = options.packageName ? options.lockfileImpactedPackages : null;
 	const globalTrigger = options.changedFiles.find(
 		(file) => matchesGlobalTrigger(file) && !(file === LOCKFILE && lockfileImpact),
 	);

@@ -219,6 +219,10 @@ describe('computeScope', () => {
 				files: ['packages/cli/src/a.ts'],
 			});
 			expect(computeScope({ ...options, lockfileImpactedPackages: null }).kind).toBe('full');
+			expect(
+				computeScope({ ...options, packageName: undefined, lockfileImpactedPackages: ['other'] })
+					.kind,
+			).toBe('full');
 		});
 
 		it('does NOT treat a per-package package.json as a global trigger', () => {
