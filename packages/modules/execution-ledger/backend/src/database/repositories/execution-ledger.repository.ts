@@ -7,7 +7,6 @@ import {
 	EXECUTION_LEDGER_ORIGINS,
 	EXECUTION_LEDGER_OUTCOMES,
 	type ExecutionLedgerRow,
-	isOneOf,
 	type OperationContext,
 	parseDbTime,
 	toDialectQuery,
@@ -142,4 +141,8 @@ function toLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow {
 		origin,
 		eventId: String(raw.eventId),
 	};
+}
+
+function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
+	return values.some((allowed) => allowed === value);
 }

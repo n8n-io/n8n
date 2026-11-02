@@ -45,7 +45,3 @@ export type ExecutionLedgerRow = Readonly<{
 	origin: ExecutionLedgerOrigin;
 	eventId: string;
 }>;
-
-export function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
-	return values.some((allowed) => allowed === value);
-}
