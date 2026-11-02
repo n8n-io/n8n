@@ -9,14 +9,7 @@ function isNodeExecutionData(value: unknown): value is INodeExecutionData {
 	return isRecord(value) && isRecord(value.json);
 }
 
-/**
- * Body of `POST /internal/sub-workflows/resolve`: the data plane asks the control
- * plane for the graph of a sub-workflow that a step calls, and for the trigger
- * outputs the parent's items become.
- *
- * The one definition of the body's shape. `ResolveSubWorkflowRequest` is
- * inferred from it, so the client and the controller cannot disagree.
- */
+/** Schema for a request to resolve a sub-workflow definition. */
 export const resolveSubWorkflowRequestSchema = z.object({
 	/** The sub-workflow, by id. The inline, file and URL sources are not served. */
 	workflowId: z.string().min(1),
