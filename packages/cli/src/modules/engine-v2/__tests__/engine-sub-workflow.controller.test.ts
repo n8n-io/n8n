@@ -71,12 +71,28 @@ describe('EngineSubWorkflowController', () => {
 		],
 		['a body whose items are not objects', { ...resolveRequest, items: [1] }],
 		['a body whose items have no json', { ...resolveRequest, items: [{ binary: {} }] }],
+		[
+			'a body whose items carry binary bytes instead of a stored reference',
+			{
+				...resolveRequest,
+				items: [{ json: {}, binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } }],
+			},
+		],
 		['a non-object body', 'nope'],
 	])('rejects %s with 400 before asking the service', async (_name, body) => {
 		await expect(controller.resolveSubWorkflow(newRequest(body), newResponse())).rejects.toThrow(
 			BadRequestError,
 		);
 		expect(service.resolve).not.toHaveBeenCalled();
+	});
+
+	it('accepts an item whose binary is a stored reference', async () => {
+		const binary = { data: { id: 'filesystem-v2:abc', data: '', mimeType: 'text/plain' } };
+		const body = { ...resolveRequest, items: [{ json: {}, binary }] };
+
+		await controller.resolveSubWorkflow(newRequest(body), newResponse());
+
+		expect(service.resolve).toHaveBeenCalledExactlyOnceWith(body);
 	});
 
 	it('passes a service error on without writing a response', async () => {

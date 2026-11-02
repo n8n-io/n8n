@@ -110,24 +110,27 @@ export class EngineSubWorkflowService {
 		}
 	}
 
-	/** The checks v1 runs before a sub-execution starts, in the same order. */
+	/** The checks v1 runs before a sub-execution starts. */
 	private async assertCallable(
 		subWorkflowData: IWorkflowBase,
 		parent: ResolveSubWorkflowRequest['parent'],
 		context: ResolveSubWorkflowRequest['context'],
 	): Promise<void> {
 		try {
-			await this.policyChecker.check(
-				subWorkflowData,
-				parent.workflowId,
-				toCallerNode(parent.node),
-				context.userId,
-			);
-			await this.credentialsPermissionChecker.check(
-				subWorkflowData.id,
-				subWorkflowData.nodes,
-				context.userId,
-			);
+			// Independent checks. When both refuse, the first rejection is the one reported.
+			await Promise.all([
+				this.policyChecker.check(
+					subWorkflowData,
+					parent.workflowId,
+					toCallerNode(parent.node),
+					context.userId,
+				),
+				this.credentialsPermissionChecker.check(
+					subWorkflowData.id,
+					subWorkflowData.nodes,
+					context.userId,
+				),
+			]);
 		} catch (error) {
 			if (error instanceof SubworkflowPolicyDenialError) {
 				throw new ForbiddenError(error.message, error.description ?? undefined);

@@ -2,12 +2,24 @@ import { jsonObjectSchema, triggerOutputsSchema, workflowGraphSchema } from '@n8
 import type { TriggerOutputs, WorkflowDocument, WorkflowGraph } from '@n8n/engine';
 import { isRecord } from '@n8n/utils/is-record';
 import { WorkflowExecuteModeList } from 'n8n-workflow';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 import { z } from 'zod';
 
-/** An item as the node hands it over: `json` is required, the rest rides along. */
+/** On the data plane, binary data is a reference into the binary data store, never the bytes. */
+function isStoredBinary(value: unknown): value is IBinaryData {
+	return (
+		isRecord(value) &&
+		typeof value.id === 'string' &&
+		value.id !== '' &&
+		typeof value.mimeType === 'string'
+	);
+}
+
+/** An item as the node hands it over: `json` is required, `binary` holds stored references. */
 function isNodeExecutionData(value: unknown): value is INodeExecutionData {
-	return isRecord(value) && isRecord(value.json);
+	if (!isRecord(value) || !isRecord(value.json)) return false;
+	if (value.binary === undefined) return true;
+	return isRecord(value.binary) && Object.values(value.binary).every(isStoredBinary);
 }
 
 /** Schema for a request to resolve a sub-workflow definition. */
