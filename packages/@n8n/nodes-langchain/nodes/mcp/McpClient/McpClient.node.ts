@@ -268,7 +268,11 @@ export class McpClient implements INodeType {
 							textContent && 'text' in textContent
 								? textContent.text
 								: `Tool "${tool}" returned an error`;
-						throw new NodeOperationError(node, errorMessage, { itemIndex });
+						throw new NodeOperationError(node, errorMessage, {
+							itemIndex,
+							message: `MCP server returned an error for tool "${tool}"`,
+							description: `${errorMessage}\n\nCheck the tool parameters and permissions on the MCP server. If you use OAuth2, check that the credential has the required scopes for this operation.`,
+						});
 					}
 
 					let binaryIndex = 0;
@@ -320,6 +324,7 @@ export class McpClient implements INodeType {
 							json: {
 								error: {
 									message: errorMessage,
+									description: e instanceof NodeOperationError ? e.description : undefined,
 									issues: e instanceof ZodError ? e.issues : undefined,
 								},
 							},
@@ -328,6 +333,10 @@ export class McpClient implements INodeType {
 							},
 						});
 						continue;
+					}
+
+					if (e instanceof NodeOperationError) {
+						throw e;
 					}
 
 					throw new NodeOperationError(node, errorMessage, {
