@@ -4,6 +4,7 @@ import type {
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { readCustomModelEndpointCredential } from '../../utils/custom-model-endpoint/credential-data';
 import { CustomModelEndpointApi } from '../CustomModelEndpointApi.credentials';
@@ -199,6 +200,37 @@ describe('CustomModelEndpointApi Credential', () => {
 				// A redirect would re-POST the secret somewhere else
 				disableFollowRedirect: true,
 			});
+		});
+
+		it('never surfaces the transport failure, which repeats the request that caused it', async () => {
+			const pair = Buffer.from('client-1:cs-9f2a71c4ab').toString('base64');
+			const httpRequest = vi.fn(async () => {
+				throw new Error(`401 on POST with authorization: Basic ${pair}`);
+			});
+			const helper = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
+
+			const error = await credential.preAuthentication.call(helper, OAUTH2).then(
+				() => undefined,
+				(reason: Error) => reason,
+			);
+
+			expect(error?.message).toBe('Could not sign in to the gateway');
+			expect(JSON.stringify(error)).not.toContain(pair);
+			expect(JSON.stringify(error)).not.toContain('cs-9f2a71c4ab');
+		});
+
+		it('keeps a refusal that names the host it turned down', async () => {
+			const refusal = new UserError(
+				'Domain not allowed: This credential is restricted from accessing login.example.com',
+			);
+			const httpRequest = vi.fn(async () => {
+				throw refusal;
+			});
+			const helper = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
+
+			await expect(credential.preAuthentication.call(helper, OAUTH2)).rejects.toThrow(
+				'login.example.com',
+			);
 		});
 
 		it('fails when the login server returns no access token', async () => {
