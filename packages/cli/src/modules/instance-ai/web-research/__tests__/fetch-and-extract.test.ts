@@ -131,6 +131,7 @@ describe('fetchAndExtract', () => {
 		['application/json', '{"type":"object","properties":{"prompt":{"type":"string"}}}'],
 		['application/json; charset=utf-8', '[{"id":1},{"id":2}]'],
 		['application/schema+json', '{"$schema":"http://json-schema.org/draft-07/schema#"}'],
+		['application/atom+xml', '<feed><entry>One</entry></feed>'],
 		['application/xml', '<?xml version="1.0"?><feed><entry>One</entry></feed>'],
 		['text/xml', '<rss><channel><title>News</title></channel></rss>'],
 		['text/csv', 'name,email\nAda,ada@example.com'],
