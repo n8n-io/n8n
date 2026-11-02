@@ -85,19 +85,16 @@ describe('LmChatCustomEndpoint', () => {
 		});
 	});
 
-	it.each([
-		['maxTokens', 'maxTokens'],
-		['maxCompletionTokens', 'maxCompletionTokens'],
-	])('treats the -1 default of %s as unset rather than a real limit', async (option, field) => {
-		await node.supplyData.call(contextWith({ options: { [option]: -1 } }), 0);
+	it('treats the -1 default of the token limit as unset rather than a real limit', async () => {
+		await node.supplyData.call(contextWith({ options: { maxTokens: -1 } }), 0);
 
-		expect(constructorArgs()[field as 'maxTokens' | 'maxCompletionTokens']).toBeUndefined();
+		expect(constructorArgs().maxTokens).toBeUndefined();
 	});
 
-	it('hands maxCompletionTokens to the client, which knows where it belongs', async () => {
-		await node.supplyData.call(contextWith({ options: { maxCompletionTokens: 256 } }), 0);
+	it('passes a real token limit through to the client', async () => {
+		await node.supplyData.call(contextWith({ options: { maxTokens: 256 } }), 0);
 
-		expect(constructorArgs()).toMatchObject({ maxCompletionTokens: 256 });
+		expect(constructorArgs()).toMatchObject({ maxTokens: 256 });
 		expect(constructorArgs().modelKwargs).toBeUndefined();
 	});
 
