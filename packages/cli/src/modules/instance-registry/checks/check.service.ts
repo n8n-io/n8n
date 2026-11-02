@@ -11,11 +11,11 @@ import type {
 } from '@n8n/decorators';
 import { ClusterCheckMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { PushProxy } from '@n8n/backend-services';
 
 import type { EventNamesAuditType } from '@/eventbus/event-message-classes';
 import type { EventPayloadAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { Push } from '@/push';
 
 import { InstanceRegistryService } from '../instance-registry.service';
 
@@ -46,7 +46,7 @@ export class CheckService {
 		private readonly instanceRegistryService: InstanceRegistryService,
 		private readonly clusterCheckMetadata: ClusterCheckMetadata,
 		private readonly messageEventBus: MessageEventBus,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 	) {
 		this.logger = logger.scoped('instance-registry');
 	}

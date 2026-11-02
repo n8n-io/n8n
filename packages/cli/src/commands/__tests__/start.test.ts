@@ -32,6 +32,7 @@ import { CommunityPackagesService } from '@/modules/community-packages/community
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { Push } from '@/push';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { JwtService, RoleCacheService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
@@ -162,6 +163,7 @@ describe('Start - AuthRolesService initialization', () => {
 			mockInstance(WorkflowFailureNotificationEventRelay),
 		);
 		Container.set(MessageEventBus, mockInstance(MessageEventBus));
+		Container.set(Push, mockInstance(Push));
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
