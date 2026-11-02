@@ -541,6 +541,16 @@ describe('WorkflowsView', () => {
 				expect(router.currentRoute.value.query).toStrictEqual({});
 				expect(queryByTestId('wont-execute-callout')).not.toBeInTheDocument();
 			});
+
+			it('should not show the callout when no workflow matches', async () => {
+				workflowsListStore.totalWorkflowCount = 0;
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				const { queryByTestId } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(queryByTestId('wont-execute-callout')).not.toBeInTheDocument();
+			});
 		});
 
 		it('should not replace the route when the query does not change', async () => {

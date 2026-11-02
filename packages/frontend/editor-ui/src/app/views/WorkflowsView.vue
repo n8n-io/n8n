@@ -590,7 +590,11 @@ const isWontExecuteFilterActive = computed(
 	() => typeAvailabilityPoliciesStore.isEnabled && filters.value.executionBlockedBy.length > 0,
 );
 
-const showWontExecuteCallout = computed(() => isWontExecuteFilterActive.value && !loading.value);
+// With no match, the empty filtered list already says so; a warning would be a false alarm.
+const showWontExecuteCallout = computed(
+	() =>
+		isWontExecuteFilterActive.value && !loading.value && workflowsListStore.totalWorkflowCount > 0,
+);
 
 const hasFilters = computed(() => {
 	return !!(
