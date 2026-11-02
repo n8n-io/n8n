@@ -1,0 +1,22 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_b1905cb0c0aa57::t_ab7eb1d2cdbf53 527,529
+  s_b1905cb0c0aa57::t_ec50a5041dfcde 550-562,563,571,580
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_b1905cb0c0aa57::t_4c32c6486a63ce 140-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93c0a5c0ff716089047d3b7bb0c233025585f286",
+  "prompts": {},
+  "sessions": {
+    "s_b1905cb0c0aa57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13d20cfd-891f-46ea-8ea2-de932961c242",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
