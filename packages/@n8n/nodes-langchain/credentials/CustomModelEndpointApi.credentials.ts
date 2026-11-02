@@ -1,6 +1,8 @@
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	IDataObject,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodeProperties,
 	Icon,
@@ -8,6 +10,10 @@ import type {
 
 import { readCustomModelEndpointCredential } from '../utils/custom-model-endpoint/credential-data';
 import { buildRequestHeaders, toHeaderRecord } from '../utils/custom-model-endpoint/headers';
+import {
+	accessTokenIn,
+	clientCredentialsTokenRequest,
+} from '../utils/custom-model-endpoint/oauth2';
 
 export class CustomModelEndpointApi implements ICredentialType {
 	name = 'customModelEndpointApi';
@@ -194,14 +200,48 @@ export class CustomModelEndpointApi implements ICredentialType {
 		},
 	];
 
+	/** An expired token looks like a 401, and the only way back is to mint another one. */
+	preAuthenticationRetryStatusCode = 401;
+
+	/**
+	 * The node transport mints its token in memory, but this path is the generic one the
+	 * HTTP Request node takes, and n8n mints and caches the token for it here instead.
+	 */
+	async preAuthentication(
+		this: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+	): Promise<IDataObject> {
+		const { login } = readCustomModelEndpointCredential(credentials);
+		if (login.type !== 'oauth2') return {};
+
+		const { headers, body } = clientCredentialsTokenRequest(login);
+		const response: unknown = await this.helpers.httpRequest({
+			method: 'POST',
+			url: login.tokenUrl,
+			headers,
+			body,
+		});
+
+		return { sessionToken: accessTokenIn(response) };
+	}
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		requestOptions.headers = buildRequestHeaders({
-			endpoint: readCustomModelEndpointCredential(credentials),
+		const endpoint = readCustomModelEndpointCredential(credentials);
+		const headers = buildRequestHeaders({
+			endpoint,
 			requestHeaders: toHeaderRecord(requestOptions.headers),
 		});
+
+		// buildRequestHeaders leaves OAuth2 alone, because only this path has a minted token
+		const { sessionToken } = credentials;
+		requestOptions.headers =
+			endpoint.login.type === 'oauth2' && typeof sessionToken === 'string'
+				? { ...headers, Authorization: `Bearer ${sessionToken}` }
+				: headers;
+
 		return requestOptions;
 	}
 }

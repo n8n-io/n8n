@@ -31,6 +31,30 @@ describe('readCustomModelEndpointCredential', () => {
 			expect(login).toEqual({ type: 'bearer', token: 'sk-test' });
 		});
 
+		it.each([
+			['sends the credentials in the header by default', undefined, 'header'],
+			['sends them in the body when asked', 'body', 'body'],
+		])('reads an OAuth2 login and %s', (_name, sendCredentialsIn, expected) => {
+			const { login } = readCustomModelEndpointCredential({
+				authentication: 'oauth2',
+				tokenUrl: ' https://login.example.com/token ',
+				clientId: ' client-1 ',
+				// A secret may start or end with a space on purpose
+				clientSecret: ' cs-9f2a71c4ab ',
+				scope: ' read write ',
+				...(sendCredentialsIn ? { sendCredentialsIn } : {}),
+			});
+
+			expect(login).toEqual({
+				type: 'oauth2',
+				tokenUrl: 'https://login.example.com/token',
+				clientId: 'client-1',
+				clientSecret: ' cs-9f2a71c4ab ',
+				scope: 'read write',
+				sendCredentialsIn: expected,
+			});
+		});
+
 		it('reads the key, the header name and the prefix of "API key in header"', () => {
 			const { login } = readCustomModelEndpointCredential({
 				authentication: 'header',
