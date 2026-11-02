@@ -77,8 +77,7 @@ export class V1WorkflowConverter {
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
 
 		// In canvas order, top to bottom and then left to right, as v1 orders the
-		// branches it runs. A sub-execution's result follows the graph order, so this is
-		// what makes it follow the canvas.
+		// branches it runs. Anything that reads the graph in node order sees the same order.
 		const liveNodes = rooted.nodes
 			.filter((node) => node.disabled !== true)
 			.sort((a, b) => a.position[1] - b.position[1] || a.position[0] - b.position[0]);
