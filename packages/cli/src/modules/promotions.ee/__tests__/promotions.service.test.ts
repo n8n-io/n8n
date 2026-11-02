@@ -2372,6 +2372,98 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('readBranchFilesAtCommit', () => {
+		const commitSha = 'c'.repeat(40);
+		const workflowPath = 'n8n/projects/orders-p1/workflows/order-w1/workflow.json';
+
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForProject.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('makes the commit available, then reads the files that the commit holds', async () => {
+			gitService.findPathsAtCommit.mockResolvedValue(new Set([workflowPath]));
+			gitService.readFilesAtCommit.mockResolvedValue(new Map([[workflowPath, '{"id":"w1"}']]));
+
+			const files = await service.readBranchFilesAtCommit('p1', 'apply', commitSha, [
+				workflowPath,
+				'n8n/manifest.json',
+			]);
+
+			expect(files).toEqual(new Map([[workflowPath, '{"id":"w1"}']]));
+			expect(gitService.ensureCommit).toHaveBeenCalledExactlyOnceWith({
+				paths: workingDirectory.paths(ENVIRONMENT_ID),
+				branchName: 'dev',
+				environmentId: ENVIRONMENT_ID,
+				remoteUrl: REMOTE_URL,
+				credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
+				commitSha,
+			});
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
+				expect.objectContaining({ commitSha, branchName: 'dev', filePaths: [workflowPath] }),
+			);
+			expect(gitService.ensureCommit.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.findPathsAtCommit.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not read when the commit is not available', async () => {
+			const missing = new BadRequestError(
+				'The branch no longer has the commit of the preview. Load the preview again.',
+			);
+			gitService.ensureCommit.mockRejectedValueOnce(missing);
+
+			await expect(
+				service.readBranchFilesAtCommit('p1', 'apply', commitSha, [workflowPath]),
+			).rejects.toBe(missing);
+
+			expect(gitService.findPathsAtCommit).not.toHaveBeenCalled();
+			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
+		});
+
+		it('fetches from the environment that the on-demand clone read again', async () => {
+			const newRemoteUrl = 'git@github.com:o/new.git';
+			gitService.hasCheckout.mockResolvedValue(false);
+			resolver.resolveForProject
+				.mockResolvedValueOnce(applyInput())
+				.mockResolvedValueOnce(
+					applyInput({ remote: { schemaVersion: 1, remoteUrl: newRemoteUrl } }),
+				);
+
+			await service.readBranchFilesAtCommit('p1', 'apply', commitSha, [workflowPath]);
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ remoteUrl: newRemoteUrl }),
+			);
+			expect(gitService.ensureCommit).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ remoteUrl: newRemoteUrl, commitSha }),
+			);
+		});
+	});
+
+	describe('readReviewCommits', () => {
+		it('reads review files without the commit fetch of the change details', async () => {
+			const commitSha = 'c'.repeat(40);
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			await markCloned(promoteInput(), 'staging');
+			gitService.fetchReviewCommits.mockResolvedValue({ baselineCommitSha: commitSha });
+			gitService.findPathsAtCommit.mockResolvedValue(new Set(['n8n/manifest.json']));
+			gitService.readFilesAtCommit.mockResolvedValue(new Map([['n8n/manifest.json', '{}']]));
+
+			const { baseline, head } = await service.readReviewCommits(ENVIRONMENT_ID, {
+				headRef: 'refs/heads/promotion',
+				headCommitSha: commitSha,
+				baseline: { targetBranchName: 'staging' },
+			});
+			await baseline.readFiles(['n8n/manifest.json']);
+			await head.readFiles(['n8n/manifest.json']);
+
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledTimes(2);
+			expect(gitService.ensureCommit).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 

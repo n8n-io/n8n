@@ -1196,4 +1196,53 @@ describe('resources in the preview', () => {
 			}),
 		]);
 	}, 30_000);
+
+	it('fetches the commit of a change list that another main served', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Finance', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['apply']);
+		// Another clone pushes, so this main's checkout is older than the branch.
+		await exportPreviewBaseline(environments.apply, owner);
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Invoice local' });
+		const key = `workflow:${workflow.id}`;
+		const commitSha = await remoteHead();
+
+		const { body } = await server
+			.publicApiAgentWithCookie(owner)
+			.post(`/promotions/projects/${project.id}/changes/apply/details`)
+			.send({ commitSha, keys: [key] })
+			.expect(200);
+
+		expect(body.details).toEqual([
+			expect.objectContaining({
+				key,
+				before: expect.objectContaining({ name: 'Invoice local' }),
+				after: expect.objectContaining({ name: 'Invoice' }),
+			}),
+		]);
+	}, 30_000);
+
+	it('fails with 400 when the branch does not hold the commit of the change list', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Finance', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		// A commit that the remote never received, as after a force-push.
+		const { dir, git } = await (sourceFixture ??= createSourceFixture());
+		await writeFile(path.join(dir, 'README.md'), '# Workflows\n');
+		await git.add('README.md').commit('Not pushed');
+		const commitSha = (await git.revparse(['HEAD'])).trim();
+
+		const { body } = await server
+			.publicApiAgentWithCookie(owner)
+			.post(`/promotions/projects/${project.id}/changes/apply/details`)
+			.send({ commitSha, keys: [`workflow:${workflow.id}`] })
+			.expect(400);
+
+		expect(body.message).toBe(
+			'The branch no longer has the commit of the preview. Load the preview again.',
+		);
+	}, 30_000);
 });

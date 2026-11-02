@@ -909,6 +909,101 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 	});
 
+	describe('ensureCommit', () => {
+		const commitSha = 'c'.repeat(40);
+		const call = async (over: Record<string, unknown> = {}) =>
+			await gitService.ensureCommit({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				environmentId,
+				commitSha,
+				...over,
+			});
+		const hasCommitCall = ['cat-file', '-e', `${commitSha}^{commit}`];
+
+		it('does not fetch when the checkout has the commit', async () => {
+			mockGit.raw.mockResolvedValue('');
+
+			await call();
+
+			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith(hasCommitCall);
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+		});
+
+		it('fetches the branch when the checkout lacks the commit', async () => {
+			mockGit.raw.mockRejectedValueOnce(new Error('missing')).mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.fetch).toHaveBeenCalledExactlyOnceWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
+			expect(mockGit.raw).toHaveBeenCalledTimes(2);
+			expect(mockGit.fetch.mock.invocationCallOrder[0]).toBeLessThan(
+				mockGit.raw.mock.invocationCallOrder[1],
+			);
+		});
+
+		it('fails with 400 when the fetched branch still lacks the commit', async () => {
+			mockGit.raw.mockRejectedValue(new Error('missing'));
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect((error as Error).message).toBe(
+				'The branch no longer has the commit of the preview. Load the preview again.',
+			);
+			expect(mockGit.fetch).toHaveBeenCalledOnce();
+		});
+
+		it('redacts a fetch failure', async () => {
+			mockGit.raw.mockRejectedValue(new Error('missing'));
+			mockGit.fetch.mockRejectedValueOnce(
+				new GitError({ commands: ['fetch', 'origin'] }, 'remote: fatal secret-token'),
+			);
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PromotionGitError);
+			expect((error as Error).message).toBe('Could not complete the Git operation');
+		});
+
+		it('rejects a commit that is not an object name before calling Git', async () => {
+			await expect(call({ commitSha: 'origin/main' })).rejects.toThrow(
+				'The commit SHA is not a Git object name',
+			);
+			expect(simpleGitMock).not.toHaveBeenCalled();
+		});
+
+		it('waits for the checkout lock, so a fetch in progress finishes first', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
+			mockGit.raw.mockResolvedValue('');
+			const listing = gitService.listBranchTree({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				environmentId,
+				pathspecs: ['n8n/'],
+			});
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+
+			const ensuring = call();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(mockGit.raw).not.toHaveBeenCalledWith(hasCommitCall);
+
+			fetching.resolve();
+			await Promise.all([listing, ensuring]);
+			expect(mockGit.raw).toHaveBeenCalledWith(hasCommitCall);
+		});
+	});
+
 	describe('hasRemoteBranch', () => {
 		const call = async () =>
 			await gitService.hasRemoteBranch({

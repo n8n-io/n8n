@@ -1326,8 +1326,9 @@ export class PromotionsService {
 
 	/**
 	 * Reads files at a commit that an earlier change preview reported. The branch may have
-	 * moved since then, so this reads the commit and not the branch tip. Paths that the commit
-	 * does not hold are left out, for example the manifest before the first promotion.
+	 * moved since then, so this reads the commit and not the branch tip. Another main may have
+	 * served the preview, so this fetches the branch when the checkout lacks the commit. Paths
+	 * that the commit does not hold are left out, for example the manifest before the first promotion.
 	 */
 	async readBranchFilesAtCommit(
 		projectId: string,
@@ -1337,15 +1338,18 @@ export class PromotionsService {
 	): Promise<Map<string, string>> {
 		const resolve = async () => await this.resolver.resolveForProject(projectId, direction);
 		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
-		return await this.readExistingFiles(
-			{
-				paths: this.workingDirectory.paths(input.environmentId),
-				branchName: checkoutBranchName(input.config),
-				environmentId: input.environmentId,
-				commitSha,
-			},
-			filePaths,
-		);
+		const operation = {
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName: checkoutBranchName(input.config),
+			environmentId: input.environmentId,
+		};
+		await this.gitService.ensureCommit({
+			...operation,
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			commitSha,
+		});
+		return await this.readExistingFiles({ ...operation, commitSha }, filePaths);
 	}
 
 	/**
