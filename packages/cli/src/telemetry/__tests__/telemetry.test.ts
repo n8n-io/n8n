@@ -1152,7 +1152,7 @@ describe('Telemetry', () => {
 			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
 		});
 
-		test('should count calls for each client in the same entry', () => {
+		test('should count calls for the editor_ui client in the same entry', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
 				path: '/workflows',
@@ -1187,7 +1187,7 @@ describe('Telemetry', () => {
 						'GET /workflows': 2,
 						'GET /executions': 1,
 					},
-					editor_ui_endpoints: { 'GET /workflows': 1 },
+					endpoints_by_client: { editor_ui: { 'GET /workflows': 1 } },
 					first: expect.any(Date),
 					user_agents: {},
 				},
@@ -1641,7 +1641,7 @@ describe('Telemetry', () => {
 					user_id: 'user1',
 					total_calls: 1,
 					clients: JSON.stringify({ editor_ui: 0, other: 1 }),
-					editor_ui_endpoints: JSON.stringify({}),
+					endpoints_by_client: JSON.stringify({ editor_ui: {} }),
 				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
