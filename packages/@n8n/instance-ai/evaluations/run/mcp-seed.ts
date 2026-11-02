@@ -18,6 +18,7 @@ import {
 import { reconstructSeedFromThread } from '../harness/langsmith-seed';
 import type { EvalLogger } from '../harness/logger';
 import { executePriorRuns } from '../harness/prior-runs';
+import { restoreRecordedRuns, seedNodeNamesById } from '../harness/recorded-runs';
 import type { CaseSeed } from '../harness/schema';
 import {
 	buildSeededTablesNote,
@@ -80,6 +81,19 @@ export async function prepareMcpBuildSeed(opts: {
 	const restored = remapped
 		? await restoreArtifacts(ownerClient, threadId, seed!, remapped)
 		: undefined;
+
+	// Recorded runs replay exact history, before the prior runs, as on the Instance
+	// AI arm. A failed restore throws: the case would otherwise lose its premise.
+	if (opts.seed?.mode === 'inline' && opts.seed.recordedRuns?.length && restored) {
+		await restoreRecordedRuns({
+			client: ownerClient,
+			threadId,
+			recordedRuns: opts.seed.recordedRuns,
+			seedWorkflows: restored.workflowsBySeedId,
+			seedNodeNames: seedNodeNamesById(opts.seed.workflows),
+			logger,
+		});
+	}
 
 	let priorRunFailed: string | undefined;
 	if (opts.seed?.mode === 'inline' && opts.seed.priorRuns?.length && restored) {

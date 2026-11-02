@@ -156,6 +156,11 @@ export class AgentFileBridge {
 		return { items: adopted, files, skippedFiles };
 	}
 
+	/** Delete stored files that nothing refers to. */
+	async deleteFiles(fileIds: string[]): Promise<void> {
+		await this.attachmentService.deleteByIds(fileIds);
+	}
+
 	/** Read the size from the metadata, so the bytes are not loaded. An unknown size is not too large. */
 	private async isTooLarge(binary: IBinaryData): Promise<boolean> {
 		let size = binary.bytes;

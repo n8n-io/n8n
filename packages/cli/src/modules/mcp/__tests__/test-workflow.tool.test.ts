@@ -1,5 +1,6 @@
-import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import type { Logger } from '@n8n/backend-common';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import { type IExecutionResponse, User } from '@n8n/db';
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
@@ -13,8 +14,10 @@ vi.mock(
 	'@n8n/workflow-sdk',
 	async () => await vi.importActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk'),
 );
+vi.mock('@/executions/execution-viewer-reader', () => ({ loadExecutionForViewer: vi.fn() }));
 
 import { ActiveExecutions } from '@/active-executions';
+import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
@@ -23,7 +26,14 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import { createWorkflow } from './mock.utils';
+import { REDACTION_CHECK_FAILED_MESSAGE } from '../tools/execution-utils';
 import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.tool';
+
+function mockViewedExecution(resultData: Record<string, unknown>) {
+	vi.mocked(loadExecutionForViewer).mockResolvedValue({
+		data: { resultData },
+	} as unknown as IExecutionResponse);
+}
 
 // Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
 const TRIGGER_NODE_TYPES = new Set([
@@ -60,14 +70,17 @@ describe('test-workflow MCP tool', () => {
 	let nodeTypes: ReturnType<typeof createMockNodeTypes>;
 	let telemetry: Telemetry;
 	let mcpService: McpService;
+	let logger: Logger;
 
 	beforeEach(() => {
+		vi.mocked(loadExecutionForViewer).mockReset();
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		activeExecutions = mockInstance(ActiveExecutions);
 		workflowRunner = mockInstance(WorkflowRunner);
 		nodeTypes = createMockNodeTypes();
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		mcpService = mockInstance(McpService, { isQueueMode: false });
+		logger = mockLogger();
 	});
 
 	describe('smoke tests', () => {
@@ -80,6 +93,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				logger,
 			);
 
 			expect(tool.name).toBe('test_workflow');
@@ -103,6 +117,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					logger,
 					'missing-workflow',
 					{},
 				),
@@ -134,6 +149,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					logger,
 					'no-trigger-workflow',
 					{},
 				),
@@ -165,6 +181,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					logger,
 					'wf-1',
 					{},
 					'NonExistentTrigger',
@@ -197,6 +214,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					logger,
 					'wf-1',
 					{},
 				),
@@ -243,6 +261,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -290,6 +309,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{},
 				'WebhookB',
@@ -335,6 +355,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				pinData,
 			);
@@ -379,6 +400,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				pinData as any,
 			);
@@ -420,6 +442,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -457,6 +480,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					logger,
 					'wf-1',
 					{ Trigger: [{ json: {} }], NonExistentNode: [{ json: { x: 1 } }] },
 					'Trigger',
@@ -500,6 +524,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -513,6 +538,7 @@ describe('test-workflow MCP tool', () => {
 
 		test('returns error status when execution status is error', async () => {
 			setupSuccessfulExecution();
+			mockViewedExecution({ error: { message: 'Something went wrong' } });
 			(workflowRunner.run as Mock).mockResolvedValue('exec-error');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 				status: 'error',
@@ -530,6 +556,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -543,6 +570,7 @@ describe('test-workflow MCP tool', () => {
 
 		test('returns error when resultData has error even with success status', async () => {
 			setupSuccessfulExecution();
+			mockViewedExecution({ error: { message: 'Node execution failed' } });
 			(workflowRunner.run as Mock).mockResolvedValue('exec-data-error');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 				status: 'success',
@@ -560,6 +588,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -570,6 +599,7 @@ describe('test-workflow MCP tool', () => {
 
 		test('returns generic error message when resultData.error.message is missing', async () => {
 			setupSuccessfulExecution();
+			mockViewedExecution({ error: {} });
 			(workflowRunner.run as Mock).mockResolvedValue('exec-no-msg');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 				status: 'error',
@@ -587,12 +617,99 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
 
 			expect(result.status).toBe('error');
 			expect(result.error).toBe('Execution completed with errors');
+		});
+
+		const runFailedExecution = async () => {
+			setupSuccessfulExecution();
+			(workflowRunner.run as Mock).mockResolvedValue('exec-failed');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status: 'error',
+				data: { resultData: { error: { message: 'token sk-secret-123' } } },
+			});
+			return await testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				logger,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+			);
+		};
+
+		test('returns the error as the user may see it', async () => {
+			mockViewedExecution({ redactedError: { type: 'NodeApiError', httpCode: '401' } });
+
+			const result = await runFailedExecution();
+
+			expect(loadExecutionForViewer).toHaveBeenCalledWith('exec-failed', user);
+			expect(result).toEqual({
+				executionId: 'exec-failed',
+				status: 'error',
+				error: 'NodeApiError error (401) (details hidden by n8n)',
+			});
+		});
+
+		test('hides the error when the execution cannot be loaded for the user', async () => {
+			vi.mocked(loadExecutionForViewer).mockResolvedValue(undefined);
+
+			const result = await runFailedExecution();
+
+			expect(result).toEqual({
+				executionId: 'exec-failed',
+				status: 'error',
+				error: REDACTION_CHECK_FAILED_MESSAGE,
+			});
+		});
+
+		test('hides and logs the error when the redaction check fails', async () => {
+			const lookupError = new Error('scope lookup failed');
+			vi.mocked(loadExecutionForViewer).mockRejectedValue(lookupError);
+
+			const result = await runFailedExecution();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'MCP test_workflow could not apply execution data redaction',
+				{ executionId: 'exec-failed', error: lookupError },
+			);
+
+			expect(result).toEqual({
+				executionId: 'exec-failed',
+				status: 'error',
+				error: REDACTION_CHECK_FAILED_MESSAGE,
+			});
+		});
+
+		test('does not load the execution when the run succeeds', async () => {
+			setupSuccessfulExecution();
+			(workflowRunner.run as Mock).mockResolvedValue('exec-success');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			});
+
+			await testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				logger,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+			);
+
+			expect(loadExecutionForViewer).not.toHaveBeenCalled();
 		});
 
 		test('handles workflow returning undefined data', async () => {
@@ -608,6 +725,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					logger,
 					'wf-1',
 					{ Trigger: [{ json: {} }] },
 				),
@@ -645,6 +763,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{ MyTrigger: [{ json: { key: 'val' } }] },
 			);
@@ -691,6 +810,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -735,6 +855,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				queueMcpService,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -776,6 +897,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				logger,
 			);
 
 			const result = await tool.handler(
@@ -825,6 +947,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				logger,
 			);
 
 			await tool.handler(
@@ -856,6 +979,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				logger,
 			);
 
 			const result = await tool.handler(
@@ -917,6 +1041,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -955,6 +1080,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -1013,6 +1139,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				logger,
 			);
 
 			await tool.handler(
@@ -1055,6 +1182,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				logger,
 			);
 
 			await tool.handler(

@@ -12,8 +12,9 @@
     "lint": "oxlint --quiet",
     "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "node -e \"process.exit(0)\"",
-    "test:dev": "echo \"WARNING: no test specified\" && exit 0"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -24,10 +25,13 @@
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@sentry/node": "catalog:sentry",
+    "@vitest/coverage-v8": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
-    "typescript": "catalog:typescript"
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "callsites": "catalog:"

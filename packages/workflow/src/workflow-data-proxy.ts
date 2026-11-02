@@ -44,7 +44,11 @@ import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
 import { getPinDataIfManualExecution } from './workflow-data-proxy-helpers';
-import { PairedItemMemo } from './workflow-data-proxy-paired-item-memo';
+import {
+	PairedItemMemo,
+	pairedItemStateKey,
+	type PairedItemMemoResult,
+} from './workflow-data-proxy-paired-item-memo';
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
@@ -60,6 +64,23 @@ const PAIRED_ITEM_METHOD = {
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
+
+type PairedItemLink = {
+	sourceData: ISourceData | null;
+	pairedItem: IPairedItemData;
+	nodeBeforeLast: string | undefined;
+};
+
+type PairedItemState = {
+	key: string;
+	sourceData: ISourceData;
+	pairedItem: IPairedItemData;
+};
+
+type PairedItemFrame = { parentResults: PairedItemMemoResult[] } & (
+	| { link: PairedItemLink }
+	| (PairedItemState & { results: PairedItemMemoResult[] })
+);
 
 /**
  * Whether the runtime can compile expressions. The expression engine compiles
@@ -1059,54 +1080,93 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
-		): INodeExecutionData =>
-			resolvePairedItem(
-				destinationNodeName,
-				incomingSourceData,
-				initialPairedItem,
-				usedMethodName,
-				undefined,
-				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
-				// Aggregate output pairing to all its inputs), so without memoization
-				// the walk revisits the same item exponentially often.
-				new PairedItemMemo(),
-			);
-
-		const resolvePairedItem = (
-			destinationNodeName: string,
-			incomingSourceData: ISourceData | null,
-			initialPairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod,
-			nodeBeforeLast: string | undefined,
-			memo: PairedItemMemo,
 		): INodeExecutionData => {
-			// Normalize inputs
-			const [pairedItem, sourceData] = normalizeInputs(initialPairedItem, incomingSourceData);
+			// Shared ancestors must resolve once, even when branches recombine at every run.
+			const memo = new PairedItemMemo();
+			const active = new Set<string>();
+			const results: PairedItemMemoResult[] = [];
+			const stack: PairedItemFrame[] = [
+				{
+					link: {
+						sourceData: incomingSourceData,
+						pairedItem: initialPairedItem,
+						nodeBeforeLast: undefined,
+					},
+					parentResults: results,
+				},
+			];
 
-			if (!sourceData) {
-				throw createPairedItemNotFound(destinationNodeName, nodeBeforeLast);
+			// Resolve children before their parent without using the call stack.
+			for (let frame = stack.pop(); frame !== undefined; frame = stack.pop()) {
+				let state: PairedItemState | undefined;
+				let result: PairedItemMemoResult;
+				try {
+					if ('link' in frame) {
+						const { link } = frame;
+						const [pairedItem, sourceData] = normalizeInputs(link.pairedItem, link.sourceData);
+						if (!sourceData) {
+							throw createPairedItemNotFound(destinationNodeName, link.nodeBeforeLast);
+						}
+
+						const key = pairedItemStateKey(sourceData, pairedItem);
+						const cached = memo.get(key);
+						if (cached) {
+							frame.parentResults.push(cached);
+							continue;
+						}
+						if (active.has(key)) {
+							throw new UnexpectedError('Paired item ancestry contains a cycle');
+						}
+
+						state = { key, sourceData, pairedItem };
+						const step = resolvePairedItemStep(
+							destinationNodeName,
+							sourceData,
+							pairedItem,
+							usedMethodName,
+							link.nodeBeforeLast,
+						);
+						if ('next' in step) {
+							const childResults: PairedItemMemoResult[] = [];
+							active.add(key);
+							stack.push({ ...state, results: childResults, parentResults: frame.parentResults });
+							// Reverse the push order to preserve the original branch and error order.
+							for (let i = step.next.length - 1; i >= 0; i--) {
+								stack.push({ link: step.next[i], parentResults: childResults });
+							}
+							continue;
+						}
+						result = createResultOk(step.item);
+					} else {
+						state = frame;
+						result = createResultOk(
+							resolvePairedItemResults(destinationNodeName, frame.pairedItem.item, frame.results),
+						);
+					}
+				} catch (error) {
+					result = createResultError(error);
+				}
+
+				if (state) {
+					memo.set(state.key, result);
+					active.delete(state.key);
+				}
+				frame.parentResults.push(result);
 			}
 
-			return memo.resolve(sourceData, pairedItem, () =>
-				resolvePairedItemUncached(
-					destinationNodeName,
-					sourceData,
-					pairedItem,
-					usedMethodName,
-					nodeBeforeLast,
-					memo,
-				),
-			);
+			const [result] = results;
+			if (result.ok) return result.result;
+			throw result.error;
 		};
 
-		const resolvePairedItemUncached = (
+		/** Resolves one state or returns its parent links. */
+		const resolvePairedItemStep = (
 			destinationNodeName: string,
 			sourceData: ISourceData,
 			pairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod,
 			nodeBeforeLast: string | undefined,
-			memo: PairedItemMemo,
-		): INodeExecutionData => {
+		): { item: INodeExecutionData } | { next: PairedItemLink[] } => {
 			const taskData = getTaskData(sourceData);
 			const outputData = getNodeOutput(taskData, sourceData, nodeBeforeLast);
 			const item = outputData[pairedItem.item];
@@ -1118,49 +1178,30 @@ export class WorkflowDataProxy {
 					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
-				return item;
+				return { item };
 			}
 
-			// Normalize paired item to always be IPairedItemData[]
 			const nextPairedItems = normalizePairedItem(item.pairedItem);
-
 			if (nextPairedItems.length === 0) {
 				throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 			}
 
-			// Recursively traverse ancestry to find the destination node + paired item
-			const results = nextPairedItems.flatMap((nextPairedItem) => {
+			const next = nextPairedItems.flatMap((nextPairedItem): PairedItemLink[] => {
 				const inputIndex = nextPairedItem.input ?? 0;
-
 				if (inputIndex >= sourceArray.length) return [];
 
-				const nextSource = nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex];
-
-				try {
-					return createResultOk(
-						resolvePairedItem(
-							destinationNodeName,
-							nextSource,
-							{ ...nextPairedItem, input: inputIndex },
-							usedMethodName,
-							sourceData.previousNode,
-							memo,
-						),
-					);
-				} catch (error) {
-					return createResultError(error);
-				}
+				return [
+					{
+						sourceData: nextPairedItem.sourceOverwrite ?? sourceArray[inputIndex],
+						pairedItem: { ...nextPairedItem, input: inputIndex },
+						nodeBeforeLast: sourceData.previousNode,
+					},
+				];
 			});
-
-			if (results.length > 0 && results.every((result) => !result.ok)) {
-				throw results[0].error;
-			}
-
-			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
 
 			// No paired item leads to an input of this node. The graph check before the
 			// walk already found the node upstream, so it is on a different branch.
-			if (matchedItems.length === 0) {
+			if (next.length === 0) {
 				const error =
 					sourceArray.length === 0
 						? createNotOnBranchError(destinationNodeName)
@@ -1173,9 +1214,22 @@ export class WorkflowDataProxy {
 				throw new UserError(error.message);
 			}
 
+			return { next };
+		};
+
+		const resolvePairedItemResults = (
+			destinationNodeName: string,
+			itemIndex: number,
+			results: PairedItemMemoResult[],
+		): INodeExecutionData => {
+			if (results.every((result) => !result.ok)) {
+				throw results[0].error;
+			}
+
+			const matchedItems = results.filter((result) => result.ok).map((result) => result.result);
 			const [first, ...rest] = matchedItems;
 			if (rest.some((r) => r !== first)) {
-				throw createPairedItemMultipleItemsFound(destinationNodeName, pairedItem.item);
+				throw createPairedItemMultipleItemsFound(destinationNodeName, itemIndex);
 			}
 
 			return first;

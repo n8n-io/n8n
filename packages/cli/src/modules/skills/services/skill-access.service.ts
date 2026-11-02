@@ -11,68 +11,47 @@ import type { Skill } from '../database/entities/skill.entity';
 import { SkillRepository } from '../database/repositories/skill.repository';
 import type { SkillTarget } from '../utils/skill-content';
 import { requiredSourceScope, type SkillSourceAction } from './skill-source.policy';
-import { SkillUsageProxy } from './skill-usage-proxy.service';
 
 type SkillOperation = 'read' | 'update' | 'delete';
 
 /**
  * Who may do what with a skill or a skill source. The permission comes from the scope of the
- * skill or the source: `projectSkill:*` on the project of a project or agent skill or of a
- * project source, and the global `skill:*` for an instance skill or a Global source. The
- * project of an agent skill comes from `SkillUsageProxy`.
+ * skill or the source: `projectSkill:*` on the project of a project skill or of a project
+ * source, and the global `skill:*` for an instance skill or a Global source.
  */
 @Service()
 export class SkillAccessService {
 	constructor(
 		private readonly skillRepository: SkillRepository,
 		private readonly projectScopeService: ProjectScopeService,
-		private readonly skillUsage: SkillUsageProxy,
 	) {}
-
-	/**
-	 * The project a skill's permissions come from: its own for a project skill, its
-	 * agent's for an agent skill, none for an instance skill. A skill whose agent is gone
-	 * has none either, and only the global scope can reach it.
-	 */
-	async projectOf(
-		skill: Pick<Skill, 'projectId' | 'agentId'>,
-		ctx: OperationContext = {},
-	): Promise<string | null> {
-		if (skill.projectId) return skill.projectId;
-		if (!skill.agentId) return null;
-		const agent = (await this.skillUsage.findAgents([skill.agentId], ctx)).get(skill.agentId);
-		return agent?.projectId ?? null;
-	}
 
 	/** Whether the user may do `operation` on the skill. Every user may read an instance skill. */
 	async canAccess(
 		user: User,
-		skill: Pick<Skill, 'projectId' | 'agentId'>,
+		skill: Pick<Skill, 'projectId'>,
 		operation: SkillOperation,
 	): Promise<boolean> {
-		const projectId = await this.projectOf(skill);
+		const { projectId } = skill;
 		if (projectId) {
 			return await userHasScopes(user, [`projectSkill:${operation}`], false, { projectId });
 		}
-		return this.canAccessInstanceSkill(user, skill, operation);
+		return this.canAccessInstanceSkill(user, operation);
 	}
 
-	/**
-	 * `canAccess` for a whole list: one query for the user's projects, not one per skill.
-	 * The caller passes each skill's project from `projectOf`, resolved in bulk.
-	 */
+	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
 	async accessCheck(
 		user: User,
 		operation: SkillOperation,
-	): Promise<(skill: Pick<Skill, 'agentId'>, projectId: string | null) => boolean> {
+	): Promise<(skill: Pick<Skill, 'projectId'>) => boolean> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, [
 			`projectSkill:${operation}`,
 		]);
 		const allowed = projectIds === null ? null : new Set(projectIds);
-		return (skill, projectId) =>
+		return ({ projectId }) =>
 			projectId
 				? allowed === null || allowed.has(projectId)
-				: this.canAccessInstanceSkill(user, skill, operation);
+				: this.canAccessInstanceSkill(user, operation);
 	}
 
 	/** A skill the user cannot see answers like a missing one. */
@@ -102,7 +81,7 @@ export class SkillAccessService {
 			throw new ForbiddenError('You are not allowed to move this skill out of its scope.');
 		}
 		// Pass this to `moveTrusted` as `checkedSource`, so the move fails if the scope changed.
-		return { projectId: skill.projectId, agentId: skill.agentId };
+		return { projectId: skill.projectId };
 	}
 
 	async assertCanEdit(user: User, skillIds: string[], ctx: OperationContext = {}): Promise<void> {
@@ -129,38 +108,23 @@ export class SkillAccessService {
 	/** Where a create or a move puts the skill. The user needs the create permission there. */
 	async resolveCreateTarget(
 		user: User,
-		payload: Pick<CreateSkillDto, 'scope' | 'projectId' | 'agentId'>,
+		payload: Pick<CreateSkillDto, 'scope' | 'projectId'>,
 	): Promise<SkillTarget> {
 		switch (payload.scope) {
 			case 'instance':
-				if (payload.projectId || payload.agentId) {
-					throw new UserError('An instance skill has no project and no agent.');
-				}
-				if (!(await this.canCreate(user, null))) {
-					throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
-				}
-				return { projectId: null, agentId: null };
+				if (payload.projectId) throw new UserError('An instance skill has no project.');
+				await this.assertCanCreate(user, { projectId: null });
+				return { projectId: null };
 			case 'project': {
 				const { projectId } = payload;
 				if (!projectId) throw new UserError('A project skill needs a project id.');
-				if (payload.agentId) throw new UserError('A project skill has no agent.');
-				await this.assertCanCreateIn(user, projectId);
+				await this.assertCanCreate(user, { projectId });
 				// A global scope passes without looking at the project, so check that it exists.
 				if (!(await this.skillRepository.findProjects([projectId])).has(projectId)) {
 					throw new NotFoundError('Project not found');
 				}
 				// A personal project keeps its own skills, as a team project does.
-				return { projectId, agentId: null };
-			}
-			case 'agent': {
-				const { agentId } = payload;
-				if (!agentId) throw new UserError('An agent skill needs an agent id.');
-				if (payload.projectId)
-					throw new UserError('An agent skill takes its project from the agent.');
-				const agent = (await this.skillUsage.findAgents([agentId])).get(agentId);
-				if (!agent) throw new NotFoundError('Agent not found');
-				await this.assertCanCreateIn(user, agent.projectId);
-				return { projectId: null, agentId };
+				return { projectId };
 			}
 		}
 	}
@@ -204,26 +168,25 @@ export class SkillAccessService {
 
 	/**
 	 * Whether the user may create a skill in the project, or an instance skill when
-	 * `projectId` is null. Each caller decides what a skill of one agent needs.
+	 * `projectId` is null.
 	 */
 	async canCreate(user: User, projectId: string | null): Promise<boolean> {
 		if (projectId === null) return hasGlobalScope(user, 'skill:create');
 		return await userHasScopes(user, ['projectSkill:create'], false, { projectId });
 	}
 
-	private async assertCanCreateIn(user: User, projectId: string): Promise<void> {
-		if (!(await this.canCreate(user, projectId))) {
-			throw new ForbiddenError('You are not allowed to create skills for this project.');
-		}
+	/** A create needs `projectSkill:create` in the project, or the global `skill:create`. */
+	async assertCanCreate(user: User, target: SkillTarget): Promise<void> {
+		if (await this.canCreate(user, target.projectId)) return;
+		throw new ForbiddenError(
+			target.projectId === null
+				? 'You are not allowed to create skills for the whole instance.'
+				: 'You are not allowed to create skills for this project.',
+		);
 	}
 
-	private canAccessInstanceSkill(
-		user: User,
-		skill: Pick<Skill, 'agentId'>,
-		operation: SkillOperation,
-	): boolean {
-		// An agent skill without a project lost its agent mid-request: only the global scope.
-		if (skill.agentId === null && operation === 'read') return true;
+	private canAccessInstanceSkill(user: User, operation: SkillOperation): boolean {
+		if (operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);
 	}
 }
