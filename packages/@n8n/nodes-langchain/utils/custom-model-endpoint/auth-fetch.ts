@@ -9,7 +9,7 @@ import {
 	type NodeEgressFilter,
 } from 'n8n-workflow';
 
-import { endpointSecrets } from './error-handling';
+import { endpointSecrets, plausible } from './error-handling';
 import { buildRequestHeaders } from './headers';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
@@ -120,6 +120,9 @@ export function createCustomModelEndpointAuthFetch(
 			const stripped = withoutInheritedAuthorization(input, init);
 			return await authFetch(stripped.input, stripped.init);
 		},
-		secrets: () => [...endpointSecrets(endpoint), ...(tokenSource?.mintedTokens() ?? [])],
+		// A minted token goes through the same floor: redacting a short one would
+		// cut the response to pieces wherever those characters happen to appear
+		secrets: () =>
+			plausible([...endpointSecrets(endpoint), ...(tokenSource?.mintedTokens() ?? [])]),
 	};
 }

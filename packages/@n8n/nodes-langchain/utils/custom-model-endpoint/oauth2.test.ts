@@ -35,7 +35,7 @@ const granting = (body: Record<string, unknown>, status = 200) => {
 	return { calls, fetchImpl: fetchImpl as unknown as typeof fetch };
 };
 
-const GRANT = { access_token: 'tok-abc', expires_in: 3600, token_type: 'Bearer' };
+const GRANT = { access_token: 'tok-abc-9f2a71c4', expires_in: 3600, token_type: 'Bearer' };
 
 describe('createClientCredentialsTokenSource', () => {
 	it('asks the login server for a token and returns it', async () => {
@@ -43,7 +43,7 @@ describe('createClientCredentialsTokenSource', () => {
 
 		const token = await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
 
-		expect(token).toBe('tok-abc');
+		expect(token).toBe('tok-abc-9f2a71c4');
 		expect(calls[0].url).toBe(TOKEN_URL);
 		expect(calls[0].body.get('grant_type')).toBe('client_credentials');
 	});
@@ -182,6 +182,17 @@ describe('createClientCredentialsTokenSource', () => {
 		expect(error?.message).toContain('[redacted]');
 	});
 
+	it.each([
+		['the field is missing', { token_type: 'Bearer' }],
+		['the field is empty, which would redact every character of every body', { access_token: '' }],
+	])('fails when %s', async (_name, grant) => {
+		const { fetchImpl } = granting(grant);
+
+		await expect(createClientCredentialsTokenSource(login(), fetchImpl).getToken()).rejects.toThrow(
+			'no access token',
+		);
+	});
+
 	it('fails when the answer carries no access token', async () => {
 		const { fetchImpl } = granting({ token_type: 'Bearer' });
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
@@ -201,8 +212,8 @@ describe('createClientCredentialsTokenSource', () => {
 
 		expect(source.mintedTokens()).toEqual([]);
 		await source.getToken();
-		expect(source.mintedTokens()).toEqual(['tok-abc']);
+		expect(source.mintedTokens()).toEqual(['tok-abc-9f2a71c4']);
 		source.forgetToken();
-		expect(source.mintedTokens()).toEqual(['tok-abc']);
+		expect(source.mintedTokens()).toEqual(['tok-abc-9f2a71c4']);
 	});
 });

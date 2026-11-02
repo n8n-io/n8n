@@ -67,7 +67,7 @@ function reasonFor(text: string, status: number, login: OAuth2Login): string {
 }
 
 export function accessTokenIn(parsed: unknown): string {
-	if (!isRecord(parsed) || typeof parsed.access_token !== 'string') {
+	if (!isRecord(parsed) || typeof parsed.access_token !== 'string' || !parsed.access_token) {
 		throw new OperationalError('The login server returned no access token');
 	}
 	return parsed.access_token;

@@ -13,7 +13,7 @@ function formEncoded(value: string): string {
 }
 
 /** Only values long enough to be a credential: redacting "k" would eat every "key". */
-function plausible(secrets: string[]): string[] {
+export function plausible(secrets: string[]): string[] {
 	return secrets.filter((secret) => secret.length >= SHORTEST_PLAUSIBLE_CREDENTIAL);
 }
 
