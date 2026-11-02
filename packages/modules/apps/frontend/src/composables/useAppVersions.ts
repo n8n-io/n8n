@@ -81,7 +81,8 @@ export function useAppVersions(
 			const result = await listAppVersions(rootStore.restApiContext, toValue(projectId), id);
 			if (!isLatest()) return;
 			versions.value = result;
-			if (head.value && building.value) poll(id, head.value.id);
+			const pending = result.find((version) => isBuilding(version.buildStatus));
+			if (pending) poll(id, pending.id);
 		} catch (error) {
 			if (!isLatest()) return;
 			failed.value = true;
