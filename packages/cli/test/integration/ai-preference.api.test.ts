@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 
 import { AiPreferenceService, renderAiPreferencesBlock } from '@n8n/backend-services';
 
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
@@ -909,6 +910,64 @@ describe('DELETE /ai-preferences/:id', () => {
 		const row = await seed({ content: 'Someone else', userId: outsider.id });
 
 		expect((await memberAgent.delete(`/ai-preferences/${row.id}`)).statusCode).toBe(404);
+		expect(await repository().count()).toBe(1);
+	});
+});
+
+describe('a custom project role', () => {
+	let customMember: User;
+	let customMemberAgent: SuperAgentTest;
+	let creatorProject: Project;
+	let unrelatedProject: Project;
+
+	beforeAll(async () => {
+		customMember = await createMember();
+		customMemberAgent = testServer.authAgentFor(customMember);
+
+		creatorProject = await createTeamProject('Support');
+		const creatorRole = await createCustomRoleWithScopeSlugs([
+			'projectAiPreference:list',
+			'projectAiPreference:read',
+			'projectAiPreference:create',
+		]);
+		await linkUserToProject(customMember, creatorProject, creatorRole.slug);
+
+		unrelatedProject = await createTeamProject('Finance');
+		const unrelatedRole = await createCustomRoleWithScopeSlugs(['workflow:read']);
+		await linkUserToProject(customMember, unrelatedProject, unrelatedRole.slug);
+	});
+
+	test('lists only the rows of the project whose role grants it', async () => {
+		await seed({ content: 'Support', projectId: creatorProject.id });
+		const financeRow = await seed({ content: 'Finance', projectId: unrelatedProject.id });
+
+		const list = await customMemberAgent.get('/ai-preferences');
+
+		expect(contentsOf(list)).toEqual(['Support']);
+		expect(list.body.data.data[0].scopes).toEqual(['aiPreference:read']);
+		expect((await customMemberAgent.delete(`/ai-preferences/${financeRow.id}`)).statusCode).toBe(
+			404,
+		);
+	});
+
+	test('allows only the writes the role grants', async () => {
+		const created = await customMemberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Support rule.', scope: 'project', projectId: creatorProject.id });
+		const refused = await customMemberAgent
+			.post('/ai-preferences')
+			.send({ content: 'Finance rule.', scope: 'project', projectId: unrelatedProject.id });
+
+		expect(created.statusCode).toBe(200);
+		expect(refused.statusCode).toBe(403);
+
+		const id: string = created.body.data.id;
+		const update = await customMemberAgent
+			.patch(`/ai-preferences/${id}`)
+			.send({ content: 'Changed.', scope: 'project', projectId: creatorProject.id });
+
+		expect(update.statusCode).toBe(403);
+		expect((await customMemberAgent.delete(`/ai-preferences/${id}`)).statusCode).toBe(403);
 		expect(await repository().count()).toBe(1);
 	});
 });
