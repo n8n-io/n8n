@@ -290,6 +290,24 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "test @ n8n".isEmail() }}')).toEqual(false);
 		});
 
+		test('.isEmail should be false when the string only contains an address', () => {
+			expect(evaluate('={{ "https://medium.com/@jane.doe".isEmail() }}')).toEqual(false);
+			expect(evaluate('={{ "https://example.com/?ref=a@b.com".isEmail() }}')).toEqual(false);
+			expect(evaluate('={{ "x,me@example.com".isEmail() }}')).toEqual(false);
+		});
+
+		test('.extractDomain should not read an address inside a URL as the domain', () => {
+			expect(evaluate('={{ "https://medium.com/@jane.doe".extractDomain() }}')).toEqual(
+				'medium.com',
+			);
+			expect(
+				evaluate('={{ "https://example.com/contact?email=a@b.com".extractDomain() }}'),
+			).toEqual('example.com');
+			expect(evaluate('={{ "MAILTO:john.doe@example.com".extractDomain() }}')).toEqual(
+				'example.com',
+			);
+		});
+
 		test('.toDateTime should work on a variety of formats', () => {
 			expect(
 				asDateTime(evaluate('={{ "Wed, 21 Oct 2015 07:28:00 GMT".toDateTime() }}')),

@@ -93,6 +93,12 @@ const DOMAIN_REGEXP =
 const EMAIL_REGEXP =
 	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
 
+// The whole string has to be the address: an address inside a URL (`https://medium.com/@jane.doe`)
+// or after other text (`x,me@example.com`) is not an email.
+const EMAIL_REGEXP_EXACT = new RegExp(`^(?:${EMAIL_REGEXP.source})$`);
+
+const MAILTO_PREFIX_REGEXP = /^mailto:/i;
+
 /*
 	Matches URLs with strict beginning and end of the string checks
 
@@ -324,7 +330,7 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	const result = EMAIL_REGEXP.test(value);
+	const result = EMAIL_REGEXP_EXACT.test(value);
 
 	// email regex is loose so check manually for now
 	if (result && value.includes(' ')) {
@@ -381,8 +387,9 @@ function extractEmail(value: string) {
 }
 
 function extractDomain(value: string) {
-	if (isEmail(value)) {
-		const matched = EMAIL_REGEXP.exec(value);
+	const address = value.replace(MAILTO_PREFIX_REGEXP, '');
+	if (isEmail(address)) {
+		const matched = EMAIL_REGEXP.exec(address);
 		// This shouldn't happen
 		if (!matched) {
 			return undefined;
