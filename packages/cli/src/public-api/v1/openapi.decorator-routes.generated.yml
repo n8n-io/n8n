@@ -294,6 +294,9 @@ paths:
   /promotions/environments/{promotionEnvironmentId}/projects:
     get:
       $ref: ./handlers/promotions/spec/paths/getPromotionEnvironmentProjects.generated.yml
+  /promotions/environments/{promotionEnvironmentId}/missing-projects:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
   /promotions/environments/{promotionEnvironmentId}/projects/{projectId}:
     post:
       $ref: ./handlers/promotions/spec/paths/addProjectToPromotionEnvironment.generated.yml
@@ -320,6 +323,11 @@ paths:
   /promotions/projects/{projectId}/apply/continue:
     post:
       $ref: ./handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  /settings/rate-limits:
+    get:
+      $ref: ./handlers/settings/spec/paths/getRateLimitSettings.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateRateLimitSettings.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

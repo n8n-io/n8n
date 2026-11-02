@@ -99,6 +99,30 @@ describe('AppsService', () => {
 		expect(response.visibility).toBe('project');
 	});
 
+	it('creates an app with a caller-provided id', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+		const id = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
+		appRepository.projectExists.mockResolvedValue(true);
+		appRepository.createApp.mockResolvedValue(
+			mock<App>({ id, namespace: 'app', createdAt: new Date(), updatedAt: new Date() }),
+		);
+
+		await service.createApp('project-1', dto, { id });
+
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', { ...dto, id });
+	});
+
+	it('rejects a caller-provided id that is not a UUID', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+
+		await expect(service.createApp('project-1', dto, { id: 'not-a-uuid' })).rejects.toThrow(
+			BadRequestError,
+		);
+		expect(appRepository.createApp).not.toHaveBeenCalled();
+	});
+
 	it('returns not found when creating an app in a missing project', async () => {
 		const { service, appRepository } = createService();
 		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });

@@ -283,6 +283,8 @@ export class StreamSink implements RunOutputSink<void> {
 			// Result promises report this error. Do not forward it or count it as content before a retry.
 			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
 			if (!this.captureStreamChunk(chunk, attemptState)) continue;
+			// Before the write, so preparation is not held up by a slow consumer.
+			if (chunk.type === 'tool-input-start') ctx.onToolInputStart?.(chunk.toolName);
 			await this.writeStreamChunk(chunk);
 		}
 

@@ -13,6 +13,10 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nToggle } from '@n8n/design-system';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
+import {
+	forgetAssistantAgentThread,
+	rememberAssistantAgentThread,
+} from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads';
 import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
@@ -1051,6 +1055,43 @@ describe('AgentBuilderView — preview routing', () => {
 			}),
 		);
 		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('creates a pending agent itself when the panel thread runs on the Assistant agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'assistant-agent-thread';
+		rememberAssistantAgentThread('assistant-agent-thread', 'p1');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'x' });
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
+
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		forgetAssistantAgentThread('assistant-agent-thread');
+	});
+
+	it('uses the agent the Assistant agent already created under the pending id', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'assistant-agent-thread';
+		rememberAssistantAgentThread('assistant-agent-thread', 'p1');
+		createAgentMock.mockRejectedValueOnce(
+			new ResponseError('An agent with this id already exists', { httpStatusCode: 409 }),
+		);
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() =>
+			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+		);
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(editor.props('agentUnsaved')).toBe(false);
+		forgetAssistantAgentThread('assistant-agent-thread');
 	});
 
 	it('merges a later auto-applied default model into an already-queued autosave snapshot', async () => {
@@ -3303,6 +3344,29 @@ describe('AgentBuilderView — configuration validation', () => {
 			);
 		},
 	);
+
+	it.each([false, true])(
+		'hides setup tasks for a published agent with artifact mode %s',
+		async (artifactMode) => {
+			getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1', versionId: 'v2' }));
+			const wrapper = await renderView({
+				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			});
+
+			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+		},
+	);
+
+	it('hides setup tasks when the agent is published', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		expect(header.props('tasks')).toBeDefined();
+
+		header.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
+		await flushPromises();
+
+		expect(header.props('tasks')).toBeUndefined();
+	});
 
 	it('hides setup tasks while the embedded assistant builds the agent', async () => {
 		const wrapper = await renderView();

@@ -1,3 +1,5 @@
+import { AgentPlanValidationError } from '../plans/agent-plan.schema';
+import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
@@ -20,6 +22,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
@@ -42,6 +45,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { hostMetadataExecutionId } from '../types/agent-queued-message';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -50,7 +54,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
-import { AgentFileBridge } from '../agent-file-bridge.service';
+import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
@@ -120,7 +124,21 @@ const WAIT_RESUME_SCHEMA = z.object({
 });
 
 /** Private state carried across the suspension; never shown to the model. */
-const WAIT_CONTINUATION_SCHEMA = z.object({ executionId: z.string() });
+const WAIT_CONTINUATION_SCHEMA = z.object({
+	executionId: z.string(),
+	/** Input files by binaryDataId, so an unchanged input file keeps its file ID on resume. */
+	inputFiles: z
+		.record(
+			z.string(),
+			z.object({
+				fileId: z.string(),
+				fileName: z.string(),
+				mimeType: z.string(),
+				sizeBytes: z.number(),
+			}),
+		)
+		.optional(),
+});
 
 type WaitSuspendPayload = z.infer<typeof WAIT_SUSPEND_SCHEMA>;
 type WaitToolContext = InterruptibleToolContext<
@@ -470,6 +488,8 @@ export async function executeWorkflow(
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
+	/** Files the model passed to the tool, as binary of the trigger item. */
+	binary?: IBinaryKeyData,
 ): Promise<WorkflowToolExecutionResult> {
 	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
 
@@ -479,7 +499,7 @@ export async function executeWorkflow(
 
 	// Build pin data for the trigger
 	const triggerPinData: IPinData = {
-		[triggerNode.name]: [{ json: inputData as IDataObject }],
+		[triggerNode.name]: [{ json: inputData as IDataObject, ...(binary && { binary }) }],
 	};
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
@@ -767,6 +787,8 @@ async function finishResult(
 	result: WorkflowToolExecutionResult,
 	context: Pick<WorkflowToolContext, 'agentId' | 'projectId'>,
 	ctx: WaitToolContext,
+	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
+	inputFiles = new Map<string, AgentToolOutputFile>(),
 ): Promise<WorkflowToolResult> {
 	const { wait: _wait, items, ...rest } = result;
 	const threadId = ctx.persistence?.threadId;
@@ -777,7 +799,7 @@ async function finishResult(
 	const data = { ...rest.data };
 	const files: AgentToolOutputFile[] = [];
 	const skippedFiles: AgentToolSkippedFile[] = [];
-	const stored = new Map<string, AgentToolOutputFile>();
+	const stored = new Map(inputFiles);
 	const skipped = new Set<string>();
 	for (const [nodeName, nodeItems] of Object.entries(items)) {
 		const adopted = await bridge.adoptFromItems(nodeItems, scope, stored, skipped);
@@ -815,6 +837,8 @@ async function backgroundWaitingExecution(
 	ctx: WaitToolContext,
 	reference: WorkflowToolWorkflowReference,
 	allOutputs: boolean,
+	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
+	inputFiles?: Map<string, AgentToolOutputFile>,
 ): Promise<(WorkflowToolResult & { jobId: string }) | undefined> {
 	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
 	const parentResourceId = ctx.persistence?.resourceId;
@@ -835,9 +859,11 @@ async function backgroundWaitingExecution(
 	try {
 		const jobService = Container.get(AgentBackgroundJobService);
 		const receipt = await jobService.registerWorkflowJob({
+			planTask: readPlanTaskContext(ctx.persistence?.hostMetadata),
 			id: uuid(),
 			parentAgentId: agentRun.agentId,
 			parentThreadId: agentRun.threadId,
+			sourceExecutionId: hostMetadataExecutionId(ctx.persistence?.hostMetadata),
 			parentResourceId,
 			parentPrincipalHash: sandboxScope.principalHash,
 			title: reference.workflowName,
@@ -871,6 +897,8 @@ async function backgroundWaitingExecution(
 			// matching the settle hook's projection.
 			const settlementStatus = settlementStatusForExecution(rawStatus);
 			const runData = full.data?.resultData?.runData;
+			// Store the files one time. The tool result and the job list the same file IDs.
+			const finished = await finishResult(fresh, context, ctx, inputFiles);
 			await jobService.settle(jobId, {
 				status: settlementStatus,
 				result:
@@ -878,12 +906,15 @@ async function backgroundWaitingExecution(
 						? serializeWorkflowJobResult(collectResultData(runData, false))
 						: null,
 				error: fresh.error ?? null,
+				files: settlementStatus === 'completed' && finished.files?.length ? finished.files : null,
+				skippedFiles:
+					settlementStatus === 'completed' && finished.skippedFiles ? finished.skippedFiles : null,
 			});
 			// The tool returns the result directly. Mark it as delivered
 			// even if another writer settled the job.
 			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
-			return { ...(await finishResult(fresh, context, ctx)), jobId };
+			return { ...finished, jobId };
 		}
 
 		const continuesAt = result.wait?.waitTill
@@ -896,10 +927,12 @@ async function backgroundWaitingExecution(
 			jobId,
 			note:
 				`The "${reference.workflowName}" workflow is paused at a Wait node and now runs as background job ${jobId}.${continuesAt}` +
-				' Use check_background_jobs for the result and cancel_background_job to stop it. Do not start it again.',
+				' Use background_jobs with action "check" for the result and action "cancel" to stop it. Do not start it again.',
 		};
 	} catch (error) {
-		Container.get(Logger).error('Failed to background a waiting workflow execution', {
+		// A closed plan or a finished task rejects the job. The inline wait handles that case.
+		const level = error instanceof AgentPlanValidationError ? 'debug' : 'error';
+		Container.get(Logger)[level]('Failed to background a waiting workflow execution', {
 			executionId: result.executionId,
 			workflowId: reference.workflowId,
 			error: error instanceof Error ? error.message : String(error),
@@ -946,7 +979,7 @@ async function settleOutcomeUnknown(
 		jobId,
 		note: claimed
 			? EXECUTION_OUTCOME_UNKNOWN_ERROR
-			: `This run already settled as background job ${jobId} — use check_background_jobs for its outcome.`,
+			: `This run already settled as background job ${jobId} — use background_jobs with action "check" for its outcome.`,
 	};
 }
 
@@ -1137,7 +1170,7 @@ function assembleWorkflowTool(
 	context: WorkflowToolContext,
 	tool: {
 		reference: WorkflowToolWorkflowReference;
-		inputSchema: z.ZodTypeAny;
+		inputSchema: z.AnyZodObject;
 		triggerType?: string;
 	},
 ): BuiltTool {
@@ -1156,9 +1189,11 @@ function assembleWorkflowTool(
 	// where a suspension can be resumed; elsewhere it reports the waiting status
 	// instead of parking forever.
 	const supportsHitl = context.supportsHitl ?? true;
+	// A workflow input named `files` keeps its meaning, so the tool then takes no files.
+	const acceptsFiles = !Object.hasOwn(inputSchema.shape, 'files');
 	const builder = new Tool(toolName)
 		.description(toolDescription)
-		.input(inputSchema)
+		.input(acceptsFiles ? inputSchema.extend({ files: FILES_INPUT_SCHEMA }) : inputSchema)
 		.output(
 			z.object({
 				executionId: z.string(),
@@ -1181,14 +1216,26 @@ function assembleWorkflowTool(
 			const pending = WAIT_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 			let current: Awaited<ReturnType<typeof loadCurrentWorkflow>> | undefined;
 			let result: WorkflowToolExecutionResult;
+			let inputFiles: Map<string, AgentToolOutputFile> | undefined;
 
 			if (pending.success) {
 				result = await extractResult(pending.data.executionId, allOutputs);
+				inputFiles = new Map(Object.entries(pending.data.inputFiles ?? {}));
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
+				const { files, ...rest } = input;
+				const modelInput = acceptsFiles ? rest : input;
+				const resolved =
+					acceptsFiles && files
+						? await Container.get(AgentFileBridge).toBinary(files, {
+								projectId: context.projectId,
+								threadId: ctx.persistence?.threadId,
+							})
+						: undefined;
+				inputFiles = resolved?.stored;
 				const parsedInput = await resolveWorkflowToolInput(
-					input,
+					modelInput,
 					toolInputs,
 					currentFullSchema,
 					context,
@@ -1205,6 +1252,7 @@ function assembleWorkflowTool(
 					},
 					allOutputs,
 					toolName,
+					resolved?.binary,
 				);
 			}
 
@@ -1213,14 +1261,16 @@ function assembleWorkflowTool(
 			// second execution, so say so.
 			if (result.status === 'waiting' && isWaitCancelled(ctx.resumeData)) {
 				return {
-					...(await finishResult(result, context, ctx)),
+					...(await finishResult(result, context, ctx, inputFiles)),
 					note: 'The user stopped waiting for this workflow. It is still paused — do not start it again.',
 				};
 			}
 
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
-			if (result.status !== 'waiting') return await finishResult(result, context, ctx);
+			if (result.status !== 'waiting') {
+				return await finishResult(result, context, ctx, inputFiles);
+			}
 
 			const waiting = result;
 			return await withWorkflowCancellation(
@@ -1237,19 +1287,29 @@ function assembleWorkflowTool(
 							ctx,
 							reference,
 							allOutputs,
+							inputFiles,
 						);
 						ctx.abortSignal?.throwIfAborted();
 						if (backgrounded) return backgrounded;
 					}
 
 					if (result.status !== 'waiting' || !supportsHitl) {
-						return await finishResult(result, context, ctx);
+						return await finishResult(result, context, ctx, inputFiles);
 					}
 
 					current ??= await loadCurrentWorkflow(context, reference);
 					ctx.abortSignal?.throwIfAborted();
 					return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
-						continuation: { executionId: result.executionId },
+						continuation: {
+							executionId: result.executionId,
+							// Spread copies are plain objects, which the JSON continuation accepts.
+							...(inputFiles &&
+								inputFiles.size > 0 && {
+									inputFiles: Object.fromEntries(
+										Array.from(inputFiles, ([id, file]) => [id, { ...file }]),
+									),
+								}),
+						},
 					});
 				},
 			);

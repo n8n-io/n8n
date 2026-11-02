@@ -4,8 +4,9 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 
 import ContactAdminModal from './ContactAdminModal.vue';
 import { mockPolicyProject } from '../__tests__/mocks';
@@ -139,6 +140,75 @@ describe('ContactAdminModal', () => {
 		const { findByTestId } = renderComponent();
 
 		expect(await findByTestId('contact-admin-empty')).toBeInTheDocument();
+	});
+
+	describe('Escape key', () => {
+		// The node creator listens in the capture phase, Element Plus modals in the bubble phase.
+		const hostCaptureListener = vi.fn();
+		const hostBubbleListener = vi.fn();
+
+		function listenAsHost() {
+			document.addEventListener('keydown', hostCaptureListener, { capture: true });
+			document.addEventListener('keydown', hostBubbleListener);
+		}
+
+		afterEach(() => {
+			document.removeEventListener('keydown', hostCaptureListener, { capture: true });
+			document.removeEventListener('keydown', hostBubbleListener);
+			hostCaptureListener.mockReset();
+			hostBubbleListener.mockReset();
+		});
+
+		it('closes only the dialog, not the surface it opens on', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { findByTestId, emitted } = renderComponent();
+
+			await fireEvent.keyDown(await findByTestId('contact-admin-list'), { key: 'Escape' });
+
+			expect(emitted()['update:open']).toEqual([[false]]);
+			expect(hostCaptureListener).not.toHaveBeenCalled();
+			expect(hostBubbleListener).not.toHaveBeenCalled();
+		});
+
+		it('lets other keys reach the host', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { findByTestId, emitted } = renderComponent();
+
+			await fireEvent.keyDown(await findByTestId('contact-admin-list'), { key: 'Enter' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+			expect(hostCaptureListener).toHaveBeenCalledOnce();
+			expect(hostBubbleListener).toHaveBeenCalledOnce();
+		});
+
+		it('lets Escape reach the host while the dialog is closed', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { emitted } = renderComponent({
+				props: { open: false, nodeTypeName: 'Slack', audience: 'instance' },
+			});
+
+			await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+			expect(hostCaptureListener).toHaveBeenCalledOnce();
+			expect(hostBubbleListener).toHaveBeenCalledOnce();
+		});
+
+		it('lets Escape reach the host again after the dialog closes', async () => {
+			setup([owner]);
+			listenAsHost();
+			const { findByTestId, rerender } = renderComponent();
+
+			await fireEvent.keyDown(await findByTestId('contact-admin-list'), { key: 'Escape' });
+			await rerender({ open: false });
+			await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+			expect(hostCaptureListener).toHaveBeenCalledOnce();
+			expect(hostBubbleListener).toHaveBeenCalledOnce();
+		});
 	});
 
 	describe('for a project restriction', () => {

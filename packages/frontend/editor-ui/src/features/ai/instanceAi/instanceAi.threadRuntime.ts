@@ -313,7 +313,8 @@ function collectActionableConfirmations(
 
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
-	return !item.toolCall.confirmation.mcpConnectRequest;
+	const confirmation = item.toolCall.confirmation;
+	return !confirmation.mcpConnectRequest && !confirmation.appBlueprint;
 }
 
 /**
