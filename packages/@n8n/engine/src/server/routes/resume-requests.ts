@@ -7,6 +7,7 @@ import {
 	ExecutionNotFoundError,
 	ResumeRejectedError,
 	type ExecutionQueryService,
+	type ResumeLocation,
 	type ResumeRejection,
 	type ResumeRequestService,
 } from '../../execution';
@@ -17,6 +18,14 @@ import { fail } from '../error-response';
 const IdParams = z.object({ id: z.string().uuid() });
 
 const ResumeTargetBody = z.object({ token: z.string().min(1) }).strict();
+
+const ResumeLocateBody = z
+	.object({
+		id: z.string().uuid(),
+		token: z.string().min(1),
+		pathAndQuery: z.string().optional(),
+	})
+	.strict();
 
 const ResolveStepBody = z
 	.object({
@@ -30,6 +39,7 @@ const REJECTION_STATUS: Record<ResumeRejection, number> = {
 	not_found: 404,
 	not_waiting: 409,
 	ambiguous: 409,
+	step_bound_only: 409,
 };
 
 const notConfigured: RequestHandler = (_req, res) => {
@@ -41,6 +51,31 @@ function sendRejection(res: Response, error: unknown): boolean {
 	if (!(error instanceof ResumeRejectedError)) return false;
 	fail(res, REJECTION_STATUS[error.code], { error: error.code });
 	return true;
+}
+
+async function sendLocation(
+	res: Response,
+	executionQuery: ExecutionQueryService,
+	locate: () => Promise<ResumeLocation>,
+): Promise<void> {
+	try {
+		const { executionId, target } = await locate();
+		// Read after the token check, so a bad token learns nothing about the
+		// execution. The response carries every step, because the resume method
+		// can resolve expressions against earlier outputs.
+		const execution = await executionQuery.getExecutionWithSteps(executionId);
+		const response: ResumeTargetResponse = {
+			execution: toExecutionSnapshot(execution),
+			target,
+		};
+		res.status(200).json(response);
+	} catch (error) {
+		if (error instanceof ExecutionNotFoundError) {
+			fail(res, 404, { error: 'not_found' });
+			return;
+		}
+		if (!sendRejection(res, error)) throw error;
+	}
 }
 
 /** `POST /workflow-executions/:id/resume-target`: phase one of a resume request. */
@@ -58,25 +93,45 @@ export function createResumeTargetHandler(
 			return;
 		}
 
-		try {
-			const target = await resumeRequests.locate(params.data.id, body.data.token);
-			// Read after the token check, so a bad token learns nothing about the
-			// execution. The response carries every step, because the resume method
-			// can resolve expressions against earlier outputs.
-			const execution = await executionQuery.getExecutionWithSteps(params.data.id);
-			const response: ResumeTargetResponse = {
-				execution: toExecutionSnapshot(execution),
-				target,
-			};
-			res.status(200).json(response);
-		} catch (error) {
-			if (error instanceof ExecutionNotFoundError) {
-				fail(res, 404, { error: 'not_found' });
-				return;
-			}
-			if (!sendRejection(res, error)) throw error;
-		}
+		await sendLocation(res, executionQuery, async () => ({
+			executionId: params.data.id,
+			target: await resumeRequests.locate(params.data.id, body.data.token),
+		}));
 	};
+}
+
+/**
+ * `POST /resume-requests/locate`: phase one of every kind of resume request.
+ * Both an execution id and a step id are UUIDs, and the control plane does
+ * not read the token, so this one route takes either id.
+ */
+export function createResumeRequestsRouter(
+	resumeRequests: ResumeRequestService | undefined,
+	executionQuery: ExecutionQueryService,
+): RouterType {
+	const router = Router();
+
+	if (!resumeRequests) {
+		router.post('/locate', notConfigured);
+		return router;
+	}
+
+	router.post('/locate', async (req, res) => {
+		const body = ResumeLocateBody.safeParse(req.body);
+		if (!body.success) {
+			fail(res, 400, { error: 'invalid_request' });
+			return;
+		}
+
+		const { id, token, pathAndQuery } = body.data;
+		await sendLocation(
+			res,
+			executionQuery,
+			async () => await resumeRequests.locateByToken(id, token, pathAndQuery),
+		);
+	});
+
+	return router;
 }
 
 /** `POST /step-executions/:id/resolve`: phase two of a resume request. */
