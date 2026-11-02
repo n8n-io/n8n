@@ -121,6 +121,9 @@ export const resolvePackage = (
 	}
 };
 
+export const formatPackageSpec = (packageName: string, version: string | null): string =>
+	version ? `${packageName}@${version}` : packageName;
+
 /**
  * Picks the exact version to scan: the latest one without a spec, the highest
  * match for a range, and otherwise the version a dist-tag points to.
@@ -228,10 +231,15 @@ export const parseSourceRepo = (
 // a stalled connection must not hang the gate.
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
 
+// Request timeout and rate limiting are on our side, not on the package author
+const TRANSIENT_CLIENT_ERRORS = new Set([408, 429]);
+
 export const isSourceUnavailable = (error: unknown): boolean => {
 	if (!axios.isAxiosError(error)) return false;
 	const status = error.response?.status;
-	return status !== undefined && status >= 400 && status < 500;
+	return (
+		status !== undefined && status >= 400 && status < 500 && !TRANSIENT_CLIENT_ERRORS.has(status)
+	);
 };
 
 const fetchSourceInfo = async (packageName: string, version: string) => {
@@ -553,7 +561,7 @@ export const analyzePackageByName = async (
 			...analysisResult,
 		};
 	} catch (error: unknown) {
-		console.error(`Failed to analyze "${packageName}@${version}":`, error);
+		console.error(`Failed to analyze "${formatPackageSpec(packageName, version)}":`, error);
 		return {
 			packageName,
 			version,

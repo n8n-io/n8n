@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
-import { resolvePackage, analyzePackageByName, getExitCode, EXIT_CODES } from './scanner.js';
+import {
+	resolvePackage,
+	analyzePackageByName,
+	formatPackageSpec,
+	getExitCode,
+	EXIT_CODES,
+} from './scanner.js';
 
 const [packageSpec] = process.argv.slice(2);
 if (!packageSpec) {
@@ -11,7 +17,7 @@ if (!packageSpec) {
 try {
 	const { packageName, version } = resolvePackage(packageSpec);
 	const result = await analyzePackageByName(packageName, version);
-	const label = `${packageName}@${result.version}`;
+	const label = formatPackageSpec(packageName, result.version);
 	const exitCode = getExitCode(result);
 
 	console.log(

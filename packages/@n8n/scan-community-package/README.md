@@ -34,4 +34,4 @@ The scanner runs these steps in sequence. It stops at the first step that fails.
 | ---- | ------- |
 | `0`  | The package passed all checks. |
 | `1`  | The scan could not complete, for example because of an invalid package name, a registry or network error, or a scanner crash. This result says nothing about the package. Retry the scan or examine the output. |
-| `2`  | The package failed a check, for example because of ESLint violations, missing provenance, or a source repository that is not public. |
+| `2`  | The package failed a check, for example because of ESLint violations, missing provenance, or a source repository that GitHub rejects with a 4xx response (other than 408 or 429). |

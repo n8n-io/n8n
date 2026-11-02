@@ -9,6 +9,7 @@ import {
 	buildScanConfig,
 	EXIT_CODES,
 	findPackageRoot,
+	formatPackageSpec,
 	getExitCode,
 	isSourceUnavailable,
 	parseSourceRepo,
@@ -186,6 +187,13 @@ describe('resolvePackage', () => {
 
 	it('rejects characters outside the allowed set', () => {
 		expect(() => resolvePackage('n8n-nodes-foo;rm')).toThrow('Invalid package specification');
+	});
+});
+
+describe('formatPackageSpec', () => {
+	it('adds the version only when there is one', () => {
+		expect(formatPackageSpec('n8n-nodes-foo', '1.2.3')).toBe('n8n-nodes-foo@1.2.3');
+		expect(formatPackageSpec('n8n-nodes-foo', null)).toBe('n8n-nodes-foo');
 	});
 });
 
@@ -448,6 +456,8 @@ describe('isSourceUnavailable', () => {
 
 	it('treats only a 4xx response as a problem with the package', () => {
 		expect(isSourceUnavailable(httpError(404))).toBe(true);
+		expect(isSourceUnavailable(httpError(408)), 'request timeout').toBe(false);
+		expect(isSourceUnavailable(httpError(429)), 'rate limited').toBe(false);
 		expect(isSourceUnavailable(httpError(502))).toBe(false);
 		expect(isSourceUnavailable(new AxiosError('timeout', AxiosError.ECONNABORTED))).toBe(false);
 		expect(isSourceUnavailable(new Error('tar extraction failed'))).toBe(false);
