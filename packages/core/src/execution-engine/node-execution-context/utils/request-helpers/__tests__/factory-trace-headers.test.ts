@@ -27,7 +27,7 @@ describe('request helpers trace context', () => {
 		additionalData.evalLlmMockHandler = undefined;
 		additionalData.executionId = options.executionId;
 		additionalData.otel = options.inject
-			? { injectTraceHeaders: options.inject, extractInboundBaggage: vi.fn() }
+			? { injectTraceHeaders: options.inject, extractTracingContext: vi.fn() }
 			: undefined;
 		return { helpers: getRequestHelperFunctions(workflow, node, additionalData), additionalData };
 	}

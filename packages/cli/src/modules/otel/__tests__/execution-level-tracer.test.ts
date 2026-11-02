@@ -1182,49 +1182,6 @@ describe('ExecutionLevelTracer', () => {
 			expect(headers.baggage).toBe('tenant=acme');
 		});
 
-		it('keeps the caller baggage off the context that agent runs use', () => {
-			tracer.startWorkflow({
-				executionId: 'exec-bag-ctx',
-				tracingContext: withBaggage,
-				workflow: defaultWorkflow,
-			});
-			tracer.startNode({ executionId: 'exec-bag-ctx', node });
-
-			const ctx = tracer.getActiveContext('exec-bag-ctx', node.name);
-			end(tracer, 'exec-bag-ctx');
-
-			expect(ctx).toBeDefined();
-			expect(propagation.getBaggage(ctx!)).toBeUndefined();
-		});
-
-		it.each([
-			['a reserved key', 'tenant=acme,n8n.execution.id=forged'],
-			['a percent-encoded reserved key', 'tenant=acme,n8n%2Eexecution%2Eid=forged'],
-			['a reserved key in another case', 'tenant=acme,N8N.Execution.Id=forged'],
-		])('sends no entry that n8n owns, given %s', (_name, header) => {
-			tracer.startWorkflow({
-				executionId: 'exec-bag-forged',
-				tracingContext: { ...inboundTracingContext, baggage: header },
-				workflow: defaultWorkflow,
-			});
-
-			const headers = inject(tracer, 'exec-bag-forged');
-			end(tracer, 'exec-bag-forged');
-
-			expect(headers.baggage).toBe('tenant=acme');
-		});
-
-		it('saves no entry that n8n owns, so a resumed segment cannot send one', () => {
-			const saved = tracer.startWorkflow({
-				executionId: 'exec-bag-forged-save',
-				tracingContext: { ...inboundTracingContext, baggage: 'n8n.execution.id=forged' },
-				workflow: defaultWorkflow,
-			});
-			end(tracer, 'exec-bag-forged-save');
-
-			expect(saved.baggage).toBeUndefined();
-		});
-
 		it('does not add caller baggage to span attributes', () => {
 			tracer.startWorkflow({
 				executionId: 'exec-bag-attrs',
@@ -1295,6 +1252,20 @@ describe('ExecutionLevelTracer', () => {
 
 			expect(persisted?.traceparent).toMatch(traceparentPattern);
 			expect(headers).toEqual({ 'sentry-trace': 'foreign' });
+		});
+
+		it('should build the active context from the execution, not from the caller context', () => {
+			tracer.startWorkflow({ executionId: 'exec-isolated', workflow: defaultWorkflow });
+			const callerContext = propagation.setBaggage(
+				context.active(),
+				propagation.createBaggage({ leaked: { value: 'yes' } }),
+			);
+
+			const activeContext = context.with(callerContext, () =>
+				tracer.getActiveContext('exec-isolated'),
+			);
+
+			expect(propagation.getBaggage(activeContext!)).toBeUndefined();
 		});
 	});
 

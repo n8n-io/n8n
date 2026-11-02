@@ -1,20 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Attributes, Baggage, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
-import {
-	context,
-	defaultTextMapGetter,
-	defaultTextMapSetter,
-	propagation,
-	ROOT_CONTEXT,
-	SpanStatusCode,
-	trace,
-} from '@opentelemetry/api';
-import {
-	isTimeInputHrTime,
-	W3CBaggagePropagator,
-	W3CTraceContextPropagator,
-} from '@opentelemetry/core';
+import type { Attributes, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
+import { defaultTextMapSetter, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import { isTimeInputHrTime } from '@opentelemetry/core';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExecutionStatus } from 'n8n-workflow';
 
@@ -37,12 +25,10 @@ import {
 	isEndNodeError,
 } from './execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
-import { ATTR, BUILT_IN_ATTRIBUTE_KEYS, isReservedBaggageKey } from './otel.constants';
+import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
 import { OtelConfigureHook } from './otel-configure-hook';
-import type { TracingContext } from './tracing-context';
+import { fromTracingContext, toTracingContext, type TracingContext } from './tracing-context';
 
-const propagator = new W3CTraceContextPropagator();
-const baggagePropagator = new W3CBaggagePropagator();
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -54,7 +40,6 @@ type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
 	projectCustomAttributes: Record<string, string>;
-	baggage?: Baggage;
 };
 
 @Service()
@@ -72,13 +57,10 @@ export class ExecutionLevelTracer {
 		return trace.getTracer(WORKFLOW_TRACER_NAME);
 	}
 
-	startWorkflow(params: StartWorkflowParams) {
+	startWorkflow(params: StartWorkflowParams): TracingContext {
 		try {
 			const identity = resolveWorkflowIdentity(params);
-			const parentCtx = withExecutionIdentity(
-				this.parseTraceParentHeaders(params.tracingContext),
-				identity,
-			);
+			const parentCtx = withExecutionIdentity(fromTracingContext(params.tracingContext), identity);
 			const links = this.buildContinuationLinks(params.linkTo);
 			const projectCustomAttributes = this.buildCustomAttributes(
 				'project',
@@ -97,13 +79,11 @@ export class ExecutionLevelTracer {
 
 			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
 			const workflowContext = trace.setSpan(parentCtx, span);
-			const baggage = toBaggage(params.tracingContext?.baggage);
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
 				context: workflowContext,
 				projectCustomAttributes,
-				baggage,
 			});
 
 			if (params.emitStartSpan) {
@@ -115,7 +95,7 @@ export class ExecutionLevelTracer {
 				);
 			}
 
-			return toTracingParentContext(span, identity, baggage);
+			return { ...toTracingContext(workflowContext), identity };
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
 				executionId: params.executionId,
@@ -205,7 +185,7 @@ export class ExecutionLevelTracer {
 					...identity,
 				},
 			},
-			withExecutionIdentity(this.parseTraceParentHeaders(params.tracingContext), identity),
+			withExecutionIdentity(fromTracingContext(params.tracingContext), identity),
 		);
 	}
 
@@ -248,7 +228,7 @@ export class ExecutionLevelTracer {
 			}
 
 			// Keyed by node name — names are unique within a workflow and this is what
-			// the outbound header injection path passes (see `findMostSpecificSpan`).
+			// the outbound header injection path passes (see `getActiveContext`).
 			executionNodes.set(params.node.name, { span });
 		} catch (error) {
 			this.logger.warn('Failed to start node span', {
@@ -297,16 +277,18 @@ export class ExecutionLevelTracer {
 	}
 
 	/**
-	 * Returns the OTel context of the most specific active span for an
-	 * execution — its running node, falling back to the workflow span — so
-	 * callers outside this module (e.g. an agent run invoked from a workflow
-	 * node) can nest their own spans under it instead of starting a
-	 * disconnected trace. Undefined when neither span is active (e.g. otel
-	 * disabled, or the execution/node isn't tracked here).
+	 * Returns the execution's context with its running node's span, falling back to
+	 * the workflow span, so callers outside this module (e.g. an agent run invoked
+	 * from a workflow node) can nest their own spans under it.
 	 */
 	getActiveContext(executionId: string, nodeName?: string): Context | undefined {
-		const span = this.findMostSpecificSpan(executionId, nodeName);
-		return span ? trace.setSpan(context.active(), span) : undefined;
+		const workflow = this.activeWorkflowSpans.get(executionId);
+		if (!workflow) return undefined;
+
+		const node = nodeName
+			? this.activeNodeSpansByExecutionId.get(executionId)?.get(nodeName)
+			: undefined;
+		return node ? trace.setSpan(workflow.context, node.span) : workflow.context;
 	}
 
 	injectTraceHeaders(
@@ -315,19 +297,14 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			const span = this.findMostSpecificSpan(executionId, nodeName);
-			if (!span) return;
+			const ctx = this.getActiveContext(executionId, nodeName);
+			if (!ctx) return;
 
-			const callerBaggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			const span = trace.getSpan(ctx);
 			const hookEntries = this.configureHook.buildOutboundBaggage(
-				hasAttributes(span) ? span.attributes : {},
+				span && hasAttributes(span) ? span.attributes : {},
 			);
-
-			propagation.inject(
-				spanContext(span, withHookEntries(callerBaggage, hookEntries)),
-				headers,
-				defaultTextMapSetter,
-			);
+			propagation.inject(withHookEntries(ctx, hookEntries), headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -354,15 +331,8 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	private parseTraceParentHeaders(tracingContext?: TracingContext): Context {
-		if (!tracingContext) return ROOT_CONTEXT;
-		return propagator.extract(ROOT_CONTEXT, tracingContext, defaultTextMapGetter);
-	}
-
 	private buildContinuationLinks(linkTo?: TracingContext) {
-		if (!linkTo) return undefined;
-		const extracted = propagator.extract(ROOT_CONTEXT, linkTo, defaultTextMapGetter);
-		const spanContext = trace.getSpanContext(extracted);
+		const spanContext = linkTo && trace.getSpanContext(fromTracingContext(linkTo));
 		if (!spanContext) return undefined;
 		return [
 			{
@@ -370,14 +340,6 @@ export class ExecutionLevelTracer {
 				attributes: { [ATTR.CONTINUATION_REASON]: 'resume' },
 			},
 		];
-	}
-
-	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
-		return (
-			(nodeName
-				? this.activeNodeSpansByExecutionId.get(executionId)?.get(nodeName)?.span
-				: undefined) ?? this.activeWorkflowSpans.get(executionId)?.span
-		);
 	}
 
 	private endDanglingNodeSpans(executionId: string, reason = 'workflow_cancelled'): void {
@@ -427,61 +389,17 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
-function spanContext(span: Span, baggage: Baggage | undefined): Context {
-	const ctx = trace.setSpan(ROOT_CONTEXT, span);
-	return baggage ? propagation.setBaggage(ctx, baggage) : ctx;
-}
-
-function toBaggage(header: string | undefined): Baggage | undefined {
-	if (!header) return undefined;
-	const extracted = baggagePropagator.extract(
-		ROOT_CONTEXT,
-		{ baggage: header },
-		defaultTextMapGetter,
-	);
-	const baggage = propagation.getBaggage(extracted);
-	if (!baggage) return undefined;
-
-	const reserved = baggage
-		.getAllEntries()
-		.map(([key]) => key)
-		.filter(isReservedBaggageKey);
-
-	const kept = baggage.removeEntries(...reserved);
-	return kept.getAllEntries().length ? kept : undefined;
-}
-
-function toTracingParentContext(
-	span: Span,
-	identity: ExecutionIdentity,
-	baggage: Baggage | undefined,
-): TracingContext {
-	const carrier: Record<string, string> = {};
-	const ctx = spanContext(span, baggage);
-	propagator.inject(ctx, carrier, defaultTextMapSetter);
-	baggagePropagator.inject(ctx, carrier, defaultTextMapSetter);
-	return {
-		traceparent: carrier.traceparent,
-		tracestate: carrier.tracestate,
-		identity,
-		...(carrier.baggage && { baggage: carrier.baggage }),
-	};
-}
-
 /**
  * The caller baggage with the `otel.configure` entries on top. The hook is
  * operator configuration, so it wins where a key is in both.
  */
-function withHookEntries(
-	baggage: Baggage | undefined,
-	entries: Record<string, string>,
-): Baggage | undefined {
+function withHookEntries(ctx: Context, entries: Record<string, string>): Context {
 	const hookEntries = Object.entries(entries);
-	if (hookEntries.length === 0) return baggage;
+	if (hookEntries.length === 0) return ctx;
 
-	let merged = baggage ?? propagation.createBaggage();
+	let merged = propagation.getBaggage(ctx) ?? propagation.createBaggage();
 	for (const [key, value] of hookEntries) merged = merged.setEntry(key, { value });
-	return merged;
+	return propagation.setBaggage(ctx, merged);
 }
 
 function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {
