@@ -285,8 +285,6 @@ async function remove(environment: PromotionEnvironment) {
 </template>
 
 <style lang="scss" module>
-@use '@/app/css/variables' as *;
-
 .layout {
 	container-type: inline-size;
 	padding-top: 0;
@@ -296,7 +294,8 @@ async function remove(environment: PromotionEnvironment) {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 
-	@container (max-width: #{$breakpoint-2xs}) {
+	// The editor's $breakpoint-2xs. The module cannot import the editor styles.
+	@container (max-width: 600px) {
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
@@ -308,7 +307,8 @@ async function remove(environment: PromotionEnvironment) {
 	& + & {
 		border-inline-start: var(--border-width, 1px) solid var(--border-color--subtle);
 
-		@container (max-width: #{$breakpoint-2xs}) {
+		// The editor's $breakpoint-2xs. The module cannot import the editor styles.
+		@container (max-width: 600px) {
 			border-inline-start: none;
 			border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
 		}
