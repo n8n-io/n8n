@@ -190,47 +190,13 @@ describe('ApplyInstanceDialog', () => {
 			global: {
 				stubs: {
 					PromotionBindingsFlow: defineComponent({
-						emits: ['applied', 'update:open'],
-						setup:
-							(_props, { emit }) =>
-							() =>
-								h('button', {
-									'data-test-id': 'stub-applied',
-									// Same order as the bindings dialog after a successful Continue.
-									onClick: () => {
-										emit('applied', applied);
-										emit('update:open', false);
-									},
-								}),
-					}),
-				},
-			},
-		});
-
-		await userEvent.click(await findByTestId('apply-confirm-button'));
-		const flow = await findByTestId('stub-applied');
-		await userEvent.click(flow);
-
-		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
-		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
-		expect(mockShowMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ title: 'Instance updated' }),
-		);
-		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
-	});
-
-	it('counts the projects that the binding flow created before the apply', async () => {
-		api.applyPromotion.mockResolvedValue(blocked({ missingBindings: [credential] }));
-		const { findByTestId } = renderComponent({
-			global: {
-				stubs: {
-					PromotionBindingsFlow: defineComponent({
 						emits: ['project-created', 'applied', 'update:open'],
 						setup:
 							(_props, { emit }) =>
 							() =>
 								h('button', {
 									'data-test-id': 'stub-applied',
+									// Same order as the bindings dialog after a successful Continue.
 									onClick: () => {
 										emit('project-created', { id: 'project-a', name: 'A' });
 										emit('project-created', { id: 'project-b', name: 'B' });
@@ -251,15 +217,19 @@ describe('ApplyInstanceDialog', () => {
 		});
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
-		await userEvent.click(await findByTestId('stub-applied'));
+		const flow = await findByTestId('stub-applied');
+		await userEvent.click(flow);
 
-		await waitFor(() =>
-			expect(mockShowMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					message: expect.stringMatching(/^Projects: 3 created, 0 deleted\./),
-				}),
-			),
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		// The toast counts the projects that the binding flow created as created.
+		expect(mockShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Instance updated',
+				message: expect.stringMatching(/^Projects: 3 created, 0 deleted\./),
+			}),
 		);
+		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
 
 	it('warns when applied workflows could not be published', async () => {
