@@ -1872,7 +1872,7 @@ export interface InstanceAiContext {
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * File attachments from the current user message. Runtime-only — not
-	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * persisted. The current-message `parse-file` reads them by index.
 	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
 	currentUserAttachments?: InstanceAiFileAttachment[];

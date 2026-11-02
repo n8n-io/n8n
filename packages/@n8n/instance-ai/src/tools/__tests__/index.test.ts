@@ -5,13 +5,8 @@ import {
 	createOrchestratorDomainTools,
 	getActiveOrchestratorDomainToolNames,
 } from '..';
-import { isParseableAttachment } from '../../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../../types';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../tool-ids';
-
-vi.mock('../../parsers/structured-file-parser', () => ({
-	isParseableAttachment: vi.fn(() => false),
-}));
 
 vi.mock('../attachments/parse-file.tool', () => ({
 	createParseFileTool: vi.fn(() => ({ id: 'parse-file' })),
@@ -134,7 +129,6 @@ function makeContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiCont
 describe('domain tool construction', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.mocked(isParseableAttachment).mockReturnValue(false);
 	});
 
 	it('creates the native orchestrator domain tool map', async () => {
@@ -252,15 +246,8 @@ describe('domain tool construction', () => {
 		expect(orchestratorTools.has('browser_navigate')).toBe(false);
 	});
 
-	it('includes parse-file tools when attachments are parseable', () => {
-		vi.mocked(isParseableAttachment).mockReturnValue(true);
-		const context = makeContext({
-			currentUserAttachments: [
-				{ type: 'file', data: '', mimeType: 'text/html', fileName: 'page.html' },
-			],
-		});
-
-		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
+	it('registers the current-message parse-file on a turn without files', () => {
+		expect(createOrchestratorDomainTools(makeContext()).get('parse-file')).toEqual({
 			id: 'parse-file',
 		});
 	});
@@ -275,7 +262,6 @@ describe('domain tool construction', () => {
 	});
 
 	it('prefers the stored-file parse-file over the current-message version', () => {
-		vi.mocked(isParseableAttachment).mockReturnValue(true);
 		const context = makeContext({
 			storedFiles: { read: vi.fn() },
 			currentUserAttachments: [
@@ -316,8 +302,27 @@ describe('domain tool construction', () => {
 		expect(createOrchestratorDomainTools(enabled).get('skills')).toBeDefined();
 	});
 
+	it.each([
+		['the current Instance AI runtime', {}],
+		['the Assistant agent', { storedFiles: { read: vi.fn() } }],
+	])(
+		'keeps the same tool names with and without files on %s, so the cached prefix stays valid',
+		(_label, runtimeContext: Partial<InstanceAiContext>) => {
+			const withoutFiles = makeContext(runtimeContext);
+			const withFiles = makeContext({
+				...runtimeContext,
+				currentUserAttachments: [
+					{ type: 'file', data: '', mimeType: 'text/csv', fileName: 'data.csv' },
+				],
+			});
+
+			expect(getActiveOrchestratorDomainToolNames(withFiles)).toEqual(
+				getActiveOrchestratorDomainToolNames(withoutFiles),
+			);
+		},
+	);
+
 	it('reports the same active names that the domain registry exposes', () => {
-		vi.mocked(isParseableAttachment).mockReturnValue(true);
 		const context = makeContext({
 			evaluationConfigService: {} as InstanceAiContext['evaluationConfigService'],
 			mcpService: {} as InstanceAiContext['mcpService'],

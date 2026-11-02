@@ -1237,18 +1237,18 @@ when the supplied credential or node context is enough. `intent` is one of
 Results include registry metadata and can include a hint or error. Answers based
 on returned documents must cite the returned page titles and public URLs.
 
-## `parse-file` *(conditional)*
+## `parse-file`
 
-Parse a user file. The registry adds one of two versions:
+Parse a user file. The registry adds the tool on every turn, with or without
+files, so the tool list stays the same and the prompt cache stays valid. It
+adds one of two versions:
 
 - When the host sets `storedFiles` on the context, the tool reads a stored file
-  of the thread by `fileId`. The registry adds it on every turn, so the tool
-  list stays the same and the prompt cache stays valid. The Assistant on the
-  Agents runtime uses this version. The model gets each `fileId` from the file
-  attachment label in the conversation.
+  of the thread by `fileId`. The Assistant on the Agents runtime uses this
+  version. The model gets each `fileId` from the file attachment label in the
+  conversation.
 - Otherwise, the tool reads an attachment of the current user message by
-  `attachmentIndex`. The registry adds it only when the current turn contains a
-  parseable attachment.
+  `attachmentIndex`. On a turn without files, it returns an error.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|

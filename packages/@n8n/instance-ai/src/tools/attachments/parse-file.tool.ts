@@ -8,14 +8,14 @@
  * - `createParseStoredFileTool` is used when the host sets
  *   `context.storedFiles`. Only the Assistant agent on the Agents runtime does
  *   this. The tool reads a stored file of the thread by `fileId`, so it can
- *   read files from earlier messages and after an approval resume. It is
- *   registered on every turn, so the tool list stays the same and the prompt
- *   cache stays valid.
+ *   read files from earlier messages and after an approval resume.
  * - `createParseFileTool` is used otherwise, by the current Instance AI
  *   runtime. That runtime does not store files. The tool reads an attachment
- *   of the current message by `attachmentIndex`. It is registered only when
- *   the current message has a parseable attachment.
+ *   of the current message by `attachmentIndex`. On a turn without files, it
+ *   returns an error.
  *
+ * Both runtimes register the tool on every turn, with or without files, so the
+ * tool list stays the same and the prompt cache stays valid.
  * Both versions use `parseAttachment`, so they give the same output.
  */
 
