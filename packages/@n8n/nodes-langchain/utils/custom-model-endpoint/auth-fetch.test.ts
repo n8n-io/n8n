@@ -196,9 +196,12 @@ describe('createCustomModelEndpointAuthFetch', () => {
 				calls.push({ url, headers: new Headers(init?.headers ?? {}) });
 				if (url === TOKEN_URL) {
 					issued += 1;
-					return new Response(JSON.stringify({ access_token: `tok-${issued}`, expires_in: 3600 }), {
-						status: 200,
-					});
+					return new Response(
+						JSON.stringify({ access_token: `tok-9f2a71c4ab-${issued}`, expires_in: 3600 }),
+						{
+							status: 200,
+						},
+					);
 				}
 				return new Response('{}', { status: statuses.shift() ?? 200 });
 			};
@@ -222,7 +225,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 
 			await authFetch(BASE_URL);
 
-			expect(gatewayCalls(calls)[0].headers.get('authorization')).toBe('Bearer tok-1');
+			expect(gatewayCalls(calls)[0].headers.get('authorization')).toBe('Bearer tok-9f2a71c4ab-1');
 		});
 
 		it('fetches a new token once when the gateway rejects the old one', async () => {
@@ -241,8 +244,8 @@ describe('createCustomModelEndpointAuthFetch', () => {
 
 			expect(response.status).toBe(200);
 			expect(gatewayCalls(calls).map((c) => c.headers.get('authorization'))).toEqual([
-				'Bearer tok-1',
-				'Bearer tok-2',
+				'Bearer tok-9f2a71c4ab-1',
+				'Bearer tok-9f2a71c4ab-2',
 			]);
 		});
 
