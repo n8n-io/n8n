@@ -425,6 +425,8 @@ class AsksForReply implements INodeType {
 				type: 'options',
 				options: [
 					{ name: 'Link', value: 'link' },
+					{ name: 'Bare Link', value: 'bareLink' },
+					{ name: 'Encoded Link', value: 'encodedLink' },
 					{ name: 'Button', value: 'button' },
 				],
 				default: 'link',
@@ -434,12 +436,16 @@ class AsksForReply implements INodeType {
 	} as unknown as INodeType['description'];
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const reference =
-			this.getNodeParameter('reply', 0) === 'link'
-				? this.getSignedResumeUrl({ approved: 'true' })
-				: (['approve', 'decline'] as const).map((decision) =>
-						this.getApprovalCallbackReference(decision),
-					);
+		const replies: Record<string, () => string | string[]> = {
+			link: () => this.getSignedResumeUrl({ approved: 'true' }),
+			bareLink: () => this.getSignedResumeUrl(),
+			encodedLink: () => this.getSignedResumeUrl({ note: 'a b&c', signature: 'forged' }),
+			button: () =>
+				(['approve', 'decline'] as const).map((decision) =>
+					this.getApprovalCallbackReference(decision),
+				),
+		};
+		const reference = replies[this.getNodeParameter('reply', 0) as string]();
 		const waitTill = this.getNodeParameter('waitTill', 0) as string;
 		if (waitTill) await this.putExecutionToWait(new Date(waitTill));
 		return [[{ json: { reference } }]];
