@@ -43,6 +43,16 @@ export type VersionedWorkflowSettingKey = {
 
 export type VersionedWorkflowSettings = Pick<IWorkflowSettings, VersionedWorkflowSettingKey>;
 
+const isVersionedEntry = (
+	entry: [string, WorkflowSettingScope],
+): entry is [VersionedWorkflowSettingKey, 'version'] => entry[1] === 'version';
+
+const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = Object.entries(
+	WORKFLOW_SETTINGS_SCOPE,
+)
+	.filter(isVersionedEntry)
+	.map(([key]) => key);
+
 const VERSIONED_SETTING_DEFAULTS: Readonly<Required<VersionedWorkflowSettings>> = Object.freeze({
 	engineType: 'v1',
 });
@@ -69,13 +79,9 @@ export function versionedSettingsEqual(
 }
 
 /** Returns the settings without the version-scoped keys. */
-export function omitVersionedSettings(settings: IWorkflowSettings): IWorkflowSettings;
 export function omitVersionedSettings(
-	settings: IWorkflowSettings | null | undefined,
-): IWorkflowSettings | null | undefined;
-export function omitVersionedSettings(
-	settings: IWorkflowSettings | null | undefined,
-): IWorkflowSettings | null | undefined {
+	settings: IWorkflowSettings | null,
+): IWorkflowSettings | null {
 	if (!settings) return settings;
 
 	const result = { ...settings };
@@ -89,7 +95,7 @@ export function omitVersionedSettings(
  * default, also when the result is spread over the stored settings.
  */
 export function applyVersionedSettings(
-	settings: IWorkflowSettings | null | undefined,
+	settings: IWorkflowSettings | null,
 	versionSettings?: IWorkflowSettings,
 ): IWorkflowSettings {
 	const versioned = pickVersionedSettings(versionSettings);
