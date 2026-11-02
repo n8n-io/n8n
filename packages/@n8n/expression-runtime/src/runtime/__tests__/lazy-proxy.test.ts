@@ -497,6 +497,7 @@ describe('createDeepLazyProxy', () => {
 			expect(p[2]).toBeUndefined();
 			expect(p[100]).toBeUndefined();
 			expect(mocks.getArrayElement).not.toHaveBeenCalled();
+			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
 		});
 
 		it('non-canonical index strings are rejected', () => {

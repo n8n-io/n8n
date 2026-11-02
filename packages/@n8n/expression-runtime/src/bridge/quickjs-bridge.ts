@@ -6,6 +6,7 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData 
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
+import { isArrayIndexKey } from '../runtime/utils';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
 	defineOwnValue,
@@ -300,13 +301,15 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	return collides ? { __isEscaped: true, __value: result } : result;
 }
 
-const ARRAY_INDEX_PATTERN = /^(?:0|[1-9]\d*)$/;
-
 /** JSON drops the named keys of an array, so an array with named keys goes across in a sentinel. */
 function wrapArrayForGuest(value: unknown[]): unknown {
 	const items = value.map(wrapSpecialValuesForGuest);
-	const namedKeys = Object.keys(value).filter((key) => !ARRAY_INDEX_PATTERN.test(key));
-	if (namedKeys.length === 0) return items;
+	const keys = Object.keys(value);
+	// Own keys list array indices first, so an array without named keys ends on an index.
+	if (keys.length === 0 || isArrayIndexKey(keys[keys.length - 1])) {
+		return items;
+	}
+	const namedKeys = keys.filter((key) => !isArrayIndexKey(key));
 	const record = value as unknown as Record<string, unknown>;
 	const props: Record<string, unknown> = {};
 	namedKeys.forEach((key) => defineOwnValue(props, key, wrapSpecialValuesForGuest(record[key])));

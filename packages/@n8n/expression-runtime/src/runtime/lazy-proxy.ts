@@ -1,6 +1,6 @@
 import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
 import { decodeHostValue } from './transfer-codec';
-import { isKeyOf } from './utils';
+import { isArrayIndexKey, isKeyOf } from './utils';
 
 // ============================================================================
 // Deep Lazy Proxy System
@@ -337,6 +337,9 @@ export function createDeepLazyProxy(
 				const idx = isInArrayBounds(prop);
 				if (idx !== undefined) {
 					return fetchAndCacheArrayElement(idx, prop);
+				}
+				if (isArrayIndexKey(prop)) {
+					return undefined;
 				}
 			}
 

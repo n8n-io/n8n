@@ -936,6 +936,18 @@ describe('Expression - fast native evaluation parity', () => {
 		},
 	);
 
+	test('keeps a named array key that is above the largest array index', () => {
+		const expr = "={{ $('Source').first().json['4294967295'] }}";
+		const json = Object.assign([{ role: 'assistant' }], { '4294967295': 'session-1' });
+		const items = [{ json, pairedItem: { item: 0 } }] as unknown as Array<
+			ReturnType<typeof makeItem>
+		>;
+		const data = runDataFor(items);
+
+		expect(evaluate(expr, false, data, items)).toBe('session-1');
+		expect(evaluate(expr, true, data, items)).toBe('session-1');
+	});
+
 	// extendSyntax rewrites calls to extension-named methods into extend()
 	// dispatch; native evaluation calls natives directly, so its allowlist
 	// must never contain an extension name.
