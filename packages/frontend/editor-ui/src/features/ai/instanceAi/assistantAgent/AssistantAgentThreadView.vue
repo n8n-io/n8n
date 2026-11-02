@@ -29,10 +29,13 @@ import { provideArtifactThread } from '../artifactThread';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
+import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
-import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
+import InstanceAiWorkflowPreview, {
+	type WorkflowFailuresReport,
+} from '../components/InstanceAiWorkflowPreview.vue';
 import NodesAttachmentChips from '../components/NodesAttachmentChips.vue';
 import {
 	MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
@@ -41,6 +44,7 @@ import {
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
 import { INSTANCE_AI_VIEW } from '../constants';
+import { buildFixWithAiPrompt } from '../fixWithAi';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { firstMessageTitle } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -199,6 +203,52 @@ const preview = useCanvasPreview({
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);
+
+// --- Fix-with-AI offer (failure data emitted by the workflow preview) ---
+const failedRun = ref<WorkflowFailuresReport | null>(null);
+const dismissedExecutionId = ref<string | null>(null);
+
+const activeFixWithAiOffer = computed(() => {
+	const run = failedRun.value;
+	if (!run || run.executionId === dismissedExecutionId.value) return null;
+	if (panel.value?.isBusy) return null;
+	return { ...run, workflowName: thread.producedArtifacts.get(run.workflowId)?.name };
+});
+
+function handleWorkflowFailures(report: WorkflowFailuresReport): void {
+	failedRun.value = report;
+}
+
+function handleWorkflowSucceeded(workflowId: string): void {
+	if (failedRun.value?.workflowId === workflowId) failedRun.value = null;
+}
+
+function dismissFixWithAiOffer(): void {
+	const offer = activeFixWithAiOffer.value;
+	if (offer) dismissedExecutionId.value = offer.executionId;
+}
+
+function handleFixWithAiFromOffer(): void {
+	const offer = activeFixWithAiOffer.value;
+	if (!offer) return;
+	dismissedExecutionId.value = offer.executionId;
+	// Names the failed run, so the agent reads that execution instead of
+	// guessing from the list. A run that n8n did not save has no list entry.
+	panel.value?.sendMessageFromOutside(
+		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
+		[],
+		{
+			attachments: [
+				{
+					type: 'workflow',
+					id: offer.workflowId,
+					...(offer.workflowName ? { name: offer.workflowName } : {}),
+					executionId: offer.executionId,
+				},
+			],
+		},
+	);
+}
 
 const activeAgentHref = computed(() => {
 	const agentId = preview.activeAgentId.value;
@@ -426,6 +476,16 @@ function removeStagedNodes(chipId: string): void {
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
 					>
+						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
+						<template v-if="activeFixWithAiOffer" #inline-offers>
+							<InstanceAiFixWithAiPanel
+								:node-name="activeFixWithAiOffer.errors[0].nodeName"
+								:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+								:failed-count="activeFixWithAiOffer.errors.length"
+								@fix-with-ai="handleFixWithAiFromOffer"
+								@dismiss="dismissFixWithAiOffer"
+							/>
+						</template>
 						<template v-if="stagedNodes.length > 0" #composer-attachments>
 							<NodesAttachmentChips
 								v-for="{ id, attachment } in stagedNodes"
@@ -494,6 +554,8 @@ function removeStagedNodes(chipId: string): void {
 							:workflow-id="preview.activeWorkflowId.value"
 							:refresh-key="preview.workflowRefreshKey.value"
 							:execution-result="preview.activeWorkflowExecutionResult.value"
+							@workflow-failures="handleWorkflowFailures"
+							@workflow-succeeded="handleWorkflowSucceeded"
 						/>
 						<InstanceAiDataTablePreview
 							v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

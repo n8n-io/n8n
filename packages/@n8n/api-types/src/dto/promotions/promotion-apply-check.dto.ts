@@ -287,6 +287,7 @@ export const promotionPreviewCheckSchema = promotionApplyCheckSchema.extend({
 });
 
 export type PromotionBindingProject = z.infer<typeof promotionBindingProjectSchema>;
+export type PromotionMissingProject = z.infer<typeof promotionMissingProjectSchema>;
 export type PromotionBindingConsumer = z.infer<typeof promotionBindingConsumerSchema>;
 export type PromotionVariableScope = z.infer<typeof promotionVariableScopeSchema>;
 export type PromotionCredentialExpressionData = z.infer<

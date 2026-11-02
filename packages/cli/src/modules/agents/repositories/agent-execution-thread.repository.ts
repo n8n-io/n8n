@@ -512,6 +512,14 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
+	 * Store a generated title and emoji on a thread that has no title yet. A
+	 * title that the user set before the generated one arrived stays.
+	 */
+	async setGeneratedTitle(threadId: string, title: string, emoji: string | null): Promise<void> {
+		await this.update({ id: threadId, title: IsNull() }, { title, ...(emoji && { emoji }) });
+	}
+
+	/**
 	 * Move a top-level private session of a user with an agent to another
 	 * project, with its chat attachments. Returns false when no such session
 	 * exists. The caller must check that the user can use the target project,

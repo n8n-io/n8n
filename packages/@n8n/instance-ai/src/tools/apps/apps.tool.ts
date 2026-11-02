@@ -3,13 +3,15 @@ import {
 	appAgentBindingSchema,
 	appBindingKeySchema,
 	appBindingSchema,
+	appBlueprintResumeSchema,
+	appBlueprintSchema,
 	appDataTableBindingSchema,
-	appNameSchema,
-	appNamespaceSchema,
 	type AppBinding,
 	type AppBuildResponse,
+	type AppBlueprint,
 	appWorkflowBindingSchema,
 } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
@@ -32,14 +34,12 @@ const MAX_LOG_CHARS = 4000;
 const appIdSchema = z.string().uuid().describe('ID of the app');
 
 const labelSchema = z.string().max(255).describe('Short summary of the change set');
+const appBlueprintProposalSchema = appBlueprintSchema.omit({ additionalInstructions: true });
 
 const inputSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z.literal('create'),
-		name: appNameSchema.describe('Display name of the app'),
-		namespace: appNamespaceSchema.describe(
-			'Subdomain label of the app URL: lowercase letters, digits and single hyphens',
-		),
+		blueprint: appBlueprintProposalSchema.describe('The app you propose to build'),
 	}),
 	z.object({
 		action: z.literal('list'),
@@ -67,6 +67,7 @@ const inputSchema = z.discriminatedUnion('action', [
 ]);
 
 type Input = z.infer<typeof inputSchema>;
+type NonCreateInput = Exclude<Input, { action: 'create' }>;
 
 function commitResult({ versionId, status, diagnostics }: AppBuildResponse) {
 	return {
@@ -104,29 +105,40 @@ async function reportChangedApp(
 	}
 }
 
-async function open(workspace: Workspace, apps: InstanceAiAppService, appId: string) {
+async function open(
+	context: InstanceAiContext,
+	workspace: Workspace,
+	apps: InstanceAiAppService,
+	appId: string,
+) {
 	await installSdk(workspace, apps);
 	const baseVersionId = await readBaseVersion(workspace, appId);
-	if (baseVersionId !== undefined)
-		return { path: appFolder(appId), baseVersionId, alreadyOpen: true };
-	return { path: appFolder(appId), baseVersionId: await checkOutDraft(workspace, apps, appId) };
+	const result =
+		baseVersionId !== undefined
+			? { path: appFolder(appId), baseVersionId, alreadyOpen: true }
+			: { path: appFolder(appId), baseVersionId: await checkOutDraft(workspace, apps, appId) };
+	await reportChangedApp(context, appId, async () => await apps.getApp(appId));
+	return result;
 }
 
 async function createApp(
 	context: InstanceAiContext,
-	workspace: Workspace,
 	apps: InstanceAiAppService,
-	input: Extract<Input, { action: 'create' }>,
+	blueprint: AppBlueprint,
 ) {
 	const pending = await readPendingAppTarget(context);
 	const pendingId = pending?.projectId === context.projectId ? pending?.appId : undefined;
 	const existing = pendingId ? await apps.findApp(pendingId) : undefined;
 	const app =
 		existing ??
-		(await apps.createApp({ name: input.name, namespace: input.namespace, id: pendingId }));
-	const { path } = await open(workspace, apps, app.id);
+		(await apps.createApp({
+			name: blueprint.name,
+			namespace: blueprint.namespace,
+			visibility: blueprint.visibility,
+			id: pendingId,
+		}));
 	await reportChangedApp(context, app.id, async () => app);
-	return existing ? { app, path, alreadyCreated: true } : { app, path };
+	return existing ? { app, alreadyCreated: true } : { app };
 }
 
 async function commit(
@@ -195,11 +207,9 @@ async function handle(
 	context: InstanceAiContext,
 	workspace: Workspace,
 	apps: InstanceAiAppService,
-	input: Input,
+	input: NonCreateInput,
 ) {
 	switch (input.action) {
-		case 'create':
-			return await createApp(context, workspace, apps, input);
 		case 'list': {
 			const { data, count } = await apps.listApps({ name: input.search });
 			return {
@@ -216,7 +226,7 @@ async function handle(
 		case 'get':
 			return { app: await apps.getApp(input.appId) };
 		case 'open':
-			return await open(workspace, apps, input.appId);
+			return await open(context, workspace, apps, input.appId);
 		case 'bindings':
 			return await apps.getBindings(input.appId);
 		case 'bind': {
@@ -248,17 +258,64 @@ export function createAppsTool(context: InstanceAiContext) {
 		.description(
 			'Build n8n Apps: small static Vue apps that n8n builds and hosts. ' +
 				'Load `app-builder` via `load_skill` before calling this tool. ' +
-				'`create` and `open` put the app source into the sandbox workspace. Edit it there with the ' +
-				'workspace tools. `commit` saves the folder as one version and builds it. ' +
+				'`create` shows an editable blueprint and creates the app only after approval. ' +
+				'After an approved `create`, call `open` with the returned `app.id` before editing files. ' +
+				'Use the approved blueprint, including additional instructions, while building. ' +
+				'If the user cancels, do not create the app. ' +
+				'`open` puts the app source into the sandbox workspace. Edit it there with the workspace tools. ' +
+				'`commit` saves the folder as one version and builds it. ' +
 				'`bindings` lists the workflows, data tables and agents that the app can call. ' +
 				'`bind` adds or replaces one binding and `unbind` removes one. Each change saves a new version.',
 		)
 		.input(sanitizeInputSchema(inputSchema))
-		.handler(async (input: Input) => {
+		.suspend(
+			z.object({
+				requestId: z.string(),
+				message: z.string(),
+				severity: z.literal('info'),
+				inputType: z.literal('app-blueprint'),
+				appBlueprint: appBlueprintSchema,
+			}),
+		)
+		.resume(appBlueprintResumeSchema)
+		.handler(async (input: Input, ctx) => {
 			const apps = context.appService;
 			const workspace = context.workspace;
 			if (!apps || !workspace) return { error: 'Apps are not available in this conversation.' };
+
 			try {
+				if (input.action === 'create') {
+					const resumeData = ctx.resumeData;
+					if (!resumeData) {
+						return await ctx.suspend({
+							requestId: nanoid(),
+							message: `Review the blueprint for ${input.blueprint.name}`,
+							severity: 'info',
+							inputType: 'app-blueprint',
+							appBlueprint: input.blueprint,
+						});
+					}
+					if (!resumeData.approved) {
+						return {
+							approved: false,
+							blueprint: resumeData.blueprint,
+						};
+					}
+					const blueprint = resumeData.blueprint;
+					try {
+						return {
+							approved: true,
+							blueprint,
+							...(await createApp(context, apps, blueprint)),
+						};
+					} catch (error) {
+						return {
+							approved: true,
+							blueprint,
+							error: error instanceof Error ? error.message : String(error),
+						};
+					}
+				}
 				return await handle(context, workspace, apps, input);
 			} catch (error) {
 				return { error: error instanceof Error ? error.message : String(error) };
