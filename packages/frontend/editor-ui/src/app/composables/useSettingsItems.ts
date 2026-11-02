@@ -200,7 +200,7 @@ export function useSettingsItems() {
 					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
 				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
 			},
-			// Operations (modules add Log streaming at 40 and OpenTelemetry at 50)
+			// Operations (modules add Promotions at 20, Log streaming at 40 and OpenTelemetry at 50)
 			{
 				id: 'settings-source-control',
 				order: 10,
