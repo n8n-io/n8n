@@ -19,6 +19,16 @@ describe('Test N8n Node', () => {
 				relations: [{ userId: 'user-456', role: 'project:editor' }],
 			})
 			.reply(201);
+
+		const { pinData: userPinData } = await import('./user.get.workflow.json');
+		nock(baseUrl)
+			.get('/users/123e4567-e89b-12d3-a456-426614174000')
+			.query({ includeRole: 'false' })
+			.reply(200, userPinData['Get by ID'][0].json);
+		nock(baseUrl)
+			.get('/users/jane.doe%40example.com')
+			.query({ includeRole: 'true' })
+			.reply(200, userPinData['Get by email'][0].json);
 	});
 
 	new NodeTestHarness().setupTests({ credentials });

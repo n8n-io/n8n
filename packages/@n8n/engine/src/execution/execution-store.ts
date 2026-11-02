@@ -28,7 +28,7 @@ interface BaseExecutionRecord {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;
-	/** The execution that started this one, or `null` for a top-level one. */
+	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
 }
 
@@ -64,6 +64,9 @@ export interface ExecutionStore {
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;
+
+	/** Load only an execution's status. Throws `ExecutionNotFoundError` if absent. */
+	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
 
 	/**
 	 * The outputs the caller seeded for the given steps, by step key id. A key

@@ -81,6 +81,7 @@ export class SubAgentSourceResolver {
 			const version = await this.agentHistoryRepository.findByVersionAndAgentId(
 				source.versionId,
 				source.agentId,
+				{},
 			);
 			if (!version) {
 				throw new NotFoundError(

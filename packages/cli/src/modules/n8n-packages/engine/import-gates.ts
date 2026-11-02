@@ -73,7 +73,7 @@ export function assertDataTableWritesAllowed(
 
 /**
  * Plan-derived: a project or instance skill can change other Agents, so its write needs the
- * matching API-key scope. The skills of one Agent need only the Agent scopes.
+ * matching API-key scope.
  */
 export function assertSharedSkillWritesAllowed(
 	apiKeyScopes: string[] | undefined,

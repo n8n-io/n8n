@@ -9,6 +9,8 @@ export type {
 export { stepKeyId } from './execution.types';
 export type {
 	CallerContext,
+	SubExecutionResult,
+	SubExecutionResumeCause,
 	ExecutionMode,
 	ExecutionStatus,
 	ExecutorWaitDeclaration,
@@ -49,4 +51,9 @@ export {
 } from './wait-sweeper';
 export { ExecutionFileCleanup } from './execution-file-cleanup';
 export { ResumeRejectedError, ResumeRequestService } from './resume-request.service';
-export type { ResumeHold, ResumeRejection, ResumeTarget } from './resume-request.service';
+export type {
+	ResumeHold,
+	ResumeLocation,
+	ResumeRejection,
+	ResumeTarget,
+} from './resume-request.service';

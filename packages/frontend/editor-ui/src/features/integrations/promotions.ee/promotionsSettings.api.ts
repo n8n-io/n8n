@@ -12,6 +12,7 @@ import type {
 	PromotionCheckoutPublicDto,
 	PromotionEnvironmentPublicDto,
 	PromotionEnvironmentSummary,
+	PromotionMissingProjectListPublicDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	PromotionProviderCreatedPublicDto,
@@ -148,6 +149,17 @@ export const fetchPromotionEnvironment = async (
 		method: 'GET',
 		baseURL: context.baseUrl,
 		endpoint: `${promotionsApiRoot}/environments/${encodeURIComponent(id)}`,
+	});
+
+/** Projects in the Apply package whose IDs do not exist on this instance. */
+export const fetchMissingPromotionProjects = async (
+	context: PublicApiContext,
+	environmentId: string,
+): Promise<PromotionMissingProjectListPublicDto> =>
+	await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: `${promotionsApiRoot}/environments/${encodeURIComponent(environmentId)}/missing-projects`,
 	});
 
 export const createPromotionEnvironment = async (

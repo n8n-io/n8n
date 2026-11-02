@@ -1,4 +1,4 @@
-import type { AgentPlanTaskRef } from '@n8n/api-types';
+import type { AgentPlanTaskRef, AgentToolOutputFile, AgentToolSkippedFile } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
@@ -44,6 +44,8 @@ export type AgentBackgroundJobSettlement = {
 	status: Exclude<AgentBackgroundJobStatus, 'running' | 'suspended' | 'paused'>;
 	result?: string | null;
 	error?: string | null;
+	files?: AgentToolOutputFile[] | null;
+	skippedFiles?: AgentToolSkippedFile[] | null;
 };
 
 export type ExpectedBackgroundJobState = {
@@ -64,6 +66,7 @@ export type BackgroundJobGroupItem = Pick<
 	| 'pauseRequestId'
 	| 'planId'
 	| 'planTaskId'
+	| 'files'
 >;
 
 @Service()
@@ -176,6 +179,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				'pauseRequestId',
 				'planId',
 				'planTaskId',
+				'files',
 			],
 			order: { createdAt: 'ASC' },
 		});
@@ -299,16 +303,19 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	}
 
 	async findSettledSubAgentsWithCheckpoints(): Promise<AgentBackgroundJob[]> {
+		// Use EXISTS, not a join with DISTINCT: Postgres cannot compare the json columns.
+		const checkpoint = this.createQueryBuilder()
+			.subQuery()
+			.select('1')
+			.from(AgentCheckpoint, 'checkpoint')
+			.where('checkpoint.agentId = job.subAgentId')
+			.andWhere('checkpoint.threadId = job.childThreadId')
+			.andWhere('checkpoint.state IS NOT NULL')
+			.getQuery();
 		return await this.createQueryBuilder('job')
-			.innerJoin(
-				AgentCheckpoint,
-				'checkpoint',
-				'checkpoint.agentId = job.subAgentId AND checkpoint.threadId = job.childThreadId',
-			)
 			.where("job.kind = 'subagent'")
 			.andWhere("job.status NOT IN ('running', 'suspended', 'paused')")
-			.andWhere('checkpoint.state IS NOT NULL')
-			.distinct(true)
+			.andWhere(`EXISTS ${checkpoint}`)
 			.getMany();
 	}
 
@@ -632,6 +639,8 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				status: settlement.status,
 				result: settlement.result ?? (settlement.status === 'cancelled' ? () => '"result"' : null),
 				error: settlement.error ?? null,
+				files: settlement.files ?? null,
+				skippedFiles: settlement.skippedFiles ?? null,
 				settledAt: new Date(),
 				notifiedAt:
 					settlement.status === 'cancelled' || expected?.status === 'paused'

@@ -1,7 +1,10 @@
 import type {
 	AvailableCredentialTypesResponse,
 	AvailableTypesResponse,
+	CredentialTransferPreview,
+	FolderTransferPreview,
 	SubWorkflowPolicyCheckResponse,
+	WorkflowTransferPreview,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -34,4 +37,38 @@ export async function fetchSubWorkflowPolicyCheck(
 		'GET',
 		`/workflows/${parentWorkflowId}/sub-workflows/${subWorkflowId}/policy-check`,
 	);
+}
+
+export async function fetchWorkflowTransferPreview(
+	context: IRestApiContext,
+	workflowId: string,
+	destinationProjectId: string,
+): Promise<WorkflowTransferPreview> {
+	return await makeRestApiRequest(context, 'GET', `/workflows/${workflowId}/transfer-preview`, {
+		destinationProjectId,
+	});
+}
+
+export async function fetchFolderTransferPreview(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+	destinationProjectId: string,
+): Promise<FolderTransferPreview> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/folders/${folderId}/transfer-preview`,
+		{ destinationProjectId },
+	);
+}
+
+export async function fetchCredentialTransferPreview(
+	context: IRestApiContext,
+	credentialId: string,
+	destinationProjectId: string,
+): Promise<CredentialTransferPreview> {
+	return await makeRestApiRequest(context, 'GET', `/credentials/${credentialId}/transfer-preview`, {
+		destinationProjectId,
+	});
 }

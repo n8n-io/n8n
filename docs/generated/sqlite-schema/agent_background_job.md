@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "notifiedAt" datetime(3), "parentResourceId" varchar(255) NOT NULL, "parentPrincipalHash" varchar(64) NOT NULL, "pauseRequestId" varchar, "sourceExecutionId" varchar(36), "planId" varchar, "planTaskId" varchar, CONSTRAINT "CHK_agent_background_job_kind" CHECK ((((("kind" IN ('subagent', 'workflow')))))), CONSTRAINT "CHK_agent_background_job_status" CHECK (("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled'))), CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_4db3b7ebea4ed4f69649982018c" FOREIGN KEY ("sourceExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL, CONSTRAINT "FK_ce131bff629d89015893e350e9c" FOREIGN KEY ("planId") REFERENCES "agent_plan" ("id") ON DELETE SET NULL)
+CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "notifiedAt" datetime(3), "parentResourceId" varchar(255) NOT NULL, "parentPrincipalHash" varchar(64) NOT NULL, "pauseRequestId" varchar, "sourceExecutionId" varchar(36), "planId" varchar, "planTaskId" varchar, "files" text, "skippedFiles" text, CONSTRAINT "CHK_agent_background_job_kind" CHECK (((((("kind" IN ('subagent', 'workflow'))))))), CONSTRAINT "CHK_agent_background_job_status" CHECK ((("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled')))), CONSTRAINT "FK_ce131bff629d89015893e350e9c" FOREIGN KEY ("planId") REFERENCES "agent_plan" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_4db3b7ebea4ed4f69649982018c" FOREIGN KEY ("sourceExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -19,6 +19,7 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | childThreadId | varchar(128) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | error | TEXT |  | true |  |  |  |
+| files | TEXT |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
 | notifiedAt | datetime(3) |  | true |  |  |  |
@@ -31,6 +32,7 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | planTaskId | varchar |  | true |  |  |  |
 | result | TEXT |  | true |  |  |  |
 | settledAt | datetime(3) |  | true |  |  |  |
+| skippedFiles | TEXT |  | true |  |  |  |
 | sourceExecutionId | varchar(36) |  | true |  | [agent_execution](agent_execution.md) |  |
 | status | varchar(16) |  | false |  |  |  |
 | subAgentId | varchar(36) |  | true |  |  |  |
@@ -43,11 +45,11 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ((((("kind" IN ('subagent', 'workflow')))))) |
-| - | CHECK | CHECK (("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled'))) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - | CHECK | CHECK (((((("kind" IN ('subagent', 'workflow'))))))) |
+| - | CHECK | CHECK ((("status" IN ('running', 'suspended', 'paused', 'completed', 'failed', 'cancelled')))) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (sourceExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (parentAgentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_background_job_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -79,6 +81,7 @@ erDiagram
   varchar_128_ childThreadId
   datetime_3_ createdAt
   TEXT error
+  TEXT files
   varchar_36_ id PK
   varchar_16_ kind
   datetime_3_ notifiedAt
@@ -91,6 +94,7 @@ erDiagram
   varchar planTaskId
   TEXT result
   datetime_3_ settledAt
+  TEXT skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
