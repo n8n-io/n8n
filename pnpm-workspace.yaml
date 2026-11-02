@@ -291,6 +291,7 @@ catalog:
   knip: ^6.35.1
   openapi-types: 12.1.3
   google-auth-library: 10.9.1
+  '@microsoft/mxc-sdk': 1.0.0
 
 catalogMode: strict
 
@@ -546,9 +547,11 @@ allowBuilds:
   esbuild: false
   eslint-plugin-n8n-nodes-base: false
   isolated-vm: true
+  koffi: false
   lefthook: false
   libpq: false
   msgpackr-extract: false
+  node-pty: false
   oracledb: false
   protobufjs: false
   puppeteer: false
