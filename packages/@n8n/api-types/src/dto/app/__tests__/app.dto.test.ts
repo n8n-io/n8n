@@ -35,14 +35,14 @@ describe('app DTOs', () => {
 		expect(CreateAppDto.safeParse({ name, namespace: 'app' }).success).toBe(false);
 	});
 
-	it.each(['public', 'project', 'instance'])('accepts %s visibility', (visibility) => {
+	it.each(['project', 'instance'])('accepts %s visibility', (visibility) => {
 		expect(CreateAppDto.parse({ name: 'App', namespace: 'app', visibility }).visibility).toBe(
 			visibility,
 		);
 		expect(UpdateAppDto.parse({ visibility }).visibility).toBe(visibility);
 	});
 
-	it.each(['none', 'n8n', 'private', ''])('rejects visibility %j', (visibility) => {
+	it.each(['public', 'none', 'n8n', 'private', ''])('rejects visibility %j', (visibility) => {
 		expect(CreateAppDto.safeParse({ name: 'App', namespace: 'app', visibility }).success).toBe(
 			false,
 		);

@@ -126,7 +126,7 @@ const isRowList = <R>(value: unknown): value is { data: R[] } =>
 	isRecord(value) && Array.isArray(value.data);
 const isRowPage = <R>(value: unknown): value is { count: number; data: R[] } =>
 	isRecord(value) && Array.isArray(value.data) && typeof value.count === 'number';
-const isMe = (value: unknown): value is MeResponse => isRecord(value) && 'user' in value;
+const isMe = (value: unknown): value is MeResponse => isRecord(value) && isRecord(value.user);
 const isBindingList = (value: unknown): value is RuntimeBinding[] => Array.isArray(value);
 const isMessages = (value: unknown): value is AgentChatMessagesResponse =>
 	isRecord(value) && Array.isArray(value.messages) && Array.isArray(value.openSuspensions);

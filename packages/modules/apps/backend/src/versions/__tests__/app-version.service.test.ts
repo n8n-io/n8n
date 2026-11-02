@@ -49,7 +49,12 @@ function createService() {
 
 describe('AppVersionService', () => {
 	describe('copyDraft', () => {
-		const next: AppBinding = { key: 'tasks', kind: 'dataTable', dataTableId: 't1', permissions: ['read'] };
+		const next: AppBinding = {
+			key: 'tasks',
+			kind: 'dataTable',
+			dataTableId: 't1',
+			permissions: ['read'],
+		};
 
 		it('saves the draft with the new bindings and its label, then prunes', async () => {
 			const { service, versions, sourceVersions, retention, version } = createService();

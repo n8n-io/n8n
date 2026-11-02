@@ -21,7 +21,6 @@ const tableRead: AppBinding = {
 	dataTableId: 't1',
 	permissions: ['read'],
 };
-const tableWrite: AppBinding = { ...tableRead, key: 'notes', permissions: ['read', 'insert'] };
 const workflow: AppBinding = { key: 'submit', kind: 'workflow', workflowId: 'w1' };
 const agentChat: AppBinding = {
 	key: 'support',
@@ -29,7 +28,6 @@ const agentChat: AppBinding = {
 	agentId: 'a1',
 	permissions: ['chat', 'history'],
 };
-const agentHistory: AppBinding = { ...agentChat, key: 'archive', permissions: ['history'] };
 
 const DRAFT_ID = '0190a8d6-4a2e-7000-8000-0000000000d1';
 const NEW_ID = '0190a8d6-4a2e-7000-8000-0000000000d2';
@@ -188,18 +186,6 @@ describe('AppBindingsService', () => {
 		await expect(service.getBindings('p2', APP_ID)).rejects.toThrow('App not found');
 	});
 
-	it('warns about write access on a public app only', async () => {
-		const publicApp = setup({ visibility: 'public', bindings: [tableRead, tableWrite, workflow] });
-		const { warnings } = await publicApp.service.getBindings('p1', APP_ID);
-		expect(warnings.filter((w) => w.code === 'public_write_access').map((w) => w.key)).toEqual([
-			'notes',
-			'submit',
-		]);
-
-		const projectApp = setup({ bindings: [tableWrite] });
-		expect((await projectApp.service.getBindings('p1', APP_ID)).warnings).toEqual([]);
-	});
-
 	it('keeps a binding whose resource left the project and marks it missing', async () => {
 		const { service, dataTables } = setup({ bindings: [tableRead] });
 		dataTables.describe.mockResolvedValue(null);
@@ -220,16 +206,6 @@ describe('AppBindingsService', () => {
 		const { bindings } = await service.getBindings('p1', APP_ID);
 		expect(agents.describe).toHaveBeenCalledWith('p1', agentChat);
 		expect(bindings).toEqual([expect.objectContaining({ key: 'support', name: 'Support' })]);
-	});
-
-	it('warns about agent chat on a public app, but not about history only', async () => {
-		const { service } = setup({ visibility: 'public', bindings: [agentChat, agentHistory] });
-
-		const { warnings } = await service.getBindings('p1', APP_ID);
-
-		expect(warnings.filter((w) => w.code === 'public_write_access').map((w) => w.key)).toEqual([
-			'support',
-		]);
 	});
 
 	it('warns about an unpublished workflow', async () => {

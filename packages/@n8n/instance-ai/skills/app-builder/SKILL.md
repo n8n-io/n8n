@@ -95,16 +95,19 @@ project under a key. The app uses the key, never a resource ID.
    be in the project of the app. The key is a short camelCase name, for
    example `tasks`. `bind` with an existing key replaces that binding.
 3. Remove a binding that the app no longer uses with `unbind` and its `key`.
-4. Grant only the permissions that the app uses. A public app gives every
-   visitor its bindings without sign-in. Ask the user before you give a public
-   app write access, a workflow or agent chat.
+4. Grant only the permissions that the app uses. Every visitor who can open
+   the app can use its bindings. On an `instance` app, this is every user of
+   the instance. Ask the user before you give an `instance` app write access, a
+   workflow or agent chat.
 5. Read `warnings` in each result. A missing resource or an unpublished
    workflow or agent gives the app an error. Tell the user about it.
 
 Each binding change saves a new version of the app, like a commit. You can
-change bindings before the first commit and while the app folder is open. The
-open folder stays valid, so you do not need to `discard`. The live app gets
-the new bindings when the user publishes.
+change bindings before the first commit and while the app folder is open. A
+binding change keeps an open folder on the current draft, so you do not need
+to `discard`. If a commit fails because someone else saved a newer draft, call
+`discard` and open the app again. The live app gets the new bindings when the
+user publishes.
 
 Import the client from `@n8n/app-sdk`. It calls the API of the app origin, so
 it works on the preview and on the published app:
@@ -124,7 +127,7 @@ await n8n.tables.tasks.update({ filters: [{ columnName: 'id', value: 1 }] }, { d
 // Agent: `text()` reads the whole reply. Iterate the chat to stream events.
 const reply = await n8n.agents.support.chat(message).text();
 
-// Visitor: `user` is null on a public app.
+// Visitor: the signed-in n8n user.
 const { user } = await n8n.me();
 ```
 
@@ -134,7 +137,7 @@ Show the user a short error message, and a loading state while a call runs.
 ## Several apps
 
 One conversation can build several apps for one requirement, for example a
-public dashboard and an admin app. Create one app for each audience or access
+dashboard for all users and an admin app for the project. Create one app for each audience or access
 level. Each app has its own folder. Commit each app separately and always pass
 the right `appId`.
 

@@ -28,7 +28,7 @@ const userCtx: AppCallContext = {
 	namespace: 'crm',
 	projectId: 'project-1',
 	bindingKey: 'support',
-	visitor: { type: 'user', userId: 'user-1' },
+	userId: 'user-1',
 };
 
 async function collect(events: AsyncIterable<AgentSseEvent>) {
@@ -181,7 +181,7 @@ describe('AppAgentAdapter', () => {
 	it('scopes memory to the app and the visitor', async () => {
 		const { adapter, orchestrator } = setup();
 		orchestrator.executeForChatPublished.mockImplementation(async function* () {});
-		const other: AppCallContext = { ...userCtx, visitor: { type: 'user', userId: 'user-2' } };
+		const other: AppCallContext = { ...userCtx, userId: 'user-2' };
 
 		await adapter.chat(
 			userCtx,
@@ -207,26 +207,6 @@ describe('AppAgentAdapter', () => {
 		expect(first.projectId).toBe('project-1');
 		expect(first.integrationType).toBe('app');
 		expect(first.allowBackgroundTasks).toBe(false);
-	});
-
-	it('stores a hash of an anonymous visitor ID', async () => {
-		const { adapter, orchestrator } = setup();
-		orchestrator.executeForChatPublished.mockImplementation(async function* () {});
-		const anonymous: AppCallContext = {
-			...userCtx,
-			visitor: { type: 'anonymous', id: 'secret-cookie' },
-		};
-
-		await adapter.chat(
-			anonymous,
-			'agent-1',
-			{ message: 'Hi', sessionId: SESSION },
-			new AbortController().signal,
-		);
-
-		const [config] = orchestrator.executeForChatPublished.mock.calls[0];
-		expect(config.memory.resourceId).toMatch(/^app:app-1:anon:[a-f0-9]{64}$/);
-		expect(config.memory.threadId).not.toContain('secret-cookie');
 	});
 
 	it('refuses a new message while a run waits for an answer', async () => {

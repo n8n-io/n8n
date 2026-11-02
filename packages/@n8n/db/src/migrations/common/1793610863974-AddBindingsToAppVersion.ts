@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddBindingsToAppVersion1793350678513 implements ReversibleMigration {
+export class AddBindingsToAppVersion1793610863974 implements ReversibleMigration {
 	async up({ runQuery, escape, isPostgres }: MigrationContext) {
 		const table = escape.tableName('app_version');
 		const column = escape.columnName('bindings');

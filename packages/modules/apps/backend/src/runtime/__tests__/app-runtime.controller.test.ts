@@ -75,10 +75,7 @@ function request(
 		// Like Express, `is` answers null for a request without a body.
 		is: (type: string) =>
 			options.body === undefined ? null : headers['content-type']?.startsWith(type) ? type : false,
-		appRuntime:
-			options.runtime === false
-				? undefined
-				: { app, bindings, user, visitor: { type: 'user', userId: 'user-1' } },
+		appRuntime: options.runtime === false ? undefined : { app, bindings, user },
 	} as unknown as AppRuntimeRequest<{ key: string; executionId: string }>;
 }
 
@@ -100,7 +97,6 @@ function response() {
 function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) {
 	const auth = mock<AppAuthService>();
 	auth.admit.mockResolvedValue({ ok: true, app, security: { subject: user } as never });
-	auth.anonymousVisitorId.mockReturnValue('visitor-1');
 	const preview = mock<AppPreviewService>();
 	preview.admit.mockResolvedValue({
 		app,
@@ -231,17 +227,7 @@ describe('AppRuntimeController', () => {
 			await controller.prepare(req, response(), next);
 
 			expect(next).toHaveBeenCalled();
-			expect(req.appRuntime?.visitor).toEqual({ type: 'user', userId: 'user-1' });
-		});
-
-		it('identifies a visitor of a public app by the visitor cookie', async () => {
-			const { controller, auth } = setup();
-			auth.admit.mockResolvedValue({ ok: true, app: { ...app, visibility: 'public' } as App });
-			const req = request({ runtime: false });
-
-			await controller.prepare(req, response(), vi.fn());
-
-			expect(req.appRuntime?.visitor).toEqual({ type: 'anonymous', id: 'visitor-1' });
+			expect(req.appRuntime?.user).toEqual(user);
 		});
 
 		it('serves the bindings of the published version', async () => {
@@ -287,7 +273,6 @@ describe('AppRuntimeController', () => {
 			expect(auth.admit).not.toHaveBeenCalled();
 			expect(versions.findVersionById).toHaveBeenCalledWith(DRAFT_ID);
 			expect(req.appRuntime?.bindings).toEqual(draftBindings);
-			expect(req.appRuntime?.visitor).toEqual({ type: 'user', userId: 'editor-1' });
 			expect(req.appRuntime?.user).toEqual({
 				id: 'editor-1',
 				email: 'e@b.c',

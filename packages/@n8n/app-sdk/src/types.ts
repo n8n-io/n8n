@@ -36,9 +36,8 @@ export interface AppUser {
 }
 
 export interface MeResponse {
-	/** `null` on a public app, where visitors do not sign in. */
-	user: AppUser | null;
-	visibility: 'public' | 'project' | 'instance';
+	user: AppUser;
+	visibility: 'project' | 'instance';
 }
 
 export type RuntimeBinding =

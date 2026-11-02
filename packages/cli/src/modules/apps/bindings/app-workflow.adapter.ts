@@ -12,7 +12,6 @@ import {
 	AppsConfig,
 	AppWorkflowPort,
 	type AppCallContext,
-	type AppVisitor,
 } from '@n8n/backend-module-apps';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
@@ -29,7 +28,6 @@ import {
 	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -76,11 +74,8 @@ function isRunStatus(status: string): status is AppWorkflowRunStatus {
 	return RUN_STATUSES.includes(status);
 }
 
-/** Stores a hash for anonymous visitors, so the raw cookie value never reaches the database. */
-function visitorTag(visitor: AppVisitor): string {
-	return visitor.type === 'user'
-		? `user:${visitor.userId}`
-		: `anonymous:${createHash('sha256').update(visitor.id).digest('hex')}`;
+function visitorTag(ctx: AppCallContext): string {
+	return `user:${ctx.userId}`;
 }
 
 function isDataObject(value: unknown): value is IDataObject {
@@ -236,7 +231,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			execution.workflowId !== workflowId ||
 			metadata?.[META_APP_ID] !== ctx.appId ||
 			metadata?.[META_BINDING_KEY] !== ctx.bindingKey ||
-			metadata?.[META_VISITOR] !== visitorTag(ctx.visitor)
+			metadata?.[META_VISITOR] !== visitorTag(ctx)
 		) {
 			throw notFound;
 		}
@@ -280,7 +275,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 					metadata: {
 						[META_APP_ID]: ctx.appId,
 						[META_BINDING_KEY]: ctx.bindingKey,
-						[META_VISITOR]: visitorTag(ctx.visitor),
+						[META_VISITOR]: visitorTag(ctx),
 					},
 				},
 				executionData: {
@@ -334,17 +329,16 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			return { executionId, status: runStatus, output };
 		}
 
-		const rawError = data?.resultData?.error?.message;
-		// The raw error can name hosts, tables, and credentials of a private workflow.
 		this.logger.warn('App workflow run did not succeed.', {
 			appId: ctx.appId,
 			bindingKey: ctx.bindingKey,
 			executionId,
 			status: runStatus,
-			error: rawError,
 		});
 		const failure: AppWorkflowRunResult = { executionId, status: runStatus, output: [] };
 		if (runStatus !== 'error') return failure;
+		// The raw error can name hosts, tables, and credentials of a private workflow.
+		const rawError = data?.resultData?.error?.message;
 		const failedNode = nodes.find((node) => node.name === data?.resultData.lastNodeExecuted);
 		const error =
 			failedNode?.type === STOP_AND_ERROR_NODE_TYPE && rawError

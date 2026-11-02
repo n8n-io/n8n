@@ -18,15 +18,6 @@ import { AppRepository } from '../app.repository';
 import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppChangeService } from '../versions/app-change.service';
 
-const WRITE_TABLE_PERMISSIONS = new Set(['insert', 'update', 'delete']);
-
-/** Bindings that let any visitor change data or start work. */
-function grantsPublicWriteAccess(binding: AppBinding): boolean {
-	if (binding.kind === 'workflow') return true;
-	if (binding.kind === 'agent') return binding.permissions.includes('chat');
-	return binding.permissions.some((permission) => WRITE_TABLE_PERMISSIONS.has(permission));
-}
-
 export function toRuntimeBinding(binding: AppBinding): AppRuntimeBinding {
 	if (binding.kind === 'workflow') return { key: binding.key, kind: binding.kind };
 	if (binding.kind === 'dataTable') {
@@ -96,7 +87,7 @@ export class AppBindingsService {
 	}
 
 	async describe(
-		app: Pick<App, 'projectId' | 'visibility'>,
+		app: Pick<App, 'projectId'>,
 		versionId: string | null,
 		versionBindings: AppBinding[],
 	): Promise<AppBindingsResponse> {
@@ -120,13 +111,6 @@ export class AppBindingsService {
 					key: binding.key,
 					code: 'resource_unpublished',
 					message: `"${described.name}" is not published. The app gets an error until you publish it.`,
-				});
-			}
-			if (app.visibility === 'public' && grantsPublicWriteAccess(binding)) {
-				warnings.push({
-					key: binding.key,
-					code: 'public_write_access',
-					message: `The app is public. Anyone with the app URL can use binding "${binding.key}" without signing in.`,
 				});
 			}
 		}

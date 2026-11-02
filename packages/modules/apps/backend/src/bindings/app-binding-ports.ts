@@ -25,14 +25,13 @@ import type { User } from '@n8n/db';
  * that the resource belongs to `ctx.projectId`.
  */
 
-export type AppVisitor = { type: 'user'; userId: string } | { type: 'anonymous'; id: string };
-
 export interface AppCallContext {
 	appId: string;
 	namespace: string;
 	projectId: string;
 	bindingKey: string;
-	visitor: AppVisitor;
+	/** The signed-in visitor. */
+	userId: string;
 }
 
 export type AppRow = Record<string, unknown>;

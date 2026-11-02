@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { AppVisibility } from './app.schema';
 import { dataTableFilterSchema } from './data-table-filter.schema';
 import { dataTableColumnNameSchema, dataTableColumnValueSchema } from './data-table.schema';
 
@@ -107,7 +108,7 @@ export type AppDescribedBinding =
 
 export type AppBindingWarning = {
 	key: string;
-	code: 'public_write_access' | 'resource_missing' | 'resource_unpublished';
+	code: 'resource_missing' | 'resource_unpublished';
 	message: string;
 };
 
@@ -130,8 +131,8 @@ export type AppRuntimeMeResponse = {
 		email: string | null;
 		firstName: string | null;
 		lastName: string | null;
-	} | null;
-	visibility: 'public' | 'project' | 'instance';
+	};
+	visibility: AppVisibility;
 };
 
 export const APP_RUNTIME_ERROR_CODES = [

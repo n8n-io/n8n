@@ -34,11 +34,15 @@ afterEach(() => {
 
 describe('createClient', () => {
 	it('calls the same-origin app API with the app request header', async () => {
-		fetchMock.mockResolvedValue(json({ user: null, visibility: 'public' }));
+		const body = {
+			user: { id: 'user-1', email: 'ada@example.com', firstName: 'Ada', lastName: null },
+			visibility: 'project',
+		};
+		fetchMock.mockResolvedValue(json(body));
 
 		const me = await createClient().me();
 
-		expect(me).toEqual({ user: null, visibility: 'public' });
+		expect(me).toEqual(body);
 		const { url, init } = lastCall();
 		expect(url).toBe('/_n8n/api/v1/me');
 		expect(init.credentials).toBe('same-origin');

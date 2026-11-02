@@ -153,7 +153,7 @@ describe('AppsService', () => {
 		const dto = UpdateAppDto.parse({
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 		const app = mock<App>({
 			id: appId,
@@ -176,7 +176,7 @@ describe('AppsService', () => {
 			projectId: 'project-1',
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',

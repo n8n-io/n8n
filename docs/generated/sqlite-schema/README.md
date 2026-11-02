@@ -52,9 +52,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) | 4 |  | table |
 | [ai_preference](ai_preference.md) | 8 |  | table |
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
-| [app](app.md) | 10 |  | table |
+| [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
-| [app_version](app_version.md) | 10 |  | table |
+| [app_version](app_version.md) | 11 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -962,7 +962,6 @@ erDiagram
   datetime_3_ updatedAt
 }
 "app" {
-  TEXT bindings
   datetime_3_ createdAt
   varchar draftVersionId FK
   varchar id PK
@@ -985,6 +984,7 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  TEXT bindings
   INTEGER buildAttempts
   varchar_16_ buildStatus
   datetime_3_ buildStatusUpdatedAt

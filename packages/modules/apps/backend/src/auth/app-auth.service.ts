@@ -23,7 +23,7 @@ export interface AppRequest extends Request {
 }
 
 export type AppAdmission =
-	| { ok: true; app: App; security?: SecurityContext }
+	| { ok: true; app: App; security: SecurityContext }
 	| { ok: false; app: App; reason: 'unauthenticated' | 'insufficient_scope' };
 
 @Service()
@@ -49,7 +49,6 @@ export class AppAuthService {
 	/** Resolves the published app of the request host and checks the visitor's session. */
 	async admit(req: Request): Promise<AppAdmission> {
 		const app = await this.requireApp(req);
-		if (app.visibility === 'public') return { ok: true, app };
 		const resource = this.resources.forApp(app);
 		const request = { method: req.method, url: this.hosts.callbackUrl(app), ip: req.ip ?? '' };
 		const result = await this.admission.admitBearer(
@@ -169,22 +168,6 @@ export class AppAuthService {
 			maxAge: result.expiresIn * 1000,
 		});
 		res.redirect(this.returnPath(result.metadata.returnPath));
-	}
-
-	/**
-	 * Returns the ID of an anonymous visitor and sets its cookie when it is new.
-	 * Agent conversations of public apps are scoped by this ID.
-	 */
-	anonymousVisitorId(req: Request, res: Response): string {
-		const name = appCookieName(this.hosts.baseUrl, 'visitor');
-		const existing = readCookie(req, name);
-		if (existing && /^[a-f0-9]{64}$/.test(existing)) return existing;
-		const id = randomBytes(32).toString('hex');
-		res.cookie(name, id, {
-			...appCookieOptions(this.hosts.baseUrl),
-			maxAge: 365 * 24 * 60 * 60 * 1000,
-		});
-		return id;
 	}
 
 	private returnPath(value: string | undefined): string {

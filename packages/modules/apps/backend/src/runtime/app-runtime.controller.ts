@@ -45,7 +45,6 @@ import {
 	AppWorkflowPort,
 	type AppAgentTurn,
 	type AppCallContext,
-	type AppVisitor,
 } from '../bindings/app-binding-ports';
 import { toRuntimeBinding } from '../bindings/app-bindings.service';
 import { AppRuntimeError } from '../bindings/app-runtime.error';
@@ -68,8 +67,7 @@ interface AppRuntimeContext {
 	app: App;
 	/** The bindings of the served version: the published one, or the one a preview session shows. */
 	bindings: AppBinding[];
-	visitor: AppVisitor;
-	user?: AppRuntimeUser;
+	user: AppRuntimeUser;
 }
 
 /** The app host of the request. A preview host serves a version that can be an unpublished draft. */
@@ -78,7 +76,7 @@ type AppRuntimeHost = { kind: 'published' | 'preview'; namespace: string };
 interface AppRuntimeAdmission {
 	app: App;
 	versionId: string | null;
-	user?: AppRuntimeUser;
+	user: AppRuntimeUser;
 }
 
 export interface AppRuntimeRequest<P = Record<string, string>> extends Request<P> {
@@ -138,14 +136,7 @@ export class AppRuntimeController {
 				host?.kind === 'preview' ? await this.admitPreview(req) : await this.admitPublished(req);
 			const bindings = await this.servedBindings(app, versionId);
 			await this.parseBody(req, res);
-			req.appRuntime = {
-				app,
-				bindings,
-				user,
-				visitor: user
-					? { type: 'user', userId: user.id }
-					: { type: 'anonymous', id: this.auth.anonymousVisitorId(req, res) },
-			};
+			req.appRuntime = { app, bindings, user };
 			next();
 		} catch (error) {
 			this.sendError(res, error);
@@ -157,14 +148,12 @@ export class AppRuntimeController {
 		await this.answer(res, () => {
 			const { app, user } = this.context(req);
 			const body: AppRuntimeMeResponse = {
-				user: user
-					? {
-							id: user.id,
-							email: user.email ?? null,
-							firstName: user.firstName ?? null,
-							lastName: user.lastName ?? null,
-						}
-					: null,
+				user: {
+					id: user.id,
+					email: user.email ?? null,
+					firstName: user.firstName ?? null,
+					lastName: user.lastName ?? null,
+				},
 				visibility: app.visibility,
 			};
 			return body;
@@ -332,7 +321,7 @@ export class AppRuntimeController {
 		return {
 			app: admission.app,
 			versionId: admission.app.publishedVersionId,
-			user: admission.security?.subject,
+			user: admission.security.subject,
 		};
 	}
 
@@ -397,7 +386,7 @@ export class AppRuntimeController {
 				? AppAgentPermission
 				: never,
 	): { ctx: AppCallContext; binding: Extract<AppBinding, { kind: K }> } {
-		const { app, bindings, visitor } = this.context(req);
+		const { app, bindings, user } = this.context(req);
 		const { key } = req.params;
 		const binding = bindings.find(
 			(candidate): candidate is Extract<AppBinding, { kind: K }> =>
@@ -428,7 +417,7 @@ export class AppRuntimeController {
 				namespace: app.namespace,
 				projectId: app.projectId,
 				bindingKey: key,
-				visitor,
+				userId: user.id,
 			},
 		};
 	}

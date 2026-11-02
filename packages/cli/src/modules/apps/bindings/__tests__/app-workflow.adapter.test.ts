@@ -5,7 +5,6 @@ import type { WorkflowEntity } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { IRun } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -23,7 +22,7 @@ const ctx: AppCallContext = {
 	namespace: 'crm',
 	projectId: 'project-1',
 	bindingKey: 'submit',
-	visitor: { type: 'user', userId: 'user-1' },
+	userId: 'user-1',
 };
 
 const nodes = [
@@ -65,6 +64,7 @@ function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
 	const finder = mock<WorkflowFinderService>();
 	const activeExecutions = mock<ActiveExecutions>();
 	activeExecutions.has.mockReturnValue(false);
+	const logger = mock<Logger>();
 	const adapter = new AppWorkflowAdapter(
 		loader,
 		finder,
@@ -74,9 +74,9 @@ function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
 		executions,
 		mock<AppsConfig>({ apiMaxConcurrentRuns: maxRuns, apiRunWaitMs: waitMs }),
 		mock<GlobalConfig>(),
-		mock<Logger>(),
+		logger,
 	);
-	return { adapter, loader, executions, runner, finder, activeExecutions };
+	return { adapter, loader, executions, runner, finder, activeExecutions, logger };
 }
 
 const passthroughTrigger = {
@@ -137,11 +137,23 @@ describe('AppWorkflowAdapter', () => {
 			});
 		});
 
-		it('hides the error text of a private node', async () => {
+		it('does not report a run in an unknown state as a success', async () => {
 			const { adapter, executions } = setup();
 			executions.findSingleExecution.mockResolvedValue(
-				execution({ error: 'password authentication failed for user "admin"' }) as never,
+				execution({ status: 'unknown', runData: queryRunData }) as never,
 			);
+
+			expect(await adapter.getRun(ctx, 'workflow-1', '12')).toEqual({
+				executionId: '12',
+				status: 'unknown',
+				output: [],
+			});
+		});
+
+		it('hides the error text of a private node from the visitor and the log', async () => {
+			const { adapter, executions, logger } = setup();
+			const rawError = 'password authentication failed for user "admin"';
+			executions.findSingleExecution.mockResolvedValue(execution({ error: rawError }) as never);
 
 			expect(await adapter.getRun(ctx, 'workflow-1', '12')).toEqual({
 				executionId: '12',
@@ -149,6 +161,7 @@ describe('AppWorkflowAdapter', () => {
 				output: [],
 				error: 'The workflow failed.',
 			});
+			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain(rawError);
 		});
 
 		it('shows the message of a Stop and Error node', async () => {
@@ -311,34 +324,6 @@ describe('AppWorkflowAdapter', () => {
 				executionId: '12',
 				status: 'success',
 				output: [{ id: 1, ok: true }],
-			});
-		});
-
-		it('matches an anonymous visitor by the hash of the visitor ID', async () => {
-			const { adapter, executions } = setup();
-			const anonymous: AppCallContext = {
-				...ctx,
-				visitor: { type: 'anonymous', id: 'secret-cookie' },
-			};
-			const hash = createHash('sha256').update('secret-cookie').digest('hex');
-			const metadata = { appId: 'app-1', appBindingKey: 'submit' };
-
-			executions.findSingleExecution.mockResolvedValue(
-				execution({
-					status: 'success',
-					runData: queryRunData,
-					metadata: { ...metadata, appVisitor: `anonymous:${hash}` },
-				}) as never,
-			);
-			expect(await adapter.getRun(anonymous, 'workflow-1', '12')).toMatchObject({
-				status: 'success',
-			});
-
-			executions.findSingleExecution.mockResolvedValue(
-				execution({ metadata: { ...metadata, appVisitor: 'anonymous:secret-cookie' } }) as never,
-			);
-			await expect(adapter.getRun(anonymous, 'workflow-1', '12')).rejects.toMatchObject({
-				code: 'run_not_found',
 			});
 		});
 	});

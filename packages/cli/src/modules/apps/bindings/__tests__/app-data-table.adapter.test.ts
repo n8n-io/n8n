@@ -19,7 +19,7 @@ const ctx: AppCallContext = {
 	namespace: 'crm',
 	projectId: 'project-1',
 	bindingKey: 'tasks',
-	visitor: { type: 'user', userId: 'user-1' },
+	userId: 'user-1',
 };
 const user = mock<User>();
 

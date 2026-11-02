@@ -17,7 +17,6 @@ import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
-import { createHash } from 'node:crypto';
 
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -216,13 +215,9 @@ export class AppAgentAdapter extends AppAgentPort {
 		);
 	}
 
-	/** One thread per app, visitor, and session. Anonymous IDs are hashed before they reach storage. */
+	/** One thread per app, visitor, and session. */
 	private memoryScope(ctx: AppCallContext, bound: BoundAgent, sessionId: string) {
-		const visitor =
-			ctx.visitor.type === 'user'
-				? `user:${ctx.visitor.userId}`
-				: `anon:${createHash('sha256').update(ctx.visitor.id).digest('hex')}`;
-		const resourceId = `app:${ctx.appId}:${visitor}`;
+		const resourceId = `app:${ctx.appId}:user:${ctx.userId}`;
 		return { threadId: `${bound.agentId}:${resourceId}:${sessionId}`, resourceId };
 	}
 

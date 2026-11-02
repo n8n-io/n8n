@@ -139,7 +139,7 @@ describe('AppProtectedResource', () => {
 			id: 'user',
 			role: { slug: 'global:member', scopes: [] },
 		});
-		app.visibility = 'public';
+		app.visibility = 'instance';
 
 		expect(await resource.canRead(app, user)).toBe(true);
 		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);

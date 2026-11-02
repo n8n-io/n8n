@@ -1,11 +1,14 @@
 import { Tool, type Workspace } from '@n8n/agents';
 import {
+	appAgentBindingSchema,
 	appBindingKeySchema,
 	appBindingSchema,
+	appDataTableBindingSchema,
 	appNameSchema,
 	appNamespaceSchema,
 	type AppBinding,
 	type AppBuildResponse,
+	appWorkflowBindingSchema,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -48,9 +51,11 @@ const inputSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z.literal('bind'),
 		appId: appIdSchema,
-		binding: appBindingSchema.describe(
-			'The binding to add. It replaces the binding with the same key. Use the ID of a workflow, data table or agent in the app project.',
-		),
+		binding: z
+			.union([appWorkflowBindingSchema, appDataTableBindingSchema, appAgentBindingSchema])
+			.describe(
+				'The binding to add. It replaces the binding with the same key. Use the ID of a workflow, data table or agent in the app project.',
+			),
 	}),
 	z.object({
 		action: z.literal('unbind'),

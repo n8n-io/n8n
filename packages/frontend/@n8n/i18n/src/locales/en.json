@@ -324,7 +324,6 @@
 	"apps.card.published": "Published",
 	"apps.card.draft": "Draft",
 	"apps.card.updated": "Last updated",
-	"apps.card.visibility.public": "Public",
 	"apps.card.visibility.project": "Project members",
 	"apps.card.visibility.instance": "All users",
 	"apps.delete.title": "Delete app?",

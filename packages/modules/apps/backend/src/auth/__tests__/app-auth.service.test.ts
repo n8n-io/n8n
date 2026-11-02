@@ -66,18 +66,18 @@ function setup(visibility: App['visibility'] = 'project') {
 }
 
 describe('AppAuthService', () => {
-	it('serves public apps without an authentication lookup', async () => {
-		const { service, req, res, admission } = setup('public');
-		const next = vi.fn();
-		await service.authenticate(req, res, next);
-		expect(next).toHaveBeenCalledOnce();
-		expect(admission.admitBearer).not.toHaveBeenCalled();
-	});
-
-	it('requires publication even for a public app', async () => {
-		const { service, req, res, apps } = setup('public');
+	it('requires a published app', async () => {
+		const { service, req, res, apps } = setup('instance');
 		apps.findByNamespace.mockResolvedValue(null);
 		await expect(service.authenticate(req, res, vi.fn())).rejects.toThrow('App not found');
+	});
+
+	it('authenticates instance apps with the session cookie', async () => {
+		const { service, req, res, admission } = setup('instance');
+		const next = vi.fn();
+		await service.authenticate(req, res, next);
+		expect(admission.admitBearer).toHaveBeenCalledOnce();
+		expect(next).toHaveBeenCalledOnce();
 	});
 
 	it('authenticates app requests with the session cookie', async () => {

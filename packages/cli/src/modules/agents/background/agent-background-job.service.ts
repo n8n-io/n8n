@@ -10,7 +10,10 @@ import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { collectResultData } from '@/workflows/callable/callable-workflow-result';
+import {
+	collectResultData,
+	collectResultItems,
+} from '@/workflows/callable/callable-workflow-result';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';

@@ -16,7 +16,6 @@ export {
 	type AppAgentTurn,
 	type AppCallContext,
 	type AppRow,
-	type AppVisitor,
 } from './bindings/app-binding-ports';
 export { AppRuntimeError } from './bindings/app-runtime.error';
 export { AppBindingsService } from './bindings/app-bindings.service';

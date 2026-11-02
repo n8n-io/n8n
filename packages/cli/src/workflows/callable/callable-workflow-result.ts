@@ -6,6 +6,7 @@ export function normaliseExecutionStatus(status: string | undefined): string {
 	if (status === 'canceled') return 'canceled';
 	if (status === 'running' || status === 'new') return 'running';
 	if (status === 'waiting') return 'waiting';
+	if (status === 'unknown') return 'unknown';
 	return 'success';
 }
 

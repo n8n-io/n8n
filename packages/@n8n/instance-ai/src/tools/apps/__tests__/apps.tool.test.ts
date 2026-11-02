@@ -352,6 +352,17 @@ describe('apps tool', () => {
 				}).success,
 			).toBe(false);
 		});
+
+		it.each([
+			{ key: 'support', kind: 'agent', agentId: 'a1', permissions: ['chat', 'history'] },
+			{ key: 'tasks', kind: 'dataTable', dataTableId: 't1', permissions: ['read', 'insert'] },
+		])('accepts the permissions of a $kind binding in the input', (binding) => {
+			const { tool } = setup();
+
+			expect(parseToolInput(tool, { action: 'bind', appId: SERVER_ID, binding }).success).toBe(
+				true,
+			);
+		});
 	});
 
 	it('returns the bindings of the draft with their types', async () => {
