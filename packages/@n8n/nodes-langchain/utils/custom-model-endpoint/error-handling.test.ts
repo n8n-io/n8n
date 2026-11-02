@@ -198,7 +198,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 			headers: { 'content-type': 'application/json' },
 		});
 		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
-			secrets: [KEY],
+			secrets: () => [KEY],
 		});
 
 		expect(await (await wrapped(BASE_URL)).text()).not.toContain(KEY);

@@ -30,6 +30,7 @@ function rawLoginSecrets(login: LoginMethod): string[] {
 		case 'oauth2':
 			return [
 				login.clientSecret,
+				encodeURIComponent(login.clientSecret),
 				Buffer.from(`${login.clientId}:${login.clientSecret}`).toString('base64'),
 			];
 		case 'none':
