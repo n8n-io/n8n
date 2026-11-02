@@ -666,6 +666,87 @@ describe('Folders', () => {
 		expect(foldersStore.fetchTotalWorkflowsAndFoldersCount).not.toHaveBeenCalled();
 		unmount();
 	});
+
+	describe('entering a folder from search results', () => {
+		// Named routes like the real app, so the route-name watchers fire on
+		// project-root -> folder navigation.
+		const namedRouter = createRouter({
+			history: createWebHistory(),
+			routes: [
+				{
+					path: '/projects/:projectId/workflows',
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					component: { template: '<div></div>' },
+				},
+				{
+					path: '/projects/:projectId/folders/:folderId/workflows',
+					name: VIEWS.PROJECTS_FOLDERS,
+					component: { template: '<div></div>' },
+				},
+			],
+		});
+
+		const renderWithNamedRoutes = createComponentRenderer(WorkflowsView, {
+			global: {
+				plugins: [namedRouter],
+			},
+		});
+
+		it('should clear the search when opening a folder from search results', async () => {
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			foldersStore.totalWorkflowCount = 4;
+
+			await namedRouter.push({
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: 'project-1' },
+				query: { search: 'candi' },
+			});
+			await namedRouter.isReady();
+
+			const { getByTestId, unmount } = renderWithNamedRoutes({ pinia });
+			await waitAllPromises();
+
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
+				'project-1',
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({ query: 'candi' }),
+				expect.any(Boolean),
+				expect.any(Boolean),
+			);
+
+			workflowsListStore.fetchWorkflowsPage.mockClear();
+
+			// FolderCard builds the folder URL from the current route query,
+			// so the search term is carried into the folder route.
+			await namedRouter.push({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: 'project-1', folderId: 'folder-1' },
+				query: { search: 'candi' },
+			});
+			await waitAllPromises();
+			await waitAllPromises();
+
+			expect(namedRouter.currentRoute.value.query.search).toBeUndefined();
+			// The folder contents must load unfiltered
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
+				'project-1',
+				expect.any(Number),
+				expect.any(Number),
+				expect.any(String),
+				expect.objectContaining({ query: undefined, parentFolderId: 'folder-1' }),
+				expect.any(Boolean),
+				expect.any(Boolean),
+			);
+			const searchEl = getByTestId('resources-list-search');
+			const searchInput =
+				searchEl instanceof HTMLInputElement ? searchEl : searchEl.querySelector('input');
+			expect(searchInput).toHaveValue('');
+			unmount();
+		});
+	});
 });
 
 describe('Simplified Layout', () => {

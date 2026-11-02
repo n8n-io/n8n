@@ -61,6 +61,8 @@ export interface IntegrationMessageContext {
 	/** Inbound target whose automatic reply is controlled by `replyExpectation`. */
 	replyTarget?: IntegrationMessageTarget;
 	replyMessageId?: string;
+	/** Files that respond queued for the final reply of a run. */
+	queuedFiles?: { runId: string; fileIds: string[] };
 	updatedAt: string;
 }
 
@@ -202,6 +204,8 @@ export interface IntegrationActionParams {
 	runId?: string;
 	toolCallId?: string;
 	currentMessageContext?: IntegrationMessageContext;
+	/** Read scope for `input.fileIds`. Undefined when the run has no thread. */
+	fileScope?: { projectId: string; threadId: string };
 }
 
 export interface IntegrationActionExecutor {

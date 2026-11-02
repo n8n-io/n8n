@@ -1551,6 +1551,21 @@ describe('MigrationRuleDetail', () => {
 	});
 
 	describe('pagination', () => {
+		// Mounting controls and tooltips in all 25 rows can exceed the test timeout.
+		// Other test groups cover these components. Keep the real table and filters here.
+		const renderPaginationComponent = () =>
+			renderComponent({
+				props: { migrationRuleId: 'rule-1' },
+				global: {
+					stubs: {
+						N8nUserSelect: true,
+						FindingStateSelect: true,
+						TimeAgo: true,
+						N8nTooltip: { template: '<slot />' },
+					},
+				},
+			});
+
 		const manyWorkflows = Array.from({ length: 30 }, (_, index) => ({
 			...mockWorkflowWithIssue,
 			id: `wf-${index}`,
@@ -1562,7 +1577,7 @@ describe('MigrationRuleDetail', () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
 			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			renderPaginationComponent();
 
 			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
 			// The header row plus 25 workflow rows.
@@ -1580,7 +1595,7 @@ describe('MigrationRuleDetail', () => {
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
 			);
-			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			renderPaginationComponent();
 			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
 			await userEvent.click(screen.getByTestId('pagination-next'));
 			await waitFor(() => expect(screen.getByText('Paged workflow 25')).toBeInTheDocument());
@@ -1590,6 +1605,8 @@ describe('MigrationRuleDetail', () => {
 			await userEvent.click(within(status).getByRole('radio', { name: 'Published' }));
 
 			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+			expect(screen.getAllByRole('row')).toHaveLength(26);
+			expect(screen.queryByText('Paged workflow 25')).not.toBeInTheDocument();
 		});
 	});
 

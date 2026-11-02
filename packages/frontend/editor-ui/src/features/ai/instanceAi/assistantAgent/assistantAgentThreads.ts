@@ -48,6 +48,10 @@ export function forgetAssistantAgentThread(threadId: string): void {
 	knownAgentThreads.delete(threadId);
 }
 
+export function isKnownAssistantAgentThread(threadId: string): boolean {
+	return knownAgentThreads.has(threadId);
+}
+
 const launchSchema = z.object({
 	projectId: z.string().min(1),
 	source: z.enum(INSTANCE_AI_THREAD_SOURCES),
