@@ -173,8 +173,11 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 			expect(seen.join('')).not.toContain('\uFFFD');
 		});
 
-		it('still redacts a secret split across two chunks', async () => {
-			const seen = await drain(['data: Rejected sk-live-', '9f2a71c4ab\n\n'], [KEY]);
+		it.each([
+			['split across two chunks', ['data: Rejected sk-live-', '9f2a71c4ab\n\n']],
+			['arriving whole', ['data: Rejected sk-live-9f2a71c4ab\n\n']],
+		])('still redacts a secret %s', async (_name, chunks) => {
+			const seen = await drain(chunks, [KEY]);
 
 			expect(seen.join('')).toBe('data: Rejected [redacted]\n\n');
 		});
@@ -187,32 +190,6 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		})(BASE_URL);
 
 		expect(await response.text()).not.toContain(KEY);
-	});
-
-	it.each([
-		['one that straddles two chunks', ['data: Rejected sk-live-', '9f2a71c4ab\n\n']],
-		['one that arrives whole', ['data: Rejected sk-live-9f2a71c4ab\n\n']],
-	])('redacts a secret a 200 stream carries, %s', async (_name, chunks) => {
-		const encoder = new TextEncoder();
-		const body = new ReadableStream<Uint8Array>({
-			start(controller) {
-				chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)));
-				controller.close();
-			},
-		});
-		const streaming = (async () =>
-			new Response(body, {
-				status: 200,
-				headers: { 'content-type': 'text/event-stream' },
-			})) as typeof fetch;
-
-		const response = await wrapCustomModelEndpointErrorFetch(streaming, { secrets: [KEY] })(
-			BASE_URL,
-		);
-		const text = await response.text();
-
-		expect(text).not.toContain(KEY);
-		expect(text).toContain('[redacted]');
 	});
 
 	it('redacts a 200 body whatever the gateway called its content type', async () => {
