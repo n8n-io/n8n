@@ -7,7 +7,16 @@ const SHORTEST_PLAUSIBLE_CREDENTIAL = 8;
 const REDACTED = '[redacted]';
 const UNPARSED = Symbol('unparsed');
 
-function loginSecrets(login: LoginMethod): string[] {
+/** Only values long enough to be a credential: redacting "k" would eat every "key". */
+function plausible(secrets: string[]): string[] {
+	return secrets.filter((secret) => secret.length >= SHORTEST_PLAUSIBLE_CREDENTIAL);
+}
+
+export function loginSecrets(login: LoginMethod): string[] {
+	return plausible(rawLoginSecrets(login));
+}
+
+function rawLoginSecrets(login: LoginMethod): string[] {
 	switch (login.type) {
 		case 'bearer':
 			return [login.token];
@@ -19,19 +28,20 @@ function loginSecrets(login: LoginMethod): string[] {
 				Buffer.from(`${login.username}:${login.password}`).toString('base64'),
 			];
 		case 'oauth2':
-			return [login.clientSecret];
+			return [
+				login.clientSecret,
+				Buffer.from(`${login.clientId}:${login.clientSecret}`).toString('base64'),
+			];
 		case 'none':
 			return [];
 	}
 }
 
 export function endpointSecrets(endpoint: EndpointCredential): string[] {
-	return [...loginSecrets(endpoint.login), ...Object.values(endpoint.gatewayHeaders)].filter(
-		(secret) => secret.length >= SHORTEST_PLAUSIBLE_CREDENTIAL,
-	);
+	return plausible([...loginSecrets(endpoint.login), ...Object.values(endpoint.gatewayHeaders)]);
 }
 
-function redact(text: string, secrets: string[]): string {
+export function redactSecrets(text: string, secrets: string[]): string {
 	return replaceAll(text, bothForms(secrets));
 }
 
@@ -48,7 +58,7 @@ function bothForms(secrets: string[]): string[] {
 }
 
 function redactValues(value: unknown, secrets: string[]): unknown {
-	if (typeof value === 'string') return redact(value, secrets);
+	if (typeof value === 'string') return redactSecrets(value, secrets);
 	if (Array.isArray(value)) return value.map((entry) => redactValues(entry, secrets));
 	if (isRecord(value)) {
 		return Object.fromEntries(
@@ -61,7 +71,7 @@ function redactValues(value: unknown, secrets: string[]): unknown {
 	return value;
 }
 
-function truncate(text: string): string {
+export function truncateMessage(text: string): string {
 	return text.length > MAX_MESSAGE_LENGTH ? `${text.slice(0, MAX_MESSAGE_LENGTH)}…` : text;
 }
 
@@ -88,7 +98,7 @@ function isAlreadyClientShaped(body: Record<string, unknown>): boolean {
  */
 function redactSerialised(text: string, secrets: string[]): string {
 	const parsed = parseJson(text);
-	if (parsed === UNPARSED) return redact(text, secrets);
+	if (parsed === UNPARSED) return redactSecrets(text, secrets);
 
 	const redacted = redactValues(parsed, secrets);
 	if (!isRecord(redacted) || !isRecord(redacted.error)) return JSON.stringify(redacted);
@@ -98,7 +108,7 @@ function redactSerialised(text: string, secrets: string[]): string {
 
 	return JSON.stringify({
 		...redacted,
-		error: { ...redacted.error, message: truncate(message) },
+		error: { ...redacted.error, message: truncateMessage(message) },
 	});
 }
 
@@ -173,16 +183,18 @@ function redactingStream(secrets: string[]): TransformStream<Uint8Array, Uint8Ar
 	});
 }
 
+/** `secrets` is read per response: an OAuth2 access token is minted long after the wrapper is built. */
 export function wrapCustomModelEndpointErrorFetch(
 	baseFetch: typeof fetch,
-	options: { secrets: string[] },
+	options: { secrets: () => string[] },
 ): typeof fetch {
 	return async (input, init) => {
 		const response = await baseFetch(input, init);
 		if (response.ok) {
-			if (!response.body || !options.secrets.length) return response;
+			const streamed = options.secrets();
+			if (!response.body || !streamed.length) return response;
 
-			return new Response(response.body.pipeThrough(redactingStream(options.secrets)), {
+			return new Response(response.body.pipeThrough(redactingStream(streamed)), {
 				status: response.status,
 				statusText: response.statusText,
 				headers: response.headers,
@@ -191,6 +203,7 @@ export function wrapCustomModelEndpointErrorFetch(
 
 		const text = (await response.text()).trim();
 		const message = messageFromBody(text);
+		const secrets = options.secrets();
 
 		const headers = new Headers(response.headers);
 		headers.delete('content-length');
@@ -198,8 +211,8 @@ export function wrapCustomModelEndpointErrorFetch(
 
 		const body =
 			message === undefined
-				? redactSerialised(text, options.secrets)
-				: asClientError(truncate(redact(message, options.secrets)));
+				? redactSerialised(text, secrets)
+				: asClientError(truncateMessage(redactSecrets(message, secrets)));
 
 		return new Response(body, {
 			status: response.status,

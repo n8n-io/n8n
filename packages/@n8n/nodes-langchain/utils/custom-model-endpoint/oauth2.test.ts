@@ -14,13 +14,21 @@ const login = (overrides: Partial<OAuth2Login> = {}): OAuth2Login => ({
 	...overrides,
 });
 
+const redirectOf = (calls: Array<{ redirect?: RequestRedirect }>) => calls[0]?.redirect;
+
 const granting = (body: Record<string, unknown>, status = 200) => {
-	const calls: Array<{ url: string; headers: Headers; body: URLSearchParams }> = [];
+	const calls: Array<{
+		url: string;
+		headers: Headers;
+		body: URLSearchParams;
+		redirect?: RequestRedirect;
+	}> = [];
 	const fetchImpl = async (url: RequestInfo | URL, init?: RequestInit) => {
 		calls.push({
 			url: url.toString(),
 			headers: new Headers(init?.headers ?? {}),
 			body: new URLSearchParams(String(init?.body ?? '')),
+			redirect: init?.redirect,
 		});
 		return new Response(JSON.stringify(body), { status });
 	};
@@ -131,10 +139,38 @@ describe('createClientCredentialsTokenSource', () => {
 		});
 	});
 
+	it('never repeats the Basic blob, which carries the secret too', async () => {
+		const pair = Buffer.from(`client-1:${SECRET}`).toString('base64');
+		const { fetchImpl } = granting({ error_description: `Rejected ${pair}` }, 401);
+		const source = createClientCredentialsTokenSource(login(), fetchImpl);
+
+		const error = await source.getToken().catch((reason: Error) => reason);
+
+		expect(error.message).toContain('[redacted]');
+		expect(error.message).not.toContain(pair);
+	});
+
 	it('fails when the answer carries no access token', async () => {
 		const { fetchImpl } = granting({ token_type: 'Bearer' });
 		const source = createClientCredentialsTokenSource(login(), fetchImpl);
 
 		await expect(source.getToken()).rejects.toThrow('no access token');
+	});
+	it('does not follow a redirect, which would replay the secret to another origin', async () => {
+		const { calls, fetchImpl } = granting(GRANT);
+		await createClientCredentialsTokenSource(login(), fetchImpl).getToken();
+
+		expect(redirectOf(calls)).toBe('manual');
+	});
+
+	it('reports the token it holds, so a gateway echoing it can be redacted', async () => {
+		const { fetchImpl } = granting(GRANT);
+		const source = createClientCredentialsTokenSource(login(), fetchImpl);
+
+		expect(source.currentToken()).toBeUndefined();
+		await source.getToken();
+		expect(source.currentToken()).toBe('tok-abc');
+		source.forgetToken();
+		expect(source.currentToken()).toBeUndefined();
 	});
 });

@@ -1,4 +1,4 @@
-import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
+import { createRefreshingAuthFetch, proxyFetch } from '@n8n/ai-utilities';
 import {
 	assertUrlAllowed,
 	getCredentialAllowedDomains,
@@ -9,9 +9,34 @@ import {
 	type NodeEgressFilter,
 } from 'n8n-workflow';
 
+import { endpointSecrets } from './error-handling';
 import { buildRequestHeaders } from './headers';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
+
+/**
+ * Every hop has to go out through this, the token request included. `validateUrl`
+ * only resolves the name; the dispatcher is what pins that answer for the
+ * connection that follows, so a name that answers twice cannot land elsewhere.
+ */
+export function createEndpointBaseFetch(
+	egressFilter: NodeEgressFilter,
+	timeout?: number,
+): typeof fetch {
+	return async (input, init) =>
+		await proxyFetch({
+			input,
+			init,
+			egressFilter,
+			timeoutOptions: { headersTimeout: timeout, bodyTimeout: timeout },
+		});
+}
+
+export interface CustomModelEndpointTransport {
+	fetch: typeof fetch;
+	/** Read per response: an OAuth2 access token only exists once one has been minted. */
+	secrets: () => string[];
+}
 
 export type CustomModelEndpointFetchContext =
 	| IExecuteFunctions
@@ -42,7 +67,7 @@ export function createCustomModelEndpointAuthFetch(
 		baseFetch: typeof fetch;
 		requestHeaders?: Record<string, string>;
 	},
-): typeof fetch {
+): CustomModelEndpointTransport {
 	const { endpoint, egressFilter, baseFetch, requestHeaders } = options;
 	const node = ctx.getNode();
 	const allowedDomains = getCredentialAllowedDomains({
@@ -72,24 +97,32 @@ export function createCustomModelEndpointAuthFetch(
 		? async () => ({ authorization: `Bearer ${await tokenSource.getToken()}` })
 		: undefined;
 
+	const resolveHeaders = async () => ({
+		...buildRequestHeaders({ endpoint, requestHeaders }),
+		...(await authorization?.()),
+	});
+
 	const authFetch = createRefreshingAuthFetch({
 		baseFetch,
-		resolveHeaders: async () => ({
-			...buildRequestHeaders({ endpoint, requestHeaders }),
-			...(await authorization?.()),
+		resolveHeaders,
+		...(tokenSource && {
+			// The retry is a whole request again, so it needs the gateway headers too
+			refreshHeaders: async () => {
+				tokenSource.forgetToken();
+				return await resolveHeaders();
+			},
 		}),
-		...(tokenSource &&
-			authorization && {
-				refreshHeaders: async () => {
-					tokenSource.forgetToken();
-					return await authorization();
-				},
-			}),
 		assertAllowedUrl,
 	});
 
-	return async (input, init) => {
-		const stripped = withoutInheritedAuthorization(input, init);
-		return await authFetch(stripped.input, stripped.init);
+	return {
+		fetch: async (input, init) => {
+			const stripped = withoutInheritedAuthorization(input, init);
+			return await authFetch(stripped.input, stripped.init);
+		},
+		secrets: () => {
+			const token = tokenSource?.currentToken();
+			return token ? [...endpointSecrets(endpoint), token] : endpointSecrets(endpoint);
+		},
 	};
 }
