@@ -7,19 +7,12 @@ import {
 	N8nDropdownMenuItem,
 	N8nMenuItem,
 	N8nNewBadge,
-	N8nPopover,
 	N8nPreviewBadge,
 	N8nScrollArea,
-	N8nText,
 	isCustomMenuItem,
 	type DropdownMenuItemProps,
 	type IMenuItem,
-	type IMenuElement,
 } from '@n8n/design-system';
-import { CHANGELOG_URL } from '@/app/constants';
-import { useVersionsStore } from '@n8n/stores/versions.store';
-import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
-import { useUsersStore } from '@n8n/stores/users.store';
 import type { SettingsSectionGroup } from '@/app/composables/useSettingsItems';
 
 import { useI18n } from '@n8n/i18n';
@@ -40,12 +33,9 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const versionsStore = useVersionsStore();
-const usersStore = useUsersStore();
 
 const i18n = useI18n();
 
-const isHelpOpen = ref(false);
 const isSettingsOpen = ref(false);
 
 /** A settings row keeps its menu item in `data`, so the trailing slot can show its tags. */
@@ -89,51 +79,6 @@ function handleSettingsSelect(key: string) {
 	handleSelect(key);
 }
 
-const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>(() => ({
-	available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
-	children: [
-		...versionsStore.whatsNewArticles.map(
-			(article) =>
-				({
-					id: `whats-new-article-${article.id}`,
-					label: article.title,
-					size: 'small',
-					customIconSize: 'small',
-					icon: {
-						type: 'emoji',
-						value: '•',
-						color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
-					},
-				}) satisfies IMenuItem,
-		),
-		{
-			id: 'full-changelog',
-			icon: 'external-link',
-			label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
-			link: {
-				href: CHANGELOG_URL,
-				target: '_blank',
-			},
-			size: 'small',
-			customIconSize: 'small',
-		},
-		...(versionsStore.hasVersionUpdates
-			? [
-					{
-						id: 'version-upgrade-cta',
-						component: VersionUpdateCTA,
-						props: {
-							tooltipText: !usersStore.canUserUpdateVersion
-								? i18n.baseText('whatsNew.updateNudgeTooltip')
-								: undefined,
-							disabled: !usersStore.canUserUpdateVersion,
-						},
-					},
-				]
-			: []),
-	],
-}));
-
 function handleSelect(key: string) {
 	emit('select', key);
 }
@@ -152,54 +97,11 @@ function onLogout() {
 	>
 		<div :class="$style.bottomMenuItems">
 			<template v-for="item in items" :key="item.id">
-				<!-- Help popover -->
-				<N8nPopover
-					v-if="item.children && item.id === 'help'"
-					key="help"
-					v-model:open="isHelpOpen"
-					side="right"
-					align="end"
-				>
-					<template #content>
-						<div :class="$style.popover">
-							<template v-for="child in item.children" :key="child.id">
-								<component
-									:is="child.component"
-									v-if="isCustomMenuItem(child)"
-									v-bind="child.props"
-								/>
-								<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
-							</template>
-							<template v-if="whatsNewItems.available">
-								<N8nText bold size="small" :class="$style.popoverTitle" color="text-light"
-									>What's new</N8nText
-								>
-								<template v-for="child in whatsNewItems.children" :key="child.id">
-									<component
-										:is="child.component"
-										v-if="isCustomMenuItem(child)"
-										v-bind="child.props"
-									/>
-									<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
-								</template>
-							</template>
-						</div>
-					</template>
-					<template #trigger>
-						<N8nMenuItem
-							:data-test-id="`main-sidebar-${item.id}`"
-							:item="item"
-							:compact="isCollapsed"
-							:active="isHelpOpen"
-							@click="() => handleSelect(item.id)"
-						/>
-					</template>
-				</N8nPopover>
 				<!-- Settings menu. The height cap keeps it from filling a tall screen; the links
 				     scroll in their own area, with faded edges as a hint that they do, and Sign out
 				     stays below it. On a short screen the available height wins. -->
 				<N8nDropdownMenu
-					v-else-if="item.children && item.id === 'settings'"
+					v-if="item.children && item.id === 'settings'"
 					key="settings"
 					v-model="isSettingsOpen"
 					:items="settingsEntries"
@@ -293,18 +195,6 @@ function onLogout() {
 	:global(.n8n-text) {
 		color: var(--color--primary);
 	}
-}
-
-.popover {
-	padding: var(--spacing--4xs);
-	min-width: 260px;
-}
-
-.popoverTitle {
-	display: block;
-	margin-bottom: var(--spacing--3xs);
-	padding-left: var(--spacing--3xs);
-	margin-top: var(--spacing--xs);
 }
 
 /* The dropdown lays its trigger out inline, which shrinks the row to its label. */
