@@ -88,6 +88,13 @@ import {
 	type ToggleWorkflowsMcpAccessResponse,
 } from '@n8n/frontend-module-mcp';
 import {
+	parseExecutionBlockCauses,
+	useTypeAvailabilityPoliciesStore,
+	WontExecuteCallout,
+	WontExecuteFilter,
+} from '@n8n/frontend-module-type-availability-policies';
+import type { WorkflowExecutionBlockCause } from '@n8n/api-types';
+import {
 	type Project,
 	type ProjectSharingData,
 	ProjectTypes,
@@ -126,6 +133,7 @@ interface Filters extends BaseFilters {
 	status: string | boolean;
 	showArchived: boolean;
 	tags: string[];
+	executionBlockedBy: WorkflowExecutionBlockCause[];
 }
 
 const StatusFilter = {
@@ -175,6 +183,7 @@ const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
 const agentListStore = useAgentListStore();
 const trialIntroModalStore = useTrialIntroModalStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -202,6 +211,7 @@ const filters = ref<Filters>({
 	status: StatusFilter.ALL,
 	showArchived: false,
 	tags: [],
+	executionBlockedBy: [],
 });
 
 const workflowListEventBus = createEventBus<WorkflowListEventMap>();
@@ -575,12 +585,20 @@ const showReadyToRunWorkflowsCallout = computed(() => {
 	);
 });
 
+// When the module is off, the backend returns no workflows for this filter.
+const isWontExecuteFilterActive = computed(
+	() => typeAvailabilityPoliciesStore.isEnabled && filters.value.executionBlockedBy.length > 0,
+);
+
+const showWontExecuteCallout = computed(() => isWontExecuteFilterActive.value && !loading.value);
+
 const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
 		filters.value.showArchived ||
-		filters.value.tags.length
+		filters.value.tags.length ||
+		isWontExecuteFilterActive.value
 	);
 });
 
@@ -885,8 +903,14 @@ const fetchWorkflows = async () => {
 
 	const archivedFilter = filters.value.showArchived ? undefined : false;
 
-	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
-	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
+	const executionBlockedBy = isWontExecuteFilterActive.value
+		? filters.value.executionBlockedBy
+		: undefined;
+
+	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied.
+	// The folder query ignores these filters, so folders would stay in the list and in the count.
+	const fetchFolders =
+		showFolders.value && !tags.length && activeFilter === undefined && !executionBlockedBy;
 
 	try {
 		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
@@ -899,6 +923,7 @@ const fetchWorkflows = async () => {
 				active: activeFilter,
 				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
+				executionBlockedBy,
 				parentFolderId: getParentFolderId(parentFolder),
 			},
 			fetchFolders,
@@ -939,7 +964,8 @@ const fetchWorkflows = async () => {
 			projectPages.isOverviewSubPage ||
 			projectPages.isSharedSubPage ||
 			filters.value.search !== '' ||
-			filters.value.tags.length > 0;
+			filters.value.tags.length > 0 ||
+			isWontExecuteFilterActive.value;
 
 		return fetchedResources;
 	} catch (error) {
@@ -973,8 +999,8 @@ const getParentFolderId = (routeId?: string) => {
 		return undefined;
 	}
 
-	// If filtering by tags, search across all folders
-	if (filters.value.tags.length > 0) {
+	// If filtering by tags or by execution blockers, search across all folders
+	if (filters.value.tags.length > 0 || isWontExecuteFilterActive.value) {
 		return undefined;
 	}
 
@@ -1061,6 +1087,12 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.tags;
 	}
 
+	if (filters.value.executionBlockedBy.length) {
+		currentQuery.executionBlockedBy = filters.value.executionBlockedBy.join(',');
+	} else {
+		delete currentQuery.executionBlockedBy;
+	}
+
 	if (filters.value.homeProject) {
 		currentQuery.homeProject = filters.value.homeProject;
 	} else {
@@ -1075,7 +1107,8 @@ const saveFiltersOnQueryString = () => {
 const setFiltersFromQueryString = async () => {
 	const { fullPath } = route;
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived, executionBlockedBy } =
+		route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -1118,6 +1151,17 @@ const setFiltersFromQueryString = async () => {
 	} else {
 		delete newQuery.tags;
 	}
+
+	const validCauses =
+		typeAvailabilityPoliciesStore.isEnabled && isValidString(executionBlockedBy)
+			? parseExecutionBlockCauses(executionBlockedBy.split(','))
+			: [];
+	if (validCauses.length) {
+		newQuery.executionBlockedBy = validCauses.join(',');
+	} else {
+		delete newQuery.executionBlockedBy;
+	}
+	filters.value.executionBlockedBy = validCauses;
 
 	// Handle status
 	if (isValidString(status)) {
@@ -1264,6 +1308,11 @@ const dismissStarterCollectionCallout = () => {
 
 const onShowArchived = async () => {
 	filters.value.showArchived = true;
+	await onFiltersUpdated();
+};
+
+const onClearWontExecuteFilter = async () => {
+	filters.value.executionBlockedBy = [];
 	await onFiltersUpdated();
 };
 
@@ -2269,6 +2318,13 @@ const onNameSubmit = async (name: string) => {
 			</ProjectHeader>
 		</template>
 		<template #callout>
+			<WontExecuteCallout
+				v-if="showWontExecuteCallout"
+				:count="workflowsListStore.totalWorkflowCount"
+				:causes="filters.executionBlockedBy"
+				:class="$style['easy-ai-workflow-callout']"
+				@clear="onClearWontExecuteFilter"
+			/>
 			<N8nCallout
 				v-if="showAIStarterCollectionCallout"
 				theme="secondary"
@@ -2532,6 +2588,12 @@ const onNameSubmit = async (name: string) => {
 					:model-value="filters.showArchived || false"
 					data-test-id="show-archived-checkbox"
 					@update:model-value="setKeyValue('showArchived', $event)"
+				/>
+			</div>
+			<div v-if="typeAvailabilityPoliciesStore.isEnabled" class="mb-s">
+				<WontExecuteFilter
+					:model-value="filters.executionBlockedBy"
+					@update:model-value="setKeyValue('executionBlockedBy', $event)"
 				/>
 			</div>
 		</template>
