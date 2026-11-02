@@ -326,6 +326,24 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter by label.');
 	});
 
+	it('should follow the reasoning sentence on the subline as it streams', async () => {
+		const agentNode = makeAgentNode({ status: 'active' });
+		const { getByTestId, rerender } = renderComponent({
+			props: {
+				agentNode,
+				entries: [reasoning('Figuring out the trigger. Gmail can filter')],
+				active: true,
+			},
+		});
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter');
+
+		await rerender({
+			entries: [reasoning('Figuring out the trigger. Gmail can filter by label')],
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter by label');
+	});
+
 	it('should show "Thinking" on the subline until reasoning adds to the title', () => {
 		// The title already shows the first sentence, so the subline does not repeat it.
 		const tc = makeToolCall({ toolCallId: 'tc-1' });

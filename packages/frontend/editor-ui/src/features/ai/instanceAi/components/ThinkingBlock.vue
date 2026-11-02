@@ -10,7 +10,7 @@ import { useNow } from '@vueuse/core';
 import { computed } from 'vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
-import { firstSentence, latestSentence } from '../../shared/thinking.utils';
+import { currentSentence, firstSentence } from '../../shared/thinking.utils';
 import { useActiveToolLabel } from '../composables/useRunActivity';
 import { useSteadyValue } from '../composables/useSteadyValue';
 
@@ -46,9 +46,9 @@ const activeToolLabel = useActiveToolLabel();
 const now = useNow({ interval: 1000 });
 const { getInstanceContextLabel } = useInstanceContextLabel();
 
-/** The newest reasoning sentence, unless the title already shows it. */
+/** The reasoning sentence being written, unless the title already shows it. */
 function reasoningLabel(content: string): string | undefined {
-	const sentence = latestSentence(content);
+	const sentence = currentSentence(content);
 	return sentence && sentence !== firstSentence(content) ? sentence : undefined;
 }
 
@@ -78,20 +78,29 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	return toolCallsById.value[last.toolCallId];
 });
 
+function asActivity(text: string | undefined) {
+	return text === undefined ? undefined : { key: text, text };
+}
+
 /** Reuse the context row label while it is the latest active entry. */
-const activityLabel = computed<string | undefined>(() => {
+const activity = computed<{ key: string; text: string } | undefined>(() => {
 	const toolCall = tailToolCall.value;
-	if (toolCall) return toolCallLabel(toolCall);
+	if (toolCall) return asActivity(toolCallLabel(toolCall));
 
 	if (!props.active || props.awaitingInput) return undefined;
-	const last = props.entries[props.entries.length - 1];
-	if (last?.type === 'reasoning') return reasoningLabel(last.content);
-	if (last?.type === 'skill-update') return skillUpdateLabel(last);
-	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
+	const index = props.entries.length - 1;
+	const last = props.entries[index];
+	if (last?.type === 'reasoning') {
+		// One key for the whole segment, so the subline follows the stream at once.
+		const text = reasoningLabel(last.content);
+		return text === undefined ? undefined : { key: `reasoning-${index}`, text };
+	}
+	if (last?.type === 'skill-update') return asActivity(skillUpdateLabel(last));
+	return last?.type === 'instance-context' ? asActivity(getInstanceContextLabel(last)) : undefined;
 });
 
 // Held steady like the status bar, so short steps do not flash.
-const steadyActivityLabel = useSteadyValue(() => activityLabel.value, { key: (label) => label });
+const steadyActivity = useSteadyValue(() => activity.value, { key: (value) => value.key });
 
 const segments = computed(() => {
 	return props.entries.filter(
@@ -126,7 +135,7 @@ const durationSec = computed<number | undefined>(() => {
 		:segments="segments"
 		:active="props.active"
 		:awaiting-input="props.awaitingInput"
-		:activity-label="steadyActivityLabel"
+		:activity-label="steadyActivity?.text"
 		:duration-sec="durationSec"
 		test-id="instance-ai-thinking-block"
 	>

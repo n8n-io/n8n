@@ -13,7 +13,7 @@ import { useNow } from '@vueuse/core';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-import { latestSentence } from '../../shared/thinking.utils';
+import { currentSentence } from '../../shared/thinking.utils';
 
 import { useSteadyValue } from './useSteadyValue';
 import { getAgentActivityKey, getAgentSectionTitle, isActiveBuilderAgent } from '../builderAgents';
@@ -24,6 +24,8 @@ export interface RunActivity {
 	detail?: string;
 	/** The run waits on the user: a question, an approval or credentials. */
 	waiting?: true;
+	/** The text follows streaming reasoning, so it changes with each token. */
+	streaming?: true;
 }
 
 /** The activity as one line, the way the status bar shows it. */
@@ -205,11 +207,16 @@ export function useRunActivity() {
 		);
 	}
 
-	/** While an agent reasons, its newest complete sentence; else the step after its last call. */
-	function idleLabel(node: InstanceAiAgentNode, now: number): string | undefined {
+	/** While an agent reasons, the sentence it writes; else the step after its last call. */
+	function idleActivity(
+		node: InstanceAiAgentNode,
+		now: number,
+	): { text: string; streaming?: true } | undefined {
 		const last = node.timeline.at(-1);
-		const sentence = last?.type === 'reasoning' ? latestSentence(last.content) : undefined;
-		return sentence ?? nextStepLabel(node, now);
+		const sentence = last?.type === 'reasoning' ? currentSentence(last.content) : undefined;
+		if (sentence) return { text: sentence, streaming: true };
+		const nextStep = nextStepLabel(node, now);
+		return nextStep ? { text: nextStep } : undefined;
 	}
 
 	/** The step after the last finished call of an agent, when it is known. */
@@ -253,18 +260,32 @@ export function useRunActivity() {
 				getAgentSectionTitle(activeChild, activityKey ? i18n.baseText(activityKey) : undefined) ??
 				i18n.baseText('instanceAi.statusBar.thinking');
 			const activeTool = activeChild.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
-			const detail = activeTool
-				? runningToolLabel(activeTool, tree, now)
-				: idleLabel(activeChild, now);
-			return detail ? { label: roleLabel, detail } : { label: roleLabel };
+			if (activeTool) {
+				return { label: roleLabel, detail: runningToolLabel(activeTool, tree, now) };
+			}
+			const idle = idleActivity(activeChild, now);
+			return idle
+				? { label: roleLabel, detail: idle.text, ...(idle.streaming && { streaming: true }) }
+				: { label: roleLabel };
 		}
 
 		// Check root-level active tools
 		const activeTool = tree.toolCalls.find((tc: InstanceAiToolCallState) => tc.isLoading);
 		if (activeTool) return { label: runningToolLabel(activeTool, tree, now) };
 
-		return { label: idleLabel(tree, now) ?? i18n.baseText('instanceAi.statusBar.thinking') };
+		const idle = idleActivity(tree, now);
+		if (!idle) return { label: i18n.baseText('instanceAi.statusBar.thinking') };
+		return { label: idle.text, ...(idle.streaming && { streaming: true }) };
 	};
+}
+
+/**
+ * Streaming reasoning keeps one key for each agent, so that the status follows
+ * it at once instead of holding each version of the sentence.
+ */
+function runActivityKey(activity: RunActivity): string {
+	if (activity.streaming) return `streaming:${activity.detail ? activity.label : ''}`;
+	return `${activity.waiting ? 'waiting:' : ''}${formatRunActivity(activity)}`;
 }
 
 /**
@@ -276,7 +297,7 @@ export function useSteadyRunActivity(messages: () => InstanceAiMessage[]) {
 	// Some states rotate with time (node types, fixes), not only with events.
 	const now = useNow({ interval: 1000 });
 	return useSteadyValue(() => deriveActivity(messages(), now.value.getTime()) ?? undefined, {
-		key: (activity) => `${activity.waiting ? 'waiting:' : ''}${formatRunActivity(activity)}`,
+		key: runActivityKey,
 		urgent: (activity) => activity.waiting === true,
 	});
 }

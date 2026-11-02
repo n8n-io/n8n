@@ -8,7 +8,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
-import { formatRunActivity, useRunActivity } from '../composables/useRunActivity';
+import { effectScope, nextTick, ref } from 'vue';
+
+import {
+	formatRunActivity,
+	useRunActivity,
+	useSteadyRunActivity,
+} from '../composables/useRunActivity';
 
 function call(toolName: string, args: Record<string, unknown> = {}): InstanceAiToolCallState {
 	return { toolCallId: toolName, toolName, args, isLoading: true };
@@ -284,15 +290,18 @@ describe('useRunActivity, reasoning', () => {
 
 	const reasoningTimeline = (content: string) => [{ type: 'reasoning' as const, content }];
 
-	it('shows the newest complete sentence while the agent reasons', () => {
+	it('follows the sentence the agent is writing while it reasons', () => {
 		const tree = agent({
-			timeline: reasoningTimeline('The user wants invoices. Gmail can filter by label. Then'),
+			timeline: reasoningTimeline('The user wants invoices. Gmail can filter by label'),
 		});
 
-		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Gmail can filter by label.' });
+		expect(useRunActivity()([message(tree)])).toEqual({
+			label: 'Gmail can filter by label',
+			streaming: true,
+		});
 	});
 
-	it('keeps the next step until a reasoning sentence ends', () => {
+	it('keeps the next step until the reasoning says enough to read', () => {
 		const read: InstanceAiToolCallState = {
 			...call('get_node_types', { nodeTypes: ['n8n-nodes-base.gmail'] }),
 			isLoading: false,
@@ -301,7 +310,7 @@ describe('useRunActivity, reasoning', () => {
 			toolCalls: [read],
 			timeline: [
 				{ type: 'tool-call', toolCallId: read.toolCallId },
-				...reasoningTimeline('The user wants'),
+				...reasoningTimeline('The user'),
 			],
 		});
 
@@ -316,9 +325,11 @@ describe('useRunActivity, reasoning', () => {
 			timeline: reasoningTimeline('Gmail can filter by label. More'),
 		});
 
-		expect(useRunActivity()([message(agent({ children: [child] }))])?.detail).toBe(
-			'Gmail can filter by label.',
-		);
+		expect(useRunActivity()([message(agent({ children: [child] }))])).toEqual({
+			label: 'Building workflow',
+			detail: 'Gmail can filter by label.',
+			streaming: true,
+		});
 	});
 
 	it('names a running tool even when reasoning came before it', () => {
@@ -332,6 +343,26 @@ describe('useRunActivity, reasoning', () => {
 		});
 
 		expect(useRunActivity()([message(tree)])).toEqual({ label: 'Searching for gmail' });
+	});
+});
+
+describe('useSteadyRunActivity', () => {
+	beforeEach(() => {
+		createTestingPinia();
+	});
+
+	it('follows streaming reasoning without holding each version', async () => {
+		const reasoningMessage = (content: string) =>
+			message(agent({ timeline: [{ type: 'reasoning', content }] }));
+		const messages = ref([reasoningMessage('Gmail can filter')]);
+		const scope = effectScope();
+		const activity = scope.run(() => useSteadyRunActivity(() => messages.value));
+
+		messages.value = [reasoningMessage('Gmail can filter by label')];
+		await nextTick();
+
+		expect(activity?.value?.label).toBe('Gmail can filter by label');
+		scope.stop();
 	});
 });
 
