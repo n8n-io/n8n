@@ -9,7 +9,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ExecutionResult } from '../canvasPreview.utils';
-import { useThread } from '../instanceAi.store';
+import { useArtifactThread } from '../artifactThread';
 
 interface UseInstanceAiWorkflowPreviewExecutionOptions {
 	workflowId: () => string;
@@ -56,7 +56,7 @@ export function useInstanceAiWorkflowPreviewExecution(
 	const aiSimulatedExecutionsStore = useAiSimulatedExecutionsStore();
 	// Thread runtime owns the user-run memory so it survives the preview unmounting
 	// on a tab switch and is reachable here without prop-drilling (INS-611).
-	const thread = useThread();
+	const thread = useArtifactThread();
 	const telemetry = useTelemetry();
 	const latestAgentExecution = shallowRef<IExecutionResponse>();
 	const supersededAgentExecutionId = shallowRef<string | null>(null);

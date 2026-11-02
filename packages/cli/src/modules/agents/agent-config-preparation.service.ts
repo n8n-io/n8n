@@ -135,13 +135,10 @@ export class AgentConfigPreparationService {
 		agentId: string,
 		definition: CompleteAgentDefinition,
 	): Promise<CompleteAgentDefinition> {
-		const [{ AgentSkillsService }, { AgentCustomToolsService }, { AgentTaskService }] =
-			await Promise.all([
-				import('./agent-skills.service.js'),
-				import('./agent-custom-tools.service.js'),
-				import('./agent-task.service.js'),
-			]);
-		Container.get(AgentSkillsService).validateSkills(Object.values(definition.skills));
+		const [{ AgentCustomToolsService }, { AgentTaskService }] = await Promise.all([
+			import('./agent-custom-tools.service.js'),
+			import('./agent-task.service.js'),
+		]);
 		for (const tool of Object.values(definition.tools)) {
 			Container.get(AgentCustomToolsService).validateDescriptor(tool.descriptor);
 		}

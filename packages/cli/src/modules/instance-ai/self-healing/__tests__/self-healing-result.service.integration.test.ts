@@ -9,6 +9,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
+	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	type Project,
@@ -61,7 +62,7 @@ import { SelfHealingResultService } from '../self-healing-result.service';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
-import { createConfiguration, addReviewer } from './support/configuration';
+import { createConfiguration, addReviewer, disableInstanceAdmins } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
@@ -1742,9 +1743,16 @@ describe('Inbox source reads', () => {
 
 		it('keeps a member who edits the workflow through a share after a role downgrade', async () => {
 			testServer.license.enable('feat:sharing');
+			await disableInstanceAdmins();
 			const prepared = await prepareInvestigation('needs_you', false, { inTeamProject: true });
 			const { user, project, original, investigation } = prepared;
-			const enabler = await createUser({ role: GLOBAL_OWNER_ROLE });
+			// A global role gives the enabler access without project membership, so only the
+			// shared member keeps the project group eligible.
+			const enablerRole = await createCustomRoleWithScopeSlugs(
+				['workflow:read', 'workflow:update', 'execution:read'],
+				{ roleType: 'global' },
+			);
+			const enabler = await createUser({ role: enablerRole });
 			await useProjectMembersOnly(investigation.configurationId);
 			await Container.get(SelfHealingConfigurationRepository).update(
 				investigation.configurationId,
@@ -1770,36 +1778,61 @@ describe('Inbox source reads', () => {
 			).resolves.toMatchObject({ reviewState: 'dismissed' });
 		});
 
-		it('excludes global admins and other-project members who are not project members', async () => {
-			const { project, original, result } = await teamFixture();
-			const admin = await createUser({ role: GLOBAL_OWNER_ROLE });
-			const outsider = await createUser();
-			const otherProject = await createTeamProject(undefined, outsider);
-			await linkUserToProject(outsider, otherProject, 'project:editor');
-			await Container.get(SharedWorkflowRepository).save({
-				workflowId: original.id,
-				projectId: otherProject.id,
-				role: 'workflow:editor',
-			});
+		it.each([GLOBAL_OWNER_ROLE, GLOBAL_ADMIN_ROLE])(
+			'includes $slug outside the project and excludes other-project members',
+			async (role) => {
+				const { project, original, result } = await teamFixture();
+				const admin = await createUser({ role });
+				const outsider = await createUser();
+				const otherProject = await createTeamProject(undefined, outsider);
+				await linkUserToProject(outsider, otherProject, 'project:editor');
+				await Container.get(SharedWorkflowRepository).save({
+					workflowId: original.id,
+					projectId: otherProject.id,
+					role: 'workflow:editor',
+				});
 
-			for (const reviewer of [admin, outsider]) {
-				await expectReviewer(reviewer, false);
+				await expectReviewer(outsider, false);
 				await expect(
-					service.getDetail(reviewer, project.id, original.id, result.id),
+					service.getDetail(outsider, project.id, original.id, result.id),
 				).rejects.toThrow(NotFoundError);
-			}
+				await expectReviewer(admin, true);
+				await expect(
+					service.getDetail(admin, project.id, original.id, result.id),
+				).resolves.toMatchObject({ resultId: result.id });
 
+				await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
+					includeAllProjectMembers: false,
+				});
+				await expectReviewer(admin, false);
+				await expect(
+					service.act(admin, project.id, original.id, result.id, 'apply'),
+				).rejects.toThrow(NotFoundError);
+
+				await addReviewer(result.configurationId, admin.id);
+				await expectReviewer(admin, true);
+				await Container.get(UserRepository).update(admin.id, { role: GLOBAL_MEMBER_ROLE });
+				await expectReviewer(admin, false);
+			},
+		);
+
+		it('shows personal project results only to the project owner', async () => {
+			const { user, project, original, result } = await fixture();
+			await useProjectMembersOnly(result.configurationId);
+			const admin = await createUser({ role: GLOBAL_OWNER_ROLE });
 			await addReviewer(result.configurationId, admin.id);
-			await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
-				includeAllProjectMembers: false,
-			});
+
+			await expectReviewer(user, true);
 			await expectReviewer(admin, false);
-			await expect(service.act(admin, project.id, original.id, result.id, 'apply')).rejects.toThrow(
+			await expect(service.getDetail(admin, project.id, original.id, result.id)).rejects.toThrow(
 				NotFoundError,
 			);
-
-			await linkUserToProject(admin, project, 'project:viewer');
-			await expectReviewer(admin, true);
+			await expect(service.dismiss(admin, project.id, original.id, result.id)).rejects.toThrow(
+				NotFoundError,
+			);
+			await expect(
+				service.dismiss(user, project.id, original.id, result.id),
+			).resolves.toMatchObject({ reviewState: 'dismissed' });
 		});
 
 		it('lists a member who is also selected individually once before pagination', async () => {
@@ -1839,36 +1872,30 @@ describe('Inbox source reads', () => {
 		});
 	});
 
-	it.each([
-		['an editor', GLOBAL_MEMBER_ROLE, 'project:editor'],
-		['the instance owner', GLOBAL_OWNER_ROLE, 'project:viewer'],
-	] as const)(
-		'revokes review access when %s selected individually leaves the project',
-		async (_label, globalRole, projectRole) => {
-			testServer.license.enable('feat:sharing');
-			const { project, original, result } = await fixture('fix_ready', true, {
-				inTeamProject: true,
-			});
-			const reviewer = await createUser({ role: globalRole });
-			await addReviewer(result.configurationId, reviewer.id);
-			await linkUserToProject(reviewer, project, projectRole);
-			await shareWorkflowWithUsers(original, [reviewer]);
-			expect(await service.countForInbox(reviewer)).toEqual({ open: 1, closed: 0 });
+	it('revokes review access when an editor selected individually leaves the project', async () => {
+		testServer.license.enable('feat:sharing');
+		const { project, original, result } = await fixture('fix_ready', true, {
+			inTeamProject: true,
+		});
+		const reviewer = await createUser();
+		await addReviewer(result.configurationId, reviewer.id);
+		await linkUserToProject(reviewer, project, 'project:editor');
+		await shareWorkflowWithUsers(original, [reviewer]);
+		expect(await service.countForInbox(reviewer)).toEqual({ open: 1, closed: 0 });
 
-			await Container.get(ProjectRelationRepository).delete({
-				userId: reviewer.id,
-				projectId: project.id,
-			});
-			expect(await service.countForInbox(reviewer)).toEqual({ open: 0, closed: 0 });
-			expect(await service.listForInbox(reviewer, { state: 'open', limit: 10 })).toEqual([]);
-			await expect(service.getDetail(reviewer, project.id, original.id, result.id)).rejects.toThrow(
-				NotFoundError,
-			);
-			await expect(
-				service.act(reviewer, project.id, original.id, result.id, 'apply'),
-			).rejects.toThrow(NotFoundError);
-		},
-	);
+		await Container.get(ProjectRelationRepository).delete({
+			userId: reviewer.id,
+			projectId: project.id,
+		});
+		expect(await service.countForInbox(reviewer)).toEqual({ open: 0, closed: 0 });
+		expect(await service.listForInbox(reviewer, { state: 'open', limit: 10 })).toEqual([]);
+		await expect(service.getDetail(reviewer, project.id, original.id, result.id)).rejects.toThrow(
+			NotFoundError,
+		);
+		await expect(
+			service.act(reviewer, project.id, original.id, result.id, 'apply'),
+		).rejects.toThrow(NotFoundError);
+	});
 
 	it('paginates by latest update even when a result was created earlier', async () => {
 		const prepared = await fixture();

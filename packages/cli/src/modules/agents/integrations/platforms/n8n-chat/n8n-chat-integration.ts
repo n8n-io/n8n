@@ -1,6 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -78,7 +78,7 @@ export class N8nChatIntegration extends AgentChatIntegration {
 		'This is the built-in n8n chat: your normal assistant reply already reaches the user. NEVER call respond with only message.text — write that text directly in your reply instead. Call this tool only with message.card, to render a rich card or collect structured input.',
 	];
 
-	constructor(private readonly userRepository: UserRepository) {
+	constructor(private readonly personRepository: PersonRepository) {
 		super();
 	}
 
@@ -146,19 +146,20 @@ export class N8nChatIntegration extends AgentChatIntegration {
 					'userId is required.',
 				);
 			}
-			const user = await this.userRepository.findOneBy({ id: userId });
-			if (!user) {
+			const person = await this.personRepository.findById(userId);
+			// A service account has no name or email to return.
+			if (!person) {
 				return integrationError(
 					INTEGRATION_ERROR_CODES.CONTEXT_QUERY_FAILED,
-					`User ${userId} not found.`,
+					`User ${userId} not found or is not a person.`,
 				);
 			}
 			return {
 				ok: true,
 				user: {
-					id: user.id,
-					name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email,
-					email: user.email,
+					id: person.id,
+					name: [person.firstName, person.lastName].filter(Boolean).join(' ') || person.email,
+					email: person.email,
 				},
 			};
 		}

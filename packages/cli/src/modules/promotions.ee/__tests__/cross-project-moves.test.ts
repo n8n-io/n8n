@@ -2,7 +2,6 @@ import type { InventoryWorkflow } from '@/modules/n8n-packages/io/directory/pack
 
 import {
 	crossProjectMoves,
-	describeCrossProjectMoves,
 	describePromotedMoves,
 	type InstanceProject,
 } from '../cross-project-moves';
@@ -80,7 +79,7 @@ describe('crossProjectMoves', () => {
 	});
 });
 
-describe('describeCrossProjectMoves', () => {
+describe('describePromotedMoves', () => {
 	const move = {
 		id: 'w1',
 		name: 'Invoices',
@@ -89,21 +88,14 @@ describe('describeCrossProjectMoves', () => {
 		instanceProject: { id: 'p1', name: 'Alpha' },
 	};
 
-	it('names both projects and offers both fixes', () => {
-		expect(describeCrossProjectMoves({ workflows: [move], folders: [] })).toBe(
-			'Apply can\'t move workflows or folders between projects: workflow "Invoices" (w1) is in project "Alpha" here and in project "Beta" on the branch. Move them on this instance to match the branch, or move them back on the source instance and promote again.',
-		);
-	});
-
-	it('names no personal project, and offers only the source fix for a missing branch project', () => {
-		const message = describeCrossProjectMoves({
+	it('names no personal project, and says when the branch project does not exist here', () => {
+		const message = describePromotedMoves({
 			workflows: [{ ...move, projectExists: false, instanceProject: { id: 'p1' } }],
 			folders: [],
 		});
 
 		expect(message).toContain('is in a personal project here');
 		expect(message).toContain('and project "Beta" does not exist on this instance yet');
-		expect(message).toMatch(/Move them back on the source instance, then promote again\.$/);
 		expect(message).not.toContain('Alpha');
 	});
 

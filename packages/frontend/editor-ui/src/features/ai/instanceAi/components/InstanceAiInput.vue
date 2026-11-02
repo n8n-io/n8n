@@ -99,6 +99,7 @@ const props = withDefaults(
 		placeholderKey?: BaseTextKey;
 		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
 		placeholder?: string;
+		composerHeight?: string;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -876,6 +877,7 @@ const resizable = computed(() => {
 			:can-submit="canSubmit"
 			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
 			:autosize="resizable"
+			:composer-height="props.composerHeight"
 			:button-label="props.submitLabel"
 			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
@@ -921,8 +923,13 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template v-if="props.attachOnlyMimeTypes === undefined" #footer-start>
+			<template
+				v-if="$slots['footer-start'] || props.attachOnlyMimeTypes === undefined"
+				#footer-start
+			>
+				<slot name="footer-start" />
 				<InstanceAiInputMenu
+					v-if="props.attachOnlyMimeTypes === undefined"
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"
 					@attach-files="chatInputRef?.openFilePicker()"

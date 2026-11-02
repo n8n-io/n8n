@@ -293,7 +293,7 @@ describe('N8nMemoryImpl', () => {
 				resourceId: scope.resourceId,
 				episodic: scope.episodic,
 				content,
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 				embeddingModel: 'test-model',
 				...overrides,
 			},
@@ -421,7 +421,7 @@ describe('N8nMemoryImpl', () => {
 			await captureEntry(memory, other, 'Channel two chose MySQL.', { episodic: other.episodic });
 
 			const recalled = async (scope: typeof first) =>
-				(await memory.episodic.searchEntries(scope, 'Channel'))
+				(await memory.episodic.searchEntries(scope, 'Channel', { queryEmbedding: [1, 0] }))
 					.map(({ content }) => content)
 					.sort();
 
@@ -433,6 +433,34 @@ describe('N8nMemoryImpl', () => {
 			await expect(recalled(other)).resolves.toEqual(['Channel two chose MySQL.']);
 			await expect(memory.episodic.getPendingCaptureCandidates(first)).resolves.toHaveLength(2);
 			await expect(memory.episodic.getPendingCaptureCandidates(other)).resolves.toHaveLength(1);
+		});
+
+		it('stores embeddings as float32 bytes and returns full entries from a search', async () => {
+			const { entry: stored } = await captureEntry(memory, scope, 'Reports go to #finance.', {
+				embedding: new Float32Array([0.1, 0.2]),
+				metadata: { origin: 'test' },
+			});
+			const { entry: unembedded } = await captureEntry(memory, scope, 'Standup is at 10.');
+			await entryRepository.update(unembedded.id, { embedding: null });
+
+			const raw = await entryRepository
+				.createQueryBuilder('entry')
+				.select('entry.embedding', 'embedding')
+				.where('entry.id = :id', { id: stored.id })
+				.getRawOne<{ embedding: Uint8Array }>();
+			const results = await memory.episodic.searchEntries(scope, 'reports', {
+				queryEmbedding: [1, 2],
+			});
+
+			expect(Buffer.from(raw!.embedding)).toHaveLength(8);
+			expect(results).toEqual([
+				expect.objectContaining({
+					id: stored.id,
+					content: 'Reports go to #finance.',
+					metadata: { origin: 'test' },
+					embedding: new Float32Array([0.1, 0.2]),
+				}),
+			]);
 		});
 
 		describe('Slack ownership', () => {
@@ -463,7 +491,7 @@ describe('N8nMemoryImpl', () => {
 			}
 
 			async function recall(scope: EpisodicMemoryScope, store = memory) {
-				return (await store.episodic.searchEntries(scope, 'Slack'))
+				return (await store.episodic.searchEntries(scope, 'Slack', { queryEmbedding: [1, 0] }))
 					.map(({ content }) => content)
 					.sort();
 			}
@@ -627,9 +655,13 @@ describe('N8nMemoryImpl', () => {
 
 		it.each([
 			{ name: 'missing', embedding: undefined, embeddingModel: undefined },
-			{ name: 'empty', embedding: [], embeddingModel: 'test-model' },
-			{ name: 'invalid', embedding: [Number.NaN, 0], embeddingModel: 'test-model' },
-			{ name: 'different-model', embedding: [1, 0], embeddingModel: 'old-model' },
+			{ name: 'empty', embedding: new Float32Array([]), embeddingModel: 'test-model' },
+			{
+				name: 'invalid',
+				embedding: new Float32Array([Number.NaN, 0]),
+				embeddingModel: 'test-model',
+			},
+			{ name: 'different-model', embedding: new Float32Array([1, 0]), embeddingModel: 'old-model' },
 		])(
 			'replaces a $name embedding without changing the original entry',
 			async ({ embedding, embeddingModel }) => {
@@ -648,7 +680,7 @@ describe('N8nMemoryImpl', () => {
 					scope,
 					'  USER prefers\nconcise reports. ',
 					{
-						embedding: [0, 1],
+						embedding: new Float32Array([0, 1]),
 						embeddingModel: 'new-model',
 						createdAt: lastSeenAt,
 						lastSeenAt,
@@ -663,7 +695,7 @@ describe('N8nMemoryImpl', () => {
 					createdAt,
 					lastSeenAt,
 					metadata: { keep: true },
-					embedding: [0, 1],
+					embedding: new Float32Array([0, 1]),
 					embeddingModel: 'new-model',
 					status: 'active',
 					supersededBy: null,
@@ -675,7 +707,7 @@ describe('N8nMemoryImpl', () => {
 				);
 				expect(repeated).toMatchObject({
 					id: original.id,
-					embedding: [0, 1],
+					embedding: new Float32Array([0, 1]),
 					embeddingModel: 'new-model',
 					metadata: { keep: true },
 				});
@@ -711,7 +743,7 @@ describe('N8nMemoryImpl', () => {
 							{
 								resourceId: scope.resourceId,
 								content: first.entry.content,
-								embedding: [1, 0],
+								embedding: new Float32Array([1, 0]),
 								embeddingModel: 'test-model',
 							},
 							[source],
@@ -751,7 +783,11 @@ describe('N8nMemoryImpl', () => {
 			);
 			const sources = await memory.episodic.getEntrySources([entry.id]);
 			await memory.episodic.saveEntryWithSources(
-				{ resourceId: scope.resourceId, content: entry.content, embedding: [0, 1] },
+				{
+					resourceId: scope.resourceId,
+					content: entry.content,
+					embedding: new Float32Array([0, 1]),
+				},
 				replay,
 			);
 
@@ -770,7 +806,11 @@ describe('N8nMemoryImpl', () => {
 			await expect(
 				memory.episodic.getEntriesByContentHashes(scope, [entry.contentHash]),
 			).resolves.toEqual([
-				expect.objectContaining({ id: entry.id, embedding: [0, 1], embeddingModel: 'test-model' }),
+				expect.objectContaining({
+					id: entry.id,
+					embedding: new Float32Array([0, 1]),
+					embeddingModel: 'test-model',
+				}),
 			]);
 		});
 
@@ -789,7 +829,7 @@ describe('N8nMemoryImpl', () => {
 						{
 							resourceId: scope.resourceId,
 							content: entry.content,
-							embedding: [0, 1],
+							embedding: new Float32Array([0, 1]),
 							embeddingModel: 'replacement-model',
 						},
 						[
@@ -805,5 +845,286 @@ describe('N8nMemoryImpl', () => {
 				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual(sourcesBefore);
 			},
 		);
+
+		describe('consolidation writes', () => {
+			async function enqueueSource(content: string, toolCallId: string) {
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					...scope,
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId,
+					content,
+					evidenceText: content,
+					kind: 'fact',
+				});
+				const source: NewEpisodicMemoryEntrySourceForEntry = {
+					candidateId: candidate.id,
+					threadId: scope.threadId,
+					evidenceText: content,
+				};
+				return { candidate, source };
+			}
+
+			const deleteCandidate = async (candidateId: string) =>
+				await entryRepository.deleteCandidate(agentId, candidateId, {});
+
+			it('finds the closest active entries of the write scope for each embedding', async () => {
+				const { entry: near } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.', {
+					embedding: new Float32Array([1, 0]),
+				});
+				const { entry: far } = await captureEntry(memory, scope, 'Acme uses Postgres.', {
+					embedding: new Float32Array([0.6, 0.8]),
+				});
+				const { entry: inactive } = await captureEntry(memory, scope, 'Acme renewal is late.', {
+					embedding: new Float32Array([1, 0]),
+				});
+				await entryRepository.update(inactive.id, { status: 'superseded' });
+				await captureEntry(otherMemory, scope, 'Acme renewal is on 2 March.');
+				const shared = {
+					...scope,
+					episodic: { writeScopeId: 'thread:thread-1', readScopeIds: [scope.resourceId] },
+				};
+
+				const similar = await memory.episodic.findSimilarEntries(
+					scope,
+					[
+						[1, 0],
+						[0, 1],
+					],
+					{
+						topK: 3,
+						minSimilarity: 0.5,
+					},
+				);
+
+				expect(similar.map((entries) => entries.map(({ id }) => id))).toEqual([
+					[near.id, far.id],
+					[far.id],
+				]);
+				await expect(
+					memory.episodic.findSimilarEntries(shared, [[1, 0]], { topK: 3, minSimilarity: 0.5 }),
+				).resolves.toEqual([[]]);
+			});
+
+			it('adds sources to an active entry and refreshes it', async () => {
+				const { entry } = await captureEntry(memory, scope);
+				const { source } = await enqueueSource('Keep reports concise.', 'call-2');
+				const lastSeenAt = new Date('2026-06-01T10:00:00.000Z');
+
+				const refreshed = await memory.episodic.addEntrySources(entry.id, [source], lastSeenAt);
+
+				expect(refreshed).toMatchObject({ id: entry.id, status: 'active', lastSeenAt });
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toEqual(
+					expect.arrayContaining([expect.objectContaining({ candidateId: source.candidateId })]),
+				);
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toHaveLength(2);
+			});
+
+			it('adds no source to an inactive entry or for a deleted candidate', async () => {
+				const { entry } = await captureEntry(memory, scope);
+				const deleted = await enqueueSource('Keep reports concise.', 'call-2');
+				await deleteCandidate(deleted.candidate.id);
+
+				await expect(
+					memory.episodic.addEntrySources(entry.id, [deleted.source], new Date()),
+				).resolves.toBeNull();
+
+				const live = await enqueueSource('Keep every report concise.', 'call-3');
+				await entryRepository.update(entry.id, { status: 'superseded' });
+				await expect(
+					memory.episodic.addEntrySources(entry.id, [live.source], new Date()),
+				).resolves.toBeNull();
+				await expect(memory.episodic.getEntrySources([entry.id])).resolves.toHaveLength(1);
+			});
+
+			it('merges entries with the sources of both the old entries and the new fact', async () => {
+				const { entry: old, source: oldSource } = await captureEntry(
+					memory,
+					scope,
+					'Acme renewal is on 1 March.',
+				);
+				const { source } = await enqueueSource('Acme renewal moved to 15 March.', 'call-2');
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: {
+								resourceId: scope.resourceId,
+								content: 'Acme renewal is on 15 March.',
+								embedding: new Float32Array([1, 0]),
+								embeddingModel: 'test-model',
+							},
+							sources: [source],
+						},
+					],
+				});
+
+				const [merged] = result.inserted;
+				expect(result.supersededIds).toEqual([old.id]);
+				expect(merged).toMatchObject({ content: 'Acme renewal is on 15 March.', status: 'active' });
+				await expect(entryRepository.findOneByOrFail({ id: old.id })).resolves.toMatchObject({
+					status: 'superseded',
+					supersededBy: merged.id,
+				});
+				const sources = await memory.episodic.getEntrySources([merged.id]);
+				expect(sources.map(({ candidateId }) => candidateId).sort()).toEqual(
+					[oldSource.candidateId, source.candidateId].sort(),
+				);
+			});
+
+			it('reuses a stored entry with the merged content as the replacement', async () => {
+				const { entry: old } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.');
+				const { entry: existing } = await captureEntry(
+					memory,
+					scope,
+					'Acme renewal is on 15 March.',
+				);
+				await entryRepository.update(existing.id, { status: 'dropped' });
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: { resourceId: scope.resourceId, content: existing.content },
+						},
+					],
+				});
+
+				expect(result.inserted).toEqual([
+					expect.objectContaining({ id: existing.id, status: 'active' }),
+				]);
+				await expect(memory.episodic.getEntrySources([existing.id])).resolves.toHaveLength(2);
+			});
+
+			it('skips a merge when a user deleted the candidate of its sources', async () => {
+				const { entry: old } = await captureEntry(memory, scope, 'Acme renewal is on 1 March.');
+				const { candidate, source } = await enqueueSource(
+					'Acme renewal moved to 15 March.',
+					'call-2',
+				);
+				await deleteCandidate(candidate.id);
+
+				const result = await memory.episodic.applyReflection(scope, {
+					drop: [],
+					merge: [
+						{
+							supersedes: [old.id],
+							entry: { resourceId: scope.resourceId, content: 'Acme renewal is on 15 March.' },
+							sources: [source],
+						},
+					],
+				});
+
+				expect(result).toEqual({ droppedIds: [], supersededIds: [], inserted: [] });
+				await expect(entryRepository.findBy({ status: 'active' })).resolves.toEqual([
+					expect.objectContaining({ id: old.id }),
+				]);
+			});
+		});
+
+		describe('capture deletion', () => {
+			async function enqueue(content = 'User prefers concise reports.', toolCallId = 'call-1') {
+				await memory.saveThread({ id: scope.threadId, resourceId: scope.resourceId });
+				const candidate = await memory.episodic.enqueueCaptureCandidate({
+					...scope,
+					sourceMessageId: null,
+					runId: crypto.randomUUID(),
+					toolCallId,
+					content,
+					evidenceText: content,
+					kind: 'preference',
+				});
+				const save = async () =>
+					await memory.episodic.saveEntryWithSources({ resourceId: scope.resourceId, content }, [
+						{ candidateId: candidate.id, threadId: scope.threadId, evidenceText: content },
+					]);
+				return { candidate, save };
+			}
+
+			const deleteCandidate = async (candidateId: string) =>
+				await entryRepository.deleteCandidate(agentId, candidateId, {});
+
+			const activeEntries = async () => await entryRepository.findBy({ status: 'active' });
+
+			it('stores nothing when the capture saves a candidate deleted after it was read', async () => {
+				const { candidate, save } = await enqueue();
+
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(true);
+
+				await expect(save()).resolves.toBeNull();
+				expect(await entryRepository.count()).toBe(0);
+				await expect(memory.episodic.getPendingCaptureCandidates(scope)).resolves.toEqual([]);
+			});
+
+			it('deletes the stored entry when a completed candidate is deleted', async () => {
+				const { candidate } = await enqueue();
+				const entry = await memory.episodic.saveEntryWithSources(
+					{
+						resourceId: scope.resourceId,
+						content: candidate.content,
+						embedding: new Float32Array([1, 0]),
+						embeddingModel: 'test-model',
+					},
+					[
+						{
+							candidateId: candidate.id,
+							threadId: scope.threadId,
+							evidenceText: candidate.content,
+						},
+					],
+				);
+				const search = async () =>
+					await memory.episodic.searchEntries(scope, 'concise', { queryEmbedding: [1, 0] });
+				expect((await search()).map(({ id }) => id)).toEqual([entry!.id]);
+
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(true);
+
+				await expect(entryRepository.findOneByOrFail({ id: entry!.id })).resolves.toMatchObject({
+					status: 'deleted',
+				});
+				await expect(search()).resolves.toEqual([]);
+				await expect(deleteCandidate(candidate.id)).resolves.toBe(false);
+			});
+
+			it('stores a user delete as deleted', async () => {
+				const { entry } = await captureEntry(memory, scope);
+
+				await expect(entryRepository.markDeleted(agentId, entry.id)).resolves.toBe(true);
+
+				await expect(entryRepository.findOneByOrFail({ id: entry.id })).resolves.toMatchObject({
+					status: 'deleted',
+				});
+			});
+
+			it('keeps an entry that another candidate still supports', async () => {
+				const first = await enqueue();
+				const second = await enqueue(undefined, 'call-2');
+				const entry = await first.save();
+				await second.save();
+
+				await deleteCandidate(first.candidate.id);
+
+				await expect(activeEntries()).resolves.toEqual([
+					expect.objectContaining({ id: entry!.id }),
+				]);
+				await expect(memory.episodic.getEntrySources([entry!.id])).resolves.toEqual([
+					expect.objectContaining({ candidateId: second.candidate.id }),
+				]);
+			});
+
+			it('leaves no active entry when delete and capture run at the same time', async () => {
+				for (let attempt = 0; attempt < 5; attempt++) {
+					await entryRepository.delete({});
+					const { candidate, save } = await enqueue(`Fact ${attempt}`, `call-${attempt}`);
+
+					await Promise.all([save(), deleteCandidate(candidate.id)]);
+
+					await expect(activeEntries()).resolves.toEqual([]);
+				}
+			});
+		});
 	});
 });

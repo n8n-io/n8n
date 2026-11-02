@@ -57,12 +57,14 @@ describe('extractJsonCandidate', () => {
 		expect(extractJsonCandidate('  not JSON  ')).toBe('not JSON');
 	});
 
-	it('gives up on bracket noise in linear time', () => {
-		// Every unmatched opener used to rescan the whole suffix; 40k chars took over a second.
-		const input = '{ '.repeat(20_000).trim();
-		const start = performance.now();
+	it('extracts JSON after a short prefix of unmatched brackets', () => {
+		expect(extractJsonCandidate('{ '.repeat(3) + '{"ok":true}')).toBe('{"ok":true}');
+	});
+
+	it.each(['{', '['])('returns text unchanged when %s noise exhausts the scan budget', (opener) => {
+		// The final payload detects unbounded scanning without a wall-clock limit.
+		const input = `${opener} `.repeat(20_000) + '{"ok":true}';
 		expect(extractJsonCandidate(input)).toBe(input);
-		expect(performance.now() - start).toBeLessThan(100);
 	});
 });
 

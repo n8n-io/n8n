@@ -25,6 +25,7 @@ const COLOR_FAMILIES: Record<TimelineColorKind, ColorFamily> = {
 	user: 'blue',
 	agent: 'purple',
 	skill: 'orange',
+	memory: 'yellow',
 	tool: 'green',
 	node: 'neutral',
 	workflow: 'pink',

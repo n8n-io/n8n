@@ -47,9 +47,9 @@ describe('agent chat subscription integration types', () => {
 			const scope = { agentId, integrationType, credentialId: `cred-${integrationType}` };
 			const threadId = `thread-${integrationType}`;
 
-			await repository.subscribe(scope, threadId);
+			await repository.subscribe(scope, threadId, {});
 
-			await expect(repository.isSubscribed(scope, threadId)).resolves.toBe(true);
+			await expect(repository.isSubscribed(scope, threadId, {})).resolves.toBe(true);
 		}
 	});
 
@@ -59,6 +59,6 @@ describe('agent chat subscription integration types', () => {
 		const repository = Container.get(AgentChatSubscriptionRepository);
 		const scope = { agentId, integrationType: 'not-a-channel', credentialId: 'cred-x' };
 
-		await expect(repository.subscribe(scope, 'thread-x')).rejects.toThrow();
+		await expect(repository.subscribe(scope, 'thread-x', {})).rejects.toThrow();
 	});
 });

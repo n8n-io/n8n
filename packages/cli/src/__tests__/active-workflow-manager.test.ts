@@ -56,6 +56,7 @@ describe('ActiveWorkflowManager', () => {
 	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
 	const workflowGroup = (id: string) => ({ type: WORKFLOW_SCHEDULE_GROUP_TYPE, id });
 	let activeWorkflowManager: ActiveWorkflowManager;
+	const logger = mock<Logger>();
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -73,7 +74,7 @@ describe('ActiveWorkflowManager', () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		policyEnforcementService.enforceWorkflowPublish.mockResolvedValue(mock());
 		activeWorkflowManager = new ActiveWorkflowManager(
-			mockLogger(),
+			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			mock(),
 			mock(),
 			mock(),
@@ -864,6 +865,30 @@ describe('ActiveWorkflowManager', () => {
 
 			expect(workflowData.nodes).toEqual(activeNodes);
 			expect(workflowData.nodes[0].name).toBe('Active Webhook');
+		});
+
+		test('should log which workflow it activates before registering its triggers and webhooks', async () => {
+			workflowRepository.findById.mockResolvedValue(
+				mock<WorkflowEntity>({ id: 'workflow-1', name: 'Test Workflow' }),
+			);
+			let infoLogsBeforeAdd: unknown[][] = [];
+			vi.spyOn(activeWorkflowManager, 'add').mockImplementation(async () => {
+				infoLogsBeforeAdd = [...logger.info.mock.calls];
+				return { webhooks: true, triggersAndPollers: false };
+			});
+
+			await activeWorkflowManager['activateWorkflow']('workflow-1', 'init');
+
+			expect(infoLogsBeforeAdd).toEqual([
+				[
+					'Activating workflow "Test Workflow" (ID: workflow-1)',
+					{ workflowName: 'Test Workflow', workflowId: 'workflow-1' },
+				],
+			]);
+			expect(logger.info).toHaveBeenLastCalledWith(
+				'Activated workflow "Test Workflow" (ID: workflow-1)',
+				{ workflowName: 'Test Workflow', workflowId: 'workflow-1' },
+			);
 		});
 	});
 

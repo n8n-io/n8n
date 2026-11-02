@@ -3,6 +3,8 @@ import { parse as parseYaml } from 'yaml';
 
 import {
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_LIFETIMES,
+	type RuntimeSkillLifetime,
 	type RuntimeSkill,
 	type RuntimeSkillDependenciesContract,
 	type RuntimeSkillInterfaceContract,
@@ -366,7 +368,12 @@ function optionalSkillPolicy(
 	const value = optionalFrontmatterRecord(frontmatter, 'policy', errors);
 	if (!value) return undefined;
 
-	rejectUnknownFields(value, ['allow_implicit_invocation', 'product'], 'policy', errors);
+	rejectUnknownFields(
+		value,
+		['allow_implicit_invocation', 'product', 'lifetime'],
+		'policy',
+		errors,
+	);
 
 	const allowImplicitInvocation = optionalBoolean(
 		value,
@@ -375,12 +382,33 @@ function optionalSkillPolicy(
 		'policy.allow_implicit_invocation',
 	);
 	const product = optionalFrontmatterString(value, 'product', errors, 'policy.product');
+	const lifetime = optionalLifetime(value, errors);
 	const policy: RuntimeSkillPolicyContract = {
 		...(allowImplicitInvocation !== undefined ? { allowImplicitInvocation } : {}),
 		...(product ? { product } : {}),
+		...(lifetime ? { lifetime } : {}),
 	};
 
 	return hasContractFields(policy) ? policy : undefined;
+}
+
+function isSkillLifetime(value: unknown): value is RuntimeSkillLifetime {
+	return RUNTIME_SKILL_LIFETIMES.some((lifetime) => lifetime === value);
+}
+
+function optionalLifetime(
+	policy: Record<string, unknown>,
+	errors: RuntimeSkillValidationError[],
+): RuntimeSkillLifetime | undefined {
+	const value = policy.lifetime;
+	if (value === undefined || value === null) return undefined;
+	if (isSkillLifetime(value)) return value;
+	errors.push({
+		code: 'invalid_field',
+		message: `Field "policy.lifetime" must be one of: ${RUNTIME_SKILL_LIFETIMES.join(', ')}`,
+		field: 'policy.lifetime',
+	});
+	return undefined;
 }
 
 function optionalSkillDependencies(

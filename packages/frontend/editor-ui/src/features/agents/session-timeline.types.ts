@@ -6,6 +6,7 @@ export type EventKind =
 	| 'user'
 	| 'agent'
 	| 'skill'
+	| 'memory'
 	| 'tool'
 	| 'node'
 	| 'workflow'
@@ -16,6 +17,8 @@ export type EventKind =
 	| 'background-task';
 
 export type ToolCallOutcome = 'success' | 'error';
+/** A memory row shows a recall_memory or a flag_memory call. */
+export type MemoryAction = 'recall' | 'flag';
 export type TimelineActivityStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'interrupted';
 /**
  * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
@@ -42,6 +45,8 @@ export interface TimelineItem {
 	/** Files attached to the user turn (only set for `kind: 'user'`). */
 	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;
+	/** Only set for `kind: 'memory'`. */
+	memoryAction?: MemoryAction;
 	/** Display name of the skill loaded by a `load_skill` call. */
 	skillName?: string;
 	toolCallId?: string;

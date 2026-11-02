@@ -151,6 +151,7 @@ export class WorkflowPackageImporter {
 			workflows,
 			credentialRequest,
 			agents,
+			skills: agents.length > 0 ? await this.packageParser.getSkills(reader) : [],
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			dataTableRequest,
 			variableRequest,

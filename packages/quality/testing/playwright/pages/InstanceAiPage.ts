@@ -412,6 +412,34 @@ export class InstanceAiPage extends BasePage {
 		return this.container.getByTestId('instance-ai-preview-panel');
 	}
 
+	getBuilderChat(): Locator {
+		return this.container.getByTestId('instance-ai-builder-chat');
+	}
+
+	getAgentTestButton(): Locator {
+		return this.getPreviewPanel().locator('[data-testid="agent-header-preview-btn"]');
+	}
+
+	getAgentTestChatInner(): Locator {
+		return this.getBuilderChat().locator('[data-testid="agent-preview-dock"] > div');
+	}
+
+	async getAgentTestChatBoundsDifference(): Promise<number> {
+		const host = await this.getBuilderChat().boundingBox();
+		const dock = this.getBuilderChat().locator('[data-testid="agent-preview-dock"]');
+		const bounds = await dock.boundingBox();
+		const inner = await this.getAgentTestChatInner().boundingBox();
+		if (!host || !bounds || !inner) throw new Error('The test chat is not visible');
+		return Math.max(
+			...[bounds, inner].flatMap((box) => [
+				Math.abs(box.x - host.x),
+				Math.abs(box.y - host.y),
+				Math.abs(box.width - host.width),
+				Math.abs(box.height - host.height),
+			]),
+		);
+	}
+
 	getPreviewTabByName(name: string | RegExp): Locator {
 		return this.getPreviewPanel().getByRole('tab', { name });
 	}

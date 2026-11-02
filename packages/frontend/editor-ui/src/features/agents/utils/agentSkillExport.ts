@@ -15,7 +15,6 @@ export function agentSkillToMarkdown(skill: AgentSkill): string {
 	const frontmatter = stringifyYaml({
 		name: skill.name,
 		description: skill.description,
-		...(skill.allowedTools?.length ? { allowed_tools: skill.allowedTools } : {}),
 	});
 	return `---\n${frontmatter}---\n\n${skill.instructions.trim()}\n`;
 }

@@ -27,8 +27,9 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
-import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { UserService } from '@/services/user.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { INVITE_ROLE_MANAGED_MESSAGE, UserService } from '@/services/user.service';
+import type { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -69,6 +70,7 @@ describe('UserService', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const personRepository = mock<PersonRepository>();
+	const scimSwitchReader = mock<ScimSwitchReader>();
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -87,6 +89,7 @@ describe('UserService', () => {
 		sharedCredentialsRepository,
 		sharedWorkflowRepository,
 		personRepository,
+		scimSwitchReader,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -141,6 +144,42 @@ describe('UserService', () => {
 	});
 
 	describe('inviteUrl visibility', () => {
+		// The accept page rejects invite links under SSO, so a link would not
+		// work. `inviteLinksEmailOnly` has no effect under SSO.
+		describe('under SAML or OIDC', () => {
+			beforeEach(() => {
+				vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+				roleService.checkRolesExist.mockResolvedValue();
+				userRepository.findManyByEmail.mockResolvedValue([]);
+				userRepository.createUserWithProject.mockImplementation(async (userData) => {
+					return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
+				});
+			});
+
+			afterEach(() => {
+				vi.mocked(ssoHelpers.isSsoCurrentAuthenticationMethod).mockRestore();
+			});
+
+			it.each([true, false])(
+				'links the email to the sign-in page and returns no link when emailSent is %s',
+				async (emailSent) => {
+					const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+					mailer.invite.mockResolvedValue({ emailSent });
+
+					const result = await userService.inviteUsers(owner, [
+						{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug },
+					]);
+
+					expect(mailer.invite).toHaveBeenCalledWith({
+						email: 'test@example.com',
+						inviteAcceptUrl: `${urlService.getInstanceBaseUrl()}/signin`,
+					});
+					expect(jwtService.sign).not.toHaveBeenCalled();
+					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeUndefined();
+				},
+			);
+		});
+
 		describe('when inviteLinksEmailOnly = false', () => {
 			beforeEach(() => {
 				globalConfig.userManagement.inviteLinksEmailOnly = false;
@@ -844,6 +883,7 @@ describe('UserService', () => {
 
 		beforeEach(() => {
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
+			vi.spyOn(ssoHelpers, 'isSamlOrOidcLoginEnabled').mockReturnValue(false);
 			license.isWithinUsersLimit.mockReturnValue(true);
 			license.isAdvancedPermissionsLicensed.mockReturnValue(true);
 			ownershipService.hasInstanceOwner.mockResolvedValue(true);
@@ -856,6 +896,44 @@ describe('UserService', () => {
 			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(
 				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
+		});
+
+		describe('with SCIM provisioning', () => {
+			const provisioningService = mockInstance(ProvisioningService);
+
+			beforeEach(() => {
+				vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
+				vi.spyOn(ssoHelpers, 'isSamlOrOidcLoginEnabled').mockReturnValue(true);
+				vi.spyOn(userService, 'inviteUsers').mockResolvedValue({
+					usersInvited: [],
+					usersCreated: [],
+				});
+				scimSwitchReader.isEnabled.mockResolvedValue(true);
+			});
+
+			afterEach(() => {
+				vi.mocked(userService.inviteUsers).mockRestore();
+			});
+
+			it('invites users under SSO while SCIM provisioning is on', async () => {
+				await expect(userService.inviteUser(inviter, payload)).resolves.toEqual([]);
+				expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, [
+					{ email: 'valid@email.com', role: 'global:member' },
+				]);
+			});
+
+			it('rejects a role other than member while single sign-on assigns the instance roles', async () => {
+				provisioningService.isInstanceRoleManaged.mockResolvedValueOnce(true);
+
+				const result = userService.inviteUser(
+					inviter,
+					new InviteUsersRequestDto({ email: 'valid@email.com', role: 'global:admin' }),
+				);
+
+				await expect(result).rejects.toThrow(ForbiddenError);
+				await expect(result).rejects.toThrow(INVITE_ROLE_MANAGED_MESSAGE);
+				expect(userService.inviteUsers).not.toHaveBeenCalled();
+			});
 		});
 
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
@@ -930,7 +1008,7 @@ describe('UserService', () => {
 			userRepository.findByIdWithRole.mockResolvedValue(userToDelete);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(personalProject);
 			projectService.findProject.mockResolvedValue(transfereeProject);
-			userRepository.findOneByProjectIdOrFail.mockResolvedValue(
+			userRepository.findOneByProjectId.mockResolvedValue(
 				Object.assign(new User(), { id: 'transferee-1' }),
 			);
 			sharedWorkflowRepository.find.mockResolvedValue([]);
@@ -1007,6 +1085,65 @@ describe('UserService', () => {
 			expect(ownershipTransferService.deleteModuleOwnedResources).toHaveBeenCalledExactlyOnceWith([
 				personalProject.id,
 			]);
+		});
+
+		it('transfers the work to a team project without members', async () => {
+			userRepository.findOneByProjectId.mockResolvedValue(null);
+
+			await userService.deleteUser(actor, userToDelete.id, transfereeProject.id);
+
+			expect(ownershipTransferService.transferAllResources).toHaveBeenCalledWith(
+				[personalProject.id],
+				transfereeProject.id,
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'user-deleted',
+				expect.objectContaining({
+					migrationStrategy: 'transfer_data',
+					migrationUserId: undefined,
+				}),
+			);
+		});
+
+		describe('with a system actor', () => {
+			const systemActor = { kind: 'system', reason: 'scim' } as const;
+
+			it('checks the transfer policy with the system actor', async () => {
+				await userService.deleteUser(systemActor, userToDelete.id, transfereeProject.id);
+
+				expect(ownershipTransferService.enforceTransferPolicy).toHaveBeenCalledExactlyOnceWith(
+					personalProject.id,
+					transfereeProject.id,
+					systemActor,
+				);
+			});
+
+			// The deleted user did not delete itself, so the event names no user.
+			it('names the system and no user as the actor of the event', async () => {
+				await userService.deleteUser(systemActor, userToDelete.id);
+
+				expect(eventService.emit).toHaveBeenCalledWith('user-deleted', {
+					user: null,
+					source: 'scim',
+					publicApi: false,
+					targetUserOldStatus: 'active',
+					targetUserId: userToDelete.id,
+					migrationStrategy: 'delete_data',
+					migrationUserId: undefined,
+				});
+			});
+
+			it('refuses the instance owner', async () => {
+				userRepository.findByIdWithRole.mockResolvedValue(
+					Object.assign(new User(), { id: 'owner-1', role: GLOBAL_OWNER_ROLE }),
+				);
+
+				const result = userService.deleteUser(systemActor, 'owner-1');
+
+				await expect(result).rejects.toThrow(ForbiddenError);
+				await expect(result).rejects.toThrow('Instance owner cannot be deleted.');
+				expect(manager.transaction).not.toHaveBeenCalled();
+			});
 		});
 	});
 

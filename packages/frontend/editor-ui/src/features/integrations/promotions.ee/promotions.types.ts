@@ -1,9 +1,16 @@
-import type { ApplyPackageResultDto, PromotionVariableScope } from '@n8n/api-types';
+import type {
+	ApplyPackageResultDto,
+	PromotionPreviewCheck,
+	PromotionVariableScope,
+} from '@n8n/api-types';
+
+export type ApplyCheckResult = Pick<ApplyPackageResultDto, 'environmentId' | 'git'> &
+	PromotionPreviewCheck;
 
 export type BlockedApplyResult = Extract<ApplyPackageResultDto, { status: 'blocked' }>;
 export type AppliedResult = Extract<ApplyPackageResultDto, { status: 'applied' }>;
 export type SourceChangedResult = Extract<ApplyPackageResultDto, { status: 'source-changed' }>;
-export type MissingPromotionBinding = BlockedApplyResult['preflight']['missingBindings'][number];
+export type MissingPromotionBinding = BlockedApplyResult['check']['missingBindings'][number];
 
 export type CreatedPromotionBinding =
 	| {

@@ -13,7 +13,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
 import type { AgentMessageQueueService, ClaimedAgentMessage } from '../agent-message-queue.service';
-import type { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
+import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
@@ -32,7 +32,7 @@ describe('AgentMessageQueueConsumer', () => {
 	const queue = mock<AgentMessageQueueService>();
 	const repository = mock<AgentMessageQueueRepository>();
 	const executions = mock<AgentExecutionService>();
-	const streams = mock<AgentQueuedPreviewStreamService>();
+	const streams = mock<AgentQueuedTestStreamService>();
 	const testRuns = mock<AgentTestRunService>();
 	const users = mock<UserRepository>();
 	const chatExecutions = mock<AgentChatExecutionService>();
@@ -166,6 +166,32 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(chatExecutions.register).toHaveBeenCalledOnce();
 		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledOnce();
 		expect(queue.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('runs a hidden stop report and disables tools through the report mode', async () => {
+		const item = claim('session');
+		item.payload = {
+			kind: 'preview',
+			message: 'Report the stop',
+			resourceId: 'draft-chat:user',
+			hidden: true,
+			stopReportId: 'stop',
+		};
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+
+		expect(testRuns.executePreparedDraftRun).toHaveBeenCalledWith(
+			expect.objectContaining({ pauseReport: true, hideUserMessageFromTranscript: true }),
+		);
+		expect(sender.send.mock.calls[0][0]).toMatchObject({
+			type: 'execution-started',
+			stopReport: true,
+		});
+		expect(sender.send.mock.calls[0][0]).not.toHaveProperty('message');
 	});
 
 	it('accepts Stop while the thread owner is loading', async () => {

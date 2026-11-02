@@ -38,11 +38,7 @@ vi.mock('@/features/credentials/credentials.store', async (importOriginal) => ({
 
 vi.mock('@/app/stores/ui.store', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/app/stores/ui.store')>()),
-	listenForModalChanges: ({
-		onModalClosed,
-	}: {
-		onModalClosed?: (modalName: string) => void;
-	}) => {
+	listenForModalChanges: ({ onModalClosed }: { onModalClosed?: (modalName: string) => void }) => {
 		credentialModalListeners.onModalClosed = onModalClosed;
 	},
 }));

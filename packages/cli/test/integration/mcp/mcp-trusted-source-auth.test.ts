@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService, type OAuthDiscoveryClient, UrlService } from '@n8n/backend-services';
+import {
+	CacheService,
+	EventService,
+	type OAuthDiscoveryClient,
+	UrlService,
+} from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import type { User } from '@n8n/db';
 import {
@@ -167,6 +172,7 @@ beforeAll(async () => {
 		Container.get(TrustedSourceDbStore),
 		offline,
 		Container.get(LocalAuthorizationServer),
+		Container.get(EventService),
 	).refresh('n8n-internal');
 
 	const pair = await generateKeyPair('ES256');

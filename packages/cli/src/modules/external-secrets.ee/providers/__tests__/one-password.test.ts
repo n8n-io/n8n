@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import get from 'lodash/get';
+import toPath from 'lodash/toPath';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -225,6 +227,21 @@ describe('OnePasswordProvider', () => {
 				'API Key.key',
 				'SSH Key.private_key',
 			]);
+		});
+
+		it('should preserve dots in item titles and field labels during discovery', async () => {
+			mockListVaults.mockResolvedValue([{ id: 'vault-1' }]);
+			mockListItems.mockResolvedValue([{ id: 'item-1', title: 'app.production' }]);
+			mockGetItemById.mockResolvedValue({
+				fields: [{ label: 'test.1', value: 'literal-value' }],
+			});
+
+			await provider.update();
+
+			const [name] = provider.getSecretNames();
+			const path = toPath(name);
+			expect(path).toEqual(['app.production', 'test.1']);
+			expect(get(provider.getSecret(path[0]), path.slice(1))).toBe('literal-value');
 		});
 
 		it('should skip items without fields', async () => {

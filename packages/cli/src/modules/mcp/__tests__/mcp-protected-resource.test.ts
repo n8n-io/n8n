@@ -3,6 +3,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -76,6 +77,15 @@ describe('McpProtectedResource', () => {
 	});
 
 	describe('getScopeTools', () => {
+		it.each([true, false])('lists description updates only when enabled: %s', async (enabled) => {
+			postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
+			);
+			expect((await resource.getScopeTools())['credential:update']).toEqual(
+				enabled ? ['update_credential_description'] : [],
+			);
+		});
+
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
 			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
 			const scopeTools = await resource.getScopeTools();
@@ -159,12 +169,16 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('checks the activity flag without a user argument', async () => {
+		it('checks each instance flag once without a user argument', async () => {
 			await resource.getScopeTools();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledExactlyOnceWith(
-				INSTANCE_ACTIVITY_CONTEXT_FLAG,
-			);
+			for (const flag of [INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG]) {
+				expect(
+					postHogClient.getFeatureFlagForInstance.mock.calls.filter(
+						([requested]) => requested === flag,
+					),
+				).toEqual([[flag]]);
+			}
 		});
 
 		it('should drop tools this instance does not expose', async () => {

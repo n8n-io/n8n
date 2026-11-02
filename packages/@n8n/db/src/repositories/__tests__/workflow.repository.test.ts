@@ -10,7 +10,6 @@ import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
-import { WorkflowHistoryRepository } from '../workflow-history.repository';
 import { WorkflowRepository } from '../workflow.repository';
 
 describe('WorkflowRepository', () => {
@@ -20,14 +19,12 @@ describe('WorkflowRepository', () => {
 	});
 	const folderRepository = mockInstance(FolderRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
-	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 	const transactionRunner = mock<TransactionRunner>();
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
 		sharedWorkflowRepository,
-		workflowHistoryRepository,
 		transactionRunner,
 	);
 
@@ -155,7 +152,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -416,7 +412,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -446,7 +441,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -665,6 +659,45 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findMigrationScanPage', () => {
+		it('should return the scan fields of the workflows after the cursor', async () => {
+			const page = [Object.assign(new WorkflowEntity(), { id: 'b', name: 'B' })];
+			const findSpy = vi.spyOn(workflowRepository, 'find').mockResolvedValue(page);
+			const select = ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
+
+			const first = await workflowRepository.findMigrationScanPage(undefined, 100);
+			const next = await workflowRepository.findMigrationScanPage('a', 100);
+
+			expect(first).toBe(page);
+			expect(next).toBe(page);
+			expect(findSpy).toHaveBeenNthCalledWith(1, {
+				select,
+				where: {},
+				take: 100,
+				order: { id: 'ASC' },
+			});
+			expect(findSpy).toHaveBeenNthCalledWith(2, {
+				select,
+				where: { id: MoreThan('a') },
+				take: 100,
+				order: { id: 'ASC' },
+			});
+		});
+	});
+
+	describe('findMigrationScanWorkflow', () => {
+		it('should return the workflow with the scan fields', async () => {
+			const workflow = Object.assign(new WorkflowEntity(), { id: 'a' });
+			const findOneSpy = vi.spyOn(workflowRepository, 'findOne').mockResolvedValue(workflow);
+
+			expect(await workflowRepository.findMigrationScanWorkflow('a')).toBe(workflow);
+			expect(findOneSpy).toHaveBeenCalledWith({
+				select: ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'],
+				where: { id: 'a' },
+			});
+		});
+	});
+
 	describe('findExistingIds', () => {
 		it('returns only the ids that still exist', async () => {
 			entityManager.find.mockResolvedValue([
@@ -783,7 +816,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
@@ -845,7 +877,6 @@ describe('WorkflowRepository', () => {
 				sqliteConfig,
 				folderRepository,
 				sharedWorkflowRepository,
-				workflowHistoryRepository,
 				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);

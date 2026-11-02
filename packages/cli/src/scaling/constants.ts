@@ -71,6 +71,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'display-workflow-activation-error',
 	'display-workflow-publication-status',
 	'workflow-publish-wake-up',
+	'reload-public-api-rate-limit-settings',
 ]);
 
 /** How often a main rechecks the DB for a queued job whose completion event it may have missed. */

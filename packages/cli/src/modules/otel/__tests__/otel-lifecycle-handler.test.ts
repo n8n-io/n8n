@@ -1,12 +1,14 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import type {
-	NodeExecuteAfterContext,
-	NodeExecuteBeforeContext,
-	WorkflowExecuteAfterContext,
-	WorkflowExecuteBeforeContext,
+import {
+	PubSubMetadata,
+	type NodeExecuteAfterContext,
+	type NodeExecuteBeforeContext,
+	type WorkflowExecuteAfterContext,
+	type WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
@@ -1534,13 +1536,25 @@ describe('onReloadOtelConfig', () => {
 		vi.clearAllMocks();
 	});
 
-	it('restarts the OTel tracer provider', async () => {
+	it('reloads the saved settings without shutting tracing down', async () => {
 		const handler = makeHandler();
-		otelService.restart.mockResolvedValue(undefined);
+		otelService.reloadSettings.mockResolvedValue(undefined);
 
 		await handler.onReloadOtelConfig();
 
-		expect(otelService.restart).toHaveBeenCalledTimes(1);
+		expect(otelService.reloadSettings).toHaveBeenCalledTimes(1);
+		expect(otelService.shutdown).not.toHaveBeenCalled();
+	});
+
+	it.each(['reload-otel-config', 'pubsub-reconnected'])('runs on %s', (eventName) => {
+		const handlers = Container.get(PubSubMetadata)
+			.getHandlers()
+			.filter(
+				({ eventName: name, eventHandlerClass }) =>
+					name === eventName && eventHandlerClass.name === 'OtelLifecycleHandler',
+			);
+
+		expect(handlers.map(({ methodName }) => methodName)).toEqual(['onReloadOtelConfig']);
 	});
 });
 

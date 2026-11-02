@@ -390,7 +390,6 @@ function handleResizeEnd() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding-inline-end: var(--spacing--2xs);
 
 	.pressed {
 		background-color: var(--button--outline-color--secondary--focus);

@@ -1,4 +1,6 @@
 import {
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILE_SIZE_MB,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	type AgentFileDto,
@@ -230,8 +232,15 @@ export class AgentKnowledgeService {
 
 		const extension = path.extname(file.originalname).toLowerCase();
 		if (extension === '.pdf') {
-			const extractedText = await this.extractPdfText(file.path);
-			return Buffer.from(extractedText, 'utf-8');
+			const extractedText = Buffer.from(await this.extractPdfText(file.path), 'utf-8');
+			// Extracted text can be larger than the compressed PDF, and the sandbox rejects files above the limit.
+			if (extractedText.byteLength > MAX_AGENT_FILE_SIZE_BYTES) {
+				throw new AgentKnowledgeUploadError(
+					`The text in "${file.originalname}" is larger than ${MAX_AGENT_FILE_SIZE_MB} MB`,
+					'file_size',
+				);
+			}
+			return extractedText;
 		}
 
 		return createReadStream(file.path);
