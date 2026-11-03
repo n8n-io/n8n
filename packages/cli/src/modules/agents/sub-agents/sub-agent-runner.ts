@@ -44,6 +44,12 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import {
+	type ActiveRun,
+	AgentSandboxFilesService,
+	type SandboxFileScope,
+	usedWorkspace,
+} from '../agent-sandbox-files.service';
 import type { StartExecutionParams } from '../agent-execution.service';
 import {
 	AgentExecutionRepository,
@@ -197,6 +203,7 @@ export class SubAgentRunner {
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly usageRelay: SystemAgentUsageRelay,
 		private readonly attachmentService: AgentChatAttachmentService,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	async run(
@@ -344,6 +351,7 @@ export class SubAgentRunner {
 		let runId: string | undefined;
 		let agent: BuiltAgent | undefined;
 		let finish: FinishUsage | undefined;
+		let activeRun: ActiveRun | undefined;
 
 		try {
 			context.abortSignal?.throwIfAborted();
@@ -377,6 +385,11 @@ export class SubAgentRunner {
 			});
 
 			agent = reconstructed.agent;
+			activeRun = {
+				agentId: recording.agentId,
+				getWorkspace: () => reconstructed.agent.getWorkspace(),
+			};
+			this.sandboxFiles.trackRun(threadId, activeRun);
 			context.abortSignal?.throwIfAborted();
 			const forwardBudgetNotice = context.onBudgetNotice
 				? (notice: AgentBudgetNotice) =>
@@ -517,6 +530,12 @@ export class SubAgentRunner {
 				}
 			}
 
+			// The child has no next turn, so store its outputs/ before they go to the parent.
+			await this.syncChildOutputs(activeRun, recorder, {
+				agentId: recording.agentId,
+				projectId: context.projectId,
+				threadId,
+			});
 			const returned = await this.returnFilesToParent(
 				operation.request.parentThreadId,
 				threadId,
@@ -535,8 +554,15 @@ export class SubAgentRunner {
 			executionError = error;
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
+			// A failed or cancelled child keeps the files that it made, as a parent turn does.
+			await this.syncChildOutputs(activeRun, recorder, {
+				agentId: recording.agentId,
+				projectId: context.projectId,
+				threadId,
+			});
 			throw error;
 		} finally {
+			if (activeRun) this.sandboxFiles.untrackRun(threadId, activeRun);
 			const usageStatus = delegatedRunStatus(
 				context.abortSignal?.aborted === true,
 				recorder.suspended,
@@ -605,6 +631,17 @@ export class SubAgentRunner {
 			});
 			return { filesError: 'The files of the sub-agent could not be listed' };
 		}
+	}
+
+	/** Store the new files of the child's outputs/. Never throws. */
+	private async syncChildOutputs(
+		run: ActiveRun | undefined,
+		recorder: ExecutionRecorder,
+		scope: SandboxFileScope,
+	): Promise<void> {
+		if (!run || !usedWorkspace(recorder.getMessageRecord().timeline)) return;
+		const workspace = run.getWorkspace();
+		if (workspace) await this.sandboxFiles.syncOutputs(workspace, scope);
 	}
 
 	/**
