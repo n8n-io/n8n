@@ -204,21 +204,28 @@ describe('AppConnectionsCard', () => {
 		);
 	});
 
-	it('changes the permissions of a binding', async () => {
+	it('saves permission changes when the binding popover closes', async () => {
 		providePermissions(['app:update']);
 		const { findByTestId } = renderComponent();
 
 		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
 		await userEvent.click(
+			await findByTestId('app-binding-weeklyChannelActivity-permission-insert'),
+		);
+		await userEvent.click(
 			await findByTestId('app-binding-weeklyChannelActivity-permission-delete'),
 		);
+		expect(setAppBindings).not.toHaveBeenCalled();
+
+		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
 
 		await waitFor(() =>
 			expect(setAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', [
 				workflow,
-				{ ...table, permissions: ['read', 'delete'] },
+				{ ...table, permissions: ['read', 'insert', 'delete'] },
 			]),
 		);
+		expect(setAppBindings).toHaveBeenCalledOnce();
 	});
 
 	it('removes a binding and links to its resource', async () => {

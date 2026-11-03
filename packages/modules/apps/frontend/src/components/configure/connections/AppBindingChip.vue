@@ -38,6 +38,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const router = useRouter();
 const open = ref(false);
+const draftPermissions = ref<BindingPermission[]>([]);
 
 const config = computed(() => BINDING_KINDS[props.binding.kind]);
 const permissions = computed(() => permissionsOf(props.binding));
@@ -49,11 +50,35 @@ const href = computed(() =>
 );
 
 function toggle(permission: BindingPermission, checked: boolean) {
-	emit('update', togglePermission(props.binding.kind, permissions.value, permission, checked));
+	draftPermissions.value = togglePermission(
+		props.binding.kind,
+		draftPermissions.value,
+		permission,
+		checked,
+	);
 }
 
 function isLastChecked(permission: BindingPermission) {
-	return permissions.value.length === 1 && permissions.value[0] === permission;
+	return draftPermissions.value.length === 1 && draftPermissions.value[0] === permission;
+}
+
+function permissionsChanged() {
+	return (
+		draftPermissions.value.length !== permissions.value.length ||
+		draftPermissions.value.some((permission) => !permissions.value.includes(permission))
+	);
+}
+
+function onOpen(value: boolean) {
+	if (value) {
+		draftPermissions.value = [...permissions.value];
+		open.value = true;
+		return;
+	}
+	if (open.value && permissionsChanged()) {
+		emit('update', draftPermissions.value);
+	}
+	open.value = false;
 }
 
 function remove() {
@@ -63,7 +88,7 @@ function remove() {
 </script>
 
 <template>
-	<N8nPopover v-model:open="open" width="260px" align="start">
+	<N8nPopover :open="open" width="260px" align="start" @update:open="onOpen">
 		<template #trigger>
 			<button
 				type="button"
@@ -98,7 +123,7 @@ function remove() {
 					<N8nCheckbox
 						v-for="permission in config.permissions"
 						:key="permission"
-						:model-value="permissions.includes(permission)"
+						:model-value="draftPermissions.includes(permission)"
 						:label="i18n.baseText(PERMISSION_LABELS[permission])"
 						:disabled="!canUpdate || isLastChecked(permission)"
 						:data-test-id="`app-binding-${binding.key}-permission-${permission}`"
