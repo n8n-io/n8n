@@ -120,8 +120,13 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		return await Promise.resolve(this.sentMessages.get(`${derivedThreadId}|${messageId}`) ?? null);
 	}
 
-	async consumeOutboundMessages(derivedThreadId: string, count: number): Promise<void> {
-		this.outbound.set(derivedThreadId, (this.outbound.get(derivedThreadId) ?? []).slice(count));
+	async consumeOutboundMessages(derivedThreadId: string, carried: string[]): Promise<void> {
+		const remaining = [...(this.outbound.get(derivedThreadId) ?? [])];
+		for (const text of carried) {
+			const index = remaining.indexOf(text);
+			if (index !== -1) remaining.splice(index, 1);
+		}
+		this.outbound.set(derivedThreadId, remaining);
 		await Promise.resolve();
 	}
 

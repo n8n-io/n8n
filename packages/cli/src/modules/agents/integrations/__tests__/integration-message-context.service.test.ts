@@ -325,13 +325,27 @@ describe('IntegrationMessageContextService', () => {
 		]);
 	});
 
+	it('keeps a message sent while the queue was full when consuming carried ones', async () => {
+		const { service } = setup({ task: {} });
+		const origin = { threadId: 'task', resourceId: 'task:task-1' };
+		for (const text of ['m1', 'm2', 'm3', 'm4', 'm5']) {
+			await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: text });
+		}
+		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'm6' });
+
+		await service.consumeOutboundMessages('agent-1:slack:D1:1', ['m1', 'm2', 'm3', 'm4', 'm5']);
+
+		const scope = await service.resolveSessionReplyScope('agent-1:slack:D1:1');
+		expect(scope?.outboundMessages).toEqual(['m6']);
+	});
+
 	it('consumes only the task messages a turn carried', async () => {
 		const { service } = setup({ task: {} });
 		const origin = { threadId: 'task', resourceId: 'task:task-1' };
 		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'one' });
 		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'two' });
 
-		await service.consumeOutboundMessages('agent-1:slack:D1:1', 1);
+		await service.consumeOutboundMessages('agent-1:slack:D1:1', ['one']);
 		// A message sent after the turn read the list stays for the next reply.
 		await service.bindSession('agent-1:slack:D1:1', origin, { outboundText: 'three' });
 
@@ -358,6 +372,30 @@ describe('IntegrationMessageContextService', () => {
 		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toMatchObject({
 			outboundMessages: [],
 		});
+	});
+
+	it('unbindSession keeps a binding that was replaced after it was read', async () => {
+		const { service, threads } = setup({
+			task: { boundThreads: { 'agent-1:slack:D1:1': 'user:alice' } },
+			'agent-1:slack:D1:1': { continueAs: { threadId: 'task', resourceId: 'task:task-1' } },
+		});
+		const newOrigin = { threadId: 'task-2', resourceId: 'task:task-2' };
+		const resolveSession = service.resolveSession.bind(service);
+		vi.spyOn(service, 'resolveSession').mockImplementation(async (id) => {
+			const binding = await resolveSession(id);
+			// A rebind lands between the read and the clear.
+			threads.set(id, { id, metadata: JSON.stringify({ continueAs: newOrigin }) });
+			return binding;
+		});
+
+		await service.unbindSession('agent-1:slack:D1:1');
+
+		const derived = jsonParse<Record<string, unknown>>(
+			threads.get('agent-1:slack:D1:1')!.metadata!,
+		);
+		expect(derived.continueAs).toEqual(newOrigin);
+		const origin = jsonParse<Record<string, unknown>>(threads.get('task')!.metadata!);
+		expect(origin.boundThreads).toEqual({ 'agent-1:slack:D1:1': 'user:alice' });
 	});
 
 	it('clearSessionBindings unbinds each derived thread and clears the list', async () => {

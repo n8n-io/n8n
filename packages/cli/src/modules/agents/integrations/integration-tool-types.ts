@@ -177,8 +177,8 @@ export interface IntegrationMessageContextStore {
 	): Promise<void>;
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
 	resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null>;
-	/** Removes the first `count` task messages, once a turn has carried them. */
-	consumeOutboundMessages(derivedThreadId: string, count: number): Promise<void>;
+	/** Removes the task messages a turn carried, once it has accepted them. */
+	consumeOutboundMessages(derivedThreadId: string, carried: string[]): Promise<void>;
 	unbindSession(derivedThreadId: string): Promise<void>;
 	clearSessionBindings(originThreadId: string): Promise<void>;
 	/** Remembers which session sent a message, so a later delivery failure reaches that session. */

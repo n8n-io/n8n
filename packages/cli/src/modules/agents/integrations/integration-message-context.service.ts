@@ -166,20 +166,21 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		return isSessionBinding(value) ? value : null;
 	}
 
-	async consumeOutboundMessages(derivedThreadId: string, count: number): Promise<void> {
-		// Drops only the messages the turn carried, so one sent meanwhile stays.
+	async consumeOutboundMessages(derivedThreadId: string, carried: string[]): Promise<void> {
+		// Drops only the messages the turn carried. The cap can push a carried
+		// message out of the queue, so a position-based drop would remove a new one.
 		await this.threadRepository.patchThread(
 			derivedThreadId,
 			(row) => {
 				const metadata = this.parseMetadata(row.metadata);
 				const messages = this.readStringArray(metadata[OUTBOUND_METADATA_KEY]);
-				if (messages.length === 0) return null;
-				return {
-					metadata: JSON.stringify({
-						...metadata,
-						[OUTBOUND_METADATA_KEY]: messages.slice(count),
-					}),
-				};
+				const remaining = [...messages];
+				for (const text of carried) {
+					const index = remaining.indexOf(text);
+					if (index !== -1) remaining.splice(index, 1);
+				}
+				if (remaining.length === messages.length) return null;
+				return { metadata: JSON.stringify({ ...metadata, [OUTBOUND_METADATA_KEY]: remaining }) };
 			},
 			{},
 		);
@@ -187,8 +188,24 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 
 	async unbindSession(derivedThreadId: string): Promise<void> {
 		const binding = await this.resolveSession(derivedThreadId);
-		await this.clearBinding(derivedThreadId);
-		if (binding) await this.removeBoundThread(binding.threadId, derivedThreadId);
+		if (!binding) {
+			await this.clearBinding(derivedThreadId);
+			return;
+		}
+		// A rebind may have replaced the binding since it was read. Clear only the
+		// one read here, and touch the origin map only when it was cleared.
+		let cleared = false;
+		await this.updateMetadata(derivedThreadId, binding.resourceId, (metadata) => {
+			const current = metadata[CONTINUE_AS_METADATA_KEY];
+			cleared =
+				isSessionBinding(current) &&
+				current.threadId === binding.threadId &&
+				current.resourceId === binding.resourceId;
+			return cleared
+				? { ...metadata, [CONTINUE_AS_METADATA_KEY]: undefined, [OUTBOUND_METADATA_KEY]: undefined }
+				: null;
+		});
+		if (cleared) await this.removeBoundThread(binding.threadId, derivedThreadId);
 	}
 
 	async clearSessionBindings(originThreadId: string): Promise<void> {

@@ -1446,7 +1446,7 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:slack:D2:2.2',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				{ recipientId: 'user:U2', outboundText: 'hi' },
+				{ recipientId: 'slack:cred-a:user:U2', outboundText: 'hi' },
 			);
 		});
 
@@ -1481,7 +1481,7 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:slack:D2:2.2',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				{ recipientId: 'user:U2', outboundText: 'Order 42\nShips Friday' },
+				{ recipientId: 'slack:cred-a:user:U2', outboundText: 'Order 42\nShips Friday' },
 			);
 		});
 
@@ -1524,7 +1524,7 @@ describe('integration tools', () => {
 				'agent-1:slack:D2:2.2',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
 				{
-					recipientId: 'user:U2',
+					recipientId: 'slack:cred-a:user:U2',
 					outboundText: 'Order #42 ships Friday\nItem: Desk\nReschedule\n- Monday',
 				},
 			);
@@ -1556,7 +1556,7 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:slack:C1:1.1',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				{ recipientId: 'channel:slack:C1', outboundText: 'hi' },
+				{ recipientId: 'slack:cred-a:channel:slack:C1', outboundText: 'hi' },
 			);
 		});
 
@@ -1596,7 +1596,59 @@ describe('integration tools', () => {
 			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
 				'agent-1:whatsapp:111:447700900123',
 				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
-				expect.objectContaining({ recipientId: 'user:447700900123' }),
+				{
+					recipientId: 'whatsapp:cred-w:user:447700900123',
+					outboundText: 'Template message: order_update',
+				},
+			);
+		});
+
+		it('summarizes the template parameters as the outbound text for send_template', async () => {
+			const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-w' };
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({
+				ok: true,
+				messageContext: {
+					integrationConnectionId: 'whatsapp:cred-w',
+					platform: 'whatsapp',
+					target: {
+						type: 'dm' as const,
+						userId: '447700900123',
+						threadId: 'whatsapp:111:447700900123',
+					},
+					messageId: 'wamid.1',
+					updatedAt: '2026-08-20T10:00:00.000Z',
+				},
+			});
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1', () => ({
+					actions: ['send_template'],
+				}))[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_template',
+					input: {
+						userId: '447700900123',
+						templateName: 'order_update',
+						language: 'en_US',
+						parameters: { '1': 'Ana', '2': 'Friday' },
+					},
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:whatsapp:111:447700900123',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				expect.objectContaining({
+					outboundText: 'Template message: order_update\n1: Ana\n2: Friday',
+				}),
 			);
 		});
 

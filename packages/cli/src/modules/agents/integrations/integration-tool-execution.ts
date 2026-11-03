@@ -324,8 +324,10 @@ export async function executeActionToolOperation(params: {
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 				{
-					recipientId: getRecipientId(messageContext.target),
-					outboundText: getOutboundText(message),
+					recipientId: getRecipientId(descriptor, messageContext.target),
+					outboundText:
+						getOutboundText(message) ??
+						(operation.action === 'send_template' ? getTemplateText(operation.input) : undefined),
 				},
 			);
 		}
@@ -391,11 +393,30 @@ function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
 	);
 }
 
-/** The person or channel a message went to, whatever thread it started. */
-function getRecipientId(target: IntegrationMessageTarget): string | undefined {
-	if (target.type === 'channel') return `channel:${target.channelId}`;
-	if (target.userId) return `user:${target.userId}`;
-	return target.type === 'thread' && target.channelId ? `channel:${target.channelId}` : undefined;
+/**
+ * The person or channel a message went to, whatever thread it started. The
+ * connection is part of the key, as two connections can share platform IDs.
+ */
+function getRecipientId(
+	descriptor: IntegrationToolConnectionDescriptor,
+	target: IntegrationMessageTarget,
+): string | undefined {
+	const scope = descriptor.integrationConnectionId;
+	if (target.type === 'channel') return `${scope}:channel:${target.channelId}`;
+	if (target.userId) return `${scope}:user:${target.userId}`;
+	return target.type === 'thread' && target.channelId
+		? `${scope}:channel:${target.channelId}`
+		: undefined;
+}
+
+/** A template send has no message body, so the reply session gets a summary of the payload. */
+function getTemplateText(input: Record<string, unknown>): string | undefined {
+	const { templateName, parameters } = input;
+	if (typeof templateName !== 'string' || templateName.length === 0) return undefined;
+	const values = isRecord(parameters)
+		? Object.entries(parameters).map(([key, value]) => `${key}: ${String(value)}`)
+		: [];
+	return [`Template message: ${templateName}`, ...values].join('\n');
 }
 
 /**

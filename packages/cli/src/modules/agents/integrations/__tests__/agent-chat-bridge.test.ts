@@ -3300,7 +3300,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(call.modelMessage).toContain('Alice, your order ships Friday');
 			expect(messageContextStore.consumeOutboundMessages).toHaveBeenCalledWith(
 				'agent-1:slack:D123:1001',
-				1,
+				['Alice, your order ships Friday'],
 			);
 		});
 
@@ -3342,7 +3342,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(call.modelMessage).toContain('From another task');
 			expect(messageContextStore.consumeOutboundMessages).toHaveBeenCalledWith(
 				'agent-1:slack:D123:1001',
-				1,
+				['From another task'],
 			);
 		});
 

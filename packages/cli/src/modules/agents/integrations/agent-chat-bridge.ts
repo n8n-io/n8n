@@ -1134,7 +1134,7 @@ export class AgentChatBridge {
 			if (accepted && session.priorOutboundMessages?.length) {
 				await this.messageContextBridge.consumeOutboundMessages(
 					this.baseThreadId(thread),
-					session.priorOutboundMessages.length,
+					session.priorOutboundMessages,
 				);
 			}
 			if (result.status === 'accepted' && integrationOrigin) {

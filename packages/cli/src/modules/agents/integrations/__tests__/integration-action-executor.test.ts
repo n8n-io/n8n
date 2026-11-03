@@ -304,6 +304,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-wa' };
 		const descriptor = getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1')[0];

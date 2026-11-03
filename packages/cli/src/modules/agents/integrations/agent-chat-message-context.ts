@@ -107,10 +107,10 @@ export class AgentChatMessageContextBridge {
 	}
 
 	/** A failure leaves the messages in place, so the next reply carries them. */
-	async consumeOutboundMessages(threadId: string, count: number): Promise<void> {
+	async consumeOutboundMessages(threadId: string, carried: string[]): Promise<void> {
 		if (!this.messageContextStore) return;
 		try {
-			await this.messageContextStore.consumeOutboundMessages(threadId, count);
+			await this.messageContextStore.consumeOutboundMessages(threadId, carried);
 		} catch (error) {
 			this.logger.warn('[AgentChatBridge] Failed to clear task messages after a reply', {
 				agentId: this.agentId,
