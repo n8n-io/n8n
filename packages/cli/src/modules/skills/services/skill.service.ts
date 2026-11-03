@@ -202,8 +202,8 @@ export class SkillService {
 	 * One page of the source groups: each source by repository, then the skills that no source
 	 * syncs. A source that the user folded is one row in place of its skills. The pages cut
 	 * the rows in order, so a long open group continues on the next page, where the table
-	 * shows its group row again. Each open group on the page reads only its own slice, so the
-	 * page reads at most one query for each group on it.
+	 * shows its group row again. The page reads the group sizes once, then one slice for each
+	 * open group on it.
 	 */
 	private async findGroupedPage(
 		visibility: SkillVisibility,
@@ -228,13 +228,13 @@ export class SkillService {
 			}
 			const from = Math.max(skip, start) - start;
 			const to = Math.min(pageEnd, position) - start;
-			const slice = await this.skillRepository.findVisiblePage(visibility, {
+			const slice = await this.skillRepository.findVisibleSlice(visibility, {
 				...match,
 				...(sourceId === null ? { withoutSource: true } : { sourceId }),
 				skip: from,
 				take: to - from,
 			});
-			skills.push(...slice.skills);
+			skills.push(...slice);
 		}
 		return { skills, count: position, collapsedSources };
 	}

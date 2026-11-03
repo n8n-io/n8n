@@ -112,6 +112,24 @@ export class SkillRepository {
 	}
 
 	/**
+	 * One slice of the visible skills that match the filter, in the order of `findVisiblePage`,
+	 * without the count. A grouped page reads one slice for each open group on it.
+	 */
+	async findVisibleSlice(
+		visibility: SkillVisibility,
+		filter: SkillListFilter,
+		ctx: OperationContext = {},
+	): Promise<Skill[]> {
+		const query = this.filteredQuery(visibility, filter, ctx);
+		if (!query) return [];
+		const order = filter.sort?.order ?? 'DESC';
+		query.orderBy(filter.sort?.by === 'name' ? 'LOWER(latest.name)' : 'skill.updatedAt', order);
+		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
+		if (filter.take !== undefined) query.limit(filter.take);
+		return await query.getMany();
+	}
+
+	/**
 	 * How many visible skills match the filter in each source group, in table order: each
 	 * source by repository, then the skills that no source syncs (`sourceId` null). A group
 	 * with no match is left out.

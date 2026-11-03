@@ -1194,6 +1194,55 @@ describe('SettingsSkillsView', () => {
 				localStorage.removeItem('n8n-skills-collapsed-sources');
 			});
 
+			it('forgets the folds of sources that are gone', async () => {
+				localStorage.setItem(
+					'n8n-skills-collapsed-sources',
+					JSON.stringify(['src-1', 'deleted-source']),
+				);
+				await renderWithSource();
+
+				await waitFor(() =>
+					expect(JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources') ?? '[]')).toEqual([
+						'src-1',
+					]),
+				);
+				localStorage.removeItem('n8n-skills-collapsed-sources');
+			});
+
+			it('shows a source with no synced skills instead of the empty state', async () => {
+				enableSkillSync();
+				const empty = { ...source, skillCount: 0 };
+				skillsStore.fetchSources.mockImplementation(async () => {
+					skillsStore.sources = [empty];
+					return [empty];
+				});
+				skillsStore.skills = [];
+				skillsStore.count = 0;
+				const view = renderView();
+
+				await waitFor(() =>
+					expect(view.getByTestId('skill-group-empty')).toHaveTextContent('No synced skills'),
+				);
+				expect(view.queryByTestId('skills-empty-state')).toBeNull();
+			});
+
+			it('reloads the sources after stop syncing, so the counts stay right', async () => {
+				skillsStore.stopSyncingSkill.mockResolvedValue(undefined);
+				const view = await renderWithSource();
+				skillsStore.fetchSources.mockClear();
+				skillsStore.skills = [
+					skill({ source: 'github', canEdit: false, canStopSyncing: true, sourceId: 'src-1' }),
+				];
+
+				await userEvent.click(view.getAllByTestId('skill-actions')[0].querySelector('button')!);
+				await waitFor(() =>
+					expect(document.querySelector('[data-test-id="action-stopSyncing"]')).toBeInTheDocument(),
+				);
+				await userEvent.click(document.querySelector('[data-test-id="action-stopSyncing"]')!);
+
+				await waitFor(() => expect(skillsStore.fetchSources).toHaveBeenCalled());
+			});
+
 			it.each([
 				{
 					updatesFound: 0,

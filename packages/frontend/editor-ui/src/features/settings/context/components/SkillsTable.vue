@@ -49,7 +49,7 @@ const props = defineProps<{
 	 * a group row, and the rows must arrive grouped, as `groupBy: 'source'` lists them.
 	 */
 	sources?: SkillSourceListItem[];
-	/** Sources with no synced skill on this page or at all, shown as rows of their own. */
+	/** Sources with no synced skills, shown as rows of their own before the other rows. */
 	emptySources?: SkillSourceListItem[];
 	/** The sources that the user folded. */
 	collapsedSourceIds?: string[];
@@ -178,7 +178,8 @@ function toggleSource(sourceId: string) {
 /** `owner/repository · branch`, the one format for a repository everywhere. */
 function sourceName(sourceId: string): string {
 	const source = sourcesById.value.get(sourceId);
-	if (!source) return '';
+	// A source of a type that this build cannot read, or one that has not loaded yet.
+	if (!source) return i18n.baseText('settings.context.skills.sources.unknown');
 	return [source.label, source.ref].filter(Boolean).join(' · ');
 }
 

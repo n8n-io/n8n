@@ -222,7 +222,7 @@ export class SkillSourceRepository {
 		return states;
 	}
 
-	/** The sources in Global and in these projects, for the Sources tab. `all` for every source. */
+	/** The sources in Global and in these projects, for the skills table. `all` for every source. */
 	async findVisibleSources(projectIds: string[] | 'all'): Promise<SkillSourceConnection[]> {
 		const manager = this.sources.managerFor({});
 		if (projectIds === 'all') {

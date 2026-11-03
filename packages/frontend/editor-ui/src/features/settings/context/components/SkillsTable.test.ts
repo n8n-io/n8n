@@ -391,6 +391,12 @@ describe('SkillsTable', () => {
 			expect(getAllByTestId('skill-scope-badge')[0]).toHaveTextContent('Marketing');
 		});
 
+		it('names a source that has not loaded as unknown', () => {
+			const { getByTestId } = renderGrouped({ sources: [] });
+
+			expect(getByTestId('skill-group-title')).toHaveTextContent('Unknown source');
+		});
+
 		it('folds and unfolds a source from its row', async () => {
 			const { getByTestId, emitted } = renderGrouped();
 

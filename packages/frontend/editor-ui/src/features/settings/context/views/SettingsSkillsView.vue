@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -414,7 +414,8 @@ async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSou
 		});
 	}
 	void loadCreators();
-	await load();
+	// The new source gets its group row.
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -643,7 +644,8 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
-	await load();
+	// The source of a synced skill counts one skill less.
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -678,13 +680,10 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
 		type: 'success',
 	});
-	await load();
+	// The source counts one synced skill less, and may have none left.
+	await Promise.all([load(), loadSources()]);
 }
 
-/**
- * Check now: checks the whole source of the skill. The list reloads, so the badges of every
- * skill of the source show what the check found.
- */
 /** The sources that the user folded, kept in this browser, so the table opens as it was left. */
 const collapsedSourceIds = useLocalStorage<string[]>('n8n-skills-collapsed-sources', []);
 
@@ -701,13 +700,19 @@ const emptySources = computed(() => {
 	if (!skillSyncEnabled.value || loadedFiltered.value || (tableOptions.value.page ?? 0) > 0) {
 		return [];
 	}
-	return skillsStore.sources.filter((source) => source.skillCount === 0);
+	// A source that the page shows folded has skills, whatever an older count says.
+	const folded = new Set(skillsStore.collapsedSources.map(({ sourceId }) => sourceId));
+	return skillsStore.sources.filter((source) => source.skillCount === 0 && !folded.has(source.id));
 });
 
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
 	try {
-		await skillsStore.fetchSources();
+		const sources = await skillsStore.fetchSources();
+		// Forget folds of sources that are gone, so the list stays within what the API accepts.
+		const known = new Set(sources.map(({ id }) => id));
+		const kept = collapsedSourceIds.value.filter((id) => known.has(id));
+		if (kept.length !== collapsedSourceIds.value.length) collapsedSourceIds.value = kept;
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.sources.error.load'));
 	}
@@ -768,6 +773,11 @@ async function onCheckSource(source: SkillSourceListItem) {
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
+
+// The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
+watch(skillSyncEnabled, async (enabled) => {
+	if (enabled) await Promise.all([load(), loadSources()]);
+});
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
@@ -929,7 +939,7 @@ onMounted(async () => {
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
 			:loading="showLoading"
-			:show-empty="emptyState !== 'none'"
+			:show-empty="emptyState !== 'none' && emptySources.length === 0"
 			:show-assistant-availability="assistantSkillsEnabled"
 			:show-mcp-availability="mcpSkillsEnabled"
 			:sources="tableSources"

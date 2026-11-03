@@ -1,6 +1,7 @@
 import type { SkillScanResult, SkillSourceCheckResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
+import { validate as isUuid } from 'uuid';
 import { GLOBAL_OWNER_ROLE, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -101,13 +102,13 @@ export class SkillSyncService {
 	}
 
 	/**
-	 * Check now on a synced skill: checks the whole source of the skill, as the hourly check
-	 * does. A source checked less than a minute ago, also by the hourly check, is not checked
+	 * Check for updates on one source, as the hourly check does. A source checked less than a minute ago, also by the hourly check, is not checked
 	 * again, and the answer says so.
 	 */
 	async checkNow(user: User, sourceId: string): Promise<SkillSourceCheckResponse> {
 		await this.flagGate.assertEnabled(user);
-		const source = await this.sourceRepository.findById(sourceId);
+		// A malformed id finds no source. Postgres refuses it in a uuid column, so it is not read.
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
 		const client = source && this.clients.get(source.type);
 		// 404 for a source that the user cannot see, so the answer reveals nothing about it.
 		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view'))) {

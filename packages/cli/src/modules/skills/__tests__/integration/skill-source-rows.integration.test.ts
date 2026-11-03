@@ -31,11 +31,10 @@ const skillMd = (name: string, body = `Follow ${name}.`, description = `${name} 
 	`---\nname: ${name}\ndescription: ${description}\n---\n\n${body}\n`;
 
 /** A repository with these skills, each in `skills/<name>`. */
-const repo = (names: string[]) =>
-	Object.fromEntries([
-		['README.md', '# Skills\n'],
-		...names.map((name) => [`skills/${name}/SKILL.md`, skillMd(name)]),
-	]);
+const repo = (names: string[]): Record<string, string> => ({
+	'README.md': '# Skills\n',
+	...Object.fromEntries(names.map((name) => [`skills/${name}/SKILL.md`, skillMd(name)])),
+});
 
 beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents']);
@@ -169,6 +168,8 @@ describe('Sources in the skills table', () => {
 
 			expect(body.data).toMatchObject({ label: 'acme/zeta', updatesFound: 0, throttled: false });
 			await viewer.post(`/skill-sources/${zeta}/check`).expect(403);
+			// A malformed id finds no source, also on Postgres, where it is not a valid uuid.
+			await editor.post('/skill-sources/not-a-uuid/check').expect(404);
 			await outsider.post(`/skill-sources/${zeta}/check`).expect(404);
 			postHog.getFeatureFlags.mockResolvedValue({});
 			await editor.post(`/skill-sources/${zeta}/check`).expect(404);

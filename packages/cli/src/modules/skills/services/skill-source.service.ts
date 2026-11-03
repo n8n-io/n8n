@@ -216,8 +216,8 @@ export class SkillSourceService {
 	}
 
 	/**
-	 * The sources that the user can see, for the Sources tab: Global and every project where
-	 * the user can list skills, with the number of skills and updates of each.
+	 * The sources that the user can see, for their group rows in the skills table: Global and
+	 * every project where the user can list skills, with the number of skills and updates of each.
 	 */
 	async list(user: User): Promise<SkillSourceListItem[]> {
 		await this.flagGate.assertEnabled(user);
@@ -226,7 +226,7 @@ export class SkillSourceService {
 		return await this.describeSources(user, sources);
 	}
 
-	/** The Sources tab row of each source whose type has a client on this build. */
+	/** The group row of each source whose type has a client on this build. */
 	async describeSources(
 		user: User,
 		sources: SkillSourceConnection[],
@@ -235,14 +235,20 @@ export class SkillSourceService {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		const [counts, projects, canReview] = await Promise.all([
+		// The rights depend only on the scope, so each project is checked once.
+		const scopes = [...new Set(shown.map(({ source }) => source.projectId))];
+		const [counts, projects, rights] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
 			Promise.all(
-				shown.map(async ({ source }) => await this.skillAccess.canOnSource(user, source, 'review')),
+				scopes.map(
+					async (projectId) =>
+						[projectId, await this.skillAccess.canOnSource(user, { projectId }, 'review')] as const,
+				),
 			),
 		]);
-		return shown.map(({ source, client }, index) => {
+		const canReviewIn = new Map(rights);
+		return shown.map(({ source, client }) => {
 			const project = source.projectId ? projects.get(source.projectId) : undefined;
 			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
 			return {
@@ -257,7 +263,7 @@ export class SkillSourceService {
 				updatesAvailable: count.available,
 				updatesBlocked: count.blocked,
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
-				canReview: canReview[index],
+				canReview: canReviewIn.get(source.projectId) ?? false,
 			};
 		});
 	}
