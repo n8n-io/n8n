@@ -116,6 +116,9 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				.object({
 					sandbox_enabled: z.boolean(),
 					sandbox_provider: z.string(),
+					sandbox_fallback_provider: z
+						.string()
+						.describe('Sandbox provider used when the primary is unavailable. Empty when unset'),
 					search_brave_set: z.boolean(),
 					search_searxng_set: z.boolean(),
 					model_env_set: z

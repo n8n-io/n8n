@@ -2028,6 +2028,7 @@ export class TelemetryEventRelay extends EventRelay {
 				// (booleans/names only, never key values)
 				sandbox_enabled: this.globalConfig.instanceAi.sandboxEnabled,
 				sandbox_provider: this.globalConfig.instanceAi.sandboxProvider,
+				sandbox_fallback_provider: this.globalConfig.instanceAi.sandboxFallbackProvider,
 				search_brave_set: this.globalConfig.instanceAi.braveSearchApiKey !== '',
 				search_searxng_set: this.globalConfig.instanceAi.searxngUrl !== '',
 				model_env_set:

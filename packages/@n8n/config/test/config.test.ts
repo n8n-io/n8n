@@ -376,6 +376,7 @@ describe('GlobalConfig', () => {
 			midRunObservation: false,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
+			sandboxFallbackProvider: '',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: '',
 			daytonaApiUrl: '',

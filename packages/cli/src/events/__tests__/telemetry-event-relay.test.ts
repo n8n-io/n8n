@@ -162,6 +162,7 @@ describe('TelemetryEventRelay', () => {
 		instanceAi: {
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
+			sandboxFallbackProvider: '',
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			model: 'anthropic/claude-sonnet-4',
@@ -4509,6 +4510,7 @@ describe('TelemetryEventRelay', () => {
 			Object.assign(globalConfig.instanceAi, {
 				sandboxEnabled: true,
 				sandboxProvider: 'daytona',
+				sandboxFallbackProvider: 'n8n-sandbox',
 				braveSearchApiKey: 'some-api-key',
 				searxngUrl: '',
 			});
@@ -4526,6 +4528,7 @@ describe('TelemetryEventRelay', () => {
 					instance_ai: {
 						sandbox_enabled: true,
 						sandbox_provider: 'daytona',
+						sandbox_fallback_provider: 'n8n-sandbox',
 						search_brave_set: true,
 						search_searxng_set: false,
 						model_env_set: false,
@@ -4539,6 +4542,7 @@ describe('TelemetryEventRelay', () => {
 			Object.assign(globalConfig.instanceAi, {
 				sandboxEnabled: false,
 				sandboxProvider: 'n8n-sandbox',
+				sandboxFallbackProvider: '',
 				braveSearchApiKey: '',
 				searxngUrl: '',
 			});
