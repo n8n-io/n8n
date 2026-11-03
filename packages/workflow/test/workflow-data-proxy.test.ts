@@ -3,8 +3,9 @@ import { DateTime, Duration, Interval } from 'luxon';
 import * as Helpers from './helpers';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ExpressionError } from '../src/errors/expression.error';
-import { UserError } from '../src/errors';
+import { UnexpectedError, UserError } from '../src/errors';
 import { createMergeAppendProxy } from './fixtures/merge-append-proxy';
+import { createPairedItemPagination } from './fixtures/paired-item-pagination';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
@@ -804,6 +805,44 @@ describe('WorkflowDataProxy', () => {
 				});
 			}
 		});
+	});
+
+	describe('Paired items through a long pagination loop', () => {
+		test.each([1, 2])('resolves 5000 pages with %i rows per page', (rows) => {
+			const { workflow, run } = createPairedItemPagination(5000, rows);
+			const proxy = getProxyFromFixture(workflow, run, 'Process');
+
+			expect(proxy.$('Trigger').item.json.timestamp).toEqual('2024-01-01T08:00:00.000Z');
+		});
+
+		test.each([1, 2])('rejects a cycle with %i parent links', (parents) => {
+			const { workflow, run } = createPairedItemPagination(1, parents);
+			run.data.resultData.runData.Fetch[0].source = [
+				{ previousNode: 'Has More', previousNodeOutput: 1 },
+			];
+			const proxy = getProxyFromFixture(workflow, run, 'Process');
+
+			const resolve = () => proxy.$('Trigger').item;
+			expect(resolve).toThrow(UnexpectedError);
+			expect(resolve).toThrow('Paired item ancestry contains a cycle');
+		});
+
+		test.each([true, false])(
+			'resolves a valid branch next to a cycle (cycle first: %s)',
+			(cycleFirst) => {
+				const { workflow, run } = createPairedItemPagination(1);
+				const runData = run.data.resultData.runData;
+				runData.Fetch[0].source = [{ previousNode: 'Has More', previousNodeOutput: 1 }];
+				const cycle = { item: 0 };
+				const valid = { item: 0, sourceOverwrite: { previousNode: 'Trigger' } };
+				runData['Has More'][0].data!.main[1]![0].pairedItem = cycleFirst
+					? [cycle, valid]
+					: [valid, cycle];
+				const proxy = getProxyFromFixture(workflow, run, 'Process');
+
+				expect(proxy.$('Trigger').item.json.timestamp).toBe('2024-01-01T08:00:00.000Z');
+			},
+		);
 	});
 
 	describe('Partial data', () => {
@@ -2416,7 +2455,7 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 
 	const makeRun = (
 		startItems: INodeExecutionData[],
-		midRuns: ReturnType<typeof midRun>[],
+		midRuns: Array<ReturnType<typeof midRun>>,
 		joinPairing: IPairedItemData[] = defaultJoinPairing,
 	): IRun => {
 		const start = {
@@ -2505,6 +2544,24 @@ describe('WorkflowDataProxy → pairedItem traversal with sourceOverwrite routes
 			"Paired item data for item from node 'Mid' is unavailable",
 		);
 	});
+
+	test.each([true, false])(
+		'returns the first branch error (missing pairing first: %s)',
+		(missingFirst) => {
+			const missing = { item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 0 } };
+			const outOfBounds = { item: 0, sourceOverwrite: { previousNode: 'Mid', previousNodeRun: 1 } };
+			const run = makeRun(
+				[{ json: {} }],
+				[midRun([[{ json: {} }]]), ...midRunsPairedTo([1])],
+				missingFirst ? [missing, outOfBounds] : [outOfBounds, missing],
+			);
+			const proxy = getProxyFromFixture(makeWorkflow(), run, 'End');
+
+			expect(() => proxy.$('Start').item).toThrow(
+				`Paired item data for item from node '${missingFirst ? 'Mid' : 'Start'}' is unavailable`,
+			);
+		},
+	);
 
 	test('treats the same item index on different outputs of one run as distinct states', () => {
 		const startItems = [

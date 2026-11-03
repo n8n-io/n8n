@@ -1,7 +1,12 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
+import { BaseError } from 'n8n-workflow';
+
 import {
 	MfaRequiredError,
 	ResponseError,
 	STREAM_SEPARATOR,
+	makePublicApiRequest,
+	makeRestApiRequest,
 	request,
 	requestResponse,
 	setUnauthorizedHandler,
@@ -62,6 +67,60 @@ describe('request', () => {
 		await expect(request(baseConfig)).rejects.toThrow(MfaRequiredError);
 
 		expect(handler).not.toHaveBeenCalled();
+	});
+});
+
+describe('request headers', () => {
+	it('sends the headers from its config with the request', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: {} });
+		const headers = { [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI };
+
+		await request({
+			method: 'GET',
+			baseURL: 'https://api.example.com',
+			endpoint: '/workflows',
+			headers,
+		});
+
+		expect(axiosRequest).toHaveBeenCalledWith(expect.objectContaining({ headers }));
+	});
+});
+
+describe('makePublicApiRequest', () => {
+	it('sends the context headers with the public API base URL', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { id: 'workflow-1' } });
+		const headers = { [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI };
+
+		const result = await makePublicApiRequest(
+			{ baseUrl: 'https://api.example.com/api/v1', headers },
+			'GET',
+			'/workflows',
+		);
+
+		expect(result).toEqual({ id: 'workflow-1' });
+		expect(axiosRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				baseURL: 'https://api.example.com/api/v1',
+				url: '/workflows',
+				headers,
+			}),
+		);
+	});
+});
+
+describe('makeRestApiRequest', () => {
+	it('does not send the editor UI client header on a REST API request', async () => {
+		axiosRequest.mockResolvedValueOnce({ data: { data: [] } });
+
+		await makeRestApiRequest(
+			{ baseUrl: 'https://api.example.com', pushRef: 'push-ref' },
+			'GET',
+			'/workflows',
+		);
+
+		const sentHeaders = axiosRequest.mock.lastCall?.[0].headers;
+		expect(sentHeaders).toEqual({ 'push-ref': 'push-ref' });
+		expect(sentHeaders).not.toHaveProperty(N8N_CLIENT_HEADER);
 	});
 });
 
@@ -404,5 +463,51 @@ describe('streamRequest', () => {
 
 		expect(onDoneMock).toHaveBeenCalledTimes(1);
 		expect(onErrorMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('ResponseError', () => {
+	it('is a BaseError with the response fields', () => {
+		const error = new ResponseError('Not found', {
+			errorCode: 4040,
+			httpStatusCode: 404,
+			stack: 'server stack',
+			meta: { url: 'https://example.com' },
+			hint: 'Check the ID',
+		});
+
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toBeInstanceOf(BaseError);
+		expect(error.name).toBe('ResponseError');
+		expect(error.message).toBe('Not found');
+		expect(error.errorCode).toBe(4040);
+		expect(error.httpStatusCode).toBe(404);
+		expect(error.serverStackTrace).toBe('server stack');
+		expect(error.stack).not.toBe('server stack');
+		expect(error.meta).toEqual({ url: 'https://example.com' });
+		expect(error.hint).toBe('Check the ID');
+		expect(error.level).toBe('error');
+		expect(error.description).toBeUndefined();
+	});
+
+	it('leaves the optional fields undefined when they are not given', () => {
+		const error = new ResponseError('Failed');
+
+		expect(error.errorCode).toBeUndefined();
+		expect(error.httpStatusCode).toBeUndefined();
+		expect(error.serverStackTrace).toBeUndefined();
+		expect(error.meta).toBeUndefined();
+		expect(error.hint).toBeUndefined();
+	});
+
+	it('keeps its name when the class name is changed by minification', () => {
+		const originalName = Object.getOwnPropertyDescriptor(ResponseError, 'name');
+		Object.defineProperty(ResponseError, 'name', { value: 'e', configurable: true });
+
+		try {
+			expect(new ResponseError('Failed').name).toBe('ResponseError');
+		} finally {
+			if (originalName) Object.defineProperty(ResponseError, 'name', originalName);
+		}
 	});
 });

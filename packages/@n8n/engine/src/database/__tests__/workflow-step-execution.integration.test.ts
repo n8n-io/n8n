@@ -848,6 +848,47 @@ describe('workflow_step_execution table (integration)', () => {
 		},
 	);
 
+	it('TypeOrmStepStore.loadStepsByNodeIds returns every pass of the named nodes, with outputs', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'completed',
+			outputs: [[{ json: { a: 0 } }]],
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'b',
+			status: 'completed',
+			outputs: [[{ json: { b: 1 } }]],
+			iteration: 1,
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'b',
+			status: 'completed',
+			outputs: [[{ json: { b: 0 } }]],
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'c',
+			status: 'completed',
+			outputs: [[{ json: { c: 0 } }]],
+		});
+
+		const steps = await store.loadStepsByNodeIds(executionId, ['b', 'a']);
+
+		expect(steps.map(({ nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs }))).toEqual(
+			[
+				{ nodeId: 'a', iteration: 0, outputs: [[{ json: { a: 0 } }]] },
+				{ nodeId: 'b', iteration: 0, outputs: [[{ json: { b: 0 } }]] },
+				{ nodeId: 'b', iteration: 1, outputs: [[{ json: { b: 1 } }]] },
+			],
+		);
+		expect(await store.loadStepsByNodeIds(executionId, [])).toEqual([]);
+	});
+
 	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

@@ -12,6 +12,7 @@ import type {
 	IntegrationToolConnectionDescriptor,
 } from '../integration-tools';
 import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
+import type { AgentOutboundFiles } from '../agent-outbound-files.service';
 
 const makeContext = (): IntegrationMessageContext => ({
 	integrationConnectionId: 'n8n_chat',
@@ -234,6 +235,7 @@ describe('internal integration dispatch', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const result = await executor.execute({
 			descriptor,
@@ -251,6 +253,7 @@ describe('internal integration dispatch', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const result = await executor.execute({
 			descriptor,

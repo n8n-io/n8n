@@ -33,8 +33,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ManualExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
@@ -46,7 +44,14 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	InternalServerError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -533,16 +538,8 @@ export class ExecutionService {
 		return true;
 	}
 
-	/**
-	 * All executions still enqueued (`new`), plus the ids of those whose data could not be
-	 * read - those can never run, so the caller has to take them out of `new` itself.
-	 */
-	async findAllEnqueuedExecutions() {
-		return await this.executionPersistence.findMultipleExecutionsWithUnreadable({
-			select: ['id', 'mode'],
-			where: { status: 'new' },
-			order: { id: 'ASC' },
-		});
+	async findEnqueuedExecutionIds() {
+		return await this.executionRepository.findEnqueuedIds();
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {

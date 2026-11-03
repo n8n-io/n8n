@@ -8,9 +8,10 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { SkillRepository } from '../../database/repositories/skill.repository';
@@ -146,38 +147,6 @@ describe('SkillsController', () => {
 		expect(detail.availableToAssistant).toBe(false);
 	});
 
-	it('requires moving an agent-scoped skill before enabling it for the Assistant', async () => {
-		const agent = await newAgent('Assistant toggle test', project.id);
-		const {
-			body: { data: created },
-		} = await owner
-			.post('/skills')
-			.send({ scope: 'agent', agentId: agent.id, skill: body })
-			.expect(200);
-		await owner
-			.patch(`/skills/${created.id}`)
-			.send({ baseSkillHash: created.skillHash, availableToAssistant: true })
-			.expect(400);
-		const {
-			body: { data: detail },
-		} = await owner.get(`/skills/${created.id}`).expect(200);
-		expect(detail.availableToAssistant).toBe(false);
-		await editor
-			.patch(`/skills/${created.id}`)
-			.send({
-				baseSkillHash: created.skillHash,
-				scope: 'project',
-				projectId: project.id,
-				availableToAssistant: true,
-			})
-			.expect(200);
-		const {
-			body: { data: moved },
-		} = await owner.get(`/skills/${created.id}`).expect(200);
-		expect(moved.scope).toBe('project');
-		expect(moved.availableToAssistant).toBe(true);
-	});
-
 	it('creates a skill that the Assistant can use', async () => {
 		const {
 			body: { data: created },
@@ -190,11 +159,6 @@ describe('SkillsController', () => {
 	});
 
 	it('creates nothing when the Assistant cannot use the new skill', async () => {
-		const agent = await newAgent('Assistant create test', project.id);
-		await owner
-			.post('/skills')
-			.send({ scope: 'agent', agentId: agent.id, skill: body, availableToAssistant: true })
-			.expect(400);
 		postHog.getFeatureFlagForInstance.mockResolvedValue(false);
 		await owner
 			.post('/skills')
@@ -246,7 +210,7 @@ describe('SkillsController', () => {
 		);
 		if (options.published) {
 			// Published and in sync: the draft is the published version.
-			const histories = Container.get(AgentHistoryRepository);
+			const histories = Container.get(DataSource).getRepository(AgentHistory);
 			await histories.save(histories.create({ versionId, agentId: agent.id, author: 'Test' }));
 			await agents.update({ id: agent.id }, { activeVersionId: versionId });
 		}
@@ -263,41 +227,6 @@ describe('SkillsController', () => {
 		const response = await agent.post('/skills').send(payload).expect(status);
 		return response.body.data as { id: string; skillHash: string };
 	}
-
-	describe('agent skills', () => {
-		it('lets a project editor create one for an agent and checks the project of the agent', async () => {
-			const agent = await newAgent('Support bot', project.id);
-			const { id } = await create(editor, { scope: 'agent', agentId: agent.id, skill: body });
-
-			const read = await editor.get(`/skills/${id}`).expect(200);
-			expect(read.body.data).toMatchObject({
-				id,
-				scope: 'agent',
-				agentId: agent.id,
-				agentName: 'Support bot',
-				projectId: project.id,
-				projectName: 'Team',
-				projectType: 'team',
-				latestVersion: 1,
-				canEdit: true,
-				canDelete: true,
-			});
-			await outsider.get(`/skills/${id}`).expect(404);
-			await outsider
-				.patch(`/skills/${id}`)
-				.send({ instructions: 'x', baseSkillHash: 'x' })
-				.expect(404);
-			await owner.get(`/skills/${id}`).expect(200);
-		});
-
-		it('refuses an agent skill to a user outside the project, and for an unknown agent', async () => {
-			const agent = await newAgent('Support bot', project.id);
-
-			await create(outsider, { scope: 'agent', agentId: agent.id, skill: body }, 403);
-			await create(editor, { scope: 'agent', skill: body }, 400);
-			await create(owner, { scope: 'agent', agentId: 'agent-gone', skill: body }, 404);
-		});
-	});
 
 	describe('instance skills', () => {
 		it('lets only owners and admins create and edit them, and everyone read them', async () => {
@@ -392,8 +321,6 @@ describe('SkillsController', () => {
 		});
 
 		it('lists what the user may see, searched and paged on the server', async () => {
-			const agent = await newAgent('Support bot', project.id);
-			await create(editor, { scope: 'agent', agentId: agent.id, skill: { ...body, name: 'Mine' } });
 			await create(owner, { scope: 'instance', skill: { ...body, name: 'Shared rules' } });
 			await create(editor, {
 				scope: 'project',
@@ -407,7 +334,6 @@ describe('SkillsController', () => {
 			const ownerView = await owner.get('/skills').query({ scope: 'project' }).expect(200);
 
 			expect(all.body.data.data.map((s: { name: string }) => s.name).sort()).toEqual([
-				'Mine',
 				'Shared rules',
 				'Team rules',
 			]);
@@ -419,17 +345,12 @@ describe('SkillsController', () => {
 			]);
 		});
 
-		it('lists the skills one agent may attach, never those of another agent', async () => {
+		it('lists the skills one agent may attach, never those of another project', async () => {
 			const support = await newAgent('Support bot', project.id);
-			const sales = await newAgent('Sales bot', project.id);
-			await create(editor, {
-				scope: 'agent',
-				agentId: support.id,
-				skill: { ...body, name: 'Mine' },
-			});
-			await create(editor, {
-				scope: 'agent',
-				agentId: sales.id,
+			const elsewhere = await createTeamProject('Elsewhere', ownerUser);
+			await create(owner, {
+				scope: 'project',
+				projectId: elsewhere.id,
 				skill: { ...body, name: 'Theirs' },
 			});
 			await create(owner, { scope: 'instance', skill: { ...body, name: 'Shared rules' } });
@@ -439,17 +360,14 @@ describe('SkillsController', () => {
 				skill: { ...body, name: 'Team rules' },
 			});
 
-			const attachable = await editor
-				.get('/skills')
-				.query({ attachableTo: support.id })
-				.expect(200);
+			// The owner sees every project, so only the attachableTo filter keeps "Theirs" out.
+			const attachable = await owner.get('/skills').query({ attachableTo: support.id }).expect(200);
 
 			expect(attachable.body.data.data.map((s: { name: string }) => s.name).sort()).toEqual([
-				'Mine',
 				'Shared rules',
 				'Team rules',
 			]);
-			await editor.get('/skills').query({ attachableTo: support.id, scope: 'agent' }).expect(400);
+			await editor.get('/skills').query({ attachableTo: support.id, scope: 'project' }).expect(400);
 		});
 
 		it('filters by project, agent and creator, and sorts by name', async () => {
@@ -851,7 +769,7 @@ describe('SkillsController', () => {
 			// The data migration can leave two skills with one name key in a scope.
 			const { id, skillHash } = await create(owner, { scope: 'instance', skill: body });
 			await Container.get(SkillService).createTrusted({
-				target: { projectId: null, agentId: null },
+				target: { projectId: null },
 				skill: { ...body, name: 'brand voice' },
 				source: 'ui',
 				createdById: ownerUser.id,
@@ -973,11 +891,8 @@ describe('SkillsController', () => {
 			await newName(member, { scope: 'instance', name: 'New skill' }, 403);
 		});
 
-		it('refuses a user outside the project, for a project and for an agent', async () => {
-			const agent = await newAgent('Support bot', project.id);
-
+		it('refuses a user outside the project', async () => {
 			await newName(outsider, { scope: 'project', projectId: project.id, name: 'New skill' }, 403);
-			await newName(outsider, { scope: 'agent', agentId: agent.id, name: 'New skill' }, 403);
 		});
 	});
 

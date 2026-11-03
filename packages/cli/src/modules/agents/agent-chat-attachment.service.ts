@@ -1,14 +1,16 @@
-import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
+import { isAttachmentMediaTypeSupported, type AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
 import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
-import { OperationalError, UserError, type IBinaryData } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentRepository } from './repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentFileGrantRepository } from './repositories/agent-file-grant.repository';
@@ -16,6 +18,9 @@ import {
 	draftChatMemoryResourceId,
 	isIntegrationMemoryResourceId,
 	isTaskRunMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import { threadBelongsTo } from './utils/agent-thread-access';
 
@@ -73,6 +78,7 @@ export class AgentChatAttachmentService {
 		private readonly repository: AgentChatAttachmentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly grantRepository: AgentFileGrantRepository,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
@@ -92,35 +98,46 @@ export class AgentChatAttachmentService {
 			params.data,
 			binaryData,
 		);
-		if (!stored.id) {
+		const binaryDataId = stored.id;
+		if (!binaryDataId) {
 			throw new OperationalError(
 				'Agent chat attachments require a persisted binary data storage mode',
 			);
 		}
 
 		try {
-			return await this.repository.saveInboundAttachment(
-				{
-					id: attachmentId,
-					agentId,
-					projectId: params.projectId,
-					threadId: root.id,
-					createdByThreadId: params.threadId,
-					resourceId: params.resourceId ?? null,
-					binaryDataId: stored.id,
-					fileName: params.fileName,
-					mimeType: params.mimeType,
-					fileSizeBytes: params.data.byteLength,
-					source: params.source,
-				},
-				{},
-			);
+			return await this.projectDeletion.withWritableProject(params.projectId, async (ctx) => {
+				const resourceId = params.resourceId ?? '';
+				const ownerId =
+					userIdFromDraftChatMemoryResourceId(resourceId) ??
+					userIdFromProductionChatMemoryResourceId(resourceId) ??
+					userIdFromSystemChatMemoryResourceId(resourceId);
+				if (ownerId) {
+					await this.threadRepository.assertOwnerActive({ accessScope: 'user', ownerId }, ctx);
+				}
+				return await this.repository.saveInboundAttachment(
+					{
+						id: attachmentId,
+						agentId,
+						projectId: params.projectId,
+						threadId: root.id,
+						createdByThreadId: params.threadId,
+						resourceId: params.resourceId ?? null,
+						binaryDataId,
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+						source: params.source,
+					},
+					ctx,
+				);
+			});
 		} catch (error) {
 			await this.binaryDataService
-				.deleteManyByBinaryDataId([stored.id])
+				.deleteManyByBinaryDataId([binaryDataId])
 				.catch((cleanupError: unknown) =>
 					this.logger.warn('Failed to delete agent chat attachment bytes', {
-						binaryDataId: stored.id,
+						binaryDataId,
 						error: cleanupError,
 					}),
 				);
@@ -176,6 +193,40 @@ export class AgentChatAttachmentService {
 		await this.grantRepository.grant(attachmentIds, scope.childThreadId);
 	}
 
+	/**
+	 * List the files that a sub-agent thread made and let its parent read them.
+	 * The root thread reads them already, but a parent that is not the root
+	 * cannot read them without this grant.
+	 */
+	async returnToParent(scope: {
+		projectId: string;
+		parentThreadId: string;
+		childThreadId: string;
+	}): Promise<AgentToolOutputFile[]> {
+		const chain = await this.threadRepository.findDelegationChain(scope.childThreadId);
+		if (chain[1]?.id !== scope.parentThreadId) {
+			throw new UserError('Files can only be returned to the parent of a sub-agent');
+		}
+		const rootId = chain[chain.length - 1].id;
+		const files = await this.repository.findCreatedByThread(
+			scope.childThreadId,
+			{ projectId: scope.projectId, threadId: rootId },
+			{},
+		);
+		if (scope.parentThreadId !== rootId) {
+			await this.grantRepository.grant(
+				files.map((file) => file.id),
+				scope.parentThreadId,
+			);
+		}
+		return files.map((file) => ({
+			fileId: file.id,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.fileSizeBytes,
+		}));
+	}
+
 	private async findRootThread(threadId: string) {
 		const chain = await this.threadRepository.findDelegationChain(threadId);
 		return chain[chain.length - 1];
@@ -211,13 +262,27 @@ export class AgentChatAttachmentService {
 		return await this.repository.findByIdForSystemAgent(attachmentId, scope, {});
 	}
 
-	/** Return metadata only when the caller can read the session. */
+	/**
+	 * Return metadata only when the caller can read the session. A file of a
+	 * sub-agent session belongs to the agent of the root thread, so give
+	 * `threadId` to check the read grants of that session instead.
+	 */
 	async getForAgent(
 		attachmentId: string,
-		scope: { agentId: string; projectId: string; userId: string },
+		scope: { agentId: string; projectId: string; userId: string; threadId?: string },
 	): Promise<AgentChatAttachment | null> {
 		const attachment = await this.repository.findByIdForAgent(attachmentId, scope, {});
-		if (!attachment) return null;
+		if (!attachment) {
+			if (!scope.threadId) return null;
+			const session = await this.threadRepository.findOneBy({ id: scope.threadId });
+			if (!session || !threadBelongsTo(session, scope.projectId, scope.agentId, scope.userId)) {
+				return null;
+			}
+			return await this.getReadable(attachmentId, {
+				projectId: scope.projectId,
+				threadId: scope.threadId,
+			});
+		}
 		const thread = await this.threadRepository.findOneBy({ id: attachment.threadId });
 		if (thread) {
 			return threadBelongsTo(thread, scope.projectId, scope.agentId, scope.userId)
@@ -241,6 +306,14 @@ export class AgentChatAttachmentService {
 			if (error instanceof FileNotFoundError || isEntityNotFoundError(error)) return false;
 			throw error;
 		}
+	}
+
+	async getBuffer(attachment: AgentChatAttachment): Promise<Buffer> {
+		return await this.binaryDataService.getAsBuffer({
+			id: attachment.binaryDataId,
+			data: '',
+			mimeType: attachment.mimeType,
+		});
 	}
 
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
@@ -271,6 +344,25 @@ export class AgentChatAttachmentService {
 	/** Called before the agent row is removed, so bytes don't outlive the cascading rows. */
 	async deleteByAgent(agentId: string): Promise<void> {
 		await this.deleteAttachments(await this.repository.findByAgent(agentId, {}), { agentId });
+	}
+
+	async deleteByProject(projectId: string): Promise<void> {
+		while (true) {
+			const batch = await this.repository.findProjectDeletionBatch(
+				projectId,
+				RETENTION_BATCH_SIZE,
+				{},
+			);
+			if (batch.length === 0) return;
+			await this.binaryDataService.deleteManyByBinaryDataId(
+				batch.map((attachment) => attachment.binaryDataId),
+			);
+			await this.repository.deleteByIds(
+				batch.map((attachment) => attachment.id),
+				{},
+			);
+			if (batch.length < RETENTION_BATCH_SIZE) return;
+		}
 	}
 
 	/**
