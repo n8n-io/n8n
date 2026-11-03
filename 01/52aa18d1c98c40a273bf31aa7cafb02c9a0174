@@ -1,0 +1,27 @@
+packages/@n8n/instance-ai/docs/configuration.md
+  s_2503a21623543a::t_869a94aec56327 15,247,279,308
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_2503a21623543a::t_869a94aec56327 32
+.agents/skills/testmax-n8n-ai/scripts/run_instance_ai.py
+  s_2503a21623543a::t_869a94aec56327 88
+.github/workflows/test-evals-instance-ai.yml
+  s_2503a21623543a::t_869a94aec56327 63,128
+packages/@n8n/config/test/config.test.ts
+  s_2503a21623543a::t_869a94aec56327 364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0152aa18d1c98c40a273bf31aa7cafb02c9a0174",
+  "prompts": {},
+  "sessions": {
+    "s_2503a21623543a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bcffd03-84f5-47e3-8c71-be5c3f7f9cd9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
