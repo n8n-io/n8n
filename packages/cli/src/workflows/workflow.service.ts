@@ -5,7 +5,7 @@ import type {
 	WorkflowExecutionBlockCause,
 	WorkflowListPublicationStatus,
 } from '@n8n/api-types';
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { LicenseState, LockNamespace, LockService, Logger } from '@n8n/backend-common';
 import {
 	EventService,
 	ProjectScopeService,
@@ -1056,46 +1056,66 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		options: { source: WorkflowActionSource } = { source: 'ui' },
+		options: {
+			source: WorkflowActionSource;
+			onlyIfActiveVersionIs?: string;
+			signal?: AbortSignal;
+		} = { source: 'ui' },
 	): Promise<void> {
 		let didPublish = false;
 		try {
+			options.signal?.throwIfAborted();
 			await this.activeWorkflowManager.add(workflowId, mode, undefined, {
 				actor: { kind: 'user', user },
 			});
+			options.signal?.throwIfAborted();
 			didPublish = true;
 		} catch (error) {
-			// Activation failed partway through. It may already have registered triggers
-			// e.g. a Schedule Trigger before throwing; this ensures they get deregistered,
-			// which otherwise may cause them to start unintended executions.
-			// Done before the rollback below so the active version is still
-			// resolvable by `clearWebhooks`.
-			try {
-				await this.activeWorkflowManager.remove(workflowId);
+			const expectedActiveVersionId = options.onlyIfActiveVersionIs;
+			const mayRollback =
+				expectedActiveVersionId === undefined ||
+				(await this.workflowRepository.existsBy({
+					id: workflowId,
+					activeVersionId: expectedActiveVersionId,
+				}));
+			if (mayRollback && !options.signal?.aborted) {
+				// Remove partial registrations before clearing the version that resolves their webhooks.
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
 
-				this.logger.warn(
-					`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
-					{ workflowId },
-				);
-			} catch (cleanupError) {
-				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
-					workflowId,
-					error: cleanupError,
-				});
+					this.logger.warn(
+						`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+						{ workflowId },
+					);
+				} catch (cleanupError) {
+					this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+						workflowId,
+						error: cleanupError,
+					});
+				}
+
+				const rollbackPayload = {
+					active: false,
+					activeVersionId: null,
+					activeVersion: null,
+				};
+				if (!options.signal?.aborted) {
+					const rollback = await this.workflowRepository.update(
+						expectedActiveVersionId === undefined
+							? workflowId
+							: { id: workflowId, activeVersionId: expectedActiveVersionId },
+						rollbackPayload,
+					);
+
+					if (expectedActiveVersionId === undefined || (rollback.affected ?? 0) > 0) {
+						// Also set it in the returned data
+						// oxlint-disable-next-line typescript/no-deprecated
+						workflow.active = rollbackPayload.active;
+						workflow.activeVersionId = rollbackPayload.activeVersionId;
+						workflow.activeVersion = rollbackPayload.activeVersion;
+					}
+				}
 			}
-
-			const rollbackPayload = {
-				active: false,
-				activeVersionId: null,
-				activeVersion: null,
-			};
-			await this.workflowRepository.update(workflowId, rollbackPayload);
-
-			// Also set it in the returned data
-			// oxlint-disable-next-line typescript/no-deprecated
-			workflow.active = rollbackPayload.active;
-			workflow.activeVersionId = rollbackPayload.activeVersionId;
-			workflow.activeVersion = rollbackPayload.activeVersion;
 
 			const message = (error as Error).message;
 			const description = getErrorDescription(error);
@@ -1374,65 +1394,77 @@ export class WorkflowService {
 				source,
 			});
 		} else {
-			if (options?.onlyIfActiveVersionIs !== undefined) {
-				// Commit the guard before trigger teardown. A newer publication takes precedence.
-				const result = await this.workflowRepository.update(
-					{ id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
-					{ activeVersionId: versionIdToActivate, active: true, updatedAt: workflow.updatedAt },
-				);
-				if ((result.affected ?? 0) === 0) {
-					return await this.workflowRepository.findOneOrFail({
+			// Keep the settings guard, trigger changes, and rollback under the same lease.
+			const published = await Container.get(LockService).withLease(
+				LockNamespace.KNOWN_LOCKS,
+				`workflow-publication:${workflowId}`,
+				async (signal) => {
+					signal.throwIfAborted();
+					if (options?.onlyIfActiveVersionIs !== undefined) {
+						const result = await this.workflowRepository.update(
+							{ id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
+							{ activeVersionId: versionIdToActivate, active: true, updatedAt: workflow.updatedAt },
+						);
+						if ((result.affected ?? 0) === 0) return false;
+					}
+					if (previousActiveVersionId) {
+						signal.throwIfAborted();
+						await this.activeWorkflowManager.remove(workflowId);
+						signal.throwIfAborted();
+
+						this.eventService.emit('workflow-deactivated', {
+							user,
+							workflowId,
+							workflow,
+							publicApi,
+							deactivatedVersionId: previousActiveVersionId,
+							source,
+						});
+						await this.workflowPublishHistoryRepository.addRecord({
+							workflowId,
+							versionId: previousActiveVersionId,
+							event: 'deactivated',
+							userId: user.id,
+						});
+					}
+
+					const activationMode = previousActiveVersionId ? 'update' : 'activate';
+
+					signal.throwIfAborted();
+					if (options?.onlyIfActiveVersionIs === undefined) {
+						await this.workflowRepository.update(workflowId, {
+							activeVersionId: versionIdToActivate,
+							active: true,
+							// workflow content did not change, so we keep updatedAt as is
+							updatedAt: workflow.updatedAt,
+						});
+					}
+
+					const workflowForActivation = await this.workflowRepository.findOne({
 						where: { id: workflowId },
 						relations: ['activeVersion'],
 					});
-				}
-			}
-			if (previousActiveVersionId) {
-				await this.activeWorkflowManager.remove(workflowId);
 
-				this.eventService.emit('workflow-deactivated', {
-					user,
-					workflowId,
-					workflow,
-					publicApi,
-					deactivatedVersionId: previousActiveVersionId,
-					source,
-				});
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: previousActiveVersionId,
-					event: 'deactivated',
-					userId: user.id,
-				});
-			}
+					if (!workflowForActivation) {
+						throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
+					}
 
-			const activationMode = previousActiveVersionId ? 'update' : 'activate';
-
-			if (options?.onlyIfActiveVersionIs === undefined) {
-				await this.workflowRepository.update(workflowId, {
-					activeVersionId: versionIdToActivate,
-					active: true,
-					// workflow content did not change, so we keep updatedAt as is
-					updatedAt: workflow.updatedAt,
-				});
-			}
-
-			const workflowForActivation = await this.workflowRepository.findOne({
-				where: { id: workflowId },
-				relations: ['activeVersion'],
-			});
-
-			if (!workflowForActivation) {
-				throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
-			}
-
-			await this._addToActiveWorkflowManager(
-				user,
-				workflowId,
-				workflowForActivation,
-				activationMode,
-				{ source },
+					await this._addToActiveWorkflowManager(
+						user,
+						workflowId,
+						workflowForActivation,
+						activationMode,
+						{ source, onlyIfActiveVersionIs: options?.onlyIfActiveVersionIs, signal },
+					);
+					return true;
+				},
 			);
+			if (!published) {
+				return await this.workflowRepository.findOneOrFail({
+					where: { id: workflowId },
+					relations: ['activeVersion'],
+				});
+			}
 		}
 
 		// The publication commit boundary: both branches above have durably published the
@@ -1722,21 +1754,29 @@ export class WorkflowService {
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			await this._unpublishViaOutbox(userId, workflowId, deactivatedVersionId, workflow.updatedAt);
 		} else {
-			await this.activeWorkflowManager.remove(workflowId);
+			await Container.get(LockService).withLease(
+				LockNamespace.KNOWN_LOCKS,
+				`workflow-publication:${workflowId}`,
+				async (signal) => {
+					signal.throwIfAborted();
+					await this.activeWorkflowManager.remove(workflowId);
 
-			await this.workflowRepository.update(workflowId, {
-				active: false,
-				activeVersionId: null,
-				// workflow content did not change, so we keep updatedAt as is
-				updatedAt: workflow.updatedAt,
-			});
+					signal.throwIfAborted();
+					await this.workflowRepository.update(workflowId, {
+						active: false,
+						activeVersionId: null,
+						// workflow content did not change, so we keep updatedAt as is
+						updatedAt: workflow.updatedAt,
+					});
 
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId: deactivatedVersionId,
-				event: 'deactivated',
-				userId,
-			});
+					await this.workflowPublishHistoryRepository.addRecord({
+						workflowId,
+						versionId: deactivatedVersionId,
+						event: 'deactivated',
+						userId,
+					});
+				},
+			);
 		}
 	}
 

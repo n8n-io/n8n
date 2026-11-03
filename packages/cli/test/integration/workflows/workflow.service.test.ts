@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { LockService } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -482,6 +483,133 @@ describe('update()', () => {
 });
 
 describe('activateWorkflow()', () => {
+	test('leaves cleanup to the next holder after a settings refresh loses its publication lease', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const controller = new AbortController();
+		vi.spyOn(Container.get(LockService), 'withLease').mockImplementation(
+			async (_namespace, _key, fn) => await fn(controller.signal),
+		);
+		activeWorkflowManager.remove.mockClear();
+		activeWorkflowManager.add.mockImplementationOnce(async () => {
+			controller.abort();
+			throw new Error('Settings registration failed');
+		});
+
+		await expect(
+			workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: workflow.activeVersionId!,
+				onlyIfActiveVersionIs: workflow.activeVersionId!,
+			}),
+		).rejects.toThrow('Settings registration failed');
+
+		expect(activeWorkflowManager.remove).toHaveBeenCalledTimes(1);
+		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+			activeVersionId: workflow.activeVersionId,
+			active: true,
+		});
+	});
+
+	test.each(['publish', 'unpublish'] as const)(
+		'finishes a failed settings refresh before a concurrent %s changes the active version',
+		async (operation) => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			const activeVersionId = workflow.activeVersionId!;
+			const nextVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId: nextVersionId });
+			const refreshing = createDeferredPromise();
+			const resumeRefresh = createDeferredPromise();
+			const competingOperationReady = createDeferredPromise();
+			activeWorkflowManager.remove.mockClear();
+			activeWorkflowManager.add.mockClear();
+			activeWorkflowManager.add.mockImplementationOnce(async () => {
+				refreshing.resolve();
+				await resumeRefresh.promise;
+				throw new Error('Settings registration failed');
+			});
+			workflowPublishGuard.assertCanPublish.mockImplementation(async () => {
+				competingOperationReady.resolve();
+			});
+			externalHooks.run.mockImplementation(async (name) => {
+				if (name === 'workflow.deactivate') competingOperationReady.resolve();
+			});
+			const refresh = workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: activeVersionId,
+				onlyIfActiveVersionIs: activeVersionId,
+			});
+			const refreshFailure = expect(refresh).rejects.toThrow('Settings registration failed');
+			let competingOperation: Promise<WorkflowEntity> | undefined;
+			try {
+				await refreshing.promise;
+				competingOperation =
+					operation === 'publish'
+						? workflowService.activateWorkflow(owner, workflow.id, { versionId: nextVersionId })
+						: workflowService.deactivateWorkflow(owner, workflow.id);
+				await competingOperationReady.promise;
+				// The competing call can enter its commit path after its last validation returns.
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				expect(activeWorkflowManager.remove).toHaveBeenCalledTimes(1);
+				expect(activeWorkflowManager.add).toHaveBeenCalledTimes(1);
+				resumeRefresh.resolve();
+				await refreshFailure;
+				await competingOperation;
+				const updated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+				expect(updated.activeVersionId).toBe(operation === 'publish' ? nextVersionId : null);
+				expect(updated.active).toBe(operation === 'publish');
+				if (operation === 'publish') {
+					expect(activeWorkflowManager.add).toHaveBeenLastCalledWith(
+						workflow.id,
+						'update',
+						undefined,
+						{ actor: { kind: 'user', user: owner } },
+					);
+				}
+			} finally {
+				resumeRefresh.resolve();
+				await Promise.allSettled([refreshFailure, competingOperation]);
+				externalHooks.run.mockReset();
+			}
+		},
+	);
+
+	test.each(['registration', 'cleanup'] as const)(
+		'keeps a newer active version when a settings refresh fails during %s',
+		async (publishDuring) => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			const nextVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId: nextVersionId });
+			activeWorkflowManager.remove.mockClear();
+			activeWorkflowManager.remove.mockImplementationOnce(async () => {});
+			if (publishDuring === 'cleanup') {
+				activeWorkflowManager.remove.mockImplementationOnce(async () => {
+					await workflowRepository.update(workflow.id, { activeVersionId: nextVersionId });
+				});
+			}
+			activeWorkflowManager.add.mockImplementationOnce(async () => {
+				if (publishDuring === 'registration') {
+					await workflowRepository.update(workflow.id, { activeVersionId: nextVersionId });
+				}
+				throw new Error('Settings registration failed');
+			});
+
+			await expect(
+				workflowService.activateWorkflow(owner, workflow.id, {
+					versionId: workflow.activeVersionId!,
+					onlyIfActiveVersionIs: workflow.activeVersionId!,
+				}),
+			).rejects.toThrow('Settings registration failed');
+
+			const updated = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(updated.activeVersionId).toBe(nextVersionId);
+			expect(updated.active).toBe(true);
+			expect(activeWorkflowManager.remove).toHaveBeenCalledTimes(
+				publishDuring === 'registration' ? 1 : 2,
+			);
+		},
+	);
+
 	// The rest of this suite runs with no checks registered, proving activation is
 	// unchanged when the module is off. Spied rather than registered via
 	// `setImplementation`, which is single-shot and would leak into those tests.
