@@ -31,12 +31,12 @@ async function openedUrl({ getByTestId }: Pick<RenderResult, 'getByTestId'>) {
 const CONSENT_URL = 'https://login.microsoftonline.com/tenant-1/adminconsent?client_id=app-1';
 
 describe('AgentChannelTeamsAvailability', () => {
-	it('asks for no file access when only direct chat is on', () => {
-		const { queryByTestId } = renderComponent({
+	it('asks for the permissions when only direct chat is on, to find people by email', () => {
+		const { getByTestId } = renderComponent({
 			props: { modelValue: availabilityFrom(), fileAccessConsentUrl: CONSENT_URL },
 		});
 
-		expect(queryByTestId('teams-file-access')).toBeNull();
+		expect(getByTestId('teams-file-access')).toHaveTextContent('find people by email');
 	});
 
 	it('opens the one-step approval for an app n8n created', async () => {
@@ -73,10 +73,16 @@ describe('AgentChannelTeamsAvailability', () => {
 			props: { modelValue: availabilityFrom({ groupChats: true }), appId: 'app-1' },
 		});
 
+		for (const permission of [
+			'User.ReadBasic.All',
+			'Team.ReadBasic.All',
+			'Channel.ReadBasic.All',
+			'Files.Read.All',
+		]) {
+			expect(getByTestId('teams-file-access')).toHaveTextContent(permission);
+		}
 		// The portal opens on Delegated permissions, which the agent cannot use.
-		expect(getByTestId('teams-file-access')).toHaveTextContent(
-			'Files.Read.All application permission',
-		);
+		expect(getByTestId('teams-file-access')).toHaveTextContent('application permissions');
 		expect(await openedUrl({ getByTestId })).toContain('/CallAnAPI/appId/app-1');
 	});
 
@@ -97,7 +103,7 @@ describe('AgentChannelTeamsAvailability', () => {
 			},
 		});
 
-		expect(getByTestId('teams-file-access-approved')).toHaveTextContent('File access approved.');
+		expect(getByTestId('teams-file-access-approved')).toHaveTextContent('Permissions approved.');
 		expect(queryByTestId('teams-file-access')).toBeNull();
 	});
 
@@ -124,7 +130,7 @@ describe('AgentChannelTeamsAvailability', () => {
 		});
 
 		expect(getByTestId('teams-file-access')).toHaveTextContent(
-			'The agent can’t read files in channels and group chats until an admin approves.',
+			'Until an admin approves, the agent can’t find people by email, find channels by name, or read files in channels.',
 		);
 		expect(getByTestId('teams-file-access-approve')).toHaveTextContent(
 			'If you are an admin in Acme Corp',

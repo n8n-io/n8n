@@ -17,17 +17,16 @@ import type { AgentJsonToolRef } from '../types';
 
 type ToolType = AgentJsonToolRef['type'];
 
-/** Identifier payload — node_type for node tools, workflow name for workflow tools. */
+/** Send stable node and custom-tool identifiers. */
 function identityProps(ref: AgentJsonToolRef): {
 	node_type?: string;
-	workflow?: string;
 	custom_id?: string;
 } {
 	if (ref.type === 'node') {
 		return { node_type: ref.node?.nodeType };
 	}
 	if (ref.type === 'workflow') {
-		return { workflow: ref.workflow };
+		return {};
 	}
 	return { custom_id: ref.id };
 }

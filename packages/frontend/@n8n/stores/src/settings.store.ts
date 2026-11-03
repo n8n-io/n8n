@@ -144,6 +144,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isAgentsEnabled = computed(
 		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
 	);
+	const isAppsEnabled = computed(() => isModuleActive('apps'));
 
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
@@ -269,6 +270,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
+
+	const isEnterprisePlan = computed(() => planName.value.toLowerCase() === 'enterprise');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
@@ -519,6 +522,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
+		isEnterprisePlan,
 		isAskAiEnabled,
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
@@ -546,6 +550,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		activeModules,
 		isModuleActive,
 		isAgentsEnabled,
+		isAppsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,

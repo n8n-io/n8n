@@ -1,3 +1,5 @@
+import { packagedModules } from '@/modules/modules.manifest';
+import type { SerializedDataTable } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -10,12 +12,15 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import {
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableProxyService,
+	DataTableRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
+
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -26,7 +31,6 @@ import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
 import type { ImportPackageRequest } from '../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../spec/requirements.schema';
-import type { SerializedDataTable } from '../spec/serialized/data-table.schema';
 import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
@@ -46,7 +50,7 @@ let workflowRepository: WorkflowRepository;
 const licenseMocker = new LicenseMocker();
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'data-table']);
+	await testModules.loadModules(['n8n-packages', 'data-table'], packagedModules);
 	await testDb.init();
 	// Register node types so the plan-phase missing-node-type check can resolve
 	// the node types used by the package fixtures.
@@ -281,13 +285,13 @@ describe('workflow package import — with data tables', () => {
 				user: owner,
 				projectId: project.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 			await importPackage({
 				user: owner,
 				projectId: project.id,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(await tablesInProject(project.id)).toHaveLength(1);
@@ -1024,7 +1028,15 @@ describe('workflow package import — with data tables', () => {
 					{ id: 'packagedate1', name: 'signed_up_at', type: 'date', index: 1 },
 				],
 			});
-			const { packageBuffer } = await buildDataTablePackage([packageTable]);
+			const { packageBuffer } = await buildDataTablePackage([packageTable], {
+				workflows: [
+					serializedWorkflowWithDataTable({
+						id: 'workflow0',
+						name: 'Workflow 0',
+						dataTableId: table.id,
+					}),
+				],
+			});
 
 			const result = await importWithOverwrite({ user: owner, packageBuffer });
 
@@ -1039,7 +1051,7 @@ describe('workflow package import — with data tables', () => {
 			const again = await importWithOverwrite({
 				user: owner,
 				packageBuffer,
-				workflowConflictPolicy: 'new-version',
+				conflictPolicy: 'new-version',
 			});
 
 			expect(again.dataTables).toEqual({ matched: 1, created: 0, updated: 0 });

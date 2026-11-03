@@ -137,7 +137,6 @@ export async function rewriteAgentInstructions(
 		config.model,
 		config.credential,
 		credentialProvider,
-		config.modelDeploymentName,
 	);
 
 	// Lazy-loaded: `@n8n/agents` is heavy, and this only runs when a user applies a suggestion.

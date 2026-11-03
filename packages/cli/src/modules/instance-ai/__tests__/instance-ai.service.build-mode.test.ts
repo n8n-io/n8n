@@ -51,7 +51,6 @@ const orphan = mock<ResumableOrphan>({
 	toolCallId: 'tool-1',
 	requestId: 'request-1',
 	messageGroupId: null,
-	checkpointTaskId: null,
 });
 
 function createService(checkpoint?: SerializableAgentState): ServiceInternals {
@@ -72,9 +71,11 @@ function createService(checkpoint?: SerializableAgentState): ServiceInternals {
 
 describe('InstanceAiService build mode recovery', () => {
 	it.each([
+		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: true },
+		{ toolName: 'agent_builder_build_agent', hasBuilderCheckpoint: false },
+		// A run suspended before the rename stores the former tool name.
 		{ toolName: 'build-agent', hasBuilderCheckpoint: true },
-		{ toolName: 'build-agent', hasBuilderCheckpoint: false },
-		{ toolName: 'workflows', hasBuilderCheckpoint: true },
+		{ toolName: 'workflow_builder_workflows', hasBuilderCheckpoint: true },
 	])(
 		'restores $toolName with a builder checkpoint $hasBuilderCheckpoint',
 		async ({ toolName, hasBuilderCheckpoint }) => {

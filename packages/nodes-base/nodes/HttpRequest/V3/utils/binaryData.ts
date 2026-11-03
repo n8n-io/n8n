@@ -8,10 +8,16 @@ export const setFilename = (
 	if (
 		!preparedBinaryData.fileName &&
 		preparedBinaryData.fileExtension &&
-		typeof requestOptions.uri === 'string' &&
-		requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
+		typeof requestOptions.uri === 'string'
 	) {
-		return requestOptions.uri.split('/').pop();
+		let requestPathname: string | undefined;
+		try {
+			requestPathname = new URL(requestOptions.uri).pathname;
+		} catch {}
+
+		if (requestPathname?.endsWith(preparedBinaryData.fileExtension)) {
+			return requestPathname.split('/').pop();
+		}
 	}
 
 	if (!preparedBinaryData.fileName && preparedBinaryData.fileExtension) {

@@ -60,6 +60,8 @@ describe('GlobalConfig', () => {
 				secure: true,
 			},
 			oauthBrowserBinding: false,
+			oauthCimdEnabled: false,
+			oauthClientMetadataUrl: '',
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
@@ -226,11 +228,11 @@ describe('GlobalConfig', () => {
 				enabled: false,
 				globalReadLimit: 1200,
 				globalReadWindowSeconds: 60,
-				globalWriteLimit: 300,
+				globalWriteLimit: 600,
 				globalWriteWindowSeconds: 60,
-				endpointReadLimit: 600,
+				endpointReadLimit: 1000,
 				endpointReadWindowSeconds: 60,
-				endpointWriteLimit: 200,
+				endpointWriteLimit: 500,
 				endpointWriteWindowSeconds: 60,
 			},
 		},
@@ -358,16 +360,18 @@ describe('GlobalConfig', () => {
 		},
 		instanceAi: {
 			workflowSuggestionsEnabled: false,
+			assistantAgentEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
+			modelRequestLabels: false,
 			modelApiKey: '',
 			vertexProjectId: '',
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
 			mcpServers: '',
-			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
+			memoryModel: '',
 			reflectorObservationTokens: 40_000,
 			midRunObservation: false,
 			sandboxEnabled: false,
@@ -389,7 +393,6 @@ describe('GlobalConfig', () => {
 			builderSandboxTtlMs: 900_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
-			gatewayApiKey: '',
 			threadTtlDays: 30,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
@@ -469,7 +472,7 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
-			profilesSampleRate: 0,
+			profilingEnabled: false,
 			tracesSampleRate: 0,
 			tracesSlowSpanThresholdMs: 1000,
 			webhookTracesSampleRate: 0.05,
@@ -595,6 +598,7 @@ describe('GlobalConfig', () => {
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
+				maxResumeAttempts: 2,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',
@@ -604,6 +608,14 @@ describe('GlobalConfig', () => {
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
 			preExecuteErrorCreatesExecution: false,
+		},
+		memoryGuard: {
+			enabled: false,
+			holdLevel: 0.8,
+			resumeLevel: 0.75,
+			stopLevel: 0.85,
+			criticalLevel: 0.95,
+			stopsToUnpublish: 3,
 		},
 		diagnostics: {
 			enabled: true,
@@ -698,13 +710,14 @@ describe('GlobalConfig', () => {
 			bridgeTimeout: 5000,
 			bridgeMemoryLimit: 128,
 			observabilityEnabled: true,
-			tracesEnabled: true,
+			tracesEnabled: false,
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
 			allowWebhookIsolateSkip: true,
 			lazyAcquire: false,
 			compileCache: false,
 			nativeEvaluation: false,
+			nativeEvaluationVerifySample: 0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -742,7 +755,6 @@ describe('GlobalConfig', () => {
 			tracingEnabled: true,
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
-			skillsHubEnabled: false,
 			modules: [],
 			backgroundTasksEnabled: false,
 			sandboxEnabled: false,
@@ -799,15 +811,6 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.tracingRecordOutputs).toBe(false);
-	});
-
-	it('should parse N8N_AGENTS_SKILLS_HUB_ENABLED from env variables', () => {
-		process.env = {
-			N8N_AGENTS_SKILLS_HUB_ENABLED: 'true',
-		};
-		const config = Container.get(GlobalConfig);
-
-		expect(config.agents.skillsHubEnabled).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_SNAPSHOT from env variables', () => {
@@ -973,6 +976,49 @@ describe('GlobalConfig', () => {
 		);
 	});
 
+	describe('memory guard config', () => {
+		it('should read the levels and the stops to unpublish from env variables', () => {
+			process.env = {
+				N8N_MEMORY_GUARD_RESUME_LEVEL: '0.6',
+				N8N_MEMORY_GUARD_HOLD_LEVEL: '0.7',
+				N8N_MEMORY_GUARD_STOP_LEVEL: '0.8',
+				N8N_MEMORY_GUARD_CRITICAL_LEVEL: '0.9',
+				N8N_MEMORY_GUARD_STOPS_TO_UNPUBLISH: '0',
+			};
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard).toMatchObject({
+				resumeLevel: 0.6,
+				holdLevel: 0.7,
+				stopLevel: 0.8,
+				criticalLevel: 0.9,
+				stopsToUnpublish: 0,
+			});
+		});
+
+		it('should fall back to the default levels when the levels do not increase', () => {
+			process.env = { N8N_MEMORY_GUARD_HOLD_LEVEL: '0.9' };
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard).toMatchObject({
+				resumeLevel: 0.75,
+				holdLevel: 0.8,
+				stopLevel: 0.85,
+				criticalLevel: 0.95,
+			});
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('Memory guard levels must increase'),
+			);
+		});
+
+		it('should reject a level above 1 and fall back to its default', () => {
+			process.env = { N8N_MEMORY_GUARD_CRITICAL_LEVEL: '95' };
+			const { memoryGuard } = Container.get(GlobalConfig);
+			expect(memoryGuard.criticalLevel).toBe(0.95);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_MEMORY_GUARD_CRITICAL_LEVEL'),
+			);
+		});
+	});
+
 	describe('database recovery config validation', () => {
 		it('should reject DB_PING_MAX_FAILURES_BEFORE_RECOVERY below 1 and fall back to the default', () => {
 			process.env = { DB_PING_MAX_FAILURES_BEFORE_RECOVERY: '0' };
@@ -1069,7 +1115,7 @@ describe('GlobalConfig', () => {
 			(value) => {
 				process.env = { N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT: value };
 				const config = Container.get(GlobalConfig);
-				expect(config.publicApi.rateLimit.globalWriteLimit).toBe(300);
+				expect(config.publicApi.rateLimit.globalWriteLimit).toBe(600);
 				expect(consoleWarnMock).toHaveBeenCalledWith(
 					expect.stringContaining('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_WRITE_LIMIT'),
 				);

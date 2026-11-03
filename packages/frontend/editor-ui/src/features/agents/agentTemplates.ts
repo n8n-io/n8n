@@ -1,10 +1,11 @@
 import type { BaseTextKey } from '@n8n/i18n';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonToolConfig,
-	AgentPersonalisation,
-	AgentTaskConfig,
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonToolConfig,
+	type AgentPersonalisation,
+	type AgentTaskConfig,
 } from '@n8n/api-types';
 
 type AgentTemplateGradient = AgentPersonalisation['gradient'];
@@ -188,17 +189,20 @@ export const AGENT_TEMPLATES: readonly AgentTemplate[] = [
 	},
 ];
 
+const isN8nChat = (integration: AgentIntegrationConfig) =>
+	integration.type === N8N_CHAT_INTEGRATION_TYPE;
+
 /**
  * A blank agent: no instructions, no tools, and no channel integrations.
  * `name` and `model` are ignored — both are seeded on every new agent, so a
  * default name or model does not count as content the user would lose by
- * applying a template.
+ * applying a template. n8n Chat is ignored for the same reason.
  */
 export function isAgentConfigBlank(config: AgentJsonConfig): boolean {
 	return (
 		config.instructions.trim() === '' &&
 		(config.tools?.length ?? 0) === 0 &&
-		(config.integrations?.length ?? 0) === 0
+		(config.integrations ?? []).every(isN8nChat)
 	);
 }
 
@@ -207,7 +211,8 @@ export function isAgentConfigBlank(config: AgentJsonConfig): boolean {
  * agent already has content (instructions or tools). `name` is only replaced
  * while it still equals `defaultName` (the seeded "Untitled"), so a renamed
  * agent keeps its name. The template icon and gradient replace the
- * personalisation. `model` and every other field are preserved.
+ * personalisation. `model`, a default n8n Chat channel and every other field
+ * are preserved.
  */
 export function applyAgentTemplate(
 	config: AgentJsonConfig,
@@ -220,7 +225,10 @@ export function applyAgentTemplate(
 		name: config.name === defaultName ? template.config.name : config.name,
 		instructions: template.config.instructions,
 		tools: template.config.tools ?? [],
-		integrations: template.config.integrations ?? [],
+		integrations: [
+			...(config.integrations ?? []).filter(isN8nChat),
+			...(template.config.integrations ?? []).filter((integration) => !isN8nChat(integration)),
+		],
 		config: { ...config.config, ...template.config.config },
 		personalisation: {
 			icon: template.icon,

@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 26.5.1
+        default: 26.12.1
       collectCoverage:
         required: false
         default: false
@@ -33,11 +33,40 @@ on:
         required: false
         default: ''
         type: string
+      fullCliIntegration:
+        description: |
+          Run the CLI integration suite without scoping it to the changed files.
+          The caller sets it when DB files change, because a DB change can reach
+          any integration test. The DB workflow then skips its duplicate SQLite run.
+        required: false
+        default: false
+        type: boolean
+      lockfileImpactedPackages:
+        description: |
+          Packages whose resolved dependencies changed in pnpm-lock.yaml, as
+          printed by `janitor lockfile-impact` in install-and-build. Empty means
+          no signal: a lockfile change then runs every package in full.
+        required: false
+        default: ''
+        type: string
+      testRetries:
+        description: |
+          How many times vitest retries a failed test. The merge queue sets it,
+          so that one flaky test does not remove a PR from the queue.
+        required: false
+        default: 0
+        type: number
 env:
   NODE_OPTIONS: --max-old-space-size=7168
   # With a change signal, the shared vitest configs measure only the changed files.
   # Turbo hashes this value, so a scoped coverage result never replays in a full run.
-  COVERAGE_SCOPE: ${{ inputs.changedFiles != '' && 'changed-files' || 'all' }}
+  # Without coverage the scope has no effect. Keep it 'all' so these runs share
+  # cache entries with master (merge queue runs cannot read each other's caches).
+  COVERAGE_SCOPE: ${{ inputs.collectCoverage && inputs.changedFiles != '' && 'changed-files' || 'all' }}
+  # Read by retry.ts in @n8n/vitest-config.
+  VITEST_RETRY: ${{ inputs.testRetries }}
+  # Read by `janitor test-scoped` when pnpm-lock.yaml changed.
+  LOCKFILE_IMPACTED_PACKAGES: ${{ inputs.lockfileImpactedPackages }}
 
 jobs:
   unit-test-backend:
@@ -75,8 +104,10 @@ jobs:
       # the in-CI per-suite cap (each vitest suite uses half the cores, see
       # @n8n/vitest-config/node), peak forks ≈ 2 × 50% ≈ the core count, instead
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
+      # `janitor test-run` replays cached package results first, then runs the
+      # rest with janitor scoping: skip, scoped (vitest related), or full.
       - name: Test Unit (backend, except cli and nodes-base)
-        run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -125,7 +156,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Unit (cli, scoped)
-        run: pnpm turbo test:unit:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --scoped-task=test:unit:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -180,7 +211,7 @@ jobs:
       # run serially to avoid cross-package interference. Unit jobs above
       # don't need this because they isolate per-process.
       - name: Test Integration (backend, except cli)
-        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --summarize
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -229,7 +260,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Integration (cli, scoped)
-        run: pnpm turbo test:integration:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:integration ${{ !inputs.fullCliIntegration && '--scoped-task=test:integration:changed' || '' }} --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -276,7 +307,7 @@ jobs:
       # One package runs on this runner, so use every CPU. The CI default
       # (half the CPUs) is for jobs that run many suites at once.
       - name: Test Nodes
-        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize -- --maxWorkers=100%
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test --scoped-task=test:changed --filter=n8n-nodes-base --summarize -- --maxWorkers=100%
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -325,7 +356,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend:changed --only --summarize -- --shard=${{ matrix.shard }}/4
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test --scoped-task=test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend' --only --summarize -- --shard=${{ matrix.shard }}/4
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

@@ -127,7 +127,7 @@ export function reconcileNodeToolGatewayCredentials(
 
 /**
  * Credential types whose every required, displayed node-tool slot is already
- * satisfied (managed marker or a real id) — the finish_setup credential card
+ * satisfied (managed marker or a real id) — the agent_builder_finish_setup credential card
  * for such a type is redundant and can be dropped.
  *
  * A type is EXCLUDED when any tool still has an empty required slot of it, even

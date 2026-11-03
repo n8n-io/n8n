@@ -46,6 +46,7 @@ export type RejectReason =
 	| 'source-unusable'
 	| 'signature-invalid'
 	| 'expired'
+	| 'revoked'
 	| 'audience-mismatch'
 	| 'not-an-access-token'
 	| 'unknown-subject'

@@ -17,7 +17,6 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
@@ -211,6 +210,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				enforceDynCredRedaction,
 				enforceCredentialUsabilityRedaction,
 				inaccessibleCredentialIds,
+				redactedBySubWorkflow: this.isRedactedBySubWorkflow(execution),
 				memo: new Map(),
 			};
 			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
@@ -302,8 +302,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	/**
 	 * Batched check for whether the viewer can use every credential each
 	 * execution's workflow references, independent of dynamic credentials.
-	 * Gated behind {@link isCredSharingEnabled}: while the flag is off this makes
-	 * no DB call and returns an empty set, so redaction behaves exactly as before.
 	 *
 	 * Returns the subset of `executions` that reference at least one credential
 	 * the viewer cannot use. Such executions must always be redacted with
@@ -317,8 +315,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		executions: RedactableExecution[],
 		user: User,
 	): Promise<Map<RedactableExecution, string[]>> {
-		if (!isCredSharingEnabled()) return new Map();
-
 		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
 		const allCredentialIds = new Set<string>();
 		for (const execution of executions) {
@@ -408,11 +404,30 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *     exempt from this policy, so the data is still accessible to all.
 	 */
 	private policyAllowsReveal(execution: RedactableExecution): boolean {
-		const policy = this.resolvePolicy(execution);
+		return this.policyAllowsMode(this.resolvePolicy(execution), execution.mode);
+	}
+
+	private policyAllowsMode(
+		policy: WorkflowSettings.RedactionPolicy,
+		mode: WorkflowExecuteMode,
+	): boolean {
 		return (
 			policy === 'none' ||
-			(policy === 'non-manual' && MANUAL_MODES.has(execution.mode)) ||
-			(policy === 'manual-only' && !MANUAL_MODES.has(execution.mode))
+			(policy === 'non-manual' && MANUAL_MODES.has(mode)) ||
+			(policy === 'manual-only' && !MANUAL_MODES.has(mode))
+		);
+	}
+
+	/**
+	 * Returns true when the execution's own policy does not redact its mode, but the
+	 * channels its sub-workflows reported do. Drives the `sub_workflow_redaction_policy`
+	 * reason, so the user can see why the data is redacted.
+	 */
+	private isRedactedBySubWorkflow(execution: RedactableExecution): boolean {
+		if (!this.licenseState.isDataRedactionLicensed()) return false;
+		return (
+			this.policyAllowsMode(this.resolveBasePolicy(execution), execution.mode) &&
+			!this.policyAllowsMode(this.resolvePolicy(execution), execution.mode)
 		);
 	}
 

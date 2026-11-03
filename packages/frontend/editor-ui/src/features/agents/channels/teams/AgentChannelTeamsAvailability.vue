@@ -19,7 +19,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	ENTRA_APP_REGISTRATIONS_URL,
 	entraApiPermissionsUrl,
-	readsSharedConversations as readsShared,
+	permissionUseFor,
 	type TeamsAvailability,
 } from './constants';
 import { useTeamsFileAccessMenu } from './useTeamsFileAccessMenu';
@@ -111,21 +111,19 @@ const rows = computed(() => [
 	...(value.value.groupChats ? [READ_GROUPS] : []),
 ]);
 
-const readsSharedConversations = computed(() => readsShared(value.value));
-
 /**
- * Files attached in a shared conversation live in SharePoint or OneDrive, which
- * only an app permission that an administrator grants can read. An app the
+ * Finding people and channels, and reading files attached in shared
+ * conversations, need app permissions that an administrator grants. An app the
  * recommended setup made takes a one-step consent; one made by hand needs the
- * permission added first, so it names the permission.
+ * permissions added first, so it names them.
  */
 const fileAccess = computed(() => {
-	if (props.hideFileAccess || !readsSharedConversations.value) return null;
+	if (props.hideFileAccess) return null;
 	if (props.fileAccessState === 'approved') return 'approved' as const;
 	if (props.fileAccessState === 'hidden') return null;
 	if (props.fileAccessConsentUrl) {
 		return {
-			hint: 'agents.channels.teams.setup.availability.fileAccessNotApproved' as const,
+			hint: `agents.channels.teams.setup.availability.fileAccessNotApproved.${permissionUseFor(value.value)}` as const,
 			url: props.fileAccessConsentUrl,
 		};
 	}

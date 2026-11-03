@@ -46,6 +46,8 @@ describe('SlackInteractionWebhooks', () => {
 		mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET }),
 		mock<EventService>(),
 		mock(),
+		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {
@@ -337,5 +339,11 @@ describe('SlackInteractionWebhooks', () => {
 			executionId: 'exec-1',
 			suffix: 'node-1',
 		});
+	});
+
+	it('advertises POST as the only method without reading an execution', async () => {
+		await expect(slackInteractionWebhooks.getWebhookMethods()).resolves.toEqual(['POST']);
+
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 	});
 });

@@ -16,7 +16,7 @@ const inboxView = {
 export const InboxModule = defineFrontendModule({
 	id: 'inbox',
 	name: 'Inbox',
-	description: 'Workflow reviews and saved Assistant results.',
+	description: 'Workflow reviews, promotion reviews, and saved Assistant results.',
 	icon: 'inbox',
 	routes: [
 		// Keep legacy /reviews links working after the move to Inbox.
@@ -50,6 +50,11 @@ export const InboxModule = defineFrontendModule({
 			...inboxView,
 			path: '/inbox/assistant-results/:resultId',
 			name: 'InboxAssistantResult',
+		},
+		{
+			...inboxView,
+			path: '/inbox/promotion-reviews/:reviewId',
+			name: 'InboxPromotionReview',
 		},
 	],
 });

@@ -18,7 +18,6 @@ import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -310,7 +309,6 @@ export class FrontendService {
 			workflowsGroupsWithManyBoundariesEnabled:
 				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
-			granularCredentialSharing: isCredSharingEnabled(),
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -830,6 +828,10 @@ export class FrontendService {
 			if (credential.name in credentialsOverwrites) {
 				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
 			}
+
+			overwrittenProperties.push(
+				...this.credentialsOverwrites.getNewerAppProperties(credential.name),
+			);
 
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);

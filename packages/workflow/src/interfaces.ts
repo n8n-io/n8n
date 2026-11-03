@@ -175,14 +175,25 @@ export type OAuth2FailureReason = 'invalid_token' | 'verifier_unavailable' | 'in
 
 export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
-	| { valid: false; reason: OAuth2FailureReason };
+	| {
+			valid: false;
+			reason: OAuth2FailureReason;
+			/**
+			 * The `WWW-Authenticate` value for the 401 that answers this request. It names the
+			 * resource metadata, so a client can discover the issuers the resource accepts.
+			 */
+			challenge?: string;
+	  };
 
 export type N8nOAuth2FlowResult =
 	| {
 			valid: true;
 			token: string;
-			/** Rotated on every use. Never hand this to a browser document or to page script. */
-			refreshToken: string;
+			/**
+			 * Rotated on every use. Never hand this to a browser document or to page script.
+			 * Absent when the issuer granted no refresh token; the flow restarts when `token` expires.
+			 */
+			refreshToken?: string;
 			/** Lifetime of `token` in seconds, as the AS reports it. A duration, not an
 			 * absolute `exp`, so a browser scheduling off it is immune to clock skew. */
 			expiresIn: number;
@@ -630,7 +641,7 @@ export interface IHttpRequestOptions {
 	abortSignal?: GenericAbortSignal;
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -689,7 +700,7 @@ export interface IRequestOptions {
 
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -1100,6 +1111,14 @@ export interface RequestHelperFunctions {
 	 * @param {UseDefaultSsrfPolicy} [useDefaultSsrfPolicy='safe'] how the instance policy applies to the returned filter
 	 */
 	getSecureEgressFilter(useDefaultSsrfPolicy?: UseDefaultSsrfPolicy): NodeEgressFilter;
+	/**
+	 * W3C trace context (`traceparent`, plus `tracestate` when set) for the node that
+	 * runs now, for clients that build their own HTTP transport. `httpRequest` and
+	 * `request` add these headers themselves. Empty when there is nothing to send, so
+	 * callers can use it unguarded. Call it for each request: one open transport
+	 * serves many spans.
+	 */
+	getTraceHeaders(): Record<string, string>;
 }
 
 export type SSHCredentials = {
@@ -1177,7 +1196,21 @@ export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
 }
 
+export interface ExpressionIsolateFunctions {
+	/**
+	 * Runs `fn` with an expression isolate held, so it can resolve node parameters.
+	 * Reuses an isolate already held and releases only one it acquired.
+	 */
+	withExpressionIsolate<T>(fn: () => Promise<T>): Promise<T>;
+}
+
 export type NodeTypeAndVersion = {
+	/**
+	 * Stable canvas node ID. Unlike `name`, it survives a rename.
+	 * Optional so that existing callers that build this type by hand keep compiling;
+	 * the execution engine always sets it.
+	 */
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion: number;
@@ -1253,6 +1286,24 @@ export type DataTableProxyFunctions = {
 	// These are optional to account for situations where the data-table module is disabled
 	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
+};
+
+/** What a node may ask of a trusted source: the surface it is used on and the capability it needs. */
+export type TrustedSourceFilter = {
+	surface: 'trigger';
+	capability?: 'verify-jwt' | 'redirect-login';
+};
+
+/** One entry of the trusted-source dropdown on a trigger node. */
+export type TrustedSourceOption = { id: string; name: string };
+
+export type TrustedSourceDirectory = {
+	listTrustedSources(filter: TrustedSourceFilter): Promise<TrustedSourceOption[]>;
+};
+
+export type TrustedSourceFunctions = {
+	// Optional to account for situations where the inbound-auth-core module is disabled
+	listTrustedSources?(filter: TrustedSourceFilter): Promise<TrustedSourceOption[]>;
 };
 
 export type CredentialCheckStatus = {
@@ -1506,7 +1557,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		TrustedSourceFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -1596,7 +1650,8 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions;
+		SchedulingFunctions &
+		ExpressionIsolateFunctions;
 }
 
 export interface IHookFunctions
@@ -1642,6 +1697,10 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Optional `metadata` is stashed server-side against this flow's one-time `state`
 	 * (never sent to the browser) and returned by `completeN8nOAuth2Flow` on success —
 	 * a per-flow slot for carrying data (e.g. the original request query) across the bounce.
+	 *
+	 * The issuer the user signs in at is the trusted source the trigger's resource accepts,
+	 * read from the node's `trustedSource` parameter on the host side. Without one, the
+	 * instance's own OAuth2 server is used.
 	 */
 	beginN8nOAuth2Flow(resourceUrl: string, metadata?: Record<string, string>): Promise<string>;
 	/**
@@ -1650,6 +1709,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * exchanges the code for an access token **server-side** (the code never reaches the
 	 * sandboxed form page), and validates it. Returns the token and resolved user on
 	 * success, or a failure reason.
+	 *
+	 * The resource must still accept the source the flow began with; a flow whose trigger
+	 * switched issuer in between is refused.
 	 */
 	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	/**
@@ -2889,6 +2951,12 @@ export interface INodeTypeBaseDescription {
 	deprecated?: true;
 
 	/**
+	 * The node type to suggest as the replacement for this deprecated node.
+	 * The editor's deprecation notice and the error for a refused save name it.
+	 */
+	replacedByNodeType?: string;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */
@@ -3468,6 +3536,9 @@ export interface IRun {
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
 	jobId?: string;
+
+	/** Total minutes of time saved that nodes report. Only in scaling mode. */
+	nodeTimeSavedMinutes?: number;
 }
 
 export type SchemaType =
@@ -3790,6 +3861,19 @@ export interface IWorkflowExecutionTelemetryMetadata {
 	mockDataSources?: WorkflowExecutionMockDataSource[];
 }
 
+/**
+ * W3C trace context and caller baggage carried with an execution, persisted so
+ * any process (e.g. a queue-mode worker) can continue the same trace.
+ *
+ * @see https://www.w3.org/TR/trace-context/#traceparent-header
+ */
+export type ExecutionTracingContext = {
+	traceparent?: string;
+	tracestate?: string;
+	identity?: Record<string, string>;
+	baggage?: string;
+};
+
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
@@ -3887,8 +3971,8 @@ export interface IWorkflowExecutionDataProcess {
 	mcpToolInput?: IDataObject;
 	/** Key to uniquely identify this execution, generated by the trigger. */
 	deduplicationKey?: string;
-	/** W3C trace context extracted from inbound webhook headers. */
-	tracingContext?: { traceparent: string; tracestate?: string };
+	/** W3C trace context and caller baggage extracted from inbound webhook headers. */
+	tracingContext?: Omit<ExecutionTracingContext, 'identity'>;
 	/** Encrypted credential context for a triggered execution. */
 	encryptedRunnerIdentity?: string;
 	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
@@ -4085,6 +4169,8 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeName: string | undefined,
 			headers: Record<string, string>,
 		) => void;
+		/** Returns the caller's sanitized `baggage` header. Undefined when outbound headers are off. */
+		extractInboundBaggage: (header: string | string[] | undefined) => string | undefined;
 	};
 }
 
@@ -4122,6 +4208,13 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	/**
+	 * Whether this workflow, when it runs as a sub-workflow, makes the calling
+	 * execution redact the channels this workflow redacts itself. The caller keeps a
+	 * copy of its output. Redaction that it received from its own sub-workflows
+	 * always passes to the caller. When the setting is not set, it is on.
+	 */
+	redactCallerExecutions?: boolean;
 	customTelemetryTags?: ICustomTelemetryTag[];
 }
 
@@ -4561,7 +4654,6 @@ export interface IUserSettings {
 	instanceAi?: {
 		credentialId?: string | null;
 		modelName?: string;
-		localGatewayDisabled?: boolean;
 	};
 	mcpJsonNudge?: {
 		impressions: number;
@@ -4647,4 +4739,4 @@ export interface StructuredChunk {
 	};
 }
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

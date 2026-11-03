@@ -13,6 +13,7 @@ import {
 	formatRemediation,
 	formatStepSummary,
 } from './explain-duplicates.js';
+import type { AttributedCopy, ExplainedDuplicate } from './explain-duplicates.js';
 import { isPeerRuleExempt, PUBLISHED_SECTIONS } from './libs.js';
 import type { PackageJsonInfo } from '../utils/package-json-scanner.js';
 import { parsePackageJson, relativeDir } from '../utils/package-json-scanner.js';
@@ -26,6 +27,90 @@ const ROOT_TRIGGERS = [
 ];
 
 const CLOSURE_SECTIONS = new Set<string>(PUBLISHED_SECTIONS);
+
+// Remove these once n8n-nodes-base no longer publishes platform bindings as regular dependencies.
+const NPM_INSTALL_EXCLUSIONS = [
+	'@napi-rs/canvas-linux-arm64-musl',
+	'@napi-rs/canvas-linux-x64-musl',
+	'@napi-rs/image-linux-arm64-musl',
+	'@napi-rs/image-linux-x64-musl',
+];
+const NPM_INSTALL_EXCLUSION_REPLACEMENT = 'empty-npm-package';
+const NPM_INSTALL_ALLOWLIST_FILE =
+	'packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts';
+const NPM_INSTALL_ALLOWLIST_NAME = 'EXPECTED_NPM_DUPLICATES';
+
+interface ExpectedNpmDuplicate {
+	reason: string;
+	copies: Array<Pick<AttributedCopy, 'requiredBy' | 'range' | 'section'>>;
+}
+
+const EXPECTED_NPM_DUPLICATES: Record<string, ExpectedNpmDuplicate> = {
+	'@langchain/core': {
+		reason: 'Legacy Zep Cloud metadata requests LangChain 0.1 peers; remove with the Zep nodes.',
+		copies: [
+			{ requiredBy: null, range: null, section: null },
+			{ requiredBy: 'langchain', range: '~0.1.60', section: 'dependencies' },
+			{
+				requiredBy: '@langchain/textsplitters',
+				range: '>0.2.0 <0.3.0',
+				section: 'dependencies',
+			},
+		],
+	},
+	'form-data': {
+		reason: 'Legacy Zep SDKs pin form-data 4.0.0; remove with the deprecated Zep nodes.',
+		copies: [
+			{ requiredBy: null, range: null, section: null },
+			{ requiredBy: '@getzep/zep-cloud', range: '4.0.0', section: 'dependencies' },
+			{ requiredBy: '@getzep/zep-js', range: '4.0.0', section: 'dependencies' },
+		],
+	},
+	zod: {
+		reason: 'Microsoft Agents pins Zod 3.25.75 and MCP v2 requires Zod 4.',
+		copies: [
+			{ requiredBy: null, range: null, section: null },
+			{ requiredBy: '@microsoft/agents-activity', range: '3.25.75', section: 'dependencies' },
+			{ requiredBy: '@microsoft/agents-hosting', range: '3.25.75', section: 'dependencies' },
+			{ requiredBy: '@modelcontextprotocol/core', range: '^4.2.0', section: 'dependencies' },
+			{ requiredBy: '@modelcontextprotocol/server', range: '^4.2.0', section: 'dependencies' },
+		],
+	},
+};
+
+export function expectedNpmDuplicateReason(duplicate: ExplainedDuplicate): string | undefined {
+	const expected = EXPECTED_NPM_DUPLICATES[duplicate.name];
+	if (!expected || duplicate.copies.length !== expected.copies.length) return undefined;
+
+	const remaining = [...duplicate.copies];
+	for (const expectedCopy of expected.copies) {
+		const index = remaining.findIndex(
+			(copy) =>
+				copy.requiredBy === expectedCopy.requiredBy &&
+				copy.range === expectedCopy.range &&
+				copy.section === expectedCopy.section,
+		);
+		if (index === -1) return undefined;
+		remaining.splice(index, 1);
+	}
+	return expected.reason;
+}
+
+/** Replace Docker-only bindings that npm rejects outside their target platform. */
+export function buildNpmInstallOverrides(
+	packages: string[],
+	tarballByName: Record<string, string>,
+): Record<string, string> {
+	const localPackages = packages.map((name): [string, string] => [
+		name,
+		`file:${tarballByName[name]}`,
+	]);
+	const exclusions = NPM_INSTALL_EXCLUSIONS.map((name): [string, string] => [
+		name,
+		`npm:${NPM_INSTALL_EXCLUSION_REPLACEMENT}@1.0.0`,
+	]);
+	return Object.fromEntries([...localPackages, ...exclusions]);
+}
 
 /** True when a changed file can shift dependency resolution repo-wide, forcing a full check. */
 export function filesTriggerFullRun(files: string[]): boolean {
@@ -345,7 +430,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
 		// local tarballs. Third-party deps resolve from the real npm registry.
 		const fileDep = (n: string): [string, string] => [n, `file:${tarballByName[n]}`];
-		const overrides = Object.fromEntries(toPack.map(fileDep));
+		const overrides = buildNpmInstallOverrides(toPack, tarballByName);
 		const deps = Object.fromEntries(targets.map(fileDep));
 		writeFileSync(
 			join(scratch, 'package.json'),
@@ -373,13 +458,29 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		console.log(`Installed in ${seconds(installStartedAt)}.`);
 
 		const found = collectCopies(scratch);
-		const { duplicates, failures } = analyze(found);
+		const { duplicates } = analyze(found);
 		const workspaceNames = new Set(byName.keys());
 		const curatedDuplicates = duplicates.filter((d) => d.isCurated);
 		const attributed = explainDuplicates(scratch, curatedDuplicates, workspaceNames);
+		const expectedReasons = new Map(
+			attributed.flatMap((duplicate) => {
+				const reason = expectedNpmDuplicateReason(duplicate);
+				return reason ? [[duplicate.name, reason]] : [];
+			}),
+		);
+		for (const duplicate of curatedDuplicates) {
+			const reason = expectedReasons.get(duplicate.name);
+			if (reason) {
+				duplicate.allowed = true;
+				duplicate.reason = reason;
+			}
+		}
+		const failures = curatedDuplicates.filter((duplicate) => !duplicate.allowed);
 		const explained = attributed.filter((dup) => failures.some((f) => f.name === dup.name));
 
-		const nonCurated = duplicates.filter((d) => !d.isCurated);
+		const nonCurated = duplicates.filter(
+			(d) => !d.isCurated && d.name !== NPM_INSTALL_EXCLUSION_REPLACEMENT,
+		);
 		if (nonCurated.length > 0) {
 			groupStart(`Other duplicated packages (report-only, NOT enforced — ${nonCurated.length})`);
 			for (const d of nonCurated) {
@@ -408,7 +509,12 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		if (failures.length > 0) {
 			keepScratch = !reportOnly;
 			const scratchHint = keepScratch ? scratch : undefined;
-			const remediationOptions = { exemptPackages: exemptPackages(byName), scratch: scratchHint };
+			const remediationOptions = {
+				exemptPackages: exemptPackages(byName),
+				scratch: scratchHint,
+				allowlistFile: NPM_INSTALL_ALLOWLIST_FILE,
+				allowlistName: NPM_INSTALL_ALLOWLIST_NAME,
+			};
 			console.log('\nHow to fix\n');
 			for (const line of formatRemediation(explained, remediationOptions)) console.log(line);
 			writeStepSummary(formatStepSummary(explained, { reportOnly, ...remediationOptions }));
@@ -425,7 +531,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 			);
 			return reportOnly ? 0 : 1;
 		}
-		console.log('\nOK: no curated duplicates in the npm-install graph.');
+		console.log('\nOK: no unexpected curated duplicates in the npm-install graph.');
 		return 0;
 	} finally {
 		// The kept tree is already pointed at from the remediation block, which is the only path

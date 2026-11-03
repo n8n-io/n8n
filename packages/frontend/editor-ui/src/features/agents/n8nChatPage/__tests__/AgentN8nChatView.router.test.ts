@@ -40,6 +40,7 @@ const agentItem: AgentChatListItem = {
 	},
 	project: { id: 'project-1', name: 'Marketing' },
 	attachments: { image: false, pdf: false, audio: false },
+	availableInChat: true,
 };
 
 const AgentChatPanelStub = {

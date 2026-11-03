@@ -10,7 +10,7 @@
 import { DateTime, Duration, IANAZone, Interval } from 'luxon';
 import type { DurationLikeObject } from 'luxon';
 
-import type { SentinelDecoder, SentinelEncoder, TransferSentinel } from './transfer';
+import type { SentinelEncoder, TransferSentinel } from './transfer';
 import {
 	isPlainObject,
 	transferTypeOf,
@@ -218,10 +218,10 @@ export const encodeLuxonValue: SentinelEncoder = (value) => {
  * A marker that names a type no encoder here wrote is given back as the plain
  * object it is, which is what the host did before the type had a marker.
  */
-export const decodeLuxonSentinel: SentinelDecoder = (sentinel) => {
+export function decodeLuxonSentinel(sentinel: TransferSentinel): unknown {
 	if (!isLuxonSentinel(sentinel)) return sentinel;
 	return rebuildLuxonValue(sentinel);
-};
+}
 
 /** Walk a transferred value and rebuild every luxon instance in it. */
 export function unwrapLuxonValues(value: unknown): unknown {

@@ -4,7 +4,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -14,7 +14,7 @@ import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconst
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
-import type { Agent } from '../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
 import { createAgentSkillRefsService, storedRunSource } from './test-utils/stored-agent-config';
@@ -22,7 +22,7 @@ import { createAgentSkillRefsService, storedRunSource } from './test-utils/store
 const agentId = 'agent-1';
 const projectId = 'project-1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: agentId,
 		projectId,
@@ -33,7 +33,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeRuntime() {

@@ -12,6 +12,8 @@ type DiffProps = {
 	sourceLabel?: string;
 	targetLabel?: string;
 	showFullscreenButton?: boolean;
+	canvasIdPrefix?: string;
+	hideTitle?: boolean;
 };
 const { captured } = vi.hoisted(() => ({ captured: [] as DiffProps[] }));
 vi.mock('./WorkflowDiffView.vue', () => ({
@@ -22,6 +24,8 @@ vi.mock('./WorkflowDiffView.vue', () => ({
 			'sourceLabel',
 			'targetLabel',
 			'showFullscreenButton',
+			'canvasIdPrefix',
+			'hideTitle',
 		],
 		setup(props) {
 			captured.push(props as DiffProps);
@@ -89,6 +93,8 @@ it('preserves labels, first-publish text, and the fullscreen control', () => {
 			sourceLabel: 'Published',
 			targetLabel: 'In review',
 			showFullscreenButton: true,
+			canvasIdPrefix: 'workflow',
+			hideTitle: true,
 		},
 		slots: {
 			sourceLabel: '<span>Previous version</span>',
@@ -101,8 +107,25 @@ it('preserves labels, first-publish text, and the fullscreen control', () => {
 		sourceLabel: 'Published',
 		targetLabel: 'In review',
 		showFullscreenButton: true,
+		canvasIdPrefix: 'workflow',
+		hideTitle: true,
 	});
 	expect(getByText('Previous version')).toBeInTheDocument();
 	expect(getByText('Proposed version')).toBeInTheDocument();
 	expect(getByText('First publication')).toBeInTheDocument();
+});
+
+it('keeps graph-only snapshots in separate canvas documents without history metadata', () => {
+	const { nodes, connections } = snapshot();
+	renderComponent({
+		props: {
+			workflowId: 'workflow',
+			workflowName: 'Workflow',
+			sourceSnapshot: { nodes, connections },
+			targetSnapshot: { nodes: [], connections: {} },
+		},
+	});
+	expect(captured[0].sourceWorkflow?.versionId).not.toBe(captured[0].targetWorkflow?.versionId);
+	expect(captured[0].sourceWorkflow?.nodes).toEqual(nodes);
+	expect(captured[0].targetWorkflow?.nodes).toEqual([]);
 });

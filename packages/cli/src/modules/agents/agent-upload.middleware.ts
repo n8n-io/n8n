@@ -9,7 +9,10 @@ import multer from 'multer';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import { BadRequestError } from '@n8n/errors';
+import {
+	AgentKnowledgeUploadError,
+	type AgentKnowledgeUploadFailureReason,
+} from './agent-knowledge-upload.error';
 
 const allowedAgentFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 
@@ -37,6 +40,22 @@ export function describeMulterError(error: multer.MulterError): string {
 	}
 }
 
+/** The multer codes that `describeMulterError` explains. Other codes have no fixed reason. */
+export function multerFailureReason(
+	error: multer.MulterError,
+	filesFieldName: string,
+): AgentKnowledgeUploadFailureReason | undefined {
+	switch (error.code) {
+		case 'LIMIT_UNEXPECTED_FILE':
+			// Multer uses this code for a file part with another field name too.
+			return error.field === filesFieldName ? 'too_many_files' : undefined;
+		case 'LIMIT_FILE_SIZE':
+			return 'file_size';
+		default:
+			return undefined;
+	}
+}
+
 /**
  * Best-effort removal of multer's on-disk temp files. The upload handler hands
  * successful uploads to AgentKnowledgeService (which cleans up its own temp
@@ -59,7 +78,12 @@ export class AgentUploadMiddleware {
 		limits: { fileSize: MAX_AGENT_FILE_SIZE_BYTES },
 		fileFilter: (_req, file, done) => {
 			if (!isAllowedAgentFile(file)) {
-				done(new BadRequestError('Only CSV, PDF, Markdown, and TXT files are allowed'));
+				done(
+					new AgentKnowledgeUploadError(
+						'Only CSV, PDF, Markdown, and TXT files are allowed',
+						'file_type',
+					),
+				);
 				return;
 			}
 

@@ -1,7 +1,7 @@
 /**
  * Node-level diff between a built workflow and its previously saved version.
  *
- * `build-workflow` round-trips the whole workflow (get-as-code → edit → build),
+ * `workflow_builder_build_workflow` round-trips the whole workflow (get-as-code → edit → build),
  * so every build re-submits nodes the user never asked to touch. These helpers
  * let the build pipeline tell touched nodes apart from pre-existing ones, so
  * validation and setup routing never punish a node for merely being present.

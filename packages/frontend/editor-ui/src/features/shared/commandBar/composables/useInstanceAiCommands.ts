@@ -48,7 +48,7 @@ export function useInstanceAiCommands(): CommandGroup {
 				},
 				icon: {
 					component: N8nIcon,
-					props: { icon: 'sparkles' },
+					props: { icon: 'n8n-assistant' },
 				},
 				keywords: [...NAME_KEYWORDS, 'open', 'view'],
 			},

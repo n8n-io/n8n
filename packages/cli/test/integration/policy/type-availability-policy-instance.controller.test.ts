@@ -32,8 +32,7 @@ beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
 
-	// A `package` rule is rejected at write time unless the package is actually loaded — see
-	// `n8n-nodes-base` used as a stand-in for "an installed package" below.
+	// `n8n-nodes-base` stands in for an installed package, so its rules save without a warning.
 	Container.get(LoadNodesAndCredentials).loaders = {
 		'n8n-nodes-base': mock<NodeLoader>({ known: { nodes: {}, credentials: {} } }),
 	};
@@ -62,8 +61,11 @@ describe('node type availability policy instance controller RBAC', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
-	test('GET /node-type-policies/instance rejects a member with 403', async () => {
-		const response = await testServer.authAgentFor(member).get('/node-type-policies/instance');
+	test.each([
+		'/node-type-policies/instance',
+		'/node-type-policies/scopes/does-not-exist/attachments',
+	])('GET %s rejects a member with 403', async (path) => {
+		const response = await testServer.authAgentFor(member).get(path);
 
 		expect(response.statusCode).toBe(403);
 	});
@@ -130,16 +132,65 @@ describe('node type availability policy instance controller license gating', () 
 		testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 	});
 
-	test('rejects an owner with 403 when the license feature is disabled', async () => {
+	test.each([
+		'/node-type-policies/instance',
+		'/node-type-policies/scopes/does-not-exist/attachments',
+	])('GET %s rejects an owner with 403 when the license feature is disabled', async (path) => {
 		testServer.license.disable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 
-		const response = await testServer.authAgentFor(owner).get('/node-type-policies/instance');
+		const response = await testServer.authAgentFor(owner).get(path);
 
 		expect(response.statusCode).toBe(403);
 	});
 });
 
 describe('node type availability policy instance controller admin happy path', () => {
+	test('GET attachments returns rules and a version that PUT accepts without a read audit event', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const rule = { id: 'r1', action: 'deny', selector: { kind: 'name', value: 'a.b' } };
+		const instance = await agent.put('/node-type-policies/instance').send({
+			rules: [rule],
+			defaultAction: 'allow',
+			version: 0,
+		});
+		expect(instance.statusCode).toBe(200);
+		const path = `/node-type-policies/scopes/${instance.body.data.scopeId}/attachments`;
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const read = await agent.get(path);
+
+		expect(read.statusCode).toBe(200);
+		expect(read.body.data).toEqual({
+			attachments: [{ policyId: expect.any(String), rules: [rule], priority: 0, isFloor: false }],
+			version: instance.body.data.version,
+		});
+		expect(emitSpy).not.toHaveBeenCalled();
+		const updated = await agent
+			.put(path)
+			.send({ attachments: [], version: read.body.data.version });
+		expect(updated.statusCode).toBe(200);
+		expect(updated.body.data).toEqual({ attachments: [], version: read.body.data.version + 1 });
+		const empty = await agent.get(path);
+		expect(empty.body.data).toEqual(updated.body.data);
+	});
+
+	test('GET attachments returns 404 for an unknown scope and a credential type scope', async () => {
+		const agent = testServer.authAgentFor(owner);
+		expect(
+			(await agent.get('/node-type-policies/scopes/does-not-exist/attachments')).statusCode,
+		).toBe(404);
+		const other = await agent.put('/credential-type-policies/instance').send({
+			rules: [],
+			defaultAction: 'allow',
+			version: 0,
+		});
+		expect(other.statusCode).toBe(200);
+		expect(
+			(await agent.get(`/node-type-policies/scopes/${other.body.data.scopeId}/attachments`))
+				.statusCode,
+		).toBe(404);
+	});
+
 	test('PUT /instance persists, bumps version, and fires an audit event', async () => {
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -234,6 +285,29 @@ describe('node type availability policy instance controller admin happy path', (
 		expect(persisted.body.data.version).toBe(3);
 		expect(persisted.body.data.defaultAction).toBe('deny');
 		expect(persisted.body.data.rules).toEqual([rule('r2', 'c.d')]);
+	});
+
+	test('a package rule for an uninstalled package saves with a warning, and does not block later writes', async () => {
+		const agent = testServer.authAgentFor(owner);
+		const missingPackage = {
+			id: 'r-mcp',
+			action: 'deny' as const,
+			selector: { kind: 'package' as const, value: 'n8n-nodes-mcp' },
+		};
+
+		const first = await agent
+			.put('/node-type-policies/instance')
+			.send({ rules: [missingPackage], defaultAction: 'allow', version: 0 });
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-mcp' }]);
+
+		const unrelatedChange = await agent.put('/node-type-policies/instance').send({
+			rules: [missingPackage],
+			defaultAction: 'deny',
+			version: first.body.data.version,
+		});
+		expect(unrelatedChange.statusCode).toBe(200);
+		expect(unrelatedChange.body.data.warnings).toEqual([{ kind: 'notLoaded', ruleId: 'r-mcp' }]);
 	});
 
 	test('a PUT /instance that changes the rules and the default action together moves the version by one', async () => {

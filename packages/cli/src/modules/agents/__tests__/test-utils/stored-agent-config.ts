@@ -10,21 +10,21 @@ import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
 import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
 import { composeJsonConfig } from '../../json-config/agent-config-composition';
-import { withoutLegacySkillRefs, type AgentSkillRefs } from '../../json-config/agent-document';
+import type { AgentSkillRefs } from '../../json-config/agent-document';
 import type { AgentRunSource } from '../../utils/agent-published-snapshot';
 
 /**
  * A JSON document as a stored config fixture. The fake skill refs seam of
  * `createAgentSkillRefsService` reads the `skills` key of the fixture as the
  * skill refs, so a caller test declares the refs in one place. The real seam
- * reads the refs from the skills hub tables.
+ * reads the refs from the skill tables.
  */
 export function storedAgentConfig(document: AgentJsonConfig): StoredAgentConfig {
 	return document as unknown as StoredAgentConfig;
 }
 
 export type FakeAgentSkillRefsService = ReturnType<typeof mock<AgentSkillRefsService>> & {
-	/** Skill bodies of the fake skills hub, keyed by skill id. */
+	/** Skill bodies of the fake skills module, keyed by skill id. */
 	bodies: Record<string, AgentSkill>;
 	/** Draft refs written through the fake seam, keyed by agent id. */
 	draftRefs: Map<string, AgentJsonSkillConfig[]>;
@@ -49,7 +49,6 @@ export function createAgentSkillRefsService(
 		bodies,
 		draftRefs,
 		versionPins,
-		usesSkillsHub: true,
 	});
 	const readDraftRefs = (agent: Pick<Agent, 'id'>): AgentJsonSkillConfig[] =>
 		draftRefs.get(agent.id) ?? storedSkillRefs(agent);
@@ -71,23 +70,30 @@ export function createAgentSkillRefsService(
 		);
 	};
 
-	// A published version's refs carry no `versionId`: its pins live in their own table.
-	service.refsForVersion.mockImplementation(async (version) => storedSkillRefs(version));
+	// As the real seam: a published version's refs come from its pins, in pin order, and
+	// carry no `versionId`. A version fixture without pins reads its `storedAgentConfig`.
+	const readVersionRefs = (version: Pick<AgentHistory, 'versionId'>): AgentJsonSkillConfig[] => {
+		const pins = versionPins.get(version.versionId);
+		return pins
+			? Object.keys(pins).map((id) => ({ type: 'skill' as const, id }))
+			: storedSkillRefs(version);
+	};
+	service.refsForVersion.mockImplementation(async (version) => readVersionRefs(version));
 	service.readDraft.mockImplementation(async (agent) => {
 		const skillRefs = readDraftRefs(agent);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
 	service.readVersion.mockImplementation(async (version) => {
-		const skillRefs = storedSkillRefs(version);
+		const skillRefs = readVersionRefs(version);
 		return { skillRefs, skills: pickBodies(skillRefs) };
 	});
-	service.skillsForRefs.mockImplementation(async (_agent, refs) => pickBodies(refs));
+	service.skillsForRefs.mockImplementation(async (refs) => pickBodies(refs));
 	service.effectiveDraftRefs.mockImplementation(async (_agent, refs) => refs);
 	service.replaceDraftRefs.mockImplementation(async (agent, refs) => writeRefs(agent, refs));
 	service.restoreDraftRefs.mockImplementation(async (agent, version, refs) =>
 		writeRefs(agent, pinnedRefs(version.versionId, refs ?? [])),
 	);
-	// A ref to a skill of the fake hub stays. A ref with only a body needs a creator, as
+	// A ref to a skill of the fake skills module stays. A ref with only a body needs a creator, as
 	// in the real seam; the fake keeps its id instead of minting a new one.
 	service.createDraftRefs.mockImplementation(async (agent, refs, _bodies, creator) => {
 		writeRefs(
@@ -104,20 +110,15 @@ export function createAgentSkillRefsService(
 			),
 		),
 	);
-	// As the real seam: the legacy columns get the refs and bodies the draft runs.
 	service.versionSnapshot.mockImplementation(async (agent) => {
-		if (!agent.schema) return { schema: null, skills: null, pins: new Map() };
-		const skillRefs = readDraftRefs(agent);
-		return {
-			schema: {
-				...withoutLegacySkillRefs(agent.schema),
-				skills: skillRefs.map(({ id }) => ({ type: 'skill', id })),
-			} as unknown as StoredAgentConfig,
-			skills: pickBodies(skillRefs),
-			pins: new Map(skillRefs.map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`])),
-		};
+		if (!agent.schema) return new Map();
+		return new Map(
+			readDraftRefs(agent).map((ref) => [ref.id, ref.versionId ?? `${ref.id}-latest`]),
+		);
 	});
-	service.pinVersion.mockResolvedValue(undefined);
+	service.pinVersion.mockImplementation(async (agentVersionId, pins) => {
+		versionPins.set(agentVersionId, Object.fromEntries(pins));
+	});
 	service.findOutdatedSkillIds.mockResolvedValue([]);
 	return service;
 }
@@ -152,9 +153,9 @@ export function composeStoredJsonConfig(
  * A run source for an agent fixture, with the skill refs that its stored
  * config holds and the given skill bodies.
  */
-export function storedRunSource(
-	agent: Agent,
+export function storedRunSource<T extends Agent>(
+	agent: T,
 	skills: Record<string, AgentSkill> = {},
-): AgentRunSource {
+): AgentRunSource<T> {
 	return { agent, skillRefs: storedSkillRefs(agent), skills };
 }

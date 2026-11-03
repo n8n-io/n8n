@@ -664,11 +664,12 @@ describe('sanitizeMcpToolSchemas', () => {
 		});
 
 		it('should annotate fields shared by a subset of variants with all their actions', () => {
-			// A field appearing in 2 of 3 variants with a consistent description
-			// still needs an action hint — the third variant doesn't use it.
+			// A field appearing in 2 of 4 variants with a consistent description
+			// still needs an action hint — the other variants don't use it.
 			const shared = z.string().describe('Node type ID');
 			const union = z.discriminatedUnion('action', [
 				z.object({ action: z.literal('list') }),
+				z.object({ action: z.literal('search') }),
 				z.object({ action: z.literal('describe'), nodeType: shared }),
 				z.object({ action: z.literal('explore-resources'), nodeType: shared }),
 			]);
@@ -678,6 +679,34 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(result.shape.nodeType.description).toBe(
 				'For "describe", "explore-resources": Node type ID',
 			);
+		});
+
+		it('should name the excluded actions when a field is shared by most variants', () => {
+			// Listing the few actions that don't use a field is shorter than listing
+			// every action that does, and binds the field just as clearly.
+			const shared = z.string().describe('Workflow ID');
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('list') }),
+				z.object({ action: z.literal('get'), workflowId: shared }),
+				z.object({ action: z.literal('publish'), workflowId: shared }),
+				z.object({ action: z.literal('archive'), workflowId: shared }),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+
+			expect(result.shape.workflowId.description).toBe('Not for "list": Workflow ID');
+		});
+
+		it('should name the excluded actions for a mostly shared field without a description', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('list') }),
+				z.object({ action: z.literal('get'), id: z.string() }),
+				z.object({ action: z.literal('delete'), id: z.string() }),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+
+			expect(result.shape.id.description).toBe('Not for "list"');
 		});
 
 		it('should annotate subset-only fields without a description using "Only for" hint', () => {

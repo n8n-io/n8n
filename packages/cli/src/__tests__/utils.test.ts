@@ -9,12 +9,77 @@ import {
 	shouldAssignExecuteMethod,
 	getAllKeyPaths,
 	isWorkflowIdValid,
+	rightDiff,
 	satisfiesToolCapability,
-	setMicrosoftObservabilityDefaults,
-	containsExpression,
 	stripToolSuffix,
 	withExpressionIsolate,
 } from '../utils';
+
+describe('rightDiff', () => {
+	it.each([
+		{ description: 'handles two empty arrays', arr1: [], arr2: [], expected: [] },
+		{
+			description: 'keeps all entries when the first array is empty',
+			arr1: [],
+			arr2: ['b', 'a', 'b'],
+			expected: ['b', 'a', 'b'],
+		},
+		{
+			description: 'returns no entries when the second array is empty',
+			arr1: ['a'],
+			arr2: [],
+			expected: [],
+		},
+		{
+			description: 'excludes all matching entries',
+			arr1: ['a', 'b'],
+			arr2: ['b', 'a', 'b'],
+			expected: [],
+		},
+		{
+			description: 'keeps entries when no keys match',
+			arr1: ['a'],
+			arr2: ['c', 'b'],
+			expected: ['c', 'b'],
+		},
+		{
+			description: 'preserves the order of the second array',
+			arr1: ['b'],
+			arr2: ['d', 'b', 'a', 'c'],
+			expected: ['d', 'a', 'c'],
+		},
+		{
+			description: 'preserves duplicate entries from the second array',
+			arr1: ['a', 'a'],
+			arr2: ['b', 'a', 'b', 'c', 'b'],
+			expected: ['b', 'b', 'c', 'b'],
+		},
+	])('$description', ({ arr1, arr2, expected }) => {
+		expect(rightDiff([arr1, (item) => item], [arr2, (item) => item])).toEqual(expected);
+	});
+
+	it('uses different key extractors for different item types', () => {
+		const arr1 = [{ id: 'shared' }];
+		const arr2 = [{ projectId: 'shared' }, { projectId: 'new' }];
+
+		expect(rightDiff([arr1, (item) => item.id], [arr2, (item) => item.projectId])).toEqual([
+			arr2[1],
+		]);
+	});
+
+	it('does not mutate inputs and returns the original items in a new array', () => {
+		const arr1 = [Object.freeze({ id: 'shared' })];
+		const arr2 = [Object.freeze({ id: 'new' }), Object.freeze({ id: 'shared' })];
+		Object.freeze(arr1);
+		Object.freeze(arr2);
+
+		const result = rightDiff([arr1, (item) => item.id], [arr2, (item) => item.id]);
+
+		expect(result).toEqual([arr2[0]]);
+		expect(result[0]).toBe(arr2[0]);
+		expect(result).not.toBe(arr2);
+	});
+});
 
 describe('workflow start selection', () => {
 	const manualTrigger = mock<INode>({
@@ -373,144 +438,5 @@ describe('isWorkflowIdValid', () => {
 		it('should accept IDs with mixed case', () => {
 			expect(isWorkflowIdValid('AbCdEfGhIjKlMnOp')).toBe(true);
 		});
-	});
-});
-
-describe('setMicrosoftObservabilityDefaults', () => {
-	const originalEnv = process.env;
-
-	beforeEach(() => {
-		vi.resetModules();
-		process.env = { ...originalEnv };
-	});
-
-	afterEach(() => {
-		process.env = originalEnv;
-	});
-
-	test('should set ENABLE_OBSERVABILITY to true when undefined', () => {
-		delete process.env.ENABLE_OBSERVABILITY;
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-	});
-
-	test('should set ENABLE_OBSERVABILITY to true when empty string', () => {
-		process.env.ENABLE_OBSERVABILITY = '';
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-	});
-
-	test('should not override ENABLE_OBSERVABILITY when already set', () => {
-		process.env.ENABLE_OBSERVABILITY = 'false';
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_OBSERVABILITY).toBe('false');
-	});
-
-	test('should set ENABLE_A365_OBSERVABILITY_EXPORTER to true when undefined', () => {
-		delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-	});
-
-	test('should set ENABLE_A365_OBSERVABILITY_EXPORTER to true when empty string', () => {
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = '';
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-	});
-
-	test('should not override ENABLE_A365_OBSERVABILITY_EXPORTER when already set', () => {
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'false';
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('false');
-	});
-
-	test('should set both environment variables when both are undefined', () => {
-		delete process.env.ENABLE_OBSERVABILITY;
-		delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-	});
-
-	test('should set both environment variables when both are empty strings', () => {
-		process.env.ENABLE_OBSERVABILITY = '';
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = '';
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_OBSERVABILITY).toBe('true');
-		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-	});
-
-	test('should handle mixed scenarios correctly', () => {
-		process.env.ENABLE_OBSERVABILITY = 'custom-value';
-		delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
-
-		setMicrosoftObservabilityDefaults();
-
-		expect(process.env.ENABLE_OBSERVABILITY).toBe('custom-value');
-		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
-	});
-});
-
-describe('containsExpression', () => {
-	it('returns true for a simple expression with {{...}}', () => {
-		expect(containsExpression('={{value}}')).toBe(true);
-	});
-
-	it('returns true when {{...}} appears later in the string', () => {
-		expect(containsExpression('=hello {{world}}')).toBe(true);
-	});
-
-	it('returns true when there is content inside the braces (including spaces)', () => {
-		expect(containsExpression('={{ value }}')).toBe(true);
-	});
-
-	it('returns true when there is trailing content after the }}', () => {
-		expect(containsExpression('={{value}} + 1')).toBe(true);
-	});
-
-	it('returns false when the string does not start with "="', () => {
-		expect(containsExpression('hello {{world}}')).toBe(false);
-	});
-
-	it('returns false when the string starts with "=" but has no {{...}}', () => {
-		expect(containsExpression('=hello world')).toBe(false);
-	});
-
-	it('returns false for empty placeholder {{}}', () => {
-		expect(containsExpression('={{}}')).toBe(false);
-	});
-
-	it('returns false when the string uses single braces {..} instead of double {{..}}', () => {
-		expect(containsExpression('={value}')).toBe(false);
-	});
-
-	it('returns false when the braces are incomplete', () => {
-		expect(containsExpression('={{value}')).toBe(false);
-		expect(containsExpression('={value}}')).toBe(false);
-		expect(containsExpression('={{value')).toBe(false);
-	});
-
-	it('returns true when there are multiple placeholders and at least one matches', () => {
-		expect(containsExpression('=x {{a}} y {{b}}')).toBe(true);
-	});
-
-	it('returns false when the string is empty', () => {
-		expect(containsExpression('')).toBe(false);
 	});
 });

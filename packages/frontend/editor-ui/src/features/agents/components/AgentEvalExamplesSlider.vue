@@ -6,8 +6,7 @@
  */
 import { computed, ref, useId, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
-import { ElSlider } from 'element-plus';
-import { N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nSlider, N8nSpinner, N8nText, type SliderValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AgentAvatar from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
@@ -125,6 +124,11 @@ function cancelAddOwn() {
 
 const ownInputRef = ref<HTMLInputElement | null>(null);
 const ownInputId = useId();
+const sliderCountId = useId();
+
+function updateSliderValue([value]: SliderValue) {
+	sliderValue.value = value;
+}
 
 function focusOwnInput() {
 	ownInputRef.value?.focus();
@@ -146,7 +150,7 @@ defineExpose({ sliderValue, focusOwnInput });
 	</div>
 	<div v-else :class="$style.root">
 		<div :class="$style.sliderRow" data-test-id="instance-ai-test-agent-examples-slider">
-			<N8nText :class="$style.sliderCount" bold size="medium">
+			<N8nText :id="sliderCountId" :class="$style.sliderCount" bold size="medium">
 				{{
 					i18n.baseText('instanceAi.testAgentPreview.examplesCount', {
 						adjustToNumber: sliderValue,
@@ -154,14 +158,17 @@ defineExpose({ sliderValue, focusOwnInput });
 					})
 				}}
 			</N8nText>
-			<ElSlider
-				v-model="sliderValue"
-				:min="1"
-				:max="maxSliderValue"
+			<N8nSlider
+				:model-value="[sliderValue]"
+				:min-value="1"
+				:max-value="maxSliderValue"
 				:step="1"
-				:show-tooltip="false"
+				:show-step-markers="false"
+				hide-value
+				:aria-labelledby="sliderCountId"
 				:class="$style.slider"
 				size="small"
+				@update:model-value="updateSliderValue"
 			/>
 		</div>
 
@@ -265,32 +272,10 @@ defineExpose({ sliderValue, focusOwnInput });
 }
 
 .slider {
+	--n8n-slider--fill: var(--background--brand);
+	--n8n-slider--background: var(--run-data--color--background);
 	flex: 1;
-	cursor: ew-resize;
-
-	:global(.el-slider__runway) {
-		background-color: var(--run-data--color--background);
-		border: none;
-		cursor: ew-resize;
-	}
-
-	:global(.el-slider__bar) {
-		background-color: var(--color--orange-500);
-		border-radius: var(--radius--full);
-	}
-
-	:global(.el-slider__button-wrapper) {
-		cursor: ew-resize;
-	}
-
-	:global(.el-slider__button) {
-		width: 18px;
-		height: 18px;
-		border: 1px solid var(--color--orange-500);
-		background-color: var(--background--surface);
-		box-shadow: none;
-		cursor: ew-resize;
-	}
+	min-width: 0;
 }
 
 .sliderCount {

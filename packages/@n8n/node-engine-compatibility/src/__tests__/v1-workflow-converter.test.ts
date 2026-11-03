@@ -56,6 +56,32 @@ function workflow(overrides: Partial<IWorkflowBase>): IWorkflowBase {
 // XX       the node is disabled
 // (back)   the loop-return edge expected to be marked `isBackEdge`
 describe('V1WorkflowConverter', () => {
+	it('emits the nodes in canvas order, top to bottom and then left to right', () => {
+		const graph = converter.convert(
+			workflow({
+				nodes: [
+					manualTrigger,
+					{ ...node('c-uuid', 'C'), position: [100, 200] },
+					{ ...node('b-uuid', 'B'), position: [300, 100] },
+					{ ...node('a-uuid', 'A'), position: [0, 100] },
+				],
+				connections: {
+					[manualTrigger.name]: {
+						main: [
+							[
+								{ node: 'A', type: 'main', index: 0 },
+								{ node: 'B', type: 'main', index: 0 },
+								{ node: 'C', type: 'main', index: 0 },
+							],
+						],
+					},
+				},
+			}),
+		);
+
+		expect(graph.nodes.map(({ name }) => name)).toEqual([manualTrigger.name, 'A', 'B', 'C']);
+	});
+
 	describe('trigger nodes', () => {
 		const trigger = (id: string, name: string, type: string, extra: Partial<INode> = {}): INode =>
 			node(id, name, { type, ...extra });
@@ -236,6 +262,36 @@ describe('V1WorkflowConverter', () => {
 					'Webhook',
 				),
 			).toThrow(UnknownTriggerError);
+		});
+	});
+
+	describe('a non-trigger root', () => {
+		//  ┌───────┐    ┌───┐    ┌───┐
+		//  │trigger├───►│ A ├───►│ B │
+		//  └───────┘    └───┘    └───┘
+		//                 ▲ root
+		const wf = workflow({
+			nodes: [manualTrigger, node('a-uuid', 'A'), node('b-uuid', 'B')],
+			connections: {
+				[manualTrigger.name]: { main: [[main('A')]] },
+				A: { main: [[main('B')]] },
+			},
+		});
+
+		it('is refused by default', () => {
+			expect(() => converter.convert(wf, 'A')).toThrow(NotATriggerError);
+		});
+
+		it('becomes the trigger step when allowed, and the real trigger is left out', () => {
+			const graph = converter.convert(wf, 'A', { allowNonTriggerRoot: true });
+
+			expect(graph.nodes.map(({ id, type }) => ({ id, type }))).toEqual([
+				{ id: 'a-uuid', type: 'trigger' },
+				{ id: 'b-uuid', type: 'v1-node' },
+			]);
+			expect(graph.edges).toEqual([
+				{ from: 'a-uuid', to: 'b-uuid', outputIndex: 0, inputIndex: 0 },
+			]);
 		});
 	});
 

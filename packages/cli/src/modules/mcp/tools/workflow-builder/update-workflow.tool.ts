@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -27,11 +27,8 @@ import {
 	removeDefaultValues,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
-import {
-	isExpressionErrorWorkflowId,
-	staticErrorWorkflowId,
-	type ErrorWorkflowValidationService,
-} from '@/workflows/error-workflow-validation.service';
+import { isExpressionErrorWorkflowId, staticErrorWorkflowId } from '@/workflows/error-workflow-id';
+import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { assertExecutionTimeoutWithinMax } from '@/workflows/execution-timeout-validation';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';

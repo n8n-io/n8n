@@ -28,7 +28,6 @@ import {
 	getInstanceAiCredits,
 	type InstanceAiThreadLaunchInput,
 } from './instanceAi.api';
-import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
 	fetchThreadHistory,
@@ -61,7 +60,6 @@ const emptyThreadHistory = (search = '') => ({
 
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
-	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const persistedThreadIds = new Set<string>();
@@ -121,11 +119,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		runtimeScopes.delete(threadId);
 		runtimes.delete(threadId);
 	}
-
-	// --- Settings delegation ---
-	const isGatewayConnected = computed(() => instanceAiSettingsStore.isGatewayConnected);
-	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
-	const activeDirectory = computed(() => gatewayDirectory.value);
 
 	// --- Computed credits ---
 	const creditsRemaining = computed(() => {
@@ -464,9 +457,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsClaimed,
 
 		// Computed
-		isGatewayConnected,
-		gatewayDirectory,
-		activeDirectory,
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,

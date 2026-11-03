@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import {
@@ -37,9 +38,9 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { DataTable } from '@n8n/backend-module-data-table';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExternalHooks } from '@/external-hooks';
-import { DataTable } from '@/modules/data-table/data-table.entity';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -267,7 +268,7 @@ describe('SourceControlService', () => {
 	const fsWriteFile = vi.mocked(writeFile);
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], packagedModules);
 		await testDb.init();
 
 		cipher = Container.get(Cipher);

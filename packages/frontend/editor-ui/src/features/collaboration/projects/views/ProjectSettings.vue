@@ -1,9 +1,10 @@
 <script lang="ts" setup>
+import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useEventListener } from '@vueuse/core';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
@@ -11,7 +12,8 @@ import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
@@ -56,6 +58,7 @@ const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
 const toast = useToast();
+const message = useMessage();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
@@ -432,6 +435,8 @@ const onConfirmDelete = async (transferId?: string) => {
 		if (projectsStore.currentProject) {
 			const projectName = projectsStore.currentProject?.name ?? '';
 			await projectsStore.deleteProject(projectsStore.currentProject.id, transferId);
+			// The project no longer exists, so its pending edits cannot be saved
+			isDirty.value = false;
 			await router.push({ name: VIEWS.HOMEPAGE });
 			toast.showMessage({
 				title: i18n.baseText('projects.settings.delete.successful.title', {
@@ -674,6 +679,48 @@ onBeforeMount(async () => {
 
 const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?? false);
 
+// The icon saves on change, but the other fields need "Save". Warn before the user loses them.
+useEventListener(window, 'beforeunload', (event) => {
+	if (isDirty.value) {
+		event.preventDefault();
+	}
+});
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!isDirty.value) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+		{
+			title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+			type: 'warning',
+			confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+			showClose: true,
+		},
+	);
+
+	if (response === MODAL_CONFIRM) {
+		// An invalid form or a failed save stays dirty, so the user stays on the page
+		if (isValid.value) {
+			await onSubmit();
+		}
+		next(!isDirty.value);
+		return;
+	}
+
+	if (response === MODAL_CANCEL) {
+		onCancel();
+		next();
+		return;
+	}
+
+	next(false);
+});
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 
@@ -850,6 +897,14 @@ onMounted(async () => {
 					"
 				/>
 
+				<ProjectSelfHealingSection
+					v-if="
+						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+						projectsStore.currentProject
+					"
+					:project-id="projectsStore.currentProject.id"
+				/>
+
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{
@@ -950,6 +1005,10 @@ onMounted(async () => {
 
 .membersTableContainer {
 	margin-top: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		scrollbar-gutter: auto;
+	}
 }
 
 .search {

@@ -28,6 +28,7 @@ import type {
 	SecretProviderConnection,
 	UpdateProjectDto,
 	UpdateProjectPoolSettingsDto,
+	WorkflowTransferResult,
 } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
@@ -83,11 +84,13 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	const isTeamProjectLimitExceeded = computed<boolean>(
 		() => projectsCount.value.team >= teamProjectsLimit.value,
 	);
-	const canCreateProjects = computed<boolean>(
+	const hasTeamProjectQuota = computed<boolean>(
 		() =>
-			(hasUnlimitedProjects.value ||
-				(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value)) &&
-			!sourceControlStore.preferences.branchReadOnly,
+			hasUnlimitedProjects.value ||
+			(isTeamProjectFeatureEnabled.value && !isTeamProjectLimitExceeded.value),
+	);
+	const canCreateProjects = computed<boolean>(
+		() => hasTeamProjectQuota.value && !sourceControlStore.preferences.branchReadOnly,
 	);
 	const hasPermissionToCreateProjects = computed(() =>
 		hasPermission(['rbac'], { rbac: { scope: 'project:create' } }),
@@ -297,21 +300,18 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		projectId: string,
 		parentFolderId?: string,
 		shareCredentials?: string[],
-	) => {
+	): Promise<WorkflowTransferResult | undefined> => {
 		if (resourceType === 'workflow') {
-			await workflowsEEApi.moveWorkflowToProject(rootStore.restApiContext, resourceId, {
+			return await workflowsEEApi.moveWorkflowToProject(rootStore.restApiContext, resourceId, {
 				destinationProjectId: projectId,
 				destinationParentFolderId: parentFolderId,
 				shareCredentials,
 			});
-		} else {
-			await credentialsEEApi.moveCredentialToProject(
-				rootStore.restApiContext,
-				resourceId,
-				projectId,
-			);
-			await credentialsStore.fetchAllCredentials({ projectId: currentProjectId.value });
 		}
+
+		await credentialsEEApi.moveCredentialToProject(rootStore.restApiContext, resourceId, projectId);
+		await credentialsStore.fetchAllCredentials({ projectId: currentProjectId.value });
+		return undefined;
 	};
 
 	const getResourceCounts = async (projectId: string): Promise<ResourceCounts> => {
@@ -391,6 +391,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		teamProjects,
 		teamProjectsLimit,
 		hasUnlimitedProjects,
+		hasTeamProjectQuota,
 		canCreateProjects,
 		canViewProjects,
 		hasPermissionToCreateProjects,

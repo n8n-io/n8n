@@ -65,5 +65,10 @@ defineExpose({
 	border-left: 1px solid var(--color--black-alpha-100);
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+
+	/** Offset this icon as button is rounded so some icons optically look mis-aligned when centered **/
+	:global(.n8n-icon) {
+		transform: translateX(-2px);
+	}
 }
 </style>

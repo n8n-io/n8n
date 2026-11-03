@@ -2,7 +2,6 @@ import type { ToolDescriptor } from '@n8n/agents';
 import {
 	AgentJsonConfigBaseSchema,
 	AgentJsonConfigSchema,
-	agentSkillSchema,
 	agentTaskSchema,
 	AGENT_TASK_ID_MAX_LENGTH,
 	CUSTOM_TOOL_ID_REGEX,
@@ -10,7 +9,6 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
-const skillIdSchema = AgentJsonConfigBaseSchema.shape.skills.unwrap().innerType().element.shape.id;
 const taskIdSchema = AgentJsonConfigBaseSchema.shape.tasks
 	.unwrap()
 	.element.shape.id.max(AGENT_TASK_ID_MAX_LENGTH);
@@ -51,7 +49,6 @@ export const serializedAgentSchema = z
 		name: z.string().min(1).max(128),
 		config: AgentJsonConfigSchema.nullable(),
 		availableInMCP: z.boolean(),
-		skills: z.record(skillIdSchema, agentSkillSchema),
 		tools: z.record(customToolIdSchema, serializedAgentToolSchema),
 		tasks: z.record(taskIdSchema, serializedAgentTaskSchema),
 	})
@@ -66,6 +63,5 @@ export const serializedAgentMetadataSchema = z
 
 export type SerializedAgent = z.infer<typeof serializedAgentSchema>;
 export type SerializedAgentMetadata = z.infer<typeof serializedAgentMetadataSchema>;
-export type SerializedAgentSkill = z.infer<typeof agentSkillSchema>;
 export type SerializedAgentTool = z.infer<typeof serializedAgentToolSchema>;
 export type SerializedAgentTask = z.infer<typeof serializedAgentTaskSchema>;

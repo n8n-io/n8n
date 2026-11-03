@@ -4,7 +4,7 @@ Instance AI uses a remote sandbox workspace to build workflows from
 `@n8n/workflow-sdk` source. The sandbox keeps file writes and command execution
 off the n8n host. Workflow building is unavailable when sandboxing is disabled.
 
-Agent building is separate. `build-agent` delegates to
+Agent building is separate. `agent_builder_build_agent` delegates to
 `AgentsBuilderService` in the agents module and does not use the Instance AI
 sandbox.
 
@@ -33,9 +33,11 @@ is created only when the agent first uses a workspace capability. Instance AI
 exposes this core workspace tool set:
 
 - `workspace_read_file`
+- `workspace_read_files` (several files or line ranges in one call)
 - `workspace_read_tool_result`
 - `workspace_write_file`
 - `workspace_str_replace_file`
+- `workspace_edit_files` (several writes and replacements in one call)
 - `workspace_execute_command`
 
 The underlying `Workspace` supports more filesystem operations. The lazy
@@ -128,19 +130,23 @@ and installed dependencies. The node-type catalog is written after sandbox
 creation because it is instance-specific and too large for the Daytona image
 request.
 
-The knowledge base and runtime skills each have a manifest with a content
-hash. Setup compares the manifest hash with the expected hash. When the
-hashes do not match, setup writes the bundle again and writes the manifest
-last. A matching manifest is trusted, and setup reads no other bundle file.
-Each cached sandbox entry keeps the result, so later runs do not read the
-manifest again.
+The knowledge base has a manifest with a content hash. Setup compares the
+manifest hash with the expected hash. When the hashes do not match, setup
+writes the bundle again and writes the manifest last. A matching manifest is
+trusted, and setup reads no other bundle file. Each cached sandbox entry keeps
+the result, so later runs do not read the manifest again.
 
-The runtime skills bundle contains every bundled skill, whatever the prompt
-profile, skill flags or enabled modules. The image, the snapshot and the
-setup write the same set, so a sandbox from an image or snapshot of the same
-n8n version reuses it. A bundle from an older image or snapshot has a
-different hash, so setup writes it again one time. `load_skill` serves only
-the skills that the profile, the flags and the enabled modules allow.
+Skills are not stored in the sandbox. `load_skill` serves built-in text from memory.
+Built-in knowledge paths, such as `knowledge-base/index.json`, are relative to the
+workspace root.
+
+Hub skills require the `skills`, `agents`, and `instance-ai` modules,
+`N8N_AGENTS_SKILLS_HUB_ENABLED=true` at startup, and the instance PostHog flag
+`130_attach_skills_to_assistant`. Discovery reads summaries only. Instructions load
+when a skill is selected. Markdown reference bodies load separately through
+`load_skill({ skillId, filePath })`. Both reads use the version selected for the
+turn and check current access. Paths under `.n8n/skills/hub/<stable-id>/` are virtual
+identifiers. No files are written to the workspace.
 
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 
@@ -159,7 +165,7 @@ starting a new thread.
 
 ## Workflow Build Path
 
-The `build-workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
+The `workflow_builder_build_workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
 (`.json`) from the runtime workspace. The conventional filenames are
 `.workflow.ts` and `.workflow.json`.
 
@@ -217,27 +223,26 @@ when the sandbox is unavailable.
 
 ## Boundaries
 
-The runtime sandbox is not the local Computer Use gateway. The sandbox is a
-private provider workspace for Instance AI. The local gateway exposes tools on
-the user's machine under daemon permissions.
+The runtime sandbox is not the user's browser. The sandbox is a
+private provider workspace for Instance AI. Browser Use exposes tools in the
+user's browser under extension permissions.
 
 Sandbox isolation does not grant product authorization. Backend services still
 apply RBAC, project scope, session grants, and HITL confirmation rules.
 
-The workspace is for Instance AI build and runtime-skill work. It is not a
-general user workload platform.
+The workspace is for Instance AI build work. It is not a general user
+workload platform.
 
 ## Tracing
 
 Sandbox operations use the active Instance AI trace. Each span inherits the
-thread metadata. The sandbox does not retain a turn's trace handle. Skill
-preparation runs inside the agent's lazy build and uses the same trace context.
+thread metadata. The sandbox does not retain a turn's trace handle.
 
 | Operation                              | Trace data                                                                                |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Acquire and start                      | Provider, sandbox ID, cached reuse, shared acquisition, duration, and errors              |
 | Initialize workspace                   | Marker check, node catalog, base files, dependency installation, and optional SDK linking |
-| Sync skills and knowledge base         | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result         |
+| Sync knowledge base                    | Bundle hash, file counts, byte counts, reuse or upload, and manifest check result         |
 | Read, write, and edit files            | File operations under the existing tool span, paths, byte counts, and errors              |
 | Execute commands and compile workflows | Command size, exit code, timeout or cancellation, compile result, and bounded diagnostics |
 | Retry and fallback                     | File path, failed attempt, retry delay, and command fallback                              |

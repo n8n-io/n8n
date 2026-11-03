@@ -15,7 +15,11 @@ import { fetchInbox, fetchInboxSummary } from './inbox.api';
 import { INBOX_PAGE_LIMIT, type InboxItemChange, type InboxSectionKey } from './inbox.constants';
 import { toError } from './reviews/workflowReviews.utils';
 
-const sourceTypes: InboxSourceType[] = ['workflow_review', 'self_healing_result'];
+const sourceTypes: InboxSourceType[] = [
+	'workflow_review',
+	'self_healing_result',
+	'promotion_review',
+];
 
 type ListState = {
 	items: InboxItem[];
@@ -30,7 +34,9 @@ type ListState = {
 };
 
 function isSourceType(value: unknown): value is InboxSourceType {
-	return value === 'workflow_review' || value === 'self_healing_result';
+	return (
+		value === 'workflow_review' || value === 'self_healing_result' || value === 'promotion_review'
+	);
 }
 
 function disabledTypesFromError(error: unknown): InboxSourceType[] {

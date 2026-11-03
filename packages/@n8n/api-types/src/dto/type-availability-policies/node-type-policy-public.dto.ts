@@ -14,11 +14,15 @@ import { publicApiPaginationSchema } from '../pagination/pagination.dto';
  * `PutCredentialTypeInstancePolicyDto`, …), so validation is identical on both surfaces.
  */
 
-/** A rule that never matches because an earlier rule in the same list already covers it. */
-const shadowWarningSchema = z.object({
-	ruleId: z.string(),
-	shadowedByRuleId: z.string(),
-});
+/**
+ * A saved rule worth a second look: `shadowed` when an earlier rule in the same list already
+ * covers it, so it never matches. `notLoaded` when it names a package or type this instance
+ * has not loaded, so nothing here uses it yet. `NODES_EXCLUDE` and `NODES_INCLUDE` count too.
+ */
+const ruleWarningSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('shadowed'), ruleId: z.string(), shadowedByRuleId: z.string() }),
+	z.object({ kind: z.literal('notLoaded'), ruleId: z.string() }),
+]);
 
 /** Plain rule arrays on purpose: a response never re-runs the duplicate-id refinement. */
 function publicSchemasFor<Rule extends z.ZodTypeAny>(rule: Rule) {
@@ -52,9 +56,9 @@ function publicSchemasFor<Rule extends z.ZodTypeAny>(rule: Rule) {
 
 	return {
 		effective: effectivePolicy.shape,
-		effectiveWriteResult: { ...effectivePolicy.shape, warnings: z.array(shadowWarningSchema) },
+		effectiveWriteResult: { ...effectivePolicy.shape, warnings: z.array(ruleWarningSchema) },
 		document: policyDocument.shape,
-		documentWriteResult: { policy: policyDocument, warnings: z.array(shadowWarningSchema) },
+		documentWriteResult: { policy: policyDocument, warnings: z.array(ruleWarningSchema) },
 		documentList: { data: z.array(policyDocument), nextCursor: z.string().nullable() },
 		// The scope's version after a replace, which always bumps it.
 		attachments: { attachments: z.array(attachment), version: z.number().int().positive() },
@@ -67,13 +71,13 @@ const credentialType = publicSchemasFor(credentialTypePolicyRuleSchemas.rule);
 /** `GET` of a scope's composed node type policy. */
 export class PolicyEffectivePublicDto extends Z.class(nodeType.effective) {}
 
-/** `PUT` of a scope's composed node type policy: the new state plus shadowing warnings. */
+/** `PUT` of a scope's composed node type policy: the new state plus rule warnings. */
 export class PolicyEffectiveWriteResultPublicDto extends Z.class(nodeType.effectiveWriteResult) {}
 
 /** One reusable node type policy document. */
 export class PolicyDocumentPublicDto extends Z.class(nodeType.document) {}
 
-/** Create or update of a node type policy document, plus shadowing warnings. */
+/** Create or update of a node type policy document, plus rule warnings. */
 export class PolicyDocumentWriteResultPublicDto extends Z.class(nodeType.documentWriteResult) {}
 
 export class PolicyDocumentListPublicDto extends Z.class(nodeType.documentList) {}

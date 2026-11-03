@@ -21,7 +21,7 @@ const i18n = useI18n();
 const alertIcon = { type: 'icon', value: 'circle-alert' } as const;
 const inboxIcon: EmptyStateIconCards = {
 	type: 'cards',
-	center: 'message-square-text',
+	center: 'inbox',
 	sides: ['file-diff', 'git-branch', 'circle-check', 'list', 'message-square'],
 };
 const noSelectionHeading = computed(() => {

@@ -17,6 +17,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		connected?: boolean;
 		loading?: boolean;
+		/** Sets the label at the small size, to sit with the other labels of a stepper. */
+		compactLabel?: boolean;
 		showConnectButton?: boolean;
 		showDisconnectButton?: boolean;
 		showEditButton?: boolean;
@@ -66,7 +68,7 @@ const connectDisabled = computed(() => !props.modelValue || props.loading || pro
 <template>
 	<div :class="$style.connectForm">
 		<label :class="$style.label">
-			<N8nText step="sm" bold>
+			<N8nText v-bind="compactLabel ? { size: 'small' } : { step: 'sm' }" bold>
 				{{ integrationLabel }}
 				{{ i18n.baseText('agents.builder.addTrigger.credential') }}
 			</N8nText>

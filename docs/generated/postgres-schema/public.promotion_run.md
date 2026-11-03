@@ -4,11 +4,11 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| configId | varchar(36) |  | true |  | [public.promotion_config](public.promotion_config.md) | The config this run used. NULL after the config is deleted. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | The user who ran Promote or Apply. |
 | details | json |  | true |  |  | Payload for type. A git run stores schemaVersion, branchName and commitSha. NULL when the type has no details. |
-| direction | varchar(16) |  | false |  |  | PromotionDirection enum: "promote" pushes to the remote, "apply" imports from it. Copied from the config when the run is written. |
+| direction | varchar(16) |  | false |  |  | PromotionDirection enum: "promote" pushes to the remote, "apply" imports from it. Copied from the environment when the run is written. |
+| environmentId | uuid |  | true |  | [public.promotion_environment](public.promotion_environment.md) | The environment this run used. NULL after the environment is deleted. |
 | id | uuid |  | false |  |  |  |
 | reviewId | uuid |  | true |  | [public.promotion_review](public.promotion_review.md) | The review this run belongs to. NULL when the push has no review. Not unique: an amend adds another run. |
 | type | varchar(16) |  | false |  |  | PromotionRunType enum: "git". Git covers GitHub, GitLab and plain Git. |
@@ -17,10 +17,10 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_promotion_run_direction | CHECK | CHECK (((direction)::text = ANY ((ARRAY['promote'::character varying, 'apply'::character varying])::text[]))) |
+| CHK_promotion_run_direction | CHECK | CHECK (((direction)::text = ANY ((ARRAY['apply'::character varying, 'promote'::character varying])::text[]))) |
 | CHK_promotion_run_type | CHECK | CHECK (((type)::text = 'git'::text)) |
-| FK_promotion_run_configId | FOREIGN KEY | FOREIGN KEY ("configId") REFERENCES promotion_config(id) ON DELETE SET NULL |
 | FK_promotion_run_createdById | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
+| FK_promotion_run_environmentId | FOREIGN KEY | FOREIGN KEY ("environmentId") REFERENCES promotion_environment(id) ON DELETE SET NULL |
 | FK_promotion_run_reviewId | FOREIGN KEY | FOREIGN KEY ("reviewId") REFERENCES promotion_review(id) ON DELETE SET NULL |
 | PK_f5b941d810bf2eb7a5f8327f446 | PRIMARY KEY | PRIMARY KEY (id) |
 | promotion_run_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -32,8 +32,8 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_5c00951cc85ac1bc6f120b1e69 | CREATE INDEX "IDX_5c00951cc85ac1bc6f120b1e69" ON public.promotion_run USING btree ("configId") |
 | IDX_b24c3e6b803dc496c8702f12ab | CREATE INDEX "IDX_b24c3e6b803dc496c8702f12ab" ON public.promotion_run USING btree ("reviewId") |
+| IDX_fedd808ad4d5b9f813190e0ec7 | CREATE INDEX "IDX_fedd808ad4d5b9f813190e0ec7" ON public.promotion_run USING btree ("environmentId") |
 | PK_f5b941d810bf2eb7a5f8327f446 | CREATE UNIQUE INDEX "PK_f5b941d810bf2eb7a5f8327f446" ON public.promotion_run USING btree (id) |
 
 ## Relations
@@ -41,28 +41,19 @@
 ```mermaid
 erDiagram
 
-"public.promotion_run" }o--o| "public.promotion_config" : "FOREIGN KEY (#quot;configId#quot;) REFERENCES promotion_config(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.promotion_run" }o--o| "public.promotion_environment" : "FOREIGN KEY (#quot;environmentId#quot;) REFERENCES promotion_environment(id) ON DELETE SET NULL"
 "public.promotion_run" }o--o| "public.promotion_review" : "FOREIGN KEY (#quot;reviewId#quot;) REFERENCES promotion_review(id) ON DELETE SET NULL"
 
 "public.promotion_run" {
-  varchar_36_ configId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   json details
   varchar_16_ direction
+  uuid environmentId FK
   uuid id
   uuid reviewId FK
   varchar_16_ type
-}
-"public.promotion_config" {
-  varchar_36_ connectionId FK
-  timestamp_3__with_time_zone createdAt
-  varchar_16_ direction
-  varchar_36_ id
-  varchar_128_ name
-  json settings
-  timestamp_3__with_time_zone updatedAt
 }
 "public.user" {
   timestamp_3__with_time_zone createdAt
@@ -70,6 +61,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -81,12 +73,23 @@ erDiagram
   json settings
   timestamp_3__with_time_zone updatedAt
 }
+"public.promotion_environment" {
+  timestamp_3__with_time_zone createdAt
+  varchar_16_ direction
+  uuid id
+  varchar_128_ name
+  varchar_36_ providerId FK
+  json remote
+  varchar_16_ scope
+  json settings
+  timestamp_3__with_time_zone updatedAt
+}
 "public.promotion_review" {
   timestamp_3__with_time_zone approvedAt
   uuid approvedById FK
-  varchar_36_ connectionId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
+  uuid environmentId FK
   uuid id
   timestamp_3__with_time_zone lastStateChangeAt
   varchar_255_ remoteReviewId

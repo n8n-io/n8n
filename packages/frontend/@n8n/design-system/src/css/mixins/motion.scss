@@ -1,3 +1,7 @@
+/**
+ * Disables animations and transitions for users who prefer reduced motion.
+ * CSS variable overrides: none.
+ */
 @mixin reduced-motion {
 	@media (prefers-reduced-motion: reduce) {
 		animation: none;
@@ -5,7 +9,11 @@
 	}
 }
 
-// Shimmer - animated gradient for loading/skeleton states
+/**
+ * Applies a moving gradient to text or loading content.
+ * Override `--animation--shimmer--background`, `--animation--shimmer--foreground`,
+ * `--animation--shimmer--duration`, and `--animation--shimmer-burst--easing`.
+ */
 @mixin shimmer {
 	background: linear-gradient(
 		135deg,
@@ -24,7 +32,10 @@
 	}
 }
 
-// Spin - continuous 360° rotation for loading indicators
+/**
+ * Rotates an element continuously for loading indicators.
+ * Override `--animation--spin--duration`.
+ */
 @mixin spin {
 	animation: spin var(--animation--spin--duration, var(--duration--base)) linear infinite;
 
@@ -33,7 +44,12 @@
 	}
 }
 
-// Skeleton pulse - opacity animation for skeleton loading states
+/**
+ * Fades skeleton content between two opacity values.
+ * Override `--animation--skeleton-pulse--duration`,
+ * `--animation--skeleton-pulse--opacity-start`, and
+ * `--animation--skeleton-pulse--opacity-end`.
+ */
 @mixin skeleton-pulse {
 	animation: skeleton-pulse var(--animation--skeleton-pulse--duration, var(--duration--slowest))
 		ease-in-out infinite;
@@ -43,6 +59,12 @@
 	}
 }
 
+/**
+ * Repeats an opacity pulse between two values.
+ * Override `--animation--opacity-pulse--duration`,
+ * `--animation--opacity-pulse--easing`, `--animation--opacity-pulse--opacity-start`,
+ * and `--animation--opacity-pulse--opacity-end`.
+ */
 @mixin opacity-pulse {
 	animation: opacityPulse var(--animation--opacity-pulse--duration, var(--duration--slow))
 		var(--animation--opacity-pulse--easing, ease-in-out) infinite;
@@ -52,6 +74,12 @@
 	}
 }
 
+/**
+ * Fades and scales a popover into view.
+ * Override `--animation--popover-in--duration`, `--animation--popover-in--easing`,
+ * `--animation--popover-in--translate-x`, `--animation--popover-in--translate-y`,
+ * and `--animation--popover-in--scale`.
+ */
 @mixin popover-in {
 	animation: popoverIn var(--animation--popover-in--duration, var(--duration--snappy))
 		var(--animation--popover-in--easing, var(--easing--ease-out));
@@ -61,6 +89,11 @@
 	}
 }
 
+/**
+ * Expands collapsible content by animating its height.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
 @mixin collapsible-slide-down {
 	animation: collapsibleSlideDown
 		var(--animation--collapsible-slide--duration, var(--duration--snappy))
@@ -71,6 +104,11 @@
 	}
 }
 
+/**
+ * Collapses content by animating its height to zero.
+ * Override `--animation--collapsible-slide--duration` and
+ * `--animation--collapsible-slide--easing`.
+ */
 @mixin collapsible-slide-up {
 	animation: collapsibleSlideUp
 		var(--animation--collapsible-slide--duration, var(--duration--snappy))
@@ -89,7 +127,12 @@
 $blur-motion-duration: 350ms;
 $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 
-// Blurred variants of the collapsible slide: height + opacity + blur together.
+/**
+ * Expands collapsible content while fading and unblurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
 @mixin collapsible-slide-down-blurred {
 	animation: collapsibleSlideDownBlurred
 		var(--animation--collapsible-slide-blurred--duration, #{$blur-motion-duration})
@@ -100,6 +143,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Collapses collapsible content while fading and blurring it.
+ * Override `--animation--collapsible-slide-blurred--duration`,
+ * `--animation--collapsible-slide-blurred--easing`, and
+ * `--animation--collapsible-slide-blurred--blur`.
+ */
 @mixin collapsible-slide-up-blurred {
 	animation: collapsibleSlideUpBlurred
 		var(--animation--collapsible-slide-blurred--duration, #{$blur-motion-duration})
@@ -110,16 +159,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
-// Blur swap - paired enter/leave for swapping an element in place (e.g. a copy
-// button's icon becoming a check mark): the outgoing element blurs and fades
-// away while the incoming one sharpens into position, reading as one
-// continuous morph. Pair with an absolutely-positioned leave element so both
-// occupy the same spot during the swap. Override --animation--blur-swap--blur
-// for small glyphs (icons dissolve at the surface-level 4px default).
-//
-// Unlike the collapsible motion above, the swap has no height change to carry
-// it, so it leans on a stronger deceleration (ease-out-quint) rather than a
-// longer run: the new state lands fast, then settles softly, without dragging.
+/**
+ * Fades and blurs an incoming element during an in-place swap.
+ * Pair it with an absolutely positioned `blur-swap-out` element.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
 @mixin blur-swap-in {
 	animation: blurSwapIn var(--animation--blur-swap--duration, 250ms)
 		var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
@@ -129,6 +174,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades and blurs an outgoing element during an in-place swap.
+ * Pair it with a `blur-swap-in` element in the same position.
+ * Override `--animation--blur-swap--duration`, `--animation--blur-swap--easing`,
+ * and `--animation--blur-swap--blur`.
+ */
 @mixin blur-swap-out {
 	animation: blurSwapOut var(--animation--blur-swap--duration, 250ms)
 		var(--animation--blur-swap--easing, var(--easing--ease-out-quint));
@@ -138,7 +189,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
-// Fade in - simple opacity fade for entrance animations
+/**
+ * Fades an element in while it moves up slightly and clears its blur.
+ * Override `--animation--fade-in--duration`, `--animation--fade-in--translate`,
+ * and `--animation--fade-in--blur`.
+ */
 @mixin fade-in {
 	animation: fadeIn var(--animation--fade-in--duration, var(--duration--snappy))
 		var(--easing--ease-out);
@@ -287,7 +342,34 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
-// Pulse glow - expanding glow effect for loading states (used by N8nPulse)
+/** Expand a small glow around a status indicator. */
+@mixin pulse {
+	animation: pulse var(--animation--pulse--duration, var(--duration--slowest)) ease-out infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes pulse {
+	0% {
+		box-shadow: 0 0 0 0 var(--animation--pulse--color, var(--color--purple-alpha-400));
+	}
+	58.33% {
+		box-shadow: 0 0 0 var(--spacing--2xs) transparent;
+	}
+	66.6% {
+		box-shadow: 0 0 0 var(--spacing--xs) transparent;
+	}
+	66.7% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
+/**
+ * Repeats an expanding glow for loading or emphasis states.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
 @mixin pulse-glow {
 	animation: pulseGlow var(--animation--pulse-glow--duration, 6s) infinite
 		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
@@ -297,6 +379,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Repeats an expanding glow with a delayed start for a secondary pulse.
+ * Use with `pulse-glow` for a staggered effect.
+ * Override `--animation--pulse-glow--duration` and `--animation--pulse-glow--easing`.
+ */
 @mixin pulse-glow-delayed {
 	animation: pulseGlowDelayed var(--animation--pulse-glow--duration, 6s) infinite
 		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
@@ -341,7 +428,10 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
-// Fade animation for simple opacity transitions
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade--duration`.
+ */
 @mixin fade {
 	animation: fade var(--animation--fade--duration, var(--duration--snappy));
 
@@ -359,6 +449,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element in as it moves up and clears its blur.
+ * Override `--animation--fade-in-up--duration`, `--animation--fade-in-up--easing`,
+ * `--animation--fade-in-up--translate`, `--animation--fade-in-up--blur`, and
+ * `--animation--fade-in-up--end`.
+ */
 @mixin fade-in-up {
 	animation: fadeInUp var(--animation--fade-in-up--duration, var(--duration--snappy))
 		var(--animation--fade-in-up--easing, var(--easing--ease-out));
@@ -381,6 +477,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element in as it moves down and clears its blur.
+ * Override `--animation--fade-in-down--duration`, `--animation--fade-in-down--easing`,
+ * `--animation--fade-in-down--translate`, and `--animation--fade-in-down--blur`.
+ */
 @mixin fade-in-down {
 	animation: fadeInDown var(--animation--fade-in-down--duration, var(--duration--snappy))
 		var(--animation--fade-in-down--easing, var(--easing--ease-out));
@@ -405,6 +506,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element in as it moves from the left and clears its blur.
+ * Override `--animation--fade-in-left--duration`, `--animation--fade-in-left--easing`,
+ * `--animation--fade-in-left--translate`, and `--animation--fade-in-left--blur`.
+ */
 @mixin fade-in-left {
 	animation: fadeInLeft var(--animation--fade-in-left--duration, var(--duration--snappy))
 		var(--animation--fade-in-left--easing, var(--easing--ease-out));
@@ -429,6 +535,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element in as it moves from the right and clears its blur.
+ * Override `--animation--fade-in-right--duration`, `--animation--fade-in-right--easing`,
+ * `--animation--fade-in-right--translate`, and `--animation--fade-in-right--blur`.
+ */
 @mixin fade-in-right {
 	animation: fadeInRight var(--animation--fade-in-right--duration, var(--duration--snappy))
 		var(--animation--fade-in-right--easing, var(--easing--ease-out));
@@ -451,6 +562,10 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element from fully visible to transparent.
+ * Override `--animation--fade-out--duration` and `--animation--fade-out--easing`.
+ */
 @mixin fade-out {
 	animation: fadeOut var(--animation--fade-out--duration, var(--duration--snappy))
 		var(--animation--fade-out--easing, var(--easing--ease-in));
@@ -469,6 +584,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element out as it moves down.
+ * Override `--animation--fade-out-down--duration`, `--animation--fade-out-down--easing`,
+ * and `--animation--fade-out-down--translate`.
+ */
 @mixin fade-out-down {
 	animation: fadeOutDown var(--animation--fade-out-down--duration, var(--duration--snappy))
 		var(--animation--fade-out-down--easing, var(--easing--ease-in));
@@ -489,6 +609,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element out as it moves up.
+ * Override `--animation--fade-out-up--duration`, `--animation--fade-out-up--easing`,
+ * and `--animation--fade-out-up--translate`.
+ */
 @mixin fade-out-up {
 	animation: fadeOutUp var(--animation--fade-out-up--duration, var(--duration--snappy))
 		var(--animation--fade-out-up--easing, var(--easing--ease-in));
@@ -509,6 +634,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element out as it moves to the left.
+ * Override `--animation--fade-out-left--duration`, `--animation--fade-out-left--easing`,
+ * and `--animation--fade-out-left--translate`.
+ */
 @mixin fade-out-left {
 	animation: fadeOutLeft var(--animation--fade-out-left--duration, var(--duration--snappy))
 		var(--animation--fade-out-left--easing, var(--easing--ease-in));
@@ -531,6 +661,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Fades an element out as it moves to the right.
+ * Override `--animation--fade-out-right--duration`, `--animation--fade-out-right--easing`,
+ * and `--animation--fade-out-right--translate`.
+ */
 @mixin fade-out-right {
 	animation: fadeOutRight var(--animation--fade-out-right--duration, var(--duration--snappy))
 		var(--animation--fade-out-right--easing, var(--easing--ease-in));
@@ -551,6 +686,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Alternates an element's background between two colors.
+ * Override `--animation--blink-background--duration`,
+ * `--animation--blink-background--color-start`, and
+ * `--animation--blink-background--color-end`.
+ */
 @mixin blink-background {
 	animation: blinkBackground var(--animation--blink-background--duration, var(--duration--slow))
 		step-end infinite;
@@ -560,6 +701,10 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Expands and fades an element to create a ping effect.
+ * Override `--animation--ping--duration` and `--animation--ping--scale`.
+ */
 @mixin ping {
 	animation: ping var(--animation--ping--duration, var(--duration--slowest)) infinite;
 
@@ -589,6 +734,12 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Repeats a small vertical movement and opacity change for typing indicators.
+ * Override `--animation--typing-blink--duration`,
+ * `--animation--typing-blink--opacity-start`, `--animation--typing-blink--opacity-end`,
+ * and `--animation--typing-blink--translate`.
+ */
 @mixin typing-blink {
 	animation: typingBlink var(--animation--typing-blink--duration, 1.2s) infinite;
 
@@ -610,6 +761,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Applies a width transition and sets `will-change` for width updates.
+ * Override `--animation--width-transition--duration` and
+ * `--animation--width-transition--easing`.
+ */
 @mixin width-transition {
 	transition: width var(--animation--width-transition--duration, var(--duration--snappy))
 		var(--animation--width-transition--easing, var(--easing--ease-out));
@@ -621,6 +777,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Applies a height transition and sets `will-change` for height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
 @mixin height-transition {
 	transition: height var(--animation--height-transition--duration, var(--duration--snappy))
 		var(--animation--height-transition--easing, var(--easing--ease-out));
@@ -632,6 +793,11 @@ $blur-motion-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 }
 
+/**
+ * Applies a max-height transition and sets `will-change` for max-height updates.
+ * Override `--animation--height-transition--duration` and
+ * `--animation--height-transition--easing`.
+ */
 @mixin max-height-transition {
 	transition: max-height var(--animation--height-transition--duration, var(--duration--snappy))
 		var(--animation--height-transition--easing, var(--easing--ease-out));

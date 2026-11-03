@@ -8,6 +8,7 @@ import type {
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	EventService,
+	ProjectScopeService,
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	WorkflowMutationHooksProxy,
@@ -58,9 +59,9 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { staticErrorWorkflowId } from './error-workflow-id';
 import {
 	ErrorWorkflowValidationService,
-	staticErrorWorkflowId,
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
@@ -88,6 +89,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
@@ -205,6 +207,8 @@ export class WorkflowService {
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
 
 	/**
@@ -324,11 +328,15 @@ export class WorkflowService {
 
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
+			// `null` means global access, so the folder half stays unrestricted.
+			const folderProjectIds = await this.projectScopeService.getProjectIds(user, ['folder:list']);
+
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,
 					sharingOptions,
 					listOptions,
+					folderProjectIds ?? undefined,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
@@ -752,6 +760,29 @@ export class WorkflowService {
 			});
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
+
+		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
+		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
+		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
+			// The settings schema does not check this value. Any value other than `false` keeps the
+			// setting on, so store a boolean and select the scope from it.
+			const value: unknown = workflowUpdateData.settings.redactCallerExecutions;
+			const turnsOn = value !== false;
+			workflowUpdateData.settings.redactCallerExecutions = turnsOn;
+			const wasOn = workflow.settings?.redactCallerExecutions !== false;
+			const canUpdate =
+				turnsOn === wasOn ||
+				(this.licenseState.isDataRedactionLicensed() &&
+					(await userHasScopes(
+						user,
+						[turnsOn ? 'workflow:enableRedaction' : 'workflow:disableRedaction'],
+						false,
+						{ projectId: ownerProject.id },
+					)));
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactCallerExecutions;
 			}
 		}
 
@@ -1570,6 +1601,8 @@ export class WorkflowService {
 		}
 
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
+
+		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
 	}
 
 	/**
@@ -1849,20 +1882,8 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
-		const activeVersionId = workflow.activeVersionId;
-		if (activeVersionId !== null) {
-			if (this.globalConfig.workflows.useWorkflowPublicationService) {
-				await this._unpublishViaOutbox(user.id, workflowId, activeVersionId, workflow.updatedAt);
-			} else {
-				await this.activeWorkflowManager.remove(workflowId);
-
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: activeVersionId,
-					event: 'deactivated',
-					userId: user.id,
-				});
-			}
+		if (workflow.activeVersionId !== null) {
+			await this._teardownActiveVersion(workflow, workflow.activeVersionId, user.id);
 		}
 
 		const versionId = uuid();

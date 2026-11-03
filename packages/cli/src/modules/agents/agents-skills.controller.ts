@@ -58,7 +58,7 @@ export class AgentsSkillsController {
 			agentId,
 			'create skill for',
 		);
-		const { availableTo, ...skill } = payload;
+		const { availableTo, method, ...skill } = payload;
 		return await this.agentSkillsService.createAndAttachSkill(
 			agentId,
 			projectId,
@@ -69,6 +69,7 @@ export class AgentsSkillsController {
 				pushRef: req.headers?.['push-ref'],
 			},
 			availableTo,
+			method,
 		);
 	}
 

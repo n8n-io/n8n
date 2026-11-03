@@ -6,8 +6,9 @@ import { Container } from '@n8n/di';
 /**
  * Handles instance-level MCP access.
  * Runs MCP server and exposes endpoints for MCP clients to connect to.
- * Requires MCP access to be enabled in settings and a valid API key or an
- * OAuth token issued by the shared `oauth-server` module.
+ * Requires MCP access to be enabled in settings and a valid API key, a
+ * token-exchange JWT, or an OAuth2 access token from any trusted source that
+ * accepts the `instance-mcp` surface.
  */
 @BackendModule({ name: 'mcp', instanceTypes: ['main'] })
 export class McpModule implements ModuleInterface {

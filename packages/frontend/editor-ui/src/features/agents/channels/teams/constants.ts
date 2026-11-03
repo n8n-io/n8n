@@ -19,9 +19,17 @@ export interface TeamsAvailability {
 	readAllGroupMessages: boolean;
 }
 
-/** Files shared there live in SharePoint or OneDrive, which needs an admin's approval to read. */
-export function readsSharedConversations(availability: TeamsAvailability): boolean {
-	return availability.teamChannels || availability.groupChats;
+/**
+ * What the Graph approval unlocks for the surfaces that are on. The admin
+ * approves the same permissions either way; only what the agent gains differs.
+ */
+export type TeamsPermissionUse = 'directOnly' | 'groupChats' | 'teamChannels' | 'channelsAndGroups';
+
+export function permissionUseFor(availability: TeamsAvailability): TeamsPermissionUse {
+	if (availability.teamChannels && availability.groupChats) return 'channelsAndGroups';
+	if (availability.teamChannels) return 'teamChannels';
+	if (availability.groupChats) return 'groupChats';
+	return 'directOnly';
 }
 
 /** The settings a saved channel runs on, defaulted for a channel with none. */

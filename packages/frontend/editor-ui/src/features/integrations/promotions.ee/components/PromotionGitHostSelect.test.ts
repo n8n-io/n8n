@@ -71,11 +71,13 @@ it('ignores an old provider response while the current provider is still loading
 	expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
 });
 
-it('keeps a saved selection outside discovery results and clears empty-search feedback on reselection', async () => {
+it('shows a saved selection outside discovery results by its label and clears empty-search feedback on reselection', async () => {
 	api.fetchPromotionRepositories.mockResolvedValue({ data: [otherRepository], nextCursor: 'next' });
-	const { emitted } = renderSelect({ props: { modelValue: repository.remoteUrl } });
+	const { emitted } = renderSelect({
+		props: { modelValue: repository.remoteUrl, selectedLabel: repository.fullPath },
+	});
 	await flushPromises();
-	expect(screen.getByRole('combobox')).toHaveValue(repository.remoteUrl);
+	expect(screen.getByRole('combobox')).toHaveValue(repository.fullPath);
 	expect(api.fetchPromotionRepositories).toHaveBeenCalledExactlyOnceWith(
 		expect.anything(),
 		'gitlab-1',
@@ -86,10 +88,12 @@ it('keeps a saved selection outside discovery results and clears empty-search fe
 	expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	api.fetchPromotionRepositories.mockResolvedValue({ data: [], nextCursor: null });
 	await userEvent.type(screen.getByRole('combobox'), 'team');
-	await screen.findByText(/No repositories found/, { selector: '[role="status"]' });
-	await userEvent.click(screen.getByRole('option', { name: repository.remoteUrl }));
+	await waitFor(() =>
+		expect(screen.getByRole('status')).toHaveTextContent('No repositories found'),
+	);
+	await userEvent.click(screen.getByRole('option', { name: repository.fullPath }));
 	await waitFor(() => expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(3));
-	expect(screen.getByRole('combobox')).toHaveValue(repository.remoteUrl);
+	expect(screen.getByRole('combobox')).toHaveValue(repository.fullPath);
 	expect(screen.queryByText('Results for “team”')).not.toBeInTheDocument();
 	expect(screen.queryByText(/No repositories found/)).not.toBeInTheDocument();
 });
@@ -147,7 +151,7 @@ describe.each(['repository', 'branch'] as const)('filtered %s discovery', (kind)
 		expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
 		expect(onClick).not.toHaveBeenCalled();
 		expect(screen.getByRole('combobox')).toHaveValue('');
-		expect(screen.getByText('Results for “team”')).toBeVisible();
+		expect(screen.getByRole('status')).toHaveTextContent('Results for “team”');
 		await userEvent.click(screen.getByRole('combobox'));
 		expect(requests()).toHaveLength(3);
 		expect(
@@ -186,5 +190,7 @@ it('shows one retry action for an initial failure and then an empty result', asy
 	await userEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Retry' }));
 	await waitFor(() => expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(2));
 	await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
-	expect(await screen.findByRole('status')).toHaveTextContent('No repositories found');
+	await waitFor(() =>
+		expect(screen.getByRole('status')).toHaveTextContent('No repositories found'),
+	);
 });

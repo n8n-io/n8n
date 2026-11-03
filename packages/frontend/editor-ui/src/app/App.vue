@@ -13,6 +13,9 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { useMcpDiscoveryEnrollment } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+// EOF Experiment cleanup
 import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
 // Experiment cleanup (119_surface_assistant_on_workflow_error)
 import WorkflowErrorNudge from '@/experiments/surfaceAssistantOnWorkflowError/components/WorkflowErrorNudge.vue';
@@ -76,6 +79,9 @@ useBackendStatus();
 useModulePushDispatcher({ router });
 
 useTrialIntroModalAutoOpen();
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+useMcpDiscoveryEnrollment();
+// EOF Experiment cleanup
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
