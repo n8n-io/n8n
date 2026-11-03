@@ -661,6 +661,30 @@ describe('instanceAi.reducer', () => {
 				projectId: 'proj-789',
 			});
 		});
+
+		test('auto-approval marks the tool call that ran without its card', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeToolCallEvent('run-1', 'agent-root', 'tc-1', 'publish_workflow'));
+			handleEvent(state, {
+				type: 'auto-approval',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-1',
+					message: 'Publish "Lead router"',
+					reason: 'The user asked to publish it.',
+					decidedBy: 'judge',
+				},
+			});
+
+			const tc = state.messages[0].agentTree!.toolCalls[0];
+			expect(tc.autoApproval).toEqual({
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish it.',
+				decidedBy: 'judge',
+			});
+			expect(tc.confirmation).toBeUndefined();
+		});
 	});
 
 	// -----------------------------------------------------------------------
