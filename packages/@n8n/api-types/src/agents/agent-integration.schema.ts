@@ -288,3 +288,30 @@ export function isCredentialAgentIntegration(
 ): integration is CredentialAgentIntegrationConfig {
 	return integration.type !== 'n8n_chat';
 }
+
+/** Whether the channel runs a platform connection (Chat SDK adapter) and attaches channel tools. */
+export function hasChannelRuntime(
+	integration: AgentIntegrationConfig,
+): integration is CredentialAgentIntegrationConfig {
+	return isCredentialAgentIntegration(integration);
+}
+
+/** Whether the channel entry must hold a credential to be set up. */
+export function integrationNeedsCredential(integration: { type: string }): boolean {
+	return integration.type !== 'n8n_chat';
+}
+
+/** The entry that a copy of an agent gets: a draft that needs setup in the destination. */
+export function toDraftIntegration(integration: AgentIntegrationConfig): AgentIntegrationConfig {
+	return isCredentialAgentIntegration(integration)
+		? { ...integration, credentialId: '' }
+		: integration;
+}
+
+/** The entry that an import gets when the destination agent already has a channel of that type. */
+export function reuseIntegrationSetup(
+	source: CredentialAgentIntegrationConfig,
+	existing: AgentIntegrationConfig,
+): AgentIntegrationConfig {
+	return { ...source, credentialId: existing.credentialId };
+}

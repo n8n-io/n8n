@@ -1075,6 +1075,7 @@ describe('AgentValidationService — structured issues', () => {
 		chatIntegrationRegistry.get.mockReturnValue({
 			type: 'slack',
 			credentialTypes: ['slackOAuth2Api'],
+			acceptedCredentialTypes: () => ['slackOAuth2Api'],
 		} as never);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent(

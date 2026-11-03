@@ -4,6 +4,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	getRandomAgentPersonalisationGradient,
 	sanitizeAgentJsonConfig,
+	toDraftIntegration,
 	type AgentCapabilitySummary,
 	type AgentActor,
 	type AgentCreationState,
@@ -476,9 +477,7 @@ export class AgentsService {
 		// The credential-claim check ignores publish state, so a copy holding the
 		// source's channel credentialId would block the original from republishing
 		// or reconnecting (and the reconciler records that 409 on the source's row).
-		const draftIntegrations = integrations.map((integration) =>
-			integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
-		);
+		const draftIntegrations = integrations.map(toDraftIntegration);
 		return { schemaConfig, integrations: draftIntegrations };
 	}
 

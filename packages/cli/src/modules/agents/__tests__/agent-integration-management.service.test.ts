@@ -49,6 +49,7 @@ describe('AgentIntegrationManagementService', () => {
 			displayLabel: 'Slack',
 			credentialTypes: ['slackApi'],
 		});
+		implementation.acceptedCredentialTypes.mockReturnValue(['slackApi']);
 		registry.require.mockReturnValue(implementation);
 		registry.get.mockReturnValue(implementation);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
