@@ -45,6 +45,7 @@ const activeTab = computed<AppViewTab>({
 		section.value = tab;
 	},
 });
+
 async function loadApp(keepView = false) {
 	const isLatest = latestFetch.next();
 	if (!keepView) {
