@@ -156,6 +156,7 @@ function createMockRoute(threadId = 'thread-1') {
 function setup(options?: {
 	threadOverrides?: Partial<MockThread>;
 	initialAgentId?: () => string | undefined;
+	initialAppId?: () => string | undefined;
 	tabsStorage?: ThreadTabsStorage;
 }) {
 	const thread = createMockThread();
@@ -167,6 +168,7 @@ function setup(options?: {
 		thread: thread as any,
 		threadId: () => route.params.threadId,
 		initialAgentId: options?.initialAgentId,
+		initialAppId: options?.initialAppId,
 		tabsStorage: options?.tabsStorage,
 	});
 
@@ -1279,6 +1281,15 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeApp.value).toBeNull();
 			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('opens an app linked to the thread', async () => {
+			const ctx = setup({ initialAppId: () => app.id });
+			registerApp(ctx.thread);
+			await nextTick();
+
+			expect(ctx.activeApp.value).toEqual({ id: 'app-1', projectId: 'project-1' });
+			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 	});
 

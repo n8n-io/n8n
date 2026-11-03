@@ -75,7 +75,9 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_SESSION_METADATA_KEY,
 	INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	NEW_CONVERSATION_TITLE,
 } from './constants';
 import {
@@ -240,6 +242,41 @@ export function getPendingAgentTargetFromThreadMetadata(
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
 	return { agentId: target.agentId, projectId: target.projectId };
+}
+
+export function getAppTargetsFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+	const targets = metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY];
+	if (!Array.isArray(targets)) return [];
+	return targets.flatMap((target) => {
+		if (
+			!isRecord(target) ||
+			typeof target.appId !== 'string' ||
+			typeof target.projectId !== 'string'
+		) {
+			return [];
+		}
+		return [
+			{
+				appId: target.appId,
+				projectId: target.projectId,
+				...(typeof target.name === 'string' ? { name: target.name } : {}),
+			},
+		];
+	});
+}
+
+export function getPendingAppTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const target = metadata?.[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY];
+	if (
+		!isRecord(target) ||
+		typeof target.appId !== 'string' ||
+		typeof target.projectId !== 'string'
+	) {
+		return undefined;
+	}
+	return { appId: target.appId, projectId: target.projectId };
 }
 
 export function getAgentPreviewViewFromThreadMetadata(
@@ -617,6 +654,7 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
 		agentBuilderTargets: () =>
 			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		appTargets: () => getAppTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	});
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =

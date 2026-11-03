@@ -42,6 +42,7 @@ interface UseCanvasPreviewOptions {
 	thread: ArtifactThread;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
+	initialAppId?: () => string | undefined;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
 	tabsStorage?: ThreadTabsStorage;
 }
@@ -62,7 +63,12 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 	return undefined;
 }
 
-export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({
+	thread,
+	initialAgentId,
+	initialAppId,
+	tabsStorage,
+}: UseCanvasPreviewOptions) {
 	const recentWorkflowsStore = useRecentWorkflowsStore();
 
 	// --- Tab state ---
@@ -242,6 +248,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 			firstAttachedArtifactId.value ??
 			pendingAgentTabId.value ??
 			initialAgentTabId.value ??
+			initialAppId?.() ??
 			thread.pendingWorkflowAttachment?.id,
 	);
 

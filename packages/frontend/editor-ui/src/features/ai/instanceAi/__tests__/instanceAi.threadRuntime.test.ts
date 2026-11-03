@@ -17,10 +17,12 @@ import { deepCopy } from 'n8n-workflow';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
+	getAppTargetsFromThreadMetadata,
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentBuilderTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getPendingAppTargetFromThreadMetadata,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
 
@@ -3501,6 +3503,37 @@ describe('getAgentBuilderTargetsFromThreadMetadata', () => {
 			{ agentId: 'agent-1', projectId: 'project-1' },
 			{ agentId: 'agent-2', projectId: 'project-2' },
 		]);
+	});
+});
+
+describe('app targets from thread metadata', () => {
+	test('reads valid app targets and drops malformed entries', () => {
+		expect(
+			getAppTargetsFromThreadMetadata({
+				instanceAiAppTargets: [
+					{ appId: 'app-1', projectId: 'project-1' },
+					{ appId: 'app-2' },
+					'not-a-target',
+				],
+			}),
+		).toEqual([{ appId: 'app-1', projectId: 'project-1' }]);
+	});
+
+	test('reads a valid pending app target', () => {
+		expect(
+			getPendingAppTargetFromThreadMetadata({
+				instanceAiPendingAppTarget: { appId: 'app-1', projectId: 'project-1' },
+			}),
+		).toEqual({ appId: 'app-1', projectId: 'project-1' });
+	});
+
+	test('returns no app targets for malformed metadata', () => {
+		expect(getAppTargetsFromThreadMetadata({ instanceAiAppTargets: 'not-an-array' })).toEqual([]);
+		expect(
+			getPendingAppTargetFromThreadMetadata({
+				instanceAiPendingAppTarget: { appId: 'app-1' },
+			}),
+		).toBeUndefined();
 	});
 });
 

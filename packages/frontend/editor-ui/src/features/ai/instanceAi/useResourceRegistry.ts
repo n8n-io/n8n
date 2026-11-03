@@ -15,6 +15,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 	InstanceAiWorkflowAttachment,
+	InstanceAiAppTarget,
 } from '@n8n/api-types';
 
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
@@ -584,6 +585,23 @@ function enrichWorkflowFromPendingAttachment(
 	);
 }
 
+function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiAppTarget[]): void {
+	for (const target of targets) {
+		const existing = col.produced.get(target.appId);
+		if (existing && existing.type !== 'app') continue;
+		recordProduced(
+			col,
+			{
+				type: 'app',
+				id: target.appId,
+				name: existing?.name ?? target.name ?? 'App',
+				projectId: target.projectId,
+			},
+			{ linkable: existing !== undefined },
+		);
+	}
+}
+
 /**
  * Surface a new-agent artifact the user opened but has not configured yet, so
  * the panel can show it before any agent row exists.
@@ -628,6 +646,7 @@ export interface ResourceRegistrySources {
 	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined;
 	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
 	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
+	appTargets?: () => readonly InstanceAiAppTarget[];
 }
 
 /**
@@ -662,6 +681,7 @@ export function useResourceRegistry(
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
 		agentBuilderTargets,
+		appTargets,
 	}: ResourceRegistrySources = {},
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
@@ -705,6 +725,7 @@ export function useResourceRegistry(
 			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			enrichAppsFromTargets(col, appTargets?.() ?? []);
 
 			if (workflowNameLookup) {
 				enrichWorkflowNames(col, workflowNameLookup);
