@@ -68,7 +68,8 @@ async function loadApp(keepView = false) {
 }
 
 async function refresh() {
-	await Promise.all([loadApp(true), versions.refresh()]);
+	await loadApp(true);
+	await versions.refresh();
 }
 
 watch(
@@ -92,29 +93,31 @@ defineExpose({ refresh });
 			@deleted="emit('deleted', $event)"
 		/>
 
-		<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
-			<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
+		<div :class="$style.workspace">
+			<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
+				<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
 
-			<N8nEmptyState
-				v-else-if="!app"
-				:heading="i18n.baseText('apps.detail.notFound.heading')"
-				:description="i18n.baseText('apps.detail.notFound.description')"
-				data-test-id="app-view-not-found"
-			/>
-
-			<template v-else>
-				<AppPreview
-					v-if="activeTab === 'preview'"
-					:project-id="projectId"
-					:app="app"
-					:versions="versions"
-					:inspectable="inspectable"
-					:element-selected="elementSelected"
-					@element-selected="emit('element-selected', $event)"
+				<N8nEmptyState
+					v-else-if="!app"
+					:heading="i18n.baseText('apps.detail.notFound.heading')"
+					:description="i18n.baseText('apps.detail.notFound.description')"
+					data-test-id="app-view-not-found"
 				/>
-				<AppConfigure v-else :app="app" @updated="app = $event" />
-			</template>
-		</main>
+
+				<template v-else>
+					<AppPreview
+						v-if="activeTab === 'preview'"
+						:project-id="projectId"
+						:app="app"
+						:versions="versions"
+						:inspectable="inspectable"
+						:element-selected="elementSelected"
+						@element-selected="emit('element-selected', $event)"
+					/>
+					<AppConfigure v-else :app="app" @updated="app = $event" />
+				</template>
+			</main>
+		</div>
 	</div>
 </template>
 
@@ -124,6 +127,15 @@ defineExpose({ refresh });
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+}
+
+.workspace {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	min-width: 0;
+	container-type: inline-size;
 }
 
 .content {
