@@ -9,6 +9,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { randomUUID } from 'node:crypto';
 
 import { AgentChatExecutionService } from '../../../agent-chat-execution.service';
@@ -23,6 +24,8 @@ import { integrationMemoryResourceId } from '../../../utils/agent-memory-scope';
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { parseResponsesRequest, toResponseBody, WebhookChannelError } from './responses-api';
 import { authenticateWebhookRequest } from './webhook-auth';
+
+const MAX_LOGGED_ERROR_LENGTH = 500;
 
 export interface WebhookChannelReply {
 	status: number;
@@ -190,7 +193,10 @@ export class WebhookChannelService {
 	}
 
 	private agentError(error: unknown) {
-		this.logger.error('Webhook agent turn failed', { error });
+		// A provider error can carry secrets, for example in a request URL.
+		this.logger.error('Webhook agent turn failed', {
+			error: sanitizeErrorDetail(ensureError(error).message, MAX_LOGGED_ERROR_LENGTH),
+		});
 		return new WebhookChannelError(500, 'agent_error', 'The agent could not answer');
 	}
 

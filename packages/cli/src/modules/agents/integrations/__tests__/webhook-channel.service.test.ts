@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
@@ -16,7 +17,7 @@ import type { AgentCredentialLookupService } from '../agent-credential-lookup.se
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import { WebhookChannelService } from '../platforms/webhook/webhook-channel.service';
 
-const webhook = (authentication: 'none' | 'headerAuth'): AgentIntegrationConfig => ({
+const webhook = (authentication: 'none' | 'headerAuth' | 'jwtAuth'): AgentIntegrationConfig => ({
 	type: 'webhook',
 	credentialId: authentication === 'none' ? '' : 'cred-1',
 	settings: { authentication },
@@ -120,6 +121,43 @@ describe('WebhookChannelService', () => {
 			credentials.decryptForProject.mockResolvedValue(null);
 
 			await expect(respond()).resolves.toMatchObject({ status: 500 });
+			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('with JWT auth', () => {
+		const jwtAgent = makeAgent({ integrations: [webhook('jwtAuth')] });
+		const jwtCredential = { keyType: 'passphrase', secret: 'secret-1', algorithm: 'HS256' };
+		const bearer = (secret: string) => ({
+			authorization: `Bearer ${jwt.sign({ sub: 'caller' }, secret, { algorithm: 'HS256' })}`,
+		});
+
+		it('runs the agent for a valid bearer token and checks the credential type', async () => {
+			const { respond, credentials, orchestrator } = makeService(jwtAgent);
+			credentials.decryptForProject.mockResolvedValue(jwtCredential);
+
+			await expect(respond({ input: 'Hi' }, bearer('secret-1'))).resolves.toMatchObject({
+				status: 200,
+			});
+			expect(credentials.decryptForProject).toHaveBeenCalledWith('project-1', 'cred-1', 'jwtAuth');
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalled();
+		});
+
+		it('returns 401 without a token', async () => {
+			const { respond, credentials, orchestrator } = makeService(jwtAgent);
+			credentials.decryptForProject.mockResolvedValue(jwtCredential);
+
+			await expect(respond()).resolves.toMatchObject({ status: 401 });
+			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('returns 403 for a token signed with another secret', async () => {
+			const { respond, credentials, orchestrator } = makeService(jwtAgent);
+			credentials.decryptForProject.mockResolvedValue(jwtCredential);
+
+			await expect(respond({ input: 'Hi' }, bearer('secret-2'))).resolves.toMatchObject({
+				status: 403,
+			});
 			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
 		});
 	});
@@ -246,6 +284,22 @@ describe('WebhookChannelService', () => {
 
 		expect(reply.status).toBe(500);
 		expect(JSON.stringify(reply.body)).not.toContain('secret internal detail');
+	});
+
+	it('logs the failure message without URL query values', async () => {
+		const { respond, orchestrator, logger } = makeService();
+		orchestrator.executeForChatPublished.mockReturnValue(
+			streamOf({
+				type: 'error',
+				error: new Error('Request to https://api.example.com/v1/chat?key=key-123 failed'),
+			}),
+		);
+
+		await respond();
+
+		expect(logger.error).toHaveBeenCalledWith('Webhook agent turn failed', {
+			error: 'Request to https://api.example.com/v1/chat failed',
+		});
 	});
 
 	it('logs no failure when the caller leaves during the run', async () => {

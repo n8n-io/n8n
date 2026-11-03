@@ -152,17 +152,15 @@ export class AgentIntegrationsController {
 		};
 	}
 
-	// The URL comes from server settings that the frontend does not receive.
+	// The URL comes from server settings that the frontend does not receive. It
+	// depends on the agent ID alone, so an agent that is not saved yet has it too.
 	@Get('/:agentId/integrations/webhook/url')
 	@ProjectScope('agent:read')
 	async webhookUrl(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<AgentWebhookUrlResponse> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
-		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
 		return { url: this.urlService.getAgentWebhookUrl(agentId) };
 	}
 

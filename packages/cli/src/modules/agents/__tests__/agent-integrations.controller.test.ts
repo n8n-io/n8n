@@ -77,6 +77,7 @@ describe('AgentIntegrationsController route access scopes', () => {
 		['connectIntegration', 'agent:update'],
 		['disconnectIntegration', 'agent:update'],
 		['integrationStatus', 'agent:read'],
+		['webhookUrl', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -719,13 +720,15 @@ describe('AgentIntegrationsController webhook channel URL', () => {
 		expect(urlService.getAgentWebhookUrl).toHaveBeenCalledWith('agent-1');
 	});
 
-	it('does not build a URL for an agent outside the project', async () => {
+	it('returns the URL of an agent that is not saved yet', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
-		const { controller } = makeController({ agentRepository });
+		const urlService = mock<UrlService>();
+		urlService.getAgentWebhookUrl.mockReturnValue('https://n8n.example.com/agent-webhook/agent-1');
+		const { controller } = makeController({ agentRepository, urlService });
 
 		await expect(
 			controller.webhookUrl({ params: { projectId: 'project-1' } } as never, mock(), 'agent-1'),
-		).rejects.toThrow('not found');
+		).resolves.toEqual({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
 	});
 });

@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
+import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
 import { resolve } from 'path';
 
@@ -458,7 +459,8 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
-				this.globalConfig.endpoints.agentWebhook,
+				// This path may contain `.`, which the route pattern must match literally.
+				escapeRegExp(this.globalConfig.endpoints.agentWebhook),
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			// Matched against the normalised path, so a non-UI asset requested in another

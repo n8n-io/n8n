@@ -92,10 +92,10 @@ describe('responsesApiFallback', () => {
 		return res;
 	}
 
-	it('answers an unknown route with a 404 in the OpenAI error shape', () => {
+	it('answers an unknown route with a 404 in the OpenAI error shape', async () => {
 		const res = mockResponse();
 
-		notFound(mock<Request>({ method: 'GET', path: '/agent-1/responses' }), res, vi.fn());
+		await notFound(mock<Request>({ method: 'GET', path: '/agent-1/responses' }), res, vi.fn());
 
 		expect(res.status).toHaveBeenCalledWith(404);
 		expect(res.json).toHaveBeenCalledWith({
@@ -108,11 +108,16 @@ describe('responsesApiFallback', () => {
 		});
 	});
 
-	it('answers a body that does not parse with a 400 in the OpenAI error shape', () => {
+	it('answers a body that does not parse with a 400 in the OpenAI error shape', async () => {
 		const res = mockResponse();
 		const next = vi.fn();
 
-		parseError(new UnprocessableRequestError('Failed to parse request body'), mock(), res, next);
+		await parseError(
+			new UnprocessableRequestError('Failed to parse request body'),
+			mock(),
+			res,
+			next,
+		);
 
 		expect(res.status).toHaveBeenCalledWith(400);
 		expect(res.json).toHaveBeenCalledWith({
@@ -126,11 +131,11 @@ describe('responsesApiFallback', () => {
 		expect(next).not.toHaveBeenCalled();
 	});
 
-	it('passes other errors on', () => {
+	it('passes other errors on', async () => {
 		const error = new Error('boom');
 		const next = vi.fn();
 
-		parseError(error, mock(), mockResponse(), next);
+		await parseError(error, mock(), mockResponse(), next);
 
 		expect(next).toHaveBeenCalledWith(error);
 	});

@@ -5,6 +5,7 @@ import { testModules } from '@n8n/backend-test-utils';
 import { type Project, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -18,7 +19,7 @@ beforeAll(async () => {
 
 const server = setupTestServer({ endpointGroups: ['ai'] });
 
-/** These cases end before a model call, so the agent needs no model credential. */
+/** The cases end before a model call, or stub the run, so the agent needs no model credential. */
 describe('webhook channel HTTP route', () => {
 	async function createPublishedAgent(
 		webhook: AgentIntegrationConfig | ((project: Project) => Promise<AgentIntegrationConfig>),
@@ -70,6 +71,45 @@ describe('webhook channel HTTP route', () => {
 		const response = await post(agent.id, { input: [] }).expect(400);
 
 		expect(response.body.error).toMatchObject({ type: 'invalid_request_error', param: 'input' });
+	});
+
+	it('rejects a streaming request with 400 on the stream parameter', async () => {
+		const agent = await createPublishedAgent({
+			type: 'webhook',
+			credentialId: '',
+			settings: { authentication: 'none' },
+		});
+
+		const response = await post(agent.id, { input: 'Hi', stream: true }).expect(400);
+
+		expect(response.body.error).toMatchObject({ code: 'unsupported_parameter', param: 'stream' });
+	});
+
+	it('answers with the agent text in the Responses API shape', async () => {
+		const agent = await createPublishedAgent({
+			type: 'webhook',
+			credentialId: '',
+			settings: { authentication: 'none' },
+		});
+		const run = vi
+			.spyOn(Container.get(AgentExecutionOrchestratorService), 'executeForChatPublished')
+			.mockImplementation(async function* () {
+				yield await Promise.resolve({ type: 'text-delta' as const, id: 't1', delta: 'Hello' });
+			});
+
+		try {
+			const response = await post(agent.id, { input: 'Hi' }).expect(200);
+
+			expect(response.body).toMatchObject({
+				object: 'response',
+				status: 'completed',
+				output: [{ content: [{ type: 'output_text', text: 'Hello' }] }],
+			});
+			expect(response.body.conversation.id).toEqual(expect.any(String));
+			expect(response.body.conversation.id).not.toBe('');
+		} finally {
+			run.mockRestore();
+		}
 	});
 
 	it('answers an unknown conversation with 404', async () => {

@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { generateKeyPairSync } from 'node:crypto';
 
 import { authenticateWebhookRequest } from '../platforms/webhook/webhook-auth';
 
@@ -57,6 +58,33 @@ describe('authenticateWebhookRequest with JWT auth', () => {
 					keyType: 'pemKey',
 				}),
 			500,
+		);
+	});
+
+	it('verifies a PEM key credential with its public key, not a leftover secret', () => {
+		const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+			modulusLength: 2048,
+			publicKeyEncoding: { type: 'spki', format: 'pem' },
+			privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+		});
+		const pemCredential = {
+			keyType: 'pemKey',
+			publicKey,
+			privateKey,
+			secret: 'leftover-secret',
+			algorithm: 'RS256',
+		};
+		const signed = jwt.sign({ sub: 'caller' }, privateKey, { algorithm: 'RS256' });
+		const signedWithSecret = jwt.sign({ sub: 'caller' }, 'leftover-secret', {
+			algorithm: 'HS256',
+		});
+
+		expect(() =>
+			authenticateWebhookRequest(bearer(signed), 'jwtAuth', pemCredential),
+		).not.toThrow();
+		expectStatus(
+			() => authenticateWebhookRequest(bearer(signedWithSecret), 'jwtAuth', pemCredential),
+			403,
 		);
 	});
 

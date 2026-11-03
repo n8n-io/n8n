@@ -102,6 +102,16 @@ describe('AgentChannelWebhookSetup', () => {
 		expect(wrapper.emitted('create')).toEqual([['httpHeaderAuth']]);
 	});
 
+	it('keeps Connect disabled until a credential of the selected authentication is chosen', async () => {
+		const wrapper = mountView();
+
+		await wrapper.get('[data-testid="webhook-authentication"]').setValue('headerAuth');
+		expect(wrapper.get('[data-testid="webhook-connect"]').attributes('disabled')).toBeDefined();
+
+		await wrapper.setProps({ modelValue: 'header-1' });
+		expect(wrapper.get('[data-testid="webhook-connect"]').attributes('disabled')).toBeUndefined();
+	});
+
 	it('clears a credential of another type when the authentication changes', async () => {
 		const wrapper = mountView({
 			mode: 'edit',
@@ -145,6 +155,19 @@ describe('AgentChannelWebhookSetup', () => {
 		await flushPromises();
 
 		expect(getAgentWebhookUrl).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(wrapper.get('[data-testid="webhook-url"]').element).toHaveProperty(
+			'value',
+			'https://n8n.example.com/agent-webhook/agent-1/responses',
+		);
+	});
+
+	it('shows the endpoint URL in edit mode', async () => {
+		getAgentWebhookUrl.mockResolvedValue({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
+		const wrapper = mountView({ mode: 'edit', savedSettings: { authentication: 'none' } });
+
+		expect(wrapper.find('[data-testid="webhook-url"]').exists()).toBe(false);
+		await flushPromises();
+
 		expect(wrapper.get('[data-testid="webhook-url"]').element).toHaveProperty(
 			'value',
 			'https://n8n.example.com/agent-webhook/agent-1/responses',
