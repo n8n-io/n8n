@@ -689,6 +689,25 @@ describe('createModel', () => {
 			}) as unknown as Record<string, unknown>;
 			expect(model.supportsStructuredOutputs).toBe(true);
 		});
+
+		it('should have undefined includeUsage for custom when unset', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+			}) as unknown as Record<string, unknown>;
+			expect(model.includeUsage).toBe(undefined);
+		});
+
+		it('should forward includeUsage for custom when set', () => {
+			const model = createModel({
+				id: 'custom/Kimi-K3',
+				apiKey: 'key',
+				baseURL: 'https://example.com/v1',
+				includeUsage: true,
+			}) as unknown as Record<string, unknown>;
+			expect(model.includeUsage).toBe(true);
+		});
 	});
 
 	describe('anthropic baseURL normalization', () => {
