@@ -27,7 +27,7 @@ import type { ZodTypeAny } from 'zod';
 import type { CredentialTypes } from '@/credential-types';
 import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -104,7 +104,7 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 	credentialTypes.recognizes.mockReturnValue(true);
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
@@ -166,7 +166,7 @@ const fromAiTeamId =
 
 const fromAiTitle = "={{ $fromAI('title', 'Issue title', 'string') }}";
 
-function makeLinearNodeTypeWithDynamicTeamId(): ReturnType<NodeTypes['getByNameAndVersion']> {
+function makeLinearNodeTypeWithDynamicTeamId(): ReturnType<NodeTypesProxy['getByNameAndVersion']> {
 	return {
 		description: {
 			displayName: 'Linear Tool',
@@ -196,7 +196,7 @@ function makeLinearNodeTypeWithDynamicTeamId(): ReturnType<NodeTypes['getByNameA
 				},
 			],
 		},
-	} as ReturnType<NodeTypes['getByNameAndVersion']>;
+	} as ReturnType<NodeTypesProxy['getByNameAndVersion']>;
 }
 
 function makeLinearToolWithFromAiTeamId(): NonNullable<AgentJsonConfig['tools']>[number] {
@@ -730,7 +730,7 @@ describe('AgentsBuilderToolsService', () => {
 					properties: [],
 					credentials: [{ name: 'gmailOAuth2' }],
 				},
-			} as unknown as ReturnType<NodeTypes['getByNameAndVersion']>);
+			} as unknown as ReturnType<NodeTypesProxy['getByNameAndVersion']>);
 			credentialService.list.mockResolvedValue([
 				{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
 			]);

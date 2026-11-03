@@ -3,6 +3,7 @@ import {
 	type CredentialsFinderService,
 	type EventService,
 	type ProjectScopeService,
+	type NodeTypesProxy,
 } from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
@@ -28,7 +29,6 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
-import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
@@ -348,7 +348,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		agentValidationService = new AgentValidationService(
 			agentRepository,
 			definitionService,
-			mock<NodeTypes>(),
+			mock<NodeTypesProxy>(),
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
 			mock<AiGatewayService>(),

@@ -10,7 +10,7 @@ import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import type { ChatHubTool } from './chat-hub-tool.entity';
@@ -21,7 +21,7 @@ export class ChatHubToolService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly chatToolRepository: ChatHubToolRepository,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');

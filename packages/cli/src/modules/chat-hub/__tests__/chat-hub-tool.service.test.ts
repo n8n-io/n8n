@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import type { ChatHubTool } from '../chat-hub-tool.entity';
@@ -56,7 +57,7 @@ describe('ChatHubToolService', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	const chatToolRepository = mock<ChatHubToolRepository>();
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 	const mockUser = mock<User>({ id: mockUserId });
 	const mockManager = mock<EntityManager>();
 
@@ -83,7 +84,7 @@ describe('ChatHubToolService', () => {
 			new DeprecatedNodesValidationService(
 				logger,
 				mock<NodesConfig>({ blockDeprecated: true }),
-				nodeTypes,
+				nodeTypes as unknown as NodeTypes,
 			),
 		);
 	});

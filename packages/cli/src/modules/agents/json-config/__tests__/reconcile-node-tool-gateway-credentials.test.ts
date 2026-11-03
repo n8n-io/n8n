@@ -2,7 +2,7 @@ import type { AgentJsonToolConfig, AiGatewayConfigDto } from '@n8n/api-types';
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import {
 	assignCredentialToNodeTools,
@@ -26,13 +26,13 @@ const SENTINEL = { id: null, name: 'Gateway credits', __aiGatewayManaged: true }
 
 const NO_OWNED = new Set<string>();
 
-function nodeTypesWithDescription(description: INodeTypeDescription): NodeTypes {
-	const nodeTypes = mock<NodeTypes>();
+function nodeTypesWithDescription(description: INodeTypeDescription): NodeTypesProxy {
+	const nodeTypes = mock<NodeTypesProxy>();
 	nodeTypes.getByNameAndVersion.mockReturnValue({ description } as INodeType);
 	return nodeTypes;
 }
 
-function nodeTypesWithCredentials(credentialNames: string[]): NodeTypes {
+function nodeTypesWithCredentials(credentialNames: string[]): NodeTypesProxy {
 	return nodeTypesWithDescription({
 		displayName: 'x',
 		name: 'x',
@@ -359,7 +359,7 @@ describe('reconcileNodeToolGatewayCredentials', () => {
 	});
 
 	it('drops managed markers when the node type cannot be resolved', () => {
-		const nodeTypes = mock<NodeTypes>();
+		const nodeTypes = mock<NodeTypesProxy>();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('unknown node type');
 		});
@@ -401,7 +401,7 @@ describe('listAiGatewayManagedCredentialTypes', () => {
 	});
 
 	it('ignores non-node tools and unresolvable node types', () => {
-		const nodeTypes = mock<NodeTypes>();
+		const nodeTypes = mock<NodeTypesProxy>();
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('unknown node type');
 		});

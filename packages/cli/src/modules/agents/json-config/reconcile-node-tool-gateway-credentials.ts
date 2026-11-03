@@ -1,9 +1,8 @@
 import type { AgentJsonToolConfig, AiGatewayConfigDto, NodeToolConfig } from '@n8n/api-types';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
-import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeParameters, INodeTypeDescription, INodeTypes } from 'n8n-workflow';
 import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow';
 
-import type { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility, HTTP_NODE_TYPES } from '@/services/ai-gateway-eligibility';
 
 const N8N_CONNECT_CREDENTIAL_NAME = 'Gateway credits';
@@ -114,7 +113,7 @@ function reconcileAiGatewayManagedMarkers(
  */
 export function reconcileNodeToolGatewayCredentials(
 	tools: AgentJsonToolConfig[] | undefined,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
 	ownedCredentialTypes: ReadonlySet<string>,
 ): void {
@@ -137,7 +136,7 @@ export function reconcileNodeToolGatewayCredentials(
  */
 export function listAiGatewayManagedCredentialTypes(
 	tools: AgentJsonToolConfig[] | undefined,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): string[] {
 	const managed = new Set<string>();
 	const unsatisfied = new Set<string>();
@@ -177,7 +176,7 @@ export function listAiGatewayManagedCredentialTypes(
  */
 export function assignCredentialToNodeTools(
 	tools: AgentJsonToolConfig[] | undefined,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	credentialType: string,
 	credential: { id: string; name: string },
 ): number {
@@ -207,7 +206,7 @@ export function assignCredentialToNodeTools(
 
 function reconcileNode(
 	node: NodeToolConfig,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
 	ownedCredentialTypes: ReadonlySet<string>,
 ): void {

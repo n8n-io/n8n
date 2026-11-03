@@ -14,7 +14,7 @@ import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProxy } from '@n8n/backend-services';
 
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
@@ -105,7 +105,7 @@ async function resolveInputSchema(
 		toolSchema.node.nodeTypeVersion,
 	);
 	try {
-		nodeType = Container.get(NodeTypes).getByNameAndVersion(
+		nodeType = Container.get(NodeTypesProxy).getByNameAndVersion(
 			nodeTypeName,
 			toolSchema.node.nodeTypeVersion,
 		);
