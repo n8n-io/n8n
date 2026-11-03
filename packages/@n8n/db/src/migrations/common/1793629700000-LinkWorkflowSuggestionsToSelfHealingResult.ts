@@ -25,7 +25,7 @@ async function clearSelfHealingData({ escape, runQuery }: MigrationContext) {
 	}
 }
 
-export class LinkWorkflowSuggestionsToSelfHealingResult1793288106000
+export class LinkWorkflowSuggestionsToSelfHealingResult1793629700000
 	implements ReversibleMigration
 {
 	async up(context: MigrationContext) {
