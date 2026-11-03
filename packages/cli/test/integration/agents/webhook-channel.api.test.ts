@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto';
 
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository } from '@n8n/db';
+import { type Project, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+import { saveCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
 import { setupTestServer } from '../shared/utils';
 
@@ -19,7 +20,9 @@ const server = setupTestServer({ endpointGroups: ['ai'] });
 
 /** These cases end before a model call, so the agent needs no model credential. */
 describe('webhook channel HTTP route', () => {
-	async function createPublishedAgent(webhook: AgentIntegrationConfig) {
+	async function createPublishedAgent(
+		webhook: AgentIntegrationConfig | ((project: Project) => Promise<AgentIntegrationConfig>),
+	) {
 		const owner = await createOwner();
 		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
@@ -32,7 +35,7 @@ describe('webhook channel HTTP route', () => {
 				name: 'Agent',
 				projectId: project.id,
 				schema,
-				integrations: [webhook],
+				integrations: [typeof webhook === 'function' ? await webhook(project) : webhook],
 				tools: {},
 				versionId: randomUUID(),
 			}),
@@ -81,15 +84,33 @@ describe('webhook channel HTTP route', () => {
 		expect(response.body.error).toMatchObject({ code: 'conversation_not_found' });
 	});
 
-	it('fails closed for header auth until the check exists', async () => {
+	it('returns 500 when the header-auth credential is missing', async () => {
 		const agent = await createPublishedAgent({
 			type: 'webhook',
-			credentialId: 'cred-1',
+			credentialId: 'missing-credential',
 			settings: { authentication: 'headerAuth' },
 		});
 
 		const response = await post(agent.id, { input: 'Hi' }).expect(500);
 
-		expect(response.body.error).toMatchObject({ code: 'authentication_unavailable' });
+		expect(response.body.error).toMatchObject({ code: 'credential_unavailable' });
+	});
+
+	it('rejects a wrong header with 403 before any run', async () => {
+		const agent = await createPublishedAgent(async (project) => {
+			const credential = await saveCredential(
+				{ name: 'Header', type: 'httpHeaderAuth', data: { name: 'X-Api-Key', value: 'key-1' } },
+				{ project, role: 'credential:owner' },
+			);
+			return {
+				type: 'webhook',
+				credentialId: credential.id,
+				settings: { authentication: 'headerAuth' },
+			};
+		});
+
+		const response = await post(agent.id, { input: 'Hi' }).set('X-Api-Key', 'key-2').expect(403);
+
+		expect(response.body.error).toMatchObject({ type: 'permission_error' });
 	});
 });

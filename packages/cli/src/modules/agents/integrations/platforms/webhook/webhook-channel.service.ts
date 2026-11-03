@@ -2,6 +2,7 @@ import {
 	isDraftIntegration,
 	WEBHOOK_INTEGRATION_TYPE,
 	webhookAuthentication,
+	webhookCredentialType,
 	type AgentIntegrationConfig,
 	type AgentWebhookIntegrationConfig,
 } from '@n8n/api-types';
@@ -19,7 +20,9 @@ import { AgentsSettingsService } from '../../../agents-settings.service';
 import type { ProjectAgent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { integrationMemoryResourceId } from '../../../utils/agent-memory-scope';
+import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { parseResponsesRequest, toResponseBody, WebhookChannelError } from './responses-api';
+import { authenticateWebhookRequest } from './webhook-auth';
 
 export interface WebhookChannelReply {
 	status: number;
@@ -39,6 +42,7 @@ export class WebhookChannelService {
 		private readonly executionService: AgentExecutionService,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly chatExecution: AgentChatExecutionService,
+		private readonly credentials: AgentCredentialLookupService,
 		private readonly logger: Logger,
 	) {}
 
@@ -51,7 +55,7 @@ export class WebhookChannelService {
 		const createdAt = new Date();
 		try {
 			const { agent, channel } = await this.findChannel(request.agentId);
-			this.authenticate(channel);
+			await this.authenticate(agent, channel, request.headers);
 			const { input, conversationId } = parseResponsesRequest(request.body);
 			const conversation = await this.resolveConversation(agent.id, conversationId);
 			const text = await this.run(agent, input, conversation, request.abortSignal);
@@ -89,14 +93,30 @@ export class WebhookChannelService {
 		return { agent, channel };
 	}
 
-	private authenticate(channel: AgentWebhookIntegrationConfig) {
-		if (webhookAuthentication(channel) === 'none') return;
-		// Header and JWT auth are not checked yet, so these channels fail closed.
-		throw new WebhookChannelError(
-			500,
-			'authentication_unavailable',
-			'This webhook authentication is not available yet',
-		);
+	private async authenticate(
+		agent: ProjectAgent,
+		channel: AgentWebhookIntegrationConfig,
+		headers: Readonly<Record<string, string | string[] | undefined>>,
+	) {
+		const authentication = webhookAuthentication(channel);
+		if (authentication === 'none') return;
+		const credentialType = webhookCredentialType(channel.settings);
+		const credential =
+			credentialType &&
+			(await this.credentials.decryptForProject(
+				agent.projectId,
+				channel.credentialId,
+				credentialType,
+			));
+		if (!authentication || !credential) {
+			// A deleted credential, or one of another type: no request may pass.
+			throw new WebhookChannelError(
+				500,
+				'credential_unavailable',
+				'The webhook credential is missing',
+			);
+		}
+		authenticateWebhookRequest(headers, authentication, credential);
 	}
 
 	private async resolveConversation(agentId: string, conversationId: string | undefined) {

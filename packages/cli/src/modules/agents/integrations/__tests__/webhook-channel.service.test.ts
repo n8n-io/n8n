@@ -12,6 +12,7 @@ import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
+import type { AgentCredentialLookupService } from '../agent-credential-lookup.service';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import { WebhookChannelService } from '../platforms/webhook/webhook-channel.service';
 
@@ -47,6 +48,7 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		streamOf({ type: 'text-delta', id: 't1', delta: 'Hello' }),
 	);
 	const chatExecution = mock<AgentChatExecutionService>();
+	const credentials = mock<AgentCredentialLookupService>();
 	const logger = mock<Logger>();
 	const service = new WebhookChannelService(
 		agentRepository,
@@ -54,13 +56,15 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		executionService,
 		orchestrator,
 		chatExecution,
+		credentials,
 		logger,
 	);
 	const respond = async (
 		body: unknown = { input: 'Hi' },
+		headers = {},
 		abortSignal = new AbortController().signal,
-	) => await service.respond({ agentId: 'agent-1', headers: {}, body, abortSignal });
-	return { respond, settings, executionService, orchestrator, chatExecution, logger };
+	) => await service.respond({ agentId: 'agent-1', headers, body, abortSignal });
+	return { respond, settings, executionService, orchestrator, chatExecution, credentials, logger };
 }
 
 describe('WebhookChannelService', () => {
@@ -83,13 +87,49 @@ describe('WebhookChannelService', () => {
 		await expect(respond()).resolves.toMatchObject({ status: 404 });
 	});
 
-	it('fails closed for an authentication it cannot check yet', async () => {
-		const { respond, orchestrator } = makeService(
-			makeAgent({ integrations: [webhook('headerAuth')] }),
-		);
+	describe('with header auth', () => {
+		const headerAgent = makeAgent({ integrations: [webhook('headerAuth')] });
 
-		await expect(respond()).resolves.toMatchObject({ status: 500 });
-		expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		it('runs the agent for the configured header and checks the credential type', async () => {
+			const { respond, credentials, orchestrator } = makeService(headerAgent);
+			credentials.decryptForProject.mockResolvedValue({ name: 'X-Api-Key', value: 'key-1' });
+
+			await expect(respond({ input: 'Hi' }, { 'x-api-key': 'key-1' })).resolves.toMatchObject({
+				status: 200,
+			});
+			expect(credentials.decryptForProject).toHaveBeenCalledWith(
+				'project-1',
+				'cred-1',
+				'httpHeaderAuth',
+			);
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalled();
+		});
+
+		it('returns 403 for a wrong header before the body is read', async () => {
+			const { respond, credentials, orchestrator } = makeService(headerAgent);
+			credentials.decryptForProject.mockResolvedValue({ name: 'X-Api-Key', value: 'key-1' });
+
+			await expect(respond({ input: [] }, { 'x-api-key': 'key-2' })).resolves.toMatchObject({
+				status: 403,
+			});
+			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('returns 500 when the credential is missing, deleted, or of another type', async () => {
+			const { respond, credentials, orchestrator } = makeService(headerAgent);
+			credentials.decryptForProject.mockResolvedValue(null);
+
+			await expect(respond()).resolves.toMatchObject({ status: 500 });
+			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		});
+	});
+
+	it('looks up no credential for authentication none', async () => {
+		const { respond, credentials } = makeService();
+
+		await respond();
+
+		expect(credentials.decryptForProject).not.toHaveBeenCalled();
 	});
 
 	it('returns 400 for an invalid body', async () => {
@@ -216,7 +256,7 @@ describe('WebhookChannelService', () => {
 			return streamOf({ type: 'error', error: new Error('This operation was aborted') });
 		});
 
-		await respond({ input: 'Hi' }, abort.signal);
+		await respond({ input: 'Hi' }, {}, abort.signal);
 
 		expect(logger.error).not.toHaveBeenCalled();
 	});
