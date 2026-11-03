@@ -9,6 +9,7 @@ import {
 	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
+import { fetchAssistantAgentThreadCredits } from '../assistantAgentCredits.api';
 import { knownAssistantThreadRuntime } from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 
@@ -17,6 +18,10 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	getSystemAgentThread: vi.fn(),
 	deleteSystemAgentThread: vi.fn(),
 	renameSystemAgentThread: vi.fn(),
+}));
+
+vi.mock('../assistantAgentCredits.api', () => ({
+	fetchAssistantAgentThreadCredits: vi.fn(),
 }));
 
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
@@ -42,7 +47,53 @@ describe('useAssistantAgentThreadsStore', () => {
 		vi.mocked(getSystemAgentThread).mockReset();
 		vi.mocked(deleteSystemAgentThread).mockReset();
 		vi.mocked(renameSystemAgentThread).mockReset();
+		vi.mocked(fetchAssistantAgentThreadCredits).mockReset();
 		showError.mockReset();
+	});
+
+	describe('thread credits', () => {
+		it('loads the stored credit total of a thread', async () => {
+			vi.mocked(fetchAssistantAgentThreadCredits).mockResolvedValue({ creditsUsed: 2.5 });
+			const store = useAssistantAgentThreadsStore();
+
+			await store.loadThreadCredits('t1');
+
+			expect(fetchAssistantAgentThreadCredits).toHaveBeenCalledWith(expect.anything(), 't1');
+			expect(store.threadCreditsUsed('t1')).toBe(2.5);
+		});
+
+		it('shows no total before the first claim, or when the load fails', async () => {
+			const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const store = useAssistantAgentThreadsStore();
+
+			vi.mocked(fetchAssistantAgentThreadCredits).mockResolvedValueOnce({ creditsUsed: null });
+			await store.loadThreadCredits('t1');
+			vi.mocked(fetchAssistantAgentThreadCredits).mockRejectedValueOnce(new Error('offline'));
+			await store.loadThreadCredits('t2');
+
+			expect(store.threadCreditsUsed('t1')).toBeUndefined();
+			expect(store.threadCreditsUsed('t2')).toBeUndefined();
+			error.mockRestore();
+		});
+
+		it('keeps a pushed total that a slower load would make older', async () => {
+			let resolve: (value: { creditsUsed: number }) => void = () => {};
+			vi.mocked(fetchAssistantAgentThreadCredits).mockReturnValue(
+				new Promise((r) => {
+					resolve = r;
+				}),
+			);
+			const store = useAssistantAgentThreadsStore();
+
+			const load = store.loadThreadCredits('t1');
+			store.setThreadCreditsUsed('t1', 3);
+			resolve({ creditsUsed: 2 });
+			await load;
+
+			expect(store.threadCreditsUsed('t1')).toBe(3);
+			store.setThreadCreditsUsed('t1', 4.5);
+			expect(store.threadCreditsUsed('t1')).toBe(4.5);
+		});
 	});
 
 	it('loads the recent threads newest first, and remembers them as Assistant agent threads', async () => {

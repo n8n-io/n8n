@@ -773,6 +773,7 @@ export type {
 	AssistantThreadTabsState,
 	AssistantThreadTabsResponse,
 } from './schemas/assistant-thread-tabs.schema';
+export type { AssistantThreadCreditsResponse } from './schemas/assistant-thread-credits.schema';
 
 export {
 	instanceAiSetupCredentialSelectionKey,

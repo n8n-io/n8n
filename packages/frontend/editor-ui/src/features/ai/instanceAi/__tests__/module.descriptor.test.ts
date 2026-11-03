@@ -18,6 +18,13 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiModule } from '../module.descriptor';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
+import {
+	forgetAssistantAgentThread,
+	rememberAssistantAgentThread,
+} from '../assistantAgent/assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from '../constants';
 
 vi.mock('../composables/useInstanceAiAvailability', () => ({
@@ -372,5 +379,60 @@ describe('InstanceAiModule settings page access', () => {
 				expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
 			});
 		});
+	});
+});
+
+describe('InstanceAiModule credit push', () => {
+	const handle = async (creditsPerThread?: { threadId: string; totalCreditsUsed: number }) => {
+		const handler = InstanceAiModule.pushHandlers?.updateInstanceAiCredits;
+		if (!handler) throw new Error('No credit push handler');
+		await handler({
+			type: 'updateInstanceAiCredits',
+			data: {
+				creditsQuota: 100,
+				creditsClaimed: 5,
+				...(creditsPerThread ? { creditsPerThread } : {}),
+			},
+		});
+	};
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	afterEach(() => {
+		forgetAssistantAgentThread('agent-thread');
+	});
+
+	it('stores the instance credits outside the current Assistant store', async () => {
+		await handle();
+
+		expect(mockedStore(useAssistantCreditsStore).setCredits).toHaveBeenCalledWith({
+			creditsQuota: 100,
+			creditsClaimed: 5,
+		});
+		expect(mockedStore(useInstanceAiStore).setThreadCreditsUsed).not.toHaveBeenCalled();
+	});
+
+	it('gives the total of an Assistant agent thread to the Assistant agent threads store', async () => {
+		rememberAssistantAgentThread('agent-thread', 'project-1');
+
+		await handle({ threadId: 'agent-thread', totalCreditsUsed: 2.5 });
+
+		expect(mockedStore(useAssistantAgentThreadsStore).setThreadCreditsUsed).toHaveBeenCalledWith(
+			'agent-thread',
+			2.5,
+		);
+		expect(mockedStore(useInstanceAiStore).setThreadCreditsUsed).not.toHaveBeenCalled();
+	});
+
+	it('gives the total of a current Assistant thread to the current Assistant store', async () => {
+		await handle({ threadId: 'thread-1', totalCreditsUsed: 1.5 });
+
+		expect(mockedStore(useInstanceAiStore).setThreadCreditsUsed).toHaveBeenCalledWith(
+			'thread-1',
+			1.5,
+		);
+		expect(mockedStore(useAssistantAgentThreadsStore).setThreadCreditsUsed).not.toHaveBeenCalled();
 	});
 });

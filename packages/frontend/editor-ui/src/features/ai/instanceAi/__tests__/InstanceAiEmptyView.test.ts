@@ -17,6 +17,7 @@ import {
 } from '../assistantAgent/assistantAgentThreads';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
@@ -685,6 +686,7 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+	let creditsStore: ReturnType<typeof mockedStore<typeof useAssistantCreditsStore>>;
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
@@ -704,6 +706,7 @@ describe('InstanceAiEmptyView', () => {
 			'instance-ai': { ...defaultModuleSettings },
 		};
 		store = mockedStore(useInstanceAiStore);
+		creditsStore = mockedStore(useAssistantCreditsStore);
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.personalProject = { id: PERSONAL_PROJECT_ID } as Project;
 		projectsStore.isTeamProjectFeatureEnabled = true;
@@ -718,8 +721,8 @@ describe('InstanceAiEmptyView', () => {
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.deleteThread.mockResolvedValue(true);
-		store.creditsQuota = 100;
-		store.isLowCredits = false;
+		creditsStore.creditsQuota = 100;
+		creditsStore.isLowCredits = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		// Experiment cleanup (124_workflow_previews_above_assistant)
@@ -1284,7 +1287,7 @@ describe('InstanceAiEmptyView', () => {
 	// fuse onto a sidebar input reads as a stray inset box floating above it.
 	it('renders the credit banner as a self-contained card in the split layout', () => {
 		experimentMocks.splitBelowInputVariant.value = true;
-		store.isLowCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const { getByTestId } = renderView();
 
@@ -1388,21 +1391,21 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('keeps the free nudge ineligible until credits are loaded', async () => {
-		store.creditsQuota = undefined;
+		creditsStore.creditsQuota = undefined;
 
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'false');
 
-		store.creditsQuota = 100;
+		creditsStore.creditsQuota = 100;
 		await flushPromises();
 
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
 	});
 
 	it('blocks the composer when credits are gone and does not let the banner be dismissed', () => {
-		store.isOutOfCredits = true;
-		store.isLowCredits = true;
+		creditsStore.isOutOfCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const { getByTestId, queryByTestId } = renderView();
 
@@ -1412,7 +1415,7 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('keeps the free nudge mounted and reveals it after the credit warning is dismissed', async () => {
-		store.isLowCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const { getByTestId } = renderView();
 		const nudge = getByTestId('instance-ai-free-nudge-stub');
@@ -1426,7 +1429,7 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('keeps the free nudge ineligible when credits run out after the warning was dismissed', async () => {
-		store.isLowCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const { getByTestId, queryByTestId } = renderView();
 		const nudge = getByTestId('instance-ai-free-nudge-stub');
@@ -1436,7 +1439,7 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(nudge).toHaveAttribute('data-eligible', 'true');
 
-		store.isOutOfCredits = true;
+		creditsStore.isOutOfCredits = true;
 		await flushPromises();
 
 		expect(nudge).toHaveAttribute('data-eligible', 'false');

@@ -37,6 +37,7 @@ import {
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
+import { useAssistantCreditsStore } from './assistantCredits.store';
 import type { InstanceAiMessageAuthorship, InstanceAiPrefillDeclaration } from './prefills';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
@@ -195,7 +196,8 @@ const canSelectProject = computed(
 		projectsStore.myProjects.length > 1,
 );
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits, isOutOfCredits } = storeToRefs(store);
+const creditsStore = useAssistantCreditsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(creditsStore);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
@@ -1054,8 +1056,8 @@ async function handleWorkflowPreviewExampleUse(
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="isOutOfCredits || creditBanner.visible.value"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
+						:credits-remaining="creditsStore.creditsRemaining"
+						:credits-quota="creditsStore.creditsQuota"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1100,8 +1102,8 @@ async function handleWorkflowPreviewExampleUse(
 					<div :class="$style.centeredInput">
 						<CreditWarningBanner
 							v-if="isOutOfCredits || creditBanner.visible.value"
-							:credits-remaining="store.creditsRemaining"
-							:credits-quota="store.creditsQuota"
+							:credits-remaining="creditsStore.creditsRemaining"
+							:credits-quota="creditsStore.creditsQuota"
 							:message="outOfCreditsMessage"
 							:dismissible="!isOutOfCredits"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1181,7 +1183,7 @@ async function handleWorkflowPreviewExampleUse(
 					<InstanceAiFreeNudge
 						v-if="!isCreatingApp"
 						:eligible="
-							store.creditsQuota !== undefined &&
+							creditsStore.creditsQuota !== undefined &&
 							!isOutOfCredits &&
 							!creditBanner.visible.value &&
 							settingsStore.isWorkflowBuilderAvailable
@@ -1189,8 +1191,8 @@ async function handleWorkflowPreviewExampleUse(
 					/>
 					<CreditWarningBanner
 						v-if="isOutOfCredits || creditBanner.visible.value"
-						:credits-remaining="store.creditsRemaining"
-						:credits-quota="store.creditsQuota"
+						:credits-remaining="creditsStore.creditsRemaining"
+						:credits-quota="creditsStore.creditsQuota"
 						:message="outOfCreditsMessage"
 						:dismissible="!isOutOfCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"

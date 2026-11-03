@@ -31,6 +31,7 @@ import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import { useToast } from '@n8n/composables/useToast';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useThread, useInstanceAiStore } from '../instanceAi.store';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { getAgentBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
@@ -135,7 +136,8 @@ const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined
 	'openWorkflowPreview',
 	undefined,
 );
-const { isLowCredits, isOutOfCredits } = storeToRefs(store);
+const creditsStore = useAssistantCreditsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(creditsStore);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
@@ -974,8 +976,8 @@ defineExpose({
 							<LimitedModeNotice />
 							<CreditWarningBanner
 								v-if="isOutOfCredits || creditBanner.visible.value"
-								:credits-remaining="store.creditsRemaining"
-								:credits-quota="store.creditsQuota"
+								:credits-remaining="creditsStore.creditsRemaining"
+								:credits-quota="creditsStore.creditsQuota"
 								:message="outOfCreditsMessage"
 								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"

@@ -91,6 +91,8 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 
 // The host stashes a starter message before it opens a new thread.
 const starter = consumePendingFirstMessage(props.threadId);
+// A new thread has no credit total on the server yet. Pushes add it during the turn.
+if (!props.newSession) void threadsStore.loadThreadCredits(props.threadId);
 let starterReferences: InstanceAiAttachment[] = starter?.attachments ?? [];
 // A hand-off context goes with the next accepted message only.
 const handoffContext = ref<InstanceAiHandoffContext | null>(

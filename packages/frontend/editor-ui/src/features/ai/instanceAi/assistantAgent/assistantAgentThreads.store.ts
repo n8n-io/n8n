@@ -12,6 +12,7 @@ import {
 	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
+import { fetchAssistantAgentThreadCredits } from './assistantAgentCredits.api';
 import {
 	ASSISTANT_AGENT_ID,
 	forgetAssistantAgentThread,
@@ -54,6 +55,8 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 	 * response that a rename overtook can still hold the old title.
 	 */
 	const renamedTitles = ref<Map<string, string>>(new Map());
+	/** The credit total of each thread, from its load and the credit pushes. */
+	const creditsUsed = ref<Map<string, number>>(new Map());
 	const threadsById = computed(
 		() =>
 			new Map(
@@ -148,6 +151,34 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		}
 	}
 
+	/** The credit total of a thread, or `undefined` before its first claim. */
+	function threadCreditsUsed(threadId: string): number | undefined {
+		return creditsUsed.value.get(threadId);
+	}
+
+	/**
+	 * Keeps the larger total. A total only grows, so a load that a push overtook
+	 * cannot show an older total.
+	 */
+	function setThreadCreditsUsed(threadId: string, total: number): void {
+		const current = creditsUsed.value.get(threadId);
+		if (current === undefined || total > current) creditsUsed.value.set(threadId, total);
+	}
+
+	/** Loads the stored credit total of a thread, so the total shows after a reload. */
+	async function loadThreadCredits(threadId: string): Promise<void> {
+		try {
+			const { creditsUsed: total } = await fetchAssistantAgentThreadCredits(
+				rootStore.restApiContext,
+				threadId,
+			);
+			if (total !== null) setThreadCreditsUsed(threadId, total);
+		} catch (error) {
+			// Best effort: the header shows no thread total.
+			console.error('Failed to load Assistant agent thread credits', error);
+		}
+	}
+
 	return {
 		recentThreads,
 		openedThreads,
@@ -161,5 +192,8 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		loadThread,
 		deleteThread,
 		renameThread,
+		threadCreditsUsed,
+		setThreadCreditsUsed,
+		loadThreadCredits,
 	};
 });
