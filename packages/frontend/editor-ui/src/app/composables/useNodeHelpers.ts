@@ -876,9 +876,15 @@ export function useNodeHelpers() {
 		}
 	}
 
-	function matchCredentials(node: INodeUi) {
+	/**
+	 * Returns true when a stored credential ID was replaced by the ID of the only
+	 * credential with the same name. The backend executes the saved workflow and
+	 * looks up credentials by ID only, so the caller must save the replacement.
+	 */
+	function matchCredentials(node: INodeUi): boolean {
+		let credentialIdReplaced = false;
 		if (!node.credentials) {
-			return;
+			return credentialIdReplaced;
 		}
 		Object.entries(node.credentials).forEach(
 			([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
@@ -926,9 +932,11 @@ export function useNodeHelpers() {
 				if (credentialsForName.length === 1) {
 					node.credentials![nodeCredentialType].id = credentialsForName[0].id;
 					credentialsUpdated.value = true;
+					credentialIdReplaced = true;
 				}
 			},
 		);
+		return credentialIdReplaced;
 	}
 
 	async function loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {

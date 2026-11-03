@@ -5786,6 +5786,69 @@ describe('useCanvasOperations', () => {
 				expect.objectContaining({ parameters: { value: true } }),
 			]);
 		});
+
+		describe('credential IDs replaced by a name match', () => {
+			const createWorkflowWithCredential = (credentialId: string) =>
+				createTestWorkflow({
+					id: workflowId,
+					nodes: [
+						createTestNode({
+							credentials: { httpBasicAuth: { id: credentialId, name: 'Login API' } },
+						}),
+					],
+					connections: {},
+				});
+
+			// The testing pinia stubs `setScopes`, so return a document store with fixed scopes.
+			const mockInitState = (scopes: string[]) => {
+				vi.spyOn(workflowHelpersModule, 'useWorkflowHelpers').mockReturnValue({
+					initState: vi.fn().mockResolvedValue({
+						workflowDocumentStore: {
+							setNodes: vi.fn(),
+							setConnections: vi.fn(),
+							setHydrated: vi.fn(),
+							scopes,
+						},
+					}),
+				} as unknown as ReturnType<typeof workflowHelpersModule.useWorkflowHelpers>);
+			};
+
+			beforeEach(() => {
+				mockedStore(useCredentialsStore).getCredentialsByType = vi
+					.fn()
+					.mockReturnValue([mock<ICredentialsResponse>({ id: 'new-id', name: 'Login API' })]);
+			});
+
+			it('should mark the workflow as changed so that the new credential ID is saved', async () => {
+				mockInitState(['workflow:update']);
+				const uiStore = mockedStore(useUIStore);
+
+				const { initializeWorkspace } = useCanvasOperations();
+				await initializeWorkspace(createWorkflowWithCredential('deleted-id'));
+
+				expect(uiStore.markStateDirty).toHaveBeenCalled();
+			});
+
+			it('should not mark the workflow as changed when the user cannot update it', async () => {
+				mockInitState(['workflow:read']);
+				const uiStore = mockedStore(useUIStore);
+
+				const { initializeWorkspace } = useCanvasOperations();
+				await initializeWorkspace(createWorkflowWithCredential('deleted-id'));
+
+				expect(uiStore.markStateDirty).not.toHaveBeenCalled();
+			});
+
+			it('should not mark the workflow as changed when the credential ID exists', async () => {
+				mockInitState(['workflow:update']);
+				const uiStore = mockedStore(useUIStore);
+
+				const { initializeWorkspace } = useCanvasOperations();
+				await initializeWorkspace(createWorkflowWithCredential('new-id'));
+
+				expect(uiStore.markStateDirty).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('initializeUnknownNodes', () => {
