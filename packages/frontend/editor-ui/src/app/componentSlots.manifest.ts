@@ -18,6 +18,20 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
+		'workflow-diff-placeholder',
+		defineAsyncComponent(
+			async () => await import('@/features/workflows/workflowDiff/WorkflowDiffPlaceholder.vue'),
+		),
+	);
+
+	componentRegistry.register(
+		'code-diff',
+		defineAsyncComponent(
+			async () => await import('@/features/workflows/workflowDiff/NodeDiff.vue'),
+		),
+	);
+
+	componentRegistry.register(
 		'promotion-changes',
 		defineAsyncComponent(
 			async () =>
