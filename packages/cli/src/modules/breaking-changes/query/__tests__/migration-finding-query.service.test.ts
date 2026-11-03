@@ -788,11 +788,13 @@ describe('MigrationFindingQueryService', () => {
 				},
 				issues: [issueFor(workflow.nodes[0])],
 				assistantAction: 'fix',
+				unpublishedFix: false,
 			});
 		});
 
 		it('lists no issues when the rule no longer flags the workflow', async () => {
 			ruleRegistry.getRule.mockReturnValue(optedIn(workflowRule('rule-a', 'n8n-nodes-base.a')));
+			breakingChangeService.loadPublishedNodes.mockResolvedValue(new Map());
 
 			const result = await service.describeWorkflowFinding(
 				TARGET_VERSION,
@@ -800,7 +802,23 @@ describe('MigrationFindingQueryService', () => {
 				workflowWithNodes('wf-1', ['n8n-nodes-base.other']),
 			);
 
-			expect(result?.issues).toEqual([]);
+			expect(result).toMatchObject({ issues: [], unpublishedFix: false });
+		});
+
+		it('flags a clean draft whose published version still has the issue', async () => {
+			ruleRegistry.getRule.mockReturnValue(optedIn(workflowRule('rule-a', 'n8n-nodes-base.a')));
+			const published = workflowWithNodes('wf-1', ['n8n-nodes-base.a']);
+			breakingChangeService.loadPublishedNodes.mockResolvedValue(
+				new Map([['wf-1', published.nodes]]),
+			);
+
+			const result = await service.describeWorkflowFinding(
+				TARGET_VERSION,
+				'rule-a',
+				workflowWithNodes('wf-1', ['n8n-nodes-base.other']),
+			);
+
+			expect(result).toMatchObject({ issues: [], unpublishedFix: true });
 		});
 
 		it.each([

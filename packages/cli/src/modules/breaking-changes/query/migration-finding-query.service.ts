@@ -226,6 +226,8 @@ export class MigrationFindingQueryService {
 				rule: RuleDescription;
 				issues: BreakingChangeWorkflowIssue[];
 				assistantAction: 'fix' | 'review';
+				/** The draft is clean, but the published version still has the issue. */
+				unpublishedFix: boolean;
 		  }
 		| undefined
 	> {
@@ -236,13 +238,24 @@ export class MigrationFindingQueryService {
 		const assistantAction = assistantActionOf(rule);
 		if (assistantAction === 'none') return undefined;
 
-		const issuesByWorkflow = await this.issuesFromRecheck(rule, [workflow]);
+		const issues = (await this.issuesFromRecheck(rule, [workflow])).get(workflow.id) ?? [];
+		const unpublishedFix =
+			issues.length === 0 && (await this.publishedVersionHasIssues(rule, workflow));
 
-		return {
-			rule: await this.describeRule(rule),
-			issues: issuesByWorkflow.get(workflow.id) ?? [],
-			assistantAction,
-		};
+		return { rule: await this.describeRule(rule), issues, assistantAction, unpublishedFix };
+	}
+
+	/** Whether the published version, when the draft is ahead of it, still breaks the rule. */
+	private async publishedVersionHasIssues(
+		rule: IBreakingChangeWorkflowRule,
+		workflow: WorkflowEntity,
+	): Promise<boolean> {
+		const nodes = (await this.breakingChangeService.loadPublishedNodes([workflow])).get(
+			workflow.id,
+		);
+		if (!nodes) return false;
+		const issues = await this.issuesFromRecheck(rule, [{ ...workflow, nodes }]);
+		return (issues.get(workflow.id) ?? []).length > 0;
 	}
 
 	private async describeRule(

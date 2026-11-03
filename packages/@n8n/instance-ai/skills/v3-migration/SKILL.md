@@ -6,11 +6,11 @@ description: >-
   review behavior changes flagged by the migration report. Load it when the
   user asks to migrate or update a workflow for n8n 3.0 or v3.
 recommended_tools:
-  - workflow_builder_workflows
+  - get_workflow_as_code
   - workflow_builder_build_workflow
-  - workflow_builder_nodes
-  - workflow_builder_executions
-  - workflow_builder_ask_user
+  - get_node_types
+  - run_workflow
+  - ask_user
 ---
 
 # n8n 3.0 Migration
@@ -27,21 +27,21 @@ saved, so a correct fix closes the finding by itself.
   workflows, even when they have the same finding.
 - Keep everything the finding does not need to change: other nodes,
   credentials, pinned data and connections.
-- Do not publish on your own. If the workflow is published, the report marks
-  the finding fixed as soon as the draft is saved, but the published version,
-  which is the one that runs, does not have the fix yet. Say so, and offer to
-  publish the fixed version, following the publish rules in `workflow-builder`.
+- Do not publish on your own. If the workflow is published, the report shows
+  the finding as fixed but not published until the fix is published, because
+  the published version is the one that runs. Say so, and offer to publish the
+  fixed version, following the publish rules in `workflow-builder`.
 
 ## Process
 
 1. Load `workflow-builder` for the edit mechanics, and in the same turn read
-   the workflow with `workflow_builder_workflows(action="get-as-code")` and
-   the replacement node's `workflow_builder_nodes(action="type-definition")`.
+   the workflow with `get_workflow_as_code` and the replacement node with
+   `get_node_types`.
    Find each affected node from the finding by its name.
 2. Decide whether the fix is mechanical or needs the user. It needs the user
    when the old behavior has no exact replacement, when the user's intent
    decides the right fix, or when you would have to guess a value. Then ask
-   one focused question with `workflow_builder_ask_user` before you edit.
+   one focused question with `ask_user` before you edit.
 3. Summarize in two or three sentences: what you changed, anything that
    behaves differently now, and anything the user still has to do (publish,
    test with real data, mark the finding as Won't fix in the report).

@@ -50,6 +50,7 @@ const finding: MigrationReportFinding = {
 		},
 	],
 	assistantAction: 'fix',
+	unpublishedFix: false,
 };
 
 const SKILL = '# n8n 3.0 Migration\n\nFix the finding you were given.';
@@ -72,6 +73,7 @@ describe('resolveMigrationReportFinding', () => {
 			rule,
 			issues: finding.issues,
 			assistantAction: 'fix',
+			unpublishedFix: false,
 		});
 	});
 
@@ -141,6 +143,17 @@ describe('buildMigrationReportContextBlock', () => {
 
 		expect(block).toContain('The report no longer finds this issue');
 		expect(block).not.toContain("Function node 'Transform'");
+	});
+
+	it('says the fix still needs publishing when only the published version has the issue', () => {
+		const block = buildMigrationReportContextBlock(
+			handoff,
+			{ ...finding, issues: [], unpublishedFix: true },
+			SKILL,
+		);
+
+		expect(block).toContain('the published version still does');
+		expect(block).not.toContain('The report no longer finds this issue');
 	});
 
 	it.each<{ automatedMigration: InstanceAiAutomatedMigrationOutcome; expected: string[] }>([

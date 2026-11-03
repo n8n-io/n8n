@@ -8,7 +8,9 @@ const mocks = vi.hoisted(() => ({
 	startThread: vi.fn(),
 	track: vi.fn(),
 	getPersonalProject: vi.fn(),
+	getMyProjects: vi.fn(),
 	personalProject: null as { id: string } | null,
+	myProjects: [] as Array<{ id: string }>,
 }));
 
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
@@ -25,7 +27,11 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 		get personalProject() {
 			return mocks.personalProject;
 		},
+		get myProjects() {
+			return mocks.myProjects;
+		},
 		getPersonalProject: mocks.getPersonalProject,
+		getMyProjects: mocks.getMyProjects,
 	}),
 }));
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -61,6 +67,8 @@ function createAssistant() {
 beforeEach(() => {
 	vi.resetAllMocks();
 	mocks.personalProject = { id: 'personal-project' };
+	mocks.myProjects = [{ id: 'team-project' }, { id: 'personal-project' }];
+	mocks.getMyProjects.mockResolvedValue(undefined);
 	mocks.startThread.mockResolvedValue('started');
 });
 
@@ -128,6 +136,14 @@ it('falls back to the personal project when the workflow has no home project', a
 		workflow: { ...workflow, homeProjectId: undefined },
 		action: 'fix',
 	});
+
+	expect(mocks.startThread.mock.calls[0][0]).toBe('personal-project');
+});
+
+it('falls back to the personal project when the user is not a member of the home project', async () => {
+	mocks.myProjects = [{ id: 'personal-project' }];
+
+	await createAssistant().open({ rule, workflow, action: 'fix' });
 
 	expect(mocks.startThread.mock.calls[0][0]).toBe('personal-project');
 });

@@ -25,6 +25,8 @@ export interface MigrationReportFinding {
 	issues: BreakingChangeWorkflowIssue[];
 	/** What the rule offers the Assistant for. A review must not change the workflow on its own. */
 	assistantAction: 'fix' | 'review';
+	/** The draft is clean, but the published version still has the issue. */
+	unpublishedFix: boolean;
 }
 
 /** Longest issue or migration text kept in the block. Issue text embeds node names. */
@@ -95,7 +97,7 @@ export function buildMigrationReportContextBlock(
 	finding: MigrationReportFinding,
 	skillInstructions: string,
 ): string {
-	const { workflow, rule, issues, assistantAction } = finding;
+	const { workflow, rule, issues, assistantAction, unpublishedFix } = finding;
 
 	const lines = [
 		`The user opened this conversation from the n8n ${MIGRATION_REPORT_TARGET_VERSION ?? ''} migration report to resolve one finding in the workflow "${sanitisePromptText(workflow.name)}" (id \`${sanitisePromptText(workflow.id)}\`).`,
@@ -111,9 +113,13 @@ export function buildMigrationReportContextBlock(
 					'Affected nodes in the current workflow:',
 					...issues.map((issue) => `- ${sanitisePromptText(issue.title, FINDING_TEXT_MAX_LENGTH)}`),
 				]
-			: [
-					'The report no longer finds this issue in the current workflow. Check what the user still needs before you change anything.',
-				]),
+			: unpublishedFix
+				? [
+						'The draft no longer has this issue, but the published version still does. The fix takes effect only after the user publishes the draft.',
+					]
+				: [
+						'The report no longer finds this issue in the current workflow. Check what the user still needs before you change anything.',
+					]),
 		...(rule.recommendations.length > 0
 			? [
 					'The report recommends:',
