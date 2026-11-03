@@ -23,11 +23,24 @@ Try n8n instantly with our install script (requires [Docker](https://www.docker.
 curl -fsSL https://get.n8n.io | sh
 ```
 
-Or deploy manually with [Docker](https://docs.n8n.io/deploy/host-n8n/install-options/install-using-docker-compose):
+Or deploy manually with [Docker Compose](https://docs.n8n.io/deploy/host-n8n/install-options/install-using-docker-compose):
 
+```yaml
+# docker-compose.yml
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    ports:
+      - 5678:5678
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
 ```
-docker volume create n8n_data
-docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
+
+```sh
+docker compose up -d
 ```
 
 Access the editor at http://localhost:5678
