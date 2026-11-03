@@ -7,7 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Message, Thread } from 'chat';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { createAdapterLogger } from '../../adapter-logger';

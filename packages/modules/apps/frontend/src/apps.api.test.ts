@@ -162,14 +162,16 @@ describe('apps.api', () => {
 		);
 	});
 
-	it('publishes a version of an app', async () => {
-		await publishApp(context, 'project-1', 'app-1', 'v-1');
+	it('publishes a version of an app with its details', async () => {
+		const publication = { versionId: 'v-1', label: 'Launch', visibility: 'instance' as const };
+
+		await publishApp(context, 'project-1', 'app-1', publication);
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			context,
 			'POST',
 			'/projects/project-1/apps/app-1/publish',
-			{ versionId: 'v-1' },
+			publication,
 		);
 	});
 });

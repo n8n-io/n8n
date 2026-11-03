@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppBinding, AppBindingKind } from '@n8n/api-types';
+import type { AppBinding, AppBindingKind, AppResponse } from '@n8n/api-types';
 import { N8nHeading, N8nSettingsRowGroup, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
@@ -7,7 +7,7 @@ import { computed, onMounted } from 'vue';
 import type { BindableResource } from '../../../apps.api';
 import { getAppPermissions } from '../../../apps.permissions';
 import { useAppBindings } from '../../../composables/useAppBindings';
-import type { AppConfigureTabEmits, AppConfigureTabProps } from '../appConfigureTabs';
+import type { AppVersions } from '../../../composables/useAppVersions';
 import AppBindingChip from './AppBindingChip.vue';
 import AppBindingPicker from './AppBindingPicker.vue';
 import { deriveBindingKey } from './bindingKey';
@@ -20,9 +20,9 @@ import {
 	type BindingPermission,
 } from './bindingKinds';
 
-const props = defineProps<AppConfigureTabProps>();
+const props = defineProps<{ app: AppResponse; versions: AppVersions }>();
 
-const emit = defineEmits<AppConfigureTabEmits>();
+const emit = defineEmits<{ updated: [app: AppResponse] }>();
 
 const i18n = useI18n();
 const { bindings, warningsByKey, load, save } = useAppBindings(() => props.app);

@@ -394,11 +394,9 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../composables/agentTelemetry.utils', () => ({
 	deriveAgentStatus: vi.fn(() => 'draft'),
 	buildAgentConfigFingerprint: vi.fn().mockResolvedValue({
-		tools: [],
 		skills: [],
 		triggers: [],
 		memory: null,
-		model: null,
 		config_version: 'test-version',
 	}),
 }));
@@ -509,9 +507,13 @@ describe('AgentChatPanel', () => {
 			expect(trackSubmittedMessageMock).toHaveBeenCalledWith({
 				agentId: 'a1',
 				status: 'draft',
-				agentConfig: expect.objectContaining({
+				agentConfig: {
+					skills: [],
+					tasks: [],
+					triggers: [],
+					memory: null,
 					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
-				}),
+				},
 			});
 		} finally {
 			vi.unstubAllGlobals();
@@ -3326,13 +3328,10 @@ describe('AgentChatPanel', () => {
 		await vi.waitFor(() => expect(buildAgentConfigFingerprint).toHaveBeenCalledOnce());
 		await wrapper.setProps({ continueSessionId: 'session-2' });
 		fingerprint.resolve({
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();
@@ -3357,13 +3356,10 @@ describe('AgentChatPanel', () => {
 
 		busy.value = true;
 		fingerprint.resolve({
-			tools: [],
 			skills: [],
 			tasks: [],
 			triggers: [],
-			vector_stores: [],
 			memory: null,
-			model: null,
 			config_version: 'test-version',
 		});
 		await flushPromises();
@@ -4350,6 +4346,35 @@ describe('AgentChatPanel', () => {
 					true,
 				);
 				expect(wrapper.find('[data-testid="host-footer"]').exists()).toBe(true);
+			});
+
+			it('disables the footer-start controls while a queued message moves back into the composer', async () => {
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'original',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				const removal = createDeferredPromise<string>();
+				removeQueuedMessageMock.mockReturnValueOnce(removal.promise);
+				const wrapper = mountPanel({}, undefined, {
+					'footer-start': (props) =>
+						h('button', { 'data-testid': 'host-menu', disabled: props.disabled }),
+				});
+				const hostMenu = () => wrapper.get('[data-testid="host-menu"]').element;
+
+				expect(hostMenu()).toHaveProperty('disabled', false);
+
+				await wrapper.get('[aria-label="generic.edit"]').trigger('click');
+				await flushPromises();
+				expect(hostMenu()).toHaveProperty('disabled', true);
+
+				removal.resolve('removed');
+				await flushPromises();
+				expect(hostMenu()).toHaveProperty('disabled', false);
+				wrapper.unmount();
 			});
 		});
 

@@ -7,7 +7,7 @@ import { waitFor } from '@testing-library/vue';
 
 import { getAppBindings, updateApp } from '../../apps.api';
 import type { AppVersions } from '../../composables/useAppVersions';
-import AppConfigureTabBasics from './AppConfigureTabBasics.vue';
+import AppConfigureGeneral from './AppConfigureGeneral.vue';
 
 vi.mock('../../apps.api');
 
@@ -32,8 +32,8 @@ const app = (name = 'Expense tracker', overrides: Partial<AppResponse> = {}): Ap
 	updatedAt: '2026-10-02T10:00:00.000Z',
 });
 
-const renderComponent = createComponentRenderer(AppConfigureTabBasics, {
-	props: { app: app(), versions: {} as AppVersions },
+const renderComponent = createComponentRenderer(AppConfigureGeneral, {
+	props: { app: app(), versions: { refresh: vi.fn() } as unknown as AppVersions },
 });
 
 function providePermissions(scopes: Scope[], readOnly = false) {
@@ -43,11 +43,10 @@ function providePermissions(scopes: Scope[], readOnly = false) {
 	});
 }
 
-describe('AppConfigureTabBasics', () => {
+describe('AppConfigureGeneral', () => {
 	beforeEach(() => {
 		vi.mocked(getAppBindings).mockResolvedValue({ versionId: null, bindings: [], warnings: [] });
 	});
-
 	afterEach(() => {
 		capabilityRegistry.clear();
 		vi.clearAllMocks();

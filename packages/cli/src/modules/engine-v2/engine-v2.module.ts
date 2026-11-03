@@ -4,7 +4,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ExecutionResponseSender } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { randomBytes } from 'node:crypto';
 
 /**

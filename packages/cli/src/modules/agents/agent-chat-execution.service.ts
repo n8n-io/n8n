@@ -316,6 +316,13 @@ export class AgentChatExecutionService {
 		});
 	}
 
+	/** Project deletion has fenced new turns, including suspended sessions. */
+	async cancelProjectSessionWork(agentId: string, threadId: string): Promise<void> {
+		await this.withTurnLock(threadId, async () => {
+			await this.backgroundJobService.cancelForSession(agentId, threadId);
+		});
+	}
+
 	async cancelSessionSuspension(
 		agentId: string,
 		threadId: string,

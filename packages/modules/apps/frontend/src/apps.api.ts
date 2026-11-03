@@ -8,6 +8,8 @@ import {
 	type AppPreviewResponse,
 	type AppResponse,
 	type AppVersionResponse,
+	type PublishAppDto,
+	type RestoreAppVersionDto,
 	type UpdateAppDto,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
@@ -98,11 +100,29 @@ export async function publishApp(
 	context: IRestApiContext,
 	projectId: string,
 	appId: string,
-	versionId: string,
+	publication: PublishAppDto,
 ): Promise<AppResponse> {
-	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/apps/${appId}/publish`, {
-		versionId,
-	});
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/publish`,
+		publication,
+	);
+}
+
+export async function restoreAppVersion(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+	restoration: RestoreAppVersionDto,
+): Promise<AppVersionResponse> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/versions/${versionId}/restore`,
+		restoration,
+	);
 }
 
 export async function getAppBindings(

@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { INode } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { findCredentialRefusal } from '../credential-refusal';
 import { CredentialsPermissionChecker } from '../credentials-permission-checker';
