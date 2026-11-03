@@ -110,3 +110,62 @@ describe('createEnvProvider', () => {
 		}
 	});
 });
+
+// --- N8N_ENV_ACCESS_ALLOWLIST (append to the existing describe-less bottom of the file) ---
+describe('createEnvProviderState with N8N_ENV_ACCESS_ALLOWLIST', () => {
+	afterEach(() => {
+		delete process.env.N8N_ENV_ACCESS_ALLOWLIST;
+		delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+		delete process.env.ALLOWED_TOKEN;
+		delete process.env.SECRET_KEY;
+	});
+
+	it('exposes only allowlisted vars, even when access is otherwise blocked', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
+		process.env.N8N_ENV_ACCESS_ALLOWLIST = 'ALLOWED_TOKEN';
+		process.env.ALLOWED_TOKEN = 'abc';
+		process.env.SECRET_KEY = 'do-not-leak';
+
+		const state = createEnvProviderState();
+		const env = createEnvProvider(0, 0, state);
+
+		expect(state.isEnvAccessBlocked).toBe(false);
+		expect(state.env).toEqual({ ALLOWED_TOKEN: 'abc' });
+		expect(env.ALLOWED_TOKEN).toBe('abc');
+		expect(env.SECRET_KEY).toBeUndefined();
+	});
+
+	it('supports multiple names and trims/ignores empty entries', () => {
+		process.env.N8N_ENV_ACCESS_ALLOWLIST = ' ALLOWED_TOKEN , , SECRET_KEY ';
+		process.env.ALLOWED_TOKEN = 'abc';
+		process.env.SECRET_KEY = 'xyz';
+
+		const env = createEnvProvider(0, 0, createEnvProviderState());
+		expect(env.ALLOWED_TOKEN).toBe('abc');
+		expect(env.SECRET_KEY).toBe('xyz');
+	});
+
+	it('omits allowlisted names that are not set in the environment', () => {
+		process.env.N8N_ENV_ACCESS_ALLOWLIST = 'ALLOWED_TOKEN,SECRET_KEY';
+		process.env.ALLOWED_TOKEN = 'abc';
+
+		const state = createEnvProviderState();
+		expect(state.env).toEqual({ ALLOWED_TOKEN: 'abc' });
+	});
+
+	it('falls back to legacy blocked behaviour when the allowlist is empty', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
+		process.env.ALLOWED_TOKEN = 'abc';
+
+		const env = createEnvProvider(0, 0, createEnvProviderState());
+		expect(() => env.ALLOWED_TOKEN).toThrowError('access to env vars denied');
+	});
+
+	it('falls back to legacy open behaviour when the allowlist is empty and access is unblocked', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+		process.env.ALLOWED_TOKEN = 'abc';
+
+		const env = createEnvProvider(0, 0, createEnvProviderState());
+		expect(env.ALLOWED_TOKEN).toBe('abc');
+	});
+});
