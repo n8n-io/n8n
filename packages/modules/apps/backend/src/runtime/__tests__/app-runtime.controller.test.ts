@@ -797,6 +797,33 @@ describe('AppRuntimeController', () => {
 			});
 		});
 
+		it('reports the previewed draft and its editor for an interaction on a preview host', async () => {
+			const { controller, dataTables, events } = setup({ host: 'preview' });
+			dataTables.insertRows.mockResolvedValue([]);
+			const req = request({
+				method: 'POST',
+				headers: {
+					origin: PREVIEW_ORIGIN,
+					'sec-fetch-site': 'same-origin',
+					'content-type': 'application/json',
+				},
+				params: { key: 'notes' },
+				body: { data: [{ title: 'x' }] },
+				runtime: false,
+			});
+			await controller.prepare(req, response(), vi.fn());
+
+			await controller.insertRows(req, response());
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-interacted', {
+				appId: 'app-1',
+				versionId: DRAFT_ID,
+				userId: 'editor-1',
+				interactionType: 'data_table_write',
+				isPreview: true,
+			});
+		});
+
 		it('emits nothing for reads, polls and resumed turns', async () => {
 			const { controller, dataTables, workflows, agents, events } = setup();
 			dataTables.listRows.mockResolvedValue({ count: 0, data: [] });

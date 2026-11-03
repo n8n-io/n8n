@@ -6207,6 +6207,30 @@ describe('TelemetryEventRelay', () => {
 
 	describe('app events', () => {
 		const appId = 'app-1';
+		// The init tests register a second relay on the shared emitter, so this block uses its own.
+		const appEventService = new EventService();
+
+		beforeAll(async () => {
+			await new TelemetryEventRelay(
+				appEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			).init();
+		});
 
 		it.each([
 			[
@@ -6326,9 +6350,9 @@ describe('TelemetryEventRelay', () => {
 				},
 			],
 		] as const)('should track on `%s` event', (eventName, payload, entry, properties) => {
-			eventService.emit(eventName, payload);
+			appEventService.emit(eventName, payload);
 
-			expect(telemetry.track).toHaveBeenCalledWith(entry, properties);
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(entry, properties);
 		});
 	});
 });

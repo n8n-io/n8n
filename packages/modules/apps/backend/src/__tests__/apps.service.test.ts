@@ -390,7 +390,7 @@ describe('AppsService', () => {
 
 		it('emits app-created with the actor', async () => {
 			const { service, appRepository, events } = createService();
-			const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+			const dto = CreateAppDto.parse({ name: 'App', namespace: 'app', visibility: 'instance' });
 			appRepository.projectExists.mockResolvedValue(true);
 			appRepository.createApp.mockResolvedValue(appRow({ projectId: 'project-1', ...dto }));
 
@@ -400,7 +400,7 @@ describe('AppsService', () => {
 				...actor,
 				appId,
 				projectId: 'project-1',
-				visibility: 'project',
+				visibility: 'instance',
 			});
 		});
 
