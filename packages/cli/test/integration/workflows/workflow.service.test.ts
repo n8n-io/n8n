@@ -521,6 +521,132 @@ describe('legacy publication teardown recovery', () => {
 	});
 
 	test.each([
+		{ operation: 'refresh', loseHistoryLease: false },
+		{ operation: 'refresh', loseHistoryLease: true },
+		{ operation: 'publish', loseHistoryLease: false },
+	] as const)(
+		'records restored activation after $operation loses its deactivation lease (history lease lost: $loseHistoryLease)',
+		async ({ operation, loseHistoryLease }) => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			const versionToPublish = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId: versionToPublish });
+			const leases = mockPublicationLeases();
+			const leaseError = new Error('Publication lease lost after deactivation history');
+			const addRecord = workflowPublishHistoryRepository.addRecord.bind(
+				workflowPublishHistoryRepository,
+			);
+			let historyLeaseLost = false;
+			vi.spyOn(workflowPublishHistoryRepository, 'addRecord').mockImplementation(
+				async (...args) => {
+					leases.assertHeld();
+					await addRecord(...args);
+					if (args[0].event === 'deactivated') {
+						leases.abort(leaseError);
+					} else if (loseHistoryLease && !historyLeaseLost) {
+						historyLeaseLost = true;
+						leases.abort(new Error('Publication lease lost after activation history'));
+					}
+				},
+			);
+			let registeredVersionId = workflow.activeVersionId;
+			activeWorkflowManager.remove.mockImplementation(async () => {
+				leases.assertHeld();
+				registeredVersionId = null;
+			});
+			activeWorkflowManager.add.mockImplementation(async (workflowId) => {
+				leases.assertHeld();
+				registeredVersionId = (await workflowRepository.findOneByOrFail({ id: workflowId }))
+					.activeVersionId;
+				return { webhooks: true, triggersAndPollers: true };
+			});
+
+			await expect(
+				workflowService.activateWorkflow(owner, workflow.id, {
+					versionId: operation === 'publish' ? versionToPublish : workflow.activeVersionId!,
+					...(operation === 'refresh' && {
+						onlyIfActiveVersionIs: workflow.activeVersionId!,
+					}),
+				}),
+			).rejects.toThrow(leaseError);
+
+			expect(leases.leaseSpy).toHaveBeenCalledTimes(loseHistoryLease ? 3 : 2);
+			expect(registeredVersionId).toBe(workflow.activeVersionId);
+			expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+				active: true,
+				activeVersionId: workflow.activeVersionId,
+			});
+			const history = await workflowPublishHistoryRepository.findByVersion(
+				workflow.id,
+				workflow.activeVersionId!,
+			);
+			expect(history.map(({ event }) => event)).toEqual(['activated', 'deactivated', 'activated']);
+			expect(history[2].userId).toBe(owner.id);
+			expect(
+				await workflowPublishHistoryRepository.findByVersion(workflow.id, versionToPublish),
+			).toHaveLength(0);
+		},
+	);
+
+	test.each(['publish', 'unpublish'] as const)(
+		'keeps publication history from a concurrent %s during registration recovery',
+		async (operation) => {
+			const owner = await createOwner();
+			const publisher = await createMember();
+			const workflow = await createActiveWorkflow({}, owner);
+			const nextVersionId = operation === 'publish' ? uuid() : null;
+			if (nextVersionId) {
+				await createWorkflowHistoryItem(workflow.id, { versionId: nextVersionId });
+			}
+			const leases = mockPublicationLeases();
+			const leaseError = new Error('Publication lease lost after deactivation history');
+			const addRecord = workflowPublishHistoryRepository.addRecord.bind(
+				workflowPublishHistoryRepository,
+			);
+			vi.spyOn(workflowPublishHistoryRepository, 'addRecord').mockImplementationOnce(
+				async (...args) => {
+					await addRecord(...args);
+					leases.abort(leaseError);
+					await workflowRepository.update(workflow.id, {
+						activeVersionId: nextVersionId,
+						active: nextVersionId !== null,
+					});
+					await addRecord({
+						workflowId: workflow.id,
+						versionId: nextVersionId ?? workflow.activeVersionId,
+						event: operation === 'publish' ? 'activated' : 'deactivated',
+						userId: publisher.id,
+					});
+				},
+			);
+
+			await expect(
+				workflowService.activateWorkflow(owner, workflow.id, {
+					versionId: workflow.activeVersionId!,
+					onlyIfActiveVersionIs: workflow.activeVersionId!,
+				}),
+			).rejects.toThrow(leaseError);
+
+			expect(leases.leaseSpy).toHaveBeenCalledTimes(2);
+			expect(activeWorkflowManager.add).toHaveBeenCalledTimes(nextVersionId === null ? 0 : 1);
+			const history = await workflowPublishHistoryRepository.findTimelinePage(workflow.id, {
+				offset: 0,
+				limit: 10,
+			});
+			expect(history).toHaveLength(3);
+			expect(history[0]).toMatchObject({
+				versionId: nextVersionId ?? workflow.activeVersionId,
+				event: operation === 'publish' ? 'activated' : 'deactivated',
+				userId: publisher.id,
+			});
+			expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+				active: nextVersionId !== null,
+				activeVersionId: nextVersionId,
+			});
+		},
+	);
+
+	test.each([
 		{ operation: 'refresh', removalThrows: false },
 		{ operation: 'refresh', removalThrows: true },
 		{ operation: 'publish', removalThrows: false },

@@ -1139,6 +1139,22 @@ export class WorkflowService {
 									if (!rolledBack) return false;
 									throw error;
 								}
+								signal.throwIfAborted();
+								const [latestPublication] =
+									await this.workflowPublishHistoryRepository.findTimelinePage(workflowId, {
+										offset: 0,
+										limit: 1,
+									});
+								signal.throwIfAborted();
+								// Complete interrupted history without duplicating a newer publication.
+								if (latestPublication?.event === 'deactivated') {
+									await this.workflowPublishHistoryRepository.addRecord({
+										workflowId,
+										versionId: workflow.activeVersionId,
+										event: 'activated',
+										userId: latestPublication.userId,
+									});
+								}
 							}
 							return !signal.aborted;
 						} catch (error) {
