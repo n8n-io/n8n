@@ -1308,6 +1308,121 @@ describe('generateMockHints', () => {
 		});
 	});
 
+	describe('multiple triggers', () => {
+		const multiTrigger = makeWorkflow([
+			makeNode({ name: 'Run', type: 'n8n-nodes-base.manualTrigger' }),
+			makeNode({ name: 'Monthly', type: 'n8n-nodes-base.scheduleTrigger' }),
+			makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' }),
+		]);
+		const options = {
+			workflow: multiTrigger,
+			nodeNames: ['Slack'],
+			defaultStartNodeName: 'Run',
+			triggerNodeNames: ['Run', 'Monthly'],
+		};
+
+		const scenarioDescription = 'The monthly recurring flow sends the email';
+		const hintsAnswer = JSON.stringify({
+			triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+			nodeHints: { Slack: 'foo' },
+		});
+
+		it('picks the start trigger by majority vote and shows the scenario description only to the vote', async () => {
+			const generate = mockAgentResponses(
+				'Monthly',
+				'Run',
+				'The scenario is a recurring run, so: **Monthly**',
+				hintsAnswer,
+			);
+
+			const result = await generateMockHints({ ...options, scenarioDescription });
+
+			const votePrompt = generate.mock.calls[0][0] as string;
+			const hintsPrompt = generate.mock.calls[3][0] as string;
+			expect(votePrompt).toContain(scenarioDescription);
+			expect(votePrompt).toContain('- Monthly (n8n-nodes-base.scheduleTrigger)');
+			expect(hintsPrompt).not.toContain(scenarioDescription);
+			expect(hintsPrompt).toContain('## Start trigger');
+			expect(generate).toHaveBeenCalledTimes(4);
+			expect(result.startNodeName).toBe('Monthly');
+		});
+
+		it('lets the hint call pick and retries it when the vote has no majority', async () => {
+			const generate = mockAgentResponses(
+				'Run',
+				'Slack',
+				new Error('boom'),
+				JSON.stringify({ startNodeName: 'Slack', triggerContent: { a: 1 }, nodeHints: {} }),
+				JSON.stringify({ startNodeName: 'Run', triggerContent: {}, nodeHints: {} }),
+			);
+
+			const result = await generateMockHints(options);
+
+			expect(generate.mock.calls[3][0]).toContain('## Triggers');
+			expect(generate).toHaveBeenCalledTimes(5);
+			expect(result.startNodeName).toBe('Run');
+		});
+
+		it('counts the last trigger a vote names as its answer', async () => {
+			const generate = mockAgentResponses(
+				'Not Run: the recurring Monthly trigger fires',
+				'Not Run: the recurring Monthly trigger fires',
+				'Run',
+				hintsAnswer,
+			);
+
+			const result = await generateMockHints({ ...options, scenarioDescription });
+
+			expect(generate).toHaveBeenCalledTimes(4);
+			expect(result.startNodeName).toBe('Monthly');
+		});
+
+		it('counts the longer name when one trigger name ends another', async () => {
+			mockAgentResponses('Monthly Schedule', 'Monthly Schedule', 'Schedule', hintsAnswer);
+
+			const result = await generateMockHints({
+				...options,
+				workflow: makeWorkflow([
+					makeNode({ name: 'Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+					makeNode({ name: 'Monthly Schedule', type: 'n8n-nodes-base.scheduleTrigger' }),
+					makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' }),
+				]),
+				triggerNodeNames: ['Schedule', 'Monthly Schedule'],
+			});
+
+			expect(result.startNodeName).toBe('Monthly Schedule');
+		});
+
+		it('keeps the hints on the default start when no attempt names a trigger', async () => {
+			const noStart = JSON.stringify({ triggerContent: { a: 1 }, nodeHints: { Slack: 'foo' } });
+			const generate = mockAgentResponses('Run', 'Monthly', 'Slack', noStart, noStart);
+
+			const result = await generateMockHints(options);
+
+			expect(generate).toHaveBeenCalledTimes(5);
+			expect(result.startNodeName).toBeUndefined();
+			expect(result.nodeHints).toEqual({ Slack: 'foo' });
+		});
+
+		it('keeps the voted start trigger when every hint attempt fails', async () => {
+			mockAgentResponses('Monthly', 'Monthly', 'Run', new Error('boom'), new Error('boom'));
+
+			const result = await generateMockHints(options);
+
+			expect(result.nodeHints).toEqual({});
+			expect(result.startNodeName).toBe('Monthly');
+		});
+
+		it('does not vote when the workflow has one trigger', async () => {
+			const generate = mockAgentResponses(hintsAnswer);
+
+			await generateMockHints({ ...options, triggerNodeNames: ['Monthly'], scenarioDescription });
+
+			expect(generate).toHaveBeenCalledTimes(1);
+			expect(generate.mock.calls[0][0]).not.toContain(scenarioDescription);
+		});
+	});
+
 	it('should not call the agent when there are no hint-eligible nodes', async () => {
 		const generate = mockAgentResponses('should never be called');
 

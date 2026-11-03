@@ -297,6 +297,7 @@ async function runScenario(
 		timeoutMs,
 		pinNodes,
 		seededDataTableIds,
+		scenario.description,
 	);
 	// DB write races abort the execution before any node runs and are reported
 	// in-band (success:false), bypassing the throw-based transient retry —
@@ -318,6 +319,7 @@ async function runScenario(
 			timeoutMs,
 			pinNodes,
 			seededDataTableIds,
+			scenario.description,
 		);
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
