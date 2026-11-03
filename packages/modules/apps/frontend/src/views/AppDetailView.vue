@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useToast } from '@n8n/composables/useToast';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
@@ -12,6 +15,8 @@ import AppView from '../components/AppView.vue';
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
+const toast = useToast();
+const i18n = useI18n();
 const assistant = capabilityRegistry.use(capabilities.createAppAssistantHandoff)();
 const projectId = computed(() => String(route.params.projectId));
 const appId = computed(() => String(route.params.appId));
@@ -32,10 +37,22 @@ onMounted(async () => {
 		await getApp(rootStore.restApiContext, projectId.value, appId.value);
 	} catch (error) {
 		if (router.currentRoute.value !== originRoute) return;
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
-			await router.replace({ name: PROJECT_APPS, params: { projectId: projectId.value } });
-			return;
+		if (error instanceof ResponseError) {
+			if (error.httpStatusCode === 404) {
+				await router.replace({ name: PROJECT_APPS, params: { projectId: projectId.value } });
+				return;
+			}
+			if (error.httpStatusCode === 403) {
+				await router.replace({
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: { projectId: projectId.value },
+				});
+				return;
+			}
 		}
+		toast.showError(error, i18n.baseText('apps.detail.loadError'));
+		await router.replace({ name: PROJECT_APPS, params: { projectId: projectId.value } });
+		return;
 	}
 	if (router.currentRoute.value !== originRoute) return;
 	const opened = await assistant.openApp({
