@@ -15,6 +15,7 @@ function makeContext(
 		credentialService: {
 			list: vi.fn(),
 			get: vi.fn().mockResolvedValue({ id: 'cred-1', name: 'My Cred' }),
+			updateDescription: vi.fn(),
 			delete: vi.fn(),
 			test: vi.fn(),
 			...(isAiGatewayCredentialType ? { isAiGatewayCredentialType } : {}),

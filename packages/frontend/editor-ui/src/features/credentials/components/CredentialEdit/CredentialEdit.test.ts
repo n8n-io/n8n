@@ -146,6 +146,10 @@ vi.mock('./CredentialModeSelector.vue', () => ({
 					data-test-id="select-managed-oauth-auth"
 					@click="$emit('update:authType', { type: 'oAuth2' })"
 				>Managed OAuth</button>
+				<button
+					data-test-id="select-custom-oauth-auth"
+					@click="$emit('update:authType', { type: 'oAuth2', customOauth: true })"
+				>Custom OAuth</button>
 			</div>
 		`,
 	},
@@ -1310,6 +1314,120 @@ describe('CredentialEdit', () => {
 				).not.toBeDisabled(),
 			);
 			await retry(() => expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible());
+		});
+
+		describe('from a custom OAuth app to the managed app', () => {
+			// The NDV opens the modal with a node; the Credentials list opens it without one.
+			const setupCustomOAuthCredential = ({ withNode }: { withNode: boolean }) => {
+				const { credentialsStore, pinia } = setupStores();
+				credentialsStore.getCredentialData.mockReset();
+				credentialsStore.getCredentialData.mockResolvedValueOnce({
+					// @ts-expect-error data is decrypted
+					data: {
+						grantType: 'authorizationCode',
+						clientId: 'custom-client-id',
+						clientSecret: 'custom-client-secret',
+						oauthTokenData: { access_token: 'custom-app-token' },
+					},
+					createdAt: '2026-06-01T10:00:00.000Z',
+					updatedAt: '2026-06-01T10:00:00.000Z',
+					id: 'cred-custom',
+					name: 'Managed OAuth account',
+					type: 'managedOAuthApi',
+					isManaged: false,
+					sharedWithProjects: [],
+					scopes: ['credential:update'],
+					oauthTokenData: true,
+				});
+				credentialsStore.updateCredential.mockResolvedValue(
+					createCredentialResponse({ id: 'cred-custom', type: 'managedOAuthApi' }),
+				);
+
+				const ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('test-workflow-id'));
+				ndvStore.activeNode = withNode
+					? ({
+							id: 'dual-auth-switch-test-node',
+							name: 'DualAuthSwitchTest',
+							type: 'n8n-nodes-base.dualAuthSwitchTest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { authentication: 'oAuth2' },
+						} as INode)
+					: null;
+
+				const view = renderComponent({
+					props: { activeId: 'cred-custom', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+					pinia,
+					global: {
+						stubs: {
+							CredentialSharing: {
+								emits: ['update:modelValue'],
+								template: `<button
+									data-test-id="share-with-project-stub"
+									@click="$emit('update:modelValue', [{ id: 'project-2', name: 'Acme team', type: 'team' }])"
+								/>`,
+							},
+						},
+					},
+				});
+
+				const save = async () => {
+					await userEvent.click(
+						within(view.getByTestId('credential-save-button')).getByRole('button'),
+					);
+					await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalled());
+					return credentialsStore.updateCredential.mock.lastCall?.[0].data.data;
+				};
+
+				return { credentialsStore, view, save };
+			};
+
+			test.each([
+				{ source: 'a node', withNode: true },
+				{ source: 'the Credentials list', withNode: false },
+			])(
+				'removes the custom client fields from the save when opened from $source',
+				async ({ withNode }) => {
+					const { credentialsStore, view, save } = setupCustomOAuthCredential({ withNode });
+					await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+					await userEvent.click(await view.findByTestId('select-managed-oauth-auth'));
+					const data = await save();
+
+					expect(data).not.toHaveProperty('clientId');
+					expect(data).not.toHaveProperty('clientSecret');
+				},
+			);
+
+			test('restores the custom client fields when the user selects the custom app again', async () => {
+				const { credentialsStore, view, save } = setupCustomOAuthCredential({ withNode: false });
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+				await userEvent.click(await view.findByTestId('select-managed-oauth-auth'));
+				await userEvent.click(view.getByTestId('select-custom-oauth-auth'));
+				const data = await save();
+
+				expect(data).toMatchObject({
+					clientId: 'custom-client-id',
+					clientSecret: 'custom-client-secret',
+				});
+			});
+
+			test('keeps a sharing change made between two mode switches', async () => {
+				const { credentialsStore, view, save } = setupCustomOAuthCredential({ withNode: false });
+				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+				await userEvent.click(await view.findByTestId('select-managed-oauth-auth'));
+				await userEvent.click(view.getByText('Sharing'));
+				await userEvent.click(await view.findByTestId('share-with-project-stub'));
+				await userEvent.click(view.getByText('Connection'));
+				await userEvent.click(await view.findByTestId('select-custom-oauth-auth'));
+				await save();
+
+				expect(credentialsStore.updateCredential.mock.lastCall?.[0].data).toMatchObject({
+					sharedWithProjects: [{ id: 'project-2', name: 'Acme team', type: 'team' }],
+				});
+			});
 		});
 	});
 

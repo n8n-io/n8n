@@ -2,6 +2,7 @@ import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
@@ -14,7 +15,6 @@ import {
 	decideWorkflowArchiveTransition,
 	type WorkflowArchiveTransition,
 } from './workflow-archive-transition';
-import { decideWorkflowConflictAction } from './workflow-conflict-policy';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -29,8 +29,10 @@ import type {
 	WorkflowImportContext,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
-	WorkflowPlannedAction,
+	WorkflowImportDecision,
 } from './workflow-import.types';
+import { decidePlannedPublishingAction } from './workflow-publishing-policy';
+import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
 	ImportContext,
@@ -39,6 +41,7 @@ import type {
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { decideImportConflictAction, type ImportDecision } from '../import-conflict-policy';
 import { decideImportId } from '../import-id-policy';
 
 export interface WorkflowImportResult {
@@ -64,7 +67,10 @@ export class WorkflowImporter {
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
-		{ checkRootPlacement }: { checkRootPlacement: boolean },
+		{
+			checkRootPlacement,
+			layoutConflictPolicy,
+		}: { checkRootPlacement: boolean; layoutConflictPolicy?: LayoutConflictPolicy },
 	): Promise<WorkflowImportPlan> {
 		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
@@ -87,18 +93,22 @@ export class WorkflowImporter {
 		for (const workflow of prepared) {
 			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
 			if (existing && ambiguousSourceIds.has(workflow.sourceWorkflowId)) {
-				items.push({ action: 'skip', ...workflow, existing });
+				items.push({ action: 'skip', ...workflow, existing, publishingAction: 'noop' });
 				continue;
 			}
-			const { action, blocked } = decideWorkflowConflictAction(
-				options.workflowConflictPolicy,
-				existing,
+			const { action, blocked } = decideImportConflictAction(
+				options.conflictPolicy,
+				existing !== null,
 			);
 
-			const item = toPlanItem(workflow, existing, action, options.workflowIdPolicy);
+			const decision = toPlanItem(workflow, existing, action, options.idPolicy);
+			const item: WorkflowPlanItem = {
+				...decision,
+				publishingAction: decidePlannedPublishingAction(options.publishingPolicy, decision),
+			};
 			items.push(item);
 
-			if (item.action === 'create' && options.workflowIdPolicy === 'source' && !blocked) {
+			if (item.action === 'create' && !blocked) {
 				sourceCreateIds.push(item.decidedId);
 			}
 
@@ -121,6 +131,10 @@ export class WorkflowImporter {
 			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
 				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
+					if (layoutConflictPolicy === LayoutConflictPolicy.FollowPackage) {
+						item.moveToFolderId = targetFolderId;
+						continue;
+					}
 					folderConflicts.push({
 						sourceWorkflowId: workflow.sourceWorkflowId,
 						existingWorkflowId: item.existing.id,
@@ -289,6 +303,9 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			...(item.moveToFolderId !== undefined
+				? { parentFolderId: item.moveToFolderId ?? PROJECT_ROOT }
+				: {}),
 			// `settings.errorWorkflow` is a package reference this importer rebinds. The
 			// handler it now points at can still be unwritten (later in this loop) and is
 			// unpublished until the package-wide sweep, so the write-time check on that
@@ -382,9 +399,9 @@ function applyCredentialBindingsInPlace(
 function toPlanItem(
 	prepared: PreparedWorkflow,
 	existing: WorkflowEntity | null,
-	action: WorkflowPlannedAction,
+	action: ImportDecision['action'],
 	idPolicy: WorkflowIdPolicy,
-): WorkflowPlanItem {
+): WorkflowImportDecision {
 	if (existing === null) {
 		return {
 			action: 'create',

@@ -1,3 +1,4 @@
+import { InvalidRequestError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
 import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
 import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
@@ -16,6 +17,7 @@ import { Container } from '@n8n/di';
 import { AuthenticationService, type SurfaceId } from '@n8n/inbound-auth';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Response, Request, RequestHandler, Router } from 'express';
+import { z } from 'zod/v4';
 
 import { UrlService } from '@n8n/backend-services';
 import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
@@ -67,6 +69,36 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 		return;
 	}
 	next();
+};
+
+/**
+ * Mirrors the SDK's `RequestAuthorizationParamsSchema`, which it does not
+ * export: the authorization request parameters it checks after it has
+ * resolved the client.
+ */
+const authorizationRequestParamsSchema = z.object({
+	response_type: z.literal('code'),
+	code_challenge: z.string(),
+	code_challenge_method: z.literal('S256'),
+	scope: z.string().optional(),
+	state: z.string().optional(),
+	resource: z.url().optional(),
+});
+
+/**
+ * Validates the authorization request parameters before the SDK handler runs,
+ * so that every invalid request gets a direct error response.
+ */
+const authorizationRequestValidator: RequestHandler = (req, res, next) => {
+	const result = authorizationRequestParamsSchema.safeParse(
+		req.method === 'POST' ? req.body : req.query,
+	);
+	if (result.success) {
+		next();
+		return;
+	}
+	res.setHeader('Cache-Control', 'no-store');
+	res.status(400).json(new InvalidRequestError(result.error.message).toResponseObject());
 };
 
 /**
@@ -154,7 +186,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [rfc9207IssuerParam],
+		middlewares: [authorizationRequestValidator, rfc9207IssuerParam],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitAuthorize,
 			5 * Time.minutes.toMilliseconds,

@@ -115,18 +115,17 @@ export function describeFieldChanges(
 	detail: PromotionResourceDetail,
 	context: FieldContext,
 ): FieldChange[] {
-	const { direction, resource } = context;
+	const { resource } = context;
 	if (resource.change === 'unchanged') return [];
 
 	const before = { ...fieldsOf(detail, 'before'), ...locationOf(context, 'before') };
 	const after = { ...fieldsOf(detail, 'after'), ...locationOf(context, 'after') };
-	// Apply keeps the name of an existing folder, so only its move remains.
-	const locationOnly =
-		direction === 'apply' && resource.change === 'modified' && detail.type === 'folder';
 
-	return FIELD_IDS.filter((field) => !locationOnly || field === 'location')
-		.filter((field) => before[field] !== after[field])
-		.map((field) => ({ field, before: before[field], after: after[field] }));
+	return FIELD_IDS.filter((field) => before[field] !== after[field]).map((field) => ({
+		field,
+		before: before[field],
+		after: after[field],
+	}));
 }
 
 /** The rename and move of a workflow. The workflow diff shows the rest. */

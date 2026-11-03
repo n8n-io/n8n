@@ -39,8 +39,8 @@ export type UserKind = PrincipalType;
  * a person may appear.
  *
  * A `new User()` is a person: `kind` defaults to `'person'`, and TypeORM
- * saves a value under the child that its `kind` names. Build a service
- * account with `new ServiceAccount()`.
+ * saves a value under the child that its `kind` names. Create a service
+ * account with `ServiceAccountRepository.create`, which also writes its details.
  */
 @Entity()
 @TableInheritance({ column: 'kind' })

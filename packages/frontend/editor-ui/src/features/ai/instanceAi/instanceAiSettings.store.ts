@@ -83,6 +83,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isSandboxEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxEnabled === true,
 	);
+	/** New threads run on the n8n Assistant agent of the agents runtime. */
+	const isAssistantAgentEnabled = computed(
+		() =>
+			!isInstanceAiDisabled.value &&
+			settingsStore.moduleSettings?.['instance-ai']?.assistantAgentEnabled === true,
+	);
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
@@ -115,6 +121,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				: null,
 			runDebugEnabled: prev?.runDebugEnabled ?? false,
 			workflowSuggestionsEnabled: prev?.workflowSuggestionsEnabled ?? false,
+			assistantAgentEnabled: prev?.assistantAgentEnabled ?? false,
 		};
 		settingsStore.moduleSettings = {
 			...ms,
@@ -432,6 +439,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
+		isAssistantAgentEnabled,
 		isInstanceAiSetupPanelEnabled,
 		isCloudManaged,
 		startBrowserPushListener,

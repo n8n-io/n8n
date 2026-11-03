@@ -6,6 +6,7 @@ import type {
 	AgentSkill,
 	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalFailedExecutionEnvelope,
 	InstanceAiEvalLlmUsage,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiRunDebugResponse,
@@ -326,6 +327,17 @@ export interface ExecutionScenarioResult {
  * execution history is unreachable as a premise: the harness only ever executes a
  * workflow *after* a build.
  */
+/**
+ * A failed run recorded on another instance (`/eval/export-execution`), restored as-is
+ * BEFORE the graded turn. Nothing runs, so every eval sees the same failure, unlike a
+ * `SeedPriorRun`, which the mock layer generates again each time.
+ */
+export interface SeedRecordedRun {
+	/** Seeded workflow the run belongs to, by the `id` the seed declares. */
+	workflow: string;
+	envelope: InstanceAiEvalFailedExecutionEnvelope;
+}
+
 export interface SeedPriorRun {
 	/** Seeded workflow to run, by the `id` the seed declares — the same key
 	 *  `conversation[0].attach.workflow` uses. */
@@ -344,7 +356,8 @@ export interface BuildExpectationResult {
 	expectation: string;
 	pass: boolean;
 	reason: string;
-	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
+	/** Judge returned no verdict (flaky/partial), or the expectation did not apply because
+	 *  the user turn it grades never came. Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
 	/** Who owns a failed expectation. Stamped where the verdicts are attached to
 	 *  a row (the only place that also knows whether the build died on infra). */
@@ -417,7 +430,6 @@ export const USER_TURN_EVENT = 'eval-user-turn';
 export type TranscriptStep = ToolInteraction | { kind: 'agent-text'; text: string };
 
 export type ToolInteraction =
-	| { kind: 'plan'; tasks: PlanTask[] }
 	| { kind: 'ask-user'; questions: AskUserQuestion[]; answers?: AskUserAnswer[] }
 	| {
 			kind: 'setup-card';
@@ -443,7 +455,7 @@ export type ToolInteraction =
 			approved?: boolean;
 			/** Prompt the agent showed when requesting confirmation. */
 			message?: string;
-			/** Free-text the user sent with their decision (e.g. plan-review feedback). */
+			/** Free-text the user sent with their decision. */
 			feedback?: string;
 	  }
 	| {
@@ -455,11 +467,6 @@ export type ToolInteraction =
 			result?: unknown;
 			error?: string;
 	  };
-
-export interface PlanTask {
-	title?: string;
-	description?: string;
-}
 
 export interface AskUserQuestion {
 	id: string;

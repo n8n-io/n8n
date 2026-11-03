@@ -178,7 +178,6 @@ These only run if specific files changed:
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
-| `packages/cli/src/public-api/**/*.yml`, `packages/cli/src/public-api/**/*.yaml`, `packages/cli/src/public-api/**/*.css`, `packages/cli/src/public-api/v1/openapi-gen/**/*.ts`, `packages/cli/scripts/build.mjs`, `packages/cli/package.json` | `util-publish-api-schema.yml` | master   |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 | `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
 
@@ -186,8 +185,7 @@ These only run if specific files changed:
 
 | Event                      | Workflow                    | Condition                                            |
 |----------------------------|-----------------------------|------------------------------------------------------|
-| Review approved            | `release-chromatic.yml` | + design files changed                               |
-| Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+| Review submitted or dismissed | `util-notify-pr-status.yml` | Triggers required-review checks for fork PRs; notifies only for approved or dismissed reviews on PRs without the community label |
 
 **Why Instance AI evals fire once per PR state-change, not per push:** the
 workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
@@ -411,9 +409,9 @@ Run-workflow dropdown, which only a user with write access can pick.
 |-----------------------------|---------------------------------------------------------|
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
-| `test-image-efficiency.yml` | Measure n8n and runners image size and layer waste with Dive |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 | `sec-sync-bundle-branches.yml` | Sync both bundle branches on demand, including before a bundle cut |
+| `util-publish-api-schema.yml` | Re-publish the Public API spec of a release version (default `stable`) to Cloudflare Pages. Also runs after each release that moves the `stable` tag |
 
 ---
 
@@ -441,6 +439,9 @@ release-publish.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
+
+release-publish-post-release.yml
+    └──────────────────────────▶  util-publish-api-schema.yml  (when the stable tag moves)
 
 test-sbom-nightly.yml
     └──────────────────────────▶  sbom-validation-callable.yml
@@ -476,8 +477,7 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  STAGE 2: CI Validation                                                    │
 │  ───────────────────────                                                   │
 │  ci-pull-requests.yml runs full suite                                      │
-│  ├─ NO ci-check-pr-title.yml (skipped for release branches)                │
-│  └─ NO release-chromatic.yml (skipped)                                 │
+│  └─ NO ci-check-pr-title.yml (skipped for release branches)                │
 │                          │                                                 │
 │                          ▼ [Merge PR]                                      │
 │  STAGE 3: Publish                                                          │
@@ -621,12 +621,12 @@ Push to master
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
+| Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
@@ -768,7 +768,7 @@ Workflows with `workflow_call` trigger:
 | Workflow                           | Inputs                                        | Purpose               |
 |------------------------------------|-----------------------------------------------|-----------------------|
 | `test-unit-reusable.yml`           | `ref`, `nodeVersion`, `collectCoverage`       | Unit tests            |
-| `test-linting-reusable.yml`        | `ref`, `nodeVersion`                          | ESLint                |
+| `test-linting-reusable.yml`        | `ref`, `nodeVersion`, `affectedBase`          | Lint (affected packages when `affectedBase` is set) |
 | `test-e2e-reusable.yml`            | `branch`, `test-mode`, `shards`, `runner`     | Core E2E executor     |
 | `test-workflows-callable.yml`      | `git_ref`, `compare_schemas`                  | Workflow tests        |
 | `docker-build-push.yml`            | `n8n_version`, `release_type`, `push_enabled`, `ref`, `date_tag`, `create_attestations` | Docker build |
@@ -950,7 +950,7 @@ a fork-context run has no secrets and a read-only token. PR changes arrive
 through `pull_request_target`, which is safe here because no step checks out
 or runs PR code. Review events on a same-repo PR arrive through
 `pull_request_review`. Review events on a fork PR arrive through the
-`workflow_run` of `ci-pull-request-review.yml`, which runs on every submitted
+`workflow_run` of `util-notify-pr-status.yml`, which receives every submitted
 or dismissed review; the owners workflow looks the PR up from that run's head
 and skips same-repo heads, which the direct event already covers. A first
 contribution whose runs still wait for approval gets no review-event
@@ -976,7 +976,7 @@ the PR number is the manual fallback.
 
 **`ubuntu-latest`** - Simple build verification, scheduled maintenance, PR comment handlers, release tagging, Docker manifest creation, any job where speed is not critical
 
-**`blacksmith-2vcpu-ubuntu-2204`** - Initial build/install (benefits from Blacksmith caching), database integration tests (I/O bound), Chromatic/Storybook builds
+**`blacksmith-2vcpu-ubuntu-2204`** - Initial build/install (benefits from Blacksmith caching), database integration tests (I/O bound), Storybook builds
 
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
@@ -1077,6 +1077,15 @@ a missing version.
 Packages whose license cannot be resolved from disk go in
 `scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
 LICENSE file, not registry metadata.
+
+PR CI calls `sbom-validation-callable.yml` when the root manifest, lockfile, or workspace
+configuration changes. It also runs when the scripts manifest or lockfile changes.
+It also runs for changes to the license scripts, production build script, Node setup action,
+or SBOM validation workflow. It builds the production closure at the PR merge SHA with
+`N8N_GENERATE_LICENSES=true`. This runs cdxgen, enrichment, license rendering, and the SPDX
+gate. `Required Checks` includes the result. The job has read-only access and publishes
+no SBOM artifacts. If dependency installation fails, `setup-nodejs` uploads diagnostics
+as `pnpm-install-logs-*` artifacts. GitHub retains these logs for seven days.
 
 `test-sbom-nightly.yml` runs at 04:00 UTC. It waits up to two hours for the current scheduled
 Docker build to complete. It builds the production deployment closure at that run's SHA and
@@ -1193,8 +1202,9 @@ sync re-creates the branch and then calls
 [`sec-sync-retarget-prs.yml`](workflows/sec-sync-retarget-prs.yml), which moves every open PR
 on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
 branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the
-`chore: Bundle/*` cut PRs, which target the base on purpose. It is also dispatchable on its
-own. The retarget runs inside the bundle sync after a missing branch is recreated.
+`chore: Bundle/*` cut PRs, which target the base on purpose. GitHub does not allow the base
+of a PR in a stack to change, so the workflow also skips those PRs. It is also dispatchable
+on its own. The retarget runs inside the bundle sync after a missing branch is recreated.
 
 **`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
 PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open
@@ -1272,7 +1282,7 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 |---------------------|-------------------------------------------------------------|
 | Package Publishing  | `NPM_TOKEN`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`           |
 | Notifications       | `QBOT_SLACK_TOKEN`, `RELEASE_HELPER_SLACK_TOKEN`            |
-| Code Quality        | `CODECOV_TOKEN`, `CHROMATIC_PROJECT_TOKEN`, `CURRENTS_RECORD_KEY` |
+| Code Quality        | `CODECOV_TOKEN`, `CURRENTS_RECORD_KEY` |
 | Error Tracking      | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_*_PROJECT`       |
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
 | GitHub Automation   | `N8N_ASSISTANT_APP_ID`, `N8N_ASSISTANT_PRIVATE_KEY`         |

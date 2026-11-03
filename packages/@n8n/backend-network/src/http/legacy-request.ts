@@ -95,7 +95,7 @@ async function sendLegacyRequest(
 					agentOptions: buildLegacyAgentOptions(requestObject),
 					allowedDomains: requestObject.allowedDomains,
 					sendCredentialsOnCrossOriginRedirect:
-						requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+						requestObject.sendCredentialsOnCrossOriginRedirect ?? false,
 					authSendImmediately: requestObject.auth?.sendImmediately,
 				})
 			: await invokeAxios(axiosConfig, requestObject.auth?.sendImmediately);

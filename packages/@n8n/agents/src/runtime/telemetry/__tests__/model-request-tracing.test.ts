@@ -105,6 +105,16 @@ it('keeps generic OpenTelemetry spans free of LangSmith attributes', async () =>
 	]);
 });
 
+it.each([
+	['google', 'gcp.gemini'],
+	['custom', undefined],
+] as const)('sends the spec provider name for the %s provider', async (provider, providerName) => {
+	const { spans, telemetry } = fixture();
+	const delegate = vi.fn<typeof fetch>().mockResolvedValue(new Response('ok'));
+	await traceModelRequests(delegate, telemetry, provider, 'model')('url');
+	expect(spans[0].attributes['gen_ai.provider.name']).toBe(providerName);
+});
+
 it('records LangSmith request spans without optional metadata', async () => {
 	const { spans, telemetry } = fixture();
 	const delegate = vi.fn<typeof fetch>().mockResolvedValue(new Response('ok'));

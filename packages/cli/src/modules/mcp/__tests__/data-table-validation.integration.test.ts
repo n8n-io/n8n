@@ -1,10 +1,11 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableProxyService, DataTableService } from '@n8n/backend-module-data-table';
+
 import { createUser } from '@test-integration/db/users';
 
 import {
@@ -13,7 +14,7 @@ import {
 } from '../tools/workflow-builder/data-table-validation';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], packagedModules);
 	await testDb.init();
 });
 

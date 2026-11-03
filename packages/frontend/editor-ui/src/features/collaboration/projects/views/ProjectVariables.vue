@@ -349,7 +349,7 @@ onMounted(() => {
 				/>
 
 				<N8nCheckbox
-					label="Value missing"
+					:label="i18n.baseText('variables.filters.incomplete')"
 					data-test-id="variable-filter-incomplete"
 					:model-value="filters.incomplete"
 					@update:model-value="setKeyValue('incomplete', $event)"
@@ -429,7 +429,9 @@ onMounted(() => {
 					<template v-if="data.value">
 						<span v-n8n-truncate:20="data.value" />
 					</template>
-					<N8nBadge v-else variant="warning"> Value missing </N8nBadge>
+					<N8nBadge v-else variant="warning">{{
+						i18n.baseText('variables.row.valueMissing')
+					}}</N8nBadge>
 				</td>
 				<td>
 					<VariablesUsageBadge v-if="data.key" :name="data.key" />

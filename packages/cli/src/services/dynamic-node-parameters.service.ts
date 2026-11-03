@@ -21,15 +21,10 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	UnexpectedError,
-	createRunExecutionData,
-	findDisplayedProperty,
-} from 'n8n-workflow';
+import { Workflow, createRunExecutionData, findDisplayedProperty } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { withExpressionIsolate } from '@/utils';
@@ -113,15 +108,30 @@ export class DynamicNodeParametersService {
 				.filter((id): id is string => id !== undefined && id !== null);
 
 			if (credentialIds.length > 0) {
-				const accessibleIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+				// Loading a list makes a live call with the secret, so a project or sharing
+				// role that only holds see-rights does not count here.
+				const usableIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
 					credentialIds,
 					user,
 					['credential:read'],
+					{ excludeSeeOnlyRoles: true },
 				);
 
-				const forbiddenId = credentialIds.find((id) => !accessibleIds.has(id));
-				if (forbiddenId !== undefined) {
-					throw new ForbiddenError();
+				const forbiddenIds = credentialIds.filter((id) => !usableIds.has(id));
+				if (forbiddenIds.length > 0) {
+					// Say nothing about a credential the user cannot even read. For one they
+					// can read, name what is missing: the connect right on an end-user
+					// credential, or otherwise the right to use it.
+					const readableIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+						forbiddenIds,
+						user,
+						['credential:read'],
+					);
+					if (forbiddenIds.some((id) => !readableIds.has(id))) {
+						throw new ForbiddenError();
+					}
+					await this.assertMayUseEndUserCredentials(user, forbiddenIds);
+					throw new ForbiddenError('You need permission to use this credential');
 				}
 
 				await this.assertMayUseEndUserCredentials(user, credentialIds);

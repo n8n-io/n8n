@@ -469,6 +469,38 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
 	});
 
+	it('opens skill artifacts in preview and keeps the chat tab when the skill is already shown', () => {
+		// Returns false when the skill tab is already active.
+		const openSkillPreview = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['skill-1', { type: 'skill', id: 'skill-1', name: 'Plan trips' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openSkillPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open Plan trips' });
+		expect(artifactLink).toHaveAttribute('href', '/settings/context/skills?skillId=skill-1');
+		expect(artifactLink).not.toHaveAttribute('target');
+		expect(artifactLink.querySelector('[data-icon="book-open"]')).toBeInTheDocument();
+
+		const firstClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(firstClick)).toBe(false);
+
+		// The row has no target="_blank", so a click that is not prevented would
+		// navigate the chat tab away.
+		const secondClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(secondClick)).toBe(false);
+
+		expect(openSkillPreview).toHaveBeenNthCalledWith(1, 'skill-1');
+		expect(openSkillPreview).toHaveBeenNthCalledWith(2, 'skill-1');
+	});
+
 	it('shows a spinner on the artifact row while the AI is building it', () => {
 		storeState.producedArtifacts = new Map<string, ResourceEntry>([
 			['agent-1', { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'SEO Auditor' }],

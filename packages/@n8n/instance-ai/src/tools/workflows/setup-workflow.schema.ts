@@ -25,6 +25,8 @@ export const setupSuspendSchema = z.object({
 
 export const setupResumeSchema = z.object({
 	approved: z.boolean(),
+	/** `session` stores an "always allow" grant for the approved action. */
+	scope: z.enum(['once', 'session']).optional(),
 	credentialDestination: credentialDestinationDecisionSchema.optional(),
 	action: z.enum(['apply', 'test-trigger']).optional(),
 	credentials: z.record(z.record(z.string())).optional(),

@@ -1,6 +1,36 @@
-import type { IExecuteSingleFunctions, INodeExecutionData, PostReceiveAction } from 'n8n-workflow';
+import type { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { proxyFetch } from '@n8n/ai-utilities';
+import { createResultOk } from '@n8n/utils/result';
+import type {
+	IExecuteSingleFunctions,
+	INode,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+	NodeEgressFilter,
+	PostReceiveAction,
+} from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { LmChatGoogleGemini } from '../LmChatGoogleGemini.node';
+
+vi.mock('@n8n/ai-utilities', async () => {
+	const actual = await vi.importActual('@n8n/ai-utilities');
+	return {
+		...(actual as Record<string, unknown>),
+		proxyFetch: vi.fn(),
+	};
+});
+
+const mockedProxyFetch = vi.mocked(proxyFetch);
+
+const nodeDef: INode = {
+	id: '1',
+	name: 'Google Gemini Chat Model',
+	typeVersion: 1.2,
+	type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+	position: [0, 0],
+	parameters: {},
+};
 
 describe('LmChatGoogleGemini', () => {
 	it('should send every model field to the provider catalog with a Gemini 3.x floor', () => {
@@ -92,5 +122,47 @@ describe('LmChatGoogleGemini', () => {
 		);
 
 		expect(result.map((option) => option.json)).toEqual([{ name: 'Unknown', value: 42 }]);
+	});
+
+	it('should send model requests through the egress filter', async () => {
+		const egressFilter: NodeEgressFilter = {
+			validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+			validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
+			createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+			validateRedirectSync: vi.fn(),
+		};
+		const ctx = mockDeep<ISupplyDataFunctions>();
+		ctx.getNode.mockReturnValue(nodeDef);
+		ctx.getCredentials.mockResolvedValue({
+			apiKey: 'test-key',
+			host: 'https://gemini.example.com',
+		});
+		ctx.getNodeParameter.mockImplementation((name: string) => {
+			if (name === 'modelName') return 'models/gemini-2.5-flash';
+			if (name === 'options') return {};
+			return null;
+		});
+		ctx.helpers.getSecureEgressFilter.mockReturnValue(egressFilter);
+		mockedProxyFetch.mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					candidates: [
+						{ content: { role: 'model', parts: [{ text: 'hi' }] }, finishReason: 'STOP' },
+					],
+				}),
+				{ status: 200 },
+			),
+		);
+
+		const { response } = await new LmChatGoogleGemini().supplyData.call(ctx, 0);
+		const result = await (response as ChatGoogleGenerativeAI).invoke('hello');
+
+		expect(result.content).toBe('hi');
+		expect(mockedProxyFetch).toHaveBeenCalledWith(
+			expect.objectContaining({
+				input: 'https://gemini.example.com/v1beta/models/gemini-2.5-flash:generateContent',
+				egressFilter,
+			}),
+		);
 	});
 });

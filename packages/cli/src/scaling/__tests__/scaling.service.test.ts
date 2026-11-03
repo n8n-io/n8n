@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { ENCODED_BUFFER_KEY, InstanceSettings } from 'n8n-core';
 import type { ErrorReporter } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -1149,6 +1149,48 @@ describe('ScalingService', () => {
 						// delete it when the workflow does not save successful executions
 						waitTill,
 					}),
+				);
+			});
+
+			it('should keep the failedBeforeStart flag of a v2 job-finished result', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					version: 2,
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: false,
+					status: 'error',
+					startedAt: '2026-07-25T11:59:00.000Z',
+					stoppedAt: '2026-07-25T11:59:30.000Z',
+					failedBeforeStart: true,
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
+					'exec-123',
+					expect.objectContaining({ failedBeforeStart: true }),
+				);
+			});
+
+			it('should record the node time saved minutes of a v2 job-finished result', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					version: 2,
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: true,
+					status: 'success',
+					startedAt: '2026-07-25T11:59:00.000Z',
+					stoppedAt: '2026-07-25T11:59:30.000Z',
+					nodeTimeSavedMinutes: 60,
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
+					'exec-123',
+					expect.objectContaining({ nodeTimeSavedMinutes: 60 }),
 				);
 			});
 

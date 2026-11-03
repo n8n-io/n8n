@@ -202,7 +202,7 @@ export class AgentChannelReconciler {
 	private async runPass(reason: ChannelReconcileReason): Promise<void> {
 		try {
 			const agents = await this.agentRepository.findPublished();
-			const ownStatuses = await this.channelStatusRepository.findOwnAll();
+			const ownStatuses = await this.channelStatusRepository.findOwnAll({});
 
 			const wantedHere = this.collectWantedChannels(agents);
 
@@ -336,7 +336,7 @@ export class AgentChannelReconciler {
 		if (!this.instanceSettings.isLeader) return;
 
 		try {
-			const deleted = await this.channelStatusRepository.deleteExpired(new Date());
+			const deleted = await this.channelStatusRepository.deleteExpired(new Date(), {});
 			if (deleted > 0) {
 				this.logger.debug(
 					`[AgentChannelReconciler] Cleared ${deleted} channel status rows left by instances that are gone`,

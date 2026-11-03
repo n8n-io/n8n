@@ -12,6 +12,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, shallowRef, watch } from 'vue';
 
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+
 import { usePromotionResourceDetails } from '../../composables/usePromotionResourceDetails';
 import { indexBlockers } from '../../promotionOperation';
 import { PromotionAbsentSideLabelsKey } from '../../promotionPreview.content';
@@ -23,6 +25,7 @@ import {
 } from '../../promotionPreview.selection';
 import { buildPreviewTree, cardOrder } from '../../promotionPreview.tree';
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../../promotionPreview.workflow';
+import { httpUrl } from '../../promotionResult';
 import { getPromotionReviewChanges, getPromotionReviewDetails } from '../../promotions.api';
 import PromotionChangeCards from '../preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../preview/PromotionResourceTree.vue';
@@ -72,6 +75,36 @@ async function load() {
 		state.value = 'error';
 		emit('state', { status: 'unavailable' });
 	}
+}
+
+// The host dropped the commits of a finished review. What is left to show is how it ended.
+const outcome = computed(() =>
+	changes.value?.warnings.includes('commitsUnavailable') ? changes.value.outcome : null,
+);
+const outcomeDescription = computed(() => {
+	if (!outcome.value) return undefined;
+	const { state, at, by } = outcome.value;
+	const date = at ? convertToDisplayDate(at).date : null;
+	if (by && date) {
+		return i18n.baseText(`promotions.review.outcome.${state}.description`, {
+			interpolate: { user: by, date },
+		});
+	}
+	if (date) {
+		return i18n.baseText(`promotions.review.outcome.${state}.descriptionNoUser`, {
+			interpolate: { date },
+		});
+	}
+	if (by) {
+		return i18n.baseText(`promotions.review.outcome.${state}.descriptionNoDate`, {
+			interpolate: { user: by },
+		});
+	}
+	return i18n.baseText('promotions.review.outcome.description.unknown');
+});
+function openOnHost() {
+	const url = httpUrl(outcome.value?.webUrl);
+	if (url) window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 const inspectedKey = ref<ResourceKey>();
@@ -163,7 +196,21 @@ const treeResizer = useResizablePanel({
 			@click:button="load"
 		/>
 		<template v-else-if="changes && graph">
-			<div v-if="changes.warnings.length > 0" :class="$style.notices">
+			<N8nEmptyState
+				v-if="outcome"
+				:class="$style.state"
+				:icon="{ type: 'icon', value: outcome.state === 'merged' ? 'check' : 'circle-check' }"
+				:heading="i18n.baseText(`promotions.review.outcome.${outcome.state}.title`)"
+				:description="outcomeDescription"
+				:button-text="i18n.baseText('promotions.review.outcome.openOnHost')"
+				button-variant="outline"
+				data-test-id="promotion-review-outcome"
+				@click:button="openOnHost"
+			>
+				<!-- The slot renders the host user name as text. The prop would render it as HTML. -->
+				<template #description>{{ outcomeDescription }}</template>
+			</N8nEmptyState>
+			<div v-else-if="changes.warnings.length > 0" :class="$style.notices">
 				<N8nCallout
 					v-for="warning in changes.warnings"
 					:key="warning"

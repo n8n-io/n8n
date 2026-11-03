@@ -2,6 +2,10 @@
 // the runway, button, and bar render at 0px height because the el-slider
 // component CSS isn't auto-imported elsewhere in the design system.
 //
+// Loads the prebuilt CSS, not `theme-chalk/src/slider`: those Sass sources call
+// global built-in functions, and Dart Sass prints deprecation warnings for them
+// on every compile.
+//
 // Component-level brand-token overrides (e.g. setting --el-slider-main-bg-color
 // to --color--primary) live wherever <ElSlider> is used.
-@use 'element-plus/theme-chalk/src/slider';
+@use 'element-plus/theme-chalk/el-slider';

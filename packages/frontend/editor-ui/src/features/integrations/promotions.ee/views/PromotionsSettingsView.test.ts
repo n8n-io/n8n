@@ -1,4 +1,6 @@
 import type { IUser } from '@n8n/rest-api-client';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
@@ -7,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import {
 	getPreferences,
 	updatePreferences,
@@ -20,6 +22,7 @@ import {
 } from '../composables/useInstancePromotionConnection';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionEnvironment } from '../promotionsSettings.api';
+import { PROMOTIONS_SETTINGS_SCOPES } from '../promotions.constants';
 import PromotionsSettingsView from './PromotionsSettingsView.vue';
 
 const api = vi.hoisted(() => ({
@@ -28,6 +31,7 @@ const api = vi.hoisted(() => ({
 	deletePromotionEnvironment: vi.fn<typeof PromotionsApi.deletePromotionEnvironment>(),
 	deleteProviderIfUnused: vi.fn<typeof PromotionsApi.deleteProviderIfUnused>(),
 	connectPromotionCheckout: vi.fn<typeof PromotionsApi.connectPromotionCheckout>(),
+	fetchMissingPromotionProjects: vi.fn<typeof PromotionsApi.fetchMissingPromotionProjects>(),
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
@@ -42,6 +46,11 @@ vi.mock('@n8n/design-system', async () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
+}));
+
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual<object>('vue-router')),
+	useRouter: () => ({ push: vi.fn() }),
 }));
 
 const timestamps = {
@@ -72,26 +81,97 @@ const renderView = createComponentRenderer(PromotionsSettingsView);
 describe('PromotionsSettingsView', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		api.fetchMissingPromotionProjects.mockResolvedValue({
+			environmentId: applyEnvironment.id,
+			git: null,
+			data: [{ id: 'missing-project', name: 'Billing' }],
+		});
 		invalidateInstancePromotionConnection();
 		createTestingPinia({ stubActions: false });
 	});
 
-	it('removes the environment, then its provider, then refreshes the cached environments', async () => {
+	it.each(['project:create', 'promotions:apply'] as const)(
+		'checks project creation permission for a settings user with %s',
+		async (permission) => {
+			useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, permission]);
+			api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
+			api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+			renderView();
+
+			const button = await screen.findByRole('button', { name: 'Add 1 missing project' });
+			if (permission === 'project:create') expect(button).toBeEnabled();
+			else expect(button).toBeDisabled();
+		},
+	);
+
+	it('shows the Preview and limited enterprise readiness tags next to the title on enterprise', () => {
+		mockedStore(useSettingsStore).isEnterprisePlan = true;
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		renderView();
+
+		const titleRow = screen.getByRole('heading', {
+			level: 1,
+			name: 'Environments',
+		}).parentElement;
+		const readinessBadge = screen.getByTestId('promotions-enterprise-readiness-badge');
+		expect(titleRow).toContainElement(screen.getByTestId('promotions-preview-badge'));
+		expect(titleRow).toContainElement(readinessBadge);
+		expect(readinessBadge).toHaveTextContent('Limited enterprise readiness');
+	});
+
+	it('shows only the Preview tag on other plans', () => {
+		mockedStore(useSettingsStore).isEnterprisePlan = false;
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		renderView();
+
+		expect(screen.getByTestId('promotions-preview-badge')).toBeInTheDocument();
+		expect(screen.queryByTestId('promotions-enterprise-readiness-badge')).not.toBeInTheDocument();
+	});
+
+	it('checks for missing projects again on click after the check failed', async () => {
+		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+		api.fetchMissingPromotionProjects.mockRejectedValueOnce(new Error('Network error'));
+		renderView();
+
+		const button = await screen.findByRole('button', { name: 'Add missing projects' });
+		await waitFor(() => expect(button).toBeEnabled());
+		await userEvent.click(button);
+
+		expect(await screen.findByTestId('promotion-missing-projects-dialog')).toBeInTheDocument();
+		expect(api.fetchMissingPromotionProjects).toHaveBeenCalledTimes(2);
+	});
+
+	it('removes the environment, then its provider, then refreshes the cached environments', async () => {
+		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);
+		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
+		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
+		const removal = Promise.withResolvers<void>();
+		api.deletePromotionEnvironment.mockReturnValueOnce(removal.promise);
 		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 		const cachedEnvironments = useInstancePromotionConnection();
 		await cachedEnvironments.load();
 		renderView();
 
 		const card = await screen.findByTestId('promotion-environment-card-apply');
+		const addProjects = await within(card).findByRole('button', { name: 'Add 1 missing project' });
+		expect(addProjects).toBeEnabled();
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		await userEvent.click(
 			within(within(card).getByTestId('promotion-environment-menu')).getByRole('button'),
 		);
 		await userEvent.click(await screen.findByTestId('action-remove'));
+		await waitFor(() => expect(addProjects).toBeDisabled());
+		removal.resolve();
 
 		expect(await screen.findByTestId('promotion-environment-add-apply')).toBeInTheDocument();
+		// A plain Git environment has no promotion reviews to close.
+		expect(mockConfirm).toHaveBeenCalledWith(
+			expect.not.stringContaining('promotion reviews'),
+			expect.anything(),
+			expect.anything(),
+		);
 		expect(api.deletePromotionEnvironment).toHaveBeenCalledWith(
 			expect.anything(),
 			'environment-apply',
@@ -104,8 +184,74 @@ describe('PromotionsSettingsView', () => {
 		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
 	});
 
+	it.each([
+		{
+			direction: 'promote' as const,
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+			message: 'open promotion reviews close in n8n',
+		},
+		{
+			direction: 'apply' as const,
+			settings: applyEnvironment.settings,
+			message: 'If no other environment uses the same provider',
+		},
+	])(
+		'only mentions promotion reviews when it removes a Promote environment on a Git host: $direction',
+		async ({ direction, settings, message }) => {
+			const gitlabEnvironment = {
+				...applyEnvironment,
+				id: `environment-${direction}`,
+				direction,
+				settings,
+				provider: { ...applyEnvironment.provider, type: 'gitlab', authType: 'token' },
+			} as PromotionEnvironment;
+			api.fetchPromotionEnvironments.mockResolvedValue([gitlabEnvironment]);
+			api.fetchPromotionEnvironment.mockResolvedValue(gitlabEnvironment);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+			renderView();
+
+			const card = await screen.findByTestId(`promotion-environment-card-${direction}`);
+			await userEvent.click(
+				within(within(card).getByTestId('promotion-environment-menu')).getByRole('button'),
+			);
+			await userEvent.click(await screen.findByTestId('action-remove'));
+
+			await waitFor(() => expect(mockConfirm).toHaveBeenCalled());
+			const [shown] = mockConfirm.mock.calls[0];
+			expect(shown).toContain(message);
+			if (direction === 'apply') expect(shown).not.toContain('promotion reviews');
+			expect(api.deletePromotionEnvironment).not.toHaveBeenCalled();
+		},
+	);
+
+	it('switches an instance without a v1 repository back to Environments v1 after confirmation', async () => {
+		api.fetchPromotionEnvironments.mockResolvedValue([]);
+		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+		useRBACStore().setGlobalScopes(['sourceControl:manage']);
+		const sourceControlStore = useSourceControlStore();
+		vi.mocked(getPreferences).mockResolvedValue({
+			...sourceControlStore.preferences,
+			connected: false,
+		});
+		vi.mocked(updatePreferences).mockResolvedValue({
+			...sourceControlStore.preferences,
+			connected: false,
+			environmentsVersion: 'v1',
+		});
+		renderView();
+
+		await userEvent.click(await screen.findByTestId('promotions-switch-to-v1'));
+
+		expect(mockConfirm).toHaveBeenCalledWith(expect.anything(), 'Switch back?', expect.anything());
+		await waitFor(() =>
+			expect(updatePreferences).toHaveBeenCalledWith(expect.anything(), {
+				environmentsVersion: 'v1',
+			}),
+		);
+	});
+
 	it('keeps each card busy until its own retry finishes', async () => {
-		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['gitConnection:clone'] });
+		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
 		const notConnected = { hasCheckout: false, matchesEnvironment: false };
 		const promoteEnvironment = {
 			...applyEnvironment,

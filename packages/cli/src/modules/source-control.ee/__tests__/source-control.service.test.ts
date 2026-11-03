@@ -23,6 +23,7 @@ import {
 } from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
+import { mockServiceAccount } from '@test/mock-objects';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {
@@ -1545,6 +1546,37 @@ describe('SourceControlService', () => {
 			expect(gitService.fetch).toHaveBeenCalledTimes(2);
 			expect(result).toEqual({ branches: ['main'], currentBranch: 'main' });
 		});
+
+		it('marks the instance as v1 on the first connect, also without a matching branch', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			gitService.getBranches.mockResolvedValue({ branches: ['develop'], currentBranch: '' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: '',
+				connected: true,
+				environmentsVersion: 'v1',
+			});
+		});
+
+		it('keeps the version when a connected repository initializes again', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(true);
+			gitService.getBranches.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: 'main',
+				connected: true,
+			});
+		});
 	});
 
 	describe('sanityCheck', () => {
@@ -1807,6 +1839,27 @@ describe('SourceControlService', () => {
 			await sourceControlService.pushWorkfolder(userWithoutProfile, pushOptions);
 
 			// ASSERT: an empty profile must not produce an invalid git identity for the commit.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith(
+				SOURCE_CONTROL_DEFAULT_NAME,
+				SOURCE_CONTROL_DEFAULT_EMAIL,
+			);
+		});
+
+		it('uses default author details when a service account pushes', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+
+			const serviceAccount = mockServiceAccount({ role: GLOBAL_ADMIN_ROLE });
+
+			// ACT
+			await sourceControlService.pushWorkfolder(serviceAccount, pushOptions);
+
+			// ASSERT
 			expect(gitService.setGitUserDetails).toHaveBeenCalledWith(
 				SOURCE_CONTROL_DEFAULT_NAME,
 				SOURCE_CONTROL_DEFAULT_EMAIL,

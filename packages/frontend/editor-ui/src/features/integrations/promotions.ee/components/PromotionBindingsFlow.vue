@@ -23,7 +23,7 @@ const emit = defineEmits<{
 	'project-created': [project: CreatedPromotionProject];
 }>();
 const i18n = useI18n();
-const { createBinding, createdProjects, updatePreflight } = usePromotionBindingCreation(
+const { createBinding, createdProjects, updateCheck } = usePromotionBindingCreation(
 	props.blockedResult,
 	(project) => emit('project-created', project),
 );
@@ -35,7 +35,7 @@ const { createBinding, createdProjects, updatePreflight } = usePromotionBindingC
 		:blocked-result="blockedResult"
 		:create-binding="createBinding"
 		@update:open="emit('update:open', $event)"
-		@preflight-updated="updatePreflight"
+		@check-updated="updateCheck"
 		@applied="emit('applied', $event)"
 		@source-changed="emit('source-changed', $event)"
 		@close-requested="emit('close-requested', $event)"
