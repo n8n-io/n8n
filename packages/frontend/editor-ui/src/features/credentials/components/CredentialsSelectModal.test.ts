@@ -18,6 +18,7 @@ import { useCredentialsStore } from '../credentials.store';
 import CredentialsSelectModal from './CredentialsSelectModal.vue';
 
 const selectBlur = vi.hoisted(() => vi.fn());
+const selectFocus = vi.hoisted(() => vi.fn());
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -53,7 +54,7 @@ vi.mock('@n8n/design-system', async () => {
 			props: { modelValue: { type: String, default: '' } },
 			emits: ['update:modelValue', 'visible-change'],
 			setup(_, { expose }) {
-				expose({ blur: selectBlur, focus: vi.fn() });
+				expose({ blur: selectBlur, focus: selectFocus });
 			},
 			template: '<div><slot /></div>',
 		}),
@@ -151,6 +152,7 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ createSpy: vi.fn, stubActions: false }));
 		selectBlur.mockClear();
+		selectFocus.mockClear();
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		mockRestrictedCredentialTypes({});
@@ -167,6 +169,22 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 		policies.isLoading = false;
 		await flushPromises();
 		expect(names(wrapper)).toContain('slackApi');
+	});
+
+	it('focuses the search once the project policy loads', async () => {
+		vi.useFakeTimers();
+		const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+		policies.isLoading = true;
+
+		await mountLoaded();
+		vi.runAllTimers();
+		expect(selectFocus).not.toHaveBeenCalled();
+
+		policies.isLoading = false;
+		await flushPromises();
+		vi.runAllTimers();
+		expect(selectFocus).toHaveBeenCalled();
+		vi.useRealTimers();
 	});
 
 	it('does not change the project the policy store holds', async () => {

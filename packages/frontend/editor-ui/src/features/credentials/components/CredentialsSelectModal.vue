@@ -4,7 +4,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '../credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
@@ -67,6 +67,11 @@ onMounted(async () => {
 	} catch (e) {}
 
 	loading.value = false;
+});
+
+// The select renders only once the list loads, so it takes the focus then.
+watch(isListLoading, (isLoading) => {
+	if (isLoading) return;
 
 	setTimeout(() => {
 		if (selectRef.value) {
