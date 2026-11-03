@@ -74,6 +74,16 @@ describe('AgentChannelWhatsAppMetaCallout', () => {
 		},
 	);
 
+	it('hides the set up again button without credential create permission', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { status: { state: 'numberDeleted', displayPhoneNumber: '+1 555' }, canSetup: false },
+		});
+
+		expect(getByTestId('whatsapp-meta-callout')).toBeInTheDocument();
+		expect(queryByTestId('whatsapp-meta-callout-setup')).toBeNull();
+		expect(queryByTestId('whatsapp-meta-callout-action')).toBeNull();
+	});
+
 	it('links a declined name to WhatsApp Manager', () => {
 		const { getByTestId } = renderComponent({
 			props: { status: { state: 'nameDeclined', displayName: 'Acme Support' } },
