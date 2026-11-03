@@ -4241,6 +4241,23 @@ describe('AgentChatPanel', () => {
 			);
 		});
 
+		it('shows a toast for a file that the composer rejects by type', async () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				acceptedMimeTypes: 'text/csv,.csv',
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+			const zip = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+
+			chatInput.vm.$emit('files-rejected', [zip]);
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledExactlyOnceWith({
+				type: 'error',
+				title: 'archive.zip is not a supported file type',
+			});
+		});
+
 		it('uses the accepted types of the host instead of the capabilities', () => {
 			const wrapper = mountPanel({
 				agentConfig: { ...defaultAgentConfig, model: '' },

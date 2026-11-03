@@ -817,6 +817,18 @@ function handleFilesSelected(files: File[]) {
 	}
 }
 
+/** The composer drops a file whose type is not accepted. Tell the user, the same as for a picked file. */
+function handleFilesRejected(files: File[]) {
+	for (const file of files) {
+		toast.showMessage({
+			type: 'error',
+			title: locale.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: file.name },
+			}),
+		});
+	}
+}
+
 function handleFileRemove(file: File) {
 	attachedFiles.value = attachedFiles.value.filter((f) => f !== file);
 }
@@ -1711,6 +1723,7 @@ onBeforeUnmount(() => {
 					@submit="onSubmit"
 					@stop="stopGenerating"
 					@files-selected="handleFilesSelected"
+					@files-rejected="handleFilesRejected"
 					@keydown="onChatInputKeydown"
 				>
 					<template #above>
