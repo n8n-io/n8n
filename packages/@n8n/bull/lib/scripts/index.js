@@ -1,4 +1,6 @@
 'use strict';
+// n8n: these files are the source of the Lua scripts. There is no Lua build step.
+// Edit them here. Each file has its includes already pasted in.
 module.exports = {
   ["addJob-6"]: require('./addJob-6'),
   ["addLog-2"]: require('./addLog-2'),

@@ -1117,7 +1117,6 @@ patchedDependencies:
   '@types/express-serve-static-core@5.0.6': d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb
   '@types/ws@8.18.1': 682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb
   assert@2.1.0: a73271b303dca8c10a0c9caf77d2083b52032b6a887227563bee3ce3dbf5e9d2
-  bull@4.16.4: 5a5a4973a2d8c50994378071d767fdee0c153dc858a0d8443ec0931a8ac6dd7d
   element-plus@2.4.3: 95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff
   ics: 163587ad2fa9bc787ed09cd5e958eace08b4aa8aaca651869e9434ba674e158d
   imapflow@1.7.1: 9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025
@@ -2149,6 +2148,52 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/@n8n/bull:
+    dependencies:
+      cron-parser:
+        specifier: ^4.2.1
+        version: 4.9.0
+      get-port:
+        specifier: ^5.1.1
+        version: 5.1.1
+      ioredis:
+        specifier: 5.3.2
+        version: 5.3.2(supports-color@8.1.1)
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
+      msgpackr:
+        specifier: ^1.11.2
+        version: 1.11.2
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
+    devDependencies:
+      chai:
+        specifier: ^4.3.7
+        version: 4.5.0
+      delay:
+        specifier: ^4.3.0
+        version: 4.4.1
+      expect.js:
+        specifier: ^0.3.1
+        version: 0.3.1
+      mocha:
+        specifier: ^10.2.0
+        version: 10.8.2
+      moment:
+        specifier: ^2.24.0
+        version: 2.31.0
+      p-reflect:
+        specifier: ^1.0.0
+        version: 1.0.0
+      sinon:
+        specifier: ^15.0.1
+        version: 15.2.0
 
   packages/@n8n/chat-hub:
     dependencies:
@@ -4847,6 +4892,9 @@ importers:
       '@n8n/blob-storage':
         specifier: workspace:*
         version: link:../@n8n/blob-storage
+      '@n8n/bull':
+        specifier: workspace:*
+        version: link:../@n8n/bull
       '@n8n/chat-hub':
         specifier: workspace:*
         version: link:../@n8n/chat-hub
@@ -4979,9 +5027,6 @@ importers:
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
-      bull:
-        specifier: 4.16.4
-        version: 4.16.4(patch_hash=5a5a4973a2d8c50994378071d767fdee0c153dc858a0d8443ec0931a8ac6dd7d)(supports-color@8.1.1)
       change-case:
         specifier: 'catalog:'
         version: 5.4.4
@@ -17235,10 +17280,6 @@ packages:
     resolution: {integrity: sha512-bkXY9WsVpY7CvMhKSR6pZilZu9Ln5WDrKVBUXf2S443etkmEO4V58heTecXcUIsNsi4Rx8JUO4NfX1IcQl4deg==}
     engines: {node: '>=18.20'}
 
-  bull@4.16.4:
-    resolution: {integrity: sha512-CF+nGsJyfsCC9MJL8hFxqXzbwq+jGBXhaz1j15G+5N/XtKIPFUUy5O1mfWWKbKunfuH/x+UV4NYRQDHSkjCOgA==}
-    engines: {node: '>=12'}
-
   bull@4.16.5:
     resolution: {integrity: sha512-lDsx2BzkKe7gkCYiT5Acj02DpTwDznl/VNN7Psn7M3USPG7Vs/BaClZJJTAG+ufAR9++N1/NiUTdaFBWDIl5TQ==}
     engines: {node: '>=12'}
@@ -18116,6 +18157,10 @@ packages:
     resolution: {integrity: sha512-TllpMR/t0M5sqCXfj85i4XaAzxmS5tVA16dqvdkMwGmzI+dXLXnw3J+3Vdv7VKw+ThlTMboK6i9rnZ6Nntj5CQ==}
     engines: {node: '>= 14'}
 
+  delay@4.4.1:
+    resolution: {integrity: sha512-aL3AhqtfhOlT/3ai6sWXeqwnw63ATNpnUiN4HL7x9q+My5QtHlO3OIkasmug9LKzpheLdmUKGRKnYXYAS7FQkQ==}
+    engines: {node: '>=6'}
+
   delayed-stream@1.0.0:
     resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
     engines: {node: '>=0.4.0'}
@@ -18870,6 +18915,9 @@ packages:
   expect-type@1.4.0:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
+
+  expect.js@0.3.1:
+    resolution: {integrity: sha512-okDF/FAPEul1ZFLae4hrgpIqAeapoo5TRdcg/lD0iN9S3GWrBFIJwNezGH1DMtIz+RxU4RrFmMq7WUUvDg3J6A==}
 
   express-handlebars@8.0.1:
     resolution: {integrity: sha512-mdas0PTbgQnwSyAjcYM7OMaftM8nJ3Kqz6yAyK4iCFvMOGGvh6pv42IHwcE5PBpS6ffYeZRSsgAdYUMG4CSjhQ==}
@@ -22056,6 +22104,10 @@ packages:
   p-queue@9.1.0:
     resolution: {integrity: sha512-O/ZPaXuQV29uSLbxWBGGZO1mCQXV2BLIwUr59JUU9SoH76mnYvtms7aafH/isNSNGwuEfP6W/4xD0/TJXxrizw==}
     engines: {node: '>=20'}
+
+  p-reflect@1.0.0:
+    resolution: {integrity: sha512-rlngKS+EX3nvI7xIzA0xKNVEAguWdIqAZVbn02z1m73ehXBdX66aTdD0bCvIu0cDwbU3TK9w3RYrppKpO3EnKQ==}
+    engines: {node: '>=4'}
 
   p-retry@4.6.2:
     resolution: {integrity: sha512-312Id396EbJdvRONlngUx0NydfrIQ5lsYu0znKVUzVvArzEIt08V1qhtyESbGVd1FGX7UKtiFp5uwKZdM8wIuQ==}
@@ -34924,18 +34976,6 @@ snapshots:
 
   builtin-modules@5.0.0: {}
 
-  bull@4.16.4(patch_hash=5a5a4973a2d8c50994378071d767fdee0c153dc858a0d8443ec0931a8ac6dd7d)(supports-color@8.1.1):
-    dependencies:
-      cron-parser: 4.9.0
-      get-port: 5.1.1
-      ioredis: 5.3.2(supports-color@8.1.1)
-      lodash: 4.18.1(patch_hash=0384abb0bf57b0811e09219dbce0b926741d818285ee77526ad4cb75a60b87a1)
-      msgpackr: 1.11.2
-      semver: 7.7.3
-      uuid: 13.0.1
-    transitivePeerDependencies:
-      - supports-color
-
   bull@4.16.5(supports-color@8.1.1):
     dependencies:
       cron-parser: 4.9.0
@@ -35876,6 +35916,8 @@ snapshots:
       ast-types: 0.16.1
       escodegen: 2.1.0
       esprima: 4.0.1
+
+  delay@4.4.1: {}
 
   delayed-stream@1.0.0: {}
 
@@ -36937,6 +36979,8 @@ snapshots:
       homedir-polyfill: 1.0.3
 
   expect-type@1.4.0: {}
+
+  expect.js@0.3.1: {}
 
   express-handlebars@8.0.1:
     dependencies:
@@ -40879,6 +40923,8 @@ snapshots:
     dependencies:
       eventemitter3: 5.0.1
       p-timeout: 7.0.1
+
+  p-reflect@1.0.0: {}
 
   p-retry@4.6.2:
     dependencies:

@@ -1,0 +1,45 @@
+{
+  "name": "@n8n/bull",
+  "version": "4.16.4",
+  "description": "n8n fork of Bull, the Redis-based job queue",
+  "license": "MIT",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OptimalBits/bull.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OptimalBits/bull/issues"
+  },
+  "scripts": {
+    "test": "NODE_ENV=test mocha 'test/test_*' --recursive --exit",
+    "test:unit": "echo \"No unit tests for @n8n/bull (vendored)\" && exit 0"
+  },
+  "dependencies": {
+    "cron-parser": "^4.2.1",
+    "get-port": "^5.1.1",
+    "ioredis": "5.3.2",
+    "lodash": "catalog:",
+    "msgpackr": "^1.11.2",
+    "semver": "catalog:",
+    "uuid": "catalog:"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "delay": "^4.3.0",
+    "expect.js": "^0.3.1",
+    "mocha": "^10.2.0",
+    "moment": "^2.24.0",
+    "p-reflect": "^1.0.0",
+    "sinon": "^15.0.1"
+  }
+}
