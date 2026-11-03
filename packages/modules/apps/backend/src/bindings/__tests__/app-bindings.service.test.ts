@@ -261,6 +261,16 @@ describe('AppBindingsService', () => {
 			expect(changes.startRestore).not.toHaveBeenCalled();
 		});
 
+		it('rejects restoring the current draft', async () => {
+			const { service, versions, changes } = setupRestore();
+
+			await expect(service.restoreVersion(user, 'p1', APP_ID, DRAFT_ID, DRAFT_ID)).rejects.toThrow(
+				ConflictError,
+			);
+			expect(versions.findVersionById).not.toHaveBeenCalled();
+			expect(changes.startRestore).not.toHaveBeenCalled();
+		});
+
 		it('rejects a version id that is not a UUID before it reads the database', async () => {
 			const { service, versions, changes } = setupRestore();
 

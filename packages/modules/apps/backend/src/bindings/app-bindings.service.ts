@@ -94,7 +94,10 @@ export class AppBindingsService {
 		versionId: string,
 		baseVersionId: string | null,
 	): Promise<AppVersion> {
-		await this.requireApp(projectId, appId);
+		const app = await this.requireApp(projectId, appId);
+		if (versionId === app.draftVersionId) {
+			throw new ConflictError('The current app draft cannot be restored.');
+		}
 		const source = appVersionSchema.shape.id.safeParse(versionId).success
 			? await this.versions.findVersionById(versionId)
 			: null;
