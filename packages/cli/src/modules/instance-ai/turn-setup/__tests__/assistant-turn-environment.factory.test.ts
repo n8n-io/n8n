@@ -201,7 +201,7 @@ describe('AssistantTurnEnvironmentFactory', () => {
 		);
 
 		it.each(['n8n-sandbox', 'daytona'])(
-			'gives the prompt the same workspace roots for the %s provider',
+			'gives the prompt the same workspace root for the %s provider',
 			async (provider) => {
 				const { factory, fields } = createSetupFactory();
 				fields.settingsService.getSandboxStatus.mockReturnValue({
@@ -217,7 +217,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				expect(context.workspaceRoot).toBe('/home/user/workspace');
 				expect(context.fallbackWorkspaceRoot).toBe('/home/daytona/workspace');
 				expect(orchestrationContext.workspaceRoot).toBe('/home/user/workspace');
-				expect(orchestrationContext.fallbackWorkspaceRoot).toBe('/home/daytona/workspace');
 			},
 		);
 

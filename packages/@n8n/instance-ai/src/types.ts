@@ -1857,7 +1857,10 @@ export interface InstanceAiContext {
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */
 	workspaceRoot?: string;
-	/** Second accepted workspace root, for sandboxes where `workspaceRoot` does not exist. */
+	/**
+	 * Second root that the tools accept in absolute paths. Older Daytona sandboxes keep their files
+	 * there and link `workspaceRoot` to it, so tool output can name either root.
+	 */
 	fallbackWorkspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
@@ -2235,8 +2238,6 @@ export interface OrchestrationContext {
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
-	/** Workspace root to use when `workspaceRoot` does not exist in the sandbox. */
-	fallbackWorkspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** The current user message being processed — needed because memory history only

@@ -98,7 +98,28 @@ describe('getWorkspaceRoot', () => {
 		);
 	});
 
-	it('returns the Daytona root for a Daytona sandbox from an older snapshot', async () => {
+	it('links the portable root to the Daytona root with sudo', async () => {
+		const executeCommand = vi.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: `${PORTABLE_WORKSPACE_ROOT}\n`,
+			stderr: '',
+		});
+		const workspace = {
+			sandbox: {
+				provider: 'daytona',
+				executeCommand,
+			},
+		} as SandboxWorkspace;
+
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe(PORTABLE_WORKSPACE_ROOT);
+
+		const command = executeCommand.mock.calls[0][0] as string;
+		expect(command).toContain('sudo -n');
+		expect(command).toContain("$SUDO mkdir -p '/home/user'");
+		expect(command).toContain("ln -s '/home/daytona/workspace' '/home/user/workspace'");
+	});
+
+	it('returns the Daytona root when the portable root cannot be made', async () => {
 		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
 			stdout: `${DAYTONA_WORKSPACE_ROOT}\n`,

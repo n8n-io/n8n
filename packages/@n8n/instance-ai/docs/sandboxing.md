@@ -285,8 +285,12 @@ workspace on top of it. These Daytona sandboxes still use
 - Sandboxes from a snapshot built before this change, including a pinned
   `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT`.
 
-The tools detect the root of each sandbox. The prompt names the Daytona path as
-the fallback, and the workflow tools accept absolute paths under both roots.
+The agent does not know about the Daytona path. When n8n first resolves the
+root of one of these sandboxes, it uses `sudo` to create `/home/user`. It then
+links `/home/user/workspace` to `/home/daytona/workspace`. The prompt and shell
+commands can then use `/home/user/workspace` on every sandbox. Tool output can
+show the real path, so the workflow tools accept absolute paths under both
+roots. If n8n cannot create the link, the tools use `/home/daytona/workspace`.
 
 ## Configuration
 

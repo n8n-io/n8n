@@ -459,7 +459,8 @@ export class AssistantTurnEnvironmentFactory {
 
 			if (sandboxConfig.enabled) {
 				// The same text for every provider keeps the prompt independent of the provider.
-				// Sandboxes from older Daytona snapshots still use the Daytona path.
+				// Older Daytona sandboxes link this root to the Daytona root, so the tools also
+				// accept paths under the Daytona root.
 				workspaceRoot = PORTABLE_WORKSPACE_ROOT;
 				fallbackWorkspaceRoot = DAYTONA_WORKSPACE_ROOT;
 
@@ -573,7 +574,6 @@ export class AssistantTurnEnvironmentFactory {
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
 			workspaceRoot,
-			fallbackWorkspaceRoot,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
