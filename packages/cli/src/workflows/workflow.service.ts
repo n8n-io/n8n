@@ -1108,6 +1108,54 @@ export class WorkflowService {
 		return !signal?.aborted;
 	}
 
+	private async _restoreActiveWorkflowRegistrations(workflowId: string): Promise<void> {
+		const lockService = Container.get(LockService);
+		try {
+			let restored = false;
+			while (!restored) {
+				restored = await lockService.withLease(
+					LockNamespace.KNOWN_LOCKS,
+					`workflow-publication:${workflowId}`,
+					async (signal) => {
+						try {
+							signal.throwIfAborted();
+							const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+							signal.throwIfAborted();
+							if (!workflow) return true;
+
+							// Rebuild from the stored version after the previous holder finishes removal.
+							await this.activeWorkflowManager.remove(workflowId);
+							signal.throwIfAborted();
+							if (workflow.activeVersionId !== null) {
+								try {
+									await this.activeWorkflowManager.add(workflowId, 'update');
+								} catch (error) {
+									const rolledBack = await this._rollbackFailedActivation(
+										workflowId,
+										workflow,
+										workflow.activeVersionId,
+										signal,
+									);
+									if (!rolledBack) return false;
+									throw error;
+								}
+							}
+							return !signal.aborted;
+						} catch (error) {
+							if (signal.aborted) return false;
+							throw error;
+						}
+					},
+				);
+			}
+		} catch (error) {
+			this.logger.error('Failed to restore workflow registrations after removal', {
+				workflowId,
+				error,
+			});
+		}
+	}
+
 	private async _addToActiveWorkflowManager(
 		user: User,
 		workflowId: string,
@@ -1415,6 +1463,7 @@ export class WorkflowService {
 			// Keep the settings guard, trigger changes, and rollback under the same lease.
 			const lockService = Container.get(LockService);
 			let workflowNeedingRollback: WorkflowEntity | undefined;
+			let registrationsNeedRestore = false;
 			const publication = lockService.withLease(
 				LockNamespace.KNOWN_LOCKS,
 				`workflow-publication:${workflowId}`,
@@ -1433,6 +1482,7 @@ export class WorkflowService {
 					}
 					if (previousActiveVersionId) {
 						signal.throwIfAborted();
+						registrationsNeedRestore = true;
 						await this.activeWorkflowManager.remove(workflowId);
 						signal.throwIfAborted();
 
@@ -1473,6 +1523,7 @@ export class WorkflowService {
 						throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 					}
 
+					registrationsNeedRestore = false;
 					await this._addToActiveWorkflowManager(
 						user,
 						workflowId,
@@ -1511,6 +1562,8 @@ export class WorkflowService {
 							error: repairError,
 						});
 					}
+				} else if (registrationsNeedRestore) {
+					await this._restoreActiveWorkflowRegistrations(workflowId);
 				}
 				throw error;
 			});
@@ -1809,29 +1862,39 @@ export class WorkflowService {
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			await this._unpublishViaOutbox(userId, workflowId, deactivatedVersionId, workflow.updatedAt);
 		} else {
-			await Container.get(LockService).withLease(
-				LockNamespace.KNOWN_LOCKS,
-				`workflow-publication:${workflowId}`,
-				async (signal) => {
-					signal.throwIfAborted();
-					await this.activeWorkflowManager.remove(workflowId);
+			let registrationsNeedRestore = false;
+			await Container.get(LockService)
+				.withLease(
+					LockNamespace.KNOWN_LOCKS,
+					`workflow-publication:${workflowId}`,
+					async (signal) => {
+						signal.throwIfAborted();
+						registrationsNeedRestore = true;
+						await this.activeWorkflowManager.remove(workflowId);
 
-					signal.throwIfAborted();
-					await this.workflowRepository.update(workflowId, {
-						active: false,
-						activeVersionId: null,
-						// workflow content did not change, so we keep updatedAt as is
-						updatedAt: workflow.updatedAt,
-					});
+						signal.throwIfAborted();
+						await this.workflowRepository.update(workflowId, {
+							active: false,
+							activeVersionId: null,
+							// workflow content did not change, so we keep updatedAt as is
+							updatedAt: workflow.updatedAt,
+						});
+						registrationsNeedRestore = false;
 
-					await this.workflowPublishHistoryRepository.addRecord({
-						workflowId,
-						versionId: deactivatedVersionId,
-						event: 'deactivated',
-						userId,
-					});
-				},
-			);
+						await this.workflowPublishHistoryRepository.addRecord({
+							workflowId,
+							versionId: deactivatedVersionId,
+							event: 'deactivated',
+							userId,
+						});
+					},
+				)
+				.catch(async (error: unknown) => {
+					if (registrationsNeedRestore) {
+						await this._restoreActiveWorkflowRegistrations(workflowId);
+					}
+					throw error;
+				});
 		}
 	}
 
