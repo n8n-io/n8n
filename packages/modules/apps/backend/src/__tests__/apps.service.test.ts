@@ -27,6 +27,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 		mock<GlobalConfig>({
 			host,
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName: host.split('.')[0] }),
 		}),
 		mock<UrlService>({
 			getInstanceBaseUrl: () => 'https://n8n.example.net',
@@ -99,6 +100,30 @@ describe('AppsService', () => {
 		expect(response.visibility).toBe('project');
 	});
 
+	it('creates an app with a caller-provided id', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+		const id = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
+		appRepository.projectExists.mockResolvedValue(true);
+		appRepository.createApp.mockResolvedValue(
+			mock<App>({ id, namespace: 'app', createdAt: new Date(), updatedAt: new Date() }),
+		);
+
+		await service.createApp('project-1', dto, { id });
+
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', { ...dto, id });
+	});
+
+	it('rejects a caller-provided id that is not a UUID', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+
+		await expect(service.createApp('project-1', dto, { id: 'not-a-uuid' })).rejects.toThrow(
+			BadRequestError,
+		);
+		expect(appRepository.createApp).not.toHaveBeenCalled();
+	});
+
 	it('returns not found when creating an app in a missing project', async () => {
 		const { service, appRepository } = createService();
 		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
@@ -129,7 +154,7 @@ describe('AppsService', () => {
 		const dto = UpdateAppDto.parse({
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 		const app = mock<App>({
 			id: appId,
@@ -152,7 +177,7 @@ describe('AppsService', () => {
 			projectId: 'project-1',
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',

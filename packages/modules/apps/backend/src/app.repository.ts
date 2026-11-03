@@ -84,15 +84,22 @@ export class AppRepository extends BaseRepository<App> {
 		return await this.managerFor(ctx).existsBy(Project, { id: projectId });
 	}
 
-	async createApp(projectId: string, dto: CreateAppDto, ctx: OperationContext = {}): Promise<App> {
+	async createApp(
+		projectId: string,
+		dto: CreateAppDto & { id?: string },
+		ctx: OperationContext = {},
+	): Promise<App> {
 		try {
-			return await this.managerFor(ctx).save(App, {
+			const manager = this.managerFor(ctx);
+			const app = manager.create(App, {
 				...dto,
-				id: uuidv7(),
+				id: dto.id ?? uuidv7(),
 				projectId,
 				draftVersionId: null,
 				publishedVersionId: null,
 			});
+			await manager.insert(App, app);
+			return app;
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('An app already uses this namespace. Choose another namespace.');

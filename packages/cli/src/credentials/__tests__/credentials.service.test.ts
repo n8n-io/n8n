@@ -321,6 +321,10 @@ describe('CredentialsService', () => {
 			);
 
 			expect(prepared.data).toMatchObject(DCR_FIELDS);
+			// The restored client ID counts as unchanged, so the token stays.
+			expect((prepared.data as unknown as ICredentialDataDecryptedObject).oauthTokenData).toEqual(
+				oauthTokenData,
+			);
 		});
 
 		it('drops them along with the token when the caller clears it', async () => {
@@ -449,13 +453,40 @@ describe('CredentialsService', () => {
 			expect(preparedData.oauthTokenData).toBeUndefined();
 		});
 
-		it('leaves the authorization code grant alone, which reconnects through its own flow', async () => {
-			const preparedData = await prepare(
-				{ ...storedClient, grantType: 'authorizationCode', clientId: 'new-client-id' },
-				{ ...storedClient, grantType: 'authorizationCode', oauthTokenData },
-			);
+		describe('with the authorization code grant', () => {
+			const storedAuthorizationCode = { ...storedClient, grantType: 'authorizationCode' };
 
-			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+			it('drops the stored token when the client ID changes', async () => {
+				const preparedData = await prepare(
+					{ ...storedAuthorizationCode, clientId: 'new-client-id' },
+					{ ...storedAuthorizationCode, oauthTokenData },
+				);
+
+				expect(preparedData.oauthTokenData).toBeUndefined();
+			});
+
+			it('drops the stored token when the managed app replaces a custom app', async () => {
+				// Managed mode sends no client fields, so the instance overwrite supplies them.
+				const { clientId, clientSecret, ...managedData } = storedAuthorizationCode;
+				const preparedData = await prepare(managedData, {
+					...storedAuthorizationCode,
+					oauthTokenData,
+				});
+
+				expect(preparedData.oauthTokenData).toBeUndefined();
+				// The default merge does not add omitted fields back from the stored data.
+				expect(preparedData).not.toHaveProperty('clientId');
+				expect(preparedData).not.toHaveProperty('clientSecret');
+			});
+
+			it('keeps the stored token when only the client secret changes', async () => {
+				const preparedData = await prepare(
+					{ ...storedAuthorizationCode, clientSecret: 'rotated-client-secret' },
+					{ ...storedAuthorizationCode, oauthTokenData },
+				);
+
+				expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+			});
 		});
 	});
 
@@ -1534,6 +1565,7 @@ describe('CredentialsService', () => {
 				storedCredential.id,
 				ownerUser,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
@@ -2138,6 +2170,114 @@ describe('CredentialsService', () => {
 
 			expect(connectionStatusProxy.findMyConnections).not.toHaveBeenCalled();
 		});
+
+		describe('description handling', () => {
+			const storedDescription = 'Stored reporting account';
+
+			const setUpUpdate = () => {
+				const stored = Object.assign(new CredentialsEntity(), {
+					id: 'described-credential',
+					name: 'Reporting',
+					type: 'apiKey',
+					description: storedDescription,
+				});
+				storeCredential(stored);
+				const transactionManager = mock<EntityManager>();
+				transactionManager.findOneBy.mockImplementation(async () =>
+					Object.assign(new CredentialsEntity(), stored),
+				);
+				setRepositoryTransaction(transactionManager);
+				return stored;
+			};
+
+			const buildPayload = (
+				stored: CredentialsEntity,
+				extra: Partial<ICredentialsDb> = {},
+			): ICredentialsDb => ({
+				id: stored.id,
+				name: stored.name,
+				type: stored.type,
+				data: 'encrypted',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				...extra,
+			});
+
+			const hookSetsDescription = (description: string) => {
+				externalHooks.run.mockImplementation(async (_hookName, params) => {
+					(params as [ICredentialsDb])[0].description = description;
+				});
+			};
+
+			it('persists and returns the description when the flag is enabled', async () => {
+				const stored = setUpUpdate();
+				const payload = buildPayload(stored, { description: 'New description' });
+
+				const result = await service.update(stored.id, payload, ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.objectContaining({ description: 'New description' }),
+					expect.anything(),
+				);
+				expect(result?.description).toBe(storedDescription);
+				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+			});
+
+			it('keeps a hook-added description when the flag is enabled', async () => {
+				const stored = setUpUpdate();
+				hookSetsDescription('From hook');
+
+				await service.update(stored.id, buildPayload(stored), ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.objectContaining({ description: 'From hook' }),
+					expect.anything(),
+				);
+			});
+
+			it.each([false, undefined])(
+				'keeps the description out of the write and the response when the flag is %s',
+				async (enabled) => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+					const stored = setUpUpdate();
+					let hookInput: ICredentialsDb | undefined;
+					externalHooks.run.mockImplementation(async (_hookName, params) => {
+						hookInput = { ...(params as [ICredentialsDb])[0] };
+					});
+					const payload = buildPayload(stored, { description: 'New description' });
+
+					const result = await service.update(stored.id, payload, ownerActor);
+
+					expect(hookInput).not.toHaveProperty('description');
+					const [, written] = credentialsRepository.updateContent.mock.calls[0];
+					expect(written).not.toHaveProperty('description');
+					expect(result).not.toBeNull();
+					expect(result).not.toHaveProperty('description');
+					expect(stored.description).toBe(storedDescription);
+					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+				},
+			);
+
+			it.each([false, undefined])(
+				'keeps a hook-added description out of the write and the response when the flag is %s',
+				async (enabled) => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+					const stored = setUpUpdate();
+					hookSetsDescription('From hook');
+
+					const result = await service.update(stored.id, buildPayload(stored), ownerActor);
+
+					const [, written] = credentialsRepository.updateContent.mock.calls[0];
+					expect(written).not.toHaveProperty('description');
+					expect(result).not.toBeNull();
+					expect(result).not.toHaveProperty('description');
+					expect(stored.description).toBe(storedDescription);
+					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+				},
+			);
+		});
 	});
 
 	describe('updateInstanceCredential', () => {
@@ -2595,7 +2735,7 @@ describe('CredentialsService', () => {
 				payload.id,
 				ownerUser,
 				['credential:read'],
-				{ includeInstanceCredentials: true },
+				{ includeInstanceCredentials: true, excludeSeeOnlyRoles: true },
 			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(service.unredact).toHaveBeenCalledWith(payload.data, decryptedData, []);
@@ -5496,6 +5636,7 @@ describe('CredentialsService', () => {
 				'cred-id',
 				memberUser,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 

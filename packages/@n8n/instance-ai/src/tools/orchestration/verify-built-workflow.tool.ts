@@ -196,7 +196,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 		.description(
 			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
 				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
-				'Use `workflow_builder_executions(action="run")` only for ad hoc runs outside build verification. ' +
+				'Use `run_workflow` only for ad hoc runs outside build verification. ' +
 				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
 				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
 		)
@@ -209,7 +209,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const { input: resolvedInput, workflowId, workflowTaskService } = target;
 
 			// Verification executes the workflow, so it follows the same admin policy as
-			// workflow_builder_executions(action="run"). Plan approval does not lift a block.
+			// run_workflow. Plan approval does not lift a block.
 			if (target.domainContext.permissions?.runWorkflow === 'blocked') {
 				return await handleBlockedVerification({
 					input: resolvedInput,

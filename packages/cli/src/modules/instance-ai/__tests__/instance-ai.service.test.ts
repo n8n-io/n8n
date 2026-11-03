@@ -276,12 +276,11 @@ import {
 } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -5342,9 +5341,8 @@ describe('InstanceAiService — editor handoff context resources', () => {
 	it('traces the attached resources, which the raw message no longer shows', () => {
 		const source = InstanceAiService.toString();
 
-		// Assignment-form tolerant: the wiring is what matters, not whether the
-		// field is spread into the literal or set on it afterwards.
-		expect(source).toMatch(/resourceAttachments\s*[:=]\s*contextAttachments\.map/);
+		// The shared trace input records the resources; the wiring is what matters here.
+		expect(source).toMatch(/buildAssistantTurnTraceInput\)?\(\{[^}]*\bcontextAttachments\s*,/);
 	});
 });
 

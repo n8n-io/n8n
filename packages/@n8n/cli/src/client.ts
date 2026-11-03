@@ -5,6 +5,8 @@ import type {
 	ImportPackageSelectionRequestDto,
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
+import type { PromotionMissingProject } from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
+import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
 
 export interface PaginatedResponse<T> {
 	data: T[];
@@ -193,6 +195,13 @@ export type PromotionCheckoutResult = {
 	direction: PromotionDirection;
 	branchName: string;
 	hasCheckout: boolean;
+};
+
+/** Apply package projects whose IDs do not exist on the instance. */
+export type PromotionMissingProjectList = {
+	environmentId: string;
+	git: { commitSha: string; branchName: string } | null;
+	data: PromotionMissingProject[];
 };
 
 /** A new provider, with the generated public key for SSH providers. */
@@ -439,6 +448,12 @@ export class N8nClient {
 		return await this.get<{ projectIds: string[] }>(`/promotions/environments/${id}/projects`);
 	}
 
+	async listMissingPromotionProjects(id: string) {
+		return await this.get<PromotionMissingProjectList>(
+			`/promotions/environments/${id}/missing-projects`,
+		);
+	}
+
 	async addProjectToPromotionEnvironment(id: string, projectId: string) {
 		return await this.post<{ environmentId: string; projectId: string }>(
 			`/promotions/environments/${id}/projects/${projectId}`,
@@ -641,8 +656,8 @@ export class N8nClient {
 		return await this.get<Record<string, unknown>>(`/projects/${id}`);
 	}
 
-	async createProject(name: string) {
-		return await this.post<Record<string, unknown>>('/projects', { name });
+	async createProject(project: CreateProjectPublicDto) {
+		return await this.post<Record<string, unknown>>('/projects', project);
 	}
 
 	async updateProject(id: string, name: string) {

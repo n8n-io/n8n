@@ -597,6 +597,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	private readonly prewarmWorkspace = (): void => {
+		this.workspaceInstance?.prewarm();
+	};
+
 	/**
 	 * Attach a workspace to this agent. Workspace tools and instructions
 	 * are injected at build time.
@@ -1124,7 +1128,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
-			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
+			const dynamicIds = new Set(this.skillSource.dynamicCatalog?.skillIds);
+			instructions = appendSkillCatalogToInstructions(instructions, {
+				...this.skillSource.registry,
+				skills: this.skillSource.registry.skills.filter(
+					(skill) =>
+						!dynamicIds.has(skill.id) &&
+						(!skill.parents || skill.parents.some((parentId) => !dynamicIds.has(parentId))),
+				),
+			});
 		}
 		if (this.workspaceInstance) {
 			const wsInstructions = this.workspaceInstance.getInstructions();
@@ -1169,6 +1181,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			...(this.workspaceInstance?.filesystem && this.workspaceInstance.filesystem.readOnly !== true
 				? { workspaceFilesystem: this.workspaceInstance.filesystem }
 				: {}),
+			...(this.workspaceInstance ? { prewarmWorkspace: this.prewarmWorkspace } : {}),
 			toolSearch,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,

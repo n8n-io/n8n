@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { OperationContext, PublishHistoryScope, User } from '@n8n/db';
 import {
+	accountFullName,
 	WorkflowHistory,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
@@ -13,7 +14,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -248,7 +249,7 @@ export class WorkflowHistoryService {
 			);
 		}
 
-		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+		const name = typeof user === 'string' ? user : accountFullName(user);
 		const authors =
 			source === 'n8n-mcp'
 				? `${name} (via MCP)`

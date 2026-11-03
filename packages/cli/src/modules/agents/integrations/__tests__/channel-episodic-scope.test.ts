@@ -44,6 +44,7 @@ describe('channel episodic memory policy', () => {
 					instanceSettings,
 					mock<ChannelRateLimitGuard>(),
 					mock<WhatsAppWebhookVerificationStore>(),
+					outboundHttp,
 					mock<WhatsAppOptionPagesStore>(),
 					mock<WhatsAppSetupTelemetryService>(),
 				),

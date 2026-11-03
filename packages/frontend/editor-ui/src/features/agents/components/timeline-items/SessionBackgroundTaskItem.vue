@@ -4,6 +4,7 @@ import { N8nAiActivityStepButton, N8nIcon, N8nSpinner, N8nText } from '@n8n/desi
 import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
 import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ApprovalResume } from '@/features/ai/shared/agentsChat/types';
+import AgentChatMessageAttachments from '../AgentChatMessageAttachments.vue';
 import ApprovalCard from '../interactive/ApprovalCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { formatTimelineTime } from '../../utils/timeline-time';
@@ -122,6 +123,15 @@ function submitApproval(resumeData: ApprovalResume) {
 				<N8nText step="xs" color="text-light" bold :class="$style.time">{{ time }}</N8nText>
 			</div>
 		</div>
+		<AgentChatMessageAttachments
+			v-if="task.files?.length && projectId && agentId"
+			:class="$style.files"
+			:attachments="task.files"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:thread-id="threadId"
+			data-test-id="session-background-task-files"
+		/>
 	</div>
 </template>
 
@@ -182,6 +192,10 @@ function submitApproval(resumeData: ApprovalResume) {
 
 .stateLeaveTo {
 	transform: translateY(calc(-1 * var(--spacing--2xs)));
+}
+
+.files {
+	margin: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
 }
 
 .failed {

@@ -9,6 +9,7 @@ import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
@@ -34,6 +35,12 @@ const api = vi.hoisted(() => ({
 vi.mock('../promotionsSettings.api', () => api);
 
 const mockShowMessage = vi.fn();
+const mockConfirm = vi.fn();
+
+vi.mock('@n8n/design-system', async () => ({
+	...(await vi.importActual<object>('@n8n/design-system')),
+	useMessage: () => ({ confirm: mockConfirm }),
+}));
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: mockShowMessage }),
@@ -232,7 +239,82 @@ describe('PromotionEnvironmentView', () => {
 				expect.objectContaining({ settings: { schemaVersion: 1, branchName: 'release' } }),
 			),
 		);
+		expect(mockConfirm).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		{
+			direction: 'promote',
+			asks: true,
+			overrides: {
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+			} satisfies Partial<PromotionEnvironment>,
+		},
+		{
+			direction: 'apply',
+			asks: false,
+			overrides: { direction: 'apply' } satisfies Partial<PromotionEnvironment>,
+		},
+	])(
+		'asks before it saves another GitLab repository only for a Promote environment: $direction',
+		async ({ asks, overrides }) => {
+			const gitlabProvider = { ...gitProvider, id: 'provider-gitlab', type: 'gitlab' as const };
+			const other: PromotionRepository = {
+				...repository,
+				id: '43',
+				fullPath: 'team/other',
+				remoteUrl: 'https://gitlab.example.com/team/other.git',
+			};
+			api.fetchPromotionEnvironment.mockResolvedValue(
+				applyEnvironment({
+					...overrides,
+					provider: gitlabProvider,
+					remote: {
+						schemaVersion: 1,
+						remoteUrl: repository.remoteUrl,
+						repositoryPath: repository.fullPath,
+					},
+				}),
+			);
+			api.fetchPromotionRepositories.mockResolvedValue({
+				data: [repository, other],
+				nextCursor: null,
+			});
+			api.fetchPromotionBranches.mockResolvedValue({ data: [], nextCursor: null });
+			api.updatePromotionEnvironment.mockResolvedValue(applyEnvironment());
+			mockConfirm.mockResolvedValueOnce(MODAL_CANCEL).mockResolvedValueOnce(MODAL_CONFIRM);
+			await renderAt('/edit/environment-apply');
+
+			const repositorySelect = await screen.findByTestId('promotion-environment-repository-select');
+			await userEvent.click(within(repositorySelect).getByRole('combobox'));
+			await userEvent.click(await screen.findByRole('option', { name: 'team/other' }));
+			await userEvent.click(screen.getByTestId('promotion-environment-save'));
+
+			if (asks) {
+				await waitFor(() => expect(mockConfirm).toHaveBeenCalledTimes(1));
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('open promotion reviews of Development close'),
+					'Change repository?',
+					expect.objectContaining({ customClass: 'el-message-box--destructive' }),
+				);
+				expect(api.updatePromotionEnvironment).not.toHaveBeenCalled();
+
+				await userEvent.click(screen.getByTestId('promotion-environment-save'));
+			}
+
+			await waitFor(() =>
+				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
+					expect.anything(),
+					'environment-apply',
+					expect.objectContaining({
+						remote: { schemaVersion: 1, remoteUrl: other.remoteUrl },
+					}),
+				),
+			);
+			if (!asks) expect(mockConfirm).not.toHaveBeenCalled();
+		},
+	);
 
 	it('saves a changed branch and connects again', async () => {
 		allowConnect();
@@ -259,5 +341,6 @@ describe('PromotionEnvironmentView', () => {
 			'environment-apply',
 			{ name: 'Development', settings: { schemaVersion: 1, branchName: 'release' } },
 		);
+		expect(mockConfirm).not.toHaveBeenCalled();
 	});
 });
