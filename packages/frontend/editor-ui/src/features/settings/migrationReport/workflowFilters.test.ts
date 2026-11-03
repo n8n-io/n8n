@@ -21,6 +21,7 @@ const workflow = (
 	lastExecutedAt: daysAgo(1),
 	issues: [],
 	status: 'open',
+	isArchived: false,
 	...overrides,
 });
 
@@ -112,6 +113,15 @@ describe('workflowFilters', () => {
 				'migrated',
 			),
 		).toBe(false);
+	});
+
+	it('should hide archived workflows unless the filter shows them', () => {
+		const archived = workflow({ isArchived: true });
+		expect(matches(archived, {})).toBe(false);
+		expect(matches(archived, { showArchived: true })).toBe(true);
+		expect(matches(workflow(), {})).toBe(true);
+		expect(matches(workflow(), { showArchived: true })).toBe(true);
+		expect(countActiveFilters({ ...DEFAULT_WORKFLOW_FILTERS, showArchived: true })).toBe(1);
 	});
 
 	it('should count the filters that differ from the default', () => {
