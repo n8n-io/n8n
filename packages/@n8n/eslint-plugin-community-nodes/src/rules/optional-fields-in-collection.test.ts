@@ -1,4 +1,7 @@
 import { Linter } from 'eslint';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { configs } from '../plugin.js';
@@ -144,3 +147,60 @@ ${createNodeCode(`{
 		});
 	},
 );
+
+describe('exported field arrays', () => {
+	it.each([
+		{
+			name: 'reports fields imported into description.properties',
+			properties: '...contactFields',
+			expected: expectedWarnings(),
+		},
+		{
+			name: 'accepts imported fields inside a collection',
+			properties: `{
+				displayName: 'Options', name: 'options', type: 'collection', default: {},
+				options: [...contactFields],
+			}`,
+			expected: [],
+		},
+		{
+			name: 'accepts exported arrays that the node form does not use',
+			properties: '',
+			expected: [],
+		},
+	])('$name', ({ properties, expected }) => {
+		const directory = mkdtempSync(path.join(tmpdir(), 'n8n-optional-fields-'));
+		try {
+			const nodes = path.join(directory, 'nodes');
+			mkdirSync(nodes);
+			writeFileSync(path.join(directory, 'package.json'), '{}');
+			const filename = path.join(nodes, 'ContactDescription.ts');
+			const code = `export const sharedFields = [${optionalFields}];`;
+			writeFileSync(filename, code);
+			writeFileSync(
+				path.join(nodes, 'fields.ts'),
+				`import { sharedFields as fields } from './ContactDescription.js';
+				export const contactFields: INodeProperties[] = [...fields];`,
+			);
+			writeFileSync(
+				path.join(nodes, 'TestNode.node.ts'),
+				`import { contactFields } from './fields'; ${createNodeCode(properties)}`,
+			);
+
+			const messages = new Linter({ cwd: directory }).verify(
+				code,
+				[
+					{
+						...configs.recommended,
+						files: ['**/*.ts'],
+						rules: { [ruleId]: 'warn' },
+					},
+				],
+				{ filename },
+			);
+			expect(messages).toEqual(expected);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+});

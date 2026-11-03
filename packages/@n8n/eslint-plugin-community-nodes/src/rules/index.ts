@@ -34,6 +34,7 @@ import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
 import { OperationNameRepeatsResourceRule } from './operation-name-repeats-resource.js';
 import { OperationStandardActionRule } from './operation-standard-action.js';
+import { OptionalFieldsInCollectionRule } from './optional-fields-in-collection.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -98,4 +99,5 @@ export const rules = {
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
 	'operation-name-repeats-resource': OperationNameRepeatsResourceRule,
 	'operation-standard-action': OperationStandardActionRule,
+	'optional-fields-in-collection': OptionalFieldsInCollectionRule,
 } satisfies Record<string, AnyRuleModule>;
