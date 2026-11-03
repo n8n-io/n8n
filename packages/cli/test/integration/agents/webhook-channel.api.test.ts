@@ -11,10 +11,12 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 
 import { saveCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
-import { setupTestServer } from '../shared/utils';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
 beforeAll(async () => {
 	await testModules.loadModules(['agents']);
+	// The channel fills in the defaults of the credential type before it checks a caller.
+	await initCredentialsTypes();
 });
 
 const server = setupTestServer({ endpointGroups: ['ai'] });

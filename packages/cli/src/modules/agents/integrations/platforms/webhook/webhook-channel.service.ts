@@ -10,7 +10,10 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
+import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+
+import { CredentialsHelper } from '@/credentials-helper';
 
 import { AgentChatExecutionService } from '../../../agent-chat-execution.service';
 import { AgentExecutionOrchestratorService } from '../../../agent-execution-orchestrator.service';
@@ -46,6 +49,7 @@ export class WebhookChannelService {
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly chatExecution: AgentChatExecutionService,
 		private readonly credentials: AgentCredentialLookupService,
+		private readonly credentialsHelper: CredentialsHelper,
 		private readonly logger: Logger,
 	) {}
 
@@ -119,7 +123,17 @@ export class WebhookChannelService {
 				'The webhook credential is missing',
 			);
 		}
-		authenticateWebhookRequest(headers, authentication, credential);
+		authenticateWebhookRequest(
+			headers,
+			authentication,
+			this.withDefaults(credentialType, credential as INodeParameters),
+		);
+	}
+
+	/** Stored credential data leaves out the fields that keep their default, such as the JWT algorithm. */
+	private withDefaults(credentialType: string, data: INodeParameters) {
+		const properties = this.credentialsHelper.getCredentialsProperties(credentialType);
+		return NodeHelpers.getNodeParameters(properties, data, true, false, null, null) ?? data;
 	}
 
 	private async resolveConversation(agentId: string, conversationId: string | undefined) {

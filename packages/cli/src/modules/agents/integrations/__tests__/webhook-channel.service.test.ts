@@ -16,6 +16,7 @@ import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentCredentialLookupService } from '../agent-credential-lookup.service';
 import type { AgentExecutionStreamChunk } from '../../types/agent-steering';
 import { WebhookChannelService } from '../platforms/webhook/webhook-channel.service';
+import type { CredentialsHelper } from '@/credentials-helper';
 
 const webhook = (authentication: 'none' | 'headerAuth' | 'jwtAuth'): AgentIntegrationConfig => ({
 	type: 'webhook',
@@ -50,6 +51,20 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 	);
 	const chatExecution = mock<AgentChatExecutionService>();
 	const credentials = mock<AgentCredentialLookupService>();
+	const credentialsHelper = mock<CredentialsHelper>();
+	// The fields of the two credential types, with their defaults.
+	credentialsHelper.getCredentialsProperties.mockImplementation((type) =>
+		type === 'jwtAuth'
+			? [
+					{ displayName: 'Key Type', name: 'keyType', type: 'string', default: 'passphrase' },
+					{ displayName: 'Secret', name: 'secret', type: 'string', default: '' },
+					{ displayName: 'Algorithm', name: 'algorithm', type: 'string', default: 'HS256' },
+				]
+			: [
+					{ displayName: 'Name', name: 'name', type: 'string', default: '' },
+					{ displayName: 'Value', name: 'value', type: 'string', default: '' },
+				],
+	);
 	const logger = mock<Logger>();
 	const service = new WebhookChannelService(
 		agentRepository,
@@ -58,6 +73,7 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		orchestrator,
 		chatExecution,
 		credentials,
+		credentialsHelper,
 		logger,
 	);
 	const respond = async (
@@ -140,6 +156,17 @@ describe('WebhookChannelService', () => {
 				status: 200,
 			});
 			expect(credentials.decryptForProject).toHaveBeenCalledWith('project-1', 'cred-1', 'jwtAuth');
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalled();
+		});
+
+		it('verifies with the default algorithm when the credential stores only its secret', async () => {
+			const { respond, credentials, orchestrator } = makeService(jwtAgent);
+			// The editor does not save a field that keeps its default value.
+			credentials.decryptForProject.mockResolvedValue({ secret: 'secret-1' });
+
+			await expect(respond({ input: 'Hi' }, bearer('secret-1'))).resolves.toMatchObject({
+				status: 200,
+			});
 			expect(orchestrator.executeForChatPublished).toHaveBeenCalled();
 		});
 
