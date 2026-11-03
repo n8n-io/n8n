@@ -351,6 +351,35 @@ describe('Workflow', () => {
 		vi.restoreAllMocks();
 	});
 
+	describe('getConnectionsByDestination', () => {
+		it('maps multiple sources to a sparse destination input', () => {
+			const connections: IConnections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						[],
+						[{ node: 'Set', type: NodeConnectionTypes.Main, index: 2 }],
+					],
+				},
+				Switch: {
+					[NodeConnectionTypes.Main]: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 2 }]],
+				},
+			};
+
+			expect(Workflow.getConnectionsByDestination(connections)).toEqual({
+				Set: {
+					[NodeConnectionTypes.Main]: [
+						[],
+						[],
+						[
+							{ node: 'Start', type: NodeConnectionTypes.Main, index: 1 },
+							{ node: 'Switch', type: NodeConnectionTypes.Main, index: 0 },
+						],
+					],
+				},
+			});
+		});
+	});
+
 	describe('renameNodeInParameterValue', () => {
 		describe('for expressions', () => {
 			const tests = [
