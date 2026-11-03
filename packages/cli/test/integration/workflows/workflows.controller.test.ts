@@ -1106,12 +1106,12 @@ describe('default engine', () => {
 	});
 
 	afterEach(() => {
-		engineConfig.defaultType = 'v1';
+		Object.assign(engineConfig, { defaultType: 'v1', defaultTypeSetByEnv: false });
 		isActiveSpy.mockRestore();
 	});
 
 	test('POST /workflows saves a workflow without an engine on the default engine v2', async () => {
-		engineConfig.defaultType = 'v2';
+		Object.assign(engineConfig, { defaultType: 'v2', defaultTypeSetByEnv: true });
 		const payload = { ...makeWorkflow({ withPinData: false }), settings: { executionOrder: 'v1' } };
 
 		const response = await authOwnerAgent.post('/workflows').send(payload).expect(200);

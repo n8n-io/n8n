@@ -1,7 +1,7 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
+import { type EngineDefaultType, GlobalConfig } from '@n8n/config';
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -50,6 +50,7 @@ export interface WorkflowCreateBatchContext {
 	credentialResolutionCache: WorkflowHelpers.ReplaceInvalidCredentialsCache;
 	redactionFloor: RedactionFloor;
 	autoExposeNewWorkflows: boolean;
+	defaultEngine: EngineDefaultType;
 }
 
 @Service()
@@ -123,13 +124,17 @@ export class WorkflowCreationService {
 			(id) => !validatedCredentialIds.has(id),
 		);
 
-		const [redactionFloor, autoExposeNewWorkflows, accessibleCredentialIds] = await Promise.all([
-			this.readActiveRedactionFloor(),
-			this.readAutoExposeNewWorkflows(),
-			this.credentialsFinderService.findCredentialIdsWithScopeForUser(credentialIdsToCheck, user, [
-				'credential:read',
-			]),
-		]);
+		const [redactionFloor, autoExposeNewWorkflows, accessibleCredentialIds, defaultEngine] =
+			await Promise.all([
+				this.readActiveRedactionFloor(),
+				this.readAutoExposeNewWorkflows(),
+				this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+					credentialIdsToCheck,
+					user,
+					['credential:read'],
+				),
+				this.workflowEngineDefaults.resolveDefault(),
+			]);
 		const allowedCredentialIds = new Set([...validatedCredentialIds, ...accessibleCredentialIds]);
 
 		return {
@@ -139,6 +144,7 @@ export class WorkflowCreationService {
 			credentialResolutionCache: new Map(),
 			redactionFloor,
 			autoExposeNewWorkflows,
+			defaultEngine,
 		};
 	}
 
@@ -323,6 +329,8 @@ export class WorkflowCreationService {
 		);
 
 		const floor = batchContext?.redactionFloor ?? (await this.readActiveRedactionFloor());
+		const defaultEngine =
+			batchContext?.defaultEngine ?? (await this.workflowEngineDefaults.resolveDefault());
 
 		const savedWorkflow = await this.workflowRepository.runInTransaction(
 			{ policyCleared: cleared },
@@ -356,7 +364,10 @@ export class WorkflowCreationService {
 					batchContext?.autoExposeNewWorkflows,
 				);
 
-				newWorkflow.settings = this.workflowEngineDefaults.applyTo(newWorkflow.settings);
+				newWorkflow.settings = this.workflowEngineDefaults.applyTo(
+					newWorkflow.settings,
+					defaultEngine,
+				);
 
 				if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 					newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(

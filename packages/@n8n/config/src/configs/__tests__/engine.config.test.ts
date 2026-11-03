@@ -1,4 +1,7 @@
 import { Container } from '@n8n/di';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import type { MockInstance } from 'vitest';
 
 import { EngineConfig } from '../engine.config';
@@ -109,5 +112,39 @@ describe('EngineConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			expect.stringContaining('N8N_ENGINE_DEFAULT_TYPE'),
 		);
+	});
+
+	describe('defaultTypeSetByEnv', () => {
+		it('should be false when neither variable is set', () => {
+			expect(Container.get(EngineConfig).defaultTypeSetByEnv).toBe(false);
+		});
+
+		it('should be false when the file variable is empty', () => {
+			process.env.N8N_ENGINE_DEFAULT_TYPE_FILE = '';
+
+			expect(Container.get(EngineConfig).defaultTypeSetByEnv).toBe(false);
+		});
+
+		it.each(['v1', 'v2', 'v3'])('should be true when the variable is %s', (value) => {
+			process.env.N8N_ENGINE_DEFAULT_TYPE = value;
+
+			expect(Container.get(EngineConfig).defaultTypeSetByEnv).toBe(true);
+		});
+
+		it('should be true when the file variable names a file', () => {
+			const dir = mkdtempSync(join(tmpdir(), 'n8n-engine-config-'));
+			const file = join(dir, 'default-type');
+			writeFileSync(file, 'v2');
+			process.env.N8N_ENGINE_DEFAULT_TYPE_FILE = file;
+
+			try {
+				const config = Container.get(EngineConfig);
+
+				expect(config.defaultTypeSetByEnv).toBe(true);
+				expect(config.defaultType).toBe('v2');
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
+			}
+		});
 	});
 });

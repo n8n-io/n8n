@@ -1,5 +1,6 @@
 import { ModuleRegistry } from '@n8n/backend-common';
-import { EngineConfig } from '@n8n/config';
+import { WorkflowEngineDefaultProviderProxy } from '@n8n/backend-services';
+import { EngineConfig, type EngineDefaultType } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
@@ -13,18 +14,32 @@ export class WorkflowEngineDefaults {
 	constructor(
 		private readonly engineConfig: EngineConfig,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly defaultProvider: WorkflowEngineDefaultProviderProxy,
 	) {}
 
-	applyTo(settings: IWorkflowSettings): IWorkflowSettings;
-	applyTo(settings: IWorkflowSettings | undefined): IWorkflowSettings | undefined;
-	applyTo(settings: IWorkflowSettings | undefined): IWorkflowSettings | undefined {
-		if (settings?.engineType !== undefined || !this.runsNewWorkflowsOnV2()) return settings;
+	/**
+	 * Without the `engine-v2` module, new workflows run on v1. Otherwise the environment
+	 * variable wins, then the value a module stores, then v1.
+	 */
+	async resolveDefault(): Promise<EngineDefaultType> {
+		// Read at call time: modules become active after services are constructed.
+		if (!this.moduleRegistry.isActive('engine-v2')) return 'v1';
+		if (this.engineConfig.defaultTypeSetByEnv) return this.engineConfig.defaultType;
 
-		return { ...(settings ?? {}), engineType: 'v2' };
+		return (await this.defaultProvider.getDefaultEngine()) ?? 'v1';
 	}
 
-	// Read at call time: modules become active after services are constructed.
-	private runsNewWorkflowsOnV2() {
-		return this.engineConfig.defaultType === 'v2' && this.moduleRegistry.isActive('engine-v2');
+	applyTo(settings: IWorkflowSettings, defaultEngine: EngineDefaultType): IWorkflowSettings;
+	applyTo(
+		settings: IWorkflowSettings | undefined,
+		defaultEngine: EngineDefaultType,
+	): IWorkflowSettings | undefined;
+	applyTo(
+		settings: IWorkflowSettings | undefined,
+		defaultEngine: EngineDefaultType,
+	): IWorkflowSettings | undefined {
+		if (settings?.engineType !== undefined || defaultEngine !== 'v2') return settings;
+
+		return { ...(settings ?? {}), engineType: 'v2' };
 	}
 }

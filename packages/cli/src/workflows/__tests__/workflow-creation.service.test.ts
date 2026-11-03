@@ -17,7 +17,11 @@ import type { INode } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import {
+	type CredentialsFinderService,
+	type WorkflowEngineDefaultProvider,
+	WorkflowEngineDefaultProviderProxy,
+} from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
@@ -66,6 +70,7 @@ describe('WorkflowCreationService', () => {
 	let loggerMock: MockProxy<Logger>;
 	let engineConfig: EngineConfig;
 	let moduleRegistry: ModuleRegistry;
+	let engineDefaultProvider: MockProxy<WorkflowEngineDefaultProvider>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -108,9 +113,17 @@ describe('WorkflowCreationService', () => {
 		nodeGroupRulesFlagGateMock = mock<NodeGroupRulesFlagGate>();
 		nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(NO_RULES_RELAXED);
 
-		// Default: engine v1 for new workflows, and the engine-v2 module is not active.
-		engineConfig = new EngineConfig();
+		// Default: engine v1 for new workflows, set by nothing, no stored default, and the
+		// engine-v2 module is not active.
+		engineConfig = Object.assign(new EngineConfig(), {
+			defaultType: 'v1',
+			defaultTypeSetByEnv: false,
+		});
 		moduleRegistry = new ModuleRegistry(mock(), mock(), mock(), mock(), mock());
+		engineDefaultProvider = mock<WorkflowEngineDefaultProvider>();
+		engineDefaultProvider.getDefaultEngine.mockResolvedValue(undefined);
+		const engineDefaultProviderProxy = new WorkflowEngineDefaultProviderProxy();
+		engineDefaultProviderProxy.registerProvider(engineDefaultProvider);
 
 		workflowCreationService = new WorkflowCreationService(
 			loggerMock,
@@ -137,7 +150,7 @@ describe('WorkflowCreationService', () => {
 			workflowRepositoryMock,
 			nodeGroupRulesFlagGateMock,
 			mock(),
-			new WorkflowEngineDefaults(engineConfig, moduleRegistry),
+			new WorkflowEngineDefaults(engineConfig, moduleRegistry, engineDefaultProviderProxy),
 		);
 	});
 
@@ -1249,6 +1262,9 @@ describe('WorkflowCreationService', () => {
 		const activateEngineV2Module = () =>
 			vi.spyOn(moduleRegistry, 'isActive').mockImplementation((name) => name === 'engine-v2');
 
+		const setEnvDefault = (defaultType: 'v1' | 'v2') =>
+			Object.assign(engineConfig, { defaultType, defaultTypeSetByEnv: true });
+
 		// A copy taken at save time, so a stamp applied after the save does not pass.
 		let savedSettings: WorkflowEntity['settings'];
 
@@ -1274,8 +1290,8 @@ describe('WorkflowCreationService', () => {
 			);
 		});
 
-		it('saves a workflow without an engine on v2 when the default is v2 and the module is active', async () => {
-			engineConfig.defaultType = 'v2';
+		it('saves a workflow without an engine on v2 when the env default is v2 and the module is active', async () => {
+			setEnvDefault('v2');
 			activateEngineV2Module();
 			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
 
@@ -1284,13 +1300,35 @@ describe('WorkflowCreationService', () => {
 			expectSavedSettings({ executionOrder: 'v1', engineType: 'v2' });
 		});
 
+		it('saves a workflow without an engine on v2 when the stored default is v2 and the env sets none', async () => {
+			engineDefaultProvider.getDefaultEngine.mockResolvedValue('v2');
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1', engineType: 'v2' });
+		});
+
+		it('writes no engine when the env default is v1, even when the stored default is v2', async () => {
+			setEnvDefault('v1');
+			engineDefaultProvider.getDefaultEngine.mockResolvedValue('v2');
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1' });
+			expect(engineDefaultProvider.getDefaultEngine).not.toHaveBeenCalled();
+		});
+
 		it.each([
 			{ engineType: 'v1' as const, defaultType: 'v2' as const },
 			{ engineType: 'v2' as const, defaultType: 'v1' as const },
 		])(
 			'keeps an explicit $engineType when the default is $defaultType',
 			async ({ engineType, defaultType }) => {
-				engineConfig.defaultType = defaultType;
+				setEnvDefault(defaultType);
 				activateEngineV2Module();
 				const workflow = makeWorkflow({ settings: { engineType } });
 
@@ -1300,17 +1338,29 @@ describe('WorkflowCreationService', () => {
 			},
 		);
 
-		it('writes no engine when the default is v2 but the module is not active', async () => {
-			engineConfig.defaultType = 'v2';
+		it('keeps an explicit v1 when the stored default is v2', async () => {
+			engineDefaultProvider.getDefaultEngine.mockResolvedValue('v2');
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: { engineType: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ engineType: 'v1' });
+		});
+
+		it('writes no engine and does not read the stored default when the module is not active', async () => {
+			setEnvDefault('v2');
+			engineDefaultProvider.getDefaultEngine.mockResolvedValue('v2');
 			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
 			expectSavedSettings({ executionOrder: 'v1' });
+			expect(engineDefaultProvider.getDefaultEngine).not.toHaveBeenCalled();
 		});
 
 		it('writes no engine when the default is v1', async () => {
-			engineConfig.defaultType = 'v1';
+			setEnvDefault('v1');
 			activateEngineV2Module();
 			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
 
@@ -1320,13 +1370,65 @@ describe('WorkflowCreationService', () => {
 		});
 
 		it('adds no settings when the workflow has none and the default is v1', async () => {
-			engineConfig.defaultType = 'v1';
 			activateEngineV2Module();
 			const workflow = makeWorkflow({ settings: undefined });
 
 			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
 
 			expectSavedSettings(undefined);
+		});
+
+		it('reads the stored default once, before the transaction opens', async () => {
+			activateEngineV2Module();
+			const calls: string[] = [];
+			engineDefaultProvider.getDefaultEngine.mockImplementation(async () => {
+				calls.push('getDefaultEngine');
+				return 'v2';
+			});
+			const runInTransaction = workflowRepositoryMock.runInTransaction.getMockImplementation();
+			workflowRepositoryMock.runInTransaction.mockImplementation(async (ctx, fn) => {
+				calls.push('runInTransaction');
+				return await runInTransaction!(ctx, fn);
+			});
+
+			await workflowCreationService.createWorkflow(user, makeWorkflow({ settings: {} }), {
+				projectId: 'project-1',
+			});
+
+			expect(calls).toEqual(['getDefaultEngine', 'runInTransaction']);
+			expectSavedSettings({ engineType: 'v2' });
+		});
+
+		it('reads the stored default once for a batch of two creates', async () => {
+			activateEngineV2Module();
+			engineDefaultProvider.getDefaultEngine.mockResolvedValue('v2');
+			folderServiceMock.getFoldersByIds.mockResolvedValue([]);
+			credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			const saved: Array<WorkflowEntity['settings']> = [];
+			workflowRepositoryMock.createContent.mockImplementation(async (workflow) => {
+				saved.push(structuredClone(workflow.settings));
+				return workflow;
+			});
+			const workflows = [makeWorkflow({ settings: {} }), makeWorkflow({ settings: {} })];
+
+			const batchContext = await workflowCreationService.prepareBatchContext(
+				user,
+				'project-1',
+				[],
+				workflows,
+				new Map(),
+			);
+			for (const workflow of workflows) {
+				await workflowCreationService.createWorkflow(user, workflow, {
+					projectId: 'project-1',
+					batchContext,
+				});
+			}
+
+			expect(batchContext.defaultEngine).toBe('v2');
+			expect(engineDefaultProvider.getDefaultEngine).toHaveBeenCalledOnce();
+			expect(saved).toStrictEqual([{ engineType: 'v2' }, { engineType: 'v2' }]);
 		});
 	});
 });
