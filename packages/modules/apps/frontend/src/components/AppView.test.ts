@@ -30,6 +30,7 @@ const version = (id: string, buildStatus: AppBuildStatus): AppVersionResponse =>
 	id,
 	appId: 'app-1',
 	label: null,
+	description: null,
 	sourceArtifactId: 1,
 	bundleArtifactId: buildStatus === 'succeeded' ? 2 : null,
 	buildStatus,
@@ -50,15 +51,19 @@ const globalOptions = {
 				</div>`,
 		},
 		AppPreview: {
-			props: ['projectId', 'app', 'versions'],
-			template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
+			props: ['projectId', 'app', 'versions', 'inspectable', 'elementSelected'],
+			emits: ['element-selected'],
+			template: `<div data-test-id="app-view-preview">
+				{{ app.id }}
+				<span data-test-id="preview-inspectable">{{ inspectable }}</span>
+				<span data-test-id="preview-element-selected">{{ elementSelected }}</span>
+				<button data-test-id="pick" @click="$emit('element-selected', { tagName: 'button' })" />
+			</div>`,
 		},
 		AppConfigure: {
-			props: ['app', 'versions', 'tab'],
-			emits: ['updated', 'update:tab'],
+			props: ['app'],
+			emits: ['updated'],
 			template: `<div data-test-id="app-view-configure">
-				<span data-test-id="configure-tab">{{ tab }}</span>
-				<button data-test-id="configure-select-basics" @click="$emit('update:tab', 'basics')" />
 				<button data-test-id="configure-rename" @click="$emit('updated', { ...app, name: 'Renamed app' })" />
 			</div>`,
 		},
@@ -94,6 +99,21 @@ describe('AppView', () => {
 		expect(getByTestId('app-header')).toHaveTextContent('App app-1');
 		expect(getByTestId('app-view-preview')).toBeInTheDocument();
 		expect(getApp).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
+	});
+
+	it('passes the inspect props to the preview and re-emits the picked element', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId, emitted } = renderComponent({
+			props: { inspectable: true, elementSelected: true },
+		});
+
+		await findByTestId('app-view-preview');
+		expect(getByTestId('preview-inspectable')).toHaveTextContent('true');
+		expect(getByTestId('preview-element-selected')).toHaveTextContent('true');
+
+		await userEvent.click(getByTestId('pick'));
+
+		expect(emitted('element-selected')).toEqual([[{ tagName: 'button' }]]);
 	});
 
 	it('shows the not-found state without an error toast for a missing app', async () => {
@@ -163,27 +183,11 @@ describe('AppView', () => {
 		expect(queryByTestId('app-view-preview')).not.toBeInTheDocument();
 	});
 
-	it.each([
-		['configure', 'basics'],
-		['configure.basics', 'basics'],
-		['configure.unknown', 'basics'],
-	])('opens the configure tab %s on the %s sub-tab', async (section, subTab) => {
+	it('opens the configure tab from the section', async () => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { findByTestId } = renderComponent({ props: { section } });
+		const { findByTestId } = renderComponent({ props: { section: 'configure' } });
 
-		expect(await findByTestId('configure-tab')).toHaveTextContent(subTab);
-	});
-
-	it('emits the configure section when the sub-tab changes', async () => {
-		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { findByTestId, getByTestId, emitted } = renderComponent({
-			props: { section: 'configure' },
-		});
-		await findByTestId('app-view-configure');
-
-		await userEvent.click(getByTestId('configure-select-basics'));
-
-		expect(emitted('update:section')).toEqual([['configure.basics']]);
+		expect(await findByTestId('app-view-configure')).toBeInTheDocument();
 	});
 
 	it('shows the app from a configure update', async () => {

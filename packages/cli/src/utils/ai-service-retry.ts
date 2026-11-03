@@ -1,6 +1,6 @@
 import { retryabilityFromError } from '@n8n/backend-network';
 import { sleep } from '@n8n/utils/sleep';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 const AI_SERVICE_MAX_ATTEMPTS = 3;
 const AI_SERVICE_RETRY_BACKOFF_BASE_MS = 1_000;

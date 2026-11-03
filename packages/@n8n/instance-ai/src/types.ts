@@ -2257,7 +2257,6 @@ export interface OrchestrationContext {
 	mcpTools?: InstanceAiToolRegistry;
 	/** Skills that the agent can load. */
 	skills?: RuntimeSkillSource;
-	skillAvailabilityNotice?: string;
 	/** Add loaded Hub content to UI events without changing agent memory. */
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */

@@ -1,6 +1,6 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import { LessThan } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 

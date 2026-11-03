@@ -6,7 +6,12 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
-import { appNameSchema, appNamespaceSchema, appVisibilitySchema } from './app.schema';
+import {
+	appNameSchema,
+	appNamespaceSchema,
+	appPreviewElementSchema,
+	appVisibilitySchema,
+} from './app.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -1591,11 +1596,18 @@ export const instanceAiNodesAttachmentSchema = z.object({
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
 
+export const instanceAiElementAttachmentSchema = appPreviewElementSchema.extend({
+	type: z.literal('element'),
+	appId: z.string().min(1).max(64),
+});
+export type InstanceAiElementAttachment = z.infer<typeof instanceAiElementAttachmentSchema>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 

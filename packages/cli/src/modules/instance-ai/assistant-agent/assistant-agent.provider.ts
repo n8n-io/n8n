@@ -4,6 +4,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -93,9 +94,11 @@ function contextAttachmentsOf(
 		): attachment is
 			| InstanceAiWorkflowAttachment
 			| InstanceAiAgentAttachment
-			| InstanceAiNodesAttachment =>
+			| InstanceAiNodesAttachment
+			| InstanceAiElementAttachment =>
 			attachment.type === 'workflow' ||
 			attachment.type === 'agent' ||
+			attachment.type === 'element' ||
 			(attachment.type === 'nodes' && nodeContextEnabled),
 	);
 }

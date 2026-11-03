@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { appNameSchema, appNamespaceSchema, type UpdateAppDto } from '@n8n/api-types';
+import {
+	appNameSchema,
+	appNamespaceSchema,
+	type AppResponse,
+	type UpdateAppDto,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nHeading,
@@ -15,31 +20,30 @@ import { computed, ref, watch } from 'vue';
 
 import { updateApp } from '../../apps.api';
 import { getAppPermissions } from '../../apps.permissions';
-import type { AppConfigureTabEmits, AppConfigureTabProps } from './appConfigureTabs';
 
 const FIELDS = [
 	{
 		id: 'name',
 		schema: appNameSchema,
 		maxLength: 128,
-		label: 'apps.configure.basics.name',
+		label: 'apps.configure.general.name',
 		description: undefined,
-		invalidText: 'apps.configure.basics.nameInvalid',
+		invalidText: 'apps.configure.general.nameInvalid',
 	},
 	{
 		id: 'namespace',
 		schema: appNamespaceSchema,
 		maxLength: 54,
-		label: 'apps.configure.basics.namespace',
-		description: 'apps.configure.basics.namespaceDescription',
-		invalidText: 'apps.configure.basics.namespaceInvalid',
+		label: 'apps.configure.general.namespace',
+		description: 'apps.configure.general.namespaceDescription',
+		invalidText: 'apps.configure.general.namespaceInvalid',
 	},
 ] as const;
 type Field = (typeof FIELDS)[number]['id'];
 
-const props = defineProps<AppConfigureTabProps>();
+const props = defineProps<{ app: AppResponse }>();
 
-const emit = defineEmits<AppConfigureTabEmits>();
+const emit = defineEmits<{ updated: [app: AppResponse] }>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -67,10 +71,10 @@ function reset(field: Field) {
 async function confirmNamespaceChange() {
 	if (!props.app.publishedUrl) return true;
 	const answer = await message.confirm(
-		i18n.baseText('apps.configure.basics.namespaceConfirm.message'),
-		i18n.baseText('apps.configure.basics.namespaceConfirm.title'),
+		i18n.baseText('apps.configure.general.namespaceConfirm.message'),
+		i18n.baseText('apps.configure.general.namespaceConfirm.title'),
 		{
-			confirmButtonText: i18n.baseText('apps.configure.basics.namespaceConfirm.confirm'),
+			confirmButtonText: i18n.baseText('apps.configure.general.namespaceConfirm.confirm'),
 			cancelButtonText: i18n.baseText('generic.cancel'),
 			type: 'warning',
 		},
@@ -91,7 +95,7 @@ async function save(field: Field, value: string) {
 			await updateApp(rootStore.restApiContext, props.app.projectId, props.app.id, changes),
 		);
 	} catch (error) {
-		toast.showError(error, i18n.baseText('apps.configure.basics.saveError'));
+		toast.showError(error, i18n.baseText('apps.configure.general.saveError'));
 	} finally {
 		saving.value[field] = false;
 	}
@@ -126,14 +130,14 @@ watch(
 </script>
 
 <template>
-	<div data-test-id="app-configure-basics">
+	<div data-test-id="app-configure-general">
 		<N8nSettingsRowGroup>
 			<div :class="$style.cardHeader">
 				<N8nHeading tag="h2" size="medium" color="text-dark">
-					{{ i18n.baseText('apps.configure.basics.title') }}
+					{{ i18n.baseText('apps.configure.general.title') }}
 				</N8nHeading>
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('apps.configure.basics.description') }}
+					{{ i18n.baseText('apps.configure.general.description') }}
 				</N8nText>
 			</div>
 			<N8nSettingsRow

@@ -1956,7 +1956,6 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { UserError, UnexpectedError } from 'n8n-workflow';
 import {
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
@@ -1980,6 +1979,8 @@ import {
 	InternalServerError,
 	LockedError,
 	NotFoundError,
+	UserError,
+	UnexpectedError,
 } from '@n8n/errors';
 import type { License } from '@/license';
 
