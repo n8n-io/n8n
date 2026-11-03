@@ -16,7 +16,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'pipedrive',
 	icon: 'file:pipedrive.svg',
 	group: ['transform'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Create and edit data in Pipedrive',
 	defaults: {
