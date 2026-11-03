@@ -50,6 +50,14 @@ const getSelectedTitle = () =>
 		?.textContent?.trim();
 
 describe('N8nCommandBar', () => {
+	it('opens and focuses the input when the open model is set externally', async () => {
+		const wrapper = render(N8nCommandBar, { props: { sections, open: false } });
+
+		await wrapper.rerender({ open: true });
+
+		await waitFor(() => expect(getInput()).toHaveFocus());
+	});
+
 	it('opens with Cmd+K', async () => {
 		const wrapper = render(N8nCommandBar, { props: { sections } });
 
