@@ -56,11 +56,11 @@ Add components under `src/`. Keep files small and focused.
      resource as `existing` and include its id only when you already know it.
      Otherwise, mark it as `new`. Do not create or change a resource before the
      user approves the blueprint. Approval creates the app. Build from the
-     blueprint returned by the tool, not from your proposal. After approval,
-     inspect the available resources, refine the implementation details, create
-     what is missing, and add the bindings the app needs. Then call `apps` with
-     action `open` and the returned `app.id` before you edit files. If the user
-     cancels, do not create, open, or edit app files.
+     blueprint returned by the tool, not from your proposal. Then call `apps`
+     with `action: "open"` and the returned `app.id` before you edit files. After
+     the app is open, inspect the available resources, refine the implementation
+     details, create what is missing, and add the bindings the app needs. If the
+     user cancels, do not create, open, or edit app files.
    - If the conversation lists a pending app, use `create`. n8n reuses the
      pending id after approval.
    - Existing app: use the `appId` from the conversation context. If the
