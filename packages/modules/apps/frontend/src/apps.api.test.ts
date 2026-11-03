@@ -168,6 +168,40 @@ describe('apps.api', () => {
 		);
 	});
 
+	it('omits search filters when listing bindable resources without a query', async () => {
+		const response = { count: 0, data: [] };
+		vi.mocked(getFullApiResponse).mockResolvedValue(response);
+		vi.mocked(makeRestApiRequest).mockResolvedValue(response);
+
+		await listBindableResources(context, 'project-1', 'workflow');
+		expect(getFullApiResponse).toHaveBeenLastCalledWith(context, 'GET', '/workflows', {
+			filter: {
+				projectId: 'project-1',
+				isArchived: false,
+				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+			},
+			select: JSON.stringify(['id', 'name']),
+			take: 100,
+			sortBy: 'name:asc',
+		});
+
+		await listBindableResources(context, 'project-1', 'dataTable');
+		expect(makeRestApiRequest).toHaveBeenLastCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/data-tables',
+			{ take: 100, sortBy: 'name:asc' },
+		);
+
+		await listBindableResources(context, 'project-1', 'agent');
+		expect(getFullApiResponse).toHaveBeenLastCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/agents/v2',
+			{ take: 100, sortBy: 'name:asc' },
+		);
+	});
+
 	it('publishes a version of an app with its details', async () => {
 		const publication = { versionId: 'v-1', label: 'Launch', visibility: 'instance' as const };
 
