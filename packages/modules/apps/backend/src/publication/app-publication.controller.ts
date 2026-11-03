@@ -34,7 +34,8 @@ export class AppPublicationController {
 	@ProjectScope('app:update')
 	async publish(req: AppRequest, _res: Response, @Body dto: PublishAppDto) {
 		const { projectId, appId } = req.params;
-		await this.publication.publish(projectId, appId, dto.versionId);
+		const { versionId, ...details } = dto;
+		await this.publication.publish(projectId, appId, versionId, details);
 		return await this.apps.getApp(projectId, appId);
 	}
 
