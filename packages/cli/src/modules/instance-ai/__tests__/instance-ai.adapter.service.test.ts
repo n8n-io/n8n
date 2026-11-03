@@ -74,6 +74,7 @@ import {
 	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
@@ -7830,6 +7831,7 @@ describe('resolveExperimentGates', () => {
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
+		[INSTANCE_AI_APPROVAL_MODES_FLAG]: true,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -7847,6 +7849,7 @@ describe('resolveExperimentGates', () => {
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
+			approvalModesEnabled: true,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -7957,6 +7960,7 @@ describe('resolveExperimentGates', () => {
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8003,6 +8007,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('opens the approval modes gate only on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_APPROVAL_MODES_FLAG]: 'variant' });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			approvalModesEnabled: false,
+		});
+	});
+
 	it('fails experiment gates closed when no flags resolve', async () => {
 		stubContainer({});
 
@@ -8017,6 +8029,7 @@ describe('resolveExperimentGates', () => {
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8037,6 +8050,7 @@ describe('resolveExperimentGates', () => {
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});

@@ -1,10 +1,14 @@
 import {
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiUserPreferencesUpdateRequestDto,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
 	InstanceAiVerifySearchRequest,
 } from '@n8n/api-types';
-import type { InstanceAiAdminSettingsResponse } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiApprovalPreferences,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -12,6 +16,7 @@ import { Body, Get, GlobalScope, OnPubSubEvent, Post, Put, RestController } from
 import { ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 
+import { InstanceAiApprovalModeService } from './approval-review/approval-mode.service';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
@@ -37,6 +42,7 @@ export class AssistantController {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly approvalModeService: InstanceAiApprovalModeService,
 	) {}
 
 	// ── Credits ──────────────────────────────────────────────────────────────
@@ -48,6 +54,24 @@ export class AssistantController {
 			throw new ForbiddenError('Instance AI is disabled');
 		}
 		return await this.modelService.getCredits(req.user);
+	}
+
+	// ── User preferences (per-user, self-service) ──────────────────────────
+
+	@Get('/preferences')
+	@GlobalScope('instanceAi:message')
+	async getUserPreferences(req: AuthenticatedRequest): Promise<InstanceAiApprovalPreferences> {
+		return await this.approvalModeService.getPreferences(req.user);
+	}
+
+	@Put('/preferences')
+	@GlobalScope('instanceAi:message')
+	async updateUserPreferences(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiUserPreferencesUpdateRequestDto,
+	): Promise<InstanceAiApprovalPreferences> {
+		return await this.approvalModeService.saveMode(req.user, payload.approvalMode);
 	}
 
 	// ── Admin settings (owner/admin only) ──────────────────────────────────

@@ -17,6 +17,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		resolvePromptProfile: profiles.resolvePromptProfile,
 		MAX_STEPS: profiles.MAX_STEPS,
 		createThreadApprovalContext: profiles.createThreadApprovalContext,
+		threadTargetsAgent: profiles.threadTargetsAgent,
 		assertInstanceAiPromptVersion: profiles.assertInstanceAiPromptVersion,
 		CONCISE_PROMPT_VERSION: profiles.CONCISE_PROMPT_VERSION,
 		SELF_HEALING_PROFILE_VERSION: profiles.SELF_HEALING_PROFILE_VERSION,
@@ -475,6 +476,11 @@ function attachTurnEnvironment(service: object): void {
 	for (const field of TURN_ENVIRONMENT_FIELDS) {
 		if (field in fields) Object.assign(turnEnvironment, { [field]: fields[field] });
 	}
+	// These tests run in Manual mode: no approval reviewer.
+	Object.assign(turnEnvironment, {
+		approvalModeService: { resolveMode: () => 'manual' },
+		approvalReviewerFactory: { create: vi.fn() },
+	});
 	Object.assign(service, { turnEnvironment });
 }
 

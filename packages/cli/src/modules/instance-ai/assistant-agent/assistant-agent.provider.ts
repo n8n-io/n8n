@@ -226,6 +226,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				pushRef: request.pushRef,
 				proxyRunConfig,
 				experimentGates,
+				attachesAgent: request.attachments?.some((attachment) => attachment.type === 'agent'),
 			},
 			runtime,
 		);
