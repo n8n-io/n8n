@@ -13,7 +13,7 @@ export const appNamespaceSchema = z
 		'Use lowercase letters, numbers, and single hyphens between them.',
 	);
 
-export const appVisibilitySchema = z.enum(['public', 'project', 'instance']);
+export const appVisibilitySchema = z.enum(['project', 'instance']);
 export type AppVisibility = z.infer<typeof appVisibilitySchema>;
 
 export const appBuildStatusSchema = z.enum(['queued', 'running', 'succeeded', 'failed']);

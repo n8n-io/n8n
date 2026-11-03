@@ -23,6 +23,7 @@ import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 const props = defineProps<{
 	open: boolean;
 	environmentId: string;
+	environmentName: string;
 	branchName: string;
 }>();
 
@@ -37,6 +38,8 @@ const projectsStore = useProjectsStore();
 
 const isSubmitting = ref(false);
 const blockedResult = shallowRef<BlockedApplyResult>();
+// The binding flow creates a missing project before the apply, so the apply counts it as updated.
+const projectsCreatedBeforeApply = new Set<string>();
 
 function close() {
 	emit('update:open', false);
@@ -51,7 +54,7 @@ function reportApplied(result: AppliedResult) {
 	const { projects, workflows } = result.counts;
 	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
 	const interpolate = {
-		projectsCreated: String(projects.created),
+		projectsCreated: String(projects.created + projectsCreatedBeforeApply.size),
 		projectsDeleted: String(projects.deleted),
 		created: String(workflows.created),
 		updated: String(workflows.updated),
@@ -112,6 +115,7 @@ function reportSourceChanged() {
 async function submit() {
 	if (isSubmitting.value) return;
 	isSubmitting.value = true;
+	projectsCreatedBeforeApply.clear();
 	try {
 		// Whole-branch apply: no expectedSource, so the current branch tip is applied.
 		const result = await applyPromotion(rootStore.publicApiContext, props.environmentId);
@@ -179,7 +183,11 @@ function onBindingsOpenChange(open: boolean) {
 	>
 		<N8nDialogHeader>
 			<N8nDialogTitle>
-				{{ i18n.baseText('settings.promotions.apply.dialog.title') }}
+				{{
+					i18n.baseText('settings.promotions.apply.dialog.title', {
+						interpolate: { environment: environmentName },
+					})
+				}}
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
@@ -218,6 +226,7 @@ function onBindingsOpenChange(open: boolean) {
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
+		@project-created="(project) => projectsCreatedBeforeApply.add(project.id)"
 		@applied="onBindingsApplied"
 		@source-changed="onBindingsSourceChanged"
 		@update:open="onBindingsOpenChange"

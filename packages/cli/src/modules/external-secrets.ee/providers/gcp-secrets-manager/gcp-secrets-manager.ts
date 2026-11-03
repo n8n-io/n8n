@@ -16,6 +16,7 @@ import {
 	type SafeContextValue,
 	type SecretsProviderOperationFailureParams,
 } from '../../errors/secrets-provider-errors';
+import { formatSecretPath } from '../../secret-path';
 import { SecretsProvider } from '../../types';
 
 export class GcpSecretsManager extends SecretsProvider {
@@ -215,7 +216,7 @@ export class GcpSecretsManager extends SecretsProvider {
 	}
 
 	getSecretNames() {
-		return Object.keys(this.cachedSecrets);
+		return Object.keys(this.cachedSecrets).map((name) => formatSecretPath([name]));
 	}
 
 	private parseSecretAccountKey(serviceAccountKey: string): GcpSecretAccountKey {

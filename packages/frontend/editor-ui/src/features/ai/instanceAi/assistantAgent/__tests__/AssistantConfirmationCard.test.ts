@@ -4,6 +4,7 @@ import { nextTick } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
+import { ASSISTANT_AGENT_PROJECT_ID } from '../assistantAgentThreads';
 import AssistantConfirmationCard from '../AssistantConfirmationCard.vue';
 import type { AssistantConfirmationInput } from '../assistantConfirmation';
 import { ASSISTANT_AGENT_THREAD_ID } from '../assistantAgentThreads';
@@ -41,6 +42,37 @@ vi.mock('../../components/InstanceAiMcpConnectCard.vue', () => ({
 			'<button data-test-id="stub-mcp-connect" @click="$emit(\'resolve\', { approved: true, connectedSlugs: [\'linear\'] })" />',
 	},
 }));
+
+// The setup cards pull in many stores. These stubs check that the card hands them
+// the project, and resumes with the answer that they emit.
+function eventStub(testId: string, emitExpression: string) {
+	return {
+		default: {
+			props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
+			template: `<button data-test-id="${testId}" :data-project-id="projectId" @click="${emitExpression}" />`,
+		},
+	};
+}
+
+vi.mock('../../components/InstanceAiCredentialSetup.vue', () =>
+	eventStub(
+		'stub-credential-setup',
+		"$emit('decide', { kind: 'credentialSelection', credentials: { slackApi: 'cred-1' } }, 'approved')",
+	),
+);
+vi.mock('../../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
+	default: {
+		props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
+		template: `<div>
+			<button data-test-id="stub-workflow-setup" :data-project-id="projectId" @click="$emit('defer')" />
+			<button data-test-id="stub-workflow-setup-apply" @click="$emit('apply', { nodeCredentials: { Slack: { slackApi: 'cred-1' } } })" />
+			<span data-test-id="stub-workflow-setup-outcome">{{ outcome?.state }}</span>
+		</div>`,
+	},
+}));
+vi.mock('../../components/InstanceAiChannelSetup.vue', () =>
+	eventStub('stub-channel-setup', "$emit('decide', true)"),
+);
 
 vi.mock('../../components/InstanceAiQuestions.vue', () => ({
 	default: {
@@ -257,19 +289,83 @@ describe('AssistantConfirmationCard', () => {
 		]);
 	});
 
-	// Minimal payloads: the card only needs each field to choose the unsupported variant.
-	it.each<[string, Record<string, unknown>]>([
-		['workflow setup', { setupRequests: [{ id: 'x' }] }],
-		['credential setup', { credentialRequests: [{ credentialType: 'slackApi' }] }],
-		['channel setup', { channelConfig: { integrationType: 'slack', agentId: 'agent-1' } }],
-	])('shows a %s card as not available yet, without actions', (_name, fields) => {
-		const input = { requestId: 'req-u', message: 'Set up Slack', ...fields };
-		const { getByTestId, queryByRole } = renderComponent({
-			props: { input: input as AssistantConfirmationInput },
+	// Minimal payloads: the card only needs each field to choose its setup variant.
+	it.each<[string, string, Record<string, unknown>, Record<string, unknown>]>([
+		[
+			'workflow setup',
+			'stub-workflow-setup',
+			{ setupRequests: [{ id: 'x' }] },
+			{ kind: 'approval', approved: false },
+		],
+		[
+			'credential setup',
+			'stub-credential-setup',
+			{ credentialRequests: [{ credentialType: 'slackApi' }] },
+			{ kind: 'credentialSelection', credentials: { slackApi: 'cred-1' } },
+		],
+		[
+			'channel setup',
+			'stub-channel-setup',
+			{ channelConfig: { integrationType: 'slack', agentId: 'agent-1' } },
+			{ kind: 'approval', approved: true },
+		],
+	])(
+		'submits %s through the resume data, in the thread project',
+		async (_name, testId, fields, body) => {
+			const input = { requestId: 'req-s', message: 'Set up Slack', ...fields };
+			const { getByTestId, emitted } = renderComponent({
+				props: { input: input as AssistantConfirmationInput },
+				global: { provide: { [ASSISTANT_AGENT_PROJECT_ID as symbol]: 'project-thread' } },
+			});
+
+			expect(getByTestId(testId)).toHaveAttribute('data-project-id', 'project-thread');
+			await fireEvent.click(getByTestId(testId));
+
+			expect(sent(emitted().submit)).toEqual([[body]]);
+		},
+	);
+
+	it('resumes with the workflow setup apply, and settles the setup card', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-w',
+					message: 'Set up the workflow',
+					setupRequests: [{ node: { name: 'Slack' } }],
+				} as unknown as AssistantConfirmationInput,
+			},
 		});
 
-		expect(getByTestId('assistant-agent-unsupported-card')).toHaveTextContent('Set up Slack');
-		expect(queryByRole('button')).not.toBeInTheDocument();
+		await fireEvent.click(getByTestId('stub-workflow-setup-apply'));
+
+		expect(sent(emitted().submit)).toEqual([
+			[{ kind: 'setupWorkflowApply', nodeCredentials: { Slack: { slackApi: 'cred-1' } } }],
+		]);
+		expect(getByTestId('stub-workflow-setup-outcome')).toHaveTextContent('applied');
+	});
+
+	it('submits a gateway resource decision', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-9',
+					message: 'Read a file',
+					inputType: 'resource-decision',
+					resourceDecision: {
+						toolGroup: 'filesystem',
+						resource: '/tmp/a.txt',
+						description: 'Read /tmp/a.txt',
+						options: ['denyOnce', 'allowOnce', 'allowForSession'],
+					},
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('gateway-decision-deny'));
+
+		expect(sent(emitted().submit)).toEqual([
+			[{ kind: 'resourceDecision', resourceDecision: 'denyOnce' }],
+		]);
 	});
 
 	describe('test listener', () => {

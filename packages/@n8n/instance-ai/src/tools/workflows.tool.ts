@@ -10,6 +10,7 @@ import {
 	buildCredentialDestinationGrantKey,
 	credentialDestinationSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	buildWorkflowActionSessionGrantKey,
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
@@ -92,10 +93,10 @@ import {
 
 // `list` and `node-usage` share these fields, so each has to read correctly for both tools.
 const PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. Read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write.';
+	'Project ID, obtainable from `list_projects`. Read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write.';
 
 const SETUP_PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. Scope credential creation to that project.';
+	'Project ID, obtainable from `list_projects`. Scope credential creation to that project.';
 
 const SCOPE_FIELD_DESCRIPTION =
 	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
@@ -404,6 +405,23 @@ interface WorkflowToolContext {
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
+type ApprovalResumeData = WorkflowToolContext['resumeData'];
+
+function hasSessionGrant(context: InstanceAiContext, grantKey: string): boolean {
+	return context.sessionApprovedToolKeys?.has(grantKey) === true;
+}
+
+/** "Always allow" stores a thread grant, so later calls with the same key skip the approval. */
+async function persistSessionGrantIfRequested(
+	context: InstanceAiContext,
+	resumeData: ApprovalResumeData,
+	grantKey: string,
+): Promise<void> {
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(grantKey);
+	}
+}
+
 // ── Input type ──────────────────────────────────────────────────────────────
 
 // Explicit union of all possible action inputs so handlers get proper types
@@ -597,7 +615,7 @@ function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
 		case 'unsupported':
 			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Tell the user and ask the user how to proceed.`;
 		case 'scope-too-wide':
-			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`workspace(action="list-projects")\`) to narrow to one project, then retry.`;
+			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`list_projects\`) to narrow to one project, then retry.`;
 		default:
 			return `Folder "${failure.requested}" was not found, so no rows were returned.${candidates}${guidance}`;
 	}
@@ -872,7 +890,9 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.deleteWorkflow !== 'always_allow';
+	const grantKey = buildWorkflowActionSessionGrantKey('delete', input.workflowId);
+	const needsApproval =
+		context.permissions?.deleteWorkflow !== 'always_allow' && !hasSessionGrant(context, grantKey);
 
 	// First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -896,6 +916,8 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
+
 	await context.workflowService.archive(input.workflowId);
 	await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
 	return { success: true };
@@ -912,7 +934,9 @@ async function handleUnarchive(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.deleteWorkflow !== 'always_allow';
+	const grantKey = buildWorkflowActionSessionGrantKey('unarchive', input.workflowId);
+	const needsApproval =
+		context.permissions?.deleteWorkflow !== 'always_allow' && !hasSessionGrant(context, grantKey);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
@@ -933,6 +957,8 @@ async function handleUnarchive(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	await context.workflowService.unarchive(input.workflowId);
 	await refreshWorkflowSourceFileBindingFromWorkflow(context, input.workflowId);
@@ -1891,8 +1917,12 @@ async function handlePublish(
 	const verification = await resolveUnverifiedPublishDisclosure(context, input.workflowId);
 	const unverifiedDisclosure = verification?.message;
 
+	const grantKey = buildWorkflowActionSessionGrantKey('publish', input.workflowId);
+	// An unverified workflow asks every time, even with a grant.
 	const needsApproval =
-		context.permissions?.publishWorkflow !== 'always_allow' || unverifiedDisclosure !== undefined;
+		(context.permissions?.publishWorkflow !== 'always_allow' &&
+			!hasSessionGrant(context, grantKey)) ||
+		unverifiedDisclosure !== undefined;
 
 	if (unverifiedDisclosure && input.acknowledgeUnverified !== true) {
 		return {
@@ -1936,6 +1966,8 @@ async function handlePublish(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	try {
 		const previousActiveVersionIds = await snapshotActiveVersionIds(context, [
@@ -2070,7 +2102,9 @@ async function handleUnpublish(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
+	const grantKey = buildWorkflowActionSessionGrantKey('unpublish', input.workflowId);
+	const needsApproval =
+		context.permissions?.publishWorkflow !== 'always_allow' && !hasSessionGrant(context, grantKey);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
@@ -2091,6 +2125,8 @@ async function handleUnpublish(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	try {
 		await context.workflowService.unpublish(input.workflowId);
@@ -2126,7 +2162,10 @@ async function handleRestoreVersion(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.restoreWorkflowVersion !== 'always_allow';
+	const grantKey = buildWorkflowActionSessionGrantKey('restore-version', input.workflowId);
+	const needsApproval =
+		context.permissions?.restoreWorkflowVersion !== 'always_allow' &&
+		!hasSessionGrant(context, grantKey);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
@@ -2156,6 +2195,8 @@ async function handleRestoreVersion(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	try {
 		const restored = await context.workflowService.restoreVersion!(
@@ -2200,7 +2241,9 @@ async function handleUpdateVersion(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+	const grantKey = buildWorkflowActionSessionGrantKey('update-version', input.workflowId);
+	const needsApproval =
+		context.permissions?.updateWorkflow !== 'always_allow' && !hasSessionGrant(context, grantKey);
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
@@ -2229,6 +2272,8 @@ async function handleUpdateVersion(
 	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
+
+	await persistSessionGrantIfRequested(context, resumeData, grantKey);
 
 	try {
 		await context.workflowService.updateVersion!(input.workflowId, input.versionId, {
@@ -2275,6 +2320,8 @@ export function createWorkflowTool(
 	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
 		tool.legacyActions(legacyName, ...actions);
 	}
+	// get-as-code writes the workflow source into the workspace.
+	if (action === 'get-as-code') tool.requiresWorkspace();
 	// The input schema omits `action`, so restore it for the shared handlers.
 	const withAction = (input: unknown) => ({ ...(isRecord(input) ? input : {}), action }) as Input;
 

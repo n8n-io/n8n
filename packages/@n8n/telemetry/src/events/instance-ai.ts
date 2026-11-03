@@ -101,6 +101,125 @@ const threadActionSource = z.enum([
 const prefillType = z.enum([...INSTANCE_AI_PREFILL_TYPES, INSTANCE_AI_PREFILL_TYPE_FALLBACK]);
 
 const instanceContextTurnSchema = z.object({
+	hub_skill_snapshot_sequence: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Cumulative Hub skill snapshot number. Select the highest number per run_id; do not sum snapshots.',
+		),
+	hub_skill_attempt_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Distinct main Hub skill load tool calls, including failed and pending calls. Measures Assistant selection intent.',
+		),
+	hub_skill_load_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Successful main Hub skill loads. Does not prove that the model followed the instructions.',
+		),
+	hub_skill_failure_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Failed main Hub skill attempts.'),
+	hub_skill_carried_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active, unchanged Hub skills included in model context during this run. Excludes skills first loaded in this run.',
+		),
+	hub_skill_refresh_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Distinct Hub skill versions delivered after a change to an active skill.'),
+	hub_skill_revocation_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active Hub skills that the runtime removed as non-retryable unavailability.',
+		),
+	hub_skill_unavailable_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe(
+			'Previously active Hub skill versions omitted because current content was temporarily unavailable.',
+		),
+	hub_skill_reference_attempt_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Distinct Hub reference read tool calls, including failed and pending calls.'),
+	hub_skill_reference_read_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Successful Hub reference reads. Not main skill loads.'),
+	hub_skill_reference_failure_count: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Failed Hub reference reads.'),
+	hub_skill_attempted_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs requested in main load calls in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_loaded_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs successfully loaded in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_carried_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs carried unchanged into model context in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_refreshed_ids: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Distinct canonical Hub IDs delivered with updated instructions in this run. Unknown IDs are omitted. Built-ins are excluded.',
+		),
+	hub_skill_failures: z
+		.array(
+			z.object({
+				operation: z.enum(['main', 'reference']),
+				reason: z.enum([
+					'temporarily_unavailable',
+					'unavailable',
+					'invalid_reference',
+					'tool_error',
+				]),
+				count: z.number().int().nonnegative(),
+			}),
+		)
+		.optional()
+		.describe(
+			'Cumulative failed tool calls by operation and bounded reason. Contains no error text.',
+		),
 	surface: assistantSurfaceSchema,
 	user_id: z.string(),
 	thread_id: z.string().optional(),
@@ -448,7 +567,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_MODEL: {
 		name: 'User configured AI Assistant model',
 		description:
-			'An admin saved an n8n Assistant model connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
+			'An admin saved an n8n Assistant model connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. The event marks a saved configuration, not a verified one — the setup wizard verifies before saving, but a direct API save can skip verification. Env-var model config never emits this; it is visible on "Instance started" and on the snapshot events instead.',
 		properties: z.object({
 			provider: z
 				.string()
@@ -466,7 +585,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_SANDBOX: {
 		name: 'User configured AI Assistant sandbox',
 		description:
-			'An admin saved an n8n Assistant sandbox connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
+			'An admin saved an n8n Assistant sandbox connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_sandbox_type is absent. Env-var sandbox config never emits this.',
 		properties: z.object({
 			sandbox_type: z.enum(['n8n-sandbox', 'daytona']),
 			previous_sandbox_type: z
@@ -480,7 +599,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_CONFIGURED_AI_ASSISTANT_WEB_SEARCH: {
 		name: 'User configured AI Assistant web search',
 		description:
-			'An admin saved an n8n Assistant web search connection (PUT /instance-ai/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
+			'An admin saved an n8n Assistant web search connection (PUT /assistant/settings), covering the first connect, later changes, and same-provider key rotations: first connects are rows where previous_provider is absent. Explicitly disabling web search does not emit this; that decision is visible as web_search_source "disabled" on the snapshot events.',
 		properties: z.object({
 			provider: z.enum(['brave', 'searxng']),
 			previous_provider: z
@@ -494,7 +613,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	AI_ASSISTANT_CONNECTION_FAILED: {
 		name: 'AI Assistant connection failed',
 		description:
-			'A setup verification call (POST /instance-ai/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
+			'A setup verification call (POST /assistant/settings/verify/*) failed for a model, sandbox, or web search connection. One event covers all three components; the component property tells them apart. Fires once per failed verify attempt, including retries.',
 		properties: z.object({
 			component: z.enum(['model', 'sandbox', 'web_search']),
 			provider: z

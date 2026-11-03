@@ -26,7 +26,6 @@ vi.mock('@n8n/instance-ai/parsers', async () => await vi.importActual('@n8n/inst
 import type {
 	AiPreferenceDto,
 	InstanceAiPreferenceCardEvent,
-	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -37,13 +36,12 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiThreadTabsState,
+	AssistantThreadTabsState,
 } from '@n8n/api-types';
-import type { ModuleRegistry } from '@n8n/backend-common';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
-	InstanceAiThreadTabsRequestDto,
+	AssistantThreadTabsRequestDto,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
@@ -57,7 +55,6 @@ import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
@@ -69,7 +66,6 @@ import type { InstanceAiOnboardingService } from '../onboarding';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
 import type { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
 import type { InstanceAiThreadTabsService } from '../instance-ai-thread-tabs.service';
-import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
@@ -95,12 +91,9 @@ describe('InstanceAiController', () => {
 	const memoryService = mock<InstanceAiMemoryService>();
 	const pendingAgentService = mock<InstanceAiPendingAgentService>();
 	const settingsService = mock<InstanceAiSettingsService>();
-	const modelCatalogService = mock<InstanceAiModelCatalogService>();
 	const eventBus = mock<InProcessEventBus>();
 	const eventLog = mock<DurableEventLog>();
 	const durableLogMetrics = mock<DurableLogMetrics>();
-	const moduleRegistry = mock<ModuleRegistry>();
-	const publisher = mock<Publisher>();
 
 	const projectService = mock<ProjectService>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
@@ -117,14 +110,11 @@ describe('InstanceAiController', () => {
 		onboarding,
 		pendingAgentService,
 		settingsService,
-		modelCatalogService,
 		eventBus,
 		eventLog,
 		durableLogMetrics,
-		moduleRegistry,
 		projectService,
 		instanceAiErrorReporter,
-		publisher,
 		preferenceCardService,
 		globalConfig,
 		threadTabsService,
@@ -1354,156 +1344,10 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('getAdminSettings', () => {
-		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('getAdminSettings')).toEqual({
-				scope: 'instanceAi:manage',
-				globalOnly: true,
-			});
-		});
-	});
-
-	describe('getModelCatalog', () => {
-		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('getModelCatalog')).toEqual({
-				scope: 'instanceAi:manage',
-				globalOnly: true,
-			});
-		});
-
-		it('should return the model catalog service response', async () => {
-			const response = { models: { anthropic: [], openai: [], openrouter: [] } };
-			modelCatalogService.getModels.mockResolvedValue(response);
-
-			await expect(controller.getModelCatalog(req)).resolves.toEqual(response);
-		});
-	});
-
-	describe('updateAdminSettings', () => {
-		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('updateAdminSettings')).toEqual({
-				scope: 'instanceAi:manage',
-				globalOnly: true,
-			});
-		});
-
-		it('should shut down browser sessions when enabled is set to false', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({
-				enabled: false,
-				browserUseEnabled: true,
-			} as never);
-			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
-
-			await controller.updateAdminSettings(req, res, payload);
-
-			expect(browserSessionService.shutdown).toHaveBeenCalled();
-		});
-
-		it('should not shut down browser sessions when enabling features', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({
-				enabled: true,
-				browserUseEnabled: true,
-			} as never);
-			const payload = {
-				enabled: true,
-				browserUseEnabled: true,
-			} as InstanceAiAdminSettingsUpdateRequest;
-
-			await controller.updateAdminSettings(req, res, payload);
-
-			expect(browserSessionService.shutdown).not.toHaveBeenCalled();
-		});
-
-		it('should publish settings reloads and refresh affected module settings', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
-
-			await controller.updateAdminSettings(req, res, { enabled: true });
-
-			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'reload-instance-ai-settings',
-			});
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('agents');
-		});
-
-		it('should publish and attempt every local side effect when one fails', async () => {
-			const refreshError = new Error('refresh failed');
-			settingsService.updateAdminSettings.mockResolvedValue({
-				enabled: false,
-				browserUseEnabled: false,
-			} as never);
-			moduleRegistry.refreshModuleSettings.mockRejectedValueOnce(refreshError);
-
-			await expect(
-				controller.updateAdminSettings(req, res, { enabled: false }),
-			).resolves.toBeDefined();
-			expect(publisher.publishCommand).toHaveBeenCalledWith({
-				command: 'reload-instance-ai-settings',
-			});
-			expect(browserSessionService.shutdown).toHaveBeenCalled();
-			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(refreshError, {
-				component: 'settings-side-effects',
-				threadId: 'admin-settings',
-			});
-		});
-
-		it('should report a publish failure after applying committed settings', async () => {
-			const committedSettings = {
-				enabled: false,
-				browserUseEnabled: false,
-			};
-			const publishError = new Error('publish failed');
-			settingsService.updateAdminSettings.mockResolvedValue(committedSettings as never);
-			publisher.publishCommand.mockRejectedValue(publishError);
-
-			await expect(controller.updateAdminSettings(req, res, { enabled: false })).resolves.toBe(
-				committedSettings,
-			);
-			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(publishError, {
-				component: 'settings-publish',
-				threadId: 'admin-settings',
-			});
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
-			expect(browserSessionService.shutdown).toHaveBeenCalled();
-		});
-	});
-
-	describe('reloadAdminSettings', () => {
-		it('should apply side effects from the reloaded local flags', async () => {
-			settingsService.isInstanceAiEnabled.mockReturnValue(false);
-			settingsService.isBrowserUseEnabled.mockReturnValue(false);
-
-			await controller.reloadAdminSettings();
-
-			expect(settingsService.reloadFromDb).toHaveBeenCalled();
-			expect(settingsService.getAdminSettings).not.toHaveBeenCalled();
-			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
-			expect(browserSessionService.shutdown).toHaveBeenCalled();
-		});
-	});
-
 	describe('getUserPreferences', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('getUserPreferences')).toEqual({
 				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-	});
-
-	describe('listServiceCredentials', () => {
-		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('listServiceCredentials')).toEqual({
-				scope: 'instanceAi:manage',
-				globalOnly: true,
-			});
-		});
-	});
-
-	describe('listInstanceModelCredentials', () => {
-		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('listInstanceModelCredentials')).toEqual({
-				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});
 		});
@@ -1708,7 +1552,7 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('thread tabs', () => {
-		const tabsState: InstanceAiThreadTabsState = {
+		const tabsState: AssistantThreadTabsState = {
 			tabs: [{ type: 'workflow', id: 'wf-1', name: 'My Workflow', projectId: 'project-1' }],
 			closedTabs: [{ type: 'data-table', id: 'dt-1' }],
 			activeTab: { type: 'workflow', id: 'wf-1' },
@@ -1736,7 +1580,7 @@ describe('InstanceAiController', () => {
 
 		it('should save the tabs of the user', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = new InstanceAiThreadTabsRequestDto(tabsState);
+			const payload = new AssistantThreadTabsRequestDto(tabsState);
 
 			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
 
@@ -1746,7 +1590,7 @@ describe('InstanceAiController', () => {
 
 		it('should save whether the preview is open', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = new InstanceAiThreadTabsRequestDto({ ...tabsState, previewOpen: false });
+			const payload = new AssistantThreadTabsRequestDto({ ...tabsState, previewOpen: false });
 
 			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
 
@@ -1766,7 +1610,7 @@ describe('InstanceAiController', () => {
 					req,
 					res,
 					THREAD_ID,
-					new InstanceAiThreadTabsRequestDto(tabsState),
+					new AssistantThreadTabsRequestDto(tabsState),
 				),
 			).rejects.toThrow(ForbiddenError);
 			expect(threadTabsService.getState).not.toHaveBeenCalled();
@@ -1898,14 +1742,11 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiOnboardingService>(),
 		mock<InstanceAiPendingAgentService>(),
 		settingsService,
-		mock<InstanceAiModelCatalogService>(),
 		eventBus,
 		eventLog,
 		durableLogMetrics,
-		mock<ModuleRegistry>(),
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
-		mock<Publisher>(),
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),

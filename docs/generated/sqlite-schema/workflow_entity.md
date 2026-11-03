@@ -209,6 +209,7 @@ erDiagram
   INTEGER id
   bigint jsonSizeBytes
   varchar mode
+  SMALLINT resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt

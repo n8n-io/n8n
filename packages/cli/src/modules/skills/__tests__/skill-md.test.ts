@@ -77,6 +77,11 @@ describe('readSkillFolder', () => {
 			message: 'The SKILL.md frontmatter must be a map of keys.',
 		},
 		{
+			case: 'frontmatter that refers to itself through an alias',
+			skill: skillMd('name: n\ndescription: d\nmeta: &self\n  loop: *self'),
+			message: 'The SKILL.md frontmatter cannot refer to itself.',
+		},
+		{
 			case: 'no description',
 			skill: skillMd('name: n'),
 			message: 'The SKILL.md frontmatter needs a description.',

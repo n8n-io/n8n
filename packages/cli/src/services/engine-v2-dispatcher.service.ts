@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
 import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
@@ -16,7 +16,6 @@ import {
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { toWorkflowDocument } from '@/executions/execution-data/types';
 import {
 	createExecutionIdV2,
 	type ExecutionIdV2,
@@ -34,9 +33,8 @@ import {
 } from '@/services/engine-v2-manual-run-planner';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
-
-type ToStepOutputs = (outputs: INodeExecutionData[][]) => StepSlots;
 
 /** The trigger that fired and the payload it produced. */
 type FiredTrigger = {
@@ -226,21 +224,17 @@ export class EngineV2Dispatcher {
 
 		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
 
-		// Lazily imported: a top-level import would pull the v1 step executor and
-		// its dependencies into every n8n process, including ones with the module off.
-		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
-
 		// A planned run may root at a non-trigger: v1 starts from the nearest node
 		// with run data when no trigger has any, and the plan supplies its outputs.
-		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
+		const payload = await toEngineWorkflowPayload({
+			workflowData,
+			graphSource: plan?.workflow,
+			triggerName: trigger.name,
+			triggerOutputs: trigger.outputs,
 			allowNonTriggerRoot: plan !== undefined,
 		});
 		// One pass per node: a planned run seeds nothing inside a loop yet.
-		const seededSteps: SeededSteps | undefined = plan
-			? Object.fromEntries(
-					plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
-				)
-			: undefined;
+		const seededSteps = await this.toSeededSteps(plan);
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
@@ -256,11 +250,7 @@ export class EngineV2Dispatcher {
 			request: {
 				executionId,
 				workflowId: workflowData.id,
-				graph,
-				// Sent alongside the graph, so the execution read can report the
-				// workflow that ran even after the live one is edited.
-				workflow: toWorkflowDocument(workflowData),
-				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
+				...payload,
 				seededSteps,
 				// The engine keeps only a coarse manual/production distinction. The exact
 				// host mode is carried in callerContext for reads and lifecycle events.
@@ -399,13 +389,12 @@ export class EngineV2Dispatcher {
 		return withoutNullSlots(main);
 	}
 
-	private toTriggerOutputs(
-		main: INodeExecutionData[][],
-		toStepOutputs: ToStepOutputs,
-	): TriggerOutputs | null {
-		const slots = toStepOutputs(main);
-
-		// The wire schema rejects an empty array; `null` is how "no slots" is sent.
-		return slots.length === 0 ? null : slots;
+	private async toSeededSteps(plan: ManualRunPlan | undefined): Promise<SeededSteps | undefined> {
+		if (!plan) return undefined;
+		// Lazily imported, as in `toEngineWorkflowPayload`.
+		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
+		return Object.fromEntries(
+			plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
+		);
 	}
 }

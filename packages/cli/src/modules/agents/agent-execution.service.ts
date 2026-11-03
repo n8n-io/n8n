@@ -260,6 +260,13 @@ export class AgentExecutionService {
 			attachments: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
+
+		await this.agentExecutionThreadRepository.markChatResumedAfterStop(
+			params.threadId,
+			!params.hideUserMessageFromTranscript && params.userMessage !== null && !params.resumeRunId,
+			ctx,
+		);
+
 		const inputMessageIds = await this.reserveInput(
 			params,
 			inserted.id,
@@ -679,10 +686,11 @@ export class AgentExecutionService {
 					memoryThread.metadata && typeof memoryThread.metadata.emoji === 'string'
 						? memoryThread.metadata.emoji
 						: null;
-				await this.agentExecutionThreadRepository.update(threadId, {
-					title: memoryThread.title,
-					...(emoji && { emoji }),
-				});
+				await this.agentExecutionThreadRepository.setGeneratedTitle(
+					threadId,
+					memoryThread.title,
+					emoji,
+				);
 			}
 		} catch {
 			// Memory thread may not exist (agent without memory configured) — ignore
@@ -896,9 +904,14 @@ export class AgentExecutionService {
 	): Promise<void> {
 		const inputs = await this.messageRepository.findExecutionInputs(executions.map(({ id }) => id));
 		const seen = new Set<string>();
+
 		for (const execution of executions) {
 			const messages = inputs.get(execution.id);
+
 			if (!messages) continue;
+
+			if (messages.some((message) => message.origin?.stopReport)) execution.stopReport = true;
+
 			execution.inputMessageIds = messages.map(({ id }) => id);
 			execution.inputMessages = [];
 			for (const message of messages) {
