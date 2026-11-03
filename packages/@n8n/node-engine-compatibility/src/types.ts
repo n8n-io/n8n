@@ -113,7 +113,7 @@ export interface V1StepExecutorDeps {
 	 * Without it, the URLs carry a random token that the engine cannot verify.
 	 */
 	resumeToken?: (context: { executionId: string }) => string;
-	/** Resolves the sub-workflow a node calls, as the control plane does. */
+	/** Resolves the sub-workflow a node calls. The host asks the control plane. */
 	resolveSubWorkflow: SubWorkflowResolver;
 }
 
