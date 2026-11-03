@@ -78,6 +78,148 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('shows a group row before the first row of each group, with one cell per column', () => {
+		const grouped: Item[] = [
+			{ id: '1', firstName: 'a', lastName: 'x' },
+			{ id: '2', firstName: 'b', lastName: 'x' },
+			{ id: '3', firstName: 'c', lastName: '' },
+			{ id: '4', firstName: 'd', lastName: 'y' },
+		];
+		const { container } = render(N8nDataTableServer, {
+			props: {
+				items: grouped,
+				//@ts-expect-error testing-library errors due to header generics
+				headers,
+				itemsLength: grouped.length,
+				// A row without a group gets no group row.
+				groupBy: (row: Record<string, string>) => row.lastName || undefined,
+				extraGroups: [{ group: 'z', index: 4 }],
+			},
+			slots: {
+				'group.id': ({ group }: { group: string }) => `Group ${group}`,
+				'group.firstName': ({ item }: { item?: Item }) => item?.firstName ?? 'empty',
+			},
+		});
+
+		const rows = [...container.querySelectorAll('tbody tr')];
+		const groupRows = rows.filter((row) => row.classList.contains('group-row'));
+		expect(rows.map((row) => row.classList.contains('group-row'))).toEqual([
+			true,
+			false,
+			false,
+			false,
+			true,
+			false,
+			true,
+		]);
+		expect(groupRows.map((row) => row.querySelectorAll('td').length)).toEqual([
+			headers.length,
+			headers.length,
+			headers.length,
+		]);
+		expect(groupRows.map((row) => row.querySelector('td')?.textContent)).toEqual([
+			'Group x',
+			'Group y',
+			'Group z',
+		]);
+		expect(groupRows.map((row) => row.querySelectorAll('td')[1].textContent)).toEqual([
+			'a',
+			'd',
+			'empty',
+		]);
+	});
+
+	it('keeps the group row of a folded group and leaves out its rows', () => {
+		const grouped: Item[] = [
+			{ id: '1', firstName: 'a', lastName: 'x' },
+			{ id: '2', firstName: 'b', lastName: 'y' },
+		];
+		const { container } = render(N8nDataTableServer, {
+			props: {
+				items: grouped,
+				//@ts-expect-error testing-library errors due to header generics
+				headers,
+				itemsLength: grouped.length,
+				groupBy: (row: Record<string, string>) => row.lastName,
+				collapsedGroups: ['y'],
+			},
+			slots: { 'group.id': ({ group }: { group: string }) => `Group ${group}` },
+		});
+
+		const rows = [...container.querySelectorAll('tbody tr')];
+		expect(rows.map((row) => row.textContent?.startsWith('Group'))).toEqual([true, false, true]);
+		// The folded group row is the last row, so it gets the last-row style.
+		expect(rows[rows.length - 1]).toHaveClass('group-row');
+	});
+
+	it('emits click:group with the group of the clicked group row, and applies its props', async () => {
+		const grouped: Item[] = [{ id: '1', firstName: 'a', lastName: 'x' }];
+		const { container, emitted } = render(N8nDataTableServer, {
+			props: {
+				items: grouped,
+				//@ts-expect-error testing-library errors due to header generics
+				headers,
+				itemsLength: grouped.length,
+				groupBy: (row: Record<string, string>) => row.lastName,
+				extraGroups: [{ group: 'z', index: 1 }],
+				groupRowProps: (group: string) => ({ class: group === 'x' ? 'clickable' : undefined }),
+			},
+		});
+
+		const groupRows = container.querySelectorAll('tr.group-row');
+		expect(groupRows[0]).toHaveClass('clickable');
+		expect(groupRows[1]).not.toHaveClass('clickable');
+		await userEvent.click(groupRows[0]);
+		await userEvent.click(groupRows[1]);
+
+		expect(
+			emitted<[MouseEvent, { group: string }]>('click:group')?.map(([, payload]) => payload),
+		).toEqual([{ group: 'x' }, { group: 'z' }]);
+	});
+
+	it('shows an extra group before the row at its index, and after the last row past it', () => {
+		const grouped: Item[] = [
+			{ id: '1', firstName: 'a', lastName: '' },
+			{ id: '2', firstName: 'b', lastName: 'y' },
+		];
+		const { container } = render(N8nDataTableServer, {
+			props: {
+				items: grouped,
+				//@ts-expect-error testing-library errors due to header generics
+				headers,
+				itemsLength: grouped.length,
+				groupBy: (row: Record<string, string>) => row.lastName || undefined,
+				// A folded group between the two rows, and an empty group at the end.
+				extraGroups: [
+					{ group: 'folded', index: 1 },
+					{ group: 'empty', index: 9 },
+				],
+			},
+			slots: { 'group.id': ({ group }: { group: string }) => `Group ${group}` },
+		});
+
+		expect(
+			[...container.querySelectorAll('tbody tr')].map(
+				(row) => row.querySelector('td')?.textContent,
+			),
+		).toEqual(['1', 'Group folded', 'Group y', '2', 'Group empty']);
+	});
+
+	it('shows the extra groups when the page has no rows', () => {
+		const { container } = render(N8nDataTableServer, {
+			props: {
+				items: [],
+				//@ts-expect-error testing-library errors due to header generics
+				headers,
+				itemsLength: 1,
+				groupBy: (row: Record<string, string>) => row.lastName,
+				extraGroups: [{ group: 'folded', index: 0 }],
+			},
+		});
+
+		expect(container.querySelectorAll('tbody tr.group-row')).toHaveLength(1);
+	});
+
 	it('should synchronize the state', async () => {
 		const { container, rerender } = render(N8nDataTableServer, {
 			//@ts-expect-error testing-library errors due to header generics

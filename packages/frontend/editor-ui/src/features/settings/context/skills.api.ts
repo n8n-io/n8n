@@ -10,6 +10,7 @@ import type {
 	SkillSaveResponse,
 	SkillSortOption,
 	SkillSourceCheckResponse,
+	SkillSourceListItem,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -34,6 +35,10 @@ export type SkillListQuery = {
 	agentId?: string;
 	createdById?: string;
 	sortBy?: SkillSortOption;
+	/** `source` groups the synced skills under their source. */
+	groupBy?: 'source';
+	/** Comma-separated ids of the sources that the user folded. */
+	collapsedSourceIds?: string;
 };
 
 export async function getSkills(
@@ -161,15 +166,20 @@ export async function connectSkillSource(
 }
 
 /** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
-/** Check now: checks the whole source of a synced skill for updates. */
-export async function checkSkillForUpdates(
+/** The sources that the user can see, for their rows in the skills table. */
+export async function listSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
+	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
+}
+
+/** Check for updates on one source. */
+export async function checkSkillSource(
 	context: IRestApiContext,
-	skillId: string,
+	sourceId: string,
 ): Promise<SkillSourceCheckResponse> {
 	return await makeRestApiRequest<SkillSourceCheckResponse>(
 		context,
 		'POST',
-		`${SOURCES_ENDPOINT}/skills/${skillId}/check`,
+		`${SOURCES_ENDPOINT}/${sourceId}/check`,
 	);
 }
 

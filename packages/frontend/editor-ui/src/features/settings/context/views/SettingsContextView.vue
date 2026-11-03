@@ -121,12 +121,6 @@ onMounted(async () => {
 				:description="i18n.baseText('settings.context.comingSoon')"
 				data-test-id="settings-context-skills-row"
 			/>
-
-			<N8nSettingsRow
-				:title="i18n.baseText('settings.context.sources.title')"
-				:description="i18n.baseText('settings.context.comingSoon')"
-				data-test-id="settings-context-sources-row"
-			/>
 		</N8nSettingsRowGroup>
 	</N8nSettingsLayout>
 </template>

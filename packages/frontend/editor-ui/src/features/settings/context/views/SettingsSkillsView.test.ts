@@ -1117,23 +1117,82 @@ describe('SettingsSkillsView', () => {
 			expect(lastModalData().syncedFrom).toEqual(syncedFrom);
 		});
 
-		describe('check for updates', () => {
-			async function clickCheck() {
-				skillsStore.skills = [
-					skill({ source: 'github', canEdit: false, canCheckForUpdates: true }),
-				];
+		describe('sources in the table', () => {
+			const source = {
+				id: 'src-1',
+				type: 'github' as const,
+				label: 'acme/skills',
+				ref: 'main',
+				path: '',
+				webUrl: 'https://github.com/acme/skills/tree/main',
+				projectId: null,
+				projectName: null,
+				projectType: null,
+				skillCount: 1,
+				updatesAvailable: 0,
+				updatesBlocked: 0,
+				lastCheckedAt: null,
+				canReview: true,
+			};
+
+			async function renderWithSource() {
+				enableSkillSync();
+				skillsStore.fetchSources.mockImplementation(async () => {
+					skillsStore.sources = [source];
+					return [source];
+				});
+				skillsStore.skills = [skill({ source: 'github', canEdit: false, sourceId: 'src-1' })];
 				skillsStore.count = 1;
 				const view = renderView();
-				await new Promise(process.nextTick);
-				skillsStore.fetchSkills.mockClear();
-				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
-				await waitFor(() =>
-					expect(
-						document.querySelector('[data-test-id="action-checkForUpdates"]'),
-					).toBeInTheDocument(),
-				);
-				await userEvent.click(document.querySelector('[data-test-id="action-checkForUpdates"]')!);
+				await waitFor(() => expect(view.getByTestId('skill-group-title')).toBeInTheDocument());
+				return view;
 			}
+
+			async function clickCheck(view: Awaited<ReturnType<typeof renderWithSource>>) {
+				skillsStore.fetchSkills.mockClear();
+				skillsStore.fetchSources.mockClear();
+				await userEvent.click(view.getByTestId('skill-group-actions').querySelector('button')!);
+				await waitFor(() =>
+					expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+				);
+				await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
+			}
+
+			it('asks for the list grouped by source and heads the skills with their source', async () => {
+				const view = await renderWithSource();
+
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ groupBy: 'source' }),
+				);
+				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
+			});
+
+			it('asks for the plain list with Skill Sync off', async () => {
+				renderView();
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.not.objectContaining({ groupBy: 'source' }),
+				);
+				expect(skillsStore.fetchSources).not.toHaveBeenCalled();
+			});
+
+			it('folds a source, keeps it folded in this browser, and asks for the list again', async () => {
+				const view = await renderWithSource();
+				skillsStore.fetchSkills.mockClear();
+
+				await userEvent.click(view.getByTestId('skill-group-toggle'));
+
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+						expect.objectContaining({ collapsedSourceIds: 'src-1' }),
+					),
+				);
+				expect(JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources') ?? '[]')).toEqual([
+					'src-1',
+				]);
+				localStorage.removeItem('n8n-skills-collapsed-sources');
+			});
 
 			it.each([
 				{
@@ -1155,22 +1214,40 @@ describe('SettingsSkillsView', () => {
 					message: '1 skill has an update.',
 				},
 			])(
-				'says what the check found ($updatesFound, throttled $throttled) and reloads the list',
+				'checks a source for updates ($updatesFound, throttled $throttled) and reloads both lists',
 				async ({ updatesFound, throttled, title, message }) => {
-					skillsStore.checkForUpdates.mockResolvedValue({
+					skillsStore.checkSource.mockResolvedValue({
 						label: 'acme/skills',
 						updatesFound,
 						throttled,
 						lastCheckedAt: '2026-10-29T12:00:00.000Z',
 					});
+					const view = await renderWithSource();
 
-					await clickCheck();
+					await clickCheck(view);
 					await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 
-					expect(skillsStore.checkForUpdates).toHaveBeenCalledWith('s1');
+					expect(skillsStore.checkSource).toHaveBeenCalledWith('src-1');
+					expect(skillsStore.fetchSources).toHaveBeenCalled();
 					expect(showMessageMock).toHaveBeenCalledWith({ title, message, type: 'success' });
 				},
 			);
+
+			it('shows progress on the row while the check runs', async () => {
+				let finish: (value: unknown) => void = () => {};
+				skillsStore.checkSource.mockReturnValue(
+					new Promise((resolve) => {
+						finish = resolve;
+					}),
+				);
+				const view = await renderWithSource();
+
+				await clickCheck(view);
+
+				await waitFor(() => expect(view.getByTestId('skill-group-checking')).toBeInTheDocument());
+				finish({ label: 'acme/skills', updatesFound: 0, throttled: false, lastCheckedAt: null });
+				await waitFor(() => expect(view.queryByTestId('skill-group-checking')).toBeNull());
+			});
 
 			it.each([
 				{
@@ -1182,11 +1259,12 @@ describe('SettingsSkillsView', () => {
 					text: 'The credential of this source no longer exists, or this scope can no longer use it.',
 				},
 			])('shows the text of $reason when the check fails', async ({ reason, text }) => {
-				skillsStore.checkForUpdates.mockRejectedValue(
+				skillsStore.checkSource.mockRejectedValue(
 					new ResponseError('Server text', { meta: { reason } }),
 				);
+				const view = await renderWithSource();
 
-				await clickCheck();
+				await clickCheck(view);
 				await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
 
 				expect(showErrorMock).toHaveBeenCalledWith(new Error(text), 'Could not check for updates');
@@ -1195,9 +1273,10 @@ describe('SettingsSkillsView', () => {
 
 			it('keeps the error of a failure without a reason', async () => {
 				const error = new Error('Network down');
-				skillsStore.checkForUpdates.mockRejectedValue(error);
+				skillsStore.checkSource.mockRejectedValue(error);
+				const view = await renderWithSource();
 
-				await clickCheck();
+				await clickCheck(view);
 				await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
 
 				expect(showErrorMock).toHaveBeenCalledWith(error, 'Could not check for updates');

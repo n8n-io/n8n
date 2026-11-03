@@ -1,4 +1,6 @@
 import type {
+	SkillListCollapsedSource,
+	SkillSourceListItem,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -25,6 +27,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 
 	const skills = ref<SkillListItem[]>([]);
 	const count = ref(0);
+	/** The folded sources of the current page, with grouped lists. */
+	const collapsedSources = ref<SkillListCollapsedSource[]>([]);
 	const loading = ref(false);
 
 	// Only the newest read commits, so a slow earlier search cannot overwrite a later one.
@@ -38,6 +42,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 			if (read === latestRead) {
 				skills.value = response.data;
 				count.value = response.count;
+				collapsedSources.value = response.collapsedSources ?? [];
 			}
 			return response;
 		} finally {
@@ -108,9 +113,20 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.stopSyncingSkill(rootStore.restApiContext, id);
 	}
 
-	/** Check now on the source of a synced skill. The caller reloads the list. */
-	async function checkForUpdates(id: string) {
-		return await api.checkSkillForUpdates(rootStore.restApiContext, id);
+	const sources = ref<SkillSourceListItem[]>([]);
+	let latestSourcesRead = 0;
+
+	/** The sources that the user can see. A newer read wins, as for skills. */
+	async function fetchSources() {
+		const read = ++latestSourcesRead;
+		const response = await api.listSkillSources(rootStore.restApiContext);
+		if (read === latestSourcesRead) sources.value = response;
+		return response;
+	}
+
+	/** Check for updates on one source. The caller reloads the lists. */
+	async function checkSource(sourceId: string) {
+		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
 	}
 
 	return {
@@ -131,6 +147,9 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		discoverSource,
 		connectSource,
 		stopSyncingSkill,
-		checkForUpdates,
+		sources,
+		collapsedSources,
+		fetchSources,
+		checkSource,
 	};
 });
