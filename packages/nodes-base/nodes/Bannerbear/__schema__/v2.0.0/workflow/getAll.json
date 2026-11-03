@@ -1,0 +1,39 @@
+{
+	"type": "object",
+	"properties": {
+		"api_write_access": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"inputs": {
+			"type": "object"
+		},
+		"name": {
+			"type": "string"
+		},
+		"steps": {
+			"type": "array",
+			"items": {
+				"type": "object"
+			}
+		},
+		"tags": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"ui_write_access": {
+			"type": "string"
+		},
+		"uid": {
+			"type": "string"
+		}
+	},
+	"version": 2
+}
