@@ -118,5 +118,5 @@ emitting items. Therefore:
 
 - Never feed `__schema__` into wire-level mock generation.
 - Never let API docs override an available `__schema__` for node-output mocks.
-- Never reach for a credential bypass to make a *node execution* succeed — that
+- Never reach for a credential bypass to make a _node execution_ succeed — that
   is the wire level's job. The bypass only answers the credential's own test.

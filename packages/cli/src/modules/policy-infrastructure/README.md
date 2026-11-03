@@ -90,16 +90,16 @@ request. A check can compare it with `workflow` to judge only what the save adds
 
 ## Enforcement points
 
-| Point               | Deadline | Subject the token binds to        | Where it fires                                                        |
-| ------------------- | -------- | --------------------------------- | --------------------------------------------------------------------- |
-| `workflowSave`      | 1000 ms  | row id, or node hash for a create | editor, public API, chat hub, instance AI, eval thread restore        |
-| `workflowPublish`   | 1000 ms  | row id                            | activate, publication applier, activation on startup                  |
-| `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
-| `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
-| `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
-| `credentialTransfer` | 1000 ms | row id                            | move to another project                                               |
-| `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
-| `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
+| Point                | Deadline | Subject the token binds to        | Where it fires                                                        |
+| -------------------- | -------- | --------------------------------- | --------------------------------------------------------------------- |
+| `workflowSave`       | 1000 ms  | row id, or node hash for a create | editor, public API, chat hub, instance AI, eval thread restore        |
+| `workflowPublish`    | 1000 ms  | row id                            | activate, publication applier, activation on startup                  |
+| `workflowStart`      | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
+| `workflowTransfer`   | 1000 ms  | row id                            | move to another project                                               |
+| `credentialSave`     | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
+| `credentialTransfer` | 1000 ms  | row id                            | move to another project                                               |
+| `contentImport`      | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
+| `credentialDecrypt`  | 250 ms   | credential id                     | credential resolution during a run or a test                          |
 
 Deadlines are tight on the two points that sit inside a running execution. A
 wedged policy store there pins worker slots instead of failing one request.
@@ -119,16 +119,16 @@ commands wrote.
 Each point hands its check a different context. The types are in
 `@n8n/decorators/src/policy-check/policy-check.ts`.
 
-| Point               | Context type               | Fields                                                                                   |
-| ------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
-| `workflowSave`      | `WorkflowSaveContext`      | `workflow`, `storedWorkflow` (`null` for a create), `projectId`                          |
-| `workflowPublish`   | `WorkflowPublishContext`   | `workflow`, `projectId`                                                                  |
-| `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
-| `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
-| `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
-| `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
-| `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
-| `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
+| Point                | Context type                | Fields                                                                                   |
+| -------------------- | --------------------------- | ---------------------------------------------------------------------------------------- |
+| `workflowSave`       | `WorkflowSaveContext`       | `workflow`, `storedWorkflow` (`null` for a create), `projectId`                          |
+| `workflowPublish`    | `WorkflowPublishContext`    | `workflow`, `projectId`                                                                  |
+| `workflowStart`      | `WorkflowStartContext`      | `workflow`, `projectId`                                                                  |
+| `workflowTransfer`   | `WorkflowTransferContext`   | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
+| `credentialSave`     | `CredentialSaveContext`     | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
+| `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies      |
+| `contentImport`      | `ContentImportContext`      | `workflow`, `projectId`, `transport`                                                     |
+| `credentialDecrypt`  | `CredentialDecryptContext`  | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
 `nodes`. Nothing else, so a check cannot start to depend on unrelated fields.

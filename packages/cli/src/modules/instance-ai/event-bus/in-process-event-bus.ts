@@ -104,7 +104,10 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	handleRelayInstanceAiEvent({
 		threadId,
 		storedEvent,
-	}: { threadId: string; storedEvent: StoredEvent }): void {
+	}: {
+		threadId: string;
+		storedEvent: StoredEvent;
+	}): void {
 		if (this.hasSubscribers(threadId)) this.emitter.emit(threadId, storedEvent);
 	}
 

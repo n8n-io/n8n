@@ -26,6 +26,7 @@ flowchart LR
 ```
 
 ### Importer rules
+
 - Importers **plan and decide**; they must never touch a repository directly. All persistence and
   lookups go through a **service**.
 - Prefer an **existing** domain service from the main n8n codebase (`FolderService`, `ProjectService`,
@@ -45,6 +46,7 @@ flowchart LR
   they share target resolution, credential resolution, and publishing.
 
 ### Plan and write are separate steps
+
 - `ProjectPackageImporter.import` is `planImport` + throw on issues + `applyPlan`. `planImport`
   writes no data. It returns every issue that blocks the import, and `applyPlan` writes a plan
   without issues. `N8nPackagesService.planPackage`, `planPackageSelection` and

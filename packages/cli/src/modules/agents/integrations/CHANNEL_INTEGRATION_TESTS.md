@@ -29,13 +29,13 @@ implementation, action executor, message-context service) is real.
 
 Each platform adapter uses a different HTTP client, so the interception mechanism differs:
 
-| Platform | Adapter HTTP client | Interception | Helper |
-|----------|---------------------|--------------|--------|
-| Telegram | native `fetch` | replace `globalThis.fetch` | `installFetchStub` (replay-test-helpers) |
-| Slack | `@slack/web-api` (axios) | `nock` at the HTTP layer | inline in slack `replay-test-context` |
-| Linear | `@linear/sdk` (GraphQL over fetch) | replace `globalThis.fetch` | `installFetchStub` |
-| WhatsApp | native `fetch` | replace `globalThis.fetch` | `installWhatsAppApiStub` (whatsapp `replay-test-context`) |
-| Teams | `@microsoft/teams.*` (axios) + `jwks-rsa` (node `https`) | `nock` at the HTTP layer | inline in teams `replay-test-context` |
+| Platform | Adapter HTTP client                                      | Interception               | Helper                                                    |
+| -------- | -------------------------------------------------------- | -------------------------- | --------------------------------------------------------- |
+| Telegram | native `fetch`                                           | replace `globalThis.fetch` | `installFetchStub` (replay-test-helpers)                  |
+| Slack    | `@slack/web-api` (axios)                                 | `nock` at the HTTP layer   | inline in slack `replay-test-context`                     |
+| Linear   | `@linear/sdk` (GraphQL over fetch)                       | replace `globalThis.fetch` | `installFetchStub`                                        |
+| WhatsApp | native `fetch`                                           | replace `globalThis.fetch` | `installWhatsAppApiStub` (whatsapp `replay-test-context`) |
+| Teams    | `@microsoft/teams.*` (axios) + `jwks-rsa` (node `https`) | `nock` at the HTTP layer   | inline in teams `replay-test-context`                     |
 
 Responses are answered from two sources, in order of preference:
 
@@ -77,7 +77,7 @@ so response stubs only need to be valid enough for the real adapter to proceed.
 - **WhatsApp** — inbound media (`fetchData`) triggers `downloadMedia`'s two plain GETs (a metadata
   lookup, then the CDN url it returns), neither of which carries a JSON body — the stub branches on
   `httpMethod === 'GET'` before the send-message logic, which assumes a POST. Testing that
-  media-download path meaningfully needs *real* bytes: `resolveInboundMimeType` sniffs magic bytes
+  media-download path meaningfully needs _real_ bytes: `resolveInboundMimeType` sniffs magic bytes
   before trusting a declared type, so `StubResponse` supports an optional `rawResponseBody` (raw
   bytes, no `JSON.stringify`) alongside the normal JSON `responseBody` — see
   `WHATSAPP_MEDIA_CONTENT` in whatsapp's `replay-test-context` for genuine minimal file content per

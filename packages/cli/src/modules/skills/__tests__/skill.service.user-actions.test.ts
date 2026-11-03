@@ -389,7 +389,7 @@ describe('SkillService user actions', () => {
 				canDelete: false,
 				canStopSyncing: false,
 				syncState: null,
-				canCheckForUpdates: false,
+				sourceId: null,
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
@@ -422,7 +422,9 @@ describe('SkillService user actions', () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 			skillSyncGate.isEnabled.mockResolvedValue(on);
 			links.findSyncStates.mockResolvedValue(
-				new Map(linked ? [['skill_a', 'up_to_date' as const]] : []),
+				new Map(
+					linked ? [['skill_a', { state: 'up_to_date' as const, sourceId: 'source-1' }]] : [],
+				),
 			);
 			accessCheck.mockImplementation(async (_user, op) => () => op === 'update' && update);
 
@@ -430,7 +432,7 @@ describe('SkillService user actions', () => {
 
 			expect(item).toMatchObject({
 				canStopSyncing: can,
-				canCheckForUpdates: can,
+				sourceId: linked ? 'source-1' : null,
 				syncState: linked ? 'up_to_date' : null,
 				canEdit: update && !linked,
 			});

@@ -1,4 +1,5 @@
 ## Workflow level OTEL
+
 This module enables workflow level telemetry
 
 The module plugs into n8n to add tracing. The process-wide OTel setup lives outside the module, in `packages/cli/src/observability/`.
@@ -7,9 +8,11 @@ It is based upon and an extension of the work done in the community by:
 @gabrielhmsantos - https://github.com/gabrielhmsantos/n8n-tracekit
 
 ### Testing
+
 Given OTEL often involves events triggered from elsewhere within the n8n system integration testing is preferred.
 
 ### Attributes
+
 All attributes are listed in `otel.constants.ts`
 
 ### Global API ownership
@@ -70,13 +73,13 @@ n8n sends the headers of that setup.
 switch an operator has for "n8n may put tracing headers on my outbound calls", so no header
 goes around it. `OTEL_PROPAGATORS` names the headers n8n writes while the switch is on:
 
-| `N8N_OTEL_TRACES_INJECT_OUTBOUND` | `OTEL_PROPAGATORS`      | Headers                                |
-| --------------------------------- | ----------------------- | -------------------------------------- |
-| off                               | anything                | none                                   |
-| on                                | not set                 | `traceparent`, `tracestate`, `baggage` |
-| on                                | `tracecontext`          | `traceparent`, `tracestate`            |
-| on                                | `baggage`               | `baggage`                              |
-| on                                | `none`                  | none                                   |
+| `N8N_OTEL_TRACES_INJECT_OUTBOUND` | `OTEL_PROPAGATORS` | Headers                                |
+| --------------------------------- | ------------------ | -------------------------------------- |
+| off                               | anything           | none                                   |
+| on                                | not set            | `traceparent`, `tracestate`, `baggage` |
+| on                                | `tracecontext`     | `traceparent`, `tracestate`            |
+| on                                | `baggage`          | `baggage`                              |
+| on                                | `none`             | none                                   |
 
 `tracestate` goes out only when the trace has one, and `baggage` only when the execution has
 entries.
@@ -165,10 +168,10 @@ without the entries that explain it.
 A span leaves n8n only when it ends. A marker span tells a trace backend that an execution
 or a node started, before the real span ends.
 
-| Environment variable                       | Default | Marker                                       |
-| ------------------------------------------ | ------- | -------------------------------------------- |
+| Environment variable                       | Default | Marker                                              |
+| ------------------------------------------ | ------- | --------------------------------------------------- |
 | `N8N_OTEL_TRACES_EMIT_WORKFLOW_START_SPAN` | `false` | `workflow.execute.started` under each workflow span |
-| `N8N_OTEL_TRACES_EMIT_NODE_START_SPAN`     | `false` | `node.execute.started` under each node span   |
+| `N8N_OTEL_TRACES_EMIT_NODE_START_SPAN`     | `false` | `node.execute.started` under each node span         |
 
 - A marker is a child of the span that it announces. Its duration is 0 ms.
 - A marker has the start attributes of its parent and the execution identity. The node
@@ -237,6 +240,7 @@ module.exports = {
 ```
 
 ### Module architecture
+
 ```mermaid
 graph TD
     subgraph Module Layer
@@ -323,22 +327,25 @@ graph TD
 ```
 
 #### Manual validation
+
 1. Create docker-compose files and start them `docker-compose up -d`
-	 `docker-compose.yml`
+   `docker-compose.yml`
+
 ```yaml
 services:
   jaeger:
     image: jaegertracing/jaeger:latest
     ports:
-      - "16686:16686" # UI
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-    command: ["--config", "/etc/jaeger/config.yaml"]
+      - '16686:16686' # UI
+      - '4317:4317' # OTLP gRPC
+      - '4318:4318' # OTLP HTTP
+    command: ['--config', '/etc/jaeger/config.yaml']
     volumes:
       - ./jaeger-config.yaml:/etc/jaeger/config.yaml:ro
 ```
 
 `jaeger-config.yaml`
+
 ```yaml
 service:
   extensions: [jaeger_storage, jaeger_query]
@@ -357,7 +364,7 @@ extensions:
     storage:
       traces: memory
     ui:
-      config_file: ""
+      config_file: ''
 
 receivers:
   otlp:
@@ -373,6 +380,7 @@ exporters:
 ```
 
 Start n8n & point it at the jaeger instance
+
 ```
 cd packages/cli
 N8N_OTEL_ENABLED=true N8N_OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 pnpm run dev

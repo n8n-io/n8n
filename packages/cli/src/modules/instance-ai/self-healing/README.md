@@ -266,8 +266,8 @@ The investigation instructions must keep sensitive values out of reports, summar
 suggestion explanations, and error context. The text filter handles recognized patterns.
 It does not remove arbitrary private information.
 
-| Outcome         | Suggestion | Actions                                                    |
-| --------------- | ---------- | ---------------------------------------------------------- |
+| Outcome         | Suggestion | Actions                                                     |
+| --------------- | ---------- | ----------------------------------------------------------- |
 | `fix_ready`     | Required   | Apply and publish, Continue in Assistant or editor, Discard |
 | `needs_you`     | Optional   | Continue in Assistant or editor, Discard                    |
 | `could_not_fix` | None       | None. The result closes automatically                       |

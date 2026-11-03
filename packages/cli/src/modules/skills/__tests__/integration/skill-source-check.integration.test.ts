@@ -15,6 +15,7 @@ import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
+import { randomUUID } from 'node:crypto';
 
 import { createSkill, deleteAllSkills, findLatestSkillVersion } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
@@ -132,11 +133,15 @@ describe('Skill source checks', () => {
 	const age = async (sourceId: string) =>
 		await db().update(SkillSourceConnection, { id: sourceId }, { lastCheckedAt: new Date(0) });
 
-	const checkNow = async (agent: SuperAgentTest, skillId: string, status = 200) =>
-		(await agent.post(`/skill-sources/skills/${skillId}/check`).send().expect(status)).body as {
+	/** Check for updates on the source of the skill. A skill with no source posts an unknown id. */
+	const checkNow = async (agent: SuperAgentTest, skillId: string, status = 200) => {
+		const link = await db().findOneBy(SkillSourceLink, { skillId });
+		const sourceId = link?.sourceId ?? randomUUID();
+		return (await agent.post(`/skill-sources/${sourceId}/check`).send().expect(status)).body as {
 			data: SkillSourceCheckResponse;
 			meta?: { reason: string };
 		};
+	};
 
 	describe('the check of a source', () => {
 		it('costs one request when the source did not change', async () => {
@@ -667,7 +672,7 @@ describe('Skill source checks', () => {
 			const rows = body.data.data as SkillListItem[];
 			expect(rows.find((row) => row.id === xlsx)).toMatchObject({
 				syncState: 'update_available',
-				canCheckForUpdates: true,
+				sourceId: expect.any(String),
 			});
 			expect(rows.find((row) => row.id === docx)).toMatchObject({ syncState: 'up_to_date' });
 		});

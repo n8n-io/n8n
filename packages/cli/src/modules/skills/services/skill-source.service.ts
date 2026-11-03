@@ -12,6 +12,7 @@ import {
 	type ListSkillSourceRepositoriesQueryDto,
 	type SkillSourceCredentialOption,
 	type SkillSourceRepositoryList,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -20,7 +21,10 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
 
-import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
+import type {
+	SkillSourceConnection,
+	SkillSourceType,
+} from '../database/entities/skill-source-connection.entity';
 import {
 	DuplicateSkillSourceError,
 	SkillSourceRepository,
@@ -209,6 +213,53 @@ export class SkillSourceService {
 			);
 			throw error;
 		}
+	}
+
+	/**
+	 * The sources that the user can see, for the Sources tab: Global and every project where
+	 * the user can list skills, with the number of skills and updates of each.
+	 */
+	async list(user: User): Promise<SkillSourceListItem[]> {
+		await this.flagGate.assertEnabled(user);
+		const projectIds = await this.skillAccess.visibleSourceProjects(user);
+		const sources = await this.sourceRepository.findVisibleSources(projectIds);
+		return await this.describeSources(user, sources);
+	}
+
+	/** The Sources tab row of each source whose type has a client on this build. */
+	async describeSources(
+		user: User,
+		sources: SkillSourceConnection[],
+	): Promise<SkillSourceListItem[]> {
+		const shown = sources.flatMap((source) => {
+			const client = this.clients.get(source.type);
+			return client ? [{ source, client }] : [];
+		});
+		const [counts, projects, canReview] = await Promise.all([
+			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
+			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
+			Promise.all(
+				shown.map(async ({ source }) => await this.skillAccess.canOnSource(user, source, 'review')),
+			),
+		]);
+		return shown.map(({ source, client }, index) => {
+			const project = source.projectId ? projects.get(source.projectId) : undefined;
+			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
+			return {
+				id: source.id,
+				type: source.type,
+				...client.describe(source.locator),
+				webUrl: client.webUrl(source.locator),
+				projectId: source.projectId,
+				projectName: project?.name ?? null,
+				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
+				skillCount: count.skills,
+				updatesAvailable: count.available,
+				updatesBlocked: count.blocked,
+				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
+				canReview: canReview[index],
+			};
+		});
 	}
 
 	// ---------------------------------------------------------------- steps

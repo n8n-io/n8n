@@ -121,10 +121,7 @@ describe('N8nMemory', () => {
 		transactionMemoryEntrySourceFind = vi.fn().mockResolvedValue([]);
 		runInTransaction = vi.fn(
 			async (
-				callback: (trx: {
-					delete: typeof transactionDelete;
-					getRepository: Mock;
-				}) => Promise<void>,
+				callback: (trx: { delete: typeof transactionDelete; getRepository: Mock }) => Promise<void>,
 			) => {
 				await callback({
 					delete: transactionDelete,

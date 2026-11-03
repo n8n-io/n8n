@@ -105,10 +105,17 @@ export class SkillSyncService {
 	 * does. A source checked less than a minute ago, also by the hourly check, is not checked
 	 * again, and the answer says so.
 	 */
-	async checkNow(user: User, skillId: string): Promise<SkillSourceCheckResponse> {
-		const { source } = await this.requireSource(user, skillId, 'checkNow');
-		const client = this.clients.get(source.type);
-		if (!client) throw new NotFoundError('This skill is not synced.');
+	async checkNow(user: User, sourceId: string): Promise<SkillSourceCheckResponse> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.sourceRepository.findById(sourceId);
+		const client = source && this.clients.get(source.type);
+		// 404 for a source that the user cannot see, so the answer reveals nothing about it.
+		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		if (!(await this.skillAccess.canOnSource(user, source, 'checkNow'))) {
+			throw new ForbiddenError('You are not allowed to check this source.');
+		}
 		const label = client.describe(source.locator).label;
 		const track = async (props: {
 			updatesFound: number;
@@ -468,7 +475,7 @@ export class SkillSyncService {
 	private async requireSource(
 		user: User,
 		skillId: string,
-		action: 'stopSyncing' | 'checkNow',
+		action: 'stopSyncing',
 	): Promise<{ link: SkillSourceLink; source: SkillSourceConnection }> {
 		await this.flagGate.assertEnabled(user);
 		// 404 for a skill the user cannot read, so the answer reveals nothing about it.

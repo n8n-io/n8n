@@ -8,9 +8,10 @@ export {
 } from './builder-telemetry-session';
 
 export interface BuilderCredentialService {
-	list(options?: { type?: string; projectId?: string }): Promise<
-		Array<{ id: string; name: string; type: string }>
-	>;
+	list(options?: {
+		type?: string;
+		projectId?: string;
+	}): Promise<Array<{ id: string; name: string; type: string }>>;
 	get(credentialId: string): Promise<{ name: string }>;
 }
 
