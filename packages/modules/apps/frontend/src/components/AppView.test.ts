@@ -54,8 +54,9 @@ const globalOptions = {
 		},
 		AppVersionsPanel: {
 			props: ['app', 'versions'],
-			emits: ['updated', 'close'],
+			emits: ['updated', 'restored', 'close'],
 			template: `<div data-test-id="app-versions-panel">
+				<button data-test-id="versions-restored" @click="$emit('restored')" />
 				<button data-test-id="versions-rollback" @click="$emit('updated', { ...app, name: 'Rolled back', publishedVersionId: 'v0' })" />
 				<button data-test-id="versions-close" @click="$emit('close')" />
 			</div>`,
@@ -266,6 +267,18 @@ describe('AppView', () => {
 		await waitFor(() => expect(listAppVersions).toHaveBeenCalledTimes(2));
 		await userEvent.click(getByTestId('versions-close'));
 		expect(queryByTestId('app-versions-panel')).not.toBeInTheDocument();
+	});
+
+	it('reloads the app and its versions after a restore', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-view-preview');
+		await userEvent.click(getByTestId('show-versions'));
+
+		await userEvent.click(getByTestId('versions-restored'));
+
+		await waitFor(() => expect(getApp).toHaveBeenCalledTimes(2));
+		expect(listAppVersions).toHaveBeenCalledTimes(2);
 	});
 
 	it('closes the versions panel when another app opens', async () => {

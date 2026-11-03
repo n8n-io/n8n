@@ -123,6 +123,7 @@ defineExpose({ refresh });
 				:app="app"
 				:versions="versions"
 				@updated="onAppUpdated"
+				@restored="refresh"
 				@close="versionsOpen = false"
 			/>
 		</div>

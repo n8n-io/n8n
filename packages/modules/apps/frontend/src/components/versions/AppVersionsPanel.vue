@@ -8,12 +8,16 @@ import {
 	N8nLoading,
 	N8nText,
 	N8nTimeAgo,
+	N8nTooltip,
 	type ActionDropdownItem,
 } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 
+import { restoreAppVersion } from '../../apps.api';
 import { getAppPermissions } from '../../apps.permissions';
 import {
 	getAppVersionLabel,
@@ -25,9 +29,12 @@ import AppPublishDialog from '../publish/AppPublishDialog.vue';
 
 const props = defineProps<{ app: AppResponse; versions: AppVersions }>();
 
-const emit = defineEmits<{ updated: [app: AppResponse]; close: [] }>();
+const emit = defineEmits<{ updated: [app: AppResponse]; restored: []; close: [] }>();
+
+type VersionAction = 'publish' | 'restore';
 
 const i18n = useI18n();
+const toast = useToast();
 const rootStore = useRootStore();
 
 const { versions: list, loading, failed } = props.versions;
@@ -35,27 +42,70 @@ const { versions: list, loading, failed } = props.versions;
 const canUpdate = computed(() => getAppPermissions(props.app.projectId).canUpdate);
 const selected = ref<AppVersionResponse | null>(null);
 const publishOpen = ref(false);
+const restoring = ref(false);
 
-function disabledReason(version: AppVersionResponse) {
-	if (!canUpdate.value) return i18n.baseText('apps.versions.noPermission');
-	if (!isBuilt(version)) return i18n.baseText('apps.versions.notBuilt');
-	return undefined;
+function isDraft(version: AppVersionResponse) {
+	return version.id === props.app.draftVersionId;
 }
 
-function actions(version: AppVersionResponse): Array<ActionDropdownItem<'publish'>> {
-	const reason = disabledReason(version);
-	return [
-		{
+function publishDisabledReason(version: AppVersionResponse) {
+	if (!canUpdate.value) return i18n.baseText('apps.versions.noPermission');
+	if (isBuilt(version)) return undefined;
+	return i18n.baseText(
+		isDraft(version) ? 'apps.versions.notBuilt' : 'apps.versions.notBuiltRestore',
+	);
+}
+
+function actions(version: AppVersionResponse) {
+	const items: Array<ActionDropdownItem<VersionAction>> = [];
+	if (version.id !== props.app.publishedVersionId) {
+		const reason = publishDisabledReason(version);
+		items.push({
 			id: 'publish',
 			label: i18n.baseText('apps.versions.publish'),
 			disabled: reason !== undefined,
 			description: reason,
-		},
-	];
+		});
+	}
+	if (!isDraft(version)) {
+		items.push({
+			id: 'restore',
+			label: i18n.baseText('apps.versions.restore'),
+			disabled: !canUpdate.value || restoring.value,
+			description: canUpdate.value ? undefined : i18n.baseText('apps.versions.noPermission'),
+		});
+	}
+	return items;
 }
 
-function select(version: AppVersionResponse) {
-	if (disabledReason(version)) return;
+async function restore(version: AppVersionResponse) {
+	restoring.value = true;
+	try {
+		await restoreAppVersion(
+			rootStore.restApiContext,
+			props.app.projectId,
+			props.app.id,
+			version.id,
+			{
+				baseVersionId: props.app.draftVersionId,
+			},
+		);
+		emit('restored');
+	} catch (error) {
+		toast.showError(error, i18n.baseText('apps.versions.restoreError'));
+		// A changed draft makes the restore fail, so reload to show the current draft.
+		if (error instanceof ResponseError && error.httpStatusCode === 409) emit('restored');
+	} finally {
+		restoring.value = false;
+	}
+}
+
+async function onSelect(action: VersionAction, version: AppVersionResponse) {
+	if (!actions(version).some((item) => item.id === action && !item.disabled)) return;
+	if (action === 'restore') {
+		await restore(version);
+		return;
+	}
 	selected.value = version;
 	publishOpen.value = true;
 }
@@ -143,12 +193,17 @@ function select(version: AppVersionResponse) {
 					</N8nBadge>
 				</div>
 				<N8nActionDropdown
-					v-if="version.id !== app.publishedVersionId"
+					v-if="actions(version).length"
 					:items="actions(version)"
 					placement="bottom-end"
 					data-test-id="app-version-actions"
-					@select="select(version)"
+					@select="onSelect($event, version)"
 				>
+					<template #menuItem="item">
+						<N8nTooltip :content="item.description" :disabled="!item.description" placement="left">
+							<span>{{ item.label }}</span>
+						</N8nTooltip>
+					</template>
 					<template #activator>
 						<N8nIconButton
 							icon="ellipsis"

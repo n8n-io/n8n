@@ -1,16 +1,20 @@
 import type { AppBuildStatus, AppVersionResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
 import { computed, ref } from 'vue';
 
 import { providePermissions, testApp, testVersion } from '../../__tests__/fixtures';
-import { listAppVersions } from '../../apps.api';
+import { listAppVersions, restoreAppVersion } from '../../apps.api';
 import type { AppVersions } from '../../composables/useAppVersions';
 import AppVersionsPanel from './AppVersionsPanel.vue';
 
 vi.mock('../../apps.api');
+
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
 
 const version = (
 	id: string,
@@ -46,11 +50,14 @@ const renderComponent = createComponentRenderer(AppVersionsPanel, {
 						v-for="item in items"
 						:key="item.id"
 						:disabled="item.disabled"
-						:title="item.description"
-						data-test-id="app-version-publish"
+						:data-test-id="'app-version-' + item.id"
 						@click="$emit('select', item.id)"
-					>{{ item.label }}</button>
+					><slot name="menuItem" v-bind="item" /></button>
 				</div>`,
+			},
+			N8nTooltip: {
+				props: ['content', 'disabled'],
+				template: '<span :data-tooltip="disabled ? undefined : content"><slot /></span>',
 			},
 			AppPublishDialog: {
 				props: ['open', 'app', 'version'],
@@ -70,6 +77,14 @@ function rows() {
 
 function publishButton(row: HTMLElement) {
 	return row.querySelector<HTMLButtonElement>('[data-test-id="app-version-publish"]');
+}
+
+function restoreButton(row: HTMLElement) {
+	return row.querySelector<HTMLButtonElement>('[data-test-id="app-version-restore"]');
+}
+
+function tooltip(button: HTMLElement | null) {
+	return button?.querySelector('[data-tooltip]')?.getAttribute('data-tooltip');
 }
 
 describe('AppVersionsPanel', () => {
@@ -160,13 +175,82 @@ describe('AppVersionsPanel', () => {
 		['a pruned bundle', version('v1', 'succeeded', { bundleArtifactId: null })],
 	])('disables publish for %s and says why', (_case, row) => {
 		providePermissions(['app:update']);
-		renderComponent({ props: { versions: fakeVersions([row]) } });
+		renderComponent({
+			props: { app: testApp({ draftVersionId: 'v1' }), versions: fakeVersions([row]) },
+		});
 
 		expect(publishButton(rows()[0])).toBeDisabled();
-		expect(publishButton(rows()[0])).toHaveAttribute(
-			'title',
-			'This version has no successful build',
+		expect(publishButton(rows()[0])).toHaveTextContent(/^Publish version$/);
+		expect(tooltip(publishButton(rows()[0]))).toBe('This version has no successful build');
+	});
+
+	it('points to restore when an older version has no build', () => {
+		providePermissions(['app:update']);
+		renderComponent({
+			props: { versions: fakeVersions([version('v3'), version('v1', 'failed')]) },
+		});
+
+		expect(tooltip(publishButton(rows()[1]))).toBe(
+			'This version has no successful build. Restore it to build it again.',
 		);
+	});
+
+	it('offers restore on every version except the current draft', () => {
+		providePermissions(['app:update']);
+		renderComponent({
+			props: {
+				app: testApp({ draftVersionId: 'v3', publishedVersionId: 'v2' }),
+				versions: fakeVersions([version('v3'), version('v2'), version('v1', 'failed')]),
+			},
+		});
+
+		const [draft, published, failedBuild] = rows();
+		expect(restoreButton(draft)).toBeNull();
+		expect(restoreButton(published)).toBeEnabled();
+		expect(restoreButton(failedBuild)).toBeEnabled();
+	});
+
+	it('restores a version on top of the current draft', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(restoreAppVersion).mockResolvedValue(version('v4', 'queued'));
+		const { emitted } = renderComponent({
+			props: { versions: fakeVersions([version('v3'), version('v1')]) },
+		});
+
+		await userEvent.click(restoreButton(rows()[1])!);
+
+		await waitFor(() => expect(emitted('restored')).toHaveLength(1));
+		expect(restoreAppVersion).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', {
+			baseVersionId: 'v2',
+		});
+	});
+
+	it('shows an error and reloads when the draft changed during a restore', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(restoreAppVersion).mockRejectedValue(
+			new ResponseError('The app draft changed.', { httpStatusCode: 409 }),
+		);
+		const { emitted } = renderComponent({
+			props: { versions: fakeVersions([version('v3'), version('v1')]) },
+		});
+
+		await userEvent.click(restoreButton(rows()[1])!);
+
+		await waitFor(() => expect(showError).toHaveBeenCalled());
+		expect(emitted('restored')).toHaveLength(1);
+	});
+
+	it('shows an error without a reload when a restore fails otherwise', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(restoreAppVersion).mockRejectedValue(new Error('Network error'));
+		const { emitted } = renderComponent({
+			props: { versions: fakeVersions([version('v3'), version('v1')]) },
+		});
+
+		await userEvent.click(restoreButton(rows()[1])!);
+
+		await waitFor(() => expect(showError).toHaveBeenCalled());
+		expect(emitted('restored')).toBeUndefined();
 	});
 
 	it('shows the build status and enables publish when the build ends', async () => {
@@ -184,14 +268,14 @@ describe('AppVersionsPanel', () => {
 	it.each<[string, boolean]>([
 		['without the update scope', false],
 		['in a read-only instance', true],
-	])('disables publish %s', (_case, readOnly) => {
+	])('disables publish and restore %s', (_case, readOnly) => {
 		providePermissions(readOnly ? ['app:update'] : ['app:read'], readOnly);
-		renderComponent({ props: { versions: fakeVersions([version('v1')]) } });
+		renderComponent({ props: { versions: fakeVersions([version('v3'), version('v1')]) } });
 
-		expect(publishButton(rows()[0])).toBeDisabled();
-		expect(publishButton(rows()[0])).toHaveAttribute(
-			'title',
-			'You do not have permission to publish this app',
-		);
+		const older = rows()[1];
+		expect(publishButton(older)).toBeDisabled();
+		expect(restoreButton(older)).toBeDisabled();
+		expect(tooltip(publishButton(older))).toBe('You do not have permission to change this app');
+		expect(tooltip(restoreButton(older))).toBe('You do not have permission to change this app');
 	});
 });
