@@ -6,7 +6,7 @@ job queue. Only `packages/cli` uses it, for queue mode in engine v1.
 ## Origin
 
 - Upstream tag `v4.16.4`, commit `65355b88838db6d36577c22ec7d4a876a70fad96`.
-- `index.js`, `index.d.ts`, `lib` and `LICENSE.md` come from the `bull@4.16.4`
+- `index.js`, `index.d.ts`, `lib` and `LICENSE` come from the `bull@4.16.4`
   npm tarball. `test` comes from the upstream tag.
 - Upstream is in maintenance mode. We do not sync with it.
 
