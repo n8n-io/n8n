@@ -51,8 +51,14 @@ const globalOptions = {
 				</div>`,
 		},
 		AppPreview: {
-			props: ['projectId', 'app', 'versions'],
-			template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
+			props: ['projectId', 'app', 'versions', 'inspectable', 'elementSelected'],
+			emits: ['element-selected'],
+			template: `<div data-test-id="app-view-preview">
+				{{ app.id }}
+				<span data-test-id="preview-inspectable">{{ inspectable }}</span>
+				<span data-test-id="preview-element-selected">{{ elementSelected }}</span>
+				<button data-test-id="pick" @click="$emit('element-selected', { tagName: 'button' })" />
+			</div>`,
 		},
 		AppConfigure: {
 			props: ['app'],
@@ -93,6 +99,21 @@ describe('AppView', () => {
 		expect(getByTestId('app-header')).toHaveTextContent('App app-1');
 		expect(getByTestId('app-view-preview')).toBeInTheDocument();
 		expect(getApp).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
+	});
+
+	it('passes the inspect props to the preview and re-emits the picked element', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId, emitted } = renderComponent({
+			props: { inspectable: true, elementSelected: true },
+		});
+
+		await findByTestId('app-view-preview');
+		expect(getByTestId('preview-inspectable')).toHaveTextContent('true');
+		expect(getByTestId('preview-element-selected')).toHaveTextContent('true');
+
+		await userEvent.click(getByTestId('pick'));
+
+		expect(emitted('element-selected')).toEqual([[{ tagName: 'button' }]]);
 	});
 
 	it('shows the not-found state without an error toast for a missing app', async () => {
