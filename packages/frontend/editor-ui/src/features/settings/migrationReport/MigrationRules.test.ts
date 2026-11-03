@@ -158,6 +158,28 @@ describe('MigrationRules', () => {
 			// Loading skeletons are gone
 			expect(document.querySelectorAll('.el-skeleton').length).toBe(0);
 		});
+
+		it('shows a message over the skeleton only after the report loads for 5 seconds', async () => {
+			vi.useFakeTimers();
+			let resolveReport: (report: BreakingChangeLightReportResult) => void = () => {};
+			vi.mocked(breakingChangesApi.getReport).mockReturnValue(
+				new Promise((resolve) => (resolveReport = resolve)),
+			);
+			renderComponent();
+
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(screen.getByTestId('migration-report-slow-loading')).toHaveTextContent(
+				'Still scanning your workflows…',
+			);
+
+			resolveReport(mockReport);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+			vi.useRealTimers();
+		});
 	});
 
 	describe('tabs functionality', () => {
