@@ -153,7 +153,7 @@ watch(
 							</N8nButton>
 						</template>
 					</N8nDropdownMenu>
-					<AppActions v-if="app" :app="app" show-code @deleted="emit('deleted', $event)" />
+					<AppActions v-if="app" :app="app" @deleted="emit('deleted', $event)" />
 				</template>
 			</N8nBreadcrumbs>
 		</div>

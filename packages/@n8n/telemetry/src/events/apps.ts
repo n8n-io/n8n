@@ -69,7 +69,7 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 	USER_CHANGED_APP_VISIBILITY: {
 		name: 'User changed app visibility',
 		description:
-			'A user changed who can open an app. Fires only when the value changes, not on every settings save.',
+			'A user changed who can open an app, in the publish dialog or through the API. Fires only when the value changes.',
 		properties: z.object({
 			app_id: z.string(),
 			user_id: actorUserId,
@@ -116,7 +116,7 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_SHOW_APP_CODE: {
 		name: 'User clicked show app code',
 		description:
-			'A user clicked "Show code" in the actions menu of the app header. The code view does not exist yet, so this measures interest in it.',
+			'A user clicked "Show code" in the menu of the publish button in the app header. The code view does not exist yet, so this measures interest in it.',
 		properties: z.object({
 			app_id: z.string(),
 			project_id: z.string(),
