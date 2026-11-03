@@ -42,10 +42,12 @@ export interface FakeConsumer {
 	};
 }
 
-/** The admin client `assertTopicExists` uses to verify the topic. */
+/** The admin client `assertTopicExists` and the credential test use. */
 export interface FakeAdmin {
 	connect: Mock;
 	fetchTopicMetadata: Mock;
+	/** The metadata request the credential test relies on to prove the broker is reachable. */
+	listTopics: Mock;
 	disconnect: Mock;
 }
 
@@ -125,6 +127,7 @@ function createFakeAdmin(): FakeAdmin {
 			const outcome = metadataOutcomeQueue.shift();
 			return outcome ? await outcome() : [{ name: 'test-topic', partitions: [{ partitionId: 0 }] }];
 		}),
+		listTopics: vi.fn(async () => [] as string[]),
 		disconnect: vi.fn(async () => {
 			if (disconnectError) throw disconnectError;
 		}),
@@ -254,7 +257,7 @@ export function getFakeClientConfigs(): KafkaJS.CommonConstructorConfig[] {
 	return clientConfigs;
 }
 
-/** Clears the recorded consumers and client configs (not the access count). */
+/** Clears the recorded consumers, admins and client configs (not the access count). */
 export function resetConfluentKafkaRecordings(): void {
 	consumers.length = 0;
 	admins.length = 0;
