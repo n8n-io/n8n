@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_99a275355d51ed::t_6c0d26c7109b38 1-5,17-47
+packages/frontend/editor-ui/src/app/utils/fileUtils.test.ts
+  s_99a275355d51ed::t_b70a8495c24256 5,96-119
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_99a275355d51ed::t_76d58dba775f9e 624-634,1695,1703,1711,1720,1723-1734
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_99a275355d51ed::t_48a1046308f20c 440,4243-4293
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_99a275355d51ed::t_8679917f9f10b0 107-112,175,763,768
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_99a275355d51ed::t_8679917f9f10b0 24,226
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_99a275355d51ed::t_8679917f9f10b0 127,930
+packages/frontend/editor-ui/src/app/utils/fileUtils.ts
+  s_99a275355d51ed::t_b70a8495c24256 19,25,27-28,30
+  ai_agent 20-24
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_99a275355d51ed::t_8679917f9f10b0 71,547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "67e230e94f3c2a5456901d365c219fd76e172a79",
+  "prompts": {},
+  "sessions": {
+    "s_99a275355d51ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3ae5620-19a8-43a2-827b-ae8615bbd509",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
