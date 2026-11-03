@@ -1959,18 +1959,6 @@ describe('version-scoped settings on save', () => {
 			expect(saved.settings?.engineType).toBeUndefined();
 			expect(await versionSettings(updated.versionId)).toEqual({});
 		});
-
-		test('rejects a restore of a version that is not in the history of the workflow', async () => {
-			const owner = await createOwner();
-			const workflow = await createWorkflowWithHistory({}, owner);
-
-			await expect(
-				workflowService.update(owner, settingsUpdate({}), workflow.id, {
-					forceSave: true,
-					restoredFromVersionId: uuid(),
-				}),
-			).rejects.toThrow("The version to restore is not in this workflow's history.");
-		});
 	});
 
 	describe('without the engine-v2 module', () => {
@@ -2013,6 +2001,18 @@ describe('version-scoped settings on save', () => {
 
 			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
 			expect(saved.settings?.engineType).toBe('v2');
+		});
+
+		test('rejects a restore of a version that is not in the history of the workflow', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await expect(
+				workflowService.update(owner, settingsUpdate({}), workflow.id, {
+					forceSave: true,
+					restoredFromVersionId: uuid(),
+				}),
+			).rejects.toThrow("The version to restore is not in this workflow's history.");
 		});
 	});
 });
