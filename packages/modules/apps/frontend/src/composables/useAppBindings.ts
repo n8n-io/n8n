@@ -26,6 +26,7 @@ export function useAppBindings(app: MaybeRefOrGetter<AppResponse>) {
 	const bindings = ref<AppDescribedBinding[]>([]);
 	const warnings = ref<AppBindingWarning[]>([]);
 	const loading = ref(false);
+	const loaded = ref(false);
 	let versionId = toValue(app).draftVersionId;
 	let pendingSave = Promise.resolve();
 
@@ -37,6 +38,7 @@ export function useAppBindings(app: MaybeRefOrGetter<AppResponse>) {
 		versionId = response.versionId;
 		bindings.value = response.bindings;
 		warnings.value = response.warnings;
+		loaded.value = true;
 	}
 
 	async function load() {
@@ -44,8 +46,11 @@ export function useAppBindings(app: MaybeRefOrGetter<AppResponse>) {
 		loading.value = true;
 		try {
 			apply(await getAppBindings(rootStore.restApiContext, projectId, id));
+			return true;
 		} catch (error) {
+			loaded.value = false;
 			toast.showError(error, i18n.baseText('apps.configure.connections.loadError'));
+			return false;
 		} finally {
 			loading.value = false;
 		}
@@ -71,12 +76,13 @@ export function useAppBindings(app: MaybeRefOrGetter<AppResponse>) {
 	}
 
 	async function save(update: (current: AppBinding[]) => AppBinding[]) {
-		const result = pendingSave.then(
-			async () => await change(update(bindings.value.map(toAppBinding))),
-		);
+		const result = pendingSave.then(async () => {
+			if (!loaded.value && !(await load())) return undefined;
+			return await change(update(bindings.value.map(toAppBinding)));
+		});
 		pendingSave = result.then(() => undefined);
 		return await result;
 	}
 
-	return { bindings, warningsByKey, loading, load, save };
+	return { bindings, warningsByKey, loading, loaded, load, save };
 }

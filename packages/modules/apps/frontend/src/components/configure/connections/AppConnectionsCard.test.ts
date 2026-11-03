@@ -109,6 +109,27 @@ describe('AppConnectionsCard', () => {
 		expect(queryByTestId('app-binding-weeklyChannelActivity-warning')).not.toBeInTheDocument();
 	});
 
+	it('hides changes until the connections load', async () => {
+		providePermissions(['app:update']);
+		const request = Promise.withResolvers<AppBindingsResponse>();
+		vi.mocked(getAppBindings).mockReturnValue(request.promise);
+		const { findByTestId, queryByTestId } = renderComponent();
+
+		expect(queryByTestId('app-binding-add-workflow')).not.toBeInTheDocument();
+
+		request.resolve(loaded);
+		expect(await findByTestId('app-binding-add-workflow')).toBeInTheDocument();
+	});
+
+	it('hides changes after a load error', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(getAppBindings).mockRejectedValueOnce(new Error('offline'));
+		const { queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(showError).toHaveBeenCalledOnce());
+		expect(queryByTestId('app-binding-add-workflow')).not.toBeInTheDocument();
+	});
+
 	it('adds a workflow under a key from its name and emits the new draft', async () => {
 		providePermissions(['app:update']);
 		vi.mocked(listBindableResources).mockResolvedValue([{ id: 'w2', name: 'Post weekly report' }]);

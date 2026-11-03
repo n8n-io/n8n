@@ -43,6 +43,10 @@ const renderComposable = createComponentRenderer(
 );
 
 describe('useAppBindings', () => {
+	beforeEach(() => {
+		vi.mocked(getAppBindings).mockResolvedValue(response('v1', []));
+	});
+
 	afterEach(() => vi.clearAllMocks());
 
 	it('saves on the latest version and passes the saved bindings to the next save', async () => {
@@ -87,5 +91,16 @@ describe('useAppBindings', () => {
 
 		expect(showError).toHaveBeenCalledOnce();
 		expect(getAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
+	});
+
+	it('does not save when the bindings cannot be loaded', async () => {
+		vi.mocked(getAppBindings).mockRejectedValue(new Error('offline'));
+		renderComposable();
+
+		await bindings.load();
+		expect(await bindings.save((current) => [...current, workflow])).toBeUndefined();
+
+		expect(getAppBindings).toHaveBeenCalledTimes(2);
+		expect(setAppBindings).not.toHaveBeenCalled();
 	});
 });

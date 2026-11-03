@@ -25,9 +25,11 @@ const props = defineProps<{ app: AppResponse; versions: AppVersions }>();
 const emit = defineEmits<{ updated: [app: AppResponse] }>();
 
 const i18n = useI18n();
-const { bindings, warningsByKey, load, save } = useAppBindings(() => props.app);
+const { bindings, warningsByKey, loading, loaded, load, save } = useAppBindings(() => props.app);
 
-const canUpdate = computed(() => getAppPermissions(props.app.projectId).canUpdate);
+const canUpdate = computed(
+	() => getAppPermissions(props.app.projectId).canUpdate && loaded.value && !loading.value,
+);
 const rows = computed(() =>
 	BINDING_KIND_ORDER.map((kind) => {
 		const ofKind = bindings.value.filter((binding) => binding.kind === kind);
