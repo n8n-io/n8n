@@ -8,10 +8,13 @@ export async function execute(
 	this: IExecuteFunctions,
 	_sheet: GoogleSheet,
 	sheetName: string,
+	_sheetId = '',
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
-	for (let i = 0; i < items.length; i++) {
+	const itemIndexes = selectedItemIndexes ?? items.map((_, index) => index);
+	for (const i of itemIndexes) {
 		const [spreadsheetId, sheetWithinDocument] = sheetName.split('||');
 		const requests = [
 			{
