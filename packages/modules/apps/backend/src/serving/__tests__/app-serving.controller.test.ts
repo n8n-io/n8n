@@ -134,6 +134,39 @@ describe('AppServingController', () => {
 		);
 	});
 
+	it('adds the element inspector to preview HTML with its own ETag', async () => {
+		const { controller, req, res } = setup('/');
+		req.appContext = { app: mock(), versionId: 'draft', preview: true };
+
+		await controller.serve(req, res);
+
+		const sent = (res.send.mock.calls[0][0] as Buffer).toString();
+		expect(sent).toContain('<script>');
+		expect(sent).toContain('"https://n8n.example.net"');
+		expect(res.set).not.toHaveBeenCalledWith(expect.objectContaining({ ETag: '"html"' }));
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ ETag: expect.stringMatching(/^W\/"[0-9a-f]{64}"$/) }),
+		);
+	});
+
+	it('does not add the element inspector to published HTML', async () => {
+		const { controller, req, res } = setup('/');
+
+		await controller.serve(req, res);
+
+		expect(res.send).toHaveBeenCalledWith(Buffer.from('app'));
+		expect(res.set).toHaveBeenCalledWith(expect.objectContaining({ ETag: '"html"' }));
+	});
+
+	it('does not add the element inspector to preview assets', async () => {
+		const { controller, req, res } = setup('/assets/main.js', false);
+		req.appContext = { app: mock(), versionId: 'draft', preview: true };
+
+		await controller.serve(req, res);
+
+		expect(res.send).toHaveBeenCalledWith(Buffer.from('js'));
+	});
+
 	it('keeps the published CSP without frame-ancestors', async () => {
 		const { controller, req, res } = setup('/assets/main.js', false);
 

@@ -39,7 +39,11 @@ const props = defineProps<{
 	publishableVersion: AppVersionResponse | null;
 }>();
 
-const emit = defineEmits<{ updated: [app: AppResponse]; deleted: [appId: string] }>();
+const emit = defineEmits<{
+	updated: [app: AppResponse];
+	deleted: [appId: string];
+	showVersions: [];
+}>();
 
 const tab = defineModel<AppViewTab>('tab', { required: true });
 
@@ -176,6 +180,7 @@ watch(
 				:app="app"
 				:version="publishableVersion"
 				@updated="emit('updated', $event)"
+				@show-versions="emit('showVersions')"
 			/>
 		</div>
 	</header>

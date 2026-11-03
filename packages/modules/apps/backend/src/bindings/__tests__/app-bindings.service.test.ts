@@ -2,7 +2,7 @@ import type { AppBinding } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { App } from '../../app.entity';
@@ -274,5 +274,79 @@ describe('AppBindingsService', () => {
 		const { warnings } = await service.getBindings('p1', APP_ID);
 
 		expect(warnings).toEqual([expect.objectContaining({ code: 'resource_unpublished' })]);
+	});
+
+	describe('restoreVersion', () => {
+		const OLD_ID = '0190a8d6-4a2e-7000-8000-0000000000d0';
+
+		function setupRestore(source: Partial<AppVersion> = {}) {
+			const context = setup();
+			context.versions.findVersionById.mockResolvedValue({
+				id: OLD_ID,
+				appId: APP_ID,
+				bindings: [tableRead, workflow],
+				...source,
+			} as AppVersion);
+			context.changes.startRestore.mockResolvedValue({ id: NEW_ID } as AppVersion);
+			return context;
+		}
+
+		it('checks every restored binding with the acting user, then restores the version', async () => {
+			const { service, changes, dataTables, workflows } = setupRestore();
+
+			const version = await service.restoreVersion(user, 'p1', APP_ID, OLD_ID, DRAFT_ID);
+
+			expect(version.id).toBe(NEW_ID);
+			expect(dataTables.assertCanBind).toHaveBeenCalledWith(user, 'p1', tableRead);
+			expect(workflows.assertCanBind).toHaveBeenCalledWith(user, 'p1', workflow);
+			expect(changes.startRestore).toHaveBeenCalledWith('p1', APP_ID, OLD_ID, DRAFT_ID, {
+				userId: user.id,
+			});
+		});
+
+		it('does not restore when the user cannot use a restored binding', async () => {
+			const { service, changes, workflows } = setupRestore();
+			workflows.assertCanBind.mockRejectedValue(new Error('no access'));
+
+			await expect(service.restoreVersion(user, 'p1', APP_ID, OLD_ID, DRAFT_ID)).rejects.toThrow(
+				'no access',
+			);
+			expect(changes.startRestore).not.toHaveBeenCalled();
+		});
+
+		it('rejects restoring the current draft', async () => {
+			const { service, versions, changes } = setupRestore();
+
+			await expect(
+				service.restoreVersion(user, 'p1', APP_ID, DRAFT_ID.toUpperCase(), DRAFT_ID),
+			).rejects.toThrow(ConflictError);
+			expect(versions.findVersionById).not.toHaveBeenCalled();
+			expect(changes.startRestore).not.toHaveBeenCalled();
+		});
+
+		it('rejects a version id that is not a UUID before it reads the database', async () => {
+			const { service, versions, changes } = setupRestore();
+
+			await expect(service.restoreVersion(user, 'p1', APP_ID, 'foo', DRAFT_ID)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(versions.findVersionById).not.toHaveBeenCalled();
+			expect(changes.startRestore).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['a version of another app', { appId: '0190a8d6-4a2e-7000-8000-000000000002' }],
+			['a missing version', null],
+		])('rejects %s', async (_case, source) => {
+			const { service, versions, changes } = setupRestore();
+			versions.findVersionById.mockResolvedValue(
+				source === null ? null : ({ id: OLD_ID, bindings: [], ...source } as unknown as AppVersion),
+			);
+
+			await expect(service.restoreVersion(user, 'p1', APP_ID, OLD_ID, DRAFT_ID)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(changes.startRestore).not.toHaveBeenCalled();
+		});
 	});
 });

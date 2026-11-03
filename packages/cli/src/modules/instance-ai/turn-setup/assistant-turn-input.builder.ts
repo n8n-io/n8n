@@ -89,7 +89,9 @@ function isNamedResourceAttachment(
 	attachment: InstanceAiResourceAttachment,
 ): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
 	if (attachment.type === 'agent' && attachment.pending) return false;
-	return attachment.type !== 'nodes' && Boolean(attachment.name);
+	return (
+		(attachment.type === 'workflow' || attachment.type === 'agent') && Boolean(attachment.name)
+	);
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {

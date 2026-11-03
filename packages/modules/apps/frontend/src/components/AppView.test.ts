@@ -44,17 +44,34 @@ const globalOptions = {
 	stubs: {
 		AppHeader: {
 			props: ['projectId', 'app', 'tab', 'publishableVersion'],
-			emits: ['deleted', 'updated', 'update:tab'],
+			emits: ['deleted', 'updated', 'update:tab', 'showVersions'],
 			template: `<div>
 					<button data-test-id="app-header" @click="$emit('deleted', app?.id)">{{ app?.name }}</button>
 					<span data-test-id="publishable-version">{{ publishableVersion?.id }}</span>
-					<button data-test-id="publish" @click="$emit('updated', { ...app, name: 'Published app' })" />
+					<button data-test-id="publish" @click="$emit('updated', { ...app, name: 'Published app', publishedVersionId: 'v9' })" />
+					<button data-test-id="share" @click="$emit('updated', { ...app, visibility: 'public' })" />
 					<button data-test-id="configure" @click="$emit('update:tab', 'configure')" />
+					<button data-test-id="show-versions" @click="$emit('showVersions')" />
 				</div>`,
 		},
+		AppVersionsPanel: {
+			props: ['app', 'versions'],
+			emits: ['updated', 'restored', 'close'],
+			template: `<div data-test-id="app-versions-panel">
+				<button data-test-id="versions-restored" @click="$emit('restored')" />
+				<button data-test-id="versions-rollback" @click="$emit('updated', { ...app, name: 'Rolled back', publishedVersionId: 'v0' })" />
+				<button data-test-id="versions-close" @click="$emit('close')" />
+			</div>`,
+		},
 		AppPreview: {
-			props: ['projectId', 'app', 'versions'],
-			template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
+			props: ['projectId', 'app', 'versions', 'inspectable', 'elementSelected'],
+			emits: ['element-selected'],
+			template: `<div data-test-id="app-view-preview">
+				{{ app.id }}
+				<span data-test-id="preview-inspectable">{{ inspectable }}</span>
+				<span data-test-id="preview-element-selected">{{ elementSelected }}</span>
+				<button data-test-id="pick" @click="$emit('element-selected', { tagName: 'button' })" />
+			</div>`,
 		},
 		AppConfigure: {
 			props: ['app'],
@@ -95,6 +112,21 @@ describe('AppView', () => {
 		expect(getByTestId('app-header')).toHaveTextContent('App app-1');
 		expect(getByTestId('app-view-preview')).toBeInTheDocument();
 		expect(getApp).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
+	});
+
+	it('passes the inspect props to the preview and re-emits the picked element', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId, emitted } = renderComponent({
+			props: { inspectable: true, elementSelected: true },
+		});
+
+		await findByTestId('app-view-preview');
+		expect(getByTestId('preview-inspectable')).toHaveTextContent('true');
+		expect(getByTestId('preview-element-selected')).toHaveTextContent('true');
+
+		await userEvent.click(getByTestId('pick'));
+
+		expect(emitted('element-selected')).toEqual([[{ tagName: 'button' }]]);
 	});
 
 	it('shows the not-found state without an error toast for a missing app', async () => {
@@ -213,6 +245,18 @@ describe('AppView', () => {
 		await userEvent.click(getByTestId('publish'));
 
 		expect(getByTestId('app-header')).toHaveTextContent('Published app');
+		await waitFor(() => expect(listAppVersions).toHaveBeenCalledTimes(2));
+	});
+
+	it('does not reload the versions when the published version stays the same', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-view-preview');
+		await waitFor(() => expect(listAppVersions).toHaveBeenCalledTimes(1));
+
+		await userEvent.click(getByTestId('share'));
+
+		expect(listAppVersions).toHaveBeenCalledTimes(1);
 	});
 
 	it('refreshes the app and its versions without the loading state', async () => {
@@ -253,5 +297,44 @@ describe('AppView', () => {
 		await findByTestId('app-view-not-found');
 
 		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('opens the versions panel from the header and shows its update', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+		await findByTestId('app-view-preview');
+		expect(queryByTestId('app-versions-panel')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('show-versions'));
+		await userEvent.click(getByTestId('versions-rollback'));
+
+		expect(getByTestId('app-header')).toHaveTextContent('Rolled back');
+		await waitFor(() => expect(listAppVersions).toHaveBeenCalledTimes(2));
+		await userEvent.click(getByTestId('versions-close'));
+		expect(queryByTestId('app-versions-panel')).not.toBeInTheDocument();
+	});
+
+	it('reloads the app and its versions after a restore', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-view-preview');
+		await userEvent.click(getByTestId('show-versions'));
+
+		await userEvent.click(getByTestId('versions-restored'));
+
+		await waitFor(() => expect(getApp).toHaveBeenCalledTimes(2));
+		expect(listAppVersions).toHaveBeenCalledTimes(2);
+	});
+
+	it('closes the versions panel when another app opens', async () => {
+		vi.mocked(getApp).mockImplementation(async (_context, _projectId, id) => app(id));
+		const { findByTestId, getByTestId, queryByTestId, rerender } = renderComponent();
+		await findByTestId('app-view-preview');
+		await userEvent.click(getByTestId('show-versions'));
+
+		await rerender({ projectId: 'project-1', appId: 'app-2' });
+
+		await waitFor(() => expect(getByTestId('app-header')).toHaveTextContent('App app-2'));
+		expect(queryByTestId('app-versions-panel')).not.toBeInTheDocument();
 	});
 });

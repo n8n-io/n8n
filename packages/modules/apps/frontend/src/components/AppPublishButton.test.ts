@@ -143,11 +143,12 @@ describe('AppPublishButton', () => {
 		await waitFor(() => expect(getByTestId('app-publish-menu-trigger')).toBeDisabled());
 	});
 
-	it('shows only show code in the menu when the app is not published', () => {
+	it('shows versions and show code in the menu when the app is not published', () => {
 		providePermissions(['app:update']);
 		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('app-publish-menu-trigger')).toBeInTheDocument();
+		expect(getByTestId('menu-versions')).toBeInTheDocument();
 		expect(getByTestId('menu-showCode')).toBeInTheDocument();
 		expect(queryByTestId('menu-open')).not.toBeInTheDocument();
 		expect(queryByTestId('menu-unpublish')).not.toBeInTheDocument();
@@ -168,6 +169,31 @@ describe('AppPublishButton', () => {
 		);
 		expect(confirm).not.toHaveBeenCalled();
 		expect(emitted('updated')).toBeUndefined();
+	});
+
+	it('opens the versions panel when the app is not published', async () => {
+		providePermissions(['app:read']);
+		const { getByTestId, queryByTestId, emitted } = renderComponent();
+
+		expect(queryByTestId('menu-open')).not.toBeInTheDocument();
+		expect(queryByTestId('menu-unpublish')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('menu-versions'));
+
+		expect(emitted('showVersions')).toHaveLength(1);
+	});
+
+	it('offers the versions next to the published app actions', async () => {
+		providePermissions(['app:update']);
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const { getByTestId, emitted } = renderComponent({ props: { app: app('v2') } });
+		expect(getByTestId('menu-open')).toBeInTheDocument();
+		expect(getByTestId('menu-unpublish')).toBeInTheDocument();
+
+		await userEvent.click(getByTestId('menu-versions'));
+
+		expect(emitted('showVersions')).toHaveLength(1);
+		expect(open).not.toHaveBeenCalled();
+		expect(confirm).not.toHaveBeenCalled();
 	});
 
 	it('opens the published URL in a new tab', async () => {

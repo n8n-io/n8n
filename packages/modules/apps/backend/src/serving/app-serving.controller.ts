@@ -8,8 +8,9 @@ import cookieParser from 'cookie-parser';
 import type { NextFunction, Response } from 'express';
 import path from 'node:path';
 
-import { AppBundleCache } from './app-bundle-cache';
+import { AppBundleCache, etagOf } from './app-bundle-cache';
 import { AppHostService } from './app-host.service';
+import { injectInspectorScript } from './inspector-script';
 import { AppsConfig } from '../apps.config';
 import { AppAuthService, type AppRequest } from '../auth/app-auth.service';
 import { AppPreviewService } from '../preview/app-preview.service';
@@ -71,17 +72,21 @@ export class AppServingController {
 					isPreview: context.preview === true,
 				});
 			}
+			const inspected = context.preview && file.contentType.startsWith('text/html');
+			const body = inspected
+				? Buffer.from(injectInspectorScript(file.body.toString('utf8'), this.preview.editorOrigin))
+				: file.body;
 			res.set({
 				'Cache-Control': 'private, no-cache',
-				ETag: file.etag,
+				ETag: inspected ? etagOf(body) : file.etag,
 				'Content-Type': file.contentType,
 				'X-Content-Type-Options': 'nosniff',
 				'Referrer-Policy': 'same-origin',
-				'Content-Security-Policy': req.appContext?.preview
+				'Content-Security-Policy': context.preview
 					? `${APP_CSP}; frame-ancestors ${this.preview.editorOrigin}`
 					: APP_CSP,
 			});
-			res.send(file.body);
+			res.send(body);
 		} catch (error) {
 			// Keep file errors out of the main server's form-page error handling.
 			const response = serializePublicApiError(classifyRestError(ensureError(error)));

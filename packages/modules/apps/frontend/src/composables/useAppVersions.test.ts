@@ -93,6 +93,28 @@ describe('useAppVersions', () => {
 		expect(getAppBuild).toHaveBeenCalledTimes(2);
 	});
 
+	it('polls an older build that still runs and refreshes when it ends', async () => {
+		vi.mocked(listAppVersions).mockResolvedValueOnce([
+			version('v2', 'succeeded'),
+			version('v1', 'running'),
+		]);
+		vi.mocked(getAppBuild).mockResolvedValueOnce({ ...build('succeeded'), versionId: 'v1' });
+		renderComposable();
+		await vi.waitFor(() => expect(versions.versions.value).toHaveLength(2));
+		expect(versions.building.value).toBe(false);
+
+		vi.mocked(listAppVersions).mockResolvedValueOnce([
+			version('v2', 'succeeded'),
+			version('v1', 'succeeded'),
+		]);
+		await vi.advanceTimersByTimeAsync(3000);
+
+		expect(getAppBuild).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1');
+		await vi.waitFor(() => expect(versions.versions.value[1].buildStatus).toBe('succeeded'));
+		await vi.advanceTimersByTimeAsync(9000);
+		expect(getAppBuild).toHaveBeenCalledOnce();
+	});
+
 	it('stops polling when the component unmounts', async () => {
 		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'queued')]);
 		const { unmount } = renderComposable();

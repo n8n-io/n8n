@@ -128,22 +128,65 @@ describe('AppChangeService', () => {
 		});
 	});
 
-	it('restores source and its label into a new version and builds that version', async () => {
-		const { service, versions, builds } = setup();
-		const bindings: AppBinding[] = [{ key: 'submit', kind: 'workflow', workflowId: 'w1' }];
-		versions.getVersion.mockResolvedValue({ label: 'Restore', bindings } as AppVersion);
-		versions.readSource.mockResolvedValue(createAppScaffold());
-		await service.restore('project', 'app', 'old-version', 'draft');
-		expect(versions.saveSource).toHaveBeenCalledWith(
-			'project',
-			'app',
-			'draft',
-			createAppScaffold(),
-			'Restore',
-			bindings,
-		);
-		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
-			changeSource: 'restore',
+	describe('startRestore', () => {
+		it('restores the version into a new version and starts its build without waiting', async () => {
+			const { service, versions, builds } = setup();
+			versions.restoreSource.mockResolvedValue(mock<AppVersion>({ id: 'new-version' }));
+
+			const version = await service.startRestore('project', 'app', 'old-version', 'draft');
+
+			expect(version.id).toBe('new-version');
+			expect(versions.restoreSource).toHaveBeenCalledWith('project', 'app', 'old-version', 'draft');
+			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+				changeSource: 'restore',
+			});
+			expect(builds.build).not.toHaveBeenCalled();
+		});
+
+		it('passes the actor to the restored version build', async () => {
+			const { service, versions, builds } = setup();
+			versions.restoreSource.mockResolvedValue(mock<AppVersion>({ id: 'new-version' }));
+
+			await service.startRestore('project', 'app', 'old-version', 'draft', {
+				userId: 'user-1',
+			});
+
+			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+				userId: 'user-1',
+				changeSource: 'restore',
+			});
+		});
+
+		it('keeps the restored version when its build cannot start', async () => {
+			const { service, versions, builds } = setup();
+			versions.restoreSource.mockResolvedValue(mock<AppVersion>({ id: 'new-version' }));
+			builds.startBuild.mockRejectedValue(new ConflictError('The build is already running.'));
+
+			expect((await service.startRestore('project', 'app', 'old-version', 'draft')).id).toBe(
+				'new-version',
+			);
+		});
+
+		it('does not start a build when the draft changed', async () => {
+			const { service, versions, builds } = setup();
+			versions.restoreSource.mockRejectedValue(new ConflictError('The app draft changed.'));
+
+			await expect(service.startRestore('project', 'app', 'old-version', 'stale')).rejects.toThrow(
+				ConflictError,
+			);
+			expect(builds.startBuild).not.toHaveBeenCalled();
+		});
+
+		it('rejects a restore during shutdown', async () => {
+			const { service, versions, builds } = setup();
+			builds.assertNotStopping.mockImplementation(() => {
+				throw new ConflictError('The instance is stopping.');
+			});
+
+			await expect(service.startRestore('project', 'app', 'old-version', 'draft')).rejects.toThrow(
+				ConflictError,
+			);
+			expect(versions.restoreSource).not.toHaveBeenCalled();
 		});
 	});
 

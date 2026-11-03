@@ -124,18 +124,27 @@ export class AppChangeService {
 			label,
 			bindings,
 		);
+		await this.startBuildInBackground(projectId, appId, version.id, origin);
+		return version;
+	}
+
+	private async startBuildInBackground(
+		projectId: string,
+		appId: string,
+		versionId: string,
+		origin: AppBuildOrigin = {},
+	) {
 		try {
-			await this.builds.startBuild(projectId, appId, version.id, false, origin);
+			await this.builds.startBuild(projectId, appId, versionId, false, origin);
 		} catch (error) {
-			// The bindings are saved. The build status shows the problem, and the user can retry it.
+			// The version is saved. The build status shows the problem, and the user can retry it.
 			this.logger.warn('Could not start the build of an app version.', {
 				projectId,
 				appId,
-				versionId: version.id,
+				versionId,
 				error,
 			});
 		}
-		return version;
 	}
 
 	// TODO: might remove this later, as it's likely that the AI assistant
@@ -145,30 +154,28 @@ export class AppChangeService {
 		return await this.commit(projectId, appId, null, createAppScaffold());
 	}
 
-	async restore(
+	/**
+	 * Restores the source, label and bindings of a version into a new version and
+	 * starts its build without waiting for it. The caller checks the bindings.
+	 */
+	async startRestore(
 		projectId: string,
 		appId: string,
 		versionId: string,
 		expectedDraftVersionId: string | null,
 		actor?: AppActor,
-	): Promise<AppBuildResponse> {
+	): Promise<AppVersion> {
 		this.builds.assertNotStopping();
-		const version = await this.versions.getVersion(projectId, appId, versionId);
-		const files = await this.versions.readSource(projectId, appId, versionId);
-		this.logger.debug('Restoring app source into a new version.', {
+		const version = await this.versions.restoreSource(
 			projectId,
 			appId,
-			sourceVersionId: versionId,
+			versionId,
 			expectedDraftVersionId,
-		});
-		return await this.commit(
-			projectId,
-			appId,
-			expectedDraftVersionId,
-			files,
-			version.label,
-			version.bindings,
-			{ ...actor, changeSource: 'restore' },
 		);
+		await this.startBuildInBackground(projectId, appId, version.id, {
+			...actor,
+			changeSource: 'restore',
+		});
+		return version;
 	}
 }

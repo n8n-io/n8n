@@ -42,15 +42,24 @@ Add components under `src/`. Keep files small and focused.
 ## Workflow
 
 1. **Propose or open the app.**
-   - Before the first `create`, make sure you understand the audience, core data,
-     essential actions and required views. If a material choice is unclear, use
-     `ask_user` to clarify it. Prefer selectable options with a recommended
-     default. Do not ask about minor styling or details with safe defaults.
+   - Before the first `create`, make sure you understand what the user wants to
+     achieve, who will use the app, its core data, its essential actions, and its
+     required views. Do not propose a blueprint while a material part of the
+     request is unclear. Use `ask_user` to clarify it. Prefer selectable options
+     with a recommended default. Do not ask about minor styling or details with
+     safe defaults.
    - New app: call `apps` with `action: "create"` and a short blueprint. The
      user can review the description and edit the name, namespace, visibility,
-     and theme before approval. Approval creates the app. Build from the
+     and theme before approval. Include a high-level binding plan for the
+     workflows, data tables, and agents the app is likely to need. Do not delay
+     the blueprint to design every resource or find every resource id. Mark a
+     resource as `existing` and include its id only when you already know it.
+     Otherwise, mark it as `new`. Do not create or change a resource before the
+     user approves the blueprint. Approval creates the app. Build from the
      blueprint returned by the tool, not from your proposal. Then call `apps`
-     with `action: "open"` and the returned `app.id` before you edit files. If the
+     with `action: "open"` and the returned `app.id` before you edit files. After
+     the app is open, inspect the available resources, refine the implementation
+     details, create what is missing, and add the bindings the app needs. If the
      user cancels, do not create, open, or edit app files.
    - If the conversation lists a pending app, use `create`. n8n reuses the
      pending id after approval.

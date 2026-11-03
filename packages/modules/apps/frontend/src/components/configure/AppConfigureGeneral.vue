@@ -20,6 +20,8 @@ import { computed, ref, watch } from 'vue';
 
 import { updateApp } from '../../apps.api';
 import { getAppPermissions } from '../../apps.permissions';
+import type { AppVersions } from '../../composables/useAppVersions';
+import AppConnectionsCard from './connections/AppConnectionsCard.vue';
 
 const FIELDS = [
 	{
@@ -41,7 +43,7 @@ const FIELDS = [
 ] as const;
 type Field = (typeof FIELDS)[number]['id'];
 
-const props = defineProps<{ app: AppResponse }>();
+const props = defineProps<{ app: AppResponse; versions: AppVersions }>();
 
 const emit = defineEmits<{ updated: [app: AppResponse] }>();
 
@@ -130,7 +132,7 @@ watch(
 </script>
 
 <template>
-	<div data-test-id="app-configure-general">
+	<div :class="$style.cards" data-test-id="app-configure-general">
 		<N8nSettingsRowGroup>
 			<div :class="$style.cardHeader">
 				<N8nHeading tag="h2" size="medium" color="text-dark">
@@ -170,10 +172,17 @@ watch(
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
+		<AppConnectionsCard :app="app" :versions="versions" @updated="emit('updated', $event)" />
 	</div>
 </template>
 
 <style lang="scss" module>
+.cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+}
+
 .field {
 	display: flex;
 	flex-direction: column;

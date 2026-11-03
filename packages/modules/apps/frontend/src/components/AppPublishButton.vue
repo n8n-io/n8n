@@ -18,11 +18,11 @@ import { unpublishApp } from '../apps.api';
 import { getAppPermissions } from '../apps.permissions';
 import AppPublishDialog from './publish/AppPublishDialog.vue';
 
-type MenuAction = 'open' | 'showCode' | 'unpublish';
+type MenuAction = 'versions' | 'open' | 'showCode' | 'unpublish';
 
 const props = defineProps<{ app: AppResponse; version: AppVersionResponse | null }>();
 
-const emit = defineEmits<{ updated: [app: AppResponse] }>();
+const emit = defineEmits<{ updated: [app: AppResponse]; showVersions: [] }>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -38,16 +38,12 @@ const isUpToDate = computed(
 	() => props.version !== null && props.app.publishedVersionId === props.version.id,
 );
 const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
-	const showCode: ActionDropdownItem<MenuAction> = {
-		id: 'showCode',
-		label: i18n.baseText('apps.publish.showCode'),
-		icon: 'code',
-	};
-	if (!props.app.publishedUrl) return [showCode];
 	const items: Array<ActionDropdownItem<MenuAction>> = [
-		{ id: 'open', label: i18n.baseText('apps.publish.openApp'), icon: 'external-link' },
-		showCode,
+		{ id: 'versions', label: i18n.baseText('apps.publish.viewVersions'), icon: 'history' },
+		{ id: 'showCode', label: i18n.baseText('apps.publish.showCode'), icon: 'code' },
 	];
+	if (!props.app.publishedUrl) return items;
+	items.push({ id: 'open', label: i18n.baseText('apps.publish.openApp'), icon: 'external-link' });
 	if (canUpdate.value) {
 		items.push({
 			id: 'unpublish',
@@ -102,6 +98,10 @@ async function onMenuSelect(action: MenuAction) {
 		showCode();
 		return;
 	}
+	if (action === 'versions') {
+		emit('showVersions');
+		return;
+	}
 	const url = props.app.publishedUrl;
 	if (!url) return;
 	if (action === 'open') {
@@ -113,7 +113,7 @@ async function onMenuSelect(action: MenuAction) {
 </script>
 
 <template>
-	<div :class="{ [$style.group]: menuItems.length > 0 }" data-test-id="app-publish">
+	<div :class="$style.group" data-test-id="app-publish">
 		<N8nButton
 			:class="[$style.main, { [$style.published]: isUpToDate }]"
 			variant="outline"
@@ -125,7 +125,6 @@ async function onMenuSelect(action: MenuAction) {
 			{{ i18n.baseText(isUpToDate ? 'apps.publish.published' : 'apps.publish.publish') }}
 		</N8nButton>
 		<N8nActionDropdown
-			v-if="menuItems.length > 0"
 			:items="menuItems"
 			:disabled="busy"
 			placement="bottom-end"
