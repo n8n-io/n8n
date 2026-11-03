@@ -23,12 +23,17 @@ import { AgentTurnAlreadyRunningError } from '../../../agent-turn-already-runnin
 import { AgentsSettingsService } from '../../../agents-settings.service';
 import type { ProjectAgent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
+import type { AgentExecutionStreamChunk } from '../../../types/agent-steering';
 import { integrationMemoryResourceId } from '../../../utils/agent-memory-scope';
+import { isApprovalSuspendPayload } from '../../agent-chat-suspension-cards';
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { parseResponsesRequest, toResponseBody, WebhookChannelError } from './responses-api';
 import { authenticateWebhookRequest } from './webhook-auth';
 
 const MAX_LOGGED_ERROR_LENGTH = 500;
+
+/** A model that keeps calling actions that need approval stops after this many declines. */
+const MAX_APPROVAL_DECLINES = 5;
 
 export interface WebhookChannelReply {
 	status: number;
@@ -158,15 +163,16 @@ export class WebhookChannelService {
 		conversation: { id: string; threadId: string; sessionMode: 'new' | 'existing' },
 		abortSignal: AbortSignal,
 	): Promise<string> {
-		const stream = this.orchestrator.executeForChatPublished({
+		const memory = {
+			threadId: conversation.threadId,
+			// The `integration:` resource scopes memory to the conversation and keeps episodic memory off.
+			resourceId: integrationMemoryResourceId(WEBHOOK_INTEGRATION_TYPE, conversation.id),
+		};
+		let stream = this.orchestrator.executeForChatPublished({
 			agentId: agent.id,
 			projectId: agent.projectId,
 			message: input,
-			memory: {
-				threadId: conversation.threadId,
-				// The `integration:` resource scopes memory to the conversation and keeps episodic memory off.
-				resourceId: integrationMemoryResourceId(WEBHOOK_INTEGRATION_TYPE, conversation.id),
-			},
+			memory,
 			integrationType: WEBHOOK_INTEGRATION_TYPE,
 			sessionMode: conversation.sessionMode,
 			sandboxPrincipalHash: hashAgentSandboxPrincipal({
@@ -179,24 +185,51 @@ export class WebhookChannelService {
 			abortSignal,
 		});
 
+		for (let declines = 0; ; declines++) {
+			const { text, suspension } = await this.readSegment(stream);
+			if (!suspension) return text;
+			if (
+				!isApprovalSuspendPayload(suspension.suspendPayload) ||
+				declines === MAX_APPROVAL_DECLINES
+			) {
+				await this.cancelSuspension(agent.id, conversation.threadId);
+				throw new WebhookChannelError(
+					500,
+					'input_not_supported',
+					'The agent waits for input that the webhook channel cannot give',
+				);
+			}
+			// Nobody can approve on the webhook, so the action is declined. The reason tells the
+			// agent why, so it can answer without the action and explain it.
+			stream = this.orchestrator.resumeForChat({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				runId: suspension.runId,
+				toolCallId: suspension.toolCallId,
+				resumeData: {
+					approved: false,
+					reason: 'approval is not available on this channel, so nobody can approve it',
+				},
+				integrationType: WEBHOOK_INTEGRATION_TYPE,
+				expectedMemory: memory,
+				allowBackgroundTasks: false,
+				abortSignal,
+			});
+		}
+	}
+
+	/** Reads one run segment: the text after its last tool call, and its first suspension. */
+	private async readSegment(stream: AsyncIterable<AgentExecutionStreamChunk>) {
 		let text = '';
-		let suspended = false;
+		let suspension: Extract<AgentExecutionStreamChunk, { type: 'tool-call-suspended' }> | undefined;
 		for await (const chunk of stream) {
 			// `respond` maps the error, after it checks whether the caller left.
 			if (chunk.type === 'error') throw ensureError(chunk.error);
-			if (chunk.type === 'tool-call-suspended') suspended = true;
+			if (chunk.type === 'tool-call-suspended') suspension ??= chunk;
 			if (chunk.type === 'tool-call') text = '';
 			if (chunk.type === 'text-delta') text += chunk.delta;
 		}
-		if (suspended) {
-			await this.cancelSuspension(agent.id, conversation.threadId);
-			throw new WebhookChannelError(
-				500,
-				'approval_not_supported',
-				'The agent needs a tool approval, which the webhook channel does not support yet',
-			);
-		}
-		return text;
+		return { text, suspension };
 	}
 
 	/** Cancels the parked run, so the next turn in the conversation is not blocked. */

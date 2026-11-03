@@ -278,10 +278,76 @@ describe('WebhookChannelService', () => {
 		await expect(respond()).resolves.toMatchObject({ status: 409 });
 	});
 
-	it('cancels a run that waits for approval and returns 500', async () => {
+	describe('when the agent needs an approval', () => {
+		const approval = (toolCallId: string) =>
+			({
+				type: 'tool-call-suspended',
+				runId: 'run-1',
+				toolCallId,
+				toolName: 'send_email',
+				suspendPayload: { type: 'approval', toolName: 'send_email', args: {} },
+			}) as AgentExecutionStreamChunk;
+
+		it('declines the action and returns the reply of the agent', async () => {
+			const { respond, orchestrator, chatExecution } = makeService();
+			orchestrator.executeForChatPublished.mockReturnValue(streamOf(approval('call-1')));
+			orchestrator.resumeForChat.mockReturnValue(
+				streamOf({ type: 'text-delta', id: 't2', delta: 'I could not send the email.' }),
+			);
+
+			const reply = await respond();
+
+			expect(reply).toMatchObject({
+				status: 200,
+				body: { output: [{ content: [{ text: 'I could not send the email.' }] }] },
+			});
+			const [{ memory }] = orchestrator.executeForChatPublished.mock.calls[0];
+			expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					resumeData: {
+						approved: false,
+						reason: 'approval is not available on this channel, so nobody can approve it',
+					},
+					integrationType: 'webhook',
+					expectedMemory: memory,
+				}),
+			);
+			expect(chatExecution.cancelSessionSuspension).not.toHaveBeenCalled();
+		});
+
+		it('stops declining and returns 500 when the agent keeps asking', async () => {
+			const { respond, orchestrator, executionService, chatExecution } = makeService();
+			orchestrator.executeForChatPublished.mockReturnValue(streamOf(approval('call-1')));
+			orchestrator.resumeForChat.mockImplementation(() => streamOf(approval('call-2')));
+			executionService.findLatestSuspendedRun.mockResolvedValue(
+				mock<AgentExecution>({ id: 'execution-1' }),
+			);
+
+			const reply = await respond();
+
+			expect(reply).toMatchObject({
+				status: 500,
+				body: { error: { code: 'input_not_supported' } },
+			});
+			expect(orchestrator.resumeForChat).toHaveBeenCalledTimes(5);
+			expect(chatExecution.cancelSessionSuspension).toHaveBeenCalled();
+		});
+	});
+
+	it('cancels a run that waits for other input and returns 500', async () => {
 		const { respond, orchestrator, executionService, chatExecution } = makeService();
 		orchestrator.executeForChatPublished.mockReturnValue(
-			streamOf({ type: 'tool-call-suspended' } as AgentExecutionStreamChunk),
+			streamOf({
+				type: 'tool-call-suspended',
+				runId: 'run-1',
+				toolCallId: 'call-1',
+				toolName: 'wait_for_form',
+				suspendPayload: { type: 'form' },
+			} as AgentExecutionStreamChunk),
 		);
 		executionService.findLatestSuspendedRun.mockResolvedValue(
 			mock<AgentExecution>({ id: 'execution-1' }),
@@ -291,8 +357,9 @@ describe('WebhookChannelService', () => {
 
 		expect(reply).toMatchObject({
 			status: 500,
-			body: { error: { code: 'approval_not_supported' } },
+			body: { error: { code: 'input_not_supported' } },
 		});
+		expect(orchestrator.resumeForChat).not.toHaveBeenCalled();
 		const [{ threadId }] = orchestrator.executeForChatPublished.mock.calls[0].map((c) => c.memory);
 		expect(chatExecution.cancelSessionSuspension).toHaveBeenCalledWith(
 			'agent-1',

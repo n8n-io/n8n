@@ -10300,7 +10300,7 @@
 	"agents.channels.webhook.authentication.noneNotice": "Anyone with the URL can send messages to this agent.",
 	"agents.channels.webhook.url.label": "Endpoint URL",
 	"agents.channels.webhook.url.hint": "OpenAI SDK clients use this URL without /responses as the base URL.",
-	"agents.channels.webhook.approvalNotice": "A request fails if a tool needs approval. The webhook channel can't ask for approval yet.",
+	"agents.channels.webhook.approvalNotice": "The webhook channel can't ask for approval yet. Actions that need approval are declined, and the agent answers without them.",
 	"agents.channels.webhook.publishNotice": "Publish this agent to answer requests at this URL.",
 	"agents.channels.teams.messagingEndpointUrl.label": "Messaging endpoint",
 	"agents.channels.teams.setup.createBot.title": "Deploy Azure Bot",
