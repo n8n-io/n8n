@@ -398,6 +398,25 @@ describe('IntegrationMessageContextService', () => {
 		expect(origin.boundThreads).toEqual({ 'agent-1:slack:D1:1': 'user:alice' });
 	});
 
+	it('unbindSession keeps a binding that appeared after it found none', async () => {
+		const { service, threads } = setup({ 'agent-1:slack:D1:1': { other: true } });
+		const newOrigin = { threadId: 'task-2', resourceId: 'task:task-2' };
+		const resolveSession = service.resolveSession.bind(service);
+		vi.spyOn(service, 'resolveSession').mockImplementation(async (id) => {
+			const binding = await resolveSession(id);
+			// A bind lands between the read and the clear.
+			threads.set(id, { id, metadata: JSON.stringify({ continueAs: newOrigin }) });
+			return binding;
+		});
+
+		await service.unbindSession('agent-1:slack:D1:1');
+
+		const derived = jsonParse<Record<string, unknown>>(
+			threads.get('agent-1:slack:D1:1')!.metadata!,
+		);
+		expect(derived.continueAs).toEqual(newOrigin);
+	});
+
 	it('clearSessionBindings unbinds each derived thread and clears the list', async () => {
 		const { service, threadRepository } = setup({
 			task: {

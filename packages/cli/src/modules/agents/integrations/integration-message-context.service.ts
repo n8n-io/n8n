@@ -188,24 +188,25 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 
 	async unbindSession(derivedThreadId: string): Promise<void> {
 		const binding = await this.resolveSession(derivedThreadId);
-		if (!binding) {
-			await this.clearBinding(derivedThreadId);
-			return;
-		}
-		// A rebind may have replaced the binding since it was read. Clear only the
-		// one read here, and touch the origin map only when it was cleared.
+		// A rebind may have changed the binding since it was read. Clear only the
+		// state that was read, and touch the origin map only when it was cleared.
 		let cleared = false;
-		await this.updateMetadata(derivedThreadId, binding.resourceId, (metadata) => {
-			const current = metadata[CONTINUE_AS_METADATA_KEY];
-			cleared =
-				isSessionBinding(current) &&
-				current.threadId === binding.threadId &&
-				current.resourceId === binding.resourceId;
-			return cleared
-				? { ...metadata, [CONTINUE_AS_METADATA_KEY]: undefined, [OUTBOUND_METADATA_KEY]: undefined }
-				: null;
-		});
-		if (cleared) await this.removeBoundThread(binding.threadId, derivedThreadId);
+		await this.updateMetadata(
+			derivedThreadId,
+			binding?.resourceId ?? derivedThreadId,
+			(metadata) => {
+				const current = metadata[CONTINUE_AS_METADATA_KEY];
+				cleared = isSameBinding(isSessionBinding(current) ? current : null, binding);
+				return cleared
+					? {
+							...metadata,
+							[CONTINUE_AS_METADATA_KEY]: undefined,
+							[OUTBOUND_METADATA_KEY]: undefined,
+						}
+					: null;
+			},
+		);
+		if (cleared && binding) await this.removeBoundThread(binding.threadId, derivedThreadId);
 	}
 
 	async clearSessionBindings(originThreadId: string): Promise<void> {
@@ -378,4 +379,8 @@ function isSessionBinding(value: unknown): value is SessionBinding {
 	return (
 		isRecord(value) && typeof value.threadId === 'string' && typeof value.resourceId === 'string'
 	);
+}
+
+function isSameBinding(a: SessionBinding | null, b: SessionBinding | null): boolean {
+	return a?.threadId === b?.threadId && a?.resourceId === b?.resourceId;
 }
