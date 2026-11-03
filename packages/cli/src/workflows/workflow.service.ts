@@ -1051,6 +1051,63 @@ export class WorkflowService {
 		}
 	}
 
+	/** Return false if the lease is lost before rollback completes. */
+	private async _rollbackFailedActivation(
+		workflowId: string,
+		workflow: WorkflowEntity,
+		expectedActiveVersionId?: string,
+		signal?: AbortSignal,
+	): Promise<boolean> {
+		if (signal?.aborted) return false;
+		if (
+			expectedActiveVersionId !== undefined &&
+			!(await this.workflowRepository.existsBy({
+				id: workflowId,
+				activeVersionId: expectedActiveVersionId,
+			}))
+		) {
+			return true;
+		}
+		if (signal?.aborted) return false;
+
+		// Remove partial registrations before clearing the version that resolves their webhooks.
+		try {
+			await this.activeWorkflowManager.remove(workflowId);
+
+			this.logger.warn(
+				`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+				{ workflowId },
+			);
+		} catch (cleanupError) {
+			this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+				workflowId,
+				error: cleanupError,
+			});
+		}
+		if (signal?.aborted) return false;
+
+		const rollbackPayload = {
+			active: false,
+			activeVersionId: null,
+			activeVersion: null,
+		};
+		const rollback = await this.workflowRepository.update(
+			expectedActiveVersionId === undefined
+				? workflowId
+				: { id: workflowId, activeVersionId: expectedActiveVersionId },
+			rollbackPayload,
+		);
+
+		if (expectedActiveVersionId === undefined || (rollback.affected ?? 0) > 0) {
+			// Also set it in the returned data
+			// oxlint-disable-next-line typescript/no-deprecated
+			workflow.active = rollbackPayload.active;
+			workflow.activeVersionId = rollbackPayload.activeVersionId;
+			workflow.activeVersion = rollbackPayload.activeVersion;
+		}
+		return !signal?.aborted;
+	}
+
 	private async _addToActiveWorkflowManager(
 		user: User,
 		workflowId: string,
@@ -1071,51 +1128,12 @@ export class WorkflowService {
 			options.signal?.throwIfAborted();
 			didPublish = true;
 		} catch (error) {
-			const expectedActiveVersionId = options.onlyIfActiveVersionIs;
-			const mayRollback =
-				expectedActiveVersionId === undefined ||
-				(await this.workflowRepository.existsBy({
-					id: workflowId,
-					activeVersionId: expectedActiveVersionId,
-				}));
-			if (mayRollback && !options.signal?.aborted) {
-				// Remove partial registrations before clearing the version that resolves their webhooks.
-				try {
-					await this.activeWorkflowManager.remove(workflowId);
-
-					this.logger.warn(
-						`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
-						{ workflowId },
-					);
-				} catch (cleanupError) {
-					this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
-						workflowId,
-						error: cleanupError,
-					});
-				}
-
-				const rollbackPayload = {
-					active: false,
-					activeVersionId: null,
-					activeVersion: null,
-				};
-				if (!options.signal?.aborted) {
-					const rollback = await this.workflowRepository.update(
-						expectedActiveVersionId === undefined
-							? workflowId
-							: { id: workflowId, activeVersionId: expectedActiveVersionId },
-						rollbackPayload,
-					);
-
-					if (expectedActiveVersionId === undefined || (rollback.affected ?? 0) > 0) {
-						// Also set it in the returned data
-						// oxlint-disable-next-line typescript/no-deprecated
-						workflow.active = rollbackPayload.active;
-						workflow.activeVersionId = rollbackPayload.activeVersionId;
-						workflow.activeVersion = rollbackPayload.activeVersion;
-					}
-				}
-			}
+			await this._rollbackFailedActivation(
+				workflowId,
+				workflow,
+				options.onlyIfActiveVersionIs,
+				options.signal,
+			);
 
 			const message = (error as Error).message;
 			const description = getErrorDescription(error);
@@ -1395,7 +1413,9 @@ export class WorkflowService {
 			});
 		} else {
 			// Keep the settings guard, trigger changes, and rollback under the same lease.
-			const published = await Container.get(LockService).withLease(
+			const lockService = Container.get(LockService);
+			let workflowNeedingRollback: WorkflowEntity | undefined;
+			const publication = lockService.withLease(
 				LockNamespace.KNOWN_LOCKS,
 				`workflow-publication:${workflowId}`,
 				async (signal) => {
@@ -1403,7 +1423,11 @@ export class WorkflowService {
 					if (options?.onlyIfActiveVersionIs !== undefined) {
 						const result = await this.workflowRepository.update(
 							{ id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
-							{ activeVersionId: versionIdToActivate, active: true, updatedAt: workflow.updatedAt },
+							{
+								activeVersionId: versionIdToActivate,
+								active: true,
+								updatedAt: workflow.updatedAt,
+							},
 						);
 						if ((result.affected ?? 0) === 0) return false;
 					}
@@ -1455,10 +1479,41 @@ export class WorkflowService {
 						workflowForActivation,
 						activationMode,
 						{ source, onlyIfActiveVersionIs: options?.onlyIfActiveVersionIs, signal },
-					);
+					).catch((error: unknown) => {
+						if (signal.aborted) workflowNeedingRollback = workflowForActivation;
+						throw error;
+					});
 					return true;
 				},
 			);
+			const published = await publication.catch(async (error: unknown) => {
+				const failedWorkflow = workflowNeedingRollback;
+				if (failedWorkflow) {
+					try {
+						let repaired = false;
+						while (!repaired) {
+							// Retry cleanup under a new lease if ownership is lost again.
+							repaired = await lockService.withLease(
+								LockNamespace.KNOWN_LOCKS,
+								`workflow-publication:${workflowId}`,
+								async (signal) =>
+									await this._rollbackFailedActivation(
+										workflowId,
+										failedWorkflow,
+										versionIdToActivate,
+										signal,
+									),
+							);
+						}
+					} catch (repairError) {
+						this.logger.error('Failed to repair workflow activation after lease loss', {
+							workflowId,
+							error: repairError,
+						});
+					}
+				}
+				throw error;
+			});
 			if (!published) {
 				return await this.workflowRepository.findOneOrFail({
 					where: { id: workflowId },

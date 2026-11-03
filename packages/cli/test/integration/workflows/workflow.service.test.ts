@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { LockService } from '@n8n/backend-common';
+import { LockNamespace, LockService } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -483,32 +483,116 @@ describe('update()', () => {
 });
 
 describe('activateWorkflow()', () => {
-	test('leaves cleanup to the next holder after a settings refresh loses its publication lease', async () => {
-		const owner = await createOwner();
-		const workflow = await createActiveWorkflow({}, owner);
-		const controller = new AbortController();
-		vi.spyOn(Container.get(LockService), 'withLease').mockImplementation(
-			async (_namespace, _key, fn) => await fn(controller.signal),
-		);
-		activeWorkflowManager.remove.mockClear();
-		activeWorkflowManager.add.mockImplementationOnce(async () => {
-			controller.abort();
-			throw new Error('Settings registration failed');
-		});
+	test.each([false, true])(
+		'repairs a failed settings refresh after publication lease loss (repair lease lost: %s)',
+		async (loseRepairLease) => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			let currentLease: AbortController | undefined;
+			const leaseSpy = vi
+				.spyOn(Container.get(LockService), 'withLease')
+				.mockImplementation(async (_namespace, _key, fn) => {
+					expect(currentLease).toBeUndefined();
+					const controller = new AbortController();
+					currentLease = controller;
+					try {
+						return await fn(controller.signal);
+					} finally {
+						controller.abort();
+						currentLease = undefined;
+					}
+				});
+			let partialRegistration = false;
+			activeWorkflowManager.remove.mockClear();
+			activeWorkflowManager.remove.mockImplementationOnce(async () => {});
+			if (loseRepairLease) {
+				activeWorkflowManager.remove.mockImplementationOnce(async () => {
+					expect(currentLease?.signal.aborted).toBe(false);
+					currentLease?.abort();
+				});
+			}
+			activeWorkflowManager.remove.mockImplementationOnce(async () => {
+				expect(currentLease?.signal.aborted).toBe(false);
+				expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+					activeVersionId: workflow.activeVersionId,
+					active: true,
+				});
+				partialRegistration = false;
+			});
+			activeWorkflowManager.add.mockImplementationOnce(async () => {
+				partialRegistration = true;
+				currentLease?.abort();
+				throw new Error('Settings registration failed');
+			});
 
-		await expect(
-			workflowService.activateWorkflow(owner, workflow.id, {
-				versionId: workflow.activeVersionId!,
-				onlyIfActiveVersionIs: workflow.activeVersionId!,
-			}),
-		).rejects.toThrow('Settings registration failed');
+			try {
+				await expect(
+					workflowService.activateWorkflow(owner, workflow.id, {
+						versionId: workflow.activeVersionId!,
+						onlyIfActiveVersionIs: workflow.activeVersionId!,
+					}),
+				).rejects.toThrow('Settings registration failed');
 
-		expect(activeWorkflowManager.remove).toHaveBeenCalledTimes(1);
-		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
-			activeVersionId: workflow.activeVersionId,
-			active: true,
-		});
-	});
+				expect(leaseSpy).toHaveBeenCalledTimes(loseRepairLease ? 3 : 2);
+				for (const [namespace, key] of leaseSpy.mock.calls) {
+					expect(namespace).toBe(LockNamespace.KNOWN_LOCKS);
+					expect(key).toBe(`workflow-publication:${workflow.id}`);
+				}
+				expect(activeWorkflowManager.remove).toHaveBeenCalledTimes(loseRepairLease ? 3 : 2);
+				expect(partialRegistration).toBe(false);
+				expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+					activeVersionId: null,
+					active: false,
+				});
+			} finally {
+				activeWorkflowManager.remove.mockReset();
+			}
+		},
+	);
+
+	test.each(['publish', 'unpublish'] as const)(
+		'keeps a concurrent %s when reacquiring a lost settings refresh publication lease',
+		async (operation) => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			const nextVersionId = operation === 'publish' ? uuid() : null;
+			if (nextVersionId) {
+				await createWorkflowHistoryItem(workflow.id, { versionId: nextVersionId });
+			}
+			const controller = new AbortController();
+			const leaseSpy = vi
+				.spyOn(Container.get(LockService), 'withLease')
+				.mockImplementationOnce(async (_namespace, _key, fn) => {
+					try {
+						return await fn(controller.signal);
+					} finally {
+						await workflowRepository.update(workflow.id, {
+							activeVersionId: nextVersionId,
+							active: operation === 'publish',
+						});
+					}
+				});
+			activeWorkflowManager.remove.mockClear();
+			activeWorkflowManager.add.mockImplementationOnce(async () => {
+				controller.abort();
+				throw new Error('Settings registration failed');
+			});
+
+			await expect(
+				workflowService.activateWorkflow(owner, workflow.id, {
+					versionId: workflow.activeVersionId!,
+					onlyIfActiveVersionIs: workflow.activeVersionId!,
+				}),
+			).rejects.toThrow('Settings registration failed');
+
+			expect(leaseSpy).toHaveBeenCalledTimes(2);
+			expect(activeWorkflowManager.remove).toHaveBeenCalledTimes(1);
+			expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+				activeVersionId: nextVersionId,
+				active: operation === 'publish',
+			});
+		},
+	);
 
 	test.each(['publish', 'unpublish'] as const)(
 		'finishes a failed settings refresh before a concurrent %s changes the active version',
