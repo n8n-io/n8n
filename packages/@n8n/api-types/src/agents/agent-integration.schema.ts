@@ -204,6 +204,35 @@ export const AgentTeamsSettingsSchema = z
 	});
 export type AgentTeamsIntegrationSettings = z.infer<typeof AgentTeamsSettingsSchema>;
 
+export const WEBHOOK_INTEGRATION_TYPE = 'webhook' as const;
+
+export const AGENT_WEBHOOK_AUTHENTICATIONS = ['none', 'headerAuth', 'jwtAuth'] as const;
+export type AgentWebhookAuthentication = (typeof AGENT_WEBHOOK_AUTHENTICATIONS)[number];
+
+export const AgentWebhookSettingsSchema = z
+	.object({ authentication: z.enum(AGENT_WEBHOOK_AUTHENTICATIONS) })
+	.strict();
+export type AgentWebhookIntegrationSettings = z.infer<typeof AgentWebhookSettingsSchema>;
+
+/** The credential type that each webhook authentication checks against. */
+const WEBHOOK_CREDENTIAL_TYPES = {
+	none: undefined,
+	headerAuth: 'httpHeaderAuth',
+	jwtAuth: 'jwtAuth',
+} as const satisfies Record<AgentWebhookAuthentication, string | undefined>;
+
+export function webhookCredentialType(settings: AgentWebhookIntegrationSettings | undefined) {
+	return settings ? WEBHOOK_CREDENTIAL_TYPES[settings.authentication] : undefined;
+}
+
+/** The authentication of a webhook entry. `undefined` while the entry has no settings. */
+export function webhookAuthentication(integration: {
+	settings?: unknown;
+}): AgentWebhookAuthentication | undefined {
+	const settings = AgentWebhookSettingsSchema.safeParse(integration.settings);
+	return settings.success ? settings.data.authentication : undefined;
+}
+
 export const AgentIntegrationSettingsSchema = z.union([
 	AgentTelegramSettingsSchema,
 	AgentSlackSettingsSchema,
@@ -213,6 +242,7 @@ export const AgentIntegrationSettingsSchema = z.union([
 	// Teams was left out while it aliased the shared shape, when the entry was a
 	// no-op. Its settings now differ, so leaving it out would reject them.
 	AgentTeamsSettingsSchema,
+	AgentWebhookSettingsSchema,
 	z.undefined(),
 ]);
 export type AgentIntegrationSettings = z.infer<typeof AgentIntegrationSettingsSchema>;
@@ -268,12 +298,24 @@ const n8nChatIntegration = z
 	})
 	.strict();
 
+/**
+ * The authentication decides whether the webhook holds a credential. A copy of
+ * an agent drops the settings, so the copy is a draft until its setup is done.
+ */
+const webhookIntegration = z.object({
+	type: z.literal(WEBHOOK_INTEGRATION_TYPE),
+	credentialId: z.string(),
+	settings: AgentWebhookSettingsSchema.optional(),
+	approval,
+});
+
 export const AgentIntegrationSchema = z.discriminatedUnion('type', credentialIntegrations);
 
 /** Draft config variant that allows cleared stale credential IDs. */
 export const AgentIntegrationConfigSchema = z.discriminatedUnion('type', [
 	...draftCredentialIntegrations,
 	n8nChatIntegration,
+	webhookIntegration,
 ]);
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
@@ -287,31 +329,4 @@ export function isCredentialAgentIntegration(
 	integration: AgentIntegrationConfig,
 ): integration is CredentialAgentIntegrationConfig {
 	return integration.type !== 'n8n_chat';
-}
-
-/** Whether the channel runs a platform connection (Chat SDK adapter) and attaches channel tools. */
-export function hasChannelRuntime(
-	integration: AgentIntegrationConfig,
-): integration is CredentialAgentIntegrationConfig {
-	return isCredentialAgentIntegration(integration);
-}
-
-/** Whether the channel entry must hold a credential to be set up. */
-export function integrationNeedsCredential(integration: { type: string }): boolean {
-	return integration.type !== 'n8n_chat';
-}
-
-/** The entry that a copy of an agent gets: a draft that needs setup in the destination. */
-export function toDraftIntegration(integration: AgentIntegrationConfig): AgentIntegrationConfig {
-	return isCredentialAgentIntegration(integration)
-		? { ...integration, credentialId: '' }
-		: integration;
-}
-
-/** The entry that an import gets when the destination agent already has a channel of that type. */
-export function reuseIntegrationSetup(
-	source: CredentialAgentIntegrationConfig,
-	existing: AgentIntegrationConfig,
-): AgentIntegrationConfig {
-	return { ...source, credentialId: existing.credentialId };
 }
