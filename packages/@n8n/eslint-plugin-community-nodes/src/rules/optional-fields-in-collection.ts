@@ -25,12 +25,19 @@ const EXEMPT_NAMES = new Set([
 ]);
 const EXEMPT_TYPES = new Set(['collection', 'fixedCollection', 'notice']);
 
+interface ModuleReference {
+	source: string;
+	name: string;
+}
+
 interface SourceModule {
 	filename: string;
 	program: TSESTree.Program;
 	bindings: Map<string, TSESTree.Node>;
-	imports: Map<string, { source: string; name: string }>;
+	imports: Map<string, ModuleReference>;
 	exports: Map<string, TSESTree.Node>;
+	reExports: Map<string, ModuleReference>;
+	exportAllSources: string[];
 }
 
 function describeModule(filename: string, program: TSESTree.Program): SourceModule {
@@ -40,6 +47,8 @@ function describeModule(filename: string, program: TSESTree.Program): SourceModu
 		bindings: new Map(),
 		imports: new Map(),
 		exports: new Map(),
+		reExports: new Map(),
+		exportAllSources: [],
 	};
 	for (const statement of program.body) {
 		if (statement.type === AST_NODE_TYPES.ImportDeclaration) {
@@ -63,14 +72,25 @@ function describeModule(filename: string, program: TSESTree.Program): SourceModu
 				}
 			}
 		}
-		if (statement.type === AST_NODE_TYPES.ExportNamedDeclaration && !statement.source) {
+		if (statement.type === AST_NODE_TYPES.ExportNamedDeclaration) {
 			for (const specifier of statement.specifiers) {
 				const name =
 					specifier.exported.type === AST_NODE_TYPES.Identifier
 						? specifier.exported.name
 						: String(specifier.exported.value);
-				module.exports.set(name, specifier.local);
+				if (statement.source) {
+					const importedName =
+						specifier.local.type === AST_NODE_TYPES.Identifier
+							? specifier.local.name
+							: String(specifier.local.value);
+					module.reExports.set(name, { source: statement.source.value, name: importedName });
+				} else {
+					module.exports.set(name, specifier.local);
+				}
 			}
+		}
+		if (statement.type === AST_NODE_TYPES.ExportAllDeclaration && !statement.exported) {
+			module.exportAllSources.push(statement.source.value);
 		}
 	}
 	return module;
@@ -92,6 +112,7 @@ export const OptionalFieldsInCollectionRule = createRule({
 	defaultOptions: [],
 	create(context) {
 		const visited = new Set<TSESTree.Node>();
+		const visitedExports = new Map<SourceModule, Set<string>>();
 		const currentModule = describeModule(path.resolve(context.filename), context.sourceCode.ast);
 		const modules = new Map<string, SourceModule | null>([[currentModule.filename, currentModule]]);
 		let packageJson: string | null | undefined;
@@ -118,20 +139,50 @@ export const OptionalFieldsInCollectionRule = createRule({
 			}
 		}
 
-		function visitImportedBinding(module: SourceModule, name: string): void {
-			const imported = module.imports.get(name);
-			if (!imported?.source.startsWith('.')) return;
+		function loadRelativeModule(module: SourceModule, source: string): SourceModule | null {
+			if (!source.startsWith('.')) return null;
 
-			const base = path.resolve(path.dirname(module.filename), imported.source);
+			const base = path.resolve(path.dirname(module.filename), source);
 			const filename = [
 				base.replace(/\.js$/, '.ts'),
 				`${base}.ts`,
 				path.join(base, 'index.ts'),
 			].find((candidate) => candidate.endsWith('.ts') && existsSync(candidate));
-			if (!filename) return;
-			const importedModule = loadModule(filename);
+			return filename ? loadModule(filename) : null;
+		}
+
+		function visitExportedBinding(module: SourceModule, name: string): void {
+			const names = visitedExports.get(module) ?? new Set<string>();
+			if (names.has(name)) return;
+			names.add(name);
+			visitedExports.set(module, names);
+
+			const exported = module.exports.get(name);
+			if (exported) {
+				visit(exported, module);
+				return;
+			}
+
+			const reExport = module.reExports.get(name);
+			if (reExport) {
+				const sourceModule = loadRelativeModule(module, reExport.source);
+				if (sourceModule) visitExportedBinding(sourceModule, reExport.name);
+				return;
+			}
+
+			if (name === 'default') return;
+			for (const source of module.exportAllSources) {
+				const sourceModule = loadRelativeModule(module, source);
+				if (sourceModule) visitExportedBinding(sourceModule, name);
+			}
+		}
+
+		function visitImportedBinding(module: SourceModule, name: string): void {
+			const imported = module.imports.get(name);
+			if (!imported) return;
+			const importedModule = loadRelativeModule(module, imported.source);
 			if (importedModule) {
-				visit(importedModule.exports.get(imported.name) ?? null, importedModule);
+				visitExportedBinding(importedModule, imported.name);
 			}
 		}
 

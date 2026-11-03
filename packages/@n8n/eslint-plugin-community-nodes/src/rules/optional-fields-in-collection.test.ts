@@ -148,7 +148,48 @@ ${createNodeCode(`{
 	},
 );
 
-describe('exported field arrays', () => {
+const exportRoutes: Array<{ name: string; modules: Record<string, string> }> = [
+	{ name: 'direct imports', modules: {} },
+	{
+		name: 'wildcard re-exports',
+		modules: { 'index.ts': "export * from './fields';" },
+	},
+	{
+		name: 'named re-exports',
+		modules: { 'index.ts': "export { contactFields } from './fields.js';" },
+	},
+	{
+		name: 'aliased re-exports',
+		modules: {
+			'index.ts': "export { renamedFields as contactFields } from './barrel.js';",
+			'barrel.ts': "export { contactFields as renamedFields } from './fields';",
+		},
+	},
+	{
+		name: 'local export aliases',
+		modules: {
+			'index.ts': `import { contactFields as fields } from './fields';
+				export { fields as contactFields };`,
+		},
+	},
+	{
+		name: 'nested wildcard and named re-exports',
+		modules: {
+			'index.ts': "export * from './barrel';",
+			'barrel.ts': "export * from './nested.js';",
+			'nested.ts': "export { contactFields } from './fields';",
+		},
+	},
+	{
+		name: 'cyclic wildcard re-exports',
+		modules: {
+			'index.ts': "export * from './barrel'; export * from './fields';",
+			'barrel.ts': "export * from './index';",
+		},
+	},
+];
+
+describe.each(exportRoutes)('exported field arrays through $name', ({ modules }) => {
 	it.each([
 		{
 			name: 'reports fields imported into description.properties',
@@ -182,9 +223,13 @@ describe('exported field arrays', () => {
 				`import { sharedFields as fields } from './ContactDescription.js';
 				export const contactFields: INodeProperties[] = [...fields];`,
 			);
+			for (const [moduleFilename, moduleCode] of Object.entries(modules)) {
+				writeFileSync(path.join(nodes, moduleFilename), moduleCode);
+			}
+			const importSource = Object.keys(modules).length ? './index' : './fields';
 			writeFileSync(
 				path.join(nodes, 'TestNode.node.ts'),
-				`import { contactFields } from './fields'; ${createNodeCode(properties)}`,
+				`import { contactFields } from '${importSource}'; ${createNodeCode(properties)}`,
 			);
 
 			const messages = new Linter({ cwd: directory }).verify(
