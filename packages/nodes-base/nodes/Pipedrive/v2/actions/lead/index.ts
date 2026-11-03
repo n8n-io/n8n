@@ -4,9 +4,10 @@ import * as create from './create.operation';
 import * as deleteLead from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
+import * as search from './search.operation';
 import * as update from './update.operation';
 
-export { create, deleteLead as delete, get, getAll, update };
+export { create, deleteLead as delete, get, getAll, search, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -45,6 +46,12 @@ export const description: INodeProperties[] = [
 				action: 'Get many leads',
 			},
 			{
+				name: 'Search',
+				value: 'search',
+				description: 'Search leads',
+				action: 'Search leads',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a lead',
@@ -57,5 +64,6 @@ export const description: INodeProperties[] = [
 	...deleteLead.description,
 	...get.description,
 	...getAll.description,
+	...search.description,
 	...update.description,
 ];
