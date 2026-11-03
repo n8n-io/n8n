@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import { useCloudUbbActive } from '@n8n/stores/composables/useCloudUbbActive';
 import { round2 } from './creditFormatting';
 
 const props = withDefaults(
@@ -29,27 +28,22 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const cloudPlanStore = useCloudPlanStore();
-const { isActive: isCloudUbbActive } = useCloudUbbActive();
 
 const bannerText = computed(() => {
 	if (props.message) return props.message;
 
 	const remaining = String(round2(props.creditsRemaining ?? 0));
 
-	// Cloud UBB: the wallet's `creditsQuota` moves as top-ups deplete, so the
-	// legacy "{remaining}/{total} monthly credits left" would render a shrinking
-	// denominator and mislabel top-ups as monthly. Show just the remaining count.
-	// Trials don't hold top-ups, so the trial text keeps its stable fraction.
-	if (isCloudUbbActive.value && !cloudPlanStore.userIsTrialing) {
+	// The wallet's `creditsQuota` moves as top-ups deplete, so a
+	// "{remaining}/{total}" fraction would show a shrinking denominator. Show just
+	// the remaining count. Trials don't hold top-ups, so they keep the fraction.
+	if (!cloudPlanStore.userIsTrialing) {
 		return i18n.baseText('aiAssistant.builder.creditBanner.textUbb', {
 			interpolate: { remaining },
 		});
 	}
 
-	const key = cloudPlanStore.userIsTrialing
-		? 'aiAssistant.builder.creditBanner.trialText'
-		: 'aiAssistant.builder.creditBanner.text';
-	return i18n.baseText(key, {
+	return i18n.baseText('aiAssistant.builder.creditBanner.trialText', {
 		interpolate: {
 			remaining,
 			total: String(round2(props.creditsQuota ?? 0)),
