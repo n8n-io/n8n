@@ -20,7 +20,8 @@ const itemFactory = () => ({
 });
 type Item = ReturnType<typeof itemFactory>;
 
-const items: Item[] = [...Array(106).keys()].map(itemFactory);
+// Keep the rendered server page small. itemsLength sets the total for pagination.
+const items: Item[] = Array.from({ length: 3 }, itemFactory);
 const headers: Array<TableHeader<Item>> = [
 	{
 		title: 'Id',
@@ -93,40 +94,54 @@ describe('N8nDataTableServer', () => {
 		expect(container.querySelector('tbody tr td')?.textContent).toBe('1');
 	});
 
-	it('should emit options for sorting / pagination', async () => {
-		const { container, emitted, getByTestId, findAllByRole } = renderComponent({
+	it('should emit options for sorting', async () => {
+		const { container, emitted } = renderComponent({
 			props: { items, headers, itemsLength: 100 },
 		});
 
 		await userEvent.click(container.querySelector('thead tr th')!);
 		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(within(getByTestId('pagination')).getByText('2'));
 
-		expect(emitted('update:options').length).toBe(3);
+		expect(emitted('update:options').length).toBe(2);
 		expect(emitted('update:options')[0]).toStrictEqual([
 			expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] }),
 		]);
 		expect(emitted('update:options')[1]).toStrictEqual([
 			expect.objectContaining({ sortBy: [{ id: 'id', desc: true }] }),
 		]);
+	});
 
-		// // change the page size select option
-		const selectInput = await findAllByRole('combobox'); // Find the select input
+	it('should emit options when the page changes', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: { items, headers, itemsLength: 100 },
+		});
+
+		await userEvent.click(within(getByTestId('pagination')).getByText('2'));
+
+		expect(emitted('update:options')).toStrictEqual([
+			[expect.objectContaining({ page: 1, itemsPerPage: 10 })],
+		]);
+	});
+
+	it('should emit options when the page size changes', async () => {
+		const { emitted, findAllByRole } = renderComponent({
+			props: { items, headers, itemsLength: 100 },
+		});
+
+		const selectInput = await findAllByRole('combobox');
 		await userEvent.click(selectInput[0]);
 
 		const options = await getRenderedOptions();
 		expect(options.length).toBe(4);
 
-		// account for the debounce
-		await new Promise((r) => setTimeout(r, 100));
-
 		const option50 = Array.from(options).find((option) => option.textContent === '50/page');
 		await userEvent.click(option50!);
 
-		expect(emitted('update:options').length).toBe(4);
-		expect(emitted('update:options').at(-1)).toStrictEqual([
-			expect.objectContaining({ page: 0, itemsPerPage: 50 }),
-		]);
+		await waitFor(() => {
+			expect(emitted('update:options')).toStrictEqual([
+				[expect.objectContaining({ page: 0, itemsPerPage: 50 })],
+			]);
+		});
 	});
 
 	it('should emit options for sorting with initial sort', async () => {
