@@ -1555,6 +1555,7 @@ export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingApp
 export const instanceAiAppTargetSchema = z.object({
 	appId: z.string().uuid(),
 	projectId: z.string().min(1),
+	name: z.string().max(255).optional(),
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
@@ -1765,6 +1766,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `app_builder_page` — Instance AI hand-off from the app builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `assistant_page` — first message typed on the Instance AI empty/home page
@@ -1786,6 +1788,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
+	'app_builder_page',
 	'agent_preview',
 	'self_healing_result',
 	'assistant_page',

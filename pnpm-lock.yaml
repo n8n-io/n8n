@@ -1083,8 +1083,8 @@ overrides:
   '@turbo/linux-64@<=2.9.18': 2.9.18
   '@turbo/windows-64@<=2.9.18': 2.9.18
   ibm-cloud-sdk-core: ^5.5.0
-  undici@5: ^6.28.1
-  undici@6: ^6.28.1
+  undici@5: ^6.29.1
+  undici@6: ^6.29.1
   undici@7: ^7.30.1
   node-gyp>undici: ^7.30.1
   '@babel/traverse@<7.23.2': ^7.23.2
@@ -7208,6 +7208,9 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -7251,6 +7254,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+      '@vue/test-utils':
+        specifier: catalog:frontend
+        version: 2.4.6
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
@@ -24517,8 +24523,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@6.29.0:
-    resolution: {integrity: sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==}
+  undici@6.29.1:
+    resolution: {integrity: sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==}
     engines: {node: '>=18.17'}
 
   undici@7.30.1:
@@ -25459,12 +25465,12 @@ snapshots:
       '@octokit/plugin-rest-endpoint-methods': 10.4.1(@octokit/core@5.2.2)
       '@octokit/request': 8.4.1
       '@octokit/request-error': 5.1.1
-      undici: 6.29.0
+      undici: 6.29.1
 
   '@actions/http-client@2.2.3':
     dependencies:
       tunnel: 0.0.6
-      undici: 6.29.0
+      undici: 6.29.1
 
   '@actions/io@1.1.3': {}
 
@@ -28209,7 +28215,7 @@ snapshots:
       discord-api-types: 0.38.52
       magic-bytes.js: 1.13.1
       tslib: 2.8.1
-      undici: 6.29.0
+      undici: 6.29.1
 
   '@discordjs/util@1.2.0':
     dependencies:
@@ -31252,7 +31258,7 @@ snapshots:
       openapi-sampler: 1.7.0
       outdent: 0.8.0
       set-cookie-parser: 2.7.1
-      undici: 6.29.0
+      undici: 6.29.1
     transitivePeerDependencies:
       - ajv
       - supports-color
@@ -36014,7 +36020,7 @@ snapshots:
       lodash.snakecase: 4.1.1
       magic-bytes.js: 1.13.1
       tslib: 2.8.1
-      undici: 6.29.0
+      undici: 6.29.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -44022,7 +44028,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@6.29.0: {}
+  undici@6.29.1: {}
 
   undici@7.30.1: {}
 

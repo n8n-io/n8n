@@ -14,6 +14,7 @@ import { useAppVersions } from '../composables/useAppVersions';
 import AppHeader from './AppHeader.vue';
 import AppPreview from './AppPreview.vue';
 import AppConfigure from './configure/AppConfigure.vue';
+import AppVersionsPanel from './versions/AppVersionsPanel.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -34,6 +35,7 @@ const latestFetch = useLatestFetch();
 
 const app = ref<AppResponse | null>(null);
 const loading = ref(true);
+const versionsOpen = ref(false);
 const versions = useAppVersions(
 	() => props.projectId,
 	() => app.value?.id,
@@ -68,12 +70,23 @@ async function loadApp(keepView = false) {
 }
 
 async function refresh() {
-	await Promise.all([loadApp(true), versions.refresh()]);
+	await loadApp(true);
+	await versions.refresh();
+}
+
+// A publish also saves the version name, so the version list reloads when the published version changes.
+function onAppUpdated(updated: AppResponse) {
+	const publishChanged = updated.publishedVersionId !== app.value?.publishedVersionId;
+	app.value = updated;
+	if (publishChanged) void versions.refresh();
 }
 
 watch(
 	() => [props.projectId, props.appId],
-	async () => await loadApp(),
+	async () => {
+		versionsOpen.value = false;
+		await loadApp();
+	},
 	{ immediate: true },
 );
 
@@ -88,33 +101,44 @@ defineExpose({ refresh });
 			:project-id="projectId"
 			:app="app"
 			:publishable-version="versions.latestBuilt.value"
-			@updated="app = $event"
+			@updated="onAppUpdated"
 			@deleted="emit('deleted', $event)"
+			@show-versions="versionsOpen = true"
 		/>
 
-		<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
-			<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
+		<div :class="$style.workspace">
+			<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
+				<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
 
-			<N8nEmptyState
-				v-else-if="!app"
-				:heading="i18n.baseText('apps.detail.notFound.heading')"
-				:description="i18n.baseText('apps.detail.notFound.description')"
-				data-test-id="app-view-not-found"
-			/>
-
-			<template v-else>
-				<AppPreview
-					v-if="activeTab === 'preview'"
-					:project-id="projectId"
-					:app="app"
-					:versions="versions"
-					:inspectable="inspectable"
-					:element-selected="elementSelected"
-					@element-selected="emit('element-selected', $event)"
+				<N8nEmptyState
+					v-else-if="!app"
+					:heading="i18n.baseText('apps.detail.notFound.heading')"
+					:description="i18n.baseText('apps.detail.notFound.description')"
+					data-test-id="app-view-not-found"
 				/>
-				<AppConfigure v-else :app="app" @updated="app = $event" />
-			</template>
-		</main>
+
+				<template v-else>
+					<AppPreview
+						v-if="activeTab === 'preview'"
+						:project-id="projectId"
+						:app="app"
+						:versions="versions"
+						:inspectable="inspectable"
+						:element-selected="elementSelected"
+						@element-selected="emit('element-selected', $event)"
+					/>
+					<AppConfigure v-else :app="app" @updated="app = $event" />
+				</template>
+			</main>
+			<AppVersionsPanel
+				v-if="app && versionsOpen"
+				:app="app"
+				:versions="versions"
+				@updated="onAppUpdated"
+				@restored="refresh"
+				@close="versionsOpen = false"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -124,6 +148,15 @@ defineExpose({ refresh });
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+}
+
+.workspace {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	min-width: 0;
+	container-type: inline-size;
 }
 
 .content {

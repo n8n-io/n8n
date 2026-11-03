@@ -2,10 +2,19 @@ import { CreateAppDto } from '../create-app.dto';
 import { ListAppsQueryDto } from '../list-apps-query.dto';
 import { UpdateAppDto } from '../update-app.dto';
 import { PublishAppDto } from '../publish-app.dto';
+import { RestoreAppVersionDto } from '../restore-app-version.dto';
 import { SetAppBindingsDto } from '../set-app-bindings.dto';
 import { appSchema, appVersionSchema } from '../../../schemas/app.schema';
 
 describe('app DTOs', () => {
+	it('needs the draft version that a restore is based on', () => {
+		const baseVersionId = '0190a8d6-4a2e-7000-8000-0000000000d1';
+		expect(RestoreAppVersionDto.safeParse({ baseVersionId }).success).toBe(true);
+		expect(RestoreAppVersionDto.safeParse({ baseVersionId: null }).success).toBe(true);
+		expect(RestoreAppVersionDto.safeParse({}).success).toBe(false);
+		expect(RestoreAppVersionDto.safeParse({ baseVersionId: 'draft' }).success).toBe(false);
+	});
+
 	it('needs the draft version that a binding change is based on', () => {
 		const baseVersionId = '0190a8d6-4a2e-7000-8000-0000000000d1';
 		expect(SetAppBindingsDto.safeParse({ baseVersionId, bindings: [] }).success).toBe(true);
