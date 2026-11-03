@@ -37,7 +37,7 @@ describe('AppConfigure', () => {
 	it('shows the sub-tabs and the active tab with the app', () => {
 		const { getByTestId, getByText } = renderComponent();
 
-		expect(getByText('Basics')).toBeInTheDocument();
+		expect(getByText('Basics & connections')).toBeInTheDocument();
 		expect(getByTestId('basics-tab')).toHaveTextContent('Expense tracker');
 	});
 
@@ -54,7 +54,7 @@ describe('AppConfigure', () => {
 			props: { tab: 'previous' as AppConfigureTab },
 		});
 
-		await userEvent.click(getByText('Basics'));
+		await userEvent.click(getByText('Basics & connections'));
 
 		expect(emitted('update:tab')).toEqual([['basics']]);
 	});

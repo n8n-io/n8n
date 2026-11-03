@@ -16,6 +16,7 @@ import { computed, ref, watch } from 'vue';
 import { updateApp } from '../../apps.api';
 import { getAppPermissions } from '../../apps.permissions';
 import type { AppConfigureTabEmits, AppConfigureTabProps } from './appConfigureTabs';
+import AppConnectionsCard from './connections/AppConnectionsCard.vue';
 
 const FIELDS = [
 	{
@@ -126,7 +127,7 @@ watch(
 </script>
 
 <template>
-	<div data-test-id="app-configure-basics">
+	<div :class="$style.cards" data-test-id="app-configure-basics">
 		<N8nSettingsRowGroup>
 			<div :class="$style.cardHeader">
 				<N8nHeading tag="h2" size="medium" color="text-dark">
@@ -166,10 +167,17 @@ watch(
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
+		<AppConnectionsCard :app="app" :versions="versions" @updated="emit('updated', $event)" />
 	</div>
 </template>
 
 <style lang="scss" module>
+.cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+}
+
 .field {
 	display: flex;
 	flex-direction: column;

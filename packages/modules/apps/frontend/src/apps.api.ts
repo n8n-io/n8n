@@ -1,10 +1,14 @@
-import type {
-	AppBuildResponse,
-	AppListResponse,
-	AppPreviewResponse,
-	AppResponse,
-	AppVersionResponse,
-	UpdateAppDto,
+import {
+	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+	type AppBinding,
+	type AppBindingKind,
+	type AppBindingsResponse,
+	type AppBuildResponse,
+	type AppListResponse,
+	type AppPreviewResponse,
+	type AppResponse,
+	type AppVersionResponse,
+	type UpdateAppDto,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -99,6 +103,80 @@ export async function publishApp(
 	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/apps/${appId}/publish`, {
 		versionId,
 	});
+}
+
+export async function getAppBindings(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+): Promise<AppBindingsResponse> {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/apps/${appId}/bindings`);
+}
+
+export async function setAppBindings(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	baseVersionId: string | null,
+	bindings: AppBinding[],
+): Promise<AppBindingsResponse> {
+	return await makeRestApiRequest(context, 'PUT', `/projects/${projectId}/apps/${appId}/bindings`, {
+		baseVersionId,
+		bindings,
+	});
+}
+
+export type BindableResource = { id: string; name: string };
+
+const BINDABLE_RESOURCE_LIMIT = 250;
+const BINDABLE_WORKFLOW_LIMIT = 100;
+
+async function listBindableWorkflows(context: IRestApiContext, projectId: string) {
+	const { data } = await getFullApiResponse<BindableResource[]>(context, 'GET', '/workflows', {
+		filter: { projectId, isArchived: false, triggerNodeTypes: SUPPORTED_WORKFLOW_TOOL_TRIGGERS },
+		select: JSON.stringify(['id', 'name']),
+		take: BINDABLE_WORKFLOW_LIMIT,
+		sortBy: 'name:asc',
+	});
+	return data;
+}
+
+async function listBindableDataTables(context: IRestApiContext, projectId: string) {
+	const { data } = await makeRestApiRequest<{ data: BindableResource[] }>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables`,
+		{ take: BINDABLE_RESOURCE_LIMIT, sortBy: 'name:asc' },
+	);
+	return data;
+}
+
+async function listBindableAgents(context: IRestApiContext, projectId: string) {
+	const { data } = await getFullApiResponse<BindableResource[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2`,
+		{ take: BINDABLE_RESOURCE_LIMIT, sortBy: 'name:asc' },
+	);
+	return data;
+}
+
+const BINDABLE_RESOURCE_LISTS = {
+	workflow: listBindableWorkflows,
+	dataTable: listBindableDataTables,
+	agent: listBindableAgents,
+} satisfies Record<
+	AppBindingKind,
+	(context: IRestApiContext, projectId: string) => Promise<BindableResource[]>
+>;
+
+export async function listBindableResources(
+	context: IRestApiContext,
+	projectId: string,
+	kind: AppBindingKind,
+): Promise<BindableResource[]> {
+	const resources = await BINDABLE_RESOURCE_LISTS[kind](context, projectId);
+	return resources.map(({ id, name }) => ({ id, name }));
 }
 
 export async function unpublishApp(
