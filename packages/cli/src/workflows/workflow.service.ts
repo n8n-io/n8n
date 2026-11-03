@@ -89,6 +89,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
@@ -207,6 +208,7 @@ export class WorkflowService {
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
 
 	/**
@@ -1568,6 +1570,8 @@ export class WorkflowService {
 		}
 
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
+
+		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
 	}
 
 	/**

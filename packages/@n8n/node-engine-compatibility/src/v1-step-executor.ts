@@ -28,6 +28,7 @@ import {
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
@@ -57,8 +58,16 @@ function toStepResult(
 	context: DurableWaitExecuteContext,
 	nodeResult: INodeExecutionData[][],
 ): StepExecutionResult {
+	// The node ran to the end on an empty result; the sub-execution it asked for is
+	// what the step owes, and the node runs again once the sub-execution ends.
+	const { declaration } = context.subWorkflowCalls;
+	if (declaration?.awaited) return { subExecution: declaration };
+
 	const { waitTill } = context.runExecutionData;
-	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (waitTill === undefined) {
+		const outputs = toStepOutputs(nodeResult);
+		return declaration ? { subExecution: { ...declaration, outputs } } : { outputs };
+	}
 	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
 		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
 		return { wait: { resumeBinding: 'execution' } };
@@ -126,6 +135,8 @@ export class V1StepExecutor implements IStepExecutor {
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
+			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
+			subExecutionResume: request.resume,
 		});
 
 		return await workflow.expression.withIsolate(async () => {
@@ -208,6 +219,9 @@ export class V1StepExecutor implements IStepExecutor {
 				// The node's own error is the one to report. The response channel
 				// already tells the caller when it cannot carry the error chunk.
 			}
+			// The node failed, so do not start a sub-execution it may have declared
+			// before failing. This holds for continueOnFail too.
+			context.subWorkflowCalls.declaration = undefined;
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}

@@ -102,6 +102,8 @@ onBeforeUnmount(() => {
 const ICONS: Record<PromotionDirection, IconName> = { apply: 'arrow-down', promote: 'arrow-up' };
 
 // The tooltip trigger is the span or link itself (`as-child`), so keyboard focus opens it.
+// The tooltip keeps the element it first saw as its anchor. The key mounts a new tooltip when
+// the badge swaps between a blocked span, a plain span and a link, so the anchor stays in the DOM.
 // A blocked badge only informs. Its span takes the focus and the hover, because a disabled
 // button does neither, and the tooltip gives the reason.
 const badges = computed(() => {
@@ -113,35 +115,49 @@ const badges = computed(() => {
 	];
 	return entries
 		.filter(({ show }) => show)
-		.map(({ direction, changes }) => ({
-			direction,
-			loading: changes.loading.value,
-			failed: changes.failed.value,
-			blocked: !!changes.blocker.value,
-			changeCount: changes.changeCount.value,
-			disabled:
+		.map(({ direction, changes }) => {
+			const blocked = !!changes.blocker.value;
+			const disabled =
 				changes.loading.value ||
-				!!changes.blocker.value ||
-				(!changes.failed.value && changes.changeCount.value === 0),
-			label: changes.loading.value
-				? i18n.baseText(`promotions.preview.badge.loading.${direction}`)
-				: changes.failed.value
-					? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
-					: changes.blocker.value
-						? i18n.baseText('promotions.preview.badge.blocked.promote')
-						: changes.changeCount.value === 0
-							? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
-							: i18n.baseText(`promotions.preview.badge.${direction}`, {
-									adjustToNumber: changes.changeCount.value,
-									interpolate: {
-										count: String(changes.changeCount.value),
-										environment:
-											environments.value.find((environment) => environment.direction === direction)
-												?.name ?? '',
-									},
-								}),
-			to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
-		}));
+				blocked ||
+				(!changes.failed.value && changes.changeCount.value === 0);
+
+			let anchor: 'link' | 'static' | 'blocked' = 'link';
+			if (blocked) {
+				anchor = 'blocked';
+			} else if (disabled) {
+				anchor = 'static';
+			}
+
+			return {
+				direction,
+				loading: changes.loading.value,
+				failed: changes.failed.value,
+				blocked,
+				anchor,
+				changeCount: changes.changeCount.value,
+				disabled,
+				label: changes.loading.value
+					? i18n.baseText(`promotions.preview.badge.loading.${direction}`)
+					: changes.failed.value
+						? i18n.baseText(`promotions.preview.badge.failed.${direction}`)
+						: changes.blocker.value
+							? i18n.baseText('promotions.preview.badge.blocked.promote')
+							: changes.changeCount.value === 0
+								? i18n.baseText(`promotions.preview.badge.empty.${direction}`)
+								: i18n.baseText(`promotions.preview.badge.${direction}`, {
+										adjustToNumber: changes.changeCount.value,
+										interpolate: {
+											count: String(changes.changeCount.value),
+											environment:
+												environments.value.find(
+													(environment) => environment.direction === direction,
+												)?.name ?? '',
+										},
+									}),
+				to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
+			};
+		});
 });
 </script>
 
@@ -149,7 +165,7 @@ const badges = computed(() => {
 	<div v-if="badges.length > 0" :class="$style.badges" data-test-id="promotion-preview-badges">
 		<N8nTooltip
 			v-for="badge in badges"
-			:key="badge.direction"
+			:key="`${badge.direction}-${badge.anchor}`"
 			:content="badge.label"
 			:disabled="badge.loading"
 			as-child

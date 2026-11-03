@@ -27,7 +27,8 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { createRunExecutionData, OperationalError } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type PCancelable from 'p-cancelable';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
