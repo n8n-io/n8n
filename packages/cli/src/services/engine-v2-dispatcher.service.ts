@@ -264,7 +264,7 @@ export class EngineV2Dispatcher {
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
 				// Only a run with a push ref has an editor session to relay events to.
-				lifecycleEvents: data.pushRef ? { kind: 'all' } : undefined,
+				lifecycleEventSubscription: data.pushRef ? { kind: 'all' } : undefined,
 			},
 		};
 	}

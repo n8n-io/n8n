@@ -287,11 +287,11 @@ describe('StartExecutionService', () => {
 			workflow: sampleWorkflow,
 			executionId: 'exec-id-1',
 			callerContext: { hostMode: 'manual' },
-			lifecycleEvents: { kind: 'all' },
+			lifecycleEventSubscription: { kind: 'all' },
 		});
 
 		expect(store.createExecution).toHaveBeenCalledWith(
-			expect.objectContaining({ lifecycleEvents: { kind: 'all' } }),
+			expect.objectContaining({ lifecycleEventSubscription: { kind: 'all' } }),
 		);
 	});
 
@@ -311,7 +311,7 @@ describe('StartExecutionService', () => {
 		});
 
 		const [record] = vi.mocked(store.createExecution).mock.calls[0];
-		expect(record.lifecycleEvents).toBeUndefined();
+		expect(record.lifecycleEventSubscription).toBeUndefined();
 	});
 
 	it('defaults mode to production, triggerOutputs to null and the expectation to none', async () => {

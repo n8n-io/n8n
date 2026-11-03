@@ -42,7 +42,7 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						comment: 'Whether the parent step waits for this execution to end.',
 					},
 					{
-						name: 'lifecycle_events',
+						name: 'lifecycle_event_subscription',
 						type: 'jsonb',
 						isNullable: true,
 						comment:

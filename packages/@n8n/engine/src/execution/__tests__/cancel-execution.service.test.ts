@@ -26,7 +26,7 @@ const execution: ExecutionRecord = {
 	callerContext: { hostMode: 'trigger' },
 	responseExpectation: { kind: 'none' },
 	parent: null,
-	lifecycleEvents: { kind: 'all' },
+	lifecycleEventSubscription: { kind: 'all' },
 	finishedAt: null,
 };
 
@@ -121,9 +121,9 @@ describe('CancelExecutionService', () => {
 	});
 
 	it.each([
-		['is missing', { lifecycleEvents: undefined }],
-		['is null', { lifecycleEvents: null }],
-		['is none', { lifecycleEvents: { kind: 'none' as const } }],
+		['is missing', { lifecycleEventSubscription: undefined }],
+		['is null', { lifecycleEventSubscription: null }],
+		['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
 	])('announces nothing when the subscription %s', async (_name, overrides) => {
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue({

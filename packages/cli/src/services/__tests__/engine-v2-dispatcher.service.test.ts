@@ -252,7 +252,7 @@ describe('EngineV2Dispatcher', () => {
 			await dispatcher.start(runData({ pushRef: 'push-1' }));
 
 			expect(proxy.startExecution).toHaveBeenCalledWith(
-				expect.objectContaining({ lifecycleEvents: { kind: 'all' } }),
+				expect.objectContaining({ lifecycleEventSubscription: { kind: 'all' } }),
 			);
 		});
 
@@ -264,7 +264,7 @@ describe('EngineV2Dispatcher', () => {
 			await dispatcher.start(data);
 
 			const [request] = proxy.startExecution.mock.calls[0];
-			expect(request.lifecycleEvents).toBeUndefined();
+			expect(request.lifecycleEventSubscription).toBeUndefined();
 		});
 
 		it('sends the workflow beside the graph, narrowed to what a read reports', async () => {

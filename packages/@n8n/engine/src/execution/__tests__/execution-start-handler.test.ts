@@ -250,7 +250,7 @@ describe('ExecutionStartHandler lifecycle events', () => {
 			loadExecution: vi.fn().mockResolvedValue(
 				record(graph, {
 					callerContext: { hostMode: 'webhook' },
-					lifecycleEvents: { kind: 'all' },
+					lifecycleEventSubscription: { kind: 'all' },
 				}),
 			),
 		});
@@ -275,8 +275,8 @@ describe('ExecutionStartHandler lifecycle events', () => {
 
 	it.each([
 		['is missing', {}],
-		['is null', { lifecycleEvents: null }],
-		['is none', { lifecycleEvents: { kind: 'none' as const } }],
+		['is null', { lifecycleEventSubscription: null }],
+		['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
 	])('announces nothing when the subscription %s', async (_name, overrides) => {
 		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const executionStore = makeExecutionStore({

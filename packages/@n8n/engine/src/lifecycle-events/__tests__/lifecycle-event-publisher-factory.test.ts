@@ -11,13 +11,13 @@ describe('LifecycleEventPublisherFactory', () => {
 	const factory = new LifecycleEventPublisherFactory(publisher);
 
 	it('returns the host publisher for an execution that subscribes to all events', () => {
-		expect(factory.create({ lifecycleEvents: { kind: 'all' } })).toBe(publisher);
+		expect(factory.create({ lifecycleEventSubscription: { kind: 'all' } })).toBe(publisher);
 	});
 
 	it.each([
 		['is missing', {}],
-		['is null', { lifecycleEvents: null }],
-		['is none', { lifecycleEvents: { kind: 'none' as const } }],
+		['is null', { lifecycleEventSubscription: null }],
+		['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
 	])('returns the no-op publisher when the subscription %s', (_name, execution) => {
 		expect(factory.create(execution)).toBe(noopLifecycleEventPublisher);
 	});

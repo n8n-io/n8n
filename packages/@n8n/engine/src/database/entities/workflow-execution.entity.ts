@@ -69,8 +69,8 @@ export class WorkflowExecution {
 	parentAwaited!: boolean | null;
 
 	/** Which lifecycle events (if any) the caller subscribes to. `null` means none. */
-	@Column('jsonb', { name: 'lifecycle_events', nullable: true })
-	lifecycleEvents!: LifecycleEventSubscription | null;
+	@Column('jsonb', { name: 'lifecycle_event_subscription', nullable: true })
+	lifecycleEventSubscription!: LifecycleEventSubscription | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

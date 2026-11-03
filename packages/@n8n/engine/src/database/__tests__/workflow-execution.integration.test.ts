@@ -117,7 +117,7 @@ describe('workflow_execution table (integration)', () => {
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
-			lifecycleEvents: { kind: 'all' },
+			lifecycleEventSubscription: { kind: 'all' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -135,7 +135,7 @@ describe('workflow_execution table (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
 			parent: null,
-			lifecycleEvents: { kind: 'all' },
+			lifecycleEventSubscription: { kind: 'all' },
 			finishedAt: null,
 		});
 	});
@@ -145,7 +145,7 @@ describe('workflow_execution table (integration)', () => {
 		['null when it was given none', undefined, null],
 	])(
 		'TypeOrmExecutionStore round-trips the lifecycle event subscription: %s',
-		async (_name, lifecycleEvents, expected) => {
+		async (_name, lifecycleEventSubscription, expected) => {
 			const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
 			const id = generateId();
 			await store.createExecution({
@@ -159,12 +159,12 @@ describe('workflow_execution table (integration)', () => {
 				callerContext: { hostMode: 'manual' },
 				responseExpectation: { kind: 'none' },
 				parent: null,
-				lifecycleEvents,
+				lifecycleEventSubscription,
 			});
 
 			const record = await store.loadExecution(id);
 
-			expect(record.lifecycleEvents).toEqual(expected);
+			expect(record.lifecycleEventSubscription).toEqual(expected);
 		},
 	);
 

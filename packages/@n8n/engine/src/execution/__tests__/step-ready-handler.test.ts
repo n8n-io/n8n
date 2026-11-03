@@ -99,7 +99,7 @@ function makeExecutionStore(
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
-		lifecycleEvents: { kind: 'all' },
+		lifecycleEventSubscription: { kind: 'all' },
 		finishedAt: null,
 		...overrides,
 		graph: { seeded: [], ...(overrides.graph ?? graph) },
@@ -1505,9 +1505,9 @@ describe('StepReadyHandler lifecycle events', () => {
 
 	describe('when the caller does not subscribe to lifecycle events', () => {
 		const unsubscribed = [
-			['is missing', { lifecycleEvents: undefined }],
-			['is null', { lifecycleEvents: null }],
-			['is none', { lifecycleEvents: { kind: 'none' as const } }],
+			['is missing', { lifecycleEventSubscription: undefined }],
+			['is null', { lifecycleEventSubscription: null }],
+			['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
 		] as const;
 
 		it.each(unsubscribed)(

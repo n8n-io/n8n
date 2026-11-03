@@ -77,10 +77,10 @@ describe('step execution (integration)', () => {
 			waitSweepIntervalMs,
 			resolveOn = 'finish',
 			finishCount = 1,
-			lifecycleEvents = { kind: 'all' },
+			lifecycleEventSubscription = { kind: 'all' },
 		}: {
 			/** `null` leaves the subscription out of the start request. */
-			lifecycleEvents?: LifecycleEventSubscription | null;
+			lifecycleEventSubscription?: LifecycleEventSubscription | null;
 			workflowId?: string;
 			graph?: WorkflowGraph;
 			seededSteps?: SeededSteps;
@@ -145,7 +145,7 @@ describe('step execution (integration)', () => {
 				seededSteps,
 				executionId: generateId(),
 				callerContext: { hostMode: 'trigger' },
-				lifecycleEvents: lifecycleEvents ?? undefined,
+				lifecycleEventSubscription: lifecycleEventSubscription ?? undefined,
 			})
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
@@ -228,7 +228,7 @@ describe('step execution (integration)', () => {
 	it.each([
 		['leaves the subscription out', null],
 		['subscribes to none', { kind: 'none' as const }],
-	])('announces nothing when the caller %s', async (_name, lifecycleEvents) => {
+	])('announces nothing when the caller %s', async (_name, lifecycleEventSubscription) => {
 		const executor: IStepExecutor = {
 			execute: async () => {
 				await Promise.resolve();
@@ -236,7 +236,7 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, events } = await runWorkflow(executor, [{}], { lifecycleEvents });
+		const { execution, events } = await runWorkflow(executor, [{}], { lifecycleEventSubscription });
 
 		expect(execution.status).toBe('completed');
 		expect(events).toEqual([]);

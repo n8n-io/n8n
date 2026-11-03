@@ -436,7 +436,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	});
 
 	it('stores the lifecycle event subscription with the row', async () => {
-		const body = startBody({ lifecycleEvents: { kind: 'all' } });
+		const body = startBody({ lifecycleEventSubscription: { kind: 'all' } });
 
 		const response = await request(url)
 			.post('/api/workflow-executions')
@@ -447,7 +447,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: body.executionId } });
-		expect(row.lifecycleEvents).toEqual({ kind: 'all' });
+		expect(row.lifecycleEventSubscription).toEqual({ kind: 'all' });
 	});
 
 	it('stores no subscription when the body has no lifecycle event subscription', async () => {
@@ -462,16 +462,16 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: body.executionId } });
-		expect(row.lifecycleEvents).toBeNull();
+		expect(row.lifecycleEventSubscription).toBeNull();
 	});
 
 	it.each([{ kind: 'some' }, { kind: 'all', extra: true }, 'all'])(
 		'rejects the lifecycle event subscription %j with 400',
-		async (lifecycleEvents) => {
+		async (lifecycleEventSubscription) => {
 			const response = await request(url)
 				.post('/api/workflow-executions')
 				.set(authHeader())
-				.send(startBody({ lifecycleEvents }));
+				.send(startBody({ lifecycleEventSubscription }));
 
 			expect(response.status).toBe(400);
 			expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -958,7 +958,7 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 	async function start() {
 		const body = startBody({
 			responseExpectation: { kind: 'runEnd' },
-			lifecycleEvents: { kind: 'all' },
+			lifecycleEventSubscription: { kind: 'all' },
 		});
 		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
 		return body.executionId;

@@ -32,7 +32,7 @@ interface BaseExecutionRecord {
 	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
 	/** Which lifecycle events the caller subscribes to. Missing or `null` means none. */
-	lifecycleEvents?: LifecycleEventSubscription | null;
+	lifecycleEventSubscription?: LifecycleEventSubscription | null;
 }
 
 /**

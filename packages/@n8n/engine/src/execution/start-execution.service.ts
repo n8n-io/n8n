@@ -41,7 +41,7 @@ export interface StartExecutionRequest {
 	/** What kind of a response the caller expects. Defaults to 'none' */
 	responseExpectation?: ResponseExpectation;
 	/** Which lifecycle events the caller subscribes to. Missing means none. */
-	lifecycleEvents?: LifecycleEventSubscription;
+	lifecycleEventSubscription?: LifecycleEventSubscription;
 	/**
 	 * Caller-minted, so the caller can record state against the run before it
 	 * starts. The engine never mints one.
@@ -112,7 +112,7 @@ export class StartExecutionService {
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 			parent: request.parent ?? null,
-			lifecycleEvents: request.lifecycleEvents,
+			lifecycleEventSubscription: request.lifecycleEventSubscription,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a

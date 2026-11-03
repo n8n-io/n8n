@@ -48,7 +48,7 @@ const StartExecutionBody = z.object({
 	/** What kind of a response the caller expects. */
 	responseExpectation: responseExpectationSchema.optional(),
 	/** Which lifecycle events the caller subscribes to. Missing means none. */
-	lifecycleEvents: lifecycleEventSubscriptionSchema.optional(),
+	lifecycleEventSubscription: lifecycleEventSubscriptionSchema.optional(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
 });

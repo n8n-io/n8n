@@ -13,9 +13,9 @@ export class LifecycleEventPublisherFactory {
 	constructor(private readonly publisher: LifecycleEventPublisher) {}
 
 	create(execution: {
-		lifecycleEvents?: LifecycleEventSubscription | null;
+		lifecycleEventSubscription?: LifecycleEventSubscription | null;
 	}): LifecycleEventPublisher {
-		const kind = execution.lifecycleEvents?.kind ?? 'none';
+		const kind = execution.lifecycleEventSubscription?.kind ?? 'none';
 		return kind === 'none' ? noopLifecycleEventPublisher : this.publisher;
 	}
 }
