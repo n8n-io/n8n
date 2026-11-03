@@ -1126,6 +1126,27 @@ describe('AssistantAgentProvider', () => {
 			);
 		});
 
+		it('claims the turn usage when the report fails', async () => {
+			const { provider, sentry, creditService, trace } = tracedSetup();
+			sentry.error.mockImplementation(() => {
+				throw new Error('sentry down');
+			});
+			const handle = await provider.prepareTurn(startTurn());
+			handle.onChunk?.({
+				type: 'finish',
+				finishReason: 'error',
+				model: 'anthropic/claude-sonnet',
+				usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			} as never);
+			const outcome = { executionId: 'exec-1', status: 'errored', error: new Error('x') } as const;
+
+			await handle.onSettled?.(outcome);
+
+			expect(sentry.error).toHaveBeenCalled();
+			expect(creditService.claimRunUsage).toHaveBeenCalled();
+			expect(trace.finish).toHaveBeenCalledWith(outcome, expect.anything());
+		});
+
 		it('reports the turn without trace ids when tracing is off', async () => {
 			const { provider, sentry } = setup();
 			const handle = await provider.prepareTurn(startTurn());
