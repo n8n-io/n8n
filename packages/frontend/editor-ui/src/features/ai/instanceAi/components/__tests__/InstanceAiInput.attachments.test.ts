@@ -154,6 +154,33 @@ describe('attach-only composer', () => {
 		});
 	});
 
+	it('restricts the file types and keeps the "+" menu with acceptedMimeTypes', async () => {
+		const { getByTestId, queryByTestId, getByRole, container } = renderComponent({
+			props: { acceptedMimeTypes: 'text/csv,.csv' },
+		});
+
+		expect(getByTestId('instance-ai-input-menu')).toBeInTheDocument();
+		// The "+" menu has the attach action, so the composer shows no second attach button.
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).toHaveAttribute(
+			'accept',
+			'text/csv,.csv',
+		);
+
+		const file = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'archive.zip is not a supported file type',
+		});
+	});
+
 	it('hides attaching entirely when the agent accepts no file types', () => {
 		const { queryByTestId, container } = renderComponent({
 			props: { attachOnlyMimeTypes: '' },

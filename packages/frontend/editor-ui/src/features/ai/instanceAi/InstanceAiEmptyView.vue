@@ -689,6 +689,11 @@ const composerAttachOnlyMimeTypes = computed(() =>
 		: undefined,
 );
 
+// The Assistant agent accepts only the files it can read. Check them on drop, not at send.
+const composerAcceptedMimeTypes = computed(() =>
+	settingsStore.isAssistantAgentEnabled ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
+);
+
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 // Layout changes mount a new, empty composer.
 watch(chatInputRef, () => {
@@ -1171,6 +1176,7 @@ async function handleWorkflowPreviewExampleUse(
 						:mention-project-id="selectedProject"
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
 						:attach-only-mime-types="composerAttachOnlyMimeTypes"
+						:accepted-mime-types="composerAcceptedMimeTypes"
 						v-bind="
 							// Experiment cleanup (124_workflow_previews_above_assistant)
 							showWorkflowPreviewsAboveAssistant

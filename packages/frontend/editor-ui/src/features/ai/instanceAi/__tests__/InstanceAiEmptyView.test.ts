@@ -12,6 +12,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import {
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	consumePendingAssistantAgentMessage,
 	knownAssistantThreadRuntime,
 } from '../assistantAgent/assistantAgentThreads';
@@ -413,6 +414,7 @@ const InstanceAiInputStub = defineComponent({
 		mentionsEnabled: { type: Boolean, required: false },
 		isOutOfCredits: { type: Boolean, required: false },
 		attachOnlyMimeTypes: { type: String, required: false },
+		acceptedMimeTypes: { type: String, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
@@ -587,6 +589,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-attach-only' },
 					props.attachOnlyMimeTypes ?? 'unset',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-accepted-mime-types' },
+					props.acceptedMimeTypes ?? 'unset',
 				),
 				h(
 					'button',
@@ -1622,6 +1629,14 @@ describe('InstanceAiEmptyView', () => {
 			};
 		});
 
+		it('restricts the composer to the file types of the Assistant agent', () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent(
+				ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
+			);
+		});
+
 		it('opens a new Assistant agent thread with its first message, without a current Assistant thread', async () => {
 			pushMock.mockResolvedValue(undefined);
 			const { getByTestId } = renderView();
@@ -2164,6 +2179,8 @@ describe('InstanceAiEmptyView', () => {
 			const { getByTestId } = renderView();
 
 			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('unset');
+			// The current Assistant runtime accepts every file type.
+			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent('unset');
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
 			await nextTick();
