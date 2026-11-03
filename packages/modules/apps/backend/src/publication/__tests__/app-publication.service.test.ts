@@ -50,7 +50,7 @@ describe('AppPublicationService', () => {
 		await service.publish('project', appId, versionId, {
 			label: 'Launch',
 			description: 'Adds charts',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 		expect(locks.withLockContext).toHaveBeenCalledOnce();
 		expect(versions.setDetails).toHaveBeenCalledWith(
@@ -62,7 +62,7 @@ describe('AppPublicationService', () => {
 			'project',
 			appId,
 			versionId,
-			'public',
+			'instance',
 			{},
 		);
 	});
@@ -83,7 +83,7 @@ describe('AppPublicationService', () => {
 			mock<AppVersion>({ id: versionId, appId, buildStatus: 'failed', bundleArtifactId: null }),
 		);
 		await expect(
-			service.publish('project', appId, versionId, { label: 'Launch', visibility: 'public' }),
+			service.publish('project', appId, versionId, { label: 'Launch', visibility: 'instance' }),
 		).rejects.toThrow('successful app version');
 		expect(versions.setDetails).not.toHaveBeenCalled();
 		expect(apps.setPublishedVersion).not.toHaveBeenCalled();

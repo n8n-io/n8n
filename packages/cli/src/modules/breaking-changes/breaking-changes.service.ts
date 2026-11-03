@@ -75,16 +75,6 @@ export interface WorkflowHitsResult {
 	failedChecks: FailedRuleCheck[];
 }
 
-const WORKFLOW_FIELDS: Array<keyof WorkflowEntity> = [
-	'id',
-	'name',
-	'active',
-	'activeVersionId',
-	'versionId',
-	'nodes',
-	'updatedAt',
-];
-
 interface WorkflowMetadata {
 	name: string;
 	active: boolean;
@@ -230,7 +220,6 @@ export class BreakingChangeService {
 	private async getAllWorkflowRulesResults(
 		workflowLevelRules: IBreakingChangeWorkflowRule[],
 		batchRules: IBreakingChangeBatchWorkflowRule[],
-		totalWorkflows: number,
 		scanPublished: boolean,
 	): Promise<WorkflowRulesScan> {
 		const allAffectedWorkflowsByRule: Map<string, BreakingChangeAffectedWorkflow[]> = new Map();
@@ -243,21 +232,23 @@ export class BreakingChangeService {
 		batchRules.forEach((rule) => rule.reset());
 
 		this.logger.debug('Processing workflows in batches', {
-			totalWorkflows,
 			batchSize: this.batchSize,
 			regularRulesCount: workflowLevelRules.length,
 			batchRulesCount: batchRules.length,
 		});
 
-		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
-			const workflows = await this.workflowRepository.find({
-				select: WORKFLOW_FIELDS,
-				skip,
-				take: this.batchSize,
-				order: { id: 'ASC' },
-			});
+		// Keyset paging: an offset makes the database read past every earlier row for each page.
+		let afterId: string | undefined;
+		let pageIsFull = true;
+		while (pageIsFull) {
+			const workflows = await this.workflowRepository.findMigrationScanPage(
+				afterId,
+				this.batchSize,
+			);
+			pageIsFull = workflows.length === this.batchSize;
 
-			this.logger.debug('Processing batch', { skip, workflowsInBatch: workflows.length });
+			this.logger.debug('Processing batch', { afterId, workflowsInBatch: workflows.length });
+			afterId = workflows.at(-1)?.id;
 
 			// Load statistics separately for all workflows in this batch
 			const workflowIds = workflows.map((w) => w.id);
@@ -453,10 +444,7 @@ export class BreakingChangeService {
 		targetVersion: BreakingChangeVersion,
 		workflowId: string,
 	): Promise<WorkflowHitsResult> {
-		const workflow = await this.workflowRepository.findOne({
-			select: WORKFLOW_FIELDS,
-			where: { id: workflowId },
-		});
+		const workflow = await this.workflowRepository.findMigrationScanWorkflow(workflowId);
 		if (!workflow) return { hits: [], publishedHits: [], failedChecks: [] };
 
 		const workflowLevelRules = this.ruleRegistry
@@ -522,11 +510,10 @@ export class BreakingChangeService {
 		}
 
 		return await this.runAfterPreviousScan(targetVersion, async () => {
-			const totalWorkflows = await this.workflowRepository.count();
 			const scan =
 				'detectWorkflow' in rule
-					? await this.getAllWorkflowRulesResults([rule], [], totalWorkflows, false)
-					: await this.getAllWorkflowRulesResults([], [rule], totalWorkflows, false);
+					? await this.getAllWorkflowRulesResults([rule], [], false)
+					: await this.getAllWorkflowRulesResults([], [rule], false);
 			return scan.results[0];
 		});
 	}
@@ -573,7 +560,7 @@ export class BreakingChangeService {
 
 		const [instanceLevelResults, workflowScan] = await Promise.all([
 			this.getAllInstanceRulesResults(instanceLevelRules),
-			this.getAllWorkflowRulesResults(workflowLevelRules, batchWorkflowRules, totalWorkflows, true),
+			this.getAllWorkflowRulesResults(workflowLevelRules, batchWorkflowRules, true),
 		]);
 
 		const report = this.createDetectionReport(

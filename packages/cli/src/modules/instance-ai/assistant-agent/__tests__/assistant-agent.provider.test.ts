@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type {
@@ -27,6 +27,7 @@ import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runti
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider } from '../assistant-agent.provider';
+import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type {
 	AssistantSandboxLease,
@@ -80,6 +81,7 @@ function setup() {
 	);
 	const tracer = mock<AssistantTurnTracer>();
 	tracer.startForTurn.mockResolvedValue(undefined);
+	const threadTabs = mock<AssistantThreadTabsService>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -91,10 +93,13 @@ function setup() {
 		turnInput,
 		agentFactory,
 		tracer,
+		threadTabs,
 	);
 	return {
 		provider,
+		logger,
 		tracer,
+		threadTabs,
 		workspace,
 		settingsService,
 		creditService,
@@ -191,6 +196,36 @@ describe('AssistantAgentProvider', () => {
 	});
 
 	describe('prepareTurn', () => {
+		it('stores the tab of an artifact that the turn changes', async () => {
+			const { provider, turnEnvironment, threadTabs } = setup();
+			const turn = startTurn();
+			await provider.prepareTurn(turn);
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			await runtime.onArtifactChanged?.({ type: 'workflow', id: 'wf-1', name: 'Digest' });
+
+			expect(threadTabs.showArtifactTab).toHaveBeenCalledWith(turn.memory, 'thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Digest',
+			});
+		});
+
+		it('logs and continues when the artifact tab cannot be stored', async () => {
+			const { provider, turnEnvironment, threadTabs, logger } = setup();
+			threadTabs.showArtifactTab.mockRejectedValue(new Error('db down'));
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			await expect(
+				runtime.onArtifactChanged?.({ type: 'workflow', id: 'wf-1' }),
+			).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith('Failed to show an Assistant artifact tab', {
+				threadId: 'thread-1',
+				error: 'db down',
+			});
+		});
+
 		it('builds a start turn with the runtime state of the Agents turn', async () => {
 			const { provider, turnEnvironment, turnInput, agentFactory, agent } = setup();
 			const turn = startTurn();
@@ -271,6 +306,123 @@ describe('AssistantAgentProvider', () => {
 				expect.objectContaining({ fileAttachments: [file] }),
 			);
 			expect(handle.input).toBe('Build a digest');
+		});
+
+		describe('attached agent', () => {
+			type ThreadPatchArgs = {
+				threadId: string;
+				update: (current: {
+					id: string;
+					metadata?: Record<string, unknown>;
+				}) => { metadata?: Record<string, unknown> } | null | undefined;
+			};
+
+			/** A turn whose memory behaves like `N8nMemory`: a patch replaces the metadata,
+			 *  and it returns `null` when the thread row does not exist yet. */
+			function agentTurn(
+				agent: Record<string, unknown>,
+				metadata: Record<string, unknown> | undefined = undefined,
+			) {
+				const memory = mock<SystemAgentStartTurn['memory']>();
+				const written: { metadata?: Record<string, unknown> } = {};
+				const patchThread = vi.fn(async ({ threadId, update }: ThreadPatchArgs) => {
+					if (!metadata) return null;
+					const patch = update({ id: threadId, metadata: { ...metadata } });
+					if (patch?.metadata) written.metadata = patch.metadata;
+					return { id: threadId, metadata: written.metadata ?? metadata };
+				});
+				Object.assign(memory, { patchThread });
+				const base = startTurn();
+				const turn = startTurn({
+					memory,
+					options: {
+						...base.options,
+						request: { attachments: [{ type: 'agent', projectId: 'project-1', ...agent }] },
+					},
+				});
+				return { turn, written };
+			}
+
+			it('binds a saved agent to a new thread', async () => {
+				const { provider } = setup();
+				const { turn } = agentTurn({ id: 'agent-1', name: 'Triage' });
+
+				await provider.prepareTurn(turn);
+
+				expect(turn.memory.saveThread).toHaveBeenCalledWith({
+					id: 'thread-1',
+					resourceId: 'system-chat:user-1',
+					metadata: {
+						instanceAiAgentBuilderTarget: {
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							name: 'Triage',
+						},
+						instanceAiAgentBuilderTargets: {},
+					},
+				});
+			});
+
+			it('marks a pending agent, so the build reuses its id', async () => {
+				const { provider } = setup();
+				const { turn, written } = agentTurn({ id: 'agent-new', pending: true }, { emoji: '🤖' });
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toEqual({
+					emoji: '🤖',
+					instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
+				});
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
+
+			it('replaces the pending marker with the binding once the editor saved the agent', async () => {
+				const { provider } = setup();
+				const { turn, written } = agentTurn(
+					{ id: 'agent-new' },
+					{
+						emoji: '🤖',
+						instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-new' },
+					},
+				);
+
+				await provider.prepareTurn(turn);
+
+				// The whole metadata is written, so the pending marker is gone.
+				expect(written.metadata).toEqual({
+					emoji: '🤖',
+					instanceAiAgentBuilderTarget: { agentId: 'agent-new', projectId: 'project-1' },
+					instanceAiAgentBuilderTargets: {},
+				});
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				[
+					'the thread already targets an agent',
+					{ id: 'agent-2' },
+					{ instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				[
+					'the thread already has another pending agent',
+					{ id: 'agent-2' },
+					{ instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				[
+					'the pending agent is still unsaved',
+					{ id: 'agent-1', pending: true },
+					{ instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'project-1' } },
+				],
+				['the agent is in another project', { id: 'agent-2', projectId: 'project-2' }, undefined],
+			])('keeps the thread metadata when %s', async (_case, agent, metadata) => {
+				const { provider } = setup();
+				const { turn, written } = agentTurn(agent, metadata);
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toBeUndefined();
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
 		});
 
 		it('records the accepted input once, on the first chunk', async () => {
@@ -751,6 +903,117 @@ describe('AssistantAgentProvider', () => {
 				);
 				expect(trace.tracePromptBuild).not.toHaveBeenCalled();
 				expect(trace.startOrchestratorRun).toHaveBeenCalled();
+			});
+
+			describe('attached agent snapshot', () => {
+				const agentAttachment = {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'project-1',
+					name: 'Triage',
+				} as const;
+				const config = { name: 'Triage', instructions: 'Sort the tickets' };
+
+				function snapshotSetup() {
+					const setupResult = setup();
+					const { tracer, agentFactory, environment, agent } = setupResult;
+					const { trace, context } = traceMock();
+					tracer.startForTurn.mockResolvedValue(trace);
+					const orchestratorRun = { id: 'orchestrator-run' };
+					const snapshotRun = { id: 'snapshot-run' };
+					Object.assign(context, {
+						actorRun: { id: 'root-run' },
+						startChildRun: vi.fn(async () => snapshotRun),
+						finishRun: vi.fn(async () => {}),
+					});
+					trace.startOrchestratorRun.mockImplementation(async () => {
+						context.actorRun = orchestratorRun as typeof context.actorRun;
+					});
+					// Like the real factory, which gives the turn's trace to the domain tools.
+					agentFactory.createAgent.mockImplementation(async (env, _runtime, params) => {
+						env.orchestrationContext.tracing = params.tracing;
+						return agent as unknown as Awaited<ReturnType<AssistantAgentFactory['createAgent']>>;
+					});
+					const readAgentArtifact = vi.fn(async () => ({
+						config,
+						skills: {},
+						configHash: 'hash-1',
+					}));
+					environment.orchestrationContext.domainContext = {
+						builderDelegate: { readAgentArtifact },
+					} as unknown as AssistantTurnEnvironment['orchestrationContext']['domainContext'];
+					return { ...setupResult, context, orchestratorRun, snapshotRun, readAgentArtifact };
+				}
+
+				it('records the attached agent under the orchestrator span', async () => {
+					const { provider, context, orchestratorRun, snapshotRun, readAgentArtifact } =
+						snapshotSetup();
+					const base = startTurn();
+
+					await provider.prepareTurn(
+						startTurn({
+							options: {
+								...base.options,
+								request: {
+									attachments: [agentAttachment, { type: 'workflow', id: 'wf-1', name: 'Digest' }],
+								},
+							},
+						}),
+					);
+
+					expect(readAgentArtifact).toHaveBeenCalledTimes(1);
+					expect(readAgentArtifact).toHaveBeenCalledWith('agent-1');
+					expect(context.startChildRun).toHaveBeenCalledWith(
+						orchestratorRun,
+						expect.objectContaining({
+							name: 'agent-snapshot',
+							metadata: expect.objectContaining({
+								agent_id: 'agent-1',
+								snapshot_reason: 'attached',
+							}),
+						}),
+					);
+					expect(context.finishRun).toHaveBeenCalledWith(snapshotRun, {
+						outputs: {
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							configHash: 'hash-1',
+							reason: 'attached',
+							config,
+							skills: {},
+						},
+						rawOutputs: true,
+					});
+				});
+
+				it('does not record the attached agent again when a turn resumes', async () => {
+					const { provider, readAgentArtifact } = snapshotSetup();
+					const start = startTurn();
+
+					await provider.prepareTurn({
+						type: 'resume',
+						user,
+						thread,
+						resourceId: start.resourceId,
+						abortSignal: start.abortSignal,
+						emitHostEvent: start.emitHostEvent,
+						memory: start.memory,
+						checkpointStore: start.checkpointStore,
+						sessionGrants: start.sessionGrants,
+						runId: 'agent-run-1',
+						toolCallId: 'tool-call-1',
+						checkpointHostMetadata: {
+							assistantTurn: {
+								runId: 'run-1',
+								messageGroupId: 'mg-1',
+								request: { attachments: [agentAttachment] },
+							},
+						},
+						resumeData: { approved: true },
+					});
+
+					expect(readAgentArtifact).not.toHaveBeenCalled();
+				});
 			});
 		});
 

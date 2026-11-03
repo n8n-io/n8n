@@ -220,6 +220,23 @@ describe('InstanceAiThreadList', () => {
 		expect(emitted().select).toBeUndefined();
 	});
 
+	it('keeps typed keys in the rename input instead of acting on the menu', async () => {
+		const store = mockedStore(useInstanceAiStore);
+		const { emitted, findByLabelText, getByText } = await renderList({
+			props: { navigate: false },
+		});
+		await userEvent.dblClick(getByText('Thread a'));
+
+		const renameInput = await findByLabelText('Rename conversation');
+		await userEvent.type(renameInput, '{End} with spaces');
+
+		expect(renameInput).toBeInTheDocument();
+		expect(renameInput).toHaveFocus();
+		expect(renameInput).toHaveValue('Thread a with spaces');
+		expect(store.renameThread).not.toHaveBeenCalled();
+		expect(emitted().select).toBeUndefined();
+	});
+
 	it('starts renaming on double-click without selecting the thread first', async () => {
 		const { emitted, findByLabelText, getByText } = await renderList({
 			props: { navigate: false },
@@ -245,7 +262,7 @@ describe('InstanceAiThreadList', () => {
 
 	it('scopes the rows to threads the filter accepts', async () => {
 		const { getAllByTestId } = await renderList({
-			props: { filter: (t: InstanceAiThreadSummary) => t.metadata?.agentId === 'agent-1' },
+			props: { filter: (t) => t.metadata?.agentId === 'agent-1' },
 		});
 
 		const rows = getAllByTestId('instance-ai-thread-item');
@@ -347,14 +364,14 @@ describe('InstanceAiThreadList', () => {
 			});
 		});
 
-		it('merges its threads in by updatedAt, with a delete-only action', async () => {
+		it('merges its threads in by updatedAt, with rename and delete actions', async () => {
 			const { findAllByTestId } = await renderList();
 
 			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
 			expect(agentRow).toHaveTextContent('Agent runtime chat');
 			expect(
 				agentRow.querySelector('[data-test-id="thread-actions"]')?.getAttribute('data-action-ids'),
-			).toBe('delete');
+			).toBe('rename,delete');
 			const rowTestIds = [
 				...document.body.querySelectorAll(
 					'[data-test-id="instance-ai-assistant-agent-thread-item"], [data-test-id="instance-ai-thread-item"]',
@@ -374,6 +391,26 @@ describe('InstanceAiThreadList', () => {
 
 			expect(agentStore.deleteThread).toHaveBeenCalledWith(agentRuntimeThread);
 			expect(instanceAiStore.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('renames its thread through the Assistant agent threads store', async () => {
+			const agentStore = mockedStore(useAssistantAgentThreadsStore);
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+
+			const { findAllByTestId, findByLabelText } = await renderList();
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			await userEvent.dblClick(within(agentRow).getByText('Agent runtime chat'));
+
+			const renameInput = await findByLabelText('Rename conversation');
+			expect(renameInput).toHaveValue('Agent runtime chat');
+			await fireEvent.update(renameInput, 'Invoices');
+			await fireEvent.keyDown(renameInput, { key: 'Enter' });
+
+			expect(agentStore.renameThread).toHaveBeenCalledWith('aa1', 'Invoices');
+			expect(instanceAiStore.renameThread).not.toHaveBeenCalled();
+			await vi.waitFor(() => {
+				expect(showMessage).toHaveBeenCalledWith({ type: 'success', title: 'Chat renamed' });
+			});
 		});
 
 		it('opens its thread at the Assistant thread route', async () => {
@@ -423,6 +460,56 @@ describe('InstanceAiThreadList', () => {
 			finishDeletes[1](true);
 			await flushPromises();
 
+			expect(routerPush).not.toHaveBeenCalled();
+		});
+
+		it('shows the threads of the scope to a host that scopes the list, and opens them in place', async () => {
+			mockedStore(useAssistantAgentThreadsStore).openedThreads = [
+				{ ...agentRuntimeThread, metadata: { agentId: 'agent-1' } },
+				{ ...agentRuntimeThread, id: 'aa2', title: 'Other chat', metadata: { agentId: 'agent-2' } },
+			];
+
+			const { emitted, findAllByTestId, findByText } = await renderList({
+				props: { navigate: false, filter: (t) => t.metadata?.agentId === 'agent-1' },
+			});
+
+			const agentRows = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRows).toHaveLength(1);
+			await userEvent.click(await findByText('Agent runtime chat'));
+
+			await vi.waitFor(() => expect(emitted('select')).toEqual([['aa1']]));
+			expect(routerPush).not.toHaveBeenCalled();
+		});
+
+		it('applies the search to the threads of the scope', async () => {
+			mockedStore(useAssistantAgentThreadsStore).openedThreads = [
+				agentRuntimeThread,
+				{ ...agentRuntimeThread, id: 'aa2', title: 'Invoice follow-up' },
+				{ ...agentRuntimeThread, id: 'aa3', title: null },
+			];
+			mockedStore(useInstanceAiStore).threadHistory.search = ' INVOICE ';
+
+			const { findAllByTestId } = await renderList({
+				props: { navigate: false, filter: () => true },
+			});
+
+			const agentRows = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRows).toHaveLength(1);
+			expect(agentRows[0]).toHaveTextContent('Invoice follow-up');
+		});
+
+		it('tells a host that scopes the list when it deletes the open thread', async () => {
+			const agentStore = mockedStore(useAssistantAgentThreadsStore);
+			agentStore.openedThreads = [agentRuntimeThread];
+			agentStore.deleteThread.mockResolvedValue(true);
+
+			const { emitted, findAllByTestId } = await renderList({
+				props: { navigate: false, filter: () => true, activeThreadId: 'aa1' },
+			});
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+
+			await vi.waitFor(() => expect(emitted('deleted')).toEqual([[true]]));
 			expect(routerPush).not.toHaveBeenCalled();
 		});
 

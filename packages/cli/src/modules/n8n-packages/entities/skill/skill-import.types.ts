@@ -21,8 +21,6 @@ export interface SharedSkillWrite extends SkillWrite {
 export interface SkillImportPlan {
 	/** Project and instance skills. They are written before the Agents. */
 	shared: SharedSkillWrite[];
-	/** The skills of one Agent, keyed by Agent ID. They are written in that Agent's transaction. */
-	owned: Map<string, SkillWrite[]>;
 	/** The Agents that use a project or instance skill that the import writes. */
 	sharedUsers: Set<string>;
 	/**

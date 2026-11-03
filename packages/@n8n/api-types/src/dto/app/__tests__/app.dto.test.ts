@@ -2,9 +2,20 @@ import { CreateAppDto } from '../create-app.dto';
 import { ListAppsQueryDto } from '../list-apps-query.dto';
 import { UpdateAppDto } from '../update-app.dto';
 import { PublishAppDto } from '../publish-app.dto';
+import { SetAppBindingsDto } from '../set-app-bindings.dto';
 import { appSchema, appVersionSchema } from '../../../schemas/app.schema';
 
 describe('app DTOs', () => {
+	it('needs the draft version that a binding change is based on', () => {
+		const baseVersionId = '0190a8d6-4a2e-7000-8000-0000000000d1';
+		expect(SetAppBindingsDto.safeParse({ baseVersionId, bindings: [] }).success).toBe(true);
+		expect(SetAppBindingsDto.safeParse({ baseVersionId: null, bindings: [] }).success).toBe(true);
+		expect(SetAppBindingsDto.safeParse({ bindings: [] }).success).toBe(false);
+		expect(SetAppBindingsDto.safeParse({ baseVersionId: 'draft', bindings: [] }).success).toBe(
+			false,
+		);
+	});
+
 	it('trims names and namespaces and defaults to project visibility', () => {
 		expect(CreateAppDto.parse({ name: ' App ', namespace: ' my-app ' })).toEqual({
 			name: 'App',
@@ -24,14 +35,14 @@ describe('app DTOs', () => {
 		expect(CreateAppDto.safeParse({ name, namespace: 'app' }).success).toBe(false);
 	});
 
-	it.each(['public', 'project', 'instance'])('accepts %s visibility', (visibility) => {
+	it.each(['project', 'instance'])('accepts %s visibility', (visibility) => {
 		expect(CreateAppDto.parse({ name: 'App', namespace: 'app', visibility }).visibility).toBe(
 			visibility,
 		);
 		expect(UpdateAppDto.parse({ visibility }).visibility).toBe(visibility);
 	});
 
-	it.each(['none', 'n8n', 'private', ''])('rejects visibility %j', (visibility) => {
+	it.each(['public', 'none', 'n8n', 'private', ''])('rejects visibility %j', (visibility) => {
 		expect(CreateAppDto.safeParse({ name: 'App', namespace: 'app', visibility }).success).toBe(
 			false,
 		);
@@ -98,13 +109,13 @@ describe('app DTOs', () => {
 			versionId,
 			label: 'v1',
 			description: ' Adds charts ',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 		expect(dto).toEqual({
 			versionId,
 			label: 'v1',
 			description: 'Adds charts',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 		expect(PublishAppDto.safeParse({ versionId, label: 'v1', visibility: 'none' }).success).toBe(
 			false,

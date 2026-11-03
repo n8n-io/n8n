@@ -14,7 +14,9 @@ import { expectationResultSchema, judgeExpectations } from '../build-expectation
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 
 type JudgeResponse = {
-	structuredOutput?: { results: Array<{ index: number; pass: boolean; reason: string }> };
+	structuredOutput?: {
+		results: Array<{ index: number; pass: boolean; reason: string; applicable?: boolean }>;
+	};
 };
 type GenerateFn = (messages: unknown, opts: unknown) => Promise<JudgeResponse>;
 type GenerateMock = Mock<GenerateFn>;
@@ -42,6 +44,7 @@ describe('judgeExpectations', () => {
 			'index',
 			'reason',
 			'pass',
+			'applicable',
 		]);
 	});
 
@@ -84,6 +87,32 @@ describe('judgeExpectations', () => {
 		expect(results).toEqual([
 			{ expectation: 'first', pass: true, reason: 'ok' },
 			{ expectation: 'second', pass: false, reason: 'no verdict returned', incomplete: true },
+		]);
+	});
+
+	it('keeps a not-applicable verdict out of the count, whatever its pass value', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: {
+				results: [
+					{ index: 0, pass: true, reason: 'asked first' },
+					{ index: 1, pass: true, applicable: false, reason: 'no refinement turn came' },
+					{ index: 2, pass: false, applicable: true, reason: 'not edited' },
+				],
+			},
+		});
+		mockJudge(generate);
+
+		const results = await judgeExpectations(MESSAGES, ['asks', 'refines', 'edits']);
+
+		expect(results).toEqual([
+			{ expectation: 'asks', pass: true, reason: 'asked first' },
+			{
+				expectation: 'refines',
+				pass: false,
+				reason: 'not applicable: no refinement turn came',
+				incomplete: true,
+			},
+			{ expectation: 'edits', pass: false, reason: 'not edited' },
 		]);
 	});
 

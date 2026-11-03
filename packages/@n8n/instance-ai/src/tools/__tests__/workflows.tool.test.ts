@@ -1008,7 +1008,7 @@ describe('workflows tool', () => {
 
 				expect(result.note).toContain('spans too many projects');
 				expect(result.note).toContain('Do NOT substitute a `query` name filter');
-				expect(result.note).toContain('workspace(action="list-projects")');
+				expect(result.note).toContain('list_projects');
 				expect(result.note).toContain('narrow to one project');
 			});
 

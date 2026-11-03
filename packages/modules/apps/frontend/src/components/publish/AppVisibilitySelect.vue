@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import type { AppVisibility } from '@n8n/api-types';
-import {
-	N8nCallout,
-	N8nIcon,
-	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
-	type IconName,
-} from '@n8n/design-system';
+import { N8nIcon, N8nInputLabel, N8nOption, N8nSelect, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const OPTIONS: Array<{ value: AppVisibility; icon: IconName }> = [
 	{ value: 'project', icon: 'users' },
 	{ value: 'instance', icon: 'shield' },
-	{ value: 'public', icon: 'globe' },
 ];
 
 defineProps<{ disabled?: boolean }>();
@@ -50,9 +42,6 @@ const selectedIcon = computed(
 			</N8nSelect>
 		</N8nInputLabel>
 		<slot />
-		<N8nCallout v-if="visibility === 'public'" theme="warning" data-test-id="app-visibility-public">
-			{{ i18n.baseText('apps.visibility.publicWarning') }}
-		</N8nCallout>
 	</div>
 </template>
 

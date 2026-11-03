@@ -55,6 +55,7 @@ erDiagram
 }
 "public.app_version" {
   uuid appId FK
+  json bindings
   integer buildAttempts
   varchar_16_ buildStatus
   timestamp_3__with_time_zone buildStatusUpdatedAt

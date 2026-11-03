@@ -75,7 +75,7 @@ const renderComponent = createComponentRenderer(AppHeader, {
 				props: ['app', 'url'],
 				emits: ['updated'],
 				template:
-					'<button data-test-id="app-share" @click="$emit(\'updated\', { ...app, visibility: \'public\' })">{{ url }}</button>',
+					'<button data-test-id="app-share" @click="$emit(\'updated\', { ...app, visibility: \'instance\' })">{{ url }}</button>',
 			},
 			AppActions: {
 				props: ['app'],
@@ -144,7 +144,7 @@ describe('AppHeader', () => {
 		await userEvent.click(getByTestId('app-share'));
 
 		expect(getByTestId('app-share')).toHaveTextContent('https://expenses.example.com');
-		expect(emitted('updated')).toEqual([[{ ...published, visibility: 'public' }]]);
+		expect(emitted('updated')).toEqual([[{ ...published, visibility: 'instance' }]]);
 	});
 
 	it('switches to the configure view', async () => {

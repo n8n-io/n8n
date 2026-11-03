@@ -6,6 +6,7 @@ import {
 	TRANSFER_VALUE_KEY,
 } from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
+import { prepareForGuest } from './guest-transfer';
 import type { HostDataResolver } from './host-data-resolver';
 
 // ============================================================================
@@ -115,6 +116,10 @@ function toHostMetadata(value: unknown): unknown {
 		return undefined;
 	}
 
+	if (value instanceof Error) {
+		return prepareForGuest(value);
+	}
+
 	if (Array.isArray(value)) {
 		return {
 			__isArray: true,
@@ -162,9 +167,14 @@ function toHostMetadata(value: unknown): unknown {
  * JSON-shaped data. Each bridge marshals the result across its own
  * boundary (structured clone for isolated-vm, sentinel-wrapped JSON
  * round-trip for QuickJS), so engine objects or other non-cloneable
- * values must not be returned.
+ * values must not be returned. An Error in a result crosses as a marker
+ * (see `prepareForGuest`).
  */
 export function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
+	return prepareForGuest(dispatchHostMessage(rawMsg, data));
+}
+
+function dispatchHostMessage(rawMsg: unknown, data: WorkflowData): unknown {
 	const msg = bridgeMessageSchema.parse(rawMsg);
 	switch (msg.type) {
 		// The `$('Foo').{first,last,all}` typed RPCs.

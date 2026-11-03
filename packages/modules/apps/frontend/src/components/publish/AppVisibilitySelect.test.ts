@@ -1,4 +1,3 @@
-import type { AppVisibility } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 
@@ -18,13 +17,13 @@ describe('AppVisibilitySelect', () => {
 		expect(emitted('update:modelValue')).toEqual([['instance']]);
 	});
 
-	it.each<[AppVisibility, boolean]>([
-		['project', false],
-		['instance', false],
-		['public', true],
-	])('shows the public warning for %s: %s', (modelValue, warning) => {
-		const { queryByTestId } = renderComponent({ props: { modelValue } });
+	it('offers only the project and instance options', async () => {
+		const { getByTestId, findByTestId, queryByTestId } = renderComponent();
 
-		expect(queryByTestId('app-visibility-public') !== null).toBe(warning);
+		await userEvent.click(getByTestId('app-visibility-select'));
+
+		expect(await findByTestId('app-visibility-option-project')).toBeInTheDocument();
+		expect(queryByTestId('app-visibility-option-instance')).toBeInTheDocument();
+		expect(queryByTestId('app-visibility-option-public')).not.toBeInTheDocument();
 	});
 });

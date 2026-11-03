@@ -83,7 +83,7 @@ vi.mock('../../tools', () => ({
 				'get_node_types',
 				'get_node_parameter_options',
 				'execute_node',
-				'workflow_builder_executions',
+				'run_workflow',
 				'workflow_builder_build_workflow',
 			];
 			if (context.evaluationConfigService) names.push('eval-config');
@@ -106,10 +106,7 @@ vi.mock('../../tools', () => ({
 					mockBuiltTool(`get_node_parameter_options-${context.runLabel ?? 'unknown'}`),
 				],
 				['execute_node', mockBuiltTool(`execute_node-${context.runLabel ?? 'unknown'}`)],
-				[
-					'workflow_builder_executions',
-					mockBuiltTool(`workflow_builder_executions-${context.runLabel ?? 'unknown'}`),
-				],
+				['run_workflow', mockBuiltTool(`run_workflow-${context.runLabel ?? 'unknown'}`)],
 				[
 					'workflow_builder_build_workflow',
 					mockBuiltTool(`workflow_builder_build_workflow-${context.runLabel ?? 'unknown'}`),
@@ -323,7 +320,7 @@ describe('createInstanceAgent', () => {
 			'get_node_types',
 			'get_node_parameter_options',
 			'execute_node',
-			'workflow_builder_executions',
+			'run_workflow',
 		]) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
@@ -497,6 +494,7 @@ describe('createInstanceAgent', () => {
 				],
 			},
 			loadSkill: vi.fn(),
+			dynamicCatalog: { skillIds: [], notice: 'Hub skills are temporarily unavailable.' },
 		};
 
 		await createInstanceAgent({
@@ -516,6 +514,9 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
+		expect(mockAgentInstances[0]?.instructions).toHaveBeenCalledWith('system prompt', {
+			providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+		});
 	});
 
 	it('adds the builder delegate runtime skills to the orchestrator skills', async () => {

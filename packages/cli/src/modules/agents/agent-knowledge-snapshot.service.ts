@@ -33,7 +33,10 @@ export class AgentKnowledgeSnapshotService {
 
 		for await (const page of this.publishedAgentPages(signal)) {
 			const agentIds = page.map((agent) => agent.agentId);
-			const totalsByAgentId = await this.agentFileRepository.getKnowledgeTotalsByAgentIds(agentIds);
+			const totalsByAgentId = await this.agentFileRepository.getKnowledgeTotalsByAgentIds(
+				agentIds,
+				{},
+			);
 
 			for (const agent of page) {
 				const fileTotals = totalsByAgentId.get(agent.agentId);

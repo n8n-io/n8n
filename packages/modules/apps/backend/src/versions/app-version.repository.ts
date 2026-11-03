@@ -19,7 +19,7 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	}
 
 	async insertVersion(
-		data: Pick<AppVersion, 'id' | 'appId' | 'sourceArtifactId' | 'label'>,
+		data: Pick<AppVersion, 'id' | 'appId' | 'sourceArtifactId' | 'label' | 'bindings'>,
 		ctx: OperationContext,
 	): Promise<void> {
 		try {
@@ -34,6 +34,23 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			}
 			throw error;
 		}
+	}
+
+	/** Inserts a version that references the source and bundle artifacts of `source`. */
+	async insertCopy(
+		source: AppVersion,
+		data: Pick<AppVersion, 'id' | 'label' | 'bindings'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).insert(AppVersion, {
+			...data,
+			appId: source.appId,
+			sourceArtifactId: source.sourceArtifactId,
+			bundleArtifactId: source.bundleArtifactId,
+			buildAttempts: source.buildAttempts,
+			buildStatus: source.buildStatus,
+			buildStatusUpdatedAt: source.buildStatusUpdatedAt,
+		});
 	}
 
 	async findVersionById(versionId: string, ctx: OperationContext = {}): Promise<AppVersion | null> {

@@ -1,7 +1,8 @@
 import { isObjectLiteral } from '@n8n/backend-common';
 import { plainToInstance, instanceToPlain } from 'class-transformer';
 import { validate } from 'class-validator';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 export class BaseFilter {
 	protected static async toFilter(rawFilter: string, Filter: typeof BaseFilter) {

@@ -20,7 +20,7 @@ const renderComponent = createComponentRenderer(AppPublishDialog, {
 				props: ['modelValue'],
 				emits: ['update:modelValue'],
 				template:
-					'<button data-test-id="visibility" @click="$emit(\'update:modelValue\', \'public\')">{{ modelValue }}</button>',
+					'<button data-test-id="visibility" @click="$emit(\'update:modelValue\', \'instance\')">{{ modelValue }}</button>',
 			},
 		},
 	},
@@ -50,7 +50,7 @@ describe('AppPublishDialog', () => {
 	});
 
 	it('publishes the name, description and a changed visibility in one request', async () => {
-		vi.mocked(publishApp).mockResolvedValue(testApp({ visibility: 'public' }));
+		vi.mocked(publishApp).mockResolvedValue(testApp({ visibility: 'instance' }));
 		renderComponent();
 		const name = await screen.findByTestId('app-publish-name');
 
@@ -65,7 +65,7 @@ describe('AppPublishDialog', () => {
 			versionId: 'v2',
 			label: 'Launch',
 			description: 'Adds charts',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 	});
 
