@@ -22,12 +22,11 @@ export class UrlService {
 
 	/**
 	 * Returns the URL of an agent's webhook channel. Only mains serve it, so it
-	 * never falls back to the webhook URL, which can point to webhook processes.
+	 * uses the instance base URL, as the MCP endpoint does.
 	 */
 	getAgentWebhookUrl(agentId: string) {
-		let base = this.globalConfig.agentWebhookUrl || this.baseUrl;
-		if (!base.endsWith('/')) base += '/';
-		return `${base}${this.globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}`;
+		const base = this.globalConfig.agentWebhookUrl.replace(/\/$/, '') || this.getInstanceBaseUrl();
+		return `${base}/${this.globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}`;
 	}
 
 	getTestWebhookBaseUrl() {

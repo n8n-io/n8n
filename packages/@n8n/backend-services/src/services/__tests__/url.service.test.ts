@@ -80,22 +80,21 @@ describe('UrlService', () => {
 			);
 		});
 
-		it('should fall back to the instance address, not to the webhook or editor URL', () => {
-			process.env.WEBHOOK_URL = 'https://old-hooks.example.com/';
+		it('should fall back to the instance base URL, like other routes that only mains serve', () => {
 			const urlService = new UrlService(
 				mock<GlobalConfig>({
 					agentWebhookUrl: '',
 					webhookUrl: 'https://hooks.example.com/',
 					editorBaseUrl: 'https://editor.example.com/',
-					protocol: 'https',
-					host: 'n8n.example.com',
-					port: 443,
+					protocol: 'http',
+					host: 'localhost',
+					port: 5678,
 					path: '/',
 					endpoints,
 				}),
 			);
 			expect(urlService.getAgentWebhookUrl('agent-1')).toBe(
-				'https://n8n.example.com/agent-webhook/agent-1',
+				'https://editor.example.com/agent-webhook/agent-1',
 			);
 		});
 	});
