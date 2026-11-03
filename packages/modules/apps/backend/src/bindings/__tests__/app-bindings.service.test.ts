@@ -264,9 +264,9 @@ describe('AppBindingsService', () => {
 		it('rejects restoring the current draft', async () => {
 			const { service, versions, changes } = setupRestore();
 
-			await expect(service.restoreVersion(user, 'p1', APP_ID, DRAFT_ID, DRAFT_ID)).rejects.toThrow(
-				ConflictError,
-			);
+			await expect(
+				service.restoreVersion(user, 'p1', APP_ID, DRAFT_ID.toUpperCase(), DRAFT_ID),
+			).rejects.toThrow(ConflictError);
 			expect(versions.findVersionById).not.toHaveBeenCalled();
 			expect(changes.startRestore).not.toHaveBeenCalled();
 		});
