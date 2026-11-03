@@ -60,7 +60,7 @@ type PartitionedVersion = { runnable: WorkflowTriggerVersion; unresolvable: Unre
  * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
  * leader's startup pass. Records from before the `reason` column existed
  * default to `publish` at the DB level, i.e. today's `update` behavior.
- * A first publication overrides `publish` → `activate`; see
+ * A first publication uses `activate` for `publish` and `settings-update`; see
  * {@link WorkflowPublicationApplier.resolveActivationMode}.
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
@@ -506,7 +506,13 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
 		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
+		if (
+			oldVersion === null &&
+			(reason === WorkflowPublicationReason.Publish ||
+				reason === WorkflowPublicationReason.SettingsUpdate)
+		) {
+			return 'activate';
+		}
 		return ACTIVATION_MODE_BY_REASON[reason];
 	}
 

@@ -63,6 +63,18 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	describe('reason', () => {
+		it('retains a settings refresh when it joins a pending publication', async () => {
+			await repository.enqueue('wf-1', 'v-1', 'publish');
+			await repository.enqueue('wf-1', 'v-1', 'settings-update');
+
+			const claimed = await repository.claimNextPendingRecord();
+			expect(claimed).toMatchObject({
+				publishedVersionId: 'v-1',
+				reason: 'settings-update',
+			});
+			expect(await repository.claimNextPendingRecord()).toBeNull();
+		});
+
 		it('retains a settings refresh when a later publication replaces its pending version', async () => {
 			await repository.enqueue('wf-1', 'v-1', 'settings-update');
 			await repository.enqueue('wf-1', 'v-2', 'publish');

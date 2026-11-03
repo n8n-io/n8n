@@ -527,6 +527,7 @@ describe('WorkflowPublicationApplier', () => {
 	describe('activation mode from the record reason', () => {
 		test.each([
 			['publish', 'update'],
+			['settings-update', 'update'],
 			['startup', 'init'],
 			['leadership-takeover', 'leadershipChange'],
 			['reconcile', 'update'],
@@ -563,19 +564,22 @@ describe('WorkflowPublicationApplier', () => {
 				workflowPublishedVersionRepository.findOne.mockResolvedValue(null);
 			});
 
-			test('reason publish activates with mode activate', async () => {
-				setTriggerSets([], [triggerNode('a')]);
+			test.each(['publish', 'settings-update'] as const)(
+				'reason %s activates with mode activate',
+				async (reason) => {
+					setTriggerSets([], [triggerNode('a')]);
 
-				await applier.apply(makeRecord({ reason: 'publish' }), abort);
+					await applier.apply(makeRecord({ reason }), abort);
 
-				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'wf-1' }),
-					newVersion,
-					new Set(['a']),
-					'activate',
-					abort,
-				);
-			});
+					expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+						expect.objectContaining({ id: 'wf-1' }),
+						newVersion,
+						new Set(['a']),
+						'activate',
+						abort,
+					);
+				},
+			);
 
 			test('a record without a reason (pre-migration row) activates with mode activate', async () => {
 				setTriggerSets([], [triggerNode('a')]);
