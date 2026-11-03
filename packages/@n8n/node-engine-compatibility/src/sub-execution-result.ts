@@ -38,7 +38,7 @@ export function toSubWorkflowOutput(
 	const slots: INodeExecutionData[][] = [];
 	for (const step of steps) {
 		fromStepInputs(step.outputs).forEach((items, slot) => {
-			(slots[slot] ??= []).push(...items.map(withoutPairedItem));
+			slots[slot] = (slots[slot] ?? []).concat(items.map(withoutPairedItem));
 		});
 	}
 	return slots.length === 0 ? [[]] : slots.map((slot) => slot ?? []);

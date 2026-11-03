@@ -138,12 +138,6 @@ export class UnsupportedSubWorkflowCallerError extends UserError {
 	}
 }
 
-export class SubWorkflowsNotSupportedError extends UserError {
-	constructor(nodeName: string) {
-		super(`Node "${nodeName}" calls a sub-workflow. This host cannot run sub-workflows.`);
-	}
-}
-
 /** The node asked to wait until a value that is not a date, so no deadline can be declared. */
 export class InvalidWaitDateError extends UserError {
 	constructor(nodeName: string) {
