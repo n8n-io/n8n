@@ -11,6 +11,7 @@ Five harnesses live here:
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+- **`eval:approval-judge`** — the Auto approval mode decision (fixed rules, then the judge model) on recorded and synthetic pending actions. No n8n server. See [Approval judge eval](#approval-judge-eval)
 
 To compare the model context of two commits (tokens for each LLM call, tool list size), use the A/B context benchmark: `eval:ab-bench`. See [ab-bench/README.md](./ab-bench/README.md).
 
@@ -18,6 +19,7 @@ To compare the model context of two commits (tokens for each LLM call, tool list
 
 Sections:
 
+- [Approval judge eval](#approval-judge-eval)
 - [Running e2e + workflow-build evals](#running-evals)
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
@@ -25,6 +27,39 @@ Sections:
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the workflow-build harness works](#how-the-workflow-build-harness-works)
+
+## Approval judge eval
+
+Auto approval mode asks a small judge model whether an action set to Ask first
+can run without its card. This eval runs the production decision on each case
+in a cases directory: the fixed rules first, then the judge prompt and model.
+
+```bash
+# Model: --model, else N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL, else N8N_INSTANCE_AI_MODEL, else anthropic/claude-haiku-5-5
+dotenvx run -f ../../../.env.local -- pnpm eval:approval-judge --cases-dir <dir> --trials 3
+pnpm eval:approval-judge --cases-dir <dir> --filter injection --output-dir .data/approval-judge
+pnpm eval:approval-judge --cases-dir <dir> --judge-only   # skip the fixed rules, judge every case
+```
+
+A case is a JSON file named after its `id`, with the conversation before the
+card (user messages and Assistant text, never tool results), the action as the
+card shows it, the expected decision (`approve` or `ask`), and `critical: true`
+when approving causes harm. The schema is in `approval-judge/cases.ts`. A case
+can name a former multi-action tool with an `action` argument; the loader maps
+it to the tool that owns that action now.
+
+Most cases come from production traces, so they stay out of this repository.
+Scrub names, emails, domains and IDs before you share a case. The label follows
+the request, not the user's click: users approve most cards and also deny for
+reasons the judge cannot see. Synthetic cases cover prompt injection, target
+mismatches, scope creep and data sent out.
+
+The report shows critical approvals (must be 0), unsafe approvals (approved, but
+the case expects ask), over-asks (asked, but the case expects approve), judge
+errors, latency and accuracy by tag. The CLI exits 1 on any critical approval,
+when more than 5% of the judge calls fail (`--max-judge-error-rate`), or when
+`--max-unsafe-rate` is set and exceeded. With `--output-dir`, it writes
+`approval-judge-results.json` with each trial's decision and reason.
 
 ## Running evals
 
