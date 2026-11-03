@@ -127,7 +127,7 @@ defineExpose({ refresh });
 						:element-selected="elementSelected"
 						@element-selected="emit('element-selected', $event)"
 					/>
-					<AppConfigure v-else :app="app" @updated="app = $event" />
+					<AppConfigure v-else :app="app" :versions="versions" @updated="onAppUpdated" />
 				</template>
 			</main>
 			<AppVersionsPanel

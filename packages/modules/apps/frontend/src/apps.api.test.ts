@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
 import {
@@ -7,7 +8,9 @@ import {
 	getAppBuild,
 	listApps,
 	listAppVersions,
+	listBindableResources,
 	publishApp,
+	setAppBindings,
 	unpublishApp,
 	updateApp,
 } from './apps.api';
@@ -19,6 +22,8 @@ vi.mock('@n8n/rest-api-client', () => ({
 
 const context: IRestApiContext = { baseUrl: 'http://localhost:5678/rest', pushRef: 'push-ref' };
 const options = { skip: 0, take: 50, sortBy: 'updatedAt:desc' as const };
+const likeQuery = 'ta%sk_\\';
+const sanitizedLikeQuery = 'task';
 
 describe('apps.api', () => {
 	it('lists the apps of one project', async () => {
@@ -89,6 +94,112 @@ describe('apps.api', () => {
 		await request(context, 'project-1', 'app-1');
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(context, method, endpoint);
+	});
+
+	it('saves the bindings on a base version', async () => {
+		const bindings: AppBinding[] = [{ key: 'submit', kind: 'workflow', workflowId: 'w1' }];
+
+		await setAppBindings(context, 'project-1', 'app-1', 'v-1', bindings);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'PUT',
+			'/projects/project-1/apps/app-1/bindings',
+			{ baseVersionId: 'v-1', bindings },
+		);
+	});
+
+	it('lists the workflows of a project that an app can call', async () => {
+		vi.mocked(getFullApiResponse).mockResolvedValue({
+			count: 1,
+			data: [{ id: 'w1', name: 'Submit', active: true }],
+		});
+
+		expect(await listBindableResources(context, 'project-1', 'workflow', likeQuery)).toEqual({
+			count: 1,
+			data: [{ id: 'w1', name: 'Submit' }],
+		});
+		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/workflows', {
+			filter: {
+				projectId: 'project-1',
+				isArchived: false,
+				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+				query: sanitizedLikeQuery,
+			},
+			select: JSON.stringify(['id', 'name']),
+			take: 100,
+			sortBy: 'name:asc',
+		});
+	});
+
+	it('lists the data tables of a project', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({
+			count: 1,
+			data: [{ id: 't1', name: 'Tasks' }],
+		});
+
+		expect(await listBindableResources(context, 'project-1', 'dataTable', likeQuery)).toEqual({
+			count: 1,
+			data: [{ id: 't1', name: 'Tasks' }],
+		});
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/data-tables',
+			{ take: 100, sortBy: 'name:asc', filter: { name: sanitizedLikeQuery } },
+		);
+	});
+
+	it('lists the agents of a project', async () => {
+		vi.mocked(getFullApiResponse).mockResolvedValue({
+			count: 1,
+			data: [{ id: 'a1', name: 'Support' }],
+		});
+
+		expect(await listBindableResources(context, 'project-1', 'agent', likeQuery)).toEqual({
+			count: 1,
+			data: [{ id: 'a1', name: 'Support' }],
+		});
+		expect(getFullApiResponse).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/agents/v2',
+			{ take: 100, sortBy: 'name:asc', filter: { query: sanitizedLikeQuery } },
+		);
+	});
+
+	it('omits search filters when listing bindable resources without a query', async () => {
+		const response = { count: 0, data: [] };
+		vi.mocked(getFullApiResponse).mockResolvedValue(response);
+		vi.mocked(makeRestApiRequest).mockResolvedValue(response);
+
+		await listBindableResources(context, 'project-1', 'workflow');
+		expect(getFullApiResponse).toHaveBeenLastCalledWith(context, 'GET', '/workflows', {
+			filter: {
+				projectId: 'project-1',
+				isArchived: false,
+				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+			},
+			select: JSON.stringify(['id', 'name']),
+			take: 100,
+			sortBy: 'name:asc',
+		});
+
+		await listBindableResources(context, 'project-1', 'dataTable');
+		expect(makeRestApiRequest).toHaveBeenLastCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/data-tables',
+			{ take: 100, sortBy: 'name:asc' },
+		);
+
+		await listBindableResources(context, 'project-1', 'agent');
+		expect(getFullApiResponse).toHaveBeenLastCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/agents/v2',
+			{ take: 100, sortBy: 'name:asc' },
+		);
 	});
 
 	it('publishes a version of an app with its details', async () => {

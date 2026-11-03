@@ -12,6 +12,7 @@ import {
 	appPreviewElementSchema,
 	appVisibilitySchema,
 } from './app.schema';
+import { MAX_APP_BINDINGS } from './app-binding.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -848,12 +849,29 @@ export const confirmationInputTypeSchema = z.enum([
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
+const appBlueprintBindingBaseSchema = z.object({
+	kind: z.enum(['workflow', 'dataTable', 'agent']),
+	name: z.string().trim().min(1).max(128),
+	description: z.string().trim().min(1).max(500),
+});
+
+const appBlueprintBindingSchema = z.discriminatedUnion('status', [
+	appBlueprintBindingBaseSchema
+		.extend({
+			status: z.literal('existing'),
+			resourceId: z.string().min(1).max(36),
+		})
+		.strict(),
+	appBlueprintBindingBaseSchema.extend({ status: z.literal('new') }).strict(),
+]);
+
 export const appBlueprintSchema = z.object({
 	name: appNameSchema,
 	namespace: appNamespaceSchema,
 	visibility: appVisibilitySchema,
 	description: z.string().trim().min(1).max(500),
 	theme: z.enum(['light', 'dark', 'both']),
+	bindings: z.array(appBlueprintBindingSchema).max(MAX_APP_BINDINGS).optional(),
 	additionalInstructions: z.string().trim().min(1).max(2000).optional(),
 });
 export type AppBlueprint = z.infer<typeof appBlueprintSchema>;

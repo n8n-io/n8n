@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import type { AppResponse } from '@n8n/api-types';
 
+import type { AppVersions } from '../../composables/useAppVersions';
 import AppConfigureGeneral from './AppConfigureGeneral.vue';
 
-defineProps<{ app: AppResponse }>();
+defineProps<{ app: AppResponse; versions: AppVersions }>();
 
 const emit = defineEmits<{ updated: [app: AppResponse] }>();
 </script>
 
 <template>
 	<div :class="$style.configure" data-test-id="app-view-configure">
-		<AppConfigureGeneral :app="app" @updated="emit('updated', $event)" />
+		<AppConfigureGeneral :app="app" :versions="versions" @updated="emit('updated', $event)" />
 	</div>
 </template>
 
