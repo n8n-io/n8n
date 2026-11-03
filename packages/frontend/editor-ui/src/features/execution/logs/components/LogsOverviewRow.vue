@@ -279,6 +279,7 @@ watch(
 					visibility: props.data.isSubExecution ? 'hidden' : undefined,
 				}"
 				:disabled="props.latestInfo?.deleted"
+				focusable-when-disabled
 				:class="$style.openNdvButton"
 				:aria-label="locale.baseText('logs.overview.body.open')"
 				@click.stop="emit('openNdv')"
@@ -304,6 +305,7 @@ watch(
 				:aria-label="locale.baseText('logs.overview.body.run')"
 				:class="[$style.partialExecutionButton, indents.length > 0 ? $style.unavailable : '']"
 				:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
+				focusable-when-disabled
 				@click.stop="emit('triggerPartialExecution')"
 			/>
 		</N8nTooltip>

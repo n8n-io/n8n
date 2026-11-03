@@ -62,10 +62,11 @@ function prevItem() {
 				icon="chevron-left"
 				size="xsmall"
 				:disabled="!canSelectPrevItem"
+				:aria-label="i18n.baseText('parameterInput.previousItem')"
 				@click="prevItem"
 			></N8nIconButton>
 
-			<N8nTooltip placement="right" :disabled="hideTableHoverHint">
+			<N8nTooltip as-child placement="right" :disabled="hideTableHoverHint">
 				<template #content>
 					<div>{{ i18n.baseText('parameterInput.hoverTableItemTip') }}</div>
 				</template>
@@ -75,6 +76,8 @@ function prevItem() {
 					icon="chevron-right"
 					size="xsmall"
 					:disabled="!canSelectNextItem"
+					:aria-label="i18n.baseText('parameterInput.nextItem')"
+					:focusable-when-disabled="!hideTableHoverHint"
 					@click="nextItem"
 				></N8nIconButton>
 			</N8nTooltip>

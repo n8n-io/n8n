@@ -14,7 +14,8 @@ describe('AddRowButton', () => {
 		const button = getByRole('button');
 		const user = userEvent.setup();
 
-		expect(button).toBeDisabled();
+		expect(button).not.toBeDisabled();
+		expect(button).toHaveAttribute('aria-disabled', 'true');
 		await user.click(button);
 		expect(onClick).not.toHaveBeenCalled();
 
@@ -24,6 +25,7 @@ describe('AddRowButton', () => {
 		expect(onClick).toHaveBeenCalledOnce();
 
 		locked.value = true;
-		await waitFor(() => expect(button).toBeDisabled());
+		await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'));
+		expect(button).not.toBeDisabled();
 	});
 });

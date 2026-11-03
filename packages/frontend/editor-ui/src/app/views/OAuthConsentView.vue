@@ -414,7 +414,7 @@ watch(
 							>
 								{{ i18n.baseText('generic.deny') }}
 							</N8nButton>
-							<N8nTooltip :disabled="!allowDisabled || !allowDisabledReason">
+							<N8nTooltip as-child :disabled="!allowDisabled || !allowDisabledReason">
 								<template #content>{{ allowDisabledReason }}</template>
 								<N8nButton
 									variant="solid"
@@ -422,6 +422,7 @@ watch(
 									:size="'large'"
 									:loading="loading"
 									:disabled="allowDisabled"
+									:focusable-when-disabled="!!allowDisabledReason"
 									@click="handleAllow"
 								>
 									{{

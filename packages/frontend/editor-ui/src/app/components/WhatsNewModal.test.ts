@@ -276,7 +276,8 @@ describe('WhatsNewModal', () => {
 
 			const updateButton = getByTestId('whats-new-modal-update-button');
 			expect(updateButton).toBeInTheDocument();
-			expect(updateButton).toBeDisabled();
+			expect(updateButton).toHaveAttribute('aria-disabled', 'true');
+			expect(updateButton).not.toBeDisabled();
 		});
 
 		it('should render update button enabled when canUserUpdateVersion is true and hasVersionUpdates is true', async () => {

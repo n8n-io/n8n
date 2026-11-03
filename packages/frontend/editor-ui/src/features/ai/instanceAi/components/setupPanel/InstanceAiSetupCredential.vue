@@ -769,24 +769,21 @@ onScopeDispose(() => {
 			</template>
 			<template #action-leading>
 				<N8nText v-if="useCredits && balanceLabel" step="xs">{{ balanceLabel }}</N8nText>
-				<N8nTooltip
-					v-else-if="!useCredits"
-					as-child
-					:disabled="!helpDisabled"
-					:content="i18n.baseText('instanceAi.setupPanel.helpUnavailableWhileBuilding')"
-				>
-					<span :class="$style.helpTrigger" :tabindex="helpDisabled ? 0 : undefined">
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:class="$style.help"
-							:disabled="helpDisabled || busy"
-							@click="askForHelp"
-						>
-							<N8nIcon icon="sparkles" size="small" />
-							{{ helpLabel }}
-						</N8nButton>
-					</span>
+				<N8nTooltip v-else-if="!useCredits" as-child :disabled="!helpDisabled">
+					<template #content>{{
+						i18n.baseText('instanceAi.setupPanel.helpUnavailableWhileBuilding')
+					}}</template>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:class="$style.help"
+						:disabled="helpDisabled || busy"
+						:focusable-when-disabled="helpDisabled"
+						@click="askForHelp"
+					>
+						<N8nIcon icon="sparkles" size="small" />
+						{{ helpLabel }}
+					</N8nButton>
 				</N8nTooltip>
 			</template>
 			<N8nText v-if="needsAuthorization" size="small">{{ value }}</N8nText>
@@ -854,15 +851,9 @@ onScopeDispose(() => {
 	color: var(--text-color--subtle);
 }
 
-// The tooltip anchors to this wrapper. Inline-flex keeps it the size of the
-// button; a plain inline span around the button spans the full row.
-.helpTrigger {
-	display: inline-flex;
-	// Offset the button padding so the label aligns with the content above
-	margin-inline-start: calc(-1 * var(--spacing--2xs));
-}
-
 .help {
+	// Offset the button padding so the label aligns with the content above.
+	margin-inline-start: calc(-1 * var(--spacing--2xs));
 	--button--color: var(--text-color--subtler);
 	padding-inline: var(--spacing--2xs);
 }

@@ -215,6 +215,131 @@ describe('components', () => {
 				});
 			});
 
+			describe('focusableWhenDisabled', () => {
+				it('keeps the disabled button in the tab order with its label and state', async () => {
+					const user = userEvent.setup();
+					const { getByRole } = render(N8nButton, {
+						props: { disabled: true, focusableWhenDisabled: true },
+						slots: { default: 'Run workflow' },
+					});
+					const button = getByRole('button', { name: 'Run workflow' });
+
+					expect(button).not.toBeDisabled();
+					expect(button).toHaveAttribute('aria-disabled', 'true');
+					expect(button).toHaveClass('is-disabled');
+					await user.tab();
+					expect(button).toHaveFocus();
+				});
+
+				it.each(['mouse', 'Enter', 'Space', 'programmatic click'])(
+					'blocks %s activation, consumer handlers, and form submission',
+					async (activation) => {
+						const user = userEvent.setup();
+						const onClick = vi.fn();
+						const onCapture = vi.fn();
+						const onKey = vi.fn();
+						const onContentClick = vi.fn();
+						const onParentClick = vi.fn();
+						const onSubmit = vi.fn();
+						const { getByRole, getByText } = render({
+							components: { N8nButton },
+							setup: () => ({ onClick, onCapture, onKey, onContentClick, onParentClick, onSubmit }),
+							template: `
+								<form @submit.prevent="onSubmit" @click="onParentClick">
+									<N8nButton disabled focusable-when-disabled type="submit"
+										@click="onClick" @click.capture="onCapture"
+										@keydown="onKey" @keyup="onKey"
+										@keydown.capture="onCapture" @keyup.capture="onCapture">
+										<span @click="onContentClick">Run workflow</span>
+									</N8nButton>
+								</form>
+							`,
+						});
+						const button = getByRole('button', { name: 'Run workflow' });
+						await user.tab();
+						expect(button).toHaveFocus();
+						onCapture.mockClear();
+						onKey.mockClear();
+
+						if (activation === 'mouse') {
+							await user.click(getByText('Run workflow'));
+						} else if (activation === 'programmatic click') {
+							button.click();
+						} else {
+							await user.keyboard(activation === 'Enter' ? '{Enter}' : ' ');
+						}
+
+						expect(onClick).not.toHaveBeenCalled();
+						expect(onCapture).not.toHaveBeenCalled();
+						expect(onKey).not.toHaveBeenCalled();
+						expect(onContentClick).not.toHaveBeenCalled();
+						expect(onParentClick).not.toHaveBeenCalled();
+						expect(onSubmit).not.toHaveBeenCalled();
+					},
+				);
+
+				it('restores activation and form submission when enabled', async () => {
+					const user = userEvent.setup();
+					const onClick = vi.fn();
+					const onSubmit = vi.fn();
+					const { getByRole, rerender } = render(
+						{
+							components: { N8nButton },
+							props: { disabled: Boolean },
+							setup: () => ({ onClick, onSubmit }),
+							template: `
+								<form @submit.prevent="onSubmit">
+									<N8nButton :disabled="disabled" focusable-when-disabled type="submit" @click="onClick">
+										Run workflow
+									</N8nButton>
+								</form>
+							`,
+						},
+						{ props: { disabled: true } },
+					);
+					const button = getByRole('button');
+					await user.click(button);
+					await rerender({ disabled: false });
+					expect(button).not.toHaveAttribute('aria-disabled');
+
+					await user.click(button);
+					await user.keyboard('{Enter} ');
+					expect(onClick).toHaveBeenCalledTimes(3);
+					expect(onSubmit).toHaveBeenCalledTimes(3);
+				});
+
+				it.each([
+					{ disabled: true },
+					{ loading: true, focusableWhenDisabled: true },
+					{ disabled: true, loading: true, focusableWhenDisabled: true },
+				])('keeps native disabled behavior for %j', async (props) => {
+					const user = userEvent.setup();
+					const onClick = vi.fn();
+					const { getByRole } = render(N8nButton, {
+						props,
+						attrs: { onClick },
+						slots: { default: 'Run workflow' },
+						global: { stubs },
+					});
+					const button = getByRole('button');
+
+					expect(button).toBeDisabled();
+					await user.tab();
+					expect(button).not.toHaveFocus();
+					await user.click(button);
+					expect(onClick).not.toHaveBeenCalled();
+				});
+
+				it('keeps disabled links out of the tab order', () => {
+					const { getByRole } = render(N8nButton, {
+						props: { href: '#workflow', disabled: true, focusableWhenDisabled: true },
+						slots: { default: 'Open workflow' },
+					});
+
+					expect(getByRole('link')).toHaveAttribute('tabindex', '-1');
+				});
+			});
+
 			describe('iconOnly', () => {
 				it('should apply iconOnly class for square icon button', () => {
 					const wrapper = render(N8nButton, {

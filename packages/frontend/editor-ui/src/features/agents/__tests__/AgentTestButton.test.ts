@@ -8,20 +8,6 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 const STUBS = {
-	N8nButton: {
-		template:
-			'<button :disabled="disabled || undefined" :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\')">{{ label }}</button>',
-		props: ['disabled', 'label', 'variant', 'icon', 'size'],
-		emits: ['click'],
-	},
-	// Toggle.vue has no defineOptions, so Vue infers its name from the filename.
-	Toggle: {
-		name: 'Toggle',
-		template:
-			'<button :disabled="disabled || undefined" data-variant="toggle" @click="$emit(\'click\')">{{ label }}</button>',
-		props: ['disabled', 'label', 'variant', 'icon', 'size', 'modelValue'],
-		emits: ['click'],
-	},
 	AgentValidationTooltip: {
 		template: '<span data-testid="validation-tooltip" :data-disabled="disabled"><slot /></span>',
 		props: ['disabled', 'fallback', 'action', 'issues'],
@@ -39,6 +25,7 @@ async function renderComponent(
 	props: {
 		isRunnable: boolean;
 		isPreviewOpen?: boolean;
+		disabledReason?: string;
 		iconOnly?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 	} = { isRunnable: true },
@@ -61,7 +48,9 @@ describe('AgentTestButton', () => {
 			validationIssues: [restrictedIssue],
 		});
 
-		expect(wrapper.find('[data-testid="preview-agent-button"]').attributes('disabled')).toBe('');
+		const button = wrapper.find('[data-testid="preview-agent-button"]');
+		expect(button.attributes('aria-disabled')).toBe('true');
+		expect(button.attributes('disabled')).toBeUndefined();
 		expect(wrapper.find('[data-testid="validation-tooltip"]').attributes('data-disabled')).toBe(
 			'false',
 		);
@@ -92,7 +81,9 @@ describe('AgentTestButton', () => {
 			],
 		});
 
-		expect(wrapper.find('[data-testid="preview-agent-button"]').attributes('disabled')).toBe('');
+		expect(wrapper.find('[data-testid="preview-agent-button"]').attributes('aria-disabled')).toBe(
+			'true',
+		);
 	});
 
 	it('opens the preview again once the restricted tool is removed', async () => {
@@ -130,7 +121,34 @@ describe('AgentTestButton', () => {
 		});
 
 		const toggle = wrapper.find('[data-testid="preview-agent-button"]');
-		expect(toggle.attributes('data-variant')).toBe('toggle');
-		expect(toggle.attributes('disabled')).toBe('');
+		expect(toggle.attributes('aria-pressed')).toBe('false');
+		expect(toggle.attributes('aria-disabled')).toBe('true');
+		expect(toggle.attributes('disabled')).toBeUndefined();
+	});
+
+	it('prioritizes the working reason over validation issues', async () => {
+		const wrapper = await renderComponent({
+			isRunnable: false,
+			disabledReason: 'Assistant is working',
+			validationIssues: [restrictedIssue],
+		});
+
+		const tooltip = wrapper.findComponent(STUBS.AgentValidationTooltip);
+		expect(tooltip.props('issues')).toEqual([]);
+		expect(tooltip.props('fallback')).toBe('Assistant is working');
+	});
+
+	it('shows the close label instead of validation issues while the icon-only preview is open', async () => {
+		const wrapper = await renderComponent({
+			isRunnable: false,
+			isPreviewOpen: true,
+			iconOnly: true,
+			validationIssues: [restrictedIssue],
+		});
+
+		const tooltip = wrapper.findComponent(STUBS.AgentValidationTooltip);
+		expect(tooltip.props('disabled')).toBe(false);
+		expect(tooltip.props('issues')).toEqual([]);
+		expect(tooltip.props('fallback')).toBe('agents.builder.preview.close.ariaLabel');
 	});
 });

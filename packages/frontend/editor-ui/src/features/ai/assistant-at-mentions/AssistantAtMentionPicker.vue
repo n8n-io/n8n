@@ -487,6 +487,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 					variant="ghost"
 					size="medium"
 					:disabled="disabled"
+					focusable-when-disabled
 					:title="i18n.baseText('instanceAi.mentions.buttonLabel')"
 					:aria-label="i18n.baseText('instanceAi.mentions.buttonLabel')"
 					data-test-id="instance-ai-mention-button"

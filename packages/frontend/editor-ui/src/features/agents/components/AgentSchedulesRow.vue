@@ -143,6 +143,8 @@ async function removeTask(task: TaskRow) {
 }
 
 function openTaskModal(task: TaskRow | null) {
+	if (props.disabled) return;
+
 	const { projectId, agentId } = props;
 	uiStore.openModalWithData({
 		name: AGENT_TASK_MODAL_KEY,
@@ -195,7 +197,7 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.scheduleRow" :inert="props.disabled || undefined">
+	<div :class="$style.scheduleRow">
 		<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.tasks.title') }}
 		</N8nText>
@@ -226,6 +228,7 @@ watch(
 
 				<N8nTooltip
 					v-if="taskIndex === taskRows.length - 1"
+					as-child
 					:content="i18n.baseText('agents.builder.tasks.add')"
 					placement="top"
 				>
@@ -234,6 +237,8 @@ watch(
 						size="medium"
 						icon-only
 						:disabled="props.disabled"
+						focusable-when-disabled
+						:aria-label="i18n.baseText('agents.builder.tasks.add')"
 						data-testid="agent-capabilities-add-task"
 						@click="openTaskModal(null)"
 					>

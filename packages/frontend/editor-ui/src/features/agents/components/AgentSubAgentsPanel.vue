@@ -401,6 +401,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 						/>
 						<N8nTooltip
 							v-if="hasDifficultyMapping(difficulty)"
+							as-child
 							:content="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
 							placement="top"
 						>
@@ -410,6 +411,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 								size="mini"
 								icon-size="small"
 								:disabled="disabled"
+								focusable-when-disabled
 								:aria-label="i18n.baseText('agents.builder.subAgents.modelsByDifficulty.clear')"
 								:data-testid="`agent-sub-agents-difficulty-${difficulty}-clear`"
 								@click="clearDifficultyMapping(difficulty)"

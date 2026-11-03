@@ -7,8 +7,8 @@ exports[`N8nSettingsSaveBar > matches snapshot 1`] = `
       <n8n-text-stub color="text-dark" bold="false" size="medium" compact="false" tag="span" class="statusMessage"></n8n-text-stub>
     </div>
     <div class="actions">
-      <n8n-button-stub label="Discard changes" variant="outline" size="medium" loading="false" icononly="false" disabled="false" class="" data-test-id="settings-save-bar-discard"></n8n-button-stub>
-      <n8n-button-stub label="Save settings" variant="solid" size="medium" loading="false" icononly="false" disabled="false" class="" data-test-id="settings-save-bar-save"></n8n-button-stub>
+      <n8n-button-stub label="Discard changes" variant="outline" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" data-test-id="settings-save-bar-discard"></n8n-button-stub>
+      <n8n-button-stub label="Save settings" variant="solid" size="medium" loading="false" icononly="false" disabled="false" focusablewhendisabled="false" class="" data-test-id="settings-save-bar-save"></n8n-button-stub>
     </div>
   </div>
 </transition-stub>"

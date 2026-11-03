@@ -210,7 +210,7 @@ describe('AgentEvalResultsPanel', () => {
 	it('renders the assistant handoff disabled', () => {
 		const { getByTestId } = render({ results: [result('c1')], resultsCount: 1 });
 
-		expect(getByTestId('agent-eval-send-feedback')).toBeDisabled();
+		expect(getByTestId('agent-eval-send-feedback')).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	// Agreement has nothing further to ask, so it must not park the row behind a

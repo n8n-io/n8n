@@ -5,17 +5,9 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '@/features/settings/users/users.constants';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import {
-	N8nButton,
-	N8nCard,
-	N8nHeading,
-	N8nIcon,
-	N8nLink,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { I18nT } from 'vue-i18n';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { ROLE } from '@n8n/api-types';
@@ -31,6 +23,7 @@ const emit = defineEmits<{
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
+const inviteReasonId = useId();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const CHAT_USERS_DOCS_URL = 'https://docs.n8n.io/advanced-ai/chat-hub/#chat-user-role';
@@ -134,33 +127,40 @@ function handleUpgradeClick() {
 					{{ i18n.baseText('chatHub.welcome.button.startNewChat') }}
 				</N8nButton>
 
-				<N8nTooltip v-if="showInviteButton" :disabled="!isInviteDisabled">
-					<template #content>
-						<I18nT keypath="chatHub.welcome.inviteUpgrade.tooltip" scope="global">
-							<template #link>
-								<N8nLink size="small" @click="handleUpgradeClick">
-									{{ i18n.baseText('generic.upgrade') }}
-								</N8nLink>
-							</template>
-							<template #docsLink>
-								<N8nLink size="small" :href="CHAT_USERS_DOCS_URL" target="_blank" rel="noopener">
-									{{ i18n.baseText('chatHub.welcome.inviteUpgrade.here') }}
-								</N8nLink>
-							</template>
-						</I18nT>
-					</template>
-					<N8nButton
-						variant="outline"
-						size="medium"
-						icon="users"
-						:disabled="isInviteDisabled"
-						data-test-id="welcome-invite-chat-users"
-						@click="handleInviteUsers"
-					>
-						{{ i18n.baseText('chatHub.welcome.button.inviteChatUsers') }}
-					</N8nButton>
-				</N8nTooltip>
+				<N8nButton
+					v-if="showInviteButton"
+					variant="outline"
+					size="medium"
+					icon="users"
+					:disabled="isInviteDisabled"
+					focusable-when-disabled
+					:aria-describedby="isInviteDisabled ? inviteReasonId : undefined"
+					data-test-id="welcome-invite-chat-users"
+					@click="handleInviteUsers"
+				>
+					{{ i18n.baseText('chatHub.welcome.button.inviteChatUsers') }}
+				</N8nButton>
 			</div>
+			<N8nText
+				v-if="showInviteButton && isInviteDisabled"
+				:id="inviteReasonId"
+				tag="p"
+				size="small"
+				color="text-light"
+			>
+				<I18nT keypath="chatHub.welcome.inviteUpgrade.tooltip" scope="global">
+					<template #link>
+						<N8nButton variant="ghost" size="small" @click="handleUpgradeClick">
+							{{ i18n.baseText('generic.upgrade') }}
+						</N8nButton>
+					</template>
+					<template #docsLink>
+						<N8nLink size="small" :href="CHAT_USERS_DOCS_URL" target="_blank" rel="noopener">
+							{{ i18n.baseText('chatHub.welcome.inviteUpgrade.here') }}
+						</N8nLink>
+					</template>
+				</I18nT>
+			</N8nText>
 		</div>
 	</Transition>
 </template>

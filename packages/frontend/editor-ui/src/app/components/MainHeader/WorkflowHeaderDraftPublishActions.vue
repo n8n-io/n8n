@@ -855,7 +855,7 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<div :class="$style.buttonGroup">
-				<N8nTooltip :disabled="isPublishTooltipDisabled" :show-after="300" :offset="15">
+				<N8nTooltip as-child :disabled="isPublishTooltipDisabled" :show-after="300" :offset="15">
 					<template #content>
 						<div>
 							<template v-if="publishButtonConfig.tooltip">
@@ -879,6 +879,7 @@ onBeforeUnmount(() => {
 						:class="$style.groupButtonLeft"
 						:loading="autoSaveForPublish"
 						:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
+						:focusable-when-disabled="!!publishButtonConfig.tooltip && !publishButtonConfig.loading"
 						variant="ghost"
 						data-test-id="workflow-open-publish-modal-button"
 						@click="onPublishButtonClick"
@@ -1023,7 +1024,7 @@ onBeforeUnmount(() => {
 	border-left: var(--border);
 }
 
-.buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {
+.buttonGroup:has(.groupButtonLeft:not([aria-disabled='true']):hover) .groupButtonRight {
 	border-left-color: transparent;
 }
 

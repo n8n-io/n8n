@@ -4,6 +4,8 @@ import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory, RouterLink } from 'vue-router';
 import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workflow';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
@@ -157,17 +159,49 @@ describe('WorkflowExecutionsPreview.vue', () => {
 				[EnterpriseEditionFeature.DebugInEditor]: availability,
 			} as FrontendSettings['enterprise'];
 
-			workflowsListStore.workflowsById[executionData.workflowId] = { scopes } as IWorkflowDb;
+			workflowsListStore.getWorkflowById.mockReturnValue({ scopes } as IWorkflowDb);
 
-			await router.push(path);
+			await router.push('/');
 
 			const { getByTestId } = renderComponent({ props: { execution: executionData } });
 
+			const debugControl = getByTestId('execution-debug-button').closest('a, button');
+			expect(debugControl?.tagName).toBe(scopes.includes('workflow:update') ? 'A' : 'BUTTON');
 			await userEvent.click(getByTestId('execution-debug-button'));
+			await nextTick();
 
 			expect(router.currentRoute.value.path).toBe(path);
+			if (!availability && scopes.includes('workflow:update')) {
+				expect(useUIStore().openModalWithData).toHaveBeenCalledWith(
+					expect.objectContaining({ name: DEBUG_PAYWALL_MODAL_KEY }),
+				);
+			}
 		},
 	);
+
+	it('keeps the debug URL available for modified clicks', async () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings.enterprise = {
+			...settingsStore.settings.enterprise,
+			[EnterpriseEditionFeature.DebugInEditor]: true,
+		} as FrontendSettings['enterprise'];
+		mockedStore(useWorkflowsListStore).getWorkflowById.mockReturnValue({
+			scopes: ['workflow:update'],
+		} as IWorkflowDb);
+		await router.push('/');
+		const { getByTestId } = renderComponent({ props: { execution: executionData } });
+		const link = getByTestId('execution-debug-button').closest('a')!;
+		expect(link).toHaveAttribute(
+			'href',
+			`/workflow/${executionData.workflowId}/debug/${executionData.id}`,
+		);
+		for (const modifiers of [{ ctrlKey: true }, { metaKey: true }, { button: 1 }]) {
+			const event = new MouseEvent('click', { ...modifiers, bubbles: true, cancelable: true });
+			link.dispatchEvent(event);
+			expect(event.defaultPrevented).toBe(false);
+			expect(router.currentRoute.value.path).toBe('/');
+		}
+	});
 
 	it('disables the stop execution button when the user cannot update', () => {
 		const { getByTestId } = renderComponent({

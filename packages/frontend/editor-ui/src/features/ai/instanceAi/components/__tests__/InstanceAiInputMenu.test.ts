@@ -1,9 +1,10 @@
 import userEvent from '@testing-library/user-event';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import InstanceAiInputMenu from '../InstanceAiInputMenu.vue';
 
 const { action, track } = vi.hoisted(() => ({
@@ -71,20 +72,28 @@ describe('InstanceAiInputMenu', () => {
 		expect(action).not.toHaveBeenCalled();
 	});
 
-	it('explains the streaming restriction and restores the normal label afterward', async () => {
-		const { getByRole, getByText, rerender } = renderComponent({
+	it('explains the streaming restriction on focus and blocks menu activation', async () => {
+		const user = userEvent.setup();
+		const { getByRole, queryByRole, rerender } = renderComponent({
 			props: { disabled: true, isStreaming: true },
 		});
-		const trigger = getByRole('button', {
-			name: 'Stop the response to add context with connectors, files, and more',
-		});
-		expect(trigger).toBeDisabled();
-		await fireEvent.pointerMove(trigger.parentElement!, { pointerType: 'mouse' });
+		const trigger = getByRole('button', { name: /Add .*files/ });
+		expect(trigger).toHaveAttribute('aria-disabled', 'true');
+		await user.tab();
+		expect(trigger).toHaveFocus();
 		await waitFor(() => {
-			expect(
-				getByText('Stop the response to add context with connectors, files, and more'),
-			).toBeVisible();
+			expect(getTooltip()).toHaveTextContent(
+				'Stop the response to add context with connectors, files, and more',
+			);
 		});
+		expect(trigger).toHaveAccessibleDescription(
+			'Stop the response to add context with connectors, files, and more',
+		);
+		await user.keyboard('{Enter} ');
+		await user.click(trigger);
+		expect(queryByRole('menuitem', { name: 'Action' })).not.toBeInTheDocument();
+		expect(action).not.toHaveBeenCalled();
+		expect(track).not.toHaveBeenCalled();
 
 		await rerender({ disabled: false, isStreaming: false });
 		expect(getByRole('button', { name: /Add .*files/ })).toBeEnabled();

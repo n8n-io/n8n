@@ -344,20 +344,20 @@ function goToUpgrade() {
 						</N8nTooltip>
 						<N8nTooltip
 							:content="usedInShareTooltip(project)"
+							as-child
 							:disabled="!usedInShareTooltip(project)"
 							placement="top"
 						>
-							<!-- A disabled button gets no hover events, so the span carries the tooltip -->
-							<span>
-								<N8nButton
-									variant="outline"
-									:disabled="!credentialPermissions.share"
-									data-test-id="credential-used-in-project-share"
-									@click="shareUsedInProject(project.id)"
-								>
-									{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
-								</N8nButton>
-							</span>
+							<template #content>{{ usedInShareTooltip(project) }}</template>
+							<N8nButton
+								variant="outline"
+								:disabled="!credentialPermissions.share"
+								:focusable-when-disabled="!!usedInShareTooltip(project)"
+								data-test-id="credential-used-in-project-share"
+								@click="shareUsedInProject(project.id)"
+							>
+								{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
+							</N8nButton>
 						</N8nTooltip>
 					</div>
 				</template>

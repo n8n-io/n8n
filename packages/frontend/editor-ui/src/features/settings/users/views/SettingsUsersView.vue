@@ -505,21 +505,20 @@ const onSearch = (value: string) => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-			<N8nTooltip :disabled="!isSSOEnabled">
+			<N8nTooltip as-child :disabled="!isSSOEnabled">
 				<template #content>
 					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
 				</template>
-				<div>
-					<N8nButton
-						:disabled="
-							isSSOEnabled || !usersStore.usersLimitNotReached || isInstanceRoleProvisioningEnabled
-						"
-						:label="i18n.baseText('settings.users.invite')"
-						size="large"
-						data-test-id="settings-users-invite-button"
-						@click="onInvite"
-					/>
-				</div>
+				<N8nButton
+					:disabled="
+						isSSOEnabled || !usersStore.usersLimitNotReached || isInstanceRoleProvisioningEnabled
+					"
+					:label="i18n.baseText('settings.users.invite')"
+					:focusable-when-disabled="isSSOEnabled"
+					size="large"
+					data-test-id="settings-users-invite-button"
+					@click="onInvite"
+				/>
 			</N8nTooltip>
 		</div>
 		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
