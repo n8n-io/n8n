@@ -151,6 +151,10 @@ export type BindableResourceList = { data: BindableResource[]; count: number };
 
 const BINDABLE_RESOURCE_LIMIT = 100;
 
+function sanitizeLikeQuery(query?: string) {
+	return query?.replace(/[\\%_]/g, '');
+}
+
 async function listBindableWorkflows(context: IRestApiContext, projectId: string, query?: string) {
 	return await getFullApiResponse<BindableResource[]>(context, 'GET', '/workflows', {
 		filter: {
@@ -206,7 +210,11 @@ export async function listBindableResources(
 	kind: AppBindingKind,
 	query?: string,
 ): Promise<BindableResourceList> {
-	const { data, count } = await BINDABLE_RESOURCE_LISTS[kind](context, projectId, query);
+	const { data, count } = await BINDABLE_RESOURCE_LISTS[kind](
+		context,
+		projectId,
+		sanitizeLikeQuery(query),
+	);
 	return { data: data.map(({ id, name }) => ({ id, name })), count };
 }
 

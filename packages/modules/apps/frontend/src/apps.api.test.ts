@@ -22,6 +22,8 @@ vi.mock('@n8n/rest-api-client', () => ({
 
 const context: IRestApiContext = { baseUrl: 'http://localhost:5678/rest', pushRef: 'push-ref' };
 const options = { skip: 0, take: 50, sortBy: 'updatedAt:desc' as const };
+const likeQuery = 'ta%sk_\\';
+const sanitizedLikeQuery = 'task';
 
 describe('apps.api', () => {
 	it('lists the apps of one project', async () => {
@@ -113,7 +115,7 @@ describe('apps.api', () => {
 			data: [{ id: 'w1', name: 'Submit', active: true }],
 		});
 
-		expect(await listBindableResources(context, 'project-1', 'workflow', 'submit')).toEqual({
+		expect(await listBindableResources(context, 'project-1', 'workflow', likeQuery)).toEqual({
 			count: 1,
 			data: [{ id: 'w1', name: 'Submit' }],
 		});
@@ -122,7 +124,7 @@ describe('apps.api', () => {
 				projectId: 'project-1',
 				isArchived: false,
 				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
-				query: 'submit',
+				query: sanitizedLikeQuery,
 			},
 			select: JSON.stringify(['id', 'name']),
 			take: 100,
@@ -136,7 +138,7 @@ describe('apps.api', () => {
 			data: [{ id: 't1', name: 'Tasks' }],
 		});
 
-		expect(await listBindableResources(context, 'project-1', 'dataTable', 'tasks')).toEqual({
+		expect(await listBindableResources(context, 'project-1', 'dataTable', likeQuery)).toEqual({
 			count: 1,
 			data: [{ id: 't1', name: 'Tasks' }],
 		});
@@ -144,7 +146,7 @@ describe('apps.api', () => {
 			context,
 			'GET',
 			'/projects/project-1/data-tables',
-			{ take: 100, sortBy: 'name:asc', filter: { name: 'tasks' } },
+			{ take: 100, sortBy: 'name:asc', filter: { name: sanitizedLikeQuery } },
 		);
 	});
 
@@ -154,7 +156,7 @@ describe('apps.api', () => {
 			data: [{ id: 'a1', name: 'Support' }],
 		});
 
-		expect(await listBindableResources(context, 'project-1', 'agent', 'support')).toEqual({
+		expect(await listBindableResources(context, 'project-1', 'agent', likeQuery)).toEqual({
 			count: 1,
 			data: [{ id: 'a1', name: 'Support' }],
 		});
@@ -162,7 +164,7 @@ describe('apps.api', () => {
 			context,
 			'GET',
 			'/projects/project-1/agents/v2',
-			{ take: 100, sortBy: 'name:asc', filter: { query: 'support' } },
+			{ take: 100, sortBy: 'name:asc', filter: { query: sanitizedLikeQuery } },
 		);
 	});
 
