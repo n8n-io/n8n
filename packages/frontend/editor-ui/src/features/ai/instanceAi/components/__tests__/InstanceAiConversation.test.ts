@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick, provide, reactive } from 'vue';
-import { flushPromises, mount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -109,13 +109,18 @@ describe('InstanceAiConversation', () => {
 		return mount(Host, { global: { stubs: { InstanceAiInput: InstanceAiInputStub } } });
 	}
 
-	/** A submit from the composer with the mention bookkeeping of one workflow mention. */
+	/**
+	 * A submit from the composer with the mention bookkeeping of one workflow
+	 * mention. Returns the composer's restore callback, which a refused send
+	 * must call to give the draft back.
+	 */
 	function emitMentionSubmit(wrapper: ReturnType<typeof mountConversation>) {
+		const restoreDraft = vi.fn(() => true);
 		wrapper.findComponent(InstanceAiInputStub).vm.$emit(
 			'submit',
 			'Compare orders',
 			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
-			vi.fn(),
+			restoreDraft,
 			USER_TYPED_MESSAGE,
 			Date.now(),
 			{
@@ -126,6 +131,7 @@ describe('InstanceAiConversation', () => {
 			},
 			['wf-1'],
 		);
+		return { restoreDraft };
 	}
 
 	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
@@ -164,7 +170,7 @@ describe('InstanceAiConversation', () => {
 			}),
 		);
 
-		emitMentionSubmit(wrapper);
+		const { restoreDraft } = emitMentionSubmit(wrapper);
 		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
 		expect(thread.sendMessage).toHaveBeenCalledWith(
 			'Compare orders',
@@ -183,16 +189,16 @@ describe('InstanceAiConversation', () => {
 
 		admit(true);
 		await vi.waitFor(() => expect(showMentionedWorkflow).toHaveBeenCalledExactlyOnceWith('wf-1'));
+		expect(restoreDraft).not.toHaveBeenCalled();
 	});
 
-	it('does not show a mentioned workflow when the send is refused', async () => {
+	it('gives the draft back and shows no mentioned workflow when the send is refused', async () => {
 		const showMentionedWorkflow = vi.fn();
 		const wrapper = mountConversation({ mentionsEnabled: true }, showMentionedWorkflow);
 		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false);
 
-		emitMentionSubmit(wrapper);
-		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
-		await flushPromises();
+		const { restoreDraft } = emitMentionSubmit(wrapper);
+		await vi.waitFor(() => expect(restoreDraft).toHaveBeenCalledOnce());
 
 		expect(showMentionedWorkflow).not.toHaveBeenCalled();
 	});
