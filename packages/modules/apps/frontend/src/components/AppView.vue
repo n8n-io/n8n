@@ -14,6 +14,7 @@ import { useAppVersions } from '../composables/useAppVersions';
 import AppHeader from './AppHeader.vue';
 import AppPreview from './AppPreview.vue';
 import AppConfigure from './configure/AppConfigure.vue';
+import AppVersionsPanel from './versions/AppVersionsPanel.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -34,6 +35,7 @@ const latestFetch = useLatestFetch();
 
 const app = ref<AppResponse | null>(null);
 const loading = ref(true);
+const versionsOpen = ref(false);
 const versions = useAppVersions(
 	() => props.projectId,
 	() => app.value?.id,
@@ -72,9 +74,19 @@ async function refresh() {
 	await versions.refresh();
 }
 
+// A publish also saves the version name, so the version list reloads when the published version changes.
+function onAppUpdated(updated: AppResponse) {
+	const publishChanged = updated.publishedVersionId !== app.value?.publishedVersionId;
+	app.value = updated;
+	if (publishChanged) void versions.refresh();
+}
+
 watch(
 	() => [props.projectId, props.appId],
-	async () => await loadApp(),
+	async () => {
+		versionsOpen.value = false;
+		await loadApp();
+	},
 	{ immediate: true },
 );
 
@@ -89,8 +101,9 @@ defineExpose({ refresh });
 			:project-id="projectId"
 			:app="app"
 			:publishable-version="versions.latestBuilt.value"
-			@updated="app = $event"
+			@updated="onAppUpdated"
 			@deleted="emit('deleted', $event)"
+			@show-versions="versionsOpen = true"
 		/>
 
 		<div :class="$style.workspace">
@@ -117,6 +130,14 @@ defineExpose({ refresh });
 					<AppConfigure v-else :app="app" @updated="app = $event" />
 				</template>
 			</main>
+			<AppVersionsPanel
+				v-if="app && versionsOpen"
+				:app="app"
+				:versions="versions"
+				@updated="onAppUpdated"
+				@restored="refresh"
+				@close="versionsOpen = false"
+			/>
 		</div>
 	</div>
 </template>

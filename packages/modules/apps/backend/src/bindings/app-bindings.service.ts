@@ -1,5 +1,6 @@
 import {
 	appSchema,
+	appVersionSchema,
 	type AppBinding,
 	type AppBindingWarning,
 	type AppBindingsResponse,
@@ -15,6 +16,7 @@ import { AppAgentPort, AppDataTablePort, AppWorkflowPort } from './app-binding-p
 import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
+import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppChangeService } from '../versions/app-change.service';
 
@@ -79,6 +81,38 @@ export class AppBindingsService {
 			count: bindings.length,
 		});
 		return await this.describe(app, version.id, version.bindings);
+	}
+
+	/**
+	 * Restores a version as a new version on top of `baseVersionId`. The restored
+	 * bindings follow the same check as `setBindings`.
+	 */
+	async restoreVersion(
+		user: User,
+		projectId: string,
+		appId: string,
+		versionId: string,
+		baseVersionId: string | null,
+	): Promise<AppVersion> {
+		const app = await this.requireApp(projectId, appId);
+		if (versionId.toLowerCase() === app.draftVersionId?.toLowerCase()) {
+			throw new ConflictError('The current app draft cannot be restored.');
+		}
+		const source = appVersionSchema.shape.id.safeParse(versionId).success
+			? await this.versions.findVersionById(versionId)
+			: null;
+		if (source?.appId !== appId) throw new NotFoundError('App version not found');
+		for (const binding of source.bindings) {
+			await this.assertCanBind(user, projectId, binding);
+		}
+		const version = await this.changes.startRestore(projectId, appId, versionId, baseVersionId);
+		this.logger.debug('Restored an app version as a new version.', {
+			projectId,
+			appId,
+			sourceVersionId: versionId,
+			versionId: version.id,
+		});
+		return version;
 	}
 
 	async getTypes(projectId: string, appId: string): Promise<string> {
