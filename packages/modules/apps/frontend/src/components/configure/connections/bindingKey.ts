@@ -11,6 +11,7 @@ const KIND_PREFIX: Record<AppBindingKind, string> = {
 function camelCase(name: string) {
 	const words = name
 		.normalize('NFD')
+		.replace(/\p{M}/gu, '')
 		.split(/[^a-zA-Z0-9]+/)
 		.filter(Boolean);
 	return words

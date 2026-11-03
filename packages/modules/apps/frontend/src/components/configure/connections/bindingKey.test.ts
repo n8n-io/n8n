@@ -7,6 +7,8 @@ describe('deriveBindingKey', () => {
 		['CRM Data', 'dataTable', 'crmData'],
 		['support-bot_v2', 'agent', 'supportBotV2'],
 		['Café menü', 'dataTable', 'cafeMenu'],
+		['Mañana', 'workflow', 'manana'],
+		['Naïve Bayes', 'agent', 'naiveBayes'],
 		['2024 report', 'dataTable', 'table2024Report'],
 		['!!!', 'agent', 'agent'],
 		['', 'workflow', 'workflow'],
