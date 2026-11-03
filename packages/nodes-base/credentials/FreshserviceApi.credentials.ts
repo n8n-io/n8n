@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class FreshserviceApi implements ICredentialType {
 	name = 'freshserviceApi';
@@ -26,4 +31,21 @@ export class FreshserviceApi implements ICredentialType {
 				'Domain in the Freshservice org URL. For example, in <code>https://n8n.freshservice.com</code>, the domain is <code>n8n</code>',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.apiKey}}',
+				password: 'X',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://{{$credentials.domain}}.freshservice.com/api/v2',
+			url: '/agents/me',
+		},
+	};
 }
