@@ -15,6 +15,7 @@ import {
 } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { fetchThreadHistory } from '../instanceAi.memory.api';
+import { useInstanceAiReady } from './useInstanceAiAvailability';
 import { provisionSubjectThread } from './useInstanceAiHandoff';
 import { threadTargetsSubject, type InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 
@@ -24,12 +25,15 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 	const store = useInstanceAiStore();
 	const toast = useToast();
 	const i18n = useI18n();
+	const available = useInstanceAiReady();
 
 	async function openApp(input: {
 		appId: string;
 		projectId: string;
 		appName?: string;
 	}): Promise<boolean> {
+		if (!available.value) return false;
+
 		const subject: InstanceAiEmbedSubject = {
 			type: 'app',
 			id: input.appId,
@@ -86,5 +90,5 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 		});
 	}
 
-	return { openApp, createApp };
+	return { available, openApp, createApp };
 }

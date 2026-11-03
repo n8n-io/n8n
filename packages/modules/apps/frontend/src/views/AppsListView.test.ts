@@ -3,7 +3,7 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent } from 'vue';
+import { computed, defineComponent } from 'vue';
 
 import { listApps } from '../apps.api';
 import AppsListView from './AppsListView.vue';
@@ -93,6 +93,7 @@ describe('AppsListView', () => {
 			isReadOnly: () => false,
 		});
 		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+			available: computed(() => true),
 			openApp: vi.fn(),
 			createApp,
 		}));

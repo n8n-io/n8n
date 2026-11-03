@@ -12,6 +12,7 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { CloudPlanState } from '@n8n/stores/cloudPlan.store';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { computed } from 'vue';
 
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
@@ -118,6 +119,7 @@ beforeEach(() => {
 	vi.mocked(hasPermission).mockReturnValue(false);
 	capabilityRegistry.clear();
 	capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+		available: computed(() => true),
 		openApp: vi.fn(),
 		createApp: createAppMock,
 	}));

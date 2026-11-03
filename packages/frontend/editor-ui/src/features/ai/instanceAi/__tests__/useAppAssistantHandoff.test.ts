@@ -9,7 +9,8 @@ import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../constants';
 import { provisionSubjectThread } from '../composables/useInstanceAiHandoff';
 import { fetchThreadHistory } from '../instanceAi.memory.api';
 
-const { currentRoute, push, replace, showError } = vi.hoisted(() => ({
+const { available, currentRoute, push, replace, showError } = vi.hoisted(() => ({
+	available: { value: true },
 	currentRoute: { value: {} as object },
 	push: vi.fn(),
 	replace: vi.fn(),
@@ -18,6 +19,9 @@ const { currentRoute, push, replace, showError } = vi.hoisted(() => ({
 
 vi.mock('vue-router', () => ({ useRouter: () => ({ currentRoute, push, replace }) }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('../composables/useInstanceAiAvailability', () => ({
+	useInstanceAiReady: () => available,
+}));
 vi.mock('../composables/useInstanceAiHandoff', () => ({ provisionSubjectThread: vi.fn() }));
 vi.mock('../instanceAi.memory.api', () => ({ fetchThreadHistory: vi.fn() }));
 
@@ -26,6 +30,7 @@ describe('useAppAssistantHandoff', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+		available.value = true;
 		store = mockedStore(useInstanceAiStore);
 		store.loadThreads.mockResolvedValue(true);
 		vi.mocked(fetchThreadHistory).mockResolvedValue({
@@ -37,6 +42,18 @@ describe('useAppAssistantHandoff', () => {
 			name: 'AppDetailView',
 			params: { appId: '019a4012-272c-7313-91af-5c94a3d819a9', projectId: 'project-1' },
 		};
+	});
+
+	it('does not open an App when Assistant is unavailable', async () => {
+		available.value = false;
+
+		await expect(
+			useAppAssistantHandoff().openApp({
+				appId: '019a4012-272c-7313-91af-5c94a3d819a9',
+				projectId: 'project-1',
+			}),
+		).resolves.toBe(false);
+		expect(store.loadThreads).not.toHaveBeenCalled();
 	});
 
 	it('opens the newest thread linked to the App', async () => {

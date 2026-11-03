@@ -64,6 +64,8 @@ export interface SelfHealingChatHandoff {
 }
 
 export interface AppAssistantHandoff {
+	/** Whether the Assistant is ready to open an App thread. */
+	available: ComputedRef<boolean>;
 	/** Opens the newest Assistant thread linked to an App, or creates one. */
 	openApp(input: { appId: string; projectId: string; appName?: string }): Promise<boolean>;
 	/** Opens the Assistant empty state for a new App. */

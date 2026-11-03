@@ -1,3 +1,5 @@
+import { computed } from 'vue';
+
 import { declareCapability } from '../declareCapability';
 import type { AppAssistantHandoff } from '../types/capability';
 
@@ -6,6 +8,7 @@ export const createAppAssistantHandoff = declareCapability<() => AppAssistantHan
 	'create-app-assistant-handoff',
 	{
 		fallback: () => ({
+			available: computed(() => false),
 			openApp: async () => false,
 			createApp: async () => {},
 		}),

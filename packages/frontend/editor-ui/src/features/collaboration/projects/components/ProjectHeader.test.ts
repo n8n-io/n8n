@@ -18,6 +18,7 @@ import { waitFor, within } from '@testing-library/vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useUIStore } from '@/app/stores/ui.store';
+import { computed } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
@@ -118,6 +119,7 @@ describe('ProjectHeader', () => {
 		};
 		capabilityRegistry.clear();
 		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+			available: computed(() => true),
 			openApp: vi.fn(),
 			createApp: createAppMock,
 		}));
