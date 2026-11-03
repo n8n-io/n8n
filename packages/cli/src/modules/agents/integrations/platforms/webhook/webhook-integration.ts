@@ -24,9 +24,6 @@ export class WebhookIntegration extends AgentChatIntegration {
 
 	readonly displayIcon = 'webhook';
 
-	// Hidden from the catalog until the setup UI ships.
-	readonly internal = true;
-
 	readonly requiresChatInstance = false;
 
 	/** There is one URL for each agent, so a request cannot tell two connections apart. */
