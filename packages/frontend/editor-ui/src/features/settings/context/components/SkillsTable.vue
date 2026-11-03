@@ -221,9 +221,9 @@ function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
 }
 
-/** A synced skill sits under the group row of its source, so it is indented. */
-function rowProps(skill: SkillListItem) {
-	return { class: { [$style.row]: true, [$style.nested]: !!props.sources && !!skill.sourceId } };
+/** A synced skill sits under the group row of its source, so its name is indented. */
+function isNested(skill: SkillListItem): boolean {
+	return !!props.sources && !!skill.sourceId;
 }
 
 function groupRowProps(sourceId: string) {
@@ -288,7 +288,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			:items-length="props.itemsLength"
 			:loading="props.loading"
 			:page-sizes="PREFERENCES_PAGE_SIZES"
-			:row-props="rowProps"
+			:row-props="{ class: $style.row }"
 			:group-by="props.sources ? groupOf : undefined"
 			:extra-groups="extraGroups"
 			:collapsed-groups="props.collapsedSourceIds ?? []"
@@ -317,13 +317,21 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 					</button>
 					<span v-else :class="$style.groupToggleSpace" />
 					<N8nIcon icon="git-branch" size="small" color="text-light" />
-					<N8nText size="small" color="text-dark" bold data-test-id="skill-group-title">
+					<N8nText
+						size="small"
+						color="text-dark"
+						bold
+						:class="$style.groupTitle"
+						:title="sourceName(group)"
+						data-test-id="skill-group-title"
+					>
 						{{ sourceName(group) }}
 					</N8nText>
 					<N8nText
 						v-if="!canFold(group)"
 						size="small"
 						color="text-light"
+						:class="$style.groupNote"
 						data-test-id="skill-group-empty"
 					>
 						· {{ i18n.baseText('settings.context.skills.sources.noSyncedSkills') }}
@@ -335,8 +343,9 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 				<SkillScopeBadge v-if="sourcesById.get(group)" :skill="scopeOf(sourcesById.get(group)!)" />
 			</template>
 
-			<template #[`group.actions`]="{ group }">
-				<div v-if="sourcesById.get(group)" :class="$style.sourceActions" @click.stop>
+			<!-- The update count and the progress sit in the empty cell of the source row, left of its menu. -->
+			<template #[`group.updatedAt`]="{ group }">
+				<div v-if="sourcesById.get(group)" :class="$style.sourceStatus">
 					<N8nSpinner
 						v-if="props.checkingSourceIds?.includes(group)"
 						size="small"
@@ -354,6 +363,11 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							})
 						}}
 					</N8nBadge>
+				</div>
+			</template>
+
+			<template #[`group.actions`]="{ group }">
+				<div v-if="sourcesById.get(group)" :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="sourceActions(sourcesById.get(group)!)"
 						data-test-id="skill-group-actions"
@@ -367,7 +381,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			</template>
 
 			<template #[`item.name`]="{ item }">
-				<div :class="$style.skillCell">
+				<div :class="[$style.skillCell, isNested(item) && $style.nested]">
 					<div :class="$style.skillTitle">
 						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
 							{{ item.name }}
@@ -488,8 +502,8 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 .row {
 	cursor: pointer;
 }
-.nested :global(td:first-child) {
-	padding-left: var(--spacing--xl);
+.nested {
+	padding-left: var(--spacing--lg);
 }
 
 .group {
@@ -497,6 +511,19 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	align-items: center;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+/* One line: the repository shortens with an ellipsis, and the note keeps its words. */
+.groupTitle {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.groupNote {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .groupToggle {
@@ -516,10 +543,9 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	cursor: pointer;
 }
 
-.sourceActions {
+.sourceStatus {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 }
 </style>
