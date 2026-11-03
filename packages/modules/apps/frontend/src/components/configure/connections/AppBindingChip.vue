@@ -10,7 +10,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import {
@@ -39,6 +39,7 @@ const i18n = useI18n();
 const router = useRouter();
 const open = ref(false);
 const draftPermissions = ref<BindingPermission[]>([]);
+const draftChanged = ref(false);
 
 const config = computed(() => BINDING_KINDS[props.binding.kind]);
 const permissions = computed(() => permissionsOf(props.binding));
@@ -50,6 +51,7 @@ const href = computed(() =>
 );
 
 function toggle(permission: BindingPermission, checked: boolean) {
+	draftChanged.value = true;
 	draftPermissions.value = togglePermission(
 		props.binding.kind,
 		draftPermissions.value,
@@ -72,10 +74,11 @@ function permissionsChanged() {
 function onOpen(value: boolean) {
 	if (value) {
 		draftPermissions.value = [...permissions.value];
+		draftChanged.value = false;
 		open.value = true;
 		return;
 	}
-	if (open.value && permissionsChanged()) {
+	if (open.value && draftChanged.value && permissionsChanged()) {
 		emit('update', draftPermissions.value);
 	}
 	open.value = false;
@@ -85,6 +88,10 @@ function remove() {
 	open.value = false;
 	emit('remove');
 }
+
+watch(permissions, (value) => {
+	if (open.value && !draftChanged.value) draftPermissions.value = [...value];
+});
 </script>
 
 <template>

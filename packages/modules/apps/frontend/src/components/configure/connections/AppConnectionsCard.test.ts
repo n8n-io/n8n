@@ -7,6 +7,7 @@ import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { Scope } from '@n8n/permissions';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { getAppBindings, listBindableResources, setAppBindings } from '../../../apps.api';
@@ -225,6 +226,45 @@ describe('AppConnectionsCard', () => {
 				{ ...table, permissions: ['read', 'insert', 'delete'] },
 			]),
 		);
+		expect(setAppBindings).toHaveBeenCalledOnce();
+	});
+
+	it('keeps saved permissions when reopened before the save completes', async () => {
+		providePermissions(['app:update']);
+		const pendingSave = Promise.withResolvers<AppBindingsResponse>();
+		vi.mocked(setAppBindings).mockReturnValueOnce(pendingSave.promise);
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
+		await userEvent.click(
+			await findByTestId('app-binding-weeklyChannelActivity-permission-delete'),
+		);
+		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
+		await waitFor(() => expect(setAppBindings).toHaveBeenCalledOnce());
+
+		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
+		pendingSave.resolve({
+			versionId: 'v2',
+			bindings: [
+				loaded.bindings[0],
+				{
+					...table,
+					permissions: ['read', 'delete'],
+					name: 'Weekly channel activity',
+					columns: [],
+					row: {},
+				},
+			],
+			warnings: [],
+		});
+
+		const deletePermission = await findByTestId(
+			'app-binding-weeklyChannelActivity-permission-delete',
+		);
+		await waitFor(() => expect(deletePermission).toBeChecked());
+		await userEvent.click(await findByTestId('app-binding-weeklyChannelActivity'));
+		await flushPromises();
+
 		expect(setAppBindings).toHaveBeenCalledOnce();
 	});
 
