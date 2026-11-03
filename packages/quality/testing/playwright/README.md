@@ -18,6 +18,7 @@ Commands in this table run from the repository root. Container-backed tests need
 | Measure Docker image size and layer waste | `@n8n/efficiency` image projects | `pnpm --filter @n8n/efficiency test:images` | [Image efficiency](../../efficiency/images/README.md) |
 | Measure infrastructure throughput and resource use | `benchmarking:infrastructure` | `pnpm --filter n8n-playwright test:benchmark` | [Infrastructure benchmarks](tests/infrastructure/benchmarks/README.md) |
 | Investigate Instance AI memory with a local-only, Docker-backed run | `benchmark-memory-instanceai:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=benchmark-memory-instanceai:infrastructure` | [Local benchmark setup](tests/infrastructure/benchmarks-local/README.md) |
+| Reproduce queue, drain and failover bugs on before and after images, local only | `test-rig` | `pnpm --filter @n8n/test-rig scenarios` | [Test rig](../test-rig/README.md) |
 | Test workflow execution and schemas | `cli-workflows` | `pnpm --filter n8n-playwright test:workflows` | [Workflow tests](tests/cli-workflows/README.md) |
 | Check fixture, reporter, or helper code without a browser | Vitest | `pnpm --filter n8n-playwright test:unit` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
 | Check browser-backed harness contracts | Harness Vitest config | `pnpm --filter n8n-playwright test:harness` | [Test-writing patterns](docs/TESTING_PATTERNS.md) |
