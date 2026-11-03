@@ -77,6 +77,9 @@ function getPlaywrightSpecs() {
 		console.log(`Found ${specs.size} specs in Playwright`);
 		return specs;
 	} catch (e) {
+		if (process.env.CI) {
+			throw new Error(`Could not get Playwright specs: ${String(e)}`);
+		}
 		console.warn('Warning: Could not get Playwright specs, skipping validation');
 		return null;
 	}
