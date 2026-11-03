@@ -47,19 +47,21 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 			const loaded = await store.loadThreads();
 			if (!isOriginRouteActive()) return true;
 			if (!loaded) throw new Error(i18n.baseText('instanceAi.handoff.openFailed.message'));
-			let existing = store.threads
+			let existingThreadId = store.threads
 				.filter((thread) => threadTargetsSubject(thread.metadata, subject))
-				.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id))[0];
+				.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id))[0]?.id;
 			let cursor: string | undefined;
-			while (!existing) {
+			while (!existingThreadId) {
 				const page = await fetchThreadHistory(rootStore.restApiContext, { limit: 100, cursor });
 				if (!isOriginRouteActive()) return true;
-				existing = page.threads.find((thread) => threadTargetsSubject(thread.metadata, subject));
-				if (existing || !page.hasMore || !page.nextCursor) break;
+				existingThreadId = page.threads.find((thread) =>
+					threadTargetsSubject(thread.metadata, subject),
+				)?.id;
+				if (existingThreadId || !page.hasMore || !page.nextCursor) break;
 				cursor = page.nextCursor;
 			}
 			const threadId =
-				existing?.id ??
+				existingThreadId ??
 				(await provisionSubjectThread(subject, {
 					source: 'app_builder_page',
 					origin: 'internal',
