@@ -313,7 +313,8 @@ function collectActionableConfirmations(
 
 /** Confirmations the panel owns: everything except the timeline-rendered kinds. */
 function isPanelConfirmation(item: PendingConfirmationItem): boolean {
-	return !item.toolCall.confirmation.mcpConnectRequest;
+	const confirmation = item.toolCall.confirmation;
+	return !confirmation.mcpConnectRequest && !confirmation.appBlueprint;
 }
 
 /**
@@ -616,19 +617,20 @@ export function createThreadRuntime(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(
-		() => messages.value,
-		(id) => workflowsListStore.getWorkflowById(id)?.name,
-		() => archivedWorkflowIds.value,
-		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-		() => {
+	} = useResourceRegistry(() => messages.value, {
+		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
+		archivedWorkflowIds: () => archivedWorkflowIds.value,
+		agentBuilderTarget: () =>
+			getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+		pendingAgentTarget: () => {
 			const pending = getPendingAgentTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId));
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
-		() => pendingWorkflowAttachment.value ?? undefined,
-		() => [...transientWorkflowReferences.values()],
-		() => getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
-	);
+		pendingWorkflowAttachment: () => pendingWorkflowAttachment.value ?? undefined,
+		transientWorkflowReferences: () => [...transientWorkflowReferences.values()],
+		agentBuilderTargets: () =>
+			getAgentBuilderTargetsFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
+	});
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
 		useResponseFeedback({

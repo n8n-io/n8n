@@ -125,8 +125,9 @@ import {
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import {
 	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	clearAssistantAgentLaunch,
 	discardPendingAssistantAgentMessage,
-	rememberAssistantAgentThread,
+	stashAssistantAgentLaunch,
 	stashPendingAssistantAgentMessage,
 } from './assistantAgent/assistantAgentThreads';
 import { base64ToFile, resolveFileMimeType } from '@/app/utils/fileUtils';
@@ -956,13 +957,18 @@ async function startAssistantAgentThread(
 		references: (attachments ?? []).filter((attachment) => attachment.type !== 'file'),
 	};
 	stashPendingAssistantAgentMessage(pendingMessage);
-	rememberAssistantAgentThread(pendingMessage.threadId, projectId);
+	stashAssistantAgentLaunch(pendingMessage.threadId, {
+		projectId,
+		source: resolveLaunchSource(),
+		origin: 'internal',
+	});
 	acceptDraft();
 	const failure = await router.push({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId: pendingMessage.threadId },
 	});
 	if (failure && discardPendingAssistantAgentMessage(pendingMessage)) {
+		clearAssistantAgentLaunch(pendingMessage.threadId);
 		restoreDraftAfterFailedSubmit(restoreDraft);
 	}
 }

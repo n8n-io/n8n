@@ -2,6 +2,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
+import { defineComponent, h } from 'vue';
+import { N8nDataTableServer } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
@@ -1553,17 +1555,25 @@ describe('MigrationRuleDetail', () => {
 	});
 
 	describe('pagination', () => {
-		// Mounting controls and tooltips in all 25 rows can exceed the test timeout.
-		// Other test groups cover these components. Keep the real table and filters here.
+		// A distinct name keeps Vue Test Utils from stubbing the inner table again.
+		const PaginationTable = { ...N8nDataTableServer, name: 'PaginationTable' };
+
+		// Keep the real table, pagination, and filters. Render only row names here,
+		// because mounting all cell components on each page can exceed the test timeout.
 		const renderPaginationComponent = () =>
 			renderComponent({
 				props: { migrationRuleId: 'rule-1' },
 				global: {
 					stubs: {
-						N8nUserSelect: true,
-						FindingStateSelect: true,
-						TimeAgo: true,
-						N8nTooltip: { template: '<slot />' },
+						N8nDataTableServer: defineComponent({
+							inheritAttrs: false,
+							setup(_, { attrs }) {
+								return () =>
+									h(PaginationTable, attrs, {
+										item: ({ item }: { item: { name: string } }) => h('tr', [h('td', item.name)]),
+									});
+							},
+						}),
 					},
 				},
 			});

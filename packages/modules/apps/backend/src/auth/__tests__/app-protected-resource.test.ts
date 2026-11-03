@@ -30,6 +30,7 @@ function setup(deploymentType = 'default') {
 		mock<GlobalConfig>({
 			host: 'foo.app.n8n.cloud',
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName: 'foo' }),
 		}),
 		mock<UrlService>({
 			getInstanceBaseUrl: () => 'https://foo.app.n8n.cloud',
@@ -139,7 +140,7 @@ describe('AppProtectedResource', () => {
 			id: 'user',
 			role: { slug: 'global:member', scopes: [] },
 		});
-		app.visibility = 'public';
+		app.visibility = 'instance';
 
 		expect(await resource.canRead(app, user)).toBe(true);
 		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);
