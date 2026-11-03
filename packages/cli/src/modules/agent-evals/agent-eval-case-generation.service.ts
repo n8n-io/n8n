@@ -14,10 +14,9 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { AgentEvalDatasetRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, OperationalError, UserError } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import { generateFixSuggestion } from './agent-eval-fix-suggestion';
@@ -38,8 +37,7 @@ import { sampleDimensionTuples } from './case-generation/dimensions';
 import { isSupportedAgentProvider } from '@/credentials/credential-field-mapping';
 import { resolveCredentialAwareModelConfig } from '../agents/json-config/model-config';
 import { createAgentCredentialProvider } from '../agents/utils/agent-credential-provider';
-import { DataTableService } from '../data-table/data-table.service';
-import { DataTableNameConflictError } from '../data-table/errors/data-table-name-conflict.error';
+import { DataTableService, DataTableNameConflictError } from '@n8n/backend-module-data-table';
 
 const DEFAULT_CASE_COUNT = 6;
 const MAX_CASE_COUNT = 20;

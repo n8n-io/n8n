@@ -31,7 +31,7 @@ export const RoleMappingRuleSchema = z.object({
 });
 export type RoleMappingRule = z.infer<typeof RoleMappingRuleSchema>;
 
-export const SurfaceIdSchema = z.enum(['public-api', 'instance-mcp', 'trigger']);
+export const SurfaceIdSchema = z.enum(['public-api', 'instance-mcp', 'trigger', 'apps']);
 export type SurfaceId = z.infer<typeof SurfaceIdSchema>;
 
 export const ManagedBySchema = z.enum(['system', 'admin']);

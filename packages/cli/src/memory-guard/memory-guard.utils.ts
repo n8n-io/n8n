@@ -35,12 +35,16 @@ export function buildStopError(
 	return new WorkflowOperationError(sentences.join(' '), node, description);
 }
 
-function largestNode(estimate: RunDataEstimate | undefined) {
+export function largestNode(estimate: RunDataEstimate | undefined) {
 	let largest: { name: string; bytes: number } | undefined;
 	for (const [name, bytes] of estimate?.bytesByNode ?? []) {
 		if (!largest || bytes > largest.bytes) largest = { name, bytes };
 	}
 	return largest;
+}
+
+export function nodeType(workflow: IWorkflowBase, nodeName: string | undefined) {
+	return workflow.nodes.find((n) => n.name === nodeName)?.type;
 }
 
 export async function settleWithin(promises: Array<Promise<void>>, timeoutMs: number) {

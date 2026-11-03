@@ -50,10 +50,11 @@ describe('promotion preview content', () => {
 	});
 
 	it('should show only the changes that Apply makes', () => {
-		// The branch renamed and moved the folder. Apply keeps the local name and reports the move.
+		// The branch renamed and moved the folder. Apply makes both changes.
 		const moved = resource({
 			key: 'folder:f3',
-			name: 'Archive',
+			name: 'Old invoices',
+			previousName: 'Archive',
 			parentKey: 'folder:f2',
 			previousParentKey: 'folder:f1',
 			change: 'modified',
@@ -63,6 +64,7 @@ describe('promotion preview content', () => {
 			{ name: 'Old invoices', parentFolderId: 'f2' },
 		);
 		expect(describeFieldChanges(detail, context({ direction: 'apply', resource: moved }))).toEqual([
+			{ field: 'name', before: 'Archive', after: 'Old invoices' },
 			{ field: 'location', before: 'Payments', after: 'Reports' },
 		]);
 

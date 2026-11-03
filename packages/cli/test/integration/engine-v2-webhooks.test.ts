@@ -81,6 +81,8 @@ beforeAll(async () => {
 		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 		findLatestExecution: vi.fn(),
 		cancelExecution: vi.fn(),
+		locateResumeTarget: vi.fn(),
+		resolveStep: vi.fn(),
 	});
 	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
@@ -122,7 +124,10 @@ describe('webhook runs on engine v2', () => {
 		const workflow = await createV2Workflow(webhookNode(webhookId));
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		const response = await webhookAgent
 			.post(`/${webhookTestEndpoint}/${webhookId}`)
@@ -259,7 +264,7 @@ describe.each([
 		);
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({ waitingForWebhook: true, formTestUrls: [] });
 
 		const response = await webhookAgent
 			.post(`/${webhookTestEndpoint}/${webhookId}`)

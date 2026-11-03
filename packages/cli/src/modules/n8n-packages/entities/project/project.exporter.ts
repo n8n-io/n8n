@@ -8,7 +8,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { findExportableProjects } from './project-export-access';
 import { ProjectShellExporter, type ProjectShellExportContext } from './project-shell.exporter';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { ManifestEntry, WorkflowManifestEntry } from '../../spec/manifest.schema';
 import type { ExportVersionPolicy } from '../../n8n-packages.types';
 import { FolderExporter } from '../folder/folder.exporter';
 import type { FolderExportResult } from '../folder/folder.exporter';
@@ -36,7 +36,7 @@ export interface ProjectExportRequest {
 interface ProjectExportResult {
 	entries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
-	workflowEntries: ManifestEntry[];
+	workflowEntries: WorkflowManifestEntry[];
 	requirements: ExportRequirements;
 	projectTargetsById: Map<string, string>;
 }

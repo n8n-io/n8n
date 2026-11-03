@@ -5,7 +5,7 @@ import type { AgentDefinition } from '../utils/agent-definition';
 /**
  * Preserve existing and disabled refs while new refs require an available body.
  * Skill refs are not pruned here: `AgentSkillRefsService.replaceDraftRefs`
- * checks them against the skills hub.
+ * checks them against the skills module.
  */
 export function pruneMissingConfigReferences(
 	config: AgentJsonConfig,

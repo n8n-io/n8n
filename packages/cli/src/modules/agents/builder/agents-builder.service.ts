@@ -1,9 +1,8 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -81,7 +80,12 @@ export class AgentsBuilderService {
 
 	async getSessionContext(user: User, projectId: string, agentId: string): Promise<string> {
 		await this.assertAccess(user, projectId, ['agent:read']);
-		return await buildBuilderSessionContext(projectId, agentId);
+		return buildBuilderSessionContext(projectId, agentId);
+	}
+
+	async getCredentialDefaults(user: User, projectId: string, agentId: string) {
+		await this.assertAccess(user, projectId, ['agent:read']);
+		return await this.tools.getCredentialDefaults(agentId, projectId);
 	}
 
 	createCredentialProvider(

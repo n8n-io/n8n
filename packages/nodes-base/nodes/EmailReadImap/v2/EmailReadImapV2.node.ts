@@ -312,16 +312,20 @@ export class EmailReadImapV2 implements INodeType {
 			});
 
 			try {
-				await getNewEmails.call(this, {
-					imapConnection: conn,
-					searchCriteria: currentSearchCriteria,
-					postProcessAction,
-					onEmailBatch: async (returnData: INodeExecutionData[]) => {
-						if (returnData.length) {
-							this.emit([returnData]);
-						}
-					},
-				});
+				// Arrivals come after activation released its isolate, and the fetch resolves parameters.
+				await this.helpers.withExpressionIsolate(
+					async () =>
+						await getNewEmails.call(this, {
+							imapConnection: conn,
+							searchCriteria: currentSearchCriteria,
+							postProcessAction,
+							onEmailBatch: async (returnData: INodeExecutionData[]) => {
+								if (returnData.length) {
+									this.emit([returnData]);
+								}
+							},
+						}),
+				);
 			} catch (error) {
 				this.logger.error('Email Read Imap node encountered an error fetching new emails', {
 					error: error as Error,

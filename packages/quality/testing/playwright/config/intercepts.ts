@@ -1,6 +1,12 @@
-import type { BrowserContext, Route } from '@playwright/test';
+import type { BrowserContext, Request, Route } from '@playwright/test';
 import cloneDeep from 'lodash/cloneDeep';
 import merge from 'lodash/merge';
+import type { IWorkflowSettings } from 'n8n-workflow';
+
+export interface InterceptorOptions {
+	/** Settings merged into every workflow the editor creates or updates. */
+	workflowSettings?: Partial<IWorkflowSettings>;
+}
 
 const contextSettings = new Map<BrowserContext, Partial<Record<string, unknown>>>();
 const contextModuleSettings = new Map<BrowserContext, Partial<Record<string, unknown>>>();
@@ -27,7 +33,10 @@ export function getContextModuleSettings(context: BrowserContext) {
 	return contextModuleSettings.get(context);
 }
 
-export async function setupDefaultInterceptors(target: BrowserContext) {
+export async function setupDefaultInterceptors(
+	target: BrowserContext,
+	options: InterceptorOptions = {},
+) {
 	// Global /rest/settings intercept - always active like Cypress
 	// TODO: Remove this as a global and move it per test
 	await target.route('**/rest/settings', async (route: Route) => {
@@ -160,4 +169,53 @@ export async function setupDefaultInterceptors(target: BrowserContext) {
 			});
 		},
 	);
+
+	if (options.workflowSettings) {
+		await routeWorkflowSettings(target, options.workflowSettings);
+	}
+}
+
+const isWorkflowCreate = (url: URL) => url.pathname.endsWith('/rest/workflows');
+const isWorkflowUpdate = (url: URL) => /\/rest\/workflows\/[^/]+$/.test(url.pathname);
+
+/**
+ * The editor's default settings carry no `engineType`, so a workflow saved
+ * from the canvas runs on the legacy engine. This merge gives it what
+ * `api.workflows` gives an API-built one. A value the editor sends is a choice
+ * the user made in the settings dialog, so it wins. An update without
+ * `settings` keeps the stored ones, so it passes untouched: the stack's keys
+ * alone would replace the editor's execution order.
+ */
+async function routeWorkflowSettings(
+	target: BrowserContext,
+	workflowSettings: Partial<IWorkflowSettings>,
+) {
+	await target.route(
+		(url) => isWorkflowCreate(url) || isWorkflowUpdate(url),
+		async (route: Route) => {
+			const request = route.request();
+			const url = new URL(request.url());
+			const isCreate = request.method() === 'POST' && isWorkflowCreate(url);
+			const isUpdate = request.method() === 'PATCH' && isWorkflowUpdate(url);
+			const body = isCreate || isUpdate ? saveBody(request) : null;
+
+			if (!body || (isUpdate && !body.settings)) {
+				await route.continue();
+				return;
+			}
+
+			await route.continue({
+				postData: JSON.stringify({ ...body, settings: { ...workflowSettings, ...body.settings } }),
+			});
+		},
+	);
+}
+
+/** The editor sends JSON; anything else passes through untouched instead of stalling the request. */
+function saveBody(request: Request): { settings?: object } | null {
+	try {
+		return request.postDataJSON() as { settings?: object } | null;
+	} catch {
+		return null;
+	}
 }

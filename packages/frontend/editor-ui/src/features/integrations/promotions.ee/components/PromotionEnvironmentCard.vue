@@ -17,12 +17,13 @@ import type { PromotionEnvironment } from '../promotionsSettings.api';
 import { promotionEnvironmentBranch, promotionProviderIcon } from '../promotionsSettings.utils';
 import ApplyInstanceDialog from './ApplyInstanceDialog.vue';
 import PromoteInstanceDialog from './PromoteInstanceDialog.vue';
+import PromotionMissingProjectsButton from './PromotionMissingProjectsButton.vue';
 
 const props = defineProps<{
 	environment: PromotionEnvironment;
 	busy?: 'retry' | 'remove';
 	connectError?: string;
-	canClone: boolean;
+	canConnect: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -51,7 +52,7 @@ const statusDotVariant: Record<typeof status.value, StatusDotVariant> = {
 };
 
 const canRun = computed(() =>
-	props.environment.direction === 'apply' ? !!permissions.value.pull : !!permissions.value.push,
+	props.environment.direction === 'apply' ? !!permissions.value.apply : !!permissions.value.promote,
 );
 
 const actions = computed(() => [
@@ -108,17 +109,6 @@ function onAction(action: 'edit' | 'remove') {
 						})
 					}}
 				</N8nText>
-			</template>
-			<template #visual>
-				<N8nIcon
-					:icon="promotionProviderIcon[environment.provider.type]"
-					color="text-dark"
-					size="xlarge"
-				/>
-			</template>
-		</N8nSettingsRow>
-		<N8nSettingsRow :show-divider="false">
-			<template #info>
 				<div role="status" :class="$style.status" data-test-id="promotion-environment-status">
 					<div :class="$style.state">
 						<N8nStatusDot :variant="statusDotVariant[status]" />
@@ -134,10 +124,20 @@ function onAction(action: 'edit' | 'remove') {
 					</N8nText>
 				</div>
 			</template>
+			<template #visual>
+				<N8nIcon
+					:icon="promotionProviderIcon[environment.provider.type]"
+					color="text-dark"
+					size="xlarge"
+				/>
+			</template>
+		</N8nSettingsRow>
+		<!-- No info here: the buttons get the whole row. -->
+		<N8nSettingsRow :show-divider="false" :action-max-width="false">
 			<template #action>
 				<div :class="$style.actions">
 					<N8nButton
-						v-if="status !== 'connected' && canClone"
+						v-if="status !== 'connected' && canConnect"
 						variant="outline"
 						size="small"
 						:loading="busy === 'retry'"
@@ -153,6 +153,13 @@ function onAction(action: 'edit' | 'remove') {
 							)
 						}}
 					</N8nButton>
+					<PromotionMissingProjectsButton
+						v-if="environment.direction === 'apply'"
+						:environment-id="environment.id"
+						:environment-name="environment.name"
+						:connected="status === 'connected'"
+						:busy="!!busy"
+					/>
 					<N8nButton
 						v-if="canRun"
 						size="small"
@@ -171,6 +178,7 @@ function onAction(action: 'edit' | 'remove') {
 			:open="dialogOpen"
 			:environment-id="environment.id"
 			:base-branch-name="environment.settings.baseBranchName"
+			:environment-name="environment.name"
 			:create-branch-on-promotion="environment.settings.createBranchOnPromotion"
 			:provider-type="environment.provider.type"
 			@update:open="dialogOpen = $event"
@@ -180,6 +188,7 @@ function onAction(action: 'edit' | 'remove') {
 			:open="dialogOpen"
 			:environment-id="environment.id"
 			:branch-name="environment.settings.branchName"
+			:environment-name="environment.name"
 			@update:open="dialogOpen = $event"
 		/>
 	</div>
@@ -194,6 +203,7 @@ function onAction(action: 'edit' | 'remove') {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+	margin-block-start: var(--spacing--3xs);
 }
 
 .state {

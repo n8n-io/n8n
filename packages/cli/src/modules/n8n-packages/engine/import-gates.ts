@@ -1,20 +1,28 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { Scope } from '@n8n/permissions';
 
 import { ForbiddenError } from '@n8n/errors';
 
 import { plannedCredentialUpdates } from '../entities/credential/credential-conflict-policy';
-import {
-	credentialMissingModeUsesPackageData,
-	credentialsToStub,
-} from '../entities/credential/credential-missing-mode';
-import type {
-	CredentialImportPlan,
-	CredentialResolution,
-} from '../entities/credential/credential.types';
+import type { CredentialImportPlan } from '../entities/credential/credential.types';
 import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
+import type { SkillImportPlan } from '../entities/skill/skill-import.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
-import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
-import type { CredentialConflictPolicy, CredentialMissingMode } from '../n8n-packages.types';
+import type {
+	WorkflowImportPlan,
+	WorkflowPlanItem,
+} from '../entities/workflow/workflow-import.types';
+import type { CredentialConflictPolicy } from '../n8n-packages.types';
+import type { PackageManifest } from '../spec/manifest.schema';
+
+export function packageImportScopes(manifest: PackageManifest): Scope[] {
+	const scopes: Scope[] = [];
+	if (manifest.workflows?.length || (!manifest.agents?.length && !manifest.projects?.length)) {
+		scopes.push('workflow:import');
+	}
+	if (manifest.agents?.length) scopes.push('agent:import');
+	return scopes;
+}
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
@@ -66,16 +74,25 @@ export function assertDataTableWritesAllowed(
 	}
 }
 
-export function assertCredentialWritesAllowed(
+/**
+ * Plan-derived: a project or instance skill can change other Agents, so its write needs the
+ * matching API-key scope.
+ */
+export function assertSharedSkillWritesAllowed(
 	apiKeyScopes: string[] | undefined,
-	credentialPlans: Array<{ missingMode: CredentialMissingMode; resolution: CredentialResolution }>,
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
 ): void {
-	const createsCredential = credentialPlans.some(
-		({ missingMode, resolution }) =>
-			credentialMissingModeUsesPackageData(missingMode) &&
-			credentialsToStub(missingMode, resolution).length > 0,
-	);
-	if (createsCredential) assertPackageImportApiKeyScopes(apiKeyScopes, ['credential:create']);
+	assertPackageImportApiKeyScopes(apiKeyScopes, requiredSharedSkillScopes(skillPlans));
+}
+
+export function requiredSharedSkillScopes(
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
+): Scope[] {
+	const writes = skillPlans.flatMap((plan) => plan.shared);
+	const scopes: Scope[] = [];
+	if (writes.some(({ base }) => !base)) scopes.push('skill:create');
+	if (writes.some(({ base }) => base)) scopes.push('skill:update');
+	return scopes;
 }
 
 /**
@@ -123,4 +140,27 @@ export function assertArchiveTransitionsAllowed(
 	if (hasTransitions) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['workflow:delete']);
 	}
+}
+
+/**
+ * Plan-derived, like the Agent publish scopes: a planned publish needs `workflow:activate` and a
+ * planned unpublish needs `workflow:deactivate`, as on the direct publish routes. Archiving needs
+ * only `workflow:delete` (see {@link assertArchiveTransitionsAllowed}), as on the archive route.
+ */
+export function assertWorkflowPublishingAllowed(
+	apiKeyScopes: string[] | undefined,
+	workflowPlan: Pick<WorkflowImportPlan, 'items'>,
+): void {
+	assertPackageImportApiKeyScopes(
+		apiKeyScopes,
+		requiredWorkflowPublishingScopes(workflowPlan.items),
+	);
+}
+
+export function requiredWorkflowPublishingScopes(items: WorkflowPlanItem[]): Scope[] {
+	const actions = new Set(items.map((item) => item.publishingAction));
+	const scopes: Scope[] = [];
+	if (actions.has('publish')) scopes.push('workflow:activate');
+	if (actions.has('unpublish')) scopes.push('workflow:deactivate');
+	return scopes;
 }

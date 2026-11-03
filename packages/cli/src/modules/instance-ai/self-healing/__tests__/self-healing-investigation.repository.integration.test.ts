@@ -102,6 +102,7 @@ it('reverts and reapplies the investigation schemas', async () => {
 		'CreateSelfHealingInvestigationTable1792578704944',
 		'CreateSelfHealingConfigurations1792742505678',
 		'ReplaceSelfHealingInvestigationBaseline1792750863544',
+		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
 	].map((name) => {
 		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
 		if (!migration) throw new Error(`${name} is not registered.`);

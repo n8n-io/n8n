@@ -22,6 +22,7 @@ type Case = {
 	/** The files changed after the preview loaded, so the revisions differ. */
 	stale?: boolean;
 	shows: string[];
+	hides?: string[];
 };
 
 const revision = { before: 'b', after: 'a' };
@@ -42,11 +43,12 @@ const cases: Case[] = [
 		shows: ['Before', 'Invoicing', 'After', 'Billing'],
 	},
 	{
-		name: 'only the move of a folder, which stops Apply',
+		name: 'the rename and move that Apply makes to a folder',
 		direction: 'apply',
 		resource: resource({
 			key: 'folder:f3',
-			name: 'Archive',
+			name: 'Old invoices',
+			previousName: 'Archive',
 			parentKey: 'folder:f2',
 			previousParentKey: 'folder:f1',
 			change: 'modified',
@@ -58,12 +60,9 @@ const cases: Case[] = [
 			after: { id: 'f3', name: 'Old invoices', parentFolderId: 'f2' },
 			revision,
 		},
-		shows: [
-			'Location',
-			'Payments',
-			'Reports',
-			"Apply can't move a folder that already exists on this instance",
-		],
+		shows: ['Name', 'Archive', 'Old invoices', 'Location', 'Payments', 'Reports'],
+		// Apply moves folders within their project, so the card no longer warns about a move.
+		hides: ["can't move"],
 	},
 	{
 		name: 'that Apply renames a tag in other projects too',
@@ -181,23 +180,29 @@ const cases: Case[] = [
 ];
 
 describe('PromotionChangeCard', () => {
-	it.each(cases)('should show $name', ({ direction, resource: card, detail, stale, shows }) => {
-		const { getByTestId } = renderComponent({
-			pinia: createTestingPinia(),
-			props: {
-				resource: detail && !stale ? { ...card, revision: detail.revision } : card,
-				graph: buildSelectionGraph(billingPreview(), 'promote'),
-				direction,
-				entry: detail ? { status: 'loaded', detail } : undefined,
-				selection: readOnly(false),
-				inspected: false,
-			},
-		});
+	it.each(cases)(
+		'should show $name',
+		({ direction, resource: card, detail, stale, shows, hides }) => {
+			const { getByTestId } = renderComponent({
+				pinia: createTestingPinia(),
+				props: {
+					resource: detail && !stale ? { ...card, revision: detail.revision } : card,
+					graph: buildSelectionGraph(billingPreview(), 'promote'),
+					direction,
+					entry: detail ? { status: 'loaded', detail } : undefined,
+					selection: readOnly(false),
+					inspected: false,
+				},
+			});
 
-		for (const text of shows) {
-			expect(getByTestId('promotion-preview-card')).toHaveTextContent(text);
-		}
-	});
+			for (const text of shows) {
+				expect(getByTestId('promotion-preview-card')).toHaveTextContent(text);
+			}
+			for (const text of hides ?? []) {
+				expect(getByTestId('promotion-preview-card')).not.toHaveTextContent(text);
+			}
+		},
+	);
 
 	it('should describe a column removal on Promote without a loss of values', () => {
 		const { getAllByTestId } = renderComponent({

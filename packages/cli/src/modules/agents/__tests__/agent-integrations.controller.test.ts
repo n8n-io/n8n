@@ -612,7 +612,7 @@ describe('AgentIntegrationsController channel status', () => {
 	it('reports a channel with a live row as connected and one without as starting', async () => {
 		const { response, channelStatusRepository } = await statusOf(publishedAgent, [liveRow(slack)]);
 
-		expect(channelStatusRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id);
+		expect(channelStatusRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id, {});
 		expect(response.integrations).toEqual([
 			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
 			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },

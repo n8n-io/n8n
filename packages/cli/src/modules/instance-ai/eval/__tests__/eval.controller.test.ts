@@ -10,15 +10,15 @@ import type {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { meterEvalUsage, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EvalAgentExecutionService } from '../agent-execution.service';
 import type { EvalExecutionService } from '../execution.service';
+import type { FailedExecutionPortabilityService } from '../failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../thread-credential-allowlist.service';
 import type { EvalThreadRestoreService } from '../thread-restore.service';
 import type { InstanceAiMemoryService } from '../../instance-ai-memory.service';
@@ -77,6 +77,7 @@ describe('InstanceAiEvalController', () => {
 	const evalAgentExecutionService = mock<EvalAgentExecutionService>();
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
+	const failedExecutionPortability = mock<FailedExecutionPortabilityService>();
 
 	const controller = new InstanceAiEvalController(
 		instanceAiService,
@@ -86,6 +87,7 @@ describe('InstanceAiEvalController', () => {
 		evalAgentExecutionService,
 		evalCredentialAllowlists,
 		evalThreadRestore,
+		failedExecutionPortability,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -104,6 +106,8 @@ describe('InstanceAiEvalController', () => {
 		'getEvalThreadMemory',
 		'restoreEvalThread',
 		'seedEvalDataTableRows',
+		'exportExecution',
+		'restoreExecution',
 	])('%s requires the instanceAi:manage scope', (handlerName) => {
 		expect(scopeOf(handlerName)).toEqual({ scope: 'instanceAi:manage', globalOnly: true });
 	});
@@ -239,6 +243,35 @@ describe('InstanceAiEvalController', () => {
 			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
 				NotFoundError,
 			);
+		});
+	});
+
+	describe('failed execution portability', () => {
+		it('exports from the thread project', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+
+			await controller.exportExecution(req, res, { threadId: THREAD_ID, executionId: '42' });
+
+			expect(failedExecutionPortability.exportExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ id: USER_ID }),
+				'project-1',
+				'42',
+			);
+		});
+
+		it('refuses a restore into a thread with no project', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue(undefined);
+
+			await expect(
+				controller.restoreExecution(req, res, {
+					threadId: THREAD_ID,
+					workflowId: 'wf-1',
+					envelope: mock(),
+				}),
+			).rejects.toThrow(BadRequestError);
+			expect(failedExecutionPortability.restoreExecution).not.toHaveBeenCalled();
 		});
 	});
 

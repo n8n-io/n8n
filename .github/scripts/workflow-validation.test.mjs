@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { parse } from 'yaml';
+import { evaluateFilter, parseFilters } from '../actions/ci-filter/ci-filter.mjs';
 
 /**
  * Validates the `.github/workflows` YAML that carries logic we cannot see in a
@@ -133,6 +134,67 @@ describe('evaluateStepCondition', () => {
 
 	it('rejects a term it cannot model', () => {
 		assert.throws(() => evaluateStepCondition('github.event_name'), /unsupported term/);
+	});
+});
+
+describe('release SBOM validation in PR CI', () => {
+	const workflow = workflowFile('ci-pull-requests.yml');
+	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
+	const filters = parseFilters(filterStep.with.filters);
+
+	it('runs live generation when the generator or license pipeline changes', () => {
+		const patterns = filters.get('sbom');
+		assert.ok(patterns, 'PR CI has no SBOM path filter');
+		for (const file of [
+			'.github/scripts/package.json',
+			'.github/scripts/pnpm-lock.yaml',
+			'scripts/licenses/enrich-sbom.mjs',
+			'scripts/build-n8n.mjs',
+			'.github/actions/setup-nodejs/action.yml',
+			'.github/workflows/ci-pull-requests.yml',
+			'.github/workflows/sbom-validation-callable.yml',
+		]) {
+			assert.equal(evaluateFilter([file], patterns), true, file);
+		}
+		for (const file of ['packages/cli/src/index.ts', '.github/scripts/retry.mjs', 'README.md']) {
+			assert.equal(evaluateFilter([file], patterns), false, file);
+		}
+	});
+
+	for (const file of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
+		it(`runs live generation when ${file} changes`, () => {
+			const patterns = filters.get('sbom');
+			assert.ok(patterns, 'PR CI has no SBOM path filter');
+			assert.equal(evaluateFilter([file], patterns), true, file);
+		});
+	}
+
+	it('requires the SBOM check for the same merged commit as the other checks', () => {
+		const job = workflow.jobs['validate-sbom'];
+		assert.ok(job, 'PR CI has no live SBOM validation job');
+		assert.ok(workflow.jobs['required-checks'].needs.includes('validate-sbom'));
+		assert.equal(job['continue-on-error'] ?? false, false);
+		assert.equal(job.uses, './.github/workflows/sbom-validation-callable.yml');
+		assert.equal(job.with.sha, '${{ needs.install-and-build.outputs.commit_sha }}');
+		assert.equal(job.if, "needs.install-and-build.outputs.sbom == 'true'");
+		assert.equal(
+			workflow.jobs['install-and-build'].outputs.sbom,
+			'${{ fromJSON(steps.ci-filter.outputs.results).sbom == true }}',
+		);
+	});
+
+	it('builds the production closure with live license generation and a strict gate', () => {
+		const validator = workflowFile('sbom-validation-callable.yml');
+		const build = stepNamed(validator, 'validate-sbom', 'Build production deployment artifact');
+		assert.equal(build.with['build-command'], 'pnpm build:deploy');
+		assert.equal(build.env.N8N_GENERATE_LICENSES, 'true');
+		assert.equal(validator.permissions.contents, 'read');
+		const gate = stepNamed(validator, 'validate-sbom', 'Gate SBOM on resolved SPDX licenses');
+		assert.match(
+			gate.run.replaceAll('\\\n', ' '),
+			/check-sbom-licenses\.mjs\s+sbom-source\.cdx\.json/,
+		);
+		assert.equal(gate['continue-on-error'] ?? false, false);
 	});
 });
 

@@ -1,4 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
+import type * as AgentThreadsApiModule from '../composables/useAgentThreadsApi';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -39,11 +40,23 @@ const {
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
 let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
 
+const stopSession = vi.hoisted(() => vi.fn());
+const agentPermissions = vi.hoisted(() => ({ canExecute: { value: true } }));
+
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => agentPermissions,
+}));
+
+vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
+	...(await importOriginal<typeof AgentThreadsApiModule>()),
+	stopSession,
+}));
+
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ pushRef: 'session-xyz' }),
+	useRootStore: () => ({ pushRef: 'session-xyz', restApiContext: {} }),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -243,6 +256,8 @@ async function mountView({
 describe('AgentSessionsListView', () => {
 	beforeEach(() => {
 		storeState.autoRefresh = true;
+		agentPermissions.canExecute.value = true;
+		stopSession.mockReset().mockResolvedValue({ cancelRequested: true });
 		fetchThreads.mockReset();
 		fetchThreads.mockResolvedValue(undefined);
 		setFilters.mockReset();
@@ -255,6 +270,66 @@ describe('AgentSessionsListView', () => {
 	afterEach(() => {
 		documentAddEventListenerSpy.mockRestore();
 		documentRemoveEventListenerSpy.mockRestore();
+	});
+
+	it('offers Stop for a running session and refreshes after stopping it', async () => {
+		const wrapper = await mountView({
+			threads: [makeThread({ status: 'running', source: 'slack' })],
+		});
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		expect(menu.props('items')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: false })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).toHaveBeenCalledExactlyOnceWith({}, 'project-1', 'agent-1', 'thread-1');
+		expect(refreshThreads).toHaveBeenCalledWith('project-1', 'agent-1');
+		wrapper.unmount();
+	});
+
+	it.each(['succeeded', 'error', 'cancelled', 'interrupted'] as const)(
+		'hides Stop for a %s session',
+		async (status) => {
+			const wrapper = await mountView({ threads: [makeThread({ status })] });
+			const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+			expect(menu.props('items')).not.toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
+			);
+			menu.vm.$emit('select', 'stop');
+			await flushPromises();
+			expect(stopSession).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
+
+	it('hides Stop without execute permission', async () => {
+		agentPermissions.canExecute.value = false;
+		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		expect(menu.props('items')).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('disables Stop while the request runs', async () => {
+		const pending = Promise.withResolvers<{ cancelRequested: boolean }>();
+		stopSession.mockReturnValueOnce(pending.promise);
+		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(menu.props('items')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: true })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		expect(stopSession).toHaveBeenCalledTimes(1);
+		pending.resolve({ cancelRequested: true });
+		await flushPromises();
+		wrapper.unmount();
 	});
 
 	it('opens the trace from the row and keeps a native title button', async () => {

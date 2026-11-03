@@ -1,5 +1,6 @@
 import {
 	PACKAGE_ENTITY_LAYOUT,
+	entityIdOfSegment,
 	type ManifestEntityCollection,
 } from '../n8n-packages/io/manifest-entry';
 
@@ -12,7 +13,7 @@ const BASE_BRANCH_ENTITIES = {
 	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
 } as const satisfies Record<
-	Exclude<ManifestEntityCollection, 'agents'>,
+	Exclude<ManifestEntityCollection, 'agents' | 'skills'>,
 	{ type: string; includeRoot: boolean }
 >;
 
@@ -35,10 +36,6 @@ export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTIT
 const ENTITIES_BY_DIRECTORY = new Map<string, BaseBranchEntity>(
 	Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]),
 );
-
-function entityIdOfSegment(segment: string): string {
-	return segment.slice(segment.lastIndexOf('-') + 1);
-}
 
 export function parseBaseBranchFiles(
 	lsTreeOutput: string,

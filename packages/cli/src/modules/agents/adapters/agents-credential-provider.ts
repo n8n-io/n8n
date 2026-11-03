@@ -1,7 +1,7 @@
 import type { CredentialProvider, ResolvedCredential, CredentialListItem } from '@n8n/agents';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { ICredentialDataDecryptedObject, McpAiGatewayCredentialType } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -153,6 +153,7 @@ export class AgentsCredentialProvider
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
 			projectId: this.projectId,
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 	}
 
@@ -168,7 +169,7 @@ export class AgentsCredentialProvider
 
 		const addCreds = (creds: CredentialsEntity[]) => {
 			for (const cred of creds) {
-				if (!allCredsSet.has(cred.id)) {
+				if (!cred.isResolvable && !allCredsSet.has(cred.id)) {
 					allCredsSet.add(cred.id);
 					allCreds.push(cred);
 				}

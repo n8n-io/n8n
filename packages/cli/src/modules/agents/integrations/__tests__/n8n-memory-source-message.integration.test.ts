@@ -58,7 +58,12 @@ describe('N8nMemoryImpl memory source messages', () => {
 			kind: 'preference',
 		});
 		const entry = await memory.episodic.saveEntryWithSources(
-			{ resourceId: scope.resourceId, content, embedding: [1, 0], embeddingModel: 'test-model' },
+			{
+				resourceId: scope.resourceId,
+				content,
+				embedding: new Float32Array([1, 0]),
+				embeddingModel: 'test-model',
+			},
 			[{ candidateId: candidate.id, threadId: scope.threadId, evidenceText: content }],
 		);
 		if (!entry) throw new Error('Expected an episodic entry');

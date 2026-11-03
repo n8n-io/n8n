@@ -49,6 +49,7 @@ export const MODULE_NAMES = [
 	'skills',
 	'apps',
 	'knowledge',
+	'execution-limits',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

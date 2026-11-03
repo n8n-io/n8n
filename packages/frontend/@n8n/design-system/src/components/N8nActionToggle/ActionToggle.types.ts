@@ -1,5 +1,7 @@
 import type { ButtonSize } from '../../types/button';
 import type { IconSize } from '../../types/icon';
+import type { IconName } from '../N8nIcon/icons';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /**
  * Extracted from the SFC: `<script setup>` types that reference the component's
@@ -9,6 +11,8 @@ import type { IconSize } from '../../types/icon';
  */
 export type ActionToggleItem<T extends string = string> = {
 	label: string;
+	/** Icon before the label: an icon name, or an icon or emoji as dropdown items take it. */
+	icon?: IconName | IconOrEmoji;
 	disabled?: boolean;
 	divided?: boolean;
 	/** Whether to render the item as a destructive action. */
