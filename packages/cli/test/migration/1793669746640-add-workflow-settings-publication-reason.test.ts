@@ -8,7 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-const migrationName = 'AddWorkflowSettingsPublicationReason1793543367097';
+const migrationName = 'AddWorkflowSettingsPublicationReason1793669746640';
 
 describe('AddWorkflowSettingsPublicationReason', () => {
 	beforeAll(async () => {

@@ -4,7 +4,7 @@ const table = 'workflow_publication_outbox';
 const column = 'reason';
 const previousReasons = ['publish', 'startup', 'leadership-takeover', 'reconcile'];
 
-export class AddWorkflowSettingsPublicationReason1793543367097 implements ReversibleMigration {
+export class AddWorkflowSettingsPublicationReason1793669746640 implements ReversibleMigration {
 	async up({ schemaBuilder }: MigrationContext) {
 		await schemaBuilder.dropEnumCheck(table, column, { recreatesOnSqlite: true });
 		await schemaBuilder.addEnumCheck(table, column, [...previousReasons, 'settings-update'], {
