@@ -6,19 +6,15 @@ import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types'
 export type AgentTelemetryStatus = 'draft' | 'production';
 
 export type AgentConfigFingerprint = {
-	tools: string[];
 	skills: string[];
 	tasks: string[];
 	triggers: string[];
-	vector_stores: string[];
 	memory: { enabled: boolean; storage: 'n8n' } | null;
-	model: string | null;
 	config_version: string;
 };
 
 /**
- * Internal helper used to compute a stable 16-char hex `config_version` join
- * key. The hash covers the instructions, but the payload does not carry them.
+ * Compute a stable join key. Keep the configuration text inside the hash input.
  */
 async function sha256Hex16(input: string): Promise<string> {
 	return (await sha256(input)).slice(0, 16);
@@ -82,13 +78,10 @@ export async function buildAgentConfigFingerprint(
 	const configVersion = await sha256Hex16(versionPayload);
 
 	return {
-		tools,
 		skills,
 		tasks,
 		triggers,
-		vector_stores: vectorStores,
 		memory,
-		model,
 		config_version: configVersion,
 	};
 }

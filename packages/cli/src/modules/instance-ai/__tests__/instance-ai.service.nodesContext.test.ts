@@ -1,5 +1,6 @@
 import type {
 	InstanceAiAgentAttachment,
+	InstanceAiElementAttachment,
 	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
@@ -58,6 +59,19 @@ describe('InstanceAiService — resolveContextAttachments gating', () => {
 		const result = service.resolveContextAttachments([workflowAttachment, agentAttachment], false);
 
 		expect(result).toEqual([workflowAttachment, agentAttachment]);
+	});
+
+	it.each([true, false])('keeps an element attachment when node context is %s', (enabled) => {
+		const service = createService();
+		const elementAttachment: InstanceAiElementAttachment = {
+			type: 'element',
+			appId: 'app-1',
+			tagName: 'button',
+		};
+
+		const result = service.resolveContextAttachments([elementAttachment], enabled);
+
+		expect(result).toEqual([elementAttachment]);
 	});
 
 	it('keeps a workflow attachment alongside an enabled nodes attachment', () => {

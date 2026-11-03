@@ -6,6 +6,7 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData 
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
+import { isArrayIndexKey } from '../runtime/utils';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
 	defineOwnValue,
@@ -259,6 +260,7 @@ const TRANSFER_MARKER_KEYS = new Set([
 	'__isSet',
 	'__isEscaped',
 	'__isError',
+	'__isKeyedArray',
 ]);
 
 /**
@@ -288,7 +290,7 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	if (value instanceof Set) {
 		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
 	}
-	if (Array.isArray(value)) return value.map(wrapSpecialValuesForGuest);
+	if (Array.isArray(value)) return wrapArrayForGuest(value);
 	const record = value as Record<string, unknown>;
 	const result: Record<string, unknown> = {};
 	let collides = false;
@@ -297,6 +299,21 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 		defineOwnValue(result, key, wrapSpecialValuesForGuest(record[key]));
 	}
 	return collides ? { __isEscaped: true, __value: result } : result;
+}
+
+/** JSON drops the named keys of an array, so an array with named keys goes across in a sentinel. */
+function wrapArrayForGuest(value: unknown[]): unknown {
+	const items = value.map(wrapSpecialValuesForGuest);
+	const keys = Object.keys(value);
+	// Own keys list array indices first, so an array without named keys ends on an index.
+	if (keys.length === 0 || isArrayIndexKey(keys[keys.length - 1])) {
+		return items;
+	}
+	const namedKeys = keys.filter((key) => !isArrayIndexKey(key));
+	const record = value as unknown as Record<string, unknown>;
+	const props: Record<string, unknown> = {};
+	namedKeys.forEach((key) => defineOwnValue(props, key, wrapSpecialValuesForGuest(record[key])));
+	return { __isKeyedArray: true, __items: items, __props: props };
 }
 
 /**
@@ -1068,6 +1085,12 @@ export class QuickJsBridge implements RuntimeBridge {
 			var s = new Set();
 			for (var j = 0; j < v.__values.length; j++) s.add(unwrapFromHost(v.__values[j]));
 			return s;
+		}
+		if (v.__isKeyedArray === true) {
+			var keyed = v.__items.map(unwrapFromHost);
+			var pkeys = Object.keys(v.__props);
+			for (var p = 0; p < pkeys.length; p++) defineOwnValue(keyed, pkeys[p], unwrapFromHost(v.__props[pkeys[p]]));
+			return keyed;
 		}
 		if (v.__isEscaped === true) {
 			var inner = v.__value;
