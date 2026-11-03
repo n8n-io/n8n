@@ -33,8 +33,9 @@ const section = computed({
 onMounted(async () => {
 	if (showEditor.value) return;
 	const originRoute = router.currentRoute.value;
+	let app;
 	try {
-		await getApp(rootStore.restApiContext, projectId.value, appId.value);
+		app = await getApp(rootStore.restApiContext, projectId.value, appId.value);
 	} catch (error) {
 		if (router.currentRoute.value !== originRoute) return;
 		if (error instanceof ResponseError) {
@@ -58,6 +59,7 @@ onMounted(async () => {
 	const opened = await assistant.openApp({
 		projectId: projectId.value,
 		appId: appId.value,
+		appName: app.name,
 	});
 	if (!opened && router.currentRoute.value === originRoute) {
 		showEditor.value = true;

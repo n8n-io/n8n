@@ -76,7 +76,11 @@ describe('AppDetailView', () => {
 		renderComponent();
 
 		await vi.waitFor(() =>
-			expect(openApp).toHaveBeenCalledWith({ appId: 'app-1', projectId: 'project-1' }),
+			expect(openApp).toHaveBeenCalledWith({
+				appId: 'app-1',
+				projectId: 'project-1',
+				appName: 'Test app',
+			}),
 		);
 		expect(getApp).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
 	});
