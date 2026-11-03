@@ -48,6 +48,14 @@ export function useCredentialTypeUsability() {
 		const nodeTypes = credentialType.supportedNodes ?? [];
 		if (nodeTypes.length === 0) return null;
 
+		const restrictions: TypeRestriction[] = [];
+		for (const nodeType of nodeTypes) {
+			const restriction = getNodeTypeRestriction(nodeType);
+			if (!restriction) return null;
+			restrictions.push(restriction);
+		}
+
+		// Checked last: it follows the `extends` chain, and most types have an allowed node.
 		const getCredentialType = (name: string) =>
 			credentialsStore.getCredentialTypeByName(name) ?? undefined;
 		if (
@@ -55,13 +63,6 @@ export function useCredentialTypeUsability() {
 			!getNodeTypeRestriction(HTTP_REQUEST_NODE_TYPE)
 		) {
 			return null;
-		}
-
-		const restrictions: TypeRestriction[] = [];
-		for (const nodeType of nodeTypes) {
-			const restriction = getNodeTypeRestriction(nodeType);
-			if (!restriction) return null;
-			restrictions.push(restriction);
 		}
 
 		const nodeTypeNames = [

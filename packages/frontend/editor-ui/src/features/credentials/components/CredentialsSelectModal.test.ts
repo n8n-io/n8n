@@ -14,8 +14,6 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 
 import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useCredentialsStore } from '../credentials.store';
 import CredentialsSelectModal from './CredentialsSelectModal.vue';
 
@@ -159,36 +157,25 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 		mockRestrictedNodeTypes({});
 	});
 
-	it('loads the policy of the project the credential will be created in, and restores the previous one', async () => {
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.currentProject = { id: 'team-1' } as Project;
+	it('keeps the list hidden while the project policy loads', async () => {
 		const policies = mockedStore(useTypeAvailabilityPoliciesStore);
-		policies.loadedProjectId = 'workflow-project';
-		policies.fetchForProject = vi.fn().mockResolvedValue(undefined);
+		policies.isLoading = true;
 
-		const wrapper = mountModal();
-		expect(policies.fetchForProject).toHaveBeenCalledExactlyOnceWith('team-1');
-
-		wrapper.unmount();
-		expect(policies.fetchForProject).toHaveBeenLastCalledWith('workflow-project');
-	});
-
-	it('keeps the list hidden until the project policy loads', async () => {
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.currentProject = { id: 'team-1' } as Project;
-		const policies = mockedStore(useTypeAvailabilityPoliciesStore);
-		let finishLoad = () => {};
-		policies.fetchForProject = vi.fn(
-			async () => await new Promise<void>((resolve) => (finishLoad = resolve)),
-		);
-
-		const wrapper = mountModal();
-		await flushPromises();
+		const wrapper = await mountLoaded();
 		expect(names(wrapper)).toEqual([]);
 
-		finishLoad();
+		policies.isLoading = false;
 		await flushPromises();
 		expect(names(wrapper)).toContain('slackApi');
+	});
+
+	it('does not change the project the policy store holds', async () => {
+		const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+
+		const wrapper = await mountLoaded();
+		wrapper.unmount();
+
+		expect(policies.fetchForProject).not.toHaveBeenCalled();
 	});
 
 	it('lists usable types first, then blocked types, then types whose nodes are blocked', async () => {

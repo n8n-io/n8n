@@ -70,6 +70,7 @@ import { getCredentialOwnerShortName } from '../composables/useUnusableWorkflowC
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SYSTEM_RESOLVER_ID,
+	type CredentialTypeAvailability,
 	type InstanceAiCredentialSetupHint,
 } from '@n8n/api-types';
 import CredentialIcon from './CredentialIcon.vue';
@@ -264,30 +265,32 @@ const contactAdmin = ref<{ subject: string; audience: ContactAudience }>({
 // They stay mounted: the select closes on the release in a popover, before its click arrives.
 const openedCredentialSelectTypes = ref(new Set<string>());
 
-function requestContactAdmin(credentialType: string, audience: ContactAudience) {
+function requestContactAdmin(subject: string, audience: ContactAudience) {
 	// The dialog opens on top of the page, so the list must not stay open behind it.
 	for (const select of selectRefs.value) select?.blur();
-	contactAdmin.value = {
-		subject:
-			credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType,
-		audience,
-	};
+	contactAdmin.value = { subject, audience };
 	isContactAdminOpen.value = true;
 }
 
-/** The restriction of the selected credential's type, which can differ from the slot's in a mixed list. */
-function getSelectedTypeRestriction(credentialType: string) {
-	const id = selected.value[credentialType]?.id;
-	if (!id) return null;
+/** By slot, the restriction of the selected credential's type, which can differ from the slot's in a mixed list. */
+const selectedTypeRestrictions = computed(() => {
+	const restrictions: Record<
+		string,
+		{ displayName: string; restriction: CredentialTypeAvailability }
+	> = {};
+	for (const [slotType, credential] of Object.entries(selected.value)) {
+		if (!credential?.id) continue;
 
-	const selectedType = credentialsStore.getCredentialById(id)?.type ?? credentialType;
-	const restriction = getCredentialTypeRestriction(selectedType);
-	if (!restriction) return null;
+		const selectedType = credentialsStore.getCredentialById(credential.id)?.type ?? slotType;
+		const restriction = getCredentialTypeRestriction(selectedType);
+		if (!restriction) continue;
 
-	const displayName =
-		credentialsStore.getCredentialTypeByName(selectedType)?.displayName ?? selectedType;
-	return { credentialType: selectedType, displayName, restriction };
-}
+		const displayName =
+			credentialsStore.getCredentialTypeByName(selectedType)?.displayName ?? selectedType;
+		restrictions[slotType] = { displayName, restriction };
+	}
+	return restrictions;
+});
 
 const nodeHelpers = useNodeHelpers();
 const toast = useToast();
@@ -707,10 +710,14 @@ onMounted(() => {
 						const id = args[0].id;
 						// credential was deleted, select last one added to replace with
 						if (current.id === id) {
-							onCredentialSelected(
-								credentialType,
-								credentialsOfType[credentialsOfType.length - 1].id,
-							);
+							const replacement = credentialsOfType
+								.filter((credential) => !getCredentialTypeRestriction(credential.type))
+								.at(-1);
+							if (replacement) {
+								onCredentialSelected(credentialType, replacement.id);
+							} else {
+								clearSelectedCredential(credentialType);
+							}
 						}
 					}
 					break;
@@ -1235,7 +1242,12 @@ function matches(needle: string, haystack: string | undefined) {
  */
 type CredentialRow =
 	| { kind: 'header'; key: string; label: string }
-	| { kind: 'option'; key: string; option: CredentialDropdownOption }
+	| {
+			kind: 'option';
+			key: string;
+			option: CredentialDropdownOption;
+			restriction: CredentialTypeAvailability | null;
+	  }
 	| {
 			kind: 'current';
 			key: string;
@@ -1247,6 +1259,8 @@ type CredentialRow =
 			selectable: boolean;
 			credential: UsedCredential;
 	  };
+
+type OptionRow = Extract<CredentialRow, { kind: 'option' }>;
 
 const YOURS_GROUP_KEY = '__credential-group-yours';
 const SHARED_GROUP_KEY = '__credential-group-shared';
@@ -1380,25 +1394,24 @@ function buildUsableRows(
 	credentialType: string,
 	options: CredentialDropdownOption[],
 ): CredentialRow[] {
-	const visible = options.filter((option) => matches(filter.value, option.name));
-	const toRow = (option: CredentialDropdownOption): CredentialRow => ({
-		kind: 'option',
-		key: option.id,
-		option,
-	});
+	const visible: OptionRow[] = options
+		.filter((option) => matches(filter.value, option.name))
+		.map((option) => ({
+			kind: 'option',
+			key: option.id,
+			option,
+			restriction: getCredentialTypeRestriction(option.type),
+		}));
 
 	// Yours either because it travels with you into this project, or because
 	// this is your own space and the credential is not published instance-wide.
-	const isYours = (option: CredentialDropdownOption) =>
+	const isYours = ({ option }: OptionRow) =>
 		option.sharedRoute === 'personal' || (isPersonalSpace.value && !option.isGlobal);
 
 	// Restricted types sink to the end of their group, so the group headings stay true.
-	const sorted = [
-		...visible.filter((option) => !getCredentialTypeRestriction(option.type)),
-		...visible.filter((option) => getCredentialTypeRestriction(option.type)),
-	];
-	const yours: CredentialRow[] = sorted.filter(isYours).map(toRow);
-	const shared = sorted.filter((option) => !isYours(option));
+	const sorted = visible.toSorted((a, b) => Number(!!a.restriction) - Number(!!b.restriction));
+	const yours: CredentialRow[] = sorted.filter(isYours);
+	const shared = sorted.filter((row) => !isYours(row));
 	const rows: CredentialRow[] = [];
 
 	// An owner or admin can use the current credential through an instance-wide
@@ -1417,7 +1430,7 @@ function buildUsableRows(
 
 	if (shared.length > 0) {
 		rows.push({ kind: 'header', key: SHARED_GROUP_KEY, label: sharedGroupLabel.value });
-		rows.push(...shared.map(toRow));
+		rows.push(...shared);
 	}
 
 	return rows;
@@ -1449,6 +1462,9 @@ function onCredentialOptionSelected(
 		onAiGatewaySelector(type.name, true);
 		return;
 	}
+	// Enter still selects a highlighted row that a policy blocked after the list opened.
+	const credentialType = credentialsStore.getCredentialById(credentialIdOrTag)?.type;
+	if (credentialType && getCredentialTypeRestriction(credentialType)) return;
 	onCredentialSelected(type.name, credentialIdOrTag, showMixedCredentials(type));
 }
 
@@ -1483,8 +1499,11 @@ function canQuickConnect(credentialType: INodeCredentialDescription): boolean {
 	);
 }
 
+// A policy-blocked type offers no quick connect, so the standard picker explains the block.
 function getQuickConnectCredentialType(type: INodeCredentialDescription): string | undefined {
-	return getRelatedCredentialTypes(type).find(canQuickConnect)?.name;
+	return getRelatedCredentialTypes(type).find(
+		(related) => canQuickConnect(related) && !getCredentialTypeRestriction(related.name),
+	)?.name;
 }
 
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
@@ -1492,16 +1511,7 @@ function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return (
-		!isCredentialExisting(type) &&
-		(!getQuickConnectCredentialType(type) || isQuickConnectRestricted(type))
-	);
-}
-
-// A policy-blocked quick-connect type falls back to the standard picker, which explains the block.
-function isQuickConnectRestricted(type: INodeCredentialDescription): boolean {
-	const quickConnectType = getQuickConnectCredentialType(type);
-	return !!quickConnectType && !!getCredentialTypeRestriction(quickConnectType);
+	return !isCredentialExisting(type) && !getQuickConnectCredentialType(type);
 }
 
 // Empty-slot layouts, only when the type has no stored credentials and isn't on
@@ -1515,7 +1525,6 @@ function showQuickConnectSlot(
 		options.length === 0 &&
 		!getUnlistedSelected(type.name) &&
 		showQuickConnectEmptyState(type) &&
-		!isQuickConnectRestricted(type) &&
 		!isAiGatewayManagedCredentials(type.name)
 	);
 }
@@ -1777,7 +1786,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						:name="credentialTypeNames[type.name]"
 						:restriction="getCredentialTypeRestriction(type.name)!"
 						data-test-id="node-credentials-type-restricted"
-						@contact-admin="(audience) => requestContactAdmin(type.name, audience)"
+						@contact-admin="
+							(audience) => requestContactAdmin(credentialTypeNames[type.name], audience)
+						"
 					/>
 				</div>
 				<div
@@ -1907,16 +1918,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								<N8nOption
 									v-else
 									:data-test-id="`node-credentials-select-item-${row.option.id}`"
-									:class="{
-										[$style.restrictedOption]: getCredentialTypeRestriction(row.option.type),
-									}"
+									:class="{ [$style.restrictedOption]: row.restriction }"
 									:label="row.option.name"
 									:value="row.option.id"
-									:disabled="getCredentialTypeRestriction(row.option.type) !== null"
-									@mousedown="
-										(event: MouseEvent) =>
-											getCredentialTypeRestriction(row.option.type) && event.preventDefault()
-									"
+									:disabled="row.restriction !== null"
+									@mousedown="(event: MouseEvent) => row.restriction && event.preventDefault()"
 								>
 									<div :class="$style.credentialOption">
 										<N8nIcon
@@ -1950,13 +1956,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 											}}
 										</N8nText>
 										<CredentialTypeRestrictedMarker
-											v-if="
-												openedCredentialSelectTypes.has(type.name) &&
-												getCredentialTypeRestriction(row.option.type)
-											"
+											v-if="openedCredentialSelectTypes.has(type.name) && row.restriction"
 											:name="row.option.typeDisplayName"
-											:restriction="getCredentialTypeRestriction(row.option.type)!"
-											@contact-admin="(audience) => requestContactAdmin(row.option.type, audience)"
+											:restriction="row.restriction"
+											@contact-admin="
+												(audience) => requestContactAdmin(row.option.typeDisplayName, audience)
+											"
 										/>
 										<N8nIcon
 											v-if="getSelectedId(type) === row.option.id"
@@ -2022,17 +2027,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					</div>
 
 					<CredentialTypeRestrictedMarker
-						v-if="getSelectedTypeRestriction(type.name)"
+						v-if="selectedTypeRestrictions[type.name]"
 						placement="field"
-						:name="getSelectedTypeRestriction(type.name)!.displayName"
-						:restriction="getSelectedTypeRestriction(type.name)!.restriction"
+						:name="selectedTypeRestrictions[type.name].displayName"
+						:restriction="selectedTypeRestrictions[type.name].restriction"
 						data-test-id="node-credentials-selected-restricted"
 						@contact-admin="
 							(audience) =>
-								requestContactAdmin(
-									getSelectedTypeRestriction(type.name)?.credentialType ?? type.name,
-									audience,
-								)
+								requestContactAdmin(selectedTypeRestrictions[type.name].displayName, audience)
 						"
 					/>
 					<div

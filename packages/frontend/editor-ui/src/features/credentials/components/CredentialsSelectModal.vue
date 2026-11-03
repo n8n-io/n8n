@@ -4,7 +4,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCredentialsStore } from '../credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
@@ -13,20 +13,18 @@ import type { NewCredentialsModal } from '@/Interface';
 import { N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
 	ContactAdminModal,
+	getCredentialTypeRestriction,
 	SCOPE_LABEL_KEY,
 	useTypeAvailabilityPoliciesStore,
 	type ContactAudience,
 	type RestrictedTypeKind,
+	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import type { ICredentialType } from 'n8n-workflow';
 import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue';
-import {
-	useCredentialTypeUsability,
-	type CredentialTypeUsability,
-} from '../composables/useCredentialTypeUsability';
+import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -40,7 +38,6 @@ const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
-const projectsStore = useProjectsStore();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { getCredentialTypeUsability } = useCredentialTypeUsability();
 
@@ -61,25 +58,13 @@ const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	return data?.usageScope === 'instance' ? 'instance' : undefined;
 });
 
-// The new credential goes to this project, so its policy decides which types are usable.
-const targetProjectId = projectsStore.currentProject?.id ?? projectsStore.personalProject?.id;
-const projectBehindModal = typeAvailabilityPoliciesStore.loadedProjectId;
-// Until it loads, the store reports every type as available, so the list waits for it.
-const policyLoad = targetProjectId
-	? typeAvailabilityPoliciesStore.fetchForProject(targetProjectId).catch(() => {})
-	: Promise.resolve();
-
-onBeforeUnmount(() => {
-	if (projectBehindModal && projectBehindModal !== targetProjectId) {
-		void typeAvailabilityPoliciesStore.fetchForProject(projectBehindModal);
-	}
-});
+// The page loads the policy of its project. Until it loads, the store reports every type as available.
+const isListLoading = computed(() => loading.value || typeAvailabilityPoliciesStore.isLoading);
 
 onMounted(async () => {
 	try {
 		await credentialsStore.fetchCredentialTypes(false);
 	} catch (e) {}
-	await policyLoad;
 
 	loading.value = false;
 
@@ -97,66 +82,87 @@ const allSelectableCredentialTypes = computed(() =>
 	),
 );
 
-type CredentialTypeOption = {
-	type: ICredentialType;
-	usability: CredentialTypeUsability | null;
+type RestrictedRow = {
+	/** A blocked type cannot be selected. A type whose nodes are blocked still can. */
+	blocked: boolean;
+	kind: RestrictedTypeKind;
+	restriction: TypeRestriction;
+	scopeLabel: string;
+	/** The popover derives its own copy for a blocked type. */
+	popoverScopeLabel?: string;
+	description?: string;
+	contactSubject: string;
 };
+
+type CredentialTypeOption = { type: ICredentialType; restricted: RestrictedRow | null };
+
+function toOption(type: ICredentialType): CredentialTypeOption {
+	const usability = getCredentialTypeUsability(type.name);
+	if (!usability) return { type, restricted: null };
+
+	if (usability.reason === 'typeRestricted') {
+		const { scope } = usability.restriction;
+		return {
+			type,
+			restricted: {
+				blocked: true,
+				kind: 'credential',
+				restriction: usability.restriction,
+				scopeLabel: i18n.baseText(
+					scope ? SCOPE_LABEL_KEY[scope] : 'typeAvailabilityPolicies.restrictedNodes.scope.generic',
+				),
+				contactSubject: type.displayName,
+			},
+		};
+	}
+
+	const scopeLabel = i18n.baseText(
+		'typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.scope',
+	);
+	return {
+		type,
+		restricted: {
+			blocked: false,
+			kind: 'node',
+			restriction: usability.restriction,
+			scopeLabel,
+			popoverScopeLabel: scopeLabel,
+			description: i18n.baseText(
+				'typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.description',
+				{ interpolate: { nodeTypes: usability.nodeTypeNames.join(', ') } },
+			),
+			contactSubject: usability.nodeTypeNames.join(', '),
+		},
+	};
+}
+
+const optionRank = (option: CredentialTypeOption) =>
+	!option.restricted ? 0 : option.restricted.blocked ? 1 : 2;
 
 /**
  * Usable types first, then the types a policy blocks, then the types whose nodes it blocks.
- * The store sorts the types by name, so each group keeps that order.
+ * The sort is stable and the store sorts the types by name, so each group keeps that order.
+ * It does not depend on the search, so typing only filters.
  */
+const credentialTypeOptions = computed(() =>
+	allSelectableCredentialTypes.value
+		.map(toOption)
+		.toSorted((a, b) => optionRank(a) - optionRank(b)),
+);
+
 const selectableCredentialTypes = computed(() => {
 	const q = searchQuery.value.toLowerCase();
-	const options: CredentialTypeOption[] = allSelectableCredentialTypes.value
-		.filter((type) => !q || type.displayName.toLowerCase().includes(q))
-		.map((type) => ({ type, usability: getCredentialTypeUsability(type.name) }));
+	if (!q) return credentialTypeOptions.value;
 
-	return [
-		...options.filter((option) => !option.usability),
-		...options.filter((option) => option.usability?.reason === 'typeRestricted'),
-		...options.filter((option) => option.usability?.reason === 'nodesRestricted'),
-	];
+	return credentialTypeOptions.value.filter(({ type }) =>
+		type.displayName.toLowerCase().includes(q),
+	);
 });
 
-function isTypeRestricted(type: string): boolean {
-	return getCredentialTypeUsability(type)?.reason === 'typeRestricted';
-}
-
-function scopeLabel(usability: CredentialTypeUsability): string {
-	if (usability.reason === 'nodesRestricted') {
-		return i18n.baseText('typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.scope');
-	}
-
-	return i18n.baseText(
-		usability.restriction.scope
-			? SCOPE_LABEL_KEY[usability.restriction.scope]
-			: 'typeAvailabilityPolicies.restrictedNodes.scope.generic',
-	);
-}
-
-function nodesDescription(usability: CredentialTypeUsability): string | undefined {
-	if (usability.reason !== 'nodesRestricted') return undefined;
-
-	return i18n.baseText(
-		'typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.description',
-		{
-			interpolate: { nodeTypes: usability.nodeTypeNames.join(', ') },
-		},
-	);
-}
-
-function requestContactAdmin(
-	type: ICredentialType,
-	usability: CredentialTypeUsability,
-	audience: ContactAudience,
-) {
+function requestContactAdmin(restricted: RestrictedRow, audience: ContactAudience) {
 	// The dialog opens on top of the page, so the list must not stay open behind it.
 	selectRef.value?.blur();
-	contactAdmin.value =
-		usability.reason === 'nodesRestricted'
-			? { subject: usability.nodeTypeNames.join(', '), kind: 'node', audience }
-			: { subject: type.displayName, kind: 'credential', audience };
+	contactAdmin.value = { subject: restricted.contactSubject, kind: restricted.kind, audience };
 	isContactAdminOpen.value = true;
 }
 
@@ -166,7 +172,7 @@ function filterCredentials(query: string) {
 
 function onSelect(type: string) {
 	// Enter still selects a highlighted row that became restricted after the list opened.
-	if (isTypeRestricted(type)) return;
+	if (getCredentialTypeRestriction(type)) return;
 	selected.value = type;
 }
 
@@ -207,7 +213,7 @@ function openCredentialType() {
 		:event-bus="modalBus"
 		width="50%"
 		:center="true"
-		:loading="loading"
+		:loading="isListLoading"
 		max-width="460px"
 		min-height="250px"
 	>
@@ -238,35 +244,27 @@ function openCredentialType() {
 					</template>
 					<!-- A press on a disabled row would move the focus out of the search input, so typing would stop filtering. -->
 					<N8nOption
-						v-for="{ type: credential, usability } in selectableCredentialTypes"
+						v-for="{ type: credential, restricted } in selectableCredentialTypes"
 						:key="credential.name"
 						:value="credential.name"
 						:label="credential.displayName"
-						:disabled="usability?.reason === 'typeRestricted'"
+						:disabled="restricted?.blocked"
 						filterable
 						data-test-id="new-credential-type-select-option"
-						:data-restriction="usability?.reason"
-						@mousedown="
-							(event: MouseEvent) =>
-								usability?.reason === 'typeRestricted' && event.preventDefault()
-						"
+						@mousedown="(event: MouseEvent) => restricted?.blocked && event.preventDefault()"
 					>
-						<div v-if="usability" :class="$style.restrictedOption">
+						<div v-if="restricted" :class="$style.restrictedOption">
 							<span :class="$style.restrictedName">{{ credential.displayName }}</span>
 							<span :class="$style.restrictedScope">
-								<N8nText size="small" color="text-light">{{ scopeLabel(usability) }}</N8nText>
+								<N8nText size="small" color="text-light">{{ restricted.scopeLabel }}</N8nText>
 								<CredentialTypeRestrictedMarker
 									v-if="hasListOpened"
 									:name="credential.displayName"
-									:restriction="usability.restriction"
-									:kind="usability.reason === 'nodesRestricted' ? 'node' : 'credential'"
-									:scope-label="
-										usability.reason === 'nodesRestricted' ? scopeLabel(usability) : undefined
-									"
-									:description="nodesDescription(usability)"
-									@contact-admin="
-										(audience) => requestContactAdmin(credential, usability, audience)
-									"
+									:restriction="restricted.restriction"
+									:kind="restricted.kind"
+									:scope-label="restricted.popoverScopeLabel"
+									:description="restricted.description"
+									@contact-admin="(audience) => requestContactAdmin(restricted, audience)"
 								/>
 							</span>
 						</div>
@@ -286,7 +284,7 @@ function openCredentialType() {
 					:label="i18n.baseText('credentialSelectModal.continue')"
 					float="right"
 					size="large"
-					:disabled="!selected || isTypeRestricted(selected)"
+					:disabled="!selected || !!getCredentialTypeRestriction(selected)"
 					data-test-id="new-credential-type-button"
 					@click="openCredentialType"
 				/>
