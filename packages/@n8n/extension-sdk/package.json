@@ -1,6 +1,6 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
