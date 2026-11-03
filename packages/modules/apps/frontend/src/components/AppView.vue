@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppResponse } from '@n8n/api-types';
+import type { AppPreviewElement, AppResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState, N8nLoading } from '@n8n/design-system';
@@ -16,9 +16,17 @@ import AppPreview from './AppPreview.vue';
 import AppConfigure from './configure/AppConfigure.vue';
 import AppVersionsPanel from './versions/AppVersionsPanel.vue';
 
-const props = defineProps<{ projectId: string; appId: string }>();
+const props = defineProps<{
+	projectId: string;
+	appId: string;
+	inspectable?: boolean;
+	elementSelected?: boolean;
+}>();
 
-const emit = defineEmits<{ deleted: [appId: string] }>();
+const emit = defineEmits<{
+	deleted: [appId: string];
+	'element-selected': [element: AppPreviewElement];
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -62,7 +70,8 @@ async function loadApp(keepView = false) {
 }
 
 async function refresh() {
-	await Promise.all([loadApp(true), versions.refresh()]);
+	await loadApp(true);
+	await versions.refresh();
 }
 
 // A publish also saves the version name, so the version list reloads when the published version changes.
@@ -97,7 +106,7 @@ defineExpose({ refresh });
 			@show-versions="versionsOpen = true"
 		/>
 
-		<div :class="$style.body">
+		<div :class="$style.workspace">
 			<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
 				<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
 
@@ -114,6 +123,9 @@ defineExpose({ refresh });
 						:project-id="projectId"
 						:app="app"
 						:versions="versions"
+						:inspectable="inspectable"
+						:element-selected="elementSelected"
+						@element-selected="emit('element-selected', $event)"
 					/>
 					<AppConfigure v-else :app="app" @updated="app = $event" />
 				</template>
@@ -138,12 +150,13 @@ defineExpose({ refresh });
 	min-height: 0;
 }
 
-.body {
+.workspace {
 	position: relative;
 	display: flex;
-	flex-direction: column;
 	flex: 1;
 	min-height: 0;
+	min-width: 0;
+	container-type: inline-size;
 }
 
 .content {

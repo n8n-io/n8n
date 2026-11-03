@@ -6,7 +6,12 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
-import { appNameSchema, appNamespaceSchema, appVisibilitySchema } from './app.schema';
+import {
+	appNameSchema,
+	appNamespaceSchema,
+	appPreviewElementSchema,
+	appVisibilitySchema,
+} from './app.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -1550,6 +1555,7 @@ export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingApp
 export const instanceAiAppTargetSchema = z.object({
 	appId: z.string().uuid(),
 	projectId: z.string().min(1),
+	name: z.string().max(255).optional(),
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
@@ -1591,11 +1597,18 @@ export const instanceAiNodesAttachmentSchema = z.object({
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
 
+export const instanceAiElementAttachmentSchema = appPreviewElementSchema.extend({
+	type: z.literal('element'),
+	appId: z.string().min(1).max(64),
+});
+export type InstanceAiElementAttachment = z.infer<typeof instanceAiElementAttachmentSchema>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 
@@ -1753,6 +1766,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `app_builder_page` — Instance AI hand-off from the app builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
  * - `assistant_page` — first message typed on the Instance AI empty/home page
@@ -1774,6 +1788,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
+	'app_builder_page',
 	'agent_preview',
 	'self_healing_result',
 	'assistant_page',
