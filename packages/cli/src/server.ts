@@ -79,6 +79,7 @@ import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { responsesApiFallback } from './modules/agents/integrations/platforms/webhook/responses-api';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
@@ -269,6 +270,9 @@ export class Server extends AbstractServer {
 
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
+
+		// The agent webhook keeps the OpenAI error shape for unknown routes and unparsable bodies.
+		app.use(`/${this.globalConfig.endpoints.agentWebhook}`, ...responsesApiFallback);
 
 		// ----------------------------------------
 		// Options

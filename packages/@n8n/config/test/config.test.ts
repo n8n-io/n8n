@@ -1271,6 +1271,23 @@ describe('GlobalConfig', () => {
 		});
 	});
 
+	describe('agent webhook endpoint', () => {
+		it.each(['', 'a/b', '(.*)', '.', '..', 'rest', 'Webhook', 'form-test', 'healthz', 'assets'])(
+			'should fall back to the default for %j',
+			(value) => {
+				process.env = { N8N_ENDPOINT_AGENT_WEBHOOK: value };
+
+				expect(Container.get(GlobalConfig).endpoints.agentWebhook).toEqual('agent-webhook');
+			},
+		);
+
+		it('should accept a path of its own', () => {
+			process.env = { N8N_ENDPOINT_AGENT_WEBHOOK: 'ai.agents' };
+
+			expect(Container.get(GlobalConfig).endpoints.agentWebhook).toEqual('ai.agents');
+		});
+	});
+
 	describe('health endpoint transformation', () => {
 		it('should add leading slash if not present', () => {
 			process.env = {

@@ -320,6 +320,8 @@ export const AgentIntegrationConfigSchema = z.discriminatedUnion('type', [
 
 export type AgentIntegrationConfig = z.infer<typeof AgentIntegrationConfigSchema>;
 
+export type AgentWebhookIntegrationConfig = z.infer<typeof webhookIntegration>;
+
 export type CredentialAgentIntegrationConfig = Exclude<
 	AgentIntegrationConfig,
 	{ type: 'n8n_chat' }
