@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { AppBindingKind } from '@n8n/api-types';
+import { useDebounce } from '@n8n/composables/useDebounce';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -12,7 +14,8 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
+import { computed, onScopeDispose, ref } from 'vue';
 
 import { listBindableResources, type BindableResource } from '../../../apps.api';
 import {
@@ -35,38 +38,66 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
+const { debounce } = useDebounce();
+const latestFetch = useLatestFetch();
 
 const open = ref(false);
 const loading = ref(false);
 const resources = ref<BindableResource[]>([]);
+const resourceCount = ref(0);
 const search = ref('');
 const selected = ref<BindableResource>();
 const permissions = ref<BindingPermission[]>([]);
 
 const config = computed(() => BINDING_KINDS[props.kind]);
-const visible = computed(() => {
-	const query = search.value.trim().toLowerCase();
-	return resources.value.filter((resource) => resource.name.toLowerCase().includes(query));
-});
+const moreResults = computed(() => Math.max(0, resourceCount.value - resources.value.length));
 
-async function onOpen(value: boolean) {
-	open.value = value;
-	if (!value) return;
-	search.value = '';
-	selected.value = undefined;
+async function fetchResources(query: string) {
+	const isLatest = latestFetch.next();
 	loading.value = true;
 	try {
-		resources.value = await listBindableResources(
+		const result = await listBindableResources(
 			rootStore.restApiContext,
 			props.projectId,
 			props.kind,
+			query || undefined,
 		);
+		if (!isLatest()) return;
+		resources.value = result.data;
+		resourceCount.value = result.count;
 	} catch (error) {
+		if (!isLatest()) return;
 		toast.showError(error, i18n.baseText('apps.configure.connections.listError'));
 		open.value = false;
 	} finally {
-		loading.value = false;
+		if (isLatest()) loading.value = false;
 	}
+}
+
+const fetchResourcesDebounced = debounce(fetchResources, {
+	debounceTime: DEBOUNCE_TIME.INPUT.SEARCH,
+	trailing: true,
+});
+
+function onSearch(value: string) {
+	latestFetch.invalidate();
+	loading.value = true;
+	void fetchResourcesDebounced(value.trim());
+}
+
+async function onOpen(value: boolean) {
+	open.value = value;
+	if (!value) {
+		fetchResourcesDebounced.cancel();
+		latestFetch.invalidate();
+		loading.value = false;
+		return;
+	}
+	search.value = '';
+	selected.value = undefined;
+	resources.value = [];
+	resourceCount.value = 0;
+	await fetchResources('');
 }
 
 function add(resource: BindableResource, chosen: BindingPermission[]) {
@@ -86,6 +117,11 @@ function choose(resource: BindableResource) {
 function toggle(permission: BindingPermission, checked: boolean) {
 	permissions.value = togglePermission(props.kind, permissions.value, permission, checked);
 }
+
+onScopeDispose(() => {
+	fetchResourcesDebounced.cancel();
+	latestFetch.invalidate();
+});
 </script>
 
 <template>
@@ -130,15 +166,16 @@ function toggle(permission: BindingPermission, checked: boolean) {
 						size="small"
 						:placeholder="i18n.baseText('apps.configure.connections.search')"
 						data-test-id="app-binding-picker-search"
+						@update:model-value="onSearch"
 					/>
 					<N8nText v-if="loading" size="small" color="text-light">
 						{{ i18n.baseText('apps.configure.connections.loading') }}
 					</N8nText>
-					<N8nText v-else-if="visible.length === 0" size="small" color="text-light">
+					<N8nText v-else-if="resources.length === 0" size="small" color="text-light">
 						{{ i18n.baseText('apps.configure.connections.empty') }}
 					</N8nText>
 					<ul v-else :class="$style.list">
-						<li v-for="resource in visible" :key="resource.id">
+						<li v-for="resource in resources" :key="resource.id">
 							<button
 								type="button"
 								:class="$style.item"
@@ -150,6 +187,18 @@ function toggle(permission: BindingPermission, checked: boolean) {
 							</button>
 						</li>
 					</ul>
+					<N8nText
+						v-if="!loading && moreResults > 0"
+						size="small"
+						color="text-light"
+						data-test-id="app-binding-picker-more-results"
+					>
+						{{
+							i18n.baseText('apps.configure.connections.moreResults', {
+								interpolate: { count: moreResults },
+							})
+						}}
+					</N8nText>
 				</template>
 			</div>
 		</template>

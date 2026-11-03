@@ -113,14 +113,16 @@ describe('apps.api', () => {
 			data: [{ id: 'w1', name: 'Submit', active: true }],
 		});
 
-		expect(await listBindableResources(context, 'project-1', 'workflow')).toEqual([
-			{ id: 'w1', name: 'Submit' },
-		]);
+		expect(await listBindableResources(context, 'project-1', 'workflow', 'submit')).toEqual({
+			count: 1,
+			data: [{ id: 'w1', name: 'Submit' }],
+		});
 		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/workflows', {
 			filter: {
 				projectId: 'project-1',
 				isArchived: false,
 				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+				query: 'submit',
 			},
 			select: JSON.stringify(['id', 'name']),
 			take: 100,
@@ -134,14 +136,15 @@ describe('apps.api', () => {
 			data: [{ id: 't1', name: 'Tasks' }],
 		});
 
-		expect(await listBindableResources(context, 'project-1', 'dataTable')).toEqual([
-			{ id: 't1', name: 'Tasks' },
-		]);
+		expect(await listBindableResources(context, 'project-1', 'dataTable', 'tasks')).toEqual({
+			count: 1,
+			data: [{ id: 't1', name: 'Tasks' }],
+		});
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			context,
 			'GET',
 			'/projects/project-1/data-tables',
-			{ take: 250, sortBy: 'name:asc' },
+			{ take: 100, sortBy: 'name:asc', filter: { name: 'tasks' } },
 		);
 	});
 
@@ -151,14 +154,15 @@ describe('apps.api', () => {
 			data: [{ id: 'a1', name: 'Support' }],
 		});
 
-		expect(await listBindableResources(context, 'project-1', 'agent')).toEqual([
-			{ id: 'a1', name: 'Support' },
-		]);
+		expect(await listBindableResources(context, 'project-1', 'agent', 'support')).toEqual({
+			count: 1,
+			data: [{ id: 'a1', name: 'Support' }],
+		});
 		expect(getFullApiResponse).toHaveBeenCalledWith(
 			context,
 			'GET',
 			'/projects/project-1/agents/v2',
-			{ take: 250, sortBy: 'name:asc' },
+			{ take: 100, sortBy: 'name:asc', filter: { query: 'support' } },
 		);
 	});
 

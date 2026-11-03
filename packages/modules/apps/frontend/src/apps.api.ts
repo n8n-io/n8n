@@ -147,38 +147,48 @@ export async function setAppBindings(
 }
 
 export type BindableResource = { id: string; name: string };
+export type BindableResourceList = { data: BindableResource[]; count: number };
 
-const BINDABLE_RESOURCE_LIMIT = 250;
-const BINDABLE_WORKFLOW_LIMIT = 100;
+const BINDABLE_RESOURCE_LIMIT = 100;
 
-async function listBindableWorkflows(context: IRestApiContext, projectId: string) {
-	const { data } = await getFullApiResponse<BindableResource[]>(context, 'GET', '/workflows', {
-		filter: { projectId, isArchived: false, triggerNodeTypes: SUPPORTED_WORKFLOW_TOOL_TRIGGERS },
+async function listBindableWorkflows(context: IRestApiContext, projectId: string, query?: string) {
+	return await getFullApiResponse<BindableResource[]>(context, 'GET', '/workflows', {
+		filter: {
+			projectId,
+			isArchived: false,
+			triggerNodeTypes: SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+			...(query ? { query } : {}),
+		},
 		select: JSON.stringify(['id', 'name']),
-		take: BINDABLE_WORKFLOW_LIMIT,
+		take: BINDABLE_RESOURCE_LIMIT,
 		sortBy: 'name:asc',
 	});
-	return data;
 }
 
-async function listBindableDataTables(context: IRestApiContext, projectId: string) {
-	const { data } = await makeRestApiRequest<{ data: BindableResource[] }>(
+async function listBindableDataTables(context: IRestApiContext, projectId: string, query?: string) {
+	return await makeRestApiRequest<BindableResourceList>(
 		context,
 		'GET',
 		`/projects/${projectId}/data-tables`,
-		{ take: BINDABLE_RESOURCE_LIMIT, sortBy: 'name:asc' },
+		{
+			take: BINDABLE_RESOURCE_LIMIT,
+			sortBy: 'name:asc',
+			...(query ? { filter: { name: query } } : {}),
+		},
 	);
-	return data;
 }
 
-async function listBindableAgents(context: IRestApiContext, projectId: string) {
-	const { data } = await getFullApiResponse<BindableResource[]>(
+async function listBindableAgents(context: IRestApiContext, projectId: string, query?: string) {
+	return await getFullApiResponse<BindableResource[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2`,
-		{ take: BINDABLE_RESOURCE_LIMIT, sortBy: 'name:asc' },
+		{
+			take: BINDABLE_RESOURCE_LIMIT,
+			sortBy: 'name:asc',
+			...(query ? { filter: { query } } : {}),
+		},
 	);
-	return data;
 }
 
 const BINDABLE_RESOURCE_LISTS = {
@@ -187,16 +197,17 @@ const BINDABLE_RESOURCE_LISTS = {
 	agent: listBindableAgents,
 } satisfies Record<
 	AppBindingKind,
-	(context: IRestApiContext, projectId: string) => Promise<BindableResource[]>
+	(context: IRestApiContext, projectId: string, query?: string) => Promise<BindableResourceList>
 >;
 
 export async function listBindableResources(
 	context: IRestApiContext,
 	projectId: string,
 	kind: AppBindingKind,
-): Promise<BindableResource[]> {
-	const resources = await BINDABLE_RESOURCE_LISTS[kind](context, projectId);
-	return resources.map(({ id, name }) => ({ id, name }));
+	query?: string,
+): Promise<BindableResourceList> {
+	const { data, count } = await BINDABLE_RESOURCE_LISTS[kind](context, projectId, query);
+	return { data: data.map(({ id, name }) => ({ id, name })), count };
 }
 
 export async function unpublishApp(

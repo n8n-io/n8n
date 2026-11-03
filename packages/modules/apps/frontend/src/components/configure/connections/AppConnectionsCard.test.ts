@@ -132,7 +132,10 @@ describe('AppConnectionsCard', () => {
 
 	it('adds a workflow under a key from its name and emits the new draft', async () => {
 		providePermissions(['app:update']);
-		vi.mocked(listBindableResources).mockResolvedValue([{ id: 'w2', name: 'Post weekly report' }]);
+		vi.mocked(listBindableResources).mockResolvedValue({
+			count: 1,
+			data: [{ id: 'w2', name: 'Post weekly report' }],
+		});
 		const { findByTestId, emitted } = renderComponent();
 
 		await userEvent.click(await findByTestId('app-binding-add-workflow'));
@@ -149,12 +152,41 @@ describe('AppConnectionsCard', () => {
 		expect(refresh).toHaveBeenCalledOnce();
 	});
 
+	it('searches resources and shows when more matches exist', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(listBindableResources)
+			.mockResolvedValueOnce({ count: 101, data: [{ id: 'w2', name: 'Another workflow' }] })
+			.mockResolvedValueOnce({ count: 1, data: [{ id: 'w3', name: 'Post weekly report' }] });
+		const { findByTestId, getByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-add-workflow'));
+		expect(await findByTestId('app-binding-picker-more-results')).toHaveTextContent(
+			'Refine your search to see 100 more results',
+		);
+
+		await userEvent.type(getByTestId('app-binding-picker-search'), 'post');
+		await waitFor(() =>
+			expect(listBindableResources).toHaveBeenLastCalledWith(
+				expect.anything(),
+				'project-1',
+				'workflow',
+				'post',
+			),
+		);
+		expect(await findByTestId('app-binding-picker-item-w3')).toHaveTextContent(
+			'Post weekly report',
+		);
+	});
+
 	it('adds a data table with the chosen permissions', async () => {
 		providePermissions(['app:update']);
-		vi.mocked(listBindableResources).mockResolvedValue([
-			{ id: 't1', name: 'Weekly channel activity' },
-			{ id: 't2', name: 'Orders' },
-		]);
+		vi.mocked(listBindableResources).mockResolvedValue({
+			count: 2,
+			data: [
+				{ id: 't1', name: 'Weekly channel activity' },
+				{ id: 't2', name: 'Orders' },
+			],
+		});
 		const { findByTestId, getByTestId } = renderComponent();
 
 		await userEvent.click(await findByTestId('app-binding-add-dataTable'));

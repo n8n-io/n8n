@@ -403,6 +403,7 @@
 	"apps.configure.connections.search": "Search",
 	"apps.configure.connections.loading": "Loading…",
 	"apps.configure.connections.empty": "Nothing to add",
+	"apps.configure.connections.moreResults": "Refine your search to see {count} more results",
 	"apps.configure.connections.key": "Key in the app code",
 	"apps.configure.connections.permissions": "Permissions",
 	"apps.configure.connections.permission.read": "Read rows",
