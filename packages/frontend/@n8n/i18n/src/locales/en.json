@@ -5298,6 +5298,8 @@
 	"settings.migrationReport.scopeNote": "This report only includes the workflows you can edit.",
 	"settings.migrationReport.lastUpdated": "Last updated {time}",
 	"settings.migrationReport.neverUpdated": "Never updated",
+	"settings.migrationReport.slowLoading.title": "Still scanning your workflows…",
+	"settings.migrationReport.slowLoading.description": "This can take a while on instances with many workflows.",
 	"settings.migrationReport.tabs.workflowIssues": "Workflow issues",
 	"settings.migrationReport.tabs.instanceIssues": "Instance issues",
 	"settings.migrationReport.impact.upgradeBlocked": "Upgrade blocked",
