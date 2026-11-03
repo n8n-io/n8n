@@ -1,5 +1,6 @@
 import type { AppBinding } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -13,7 +14,7 @@ import type { AppAgentPort, AppDataTablePort, AppWorkflowPort } from '../app-bin
 import { AppBindingsService } from '../app-bindings.service';
 
 const APP_ID = '0190a8d6-4a2e-7000-8000-000000000001';
-const user = mock<User>();
+const user = mock<User>({ id: 'user-1' });
 
 const tableRead: AppBinding = {
 	key: 'tasks',
@@ -72,9 +73,11 @@ function setup({ bindings = [], ...app }: Partial<App> & { bindings?: AppBinding
 		published: true,
 	}));
 	const changes = mock<AppChangeService>();
-	changes.saveBindings.mockImplementation(
-		async (_p, _a, _v, next) => ({ id: NEW_ID, appId: APP_ID, bindings: next }) as AppVersion,
-	);
+	changes.saveBindings.mockImplementation(async (_p, _a, _v, next) => ({
+		version: { id: NEW_ID, appId: APP_ID, bindings: next } as AppVersion,
+		previousBindings: bindings,
+	}));
+	const events = mock<EventService>();
 	const service = new AppBindingsService(
 		apps,
 		versions,
@@ -83,11 +86,50 @@ function setup({ bindings = [], ...app }: Partial<App> & { bindings?: AppBinding
 		workflows,
 		agents,
 		mock<Logger>(),
+		events,
 	);
-	return { service, apps, versions, changes, dataTables, workflows, agents };
+	return { service, apps, versions, changes, dataTables, workflows, agents, events };
 }
 
 describe('AppBindingsService', () => {
+	it('emits app-bindings-changed with counts and the change against the previous draft', async () => {
+		const { service, events } = setup({ bindings: [workflow, agentChat] });
+
+		await service.setBindings(user, 'p1', APP_ID, DRAFT_ID, [tableRead, workflow]);
+
+		expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-bindings-changed', {
+			appId: APP_ID,
+			projectId: 'p1',
+			versionId: NEW_ID,
+			userId: 'user-1',
+			workflowCount: 1,
+			dataTableCount: 1,
+			agentCount: 0,
+			addedCount: 1,
+			removedCount: 1,
+		});
+	});
+
+	it('counts every binding as added for an app without a version', async () => {
+		const { service, events } = setup({ draftVersionId: null });
+
+		await service.setBindings(user, 'p1', APP_ID, null, [workflow]);
+
+		expect(events.emit).toHaveBeenCalledWith(
+			'app-bindings-changed',
+			expect.objectContaining({ addedCount: 1, removedCount: 0 }),
+		);
+	});
+
+	it('emits nothing when the save fails', async () => {
+		const { service, changes, events } = setup();
+		changes.saveBindings.mockRejectedValue(new ConflictError('The app draft changed.'));
+
+		await expect(service.setBindings(user, 'p1', APP_ID, DRAFT_ID, [workflow])).rejects.toThrow();
+
+		expect(events.emit).not.toHaveBeenCalled();
+	});
+
 	it('checks every binding with the acting user, then saves them as a new version', async () => {
 		const { service, changes, dataTables, workflows } = setup();
 
@@ -95,10 +137,13 @@ describe('AppBindingsService', () => {
 
 		expect(dataTables.assertCanBind).toHaveBeenCalledWith(user, 'p1', tableRead);
 		expect(workflows.assertCanBind).toHaveBeenCalledWith(user, 'p1', workflow);
-		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, DRAFT_ID, [
-			tableRead,
-			workflow,
-		]);
+		expect(changes.saveBindings).toHaveBeenCalledWith(
+			'p1',
+			APP_ID,
+			DRAFT_ID,
+			[tableRead, workflow],
+			{ userId: 'user-1' },
+		);
 		expect(result.versionId).toBe(NEW_ID);
 		expect(result.bindings.map(({ key }) => key)).toEqual(['tasks', 'submit']);
 	});
@@ -108,7 +153,9 @@ describe('AppBindingsService', () => {
 
 		const result = await service.setBindings(user, 'p1', APP_ID, DRAFT_ID, [workflow]);
 
-		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, DRAFT_ID, [workflow]);
+		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, DRAFT_ID, [workflow], {
+			userId: 'user-1',
+		});
 		expect(result.versionId).toBe(NEW_ID);
 	});
 
@@ -127,7 +174,9 @@ describe('AppBindingsService', () => {
 
 		const result = await service.setBindings(user, 'p1', APP_ID, null, [workflow]);
 
-		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, null, [workflow]);
+		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, null, [workflow], {
+			userId: 'user-1',
+		});
 		expect(result.versionId).toBe(NEW_ID);
 	});
 
@@ -201,7 +250,9 @@ describe('AppBindingsService', () => {
 
 		await service.setBindings(user, 'p1', APP_ID, DRAFT_ID, [agentChat]);
 		expect(agents.assertCanBind).toHaveBeenCalledWith(user, 'p1', agentChat);
-		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, DRAFT_ID, [agentChat]);
+		expect(changes.saveBindings).toHaveBeenCalledWith('p1', APP_ID, DRAFT_ID, [agentChat], {
+			userId: 'user-1',
+		});
 
 		const { bindings } = await service.getBindings('p1', APP_ID);
 		expect(agents.describe).toHaveBeenCalledWith('p1', agentChat);

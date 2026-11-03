@@ -1,6 +1,7 @@
 import type { AppBuildStatus, AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { defineComponent, h, ref } from 'vue';
@@ -10,8 +11,9 @@ import AppView from './AppView.vue';
 
 vi.mock('../apps.api');
 
-const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+const { showError, track } = vi.hoisted(() => ({ showError: vi.fn(), track: vi.fn() }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError }) }));
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 const app = (id: string): AppResponse => ({
 	id,
@@ -229,5 +231,27 @@ describe('AppView', () => {
 		);
 		expect(getByTestId('publishable-version')).toHaveTextContent('v1');
 		expect(getByTestId('app-view-preview')).toBeInTheDocument();
+	});
+
+	it('tracks the builder open once and not on a refresh', async () => {
+		vi.mocked(getApp).mockResolvedValue({ ...app('app-1'), publishedVersionId: 'v1' });
+		const { findByTestId } = renderWithRef();
+		await findByTestId('app-view-preview');
+
+		await view.value?.refresh();
+
+		expect(track).toHaveBeenCalledExactlyOnceWith(TELEMETRY_EVENT.APPS.USER_OPENED_APP_BUILDER, {
+			app_id: 'app-1',
+			project_id: 'project-1',
+			is_published: true,
+		});
+	});
+
+	it('does not track the builder open for a missing app', async () => {
+		vi.mocked(getApp).mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+		const { findByTestId } = renderComponent();
+		await findByTestId('app-view-not-found');
+
+		expect(track).not.toHaveBeenCalled();
 	});
 });

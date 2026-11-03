@@ -1,5 +1,6 @@
 import type { AgentSseEvent, AppBinding } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
@@ -76,7 +77,10 @@ function request(
 		// Like Express, `is` answers null for a request without a body.
 		is: (type: string) =>
 			options.body === undefined ? null : headers['content-type']?.startsWith(type) ? type : false,
-		appRuntime: options.runtime === false ? undefined : { app, bindings, user },
+		appRuntime:
+			options.runtime === false
+				? undefined
+				: { app, bindings, user, versionId: PUBLISHED_ID, isPreview: false },
 	} as unknown as AppRuntimeRequest<{ key: string; executionId: string }>;
 }
 
@@ -123,6 +127,7 @@ function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) 
 	const dataTables = mock<AppDataTablePort>();
 	const workflows = mock<AppWorkflowPort>();
 	const agents = mock<AppAgentPort>();
+	const events = mock<EventService>();
 	const controller = new AppRuntimeController(
 		auth,
 		preview,
@@ -132,8 +137,9 @@ function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) 
 		workflows,
 		agents,
 		mock<Logger>(),
+		events,
 	);
-	return { controller, auth, preview, versions, dataTables, workflows, agents };
+	return { controller, auth, preview, versions, dataTables, workflows, agents, events };
 }
 
 describe('AppRuntimeController', () => {
@@ -274,6 +280,7 @@ describe('AppRuntimeController', () => {
 			expect(auth.admit).not.toHaveBeenCalled();
 			expect(versions.findVersionById).toHaveBeenCalledWith(DRAFT_ID);
 			expect(req.appRuntime?.bindings).toEqual(draftBindings);
+			expect(req.appRuntime).toMatchObject({ versionId: DRAFT_ID, isPreview: true });
 			expect(req.appRuntime?.user).toEqual({
 				id: 'editor-1',
 				email: 'e@b.c',
@@ -707,6 +714,119 @@ describe('AppRuntimeController', () => {
 
 			expect(res.status).toHaveBeenCalledWith(403);
 			expect(agents.messages).not.toHaveBeenCalled();
+		});
+	});
+	describe('interaction telemetry', () => {
+		const sessionId = '0190a8d6-4a2e-4000-8000-000000000001';
+		const filter = { type: 'and', filters: [{ columnName: 'id', condition: 'eq', value: 1 }] };
+
+		async function* noEvents(): AsyncGenerator<AgentSseEvent> {}
+
+		it.each([
+			{
+				name: 'an insert',
+				type: 'data_table_write',
+				call: async ({ controller }: ReturnType<typeof setup>) =>
+					await controller.insertRows(
+						request({ method: 'POST', params: { key: 'notes' }, body: { data: [{ title: 'x' }] } }),
+						response(),
+					),
+			},
+			{
+				name: 'an update',
+				type: 'data_table_write',
+				call: async ({ controller }: ReturnType<typeof setup>) =>
+					await controller.updateRows(
+						request({
+							method: 'PATCH',
+							params: { key: 'notes' },
+							body: { filter, data: { done: true } },
+						}),
+						response(),
+					),
+			},
+			{
+				name: 'a delete',
+				type: 'data_table_write',
+				call: async ({ controller }: ReturnType<typeof setup>) =>
+					await controller.deleteRows(
+						request({ method: 'POST', params: { key: 'notes' }, body: { filter } }),
+						response(),
+					),
+			},
+			{
+				name: 'a workflow run',
+				type: 'workflow_run',
+				call: async ({ controller, workflows }: ReturnType<typeof setup>) => {
+					workflows.run.mockResolvedValue({ executionId: '7', status: 'running' });
+					await controller.runWorkflow(
+						request({ method: 'POST', params: { key: 'submit' } }),
+						response(),
+					);
+				},
+			},
+			{
+				name: 'an agent message',
+				type: 'agent_message',
+				call: async ({ controller, agents }: ReturnType<typeof setup>) => {
+					agents.chat.mockResolvedValue({ events: noEvents() });
+					await controller.chat(
+						request({
+							method: 'POST',
+							params: { key: 'support' },
+							body: { message: 'Hello', sessionId },
+						}),
+						response(),
+					);
+				},
+			},
+		])('emits app-interacted once for $name', async ({ type, call }) => {
+			const context = setup();
+			context.dataTables.insertRows.mockResolvedValue([]);
+			context.dataTables.updateRows.mockResolvedValue([]);
+			context.dataTables.deleteRows.mockResolvedValue([]);
+
+			await call(context);
+
+			expect(context.events.emit).toHaveBeenCalledExactlyOnceWith('app-interacted', {
+				appId: 'app-1',
+				versionId: PUBLISHED_ID,
+				userId: 'user-1',
+				interactionType: type,
+				isPreview: false,
+			});
+		});
+
+		it('emits nothing for reads, polls and resumed turns', async () => {
+			const { controller, dataTables, workflows, agents, events } = setup();
+			dataTables.listRows.mockResolvedValue({ count: 0, data: [] });
+			workflows.getRun.mockResolvedValue({ executionId: '7', status: 'running' });
+			agents.resume.mockResolvedValue({ events: noEvents() });
+
+			await controller.listRows(request({ params: { key: 'tasks' } }), response());
+			await controller.getRun(request({ params: { key: 'submit', executionId: '7' } }), response());
+			await controller.resume(
+				request({
+					method: 'POST',
+					params: { key: 'support' },
+					body: { sessionId, runId: 'r1', toolCallId: 't1', resumeData: {} },
+				}),
+				response(),
+			);
+
+			expect(events.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits nothing when the call fails', async () => {
+			const { controller, workflows, events } = setup();
+			workflows.run.mockRejectedValue(new AppRuntimeError(409, 'workflow_not_published', 'x'));
+
+			await controller.runWorkflow(
+				request({ method: 'POST', params: { key: 'submit' } }),
+				response(),
+			);
+
+			expect(events.emit).not.toHaveBeenCalled();
 		});
 	});
 });

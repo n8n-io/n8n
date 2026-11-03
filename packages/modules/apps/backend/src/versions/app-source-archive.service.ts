@@ -2,6 +2,7 @@ import type { AppBuildResponse } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { AppArchive } from '../app-archive';
+import type { AppActor } from '../app-events';
 import { AppsService } from '../apps.service';
 import { loadAppSdkFiles } from '../build/app-sdk-files';
 import { createAppScaffold } from '../scaffold/app-scaffold';
@@ -42,8 +43,17 @@ export class AppSourceArchiveService {
 		baseVersionId: string | null,
 		archive: Buffer,
 		label: string | null,
+		actor?: AppActor,
 	): Promise<AppBuildResponse> {
 		const files = await this.archives.unpack(archive);
-		return await this.changes.commit(projectId, appId, baseVersionId, files, label);
+		return await this.changes.commit(
+			projectId,
+			appId,
+			baseVersionId,
+			files,
+			label,
+			undefined,
+			actor,
+		);
 	}
 }

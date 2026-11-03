@@ -7,6 +7,7 @@ import {
 	type AppRuntimeBinding,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -41,6 +42,7 @@ export class AppBindingsService {
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
 		private readonly logger: Logger,
+		private readonly events: EventService,
 	) {}
 
 	async getBindings(projectId: string, appId: string): Promise<AppBindingsResponse> {
@@ -70,7 +72,30 @@ export class AppBindingsService {
 		for (const binding of bindings) {
 			await this.assertCanBind(user, projectId, binding);
 		}
-		const version = await this.changes.saveBindings(projectId, appId, baseVersionId, bindings);
+		const { version, previousBindings } = await this.changes.saveBindings(
+			projectId,
+			appId,
+			baseVersionId,
+			bindings,
+			{
+				userId: user.id,
+			},
+		);
+		// Counts compare binding keys: a key that points to another resource is neither added nor removed.
+		const previousKeys = new Set(previousBindings.map(({ key }) => key));
+		const nextKeys = new Set(bindings.map(({ key }) => key));
+		const count = (kind: AppBinding['kind']) => bindings.filter((b) => b.kind === kind).length;
+		this.events.emit('app-bindings-changed', {
+			appId,
+			projectId,
+			versionId: version.id,
+			userId: user.id,
+			workflowCount: count('workflow'),
+			dataTableCount: count('dataTable'),
+			agentCount: count('agent'),
+			addedCount: [...nextKeys].filter((key) => !previousKeys.has(key)).length,
+			removedCount: [...previousKeys].filter((key) => !nextKeys.has(key)).length,
+		});
 		this.logger.debug('Saved app bindings as a new version.', {
 			projectId,
 			appId,

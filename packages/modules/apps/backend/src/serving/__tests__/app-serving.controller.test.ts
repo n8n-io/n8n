@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -21,16 +22,22 @@ function setup(url = '/', navigation = true) {
 	const auth = mock<AppAuthService>({ isNavigation: () => navigation });
 	const hosts = mock<AppHostService>();
 	const preview = mock<AppPreviewService>({ editorOrigin: 'https://n8n.example.net' });
-	const controller = new AppServingController(bundles, auth, hosts, preview);
+	const events = mock<EventService>();
+	const controller = new AppServingController(bundles, auth, hosts, preview, events);
 	const req = mock<AppRequest>({
 		method: 'GET',
 		path: url,
-		appContext: { app: { publishedVersionId: 'version' }, versionId: 'version', preview: false },
+		appContext: {
+			app: { id: 'app', publishedVersionId: 'version' },
+			versionId: 'version',
+			preview: false,
+			security: undefined,
+		},
 	});
 	const res = mock<Response>({ headersSent: false });
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { controller, req, res, bundles, auth, hosts, preview };
+	return { controller, req, res, bundles, auth, hosts, preview, events };
 }
 
 describe('AppServingController', () => {
@@ -135,5 +142,48 @@ describe('AppServingController', () => {
 		expect(res.set).toHaveBeenCalledWith(
 			expect.objectContaining({ 'Content-Security-Policy': "base-uri 'self'; object-src 'none'" }),
 		);
+	});
+
+	describe('app-opened event', () => {
+		it.each(['/', '/orders/123'])('emits once for a page navigation to %s', async (url) => {
+			const { controller, req, res, events } = setup(url);
+			req.appContext!.security = mock({ subject: { id: 'viewer-1' } });
+
+			await controller.serve(req, res);
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-opened', {
+				appId: 'app',
+				versionId: 'version',
+				userId: 'viewer-1',
+				isPreview: false,
+			});
+		});
+
+		it('sends the editor of a preview session as the user', async () => {
+			const { controller, req, res, events } = setup();
+			req.appContext!.preview = true;
+			req.appContext!.previewUserId = 'editor-1';
+
+			await controller.serve(req, res);
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-opened', {
+				appId: 'app',
+				versionId: 'version',
+				userId: 'editor-1',
+				isPreview: true,
+			});
+		});
+
+		it.each([
+			{ case: 'an asset', url: '/assets/main.js', navigation: false },
+			{ case: 'a non-navigation request for the page', url: '/', navigation: false },
+			{ case: 'a missing asset', url: '/assets/missing.js', navigation: true },
+		])('emits nothing for $case', async ({ url, navigation }) => {
+			const { controller, req, res, events } = setup(url, navigation);
+
+			await controller.serve(req, res);
+
+			expect(events.emit).not.toHaveBeenCalled();
+		});
 	});
 });
