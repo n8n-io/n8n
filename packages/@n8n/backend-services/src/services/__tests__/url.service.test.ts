@@ -68,6 +68,38 @@ describe('UrlService', () => {
 		});
 	});
 
+	describe('getAgentWebhookUrl', () => {
+		const endpoints = { agentWebhook: 'agent-webhook' };
+
+		it('should build the channel URL from N8N_AGENT_WEBHOOK_URL', () => {
+			const urlService = new UrlService(
+				mock<GlobalConfig>({ agentWebhookUrl: 'https://agents.example.com', endpoints }),
+			);
+			expect(urlService.getAgentWebhookUrl('agent-1')).toBe(
+				'https://agents.example.com/agent-webhook/agent-1',
+			);
+		});
+
+		it('should fall back to the instance address, not to the webhook or editor URL', () => {
+			process.env.WEBHOOK_URL = 'https://old-hooks.example.com/';
+			const urlService = new UrlService(
+				mock<GlobalConfig>({
+					agentWebhookUrl: '',
+					webhookUrl: 'https://hooks.example.com/',
+					editorBaseUrl: 'https://editor.example.com/',
+					protocol: 'https',
+					host: 'n8n.example.com',
+					port: 443,
+					path: '/',
+					endpoints,
+				}),
+			);
+			expect(urlService.getAgentWebhookUrl('agent-1')).toBe(
+				'https://n8n.example.com/agent-webhook/agent-1',
+			);
+		});
+	});
+
 	describe('getTestWebhookBaseUrl', () => {
 		it('should use N8N_WEBHOOK_URL even when the editor base URL is set', () => {
 			const urlService = new UrlService(

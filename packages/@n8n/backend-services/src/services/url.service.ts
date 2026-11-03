@@ -20,6 +20,16 @@ export class UrlService {
 		return base;
 	}
 
+	/**
+	 * Returns the URL of an agent's webhook channel. Only mains serve it, so it
+	 * never falls back to the webhook URL, which can point to webhook processes.
+	 */
+	getAgentWebhookUrl(agentId: string) {
+		let base = this.globalConfig.agentWebhookUrl || this.baseUrl;
+		if (!base.endsWith('/')) base += '/';
+		return `${base}${this.globalConfig.endpoints.agentWebhook}/${encodeURIComponent(agentId)}`;
+	}
+
 	getTestWebhookBaseUrl() {
 		let base = this.globalConfig.webhookUrl || this.getInstanceBaseUrl();
 		if (!base.endsWith('/')) base += '/';

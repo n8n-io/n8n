@@ -454,6 +454,7 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
+				this.globalConfig.endpoints.agentWebhook,
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			// Matched against the normalised path, so a non-UI asset requested in another
