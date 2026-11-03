@@ -48,6 +48,8 @@ const {
 	appPreviewProps,
 	routerPush,
 	focusInput,
+	openFilePicker,
+	composerBlocked,
 	setDraft,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
@@ -59,6 +61,8 @@ const {
 	appPreviewProps: { current: undefined as Record<string, unknown> | undefined },
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
+	openFilePicker: vi.fn(),
+	composerBlocked: { current: false },
 	setDraft: vi.fn(),
 }));
 
@@ -113,6 +117,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			expose({
 				sendMessageFromOutside,
 				focusInput,
+				openFilePicker,
 				setDraft,
 				addComposerAttachment,
 				removeComposerAttachment,
@@ -128,6 +133,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
 					slots['inline-offers']?.(),
 					slots['composer-attachments']?.(),
+					slots['footer-start']?.({ disabled: composerBlocked.current }),
 				]);
 			};
 		},
@@ -204,6 +210,22 @@ vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 					onClick: () => emit('toggleExpanded'),
 				}),
 			],
+	}),
+}));
+
+// The real menu reads the MCP and browser use stores, which have their own tests.
+vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
+	default: defineComponent({
+		props: { disabled: { type: Boolean, default: false } },
+		emits: ['attachFiles'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h('button', {
+					'data-test-id': 'input-menu-attach',
+					disabled: props.disabled,
+					onClick: () => emit('attachFiles'),
+				}),
 	}),
 }));
 
@@ -298,6 +320,8 @@ describe('AssistantAgentThreadView', () => {
 		appPreviewProps.current = undefined;
 		routerPush.mockReset();
 		focusInput.mockReset();
+		openFilePicker.mockReset();
+		composerBlocked.current = false;
 		setDraft.mockReset();
 		localStorage.clear();
 		composerAttachments.value = [];
@@ -327,6 +351,25 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_status' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
+	});
+
+	it('replaces the attach button with the Assistant "+" menu, which opens the file picker', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(panelProps.current['show-attach-button']).toBe(false);
+
+		await userEvent.click(getByTestId('input-menu-attach'));
+
+		expect(openFilePicker).toHaveBeenCalledTimes(1);
+	});
+
+	it('disables the "+" menu while the composer takes no input', async () => {
+		composerBlocked.current = true;
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach')).toBeDisabled();
 	});
 
 	it('adds a thread opened by URL to the lists right away', async () => {

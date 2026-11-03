@@ -30,6 +30,7 @@ const version = (id: string, buildStatus: AppBuildStatus): AppVersionResponse =>
 	id,
 	appId: 'app-1',
 	label: null,
+	description: null,
 	sourceArtifactId: 1,
 	bundleArtifactId: buildStatus === 'succeeded' ? 2 : null,
 	buildStatus,
@@ -54,11 +55,9 @@ const globalOptions = {
 			template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
 		},
 		AppConfigure: {
-			props: ['app', 'versions', 'tab'],
-			emits: ['updated', 'update:tab'],
+			props: ['app'],
+			emits: ['updated'],
 			template: `<div data-test-id="app-view-configure">
-				<span data-test-id="configure-tab">{{ tab }}</span>
-				<button data-test-id="configure-select-basics" @click="$emit('update:tab', 'basics')" />
 				<button data-test-id="configure-rename" @click="$emit('updated', { ...app, name: 'Renamed app' })" />
 			</div>`,
 		},
@@ -163,27 +162,11 @@ describe('AppView', () => {
 		expect(queryByTestId('app-view-preview')).not.toBeInTheDocument();
 	});
 
-	it.each([
-		['configure', 'basics'],
-		['configure.basics', 'basics'],
-		['configure.unknown', 'basics'],
-	])('opens the configure tab %s on the %s sub-tab', async (section, subTab) => {
+	it('opens the configure tab from the section', async () => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { findByTestId } = renderComponent({ props: { section } });
+		const { findByTestId } = renderComponent({ props: { section: 'configure' } });
 
-		expect(await findByTestId('configure-tab')).toHaveTextContent(subTab);
-	});
-
-	it('emits the configure section when the sub-tab changes', async () => {
-		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { findByTestId, getByTestId, emitted } = renderComponent({
-			props: { section: 'configure' },
-		});
-		await findByTestId('app-view-configure');
-
-		await userEvent.click(getByTestId('configure-select-basics'));
-
-		expect(emitted('update:section')).toEqual([['configure.basics']]);
+		expect(await findByTestId('app-view-configure')).toBeInTheDocument();
 	});
 
 	it('shows the app from a configure update', async () => {
