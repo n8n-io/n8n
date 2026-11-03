@@ -639,20 +639,14 @@ export class WorkflowService {
 		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
 
-		const sharingLicensed = this.licenseState.isSharingLicensed();
-		const versionedSettingsEnabled = this.workflowVersionedSettings.isEnabled();
 		// A restore may bring back nodes whose credentials the user cannot use, and the
 		// version-scoped settings of the version. Only a version from this workflow's own
 		// history qualifies.
-		let restoredVersion: WorkflowHistory | null = null;
-		if (restoredFromVersionId && (sharingLicensed || versionedSettingsEnabled)) {
-			restoredVersion = await this.workflowHistoryService.findVersion(
-				workflowId,
-				restoredFromVersionId,
-			);
-			if (!restoredVersion) {
-				throw new BadRequestError("The version to restore is not in this workflow's history.");
-			}
+		const restoredVersion = restoredFromVersionId
+			? await this.workflowHistoryService.findVersion(workflowId, restoredFromVersionId)
+			: null;
+		if (restoredFromVersionId && !restoredVersion) {
+			throw new BadRequestError("The version to restore is not in this workflow's history.");
 		}
 
 		// Central credential guard for every workflow write path. With sharing
@@ -662,7 +656,7 @@ export class WorkflowService {
 		// already resolved to IDs before the check.
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
 		// folder/project services which import this module).
-		if (sharingLicensed) {
+		if (this.licenseState.isSharingLicensed()) {
 			let restoredNodes: INode[] | undefined;
 			if (restoredVersion) {
 				// Normalize the stored nodes the way the submitted ones were above, so a
@@ -693,6 +687,7 @@ export class WorkflowService {
 		const nodeGroupsChanged =
 			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
 
+		const versionedSettingsEnabled = this.workflowVersionedSettings.isEnabled();
 		if (versionedSettingsEnabled && restoredVersion) {
 			// A restore also brings back the version-scoped settings of the version, such as its engine.
 			workflowUpdateData.settings = applyVersionedSettings(
