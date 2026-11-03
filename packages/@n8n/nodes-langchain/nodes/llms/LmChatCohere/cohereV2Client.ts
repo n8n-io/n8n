@@ -14,6 +14,7 @@ import type { Cohere, CohereClient } from 'cohere-ai';
 interface V1ChatRequest {
 	message?: string;
 	chatHistory?: V1ChatHistoryItem[];
+	toolResults?: V1ToolResult[];
 	model?: string;
 	temperature?: number;
 	preamble?: string;
@@ -31,6 +32,12 @@ interface V1ChatHistoryItem {
 	role: 'SYSTEM' | 'USER' | 'CHATBOT' | 'TOOL';
 	message?: string;
 	toolCalls?: V1ToolCall[];
+	toolResults?: V1ToolResult[];
+}
+
+interface V1ToolResult {
+	call: V1ToolCall;
+	outputs: Record<string, unknown>[];
 }
 
 interface V1Tool {
@@ -60,37 +67,82 @@ function parseArguments(args?: string): Record<string, unknown> {
 	}
 }
 
+interface ToolCallWithId {
+	call: V1ToolCall;
+	id: string;
+}
+
+function getToolCallKey(toolCall: V1ToolCall): string {
+	return `${toolCall.name}:${JSON.stringify(toolCall.parameters)}`;
+}
+
+function toV2ToolMessages(
+	toolResults: V1ToolResult[] | undefined,
+	toolCalls: ToolCallWithId[],
+	usedToolCallIds: Set<string>,
+): Cohere.ChatMessageV2[] {
+	if (!toolResults?.length) return [];
+
+	return toolResults.flatMap((toolResult) => {
+		const toolCall = toolCalls.find(
+			({ call, id }) =>
+				!usedToolCallIds.has(id) && getToolCallKey(call) === getToolCallKey(toolResult.call),
+		);
+		if (!toolCall) return [];
+
+		usedToolCallIds.add(toolCall.id);
+		return [
+			{
+				role: 'tool' as const,
+				toolCallId: toolCall.id,
+				content: JSON.stringify(toolResult.outputs),
+			},
+		];
+	});
+}
+
 function toV2Messages(request: V1ChatRequest): Cohere.ChatMessages {
 	const messages: Cohere.ChatMessages = [];
+	let latestToolCalls: ToolCallWithId[] = [];
+	let usedToolCallIds = new Set<string>();
 
 	if (request.preamble) messages.push({ role: 'system', content: request.preamble });
 
-	for (const item of request.chatHistory ?? []) {
+	for (const [historyIndex, item] of (request.chatHistory ?? []).entries()) {
 		const content = item.message ?? '';
 		switch (item.role) {
 			case 'SYSTEM':
+				latestToolCalls = [];
 				messages.push({ role: 'system', content });
 				break;
 			case 'USER':
+				latestToolCalls = [];
 				messages.push({ role: 'user', content });
 				break;
-			case 'CHATBOT':
+			case 'CHATBOT': {
+				latestToolCalls = (item.toolCalls ?? []).map((toolCall, toolCallIndex) => ({
+					call: toolCall,
+					id: `tool_call_${historyIndex}_${toolCallIndex}`,
+				}));
+				usedToolCallIds = new Set<string>();
 				messages.push({
 					role: 'assistant',
 					content,
-					toolCalls: item.toolCalls?.map((toolCall) => ({
+					toolCalls: latestToolCalls.map(({ call, id }) => ({
+						id,
 						type: 'function',
-						function: { name: toolCall.name, arguments: JSON.stringify(toolCall.parameters) },
+						function: { name: call.name, arguments: JSON.stringify(call.parameters) },
 					})),
 				});
 				break;
-			// TOOL-role history items carry no tool_call_id in the v1 shape, so they
-			// cannot be mapped to a valid v2 tool message; skip them.
+			}
 			case 'TOOL':
+				messages.push(...toV2ToolMessages(item.toolResults, latestToolCalls, usedToolCallIds));
 				break;
 		}
 	}
 
+	messages.push(...toV2ToolMessages(request.toolResults, latestToolCalls, usedToolCallIds));
 	if (request.message) messages.push({ role: 'user', content: request.message });
 
 	return messages;
