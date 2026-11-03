@@ -85,6 +85,25 @@ describe('MetricSummaryStrip', () => {
 		expect(deltaText(container)).toBe('+0.001');
 	});
 
+	it('caps a long custom decimal so the value cannot outgrow its card', () => {
+		// 17 metrics averaged over 14 rows produce values like 0.728333. At full
+		// precision the value and its delta badge are wider than the card track
+		// and paint over the card next to them.
+		const { container, getByText } = renderComponent({
+			props: {
+				currentMetrics: { 'Jev legible norm': 0.728333 },
+				previousMetrics: { 'Jev legible norm': 0.644 },
+				metricSources: {
+					'Jev legible norm': { category: 'custom', nodeName: 'Set Metrics' },
+				},
+			},
+		});
+
+		expect(getByText('0.7283')).toBeVisible();
+		expect(container.textContent).not.toContain('0.728333');
+		expect(deltaText(container)).toBe('+0.08433');
+	});
+
 	it('renders all metric cards when a run has more than ten metrics', () => {
 		const currentMetrics = Object.fromEntries(
 			Array.from({ length: 17 }, (_, index) => [`metric_${index + 1}`, index + 2]),

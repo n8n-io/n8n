@@ -6,6 +6,7 @@ import {
 	formatMetricLabel,
 	formatMetricRawScoreSum,
 	formatMetricValue,
+	formatMetricValueExact,
 	getDeltaTone,
 	isUnscaledCustomMetric,
 	type DeltaTone,
@@ -42,8 +43,18 @@ const formattedSumScore = computed(() =>
 			})
 		: '',
 );
+const exactValue = computed(() =>
+	formatMetricValueExact(props.currentValue, {
+		key: props.name,
+		category: props.category,
+		scale: props.scale,
+	}),
+);
+// The card caps long decimals, so keep the exact value one hover away.
 const valueTooltip = computed(() =>
-	formattedSumScore.value ? `${formattedValue.value} • ${formattedSumScore.value}` : '',
+	formattedSumScore.value
+		? `${formattedValue.value} • ${formattedSumScore.value}`
+		: exactValue.value,
 );
 </script>
 
@@ -71,7 +82,9 @@ const valueTooltip = computed(() =>
 	gap: var(--spacing--xs);
 	padding: var(--spacing--md) var(--spacing--lg);
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
-	flex: 1 0 calc(var(--spacing--4xl) + var(--spacing--3xl));
+	/* Sized by its content, never below the old fixed track. `MetricSummaryStrip`
+	   scrolls, so a wide value widens the card instead of overflowing it. */
+	flex: 1 0 auto;
 	min-width: calc(var(--spacing--4xl) + var(--spacing--3xl));
 
 	&:last-child {
@@ -84,7 +97,10 @@ const valueTooltip = computed(() =>
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-wrap: nowrap;
-	min-width: 0;
+	/* Takes its width from the card rather than giving width to it, so a long
+	   metric name still ellipsizes instead of stretching the card. */
+	width: 0;
+	min-width: 100%;
 }
 
 .title {
