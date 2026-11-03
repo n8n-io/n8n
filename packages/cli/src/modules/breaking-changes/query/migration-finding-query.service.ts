@@ -238,9 +238,11 @@ export class MigrationFindingQueryService {
 		const assistantAction = assistantActionOf(rule);
 		if (assistantAction === 'none') return undefined;
 
-		const issues = (await this.issuesFromRecheck(rule, [workflow])).get(workflow.id) ?? [];
+		// A rule that throws leaves the workflow out of the map: that is not a clean draft.
+		const draftIssues = (await this.issuesFromRecheck(rule, [workflow])).get(workflow.id);
+		const issues = draftIssues ?? [];
 		const unpublishedFix =
-			issues.length === 0 && (await this.publishedVersionHasIssues(rule, workflow));
+			draftIssues?.length === 0 && (await this.publishedVersionHasIssues(rule, workflow));
 
 		return { rule: await this.describeRule(rule), issues, assistantAction, unpublishedFix };
 	}

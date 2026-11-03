@@ -821,6 +821,24 @@ describe('MigrationFindingQueryService', () => {
 			expect(result).toMatchObject({ issues: [], unpublishedFix: true });
 		});
 
+		it('does not check the published version when the draft check throws', async () => {
+			ruleRegistry.getRule.mockReturnValue({
+				...optedIn(workflowRule('rule-a', 'n8n-nodes-base.a')),
+				detectWorkflow: async () => {
+					throw new Error('Rule failed');
+				},
+			});
+
+			const result = await service.describeWorkflowFinding(
+				TARGET_VERSION,
+				'rule-a',
+				workflowWithNodes('wf-1', ['n8n-nodes-base.a']),
+			);
+
+			expect(result).toMatchObject({ issues: [], unpublishedFix: false });
+			expect(breakingChangeService.loadPublishedNodes).not.toHaveBeenCalled();
+		});
+
 		it.each([
 			['an unknown rule', undefined],
 			['a rule that does not offer the Assistant', workflowRule('rule-a', 'n8n-nodes-base.a')],
