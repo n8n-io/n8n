@@ -6,7 +6,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useResourceRegistry } from '../useResourceRegistry';
-import type { ResourceEntry, TransientWorkflowArtifactReference } from '../useResourceRegistry';
+import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -53,7 +53,6 @@ function setup(
 	pendingWorkflowAttachment?: () =>
 		| { type: 'workflow'; id: string; name?: string; executionId?: string }
 		| undefined,
-	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
 	agentBuilderTargets?: () => Array<{ agentId: string; projectId: string; name?: string }>,
 ) {
 	const messages = ref<InstanceAiMessage[]>([]);
@@ -68,7 +67,6 @@ function setup(
 		agentBuilderTarget,
 		pendingAgentTarget,
 		pendingWorkflowAttachment,
-		transientWorkflowReferences,
 		agentBuilderTargets,
 	});
 	return {
@@ -334,30 +332,6 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test('keeps transient workflow references produced but not linkable', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{
-					referenceId: 'draft-1',
-					workflowId: 'wf-1',
-					workflowName: 'Orders',
-				},
-			]);
-			const { producedArtifacts, linkableResourceNameIndex } = setup(
-				() => 'Canonical Orders',
-				undefined,
-				undefined,
-				undefined,
-				() => transient.value,
-			);
-			await nextTick();
-
-			expect(producedArtifacts.get('wf-1')?.name).toBe('Canonical Orders');
-			expect(linkableResourceNameIndex.has('canonical orders')).toBe(false);
-
-			transient.value = [];
-			await nextTick();
-			expect(producedArtifacts.has('wf-1')).toBe(false);
-		});
 		test('keeps a pending new-agent attachment produced but not linkable', async () => {
 			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
@@ -827,7 +801,6 @@ describe('useResourceRegistry', () => {
 				undefined,
 				undefined,
 				undefined,
-				undefined,
 				() => [{ agentId: 'agent-1', projectId: 'project-1' }],
 			);
 
@@ -1011,7 +984,6 @@ describe('useResourceRegistry', () => {
 			const { messages, producedArtifacts } = setup(
 				undefined,
 				() => ({ agentId: 'agent-2', projectId: 'project-1', name: 'Second Agent' }),
-				undefined,
 				undefined,
 				undefined,
 				() => [
@@ -1767,17 +1739,19 @@ describe('useResourceRegistry', () => {
 			});
 
 		test('records how each artifact entered: built, attached, or mentioned', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{ referenceId: 'ref-1', workflowId: 'wf-mentioned', workflowName: 'Leads' },
-			]);
-			const { messages, producedArtifactOrigins } = setup(
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup(
 				undefined,
 				undefined,
 				undefined,
 				() => ({ type: 'workflow', id: 'wf-handoff', name: 'Canvas' }),
-				() => transient.value,
 			);
-			messages.value = [attachMessage('wf-attached'), buildMessage('wf-built')];
+			// A mention is a message attachment on the wire; the send seeds its origin first.
+			seedArtifactOrigins(['wf-mentioned'], 'mentioned');
+			messages.value = [
+				attachMessage('wf-attached'),
+				buildMessage('wf-built'),
+				attachMessage('wf-mentioned'),
+			];
 			await nextTick();
 
 			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
@@ -1865,24 +1839,14 @@ describe('useResourceRegistry', () => {
 			expect(producedArtifactOrigins.get('wf-1')).toBe('attached');
 		});
 
-		test('keeps a mention as mentioned once its send turns it into a message attachment', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{ referenceId: 'ref-1', workflowId: 'wf-1', workflowName: 'Orders' },
-			]);
-			const { messages, producedArtifactOrigins } = setup(
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				() => transient.value,
-			);
+		test('keeps a mention as mentioned when the agent later edits the workflow', async () => {
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup();
+			seedArtifactOrigins(['wf-1'], 'mentioned');
+			messages.value = [attachMessage('wf-1')];
 			await nextTick();
 			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
 
-			// The optimistic message lands first; the reference is released after.
-			messages.value = [attachMessage('wf-1')];
-			await nextTick();
-			transient.value = [];
+			messages.value = [...messages.value, buildMessage('wf-1')];
 			await nextTick();
 
 			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
@@ -1912,19 +1876,14 @@ describe('useResourceRegistry', () => {
 		});
 
 		test('forgets the origin of an artifact that leaves the thread', async () => {
-			const transient = ref<TransientWorkflowArtifactReference[]>([
-				{ referenceId: 'ref-1', workflowId: 'wf-1', workflowName: 'Orders' },
-			]);
-			const { producedArtifactOrigins } = setup(
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				() => transient.value,
-			);
+			const { messages, producedArtifactOrigins, seedArtifactOrigins } = setup();
+			seedArtifactOrigins(['wf-1'], 'mentioned');
+			messages.value = [attachMessage('wf-1')];
 			await nextTick();
+			expect(producedArtifactOrigins.get('wf-1')).toBe('mentioned');
 
-			transient.value = [];
+			// A refused send rolls its optimistic message back.
+			messages.value = [];
 			await nextTick();
 
 			expect(producedArtifactOrigins.has('wf-1')).toBe(false);

@@ -374,6 +374,17 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	}
 
 	/**
+	 * Show a workflow that a message the user just sent mentions. Its tab
+	 * arrives with the message, so this only brings it into view.
+	 */
+	function showMentionedWorkflow(workflowId: string): boolean {
+		if (!tabs.hasTab(workflowId)) return false;
+		showAgentArtifact(workflowId);
+		recordWorkflowOpen(workflowId);
+		return true;
+	}
+
+	/**
 	 * Open or switch the preview to a data table.
 	 * Returns true if the preview tab changed; false if the tab was already
 	 * active (so the caller can fall back to opening in a new tab instead).
@@ -728,6 +739,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		closeTab,
 		closePreview,
 		openWorkflowPreview,
+		showMentionedWorkflow,
 		openDataTablePreview,
 		openAgentPreview,
 		openSkillPreview: openArtifactPreview,

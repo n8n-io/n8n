@@ -253,54 +253,6 @@ describe('cancelRun', () => {
 	});
 });
 
-describe('transient workflow references', () => {
-	beforeEach(() => {
-		setupRuntimePinia();
-	});
-
-	it('keeps draft artifacts thread-scoped and removes the final reference', async () => {
-		const registry = createRuntimeRegistry();
-		const first = registry.getOrCreateRuntime('thread-1');
-		const second = registry.getOrCreateRuntime('thread-2');
-		first.upsertTransientWorkflowReference({
-			referenceId: 'draft-1',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		});
-		first.upsertTransientWorkflowReference({
-			referenceId: 'draft-2',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		});
-		await nextTick();
-
-		expect(first.producedArtifacts.get('wf-1')?.name).toBe('Orders');
-		expect(second.producedArtifacts.has('wf-1')).toBe(false);
-
-		first.removeTransientWorkflowReference('draft-1');
-		await nextTick();
-		expect(first.producedArtifacts.has('wf-1')).toBe(true);
-
-		first.removeTransientWorkflowReference('draft-2');
-		await nextTick();
-		expect(first.producedArtifacts.has('wf-1')).toBe(false);
-	});
-
-	it('clears transient references when the runtime resets', async () => {
-		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-1');
-		runtime.upsertTransientWorkflowReference({
-			referenceId: 'draft-1',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		});
-		runtime.resetState();
-		await nextTick();
-
-		expect(runtime.transientWorkflowReferences.size).toBe(0);
-		expect(runtime.producedArtifacts.has('wf-1')).toBe(false);
-	});
-});
-
 const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
@@ -1524,8 +1476,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const runtime = activeRuntime(registry);
 
-		// A new thread's first message is the only trace of the mention: on the wire
-		// it is a plain workflow attachment, like a hand-off would be.
+		// The sent message is the only trace of the mention: on the wire it is a
+		// plain workflow attachment, like a hand-off would be, and the tab comes
+		// with the message rather than with the pick.
+		expect(runtime.producedArtifacts.has('workflow-mentioned')).toBe(false);
 		await runtime.sendMessage('Look at this', {
 			authorship: USER_TYPED_MESSAGE,
 			attachments: [
@@ -1537,8 +1491,26 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 		await nextTick();
 
+		expect(runtime.producedArtifacts.get('workflow-mentioned')?.name).toBe('Orders');
 		expect(runtime.producedArtifactOrigins.get('workflow-mentioned')).toBe('mentioned');
 		expect(runtime.producedArtifactOrigins.get('workflow-handoff')).toBe('attached');
+	});
+
+	test('a refused send leaves no tab and no origin behind for a mentioned workflow', async () => {
+		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
+		const runtime = activeRuntime(registry);
+
+		const sent = await runtime.sendMessage('Look at this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' }],
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionedWorkflowIds: ['workflow-mentioned'],
+		});
+		await nextTick();
+
+		expect(sent).toBe(false);
+		expect(runtime.producedArtifacts.has('workflow-mentioned')).toBe(false);
+		expect(runtime.producedArtifactOrigins.has('workflow-mentioned')).toBe(false);
 	});
 
 	test('sendMessage includes action_source from thread metadata', async () => {
