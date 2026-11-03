@@ -260,7 +260,12 @@ export function isExecutionOutputRedacted(
 export function redactExecutionError(
 	error: Pick<Error, 'name'> & { httpCode?: string | null },
 ): IRedactedErrorInfo {
-	const result: IRedactedErrorInfo = { type: error.name };
+	// The error is often a plain object (spread by the engine, or read back from
+	// the database), so `name` is the only source of the class. It is writable,
+	// so only a value shaped like a class name passes through.
+	const result: IRedactedErrorInfo = {
+		type: /^[A-Za-z_$][\w$]*$/.test(error.name) ? error.name : 'Error',
+	};
 	if (error.name === 'NodeApiError') {
 		// `NodeApiError` also reads `httpCode` from response-body fields, so only
 		// a numeric HTTP status passes through.
@@ -286,9 +291,10 @@ export function redactErrorReport(error: Error): Error | undefined {
 	) {
 		return undefined;
 	}
+	// `name` is writable, so the label comes from the constructor.
 	// Stack frames are in the format `<name>: <message>\n<call frames>`; the
 	// message can span lines, so only the call-frame lines are kept.
-	const errorClass = error.name || 'Error';
+	const errorClass = error.constructor?.name || 'Error';
 	const sanitized = new Error(errorClass);
 	sanitized.name = errorClass;
 	const frames = (error.stack ?? '').split('\n').filter((line) => /^\s+at\s/.test(line));

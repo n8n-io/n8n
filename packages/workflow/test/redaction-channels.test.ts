@@ -214,6 +214,11 @@ describe('redaction-channels', () => {
 			});
 		});
 
+		it('replaces an error name that is not shaped like a class name', () => {
+			expect(redactExecutionError({ name: 'secret value: 42' })).toEqual({ type: 'Error' });
+			expect(redactExecutionError({ name: '' })).toEqual({ type: 'Error' });
+		});
+
 		it.each(['500 Internal Server Error', 'ECONNRESET', '{"status":"secret"}', '', '42', '600'])(
 			'drops a status code that is not a numeric HTTP status (%j)',
 			(httpCode) => {
@@ -236,6 +241,18 @@ describe('redaction-channels', () => {
 			expect(report?.message).toBe('Error');
 			expect(report?.stack).not.toContain('secret');
 			expect(report?.stack).toMatch(/^Error\n\s+at /);
+		});
+
+		it('labels the report with the class when the error name was changed', () => {
+			const error = Object.assign(new Error('secret value'), { name: 'secret name' });
+
+			const report = redactErrorReport(error);
+
+			expect(report?.name).toBe('Error');
+			expect(report?.message).toBe('Error');
+			expect(JSON.stringify([report?.name, report?.message, report?.stack])).not.toContain(
+				'secret',
+			);
 		});
 
 		it('keeps the class of an n8n error that Sentry would report', () => {

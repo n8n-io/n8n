@@ -156,8 +156,10 @@ describe('processError', () => {
 		};
 		const reporterSpy = vi.spyOn(errorReporter, 'error').mockImplementation(() => {});
 
+		// `name` is writable, so the log and the report must label the error by its class.
+		const error = Object.assign(new Error('secret value'), { name: 'secret name' });
 		await runner.processError(
-			new Error('secret value') as ExecutionError,
+			error as ExecutionError,
 			new Date(),
 			'webhook',
 			redactedExecution.id,
@@ -168,11 +170,12 @@ describe('processError', () => {
 		expect(logger.error).toHaveBeenCalledWith(
 			`Problem with execution ${redactedExecution.id}: Error. Aborting.`,
 		);
-		expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain('secret value');
+		expect(JSON.stringify(vi.mocked(logger.error).mock.calls)).not.toContain('secret');
 		expect(reporterSpy).toHaveBeenCalledTimes(1);
 		const [reported] = reporterSpy.mock.calls[0] as [Error];
+		expect(reported.name).toBe('Error');
 		expect(reported.message).toBe('Error');
-		expect(reported.stack).not.toContain('secret value');
+		expect(reported.stack).not.toContain('secret');
 	});
 
 	test('processError should return early in Bull stalled edge case', async () => {

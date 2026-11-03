@@ -301,7 +301,7 @@ export class WorkflowRunner {
 			executionMode,
 		);
 		this.logger.error(
-			`Problem with execution ${executionId}: ${redacted ? error.name : error.message}. Aborting.`,
+			`Problem with execution ${executionId}: ${redacted ? error.constructor.name : error.message}. Aborting.`,
 		);
 		const toReport = redacted ? redactErrorReport(error) : error;
 		if (toReport) this.errorReporter.error(toReport, { executionId });

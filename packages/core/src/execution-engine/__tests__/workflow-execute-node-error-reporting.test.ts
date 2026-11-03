@@ -213,6 +213,17 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 			expect(reported.stack).toMatch(/^UnexpectedError\n\s+at /);
 		});
 
+		it('should label the report with the class when the error name was changed', async () => {
+			const baseError = Object.assign(new UnexpectedError('secret value'), { name: 'secret name' });
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported.name).toBe('UnexpectedError');
+			expect(reported.message).toBe('UnexpectedError');
+			expect(reported.stack).not.toContain('secret');
+		});
+
 		it('should not report a BaseError that must not reach Sentry', async () => {
 			const baseError = new OperationalError('secret value');
 			expect(baseError.shouldReport).toBe(false);
