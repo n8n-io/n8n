@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceAiMessage } from '@n8n/api-types';
@@ -13,6 +14,9 @@ import {
 const threadState = reactive({
 	id: 'thread-1',
 	messages: [] as InstanceAiMessage[],
+	get artifactTurns() {
+		return toArtifactTurns(this.messages);
+	},
 	activeArtifactId: undefined as string | undefined,
 	isSendingMessage: false,
 	isStreaming: false,
@@ -76,24 +80,19 @@ function makeBuildingMessage(targetAgentId: string): InstanceAiMessage {
 			status: 'active',
 			textContent: '',
 			reasoning: '',
-			toolCalls: [],
-			timeline: [],
-			children: [
+			toolCalls: [
 				{
-					agentId: 'builder-1',
-					kind: 'agent-builder',
-					role: 'agent-builder',
-					status: 'active',
-					textContent: '',
-					reasoning: '',
-					toolCalls: [],
-					timeline: [],
-					children: [],
-					targetResource: { type: 'agent', id: targetAgentId },
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					args: {},
+					result: { ok: true, agentId: targetAgentId },
+					isLoading: false,
 				},
 			],
+			timeline: [],
+			children: [],
 		},
-	} as InstanceAiMessage;
+	};
 }
 
 describe('InstanceAiAgentPreview', () => {

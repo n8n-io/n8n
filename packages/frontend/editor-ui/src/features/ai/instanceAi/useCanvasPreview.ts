@@ -1,20 +1,17 @@
 import { computed, ref, watch, type Ref } from 'vue';
-import type { InstanceAiAgentNode, InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import {
 	getLatestBuildResult,
-	getLatestBuilderTarget,
 	getLatestWorkflowSetupResult,
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestAgentArtifactResult,
-	getLatestAgentBuilderTarget,
 	getLatestSkillArtifactResult,
 	getLatestAppArtifactResult,
 	getExecutionResultsByWorkflow,
-	type ExecutionResult,
 } from './canvasPreview.utils';
 import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
@@ -25,6 +22,7 @@ import {
 	type ThreadTabsStorage,
 } from './composables/useOpenArtifactTabs';
 import type { ArtifactThread } from './artifactThread';
+import type { ArtifactTurn } from './artifactTurns';
 
 export interface ArtifactTab {
 	id: string;
@@ -191,16 +189,9 @@ export function useCanvasPreview({
 		return tab?.type === 'app' && tab.projectId ? { id: tab.id, projectId: tab.projectId } : null;
 	});
 
-	const executionResultsByWorkflow = computed(() => {
-		const results = new Map<string, ExecutionResult>();
-		for (const message of thread.messages) {
-			if (!message.agentTree) continue;
-			for (const [workflowId, result] of getExecutionResultsByWorkflow(message.agentTree)) {
-				results.set(workflowId, result);
-			}
-		}
-		return results;
-	});
+	const executionResultsByWorkflow = computed(() =>
+		getExecutionResultsByWorkflow(thread.artifactTurns),
+	);
 
 	const activeWorkflowExecutionResult = computed(() => {
 		const workflowId = activeWorkflowId.value;
@@ -224,8 +215,8 @@ export function useCanvasPreview({
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
 	const firstAttachedArtifactId = computed(() => {
 		const tabIds = new Set(openTabs.value.map(({ id }) => id));
-		for (const message of thread.messages) {
-			for (const attachment of message.attachments ?? []) {
+		for (const turn of thread.artifactTurns) {
+			for (const attachment of turn.attachments ?? []) {
 				const artifactId = getAttachedArtifactId(attachment);
 				if (artifactId && tabIds.has(artifactId)) return artifactId;
 			}
@@ -442,16 +433,7 @@ export function useCanvasPreview({
 
 	const workflowRefreshKey = ref(0);
 
-	const latestBuildResult = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestBuildResult(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestBuildResult = computed(() => getLatestBuildResult(thread.artifactTurns) ?? null);
 
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
@@ -478,83 +460,12 @@ export function useCanvasPreview({
 		{ flush: 'sync' },
 	);
 
-	// --- Auto-open canvas when an edit-mode builder spawns ---
-	// The workflow-builder carries the existing workflow id in
-	// `targetResource.id` from the moment it is spawned. Opening the preview
-	// then — instead of waiting for the first workflow_builder_build_workflow result — lets the
-	// user see what is being edited as soon as the sub-agent is called.
-	// Keyed by agentId so a fresh builder spawn re-triggers the preview.
-
-	const latestBuilderTarget = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const target = getLatestBuilderTarget(msg.agentTree);
-				if (target) return target;
-			}
-		}
-		return null;
-	});
-
-	watch(
-		() => latestBuilderTarget.value?.agentId,
-		(agentId) => {
-			if (!agentId || !latestBuilderTarget.value) return;
-			if (thread.isHydratingThread) return;
-
-			showAgentArtifact(latestBuilderTarget.value.workflowId);
-		},
-		{ flush: 'sync' },
-	);
-
-	// --- Auto-open canvas when an agent-builder sub-agent spawns ---
-	// Mirrors the workflow-builder spawn-open above. The builder node id is
-	// stable per target agent (`agent-builder:<id>`). Include the activity in the
-	// watch key so an edit can open the preview after a read-only builder turn.
-	// Config refreshes are driven by the agents event bus.
-
-	const latestAgentBuilderTarget = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const target = getLatestAgentBuilderTarget(msg.agentTree);
-				if (target) return target;
-			}
-		}
-		return null;
-	});
-
-	watch(
-		() => {
-			const target = latestAgentBuilderTarget.value;
-			return target ? `${target.agentId}:${target.activity ?? ''}` : undefined;
-		},
-		() => {
-			const target = latestAgentBuilderTarget.value;
-			if (!target) return;
-			if (thread.isHydratingThread) return;
-			if (target.activity === 'exploring' || target.activity === 'testing') {
-				return;
-			}
-
-			showAgentArtifact(target.targetAgentId);
-		},
-		{ flush: 'sync' },
-	);
-
 	// --- Auto-open canvas when the orchestrator creates or changes an Agent ---
 	// The builder tools run in the orchestrator, so their results carry the agent id.
 
-	const latestAgentArtifactResult = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestAgentArtifactResult(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestAgentArtifactResult = computed(
+		() => getLatestAgentArtifactResult(thread.artifactTurns) ?? null,
+	);
 
 	watch(
 		() => latestAgentArtifactResult.value?.toolCallId,
@@ -571,16 +482,9 @@ export function useCanvasPreview({
 	// These tools modify the workflow (credentials, parameters) but aren't detected
 	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
 
-	const latestSetupResult = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestWorkflowSetupResult(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestSetupResult = computed(
+		() => getLatestWorkflowSetupResult(thread.artifactTurns) ?? null,
+	);
 
 	watch(
 		() => latestSetupResult.value?.toolCallId,
@@ -601,16 +505,9 @@ export function useCanvasPreview({
 	// doesn't detect them. Refresh the preview so the canvas
 	// shows the latest state.
 
-	const latestUpdateResult = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestWorkflowUpdateResult(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestUpdateResult = computed(
+		() => getLatestWorkflowUpdateResult(thread.artifactTurns) ?? null,
+	);
 
 	watch(
 		() => latestUpdateResult.value?.toolCallId,
@@ -630,16 +527,9 @@ export function useCanvasPreview({
 
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
 
-	const latestDataTableResult = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestDataTableResult(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
+	const latestDataTableResult = computed(
+		() => getLatestDataTableResult(thread.artifactTurns) ?? null,
+	);
 
 	watch(
 		() => latestDataTableResult.value?.toolCallId,
@@ -661,20 +551,11 @@ export function useCanvasPreview({
 	// commit. Reading, listing or mentioning one does not open it.
 
 	function showLatestToolArtifact<T extends { toolCallId: string }>(
-		getLatest: (node: InstanceAiAgentNode) => T | undefined,
+		getLatest: (turns: readonly ArtifactTurn[]) => T | undefined,
 		artifactId: (result: T) => string,
 		refreshKey: Ref<number>,
 	) {
-		const latest = computed(() => {
-			for (let i = thread.messages.length - 1; i >= 0; i--) {
-				const msg = thread.messages[i];
-				if (msg.agentTree) {
-					const result = getLatest(msg.agentTree);
-					if (result) return result;
-				}
-			}
-			return null;
-		});
+		const latest = computed(() => getLatest(thread.artifactTurns) ?? null);
 
 		watch(
 			() => latest.value?.toolCallId,
@@ -697,16 +578,9 @@ export function useCanvasPreview({
 
 	// --- Close data table preview if the active table is deleted ---
 
-	const latestDeletedDataTableId = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const id = getLatestDeletedDataTableId(msg.agentTree);
-				if (id) return id;
-			}
-		}
-		return null;
-	});
+	const latestDeletedDataTableId = computed(
+		() => getLatestDeletedDataTableId(thread.artifactTurns) ?? null,
+	);
 
 	watch(latestDeletedDataTableId, (deletedId) => {
 		if (deletedId && deletedId === activeTabId.value) {

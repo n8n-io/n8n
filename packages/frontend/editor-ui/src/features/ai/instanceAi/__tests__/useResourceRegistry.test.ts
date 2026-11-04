@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'vitest';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { ref, nextTick, watchEffect } from 'vue';
 import type {
 	InstanceAiMessage,
@@ -63,7 +64,7 @@ function setup(
 		linkableResourceNameIndex,
 		producedArtifactOrigins,
 		seedArtifactOrigins,
-	} = useResourceRegistry(() => messages.value, {
+	} = useResourceRegistry(() => toArtifactTurns(messages.value), {
 		workflowNameLookup,
 		agentBuilderTarget,
 		pendingAgentTarget,
@@ -1739,7 +1740,7 @@ describe('useResourceRegistry', () => {
 		test('field-level changes notify field readers, and removed fields are swept', async () => {
 			const messages = ref<InstanceAiMessage[]>([]);
 			const archived = ref<ReadonlySet<string>>(new Set());
-			const { producedArtifacts } = useResourceRegistry(() => messages.value, {
+			const { producedArtifacts } = useResourceRegistry(() => toArtifactTurns(messages.value), {
 				archivedWorkflowIds: () => archived.value,
 			});
 			messages.value = [

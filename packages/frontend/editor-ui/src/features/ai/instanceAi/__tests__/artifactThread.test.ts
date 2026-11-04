@@ -25,7 +25,7 @@ function createArtifactThread(overrides: Partial<ArtifactThread> = {}): Artifact
 	return reactive({
 		id: 'thread-1',
 		projectId: 'project-1',
-		messages: [],
+		artifactTurns: [],
 		producedArtifacts: new Map(),
 		resourceNameIndex: new Map(),
 		pendingWorkflowAttachment: null,
