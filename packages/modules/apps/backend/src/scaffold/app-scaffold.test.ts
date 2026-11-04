@@ -140,6 +140,23 @@ describe('app scaffold package validation', () => {
 		expect(error).toMatchObject({ log: 'Package lock does not match package.json.' });
 	});
 
+	it('rejects a mismatched direct dependency version', () => {
+		const files = appScaffold();
+		addDependency(files);
+		const packageLock = readJson<PackageLock>(files, 'package-lock.json');
+		packageLock.packages['node_modules/nanoid'].version = '6.0.0';
+		writeJson(files, 'package-lock.json', packageLock);
+
+		let error: unknown;
+		try {
+			checkBuildSource(files);
+		} catch (caught) {
+			error = caught;
+		}
+		expect(error).toBeInstanceOf(AppBuildError);
+		expect(error).toMatchObject({ log: 'Package lock is missing a direct dependency.' });
+	});
+
 	it('rejects changes to the build script', () => {
 		const files = appScaffold();
 		const packageJson = readJson<PackageJson>(files, 'package.json');
