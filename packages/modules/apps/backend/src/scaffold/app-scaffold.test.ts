@@ -16,6 +16,7 @@ type LockEntry = {
 	version?: string;
 	resolved?: string;
 	integrity?: string;
+	inBundle?: boolean;
 	dependencies?: Record<string, string>;
 	devDependencies?: Record<string, string>;
 };
@@ -93,6 +94,18 @@ describe('app scaffold package validation', () => {
 		const files = appScaffold();
 		addDependency(files);
 		const packageLock = readJson<PackageLock>(files, 'package-lock.json');
+		packageLock.packages['node_modules/nanoid'].resolved =
+			'https://packages.example.com/nanoid.tgz';
+		writeJson(files, 'package-lock.json', packageLock);
+
+		expect(() => checkBuildSource(files)).toThrow(AppBuildError);
+	});
+
+	it('rejects bundled dependencies outside the public npm registry', () => {
+		const files = appScaffold();
+		addDependency(files);
+		const packageLock = readJson<PackageLock>(files, 'package-lock.json');
+		packageLock.packages['node_modules/nanoid'].inBundle = true;
 		packageLock.packages['node_modules/nanoid'].resolved =
 			'https://packages.example.com/nanoid.tgz';
 		writeJson(files, 'package-lock.json', packageLock);

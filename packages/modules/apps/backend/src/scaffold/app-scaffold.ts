@@ -63,6 +63,19 @@ function checkLockedDependencies(
 	}
 }
 
+function isSupportedLockEntry(entry: unknown): boolean {
+	if (!isRecord(entry)) return false;
+	if (
+		entry.resolved !== undefined &&
+		(typeof entry.resolved !== 'string' || !entry.resolved.startsWith(NPM_REGISTRY))
+	) {
+		return false;
+	}
+	if (entry.inBundle === true) return true;
+	if (typeof entry.resolved !== 'string') return false;
+	return typeof entry.integrity === 'string' && entry.integrity.startsWith('sha512-');
+}
+
 export function checkBuildSource(files: AppFiles): string {
 	for (const name of files.keys()) {
 		if (['node_modules', 'dist'].includes(name.split('/')[0])) {
@@ -99,14 +112,7 @@ export function checkBuildSource(files: AppFiles): string {
 
 		for (const [path, entry] of Object.entries(packageLock.packages)) {
 			if (path === '') continue;
-			if (
-				!isRecord(entry) ||
-				(entry.inBundle !== true &&
-					(typeof entry.resolved !== 'string' ||
-						!entry.resolved.startsWith(NPM_REGISTRY) ||
-						typeof entry.integrity !== 'string' ||
-						!entry.integrity.startsWith('sha512-')))
-			) {
+			if (!isSupportedLockEntry(entry)) {
 				throw new Error('Package lock contains an unsupported dependency.');
 			}
 		}
