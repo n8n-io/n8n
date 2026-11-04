@@ -1,6 +1,10 @@
 {
   "name": "@n8n/tournament",
+<<<<<<< HEAD
   "version": "2.1.0",
+=======
+  "version": "1.16.0",
+>>>>>>> d5e7db2bf57dbc06e65648cdbec7f5db6b91bedc
   "description": "Output compatible rewrite of riot tmpl",
   "main": "dist/index.js",
   "module": "src/index.ts",

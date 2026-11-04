@@ -1,6 +1,10 @@
 {
   "name": "@n8n/blob-storage",
+<<<<<<< HEAD
   "version": "2.1.0",
+=======
+  "version": "1.15.0",
+>>>>>>> d5e7db2bf57dbc06e65648cdbec7f5db6b91bedc
   "description": "Blob storage layer for n8n, with filesystem, S3, and Azure Blob backends",
   "scripts": {
     "clean": "rimraf dist .turbo",

@@ -1,6 +1,10 @@
 {
   "name": "@n8n/permissions",
+<<<<<<< HEAD
   "version": "1.1.0",
+=======
+  "version": "0.84.0",
+>>>>>>> d5e7db2bf57dbc06e65648cdbec7f5db6b91bedc
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",

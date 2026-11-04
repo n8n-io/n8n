@@ -21,7 +21,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
 import { TabsRoot } from 'reka-ui';
-import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
@@ -32,6 +32,7 @@ import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
+import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
@@ -80,6 +81,7 @@ import {
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
+import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -388,6 +390,11 @@ watch(
 	([current, pending]) => {
 		if (!current || pending.length === 0) return;
 		for (const attachment of instanceAiStore.consumePendingAttachments()) {
+			if (attachment.type === 'element') {
+				const { chip, clientContextPatch } = toElementComposerAttachment(attachment);
+				current.addComposerAttachment(chip, clientContextPatch);
+				continue;
+			}
 			if (attachment.type !== 'nodes') continue;
 			const { chip, clientContextPatch } = toNodesComposerAttachment(
 				attachment,
@@ -398,6 +405,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(
+	() => stagedElementAppId(panel.value?.composerAttachments ?? []),
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
 
 // The canvas asks for the composer after it stages nodes: show the chat and focus its input.
 watch(
@@ -550,6 +564,7 @@ function removeStagedNodes(chipId: string): void {
 						channel="system"
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
+						:show-attach-button="false"
 						@stream-event="trace.recordEvent"
 						@session-created="onSessionCreated"
 						@message-accepted="onMessageAccepted"
@@ -574,6 +589,10 @@ function removeStagedNodes(chipId: string): void {
 								@update:attachment="updateStagedNodes"
 								@remove-all="removeStagedNodes(id)"
 							/>
+						</template>
+						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
+						<template #footer-start="{ disabled }">
+							<InstanceAiInputMenu :disabled="disabled" @attach-files="panel?.openFilePicker()" />
 						</template>
 					</AgentChatPanel>
 				</div>

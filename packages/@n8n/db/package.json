@@ -1,6 +1,10 @@
 {
   "name": "@n8n/db",
+<<<<<<< HEAD
   "version": "2.1.0",
+=======
+  "version": "1.47.0",
+>>>>>>> d5e7db2bf57dbc06e65648cdbec7f5db6b91bedc
   "scripts": {
     "clean": "rimraf dist .turbo .tmp-schema-docs",
     "gen:migration-index": "node scripts/generate-migration-index.mjs",

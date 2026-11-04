@@ -1,6 +1,10 @@
 {
   "name": "@n8n/backend-module-apps",
+<<<<<<< HEAD
   "version": "1.1.0",
+=======
+  "version": "0.3.0",
+>>>>>>> d5e7db2bf57dbc06e65648cdbec7f5db6b91bedc
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -74,7 +78,9 @@
     "@types/compression": "catalog:",
     "@types/cookie-parser": "catalog:",
     "@types/express": "catalog:",
+    "@types/jsdom": "catalog:",
     "@types/mime-types": "catalog:",
+    "jsdom": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
