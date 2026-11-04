@@ -153,10 +153,10 @@ interface PendingResponseMetric {
 	isFirstUserMessage: boolean;
 	actionSource: InstanceAiThreadSourcePersisted;
 	generation: number;
-	// Context of the message that started the run, repeated on the response event
-	// so outcome cuts by context need no join back to the send event.
+	// Repeat the message context on the response event for outcome analysis.
 	mentionCounts: AssistantMentionCounts;
 	attachmentCount: number;
+	selectedElementCount: number;
 }
 
 /**
@@ -798,6 +798,7 @@ export function createThreadRuntime(
 				tab_visible: tabVisible,
 				mention_counts: metric.mentionCounts,
 				attachment_count: metric.attachmentCount,
+				selected_element_count: metric.selectedElementCount,
 			});
 		});
 	}
@@ -1541,6 +1542,7 @@ export function createThreadRuntime(
 		actionSource: InstanceAiThreadSourcePersisted,
 		mentionCounts: AssistantMentionCounts,
 		attachmentCount: number,
+		selectedElementCount: number,
 	): void {
 		const isPrefill = authorship.kind === 'prefill';
 		const setupContext =
@@ -1560,6 +1562,7 @@ export function createThreadRuntime(
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 			mention_counts: mentionCounts,
 			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 		});
 	}
 
@@ -1657,12 +1660,15 @@ export function createThreadRuntime(
 			seedArtifactOrigins(mentionedWorkflowIds, 'mentioned');
 			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			const attachmentCount = attachments?.length ?? 0;
+			const selectedElementCount =
+				attachments?.filter(({ type }) => type === 'element').length ?? 0;
 			trackUserMessageSent(
 				isFirstMessage,
 				authorship,
 				actionSource,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			);
 
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
@@ -1679,6 +1685,7 @@ export function createThreadRuntime(
 				generation: metricGeneration,
 				mentionCounts,
 				attachmentCount,
+				selectedElementCount,
 			});
 			return true;
 		} finally {
