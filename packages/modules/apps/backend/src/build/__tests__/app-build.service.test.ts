@@ -393,7 +393,7 @@ describe('AppBuildService', () => {
 		source.readSource.mockResolvedValue(new Map());
 		expect(await service.build('project', 'app', 'version')).toMatchObject({
 			status: 'failed',
-			diagnostics: { stage: 'source' },
+			diagnostics: { stage: 'source', log: 'Invalid package files.' },
 		});
 		expect(workspaces.build).not.toHaveBeenCalled();
 	});

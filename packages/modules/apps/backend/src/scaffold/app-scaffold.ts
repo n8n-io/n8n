@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
 import { isRecord } from '@n8n/utils/is-record';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { valid } from 'semver';
 
 import manifest from './scaffold-package.json';
@@ -114,10 +115,11 @@ export function checkBuildSource(files: AppFiles): string {
 			.update(JSON.stringify(packageJson))
 			.update(JSON.stringify(packageLock))
 			.digest('hex');
-	} catch {
+	} catch (error) {
 		throw new AppBuildError(
 			'source',
 			'Use the app scaffold package files and public npm packages with exact versions.',
+			getErrorMessage(error),
 		);
 	}
 }

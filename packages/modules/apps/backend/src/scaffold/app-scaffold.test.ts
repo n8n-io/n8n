@@ -107,7 +107,14 @@ describe('app scaffold package validation', () => {
 		delete packageLock.packages[''].dependencies!.nanoid;
 		writeJson(files, 'package-lock.json', packageLock);
 
-		expect(() => checkBuildSource(files)).toThrow(AppBuildError);
+		let error: unknown;
+		try {
+			checkBuildSource(files);
+		} catch (caught) {
+			error = caught;
+		}
+		expect(error).toBeInstanceOf(AppBuildError);
+		expect(error).toMatchObject({ log: 'Package lock does not match package.json.' });
 	});
 
 	it('rejects changes to the build script', () => {
