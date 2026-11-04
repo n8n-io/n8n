@@ -3,17 +3,18 @@ import { readonly } from 'vue';
 
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 
+import { isAgentEditingWorkflow } from '../../canvasPreview.utils';
 import {
 	findArchivedAssistantWorkflowIds,
 	findLatestAssistantTasks,
-	toAssistantArtifactMessages,
-	toAssistantToolCall,
-} from '../assistantArtifactMessages';
+	toArtifactToolCall,
+	toAssistantArtifactTurns,
+} from '../assistantArtifactTurns';
 
 // The chat panel exposes its messages read-only, so the inputs are read-only here too.
-const mapToolCall = (call: ToolCall) => toAssistantToolCall(readonly(call));
+const mapToolCall = (call: ToolCall) => toArtifactToolCall(readonly(call));
 const mapMessages = (messages: ChatMessage[], isStreaming: boolean) =>
-	toAssistantArtifactMessages(readonly(messages), isStreaming);
+	toAssistantArtifactTurns(readonly(messages), isStreaming);
 const latestTasks = (messages: ChatMessage[]) => findLatestAssistantTasks(readonly(messages));
 const archivedIds = (messages: ChatMessage[]) =>
 	findArchivedAssistantWorkflowIds(readonly(messages));
@@ -38,7 +39,7 @@ function tasksEvent(id: string, description: string): NonNullable<ChatMessage['h
 	};
 }
 
-describe('toAssistantToolCall', () => {
+describe('toArtifactToolCall', () => {
 	it('keeps the tool name, input and output', () => {
 		expect(mapToolCall(toolCall())).toEqual({
 			toolCallId: 'tc-1',
@@ -65,7 +66,7 @@ describe('toAssistantToolCall', () => {
 	});
 });
 
-describe('toAssistantArtifactMessages', () => {
+describe('toAssistantArtifactTurns', () => {
 	const messages: ChatMessage[] = [
 		{ id: 'u1', role: 'user', content: 'Build a digest', createdAt: 1_000 },
 		{ id: 'a1', role: 'assistant', content: 'Done', toolCalls: [toolCall()], status: 'success' },
@@ -73,38 +74,64 @@ describe('toAssistantArtifactMessages', () => {
 		{ id: 'a2', role: 'assistant', content: '', toolCalls: [toolCall({ toolCallId: 'tc-2' })] },
 	];
 
-	it('gives each assistant message one orchestrator node with its tool calls', () => {
+	it('gives each message one turn with its tool calls', () => {
 		const [user, assistant] = mapMessages(messages, false);
 
-		expect(user).toMatchObject({
-			id: 'u1',
-			role: 'user',
-			content: 'Build a digest',
-			createdAt: new Date(1_000).toISOString(),
-		});
-		expect(user.agentTree).toBeUndefined();
-		expect(assistant.agentTree).toMatchObject({
-			agentId: 'a1',
-			role: 'orchestrator',
-			status: 'completed',
+		expect(user).toEqual({ id: 'u1', role: 'user', isLive: false, toolCalls: [] });
+		expect(assistant).toEqual({
+			id: 'a1',
+			role: 'assistant',
+			isLive: false,
 			toolCalls: [expect.objectContaining({ toolCallId: 'tc-1' })],
-			children: [],
 		});
 	});
 
 	it('marks only the latest assistant message as live while the chat streams', () => {
 		const mapped = mapMessages(messages, true);
 
-		expect(mapped[1].isStreaming).toBe(false);
-		expect(mapped[1].agentTree?.status).toBe('completed');
-		expect(mapped[3].isStreaming).toBe(true);
-		expect(mapped[3].agentTree?.status).toBe('active');
+		expect(mapped.map((turn) => turn.isLive)).toEqual([false, false, false, true]);
 	});
 
-	it('marks a failed assistant message as an error', () => {
-		const [, assistant] = mapMessages([messages[0], { ...messages[1], status: 'error' }], false);
+	it('takes the setup announcement from the latest setup-items host event', () => {
+		const [turn] = mapMessages(
+			[
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: '',
+					hostEvents: [
+						{ id: 'e1', name: 'setup-items', payload: { workflowId: 'wf-1', items: [] } },
+						{ id: 'e2', name: 'setup-items', payload: { workflowId: 'wf-2', items: [] } },
+						{ id: 'e3', name: 'setup-items', payload: { items: [] } },
+					],
+				},
+			],
+			false,
+		);
 
-		expect(assistant.agentTree?.status).toBe('error');
+		expect(turn.setupAnnouncement).toEqual({ workflowId: 'wf-2' });
+	});
+
+	it('locks a workflow that the setup flow announced for a build in flight', () => {
+		const turns = mapMessages(
+			[
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: '',
+					toolCalls: [
+						toolCall({ input: { code: 'workflow' }, output: undefined, state: 'running' }),
+					],
+					hostEvents: [
+						{ id: 'e1', name: 'setup-items', payload: { workflowId: 'wf-1', items: [] } },
+					],
+				},
+			],
+			true,
+		);
+
+		expect(isAgentEditingWorkflow(turns, 'wf-1')).toBe(true);
+		expect(isAgentEditingWorkflow(turns, 'wf-2')).toBe(false);
 	});
 });
 

@@ -342,7 +342,7 @@ const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 const threadTitle = computed(() => {
 	const title = threadsStore.threadsById.get(props.threadId)?.title;
 	if (title) return title;
-	const firstUserMessage = thread.messages.find((message) => message.role === 'user');
+	const firstUserMessage = panel.value?.messages.find((message) => message.role === 'user');
 	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
 });
 
@@ -360,7 +360,10 @@ const isArtifactsPanelInLayout = computed(
 );
 // A loading thread shows the panel too, so its loading state shows in place.
 const canShowArtifactsPanel = computed(
-	() => thread.messages.length > 0 || preview.openTabs.value.length > 0 || thread.isHydratingThread,
+	() =>
+		thread.artifactTurns.length > 0 ||
+		preview.openTabs.value.length > 0 ||
+		thread.isHydratingThread,
 );
 const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
 	useArtifactsPanelToggle({

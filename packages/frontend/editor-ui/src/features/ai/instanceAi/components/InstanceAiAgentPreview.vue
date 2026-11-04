@@ -54,13 +54,7 @@ onBeforeUnmount(() => {
 	mounted = false;
 });
 
-const isAgentBuilding = computed(() => {
-	for (const message of thread.messages) {
-		if (!message.agentTree) continue;
-		if (isAgentEditingAgent(message.agentTree, props.agentId)) return true;
-	}
-	return false;
-});
+const isAgentBuilding = computed(() => isAgentEditingAgent(thread.artifactTurns, props.agentId));
 
 // The prompt starts processing before the agent-builder event arrives.
 const showBuildingIndicator = computed(
