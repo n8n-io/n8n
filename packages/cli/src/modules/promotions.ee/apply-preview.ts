@@ -2,7 +2,7 @@ import type {
 	PromotionApplyCheck,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
-	PromotionBindingPreflightResult,
+	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceChange,
 	PromotionVariableScope,
@@ -27,7 +27,7 @@ import {
 	type CredentialReference,
 	type ProjectLookup,
 	type VariableReference,
-} from './promotion-binding-preflight.service';
+} from './package-references';
 import type { CrossProjectMoves } from './cross-project-moves';
 import { resourceKey, variableResourceKey } from './promotion-preview';
 
@@ -137,8 +137,6 @@ export type ApplyCheckInput = {
 	/** References of the planned workflows, from a scan of their nodes. */
 	credentials: CredentialReference[];
 	variables: VariableReference[];
-	/** The project that project-wide blockers name when the issue names none. */
-	projectId: string;
 	moves: CrossProjectMoves;
 };
 
@@ -149,8 +147,8 @@ export type ApplyCheckInput = {
  * - a variable must exist in the scope that the branch declares, not only in a fallback scope;
  * - a variable without a file in the package blocks.
  */
-export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
-	const { plan, inventory, projectId, moves } = input;
+export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
+	const { plan, inventory, moves } = input;
 	const projects = new Map(inventory.projects.map((project) => [project.id, project]));
 	const projectOf: ProjectLookup = (id) => {
 		const project = projects.get(id);
@@ -166,7 +164,7 @@ export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
 			projectOf,
 		);
 
-	const result: PromotionBindingPreflightResult = {
+	const result: PromotionApplyCheck = {
 		missingProjects: plan.projectPlan.items
 			.filter(({ action }) => action === 'create')
 			.flatMap(({ sourceProjectId }) => {
@@ -206,21 +204,32 @@ export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
 		}
 	}
 
+	// A project-wide blocker names the project whose plan raised it. An issue across projects
+	// names the first planned project.
+	const scopeProjects = new Map(
+		plan.scopes.flatMap(({ project, plan: scope }) =>
+			scope.blockingIssues.map((issue) => [issue, project.id] as const),
+		),
+	);
+	const fallbackProjectId = plan.scopes[0]?.project.id ?? inventory.projects[0]?.id ?? '';
+
 	for (const issue of plan.issues) {
 		if (handled.has(issue)) continue;
 		result.conflicts.push(
-			describeIssue(issue, projectId, { inventory, projectOf, consumersOfIds }),
+			describeIssue(issue, scopeProjects.get(issue) ?? fallbackProjectId, {
+				inventory,
+				projectOf,
+				consumersOfIds,
+			}),
 		);
 	}
 
 	return {
-		preflight: {
-			...result,
-			missingBindings: sortedByJson(result.missingBindings),
-			accessRequirements: sortedByJson(result.accessRequirements),
-			conflicts: sortedByJson(result.conflicts),
-			warnings: sortedByJson(result.warnings),
-		},
+		...result,
+		missingBindings: sortedByJson(result.missingBindings),
+		accessRequirements: sortedByJson(result.accessRequirements),
+		conflicts: sortedByJson(result.conflicts),
+		warnings: sortedByJson(result.warnings),
 		movedWorkflows: moves.workflows,
 		movedFolders: moves.folders,
 	};
@@ -366,7 +375,7 @@ function addCredentialRules(
 	{ plan, inventory, credentials }: ApplyCheckInput,
 	consumersOfIds: (consumers: readonly PackageRequirementConsumer[]) => PromotionBindingConsumer[],
 	projectOf: ProjectLookup,
-	result: PromotionBindingPreflightResult,
+	result: PromotionApplyCheck,
 	handled: Set<BlockingIssue>,
 ): void {
 	const issuesById = new Map<
@@ -491,7 +500,7 @@ function addCredentialRules(
 function addVariableRules(
 	{ plan, variables }: ApplyCheckInput,
 	projectOf: ProjectLookup,
-	result: PromotionBindingPreflightResult,
+	result: PromotionApplyCheck,
 	handled: Set<BlockingIssue>,
 ): void {
 	// Scopes of each matched variable, by consumer project.
@@ -597,7 +606,7 @@ function canonicalJson(value: unknown): string {
  */
 export function previewRevision(
 	resources: PromotionResource[],
-	check: PromotionApplyCheck,
+	check: PromotionPreviewCheck,
 ): string {
 	return createHash('sha256')
 		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, resources, check }))

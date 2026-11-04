@@ -81,7 +81,7 @@ export class InstanceAiPage extends BasePage {
 	async mockSearchVerification(
 		response: { ok: true; resultCount: number } | { ok: false; failure: string },
 	): Promise<void> {
-		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+		await this.page.route('**/rest/assistant/settings/verify/search', async (route) => {
 			await route.fulfill({ json: { data: response } });
 		});
 	}
@@ -410,6 +410,34 @@ export class InstanceAiPage extends BasePage {
 
 	getPreviewPanel(): Locator {
 		return this.container.getByTestId('instance-ai-preview-panel');
+	}
+
+	getBuilderChat(): Locator {
+		return this.container.getByTestId('instance-ai-builder-chat');
+	}
+
+	getAgentTestButton(): Locator {
+		return this.getPreviewPanel().locator('[data-testid="agent-header-preview-btn"]');
+	}
+
+	getAgentTestChatInner(): Locator {
+		return this.getBuilderChat().locator('[data-testid="agent-preview-dock"] > div');
+	}
+
+	async getAgentTestChatBoundsDifference(): Promise<number> {
+		const host = await this.getBuilderChat().boundingBox();
+		const dock = this.getBuilderChat().locator('[data-testid="agent-preview-dock"]');
+		const bounds = await dock.boundingBox();
+		const inner = await this.getAgentTestChatInner().boundingBox();
+		if (!host || !bounds || !inner) throw new Error('The test chat is not visible');
+		return Math.max(
+			...[bounds, inner].flatMap((box) => [
+				Math.abs(box.x - host.x),
+				Math.abs(box.y - host.y),
+				Math.abs(box.width - host.width),
+				Math.abs(box.height - host.height),
+			]),
+		);
 	}
 
 	getPreviewTabByName(name: string | RegExp): Locator {

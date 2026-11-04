@@ -10,6 +10,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { getSystemAgentThread } from '@/features/agents/composables/useAgentApi';
 
 import { rememberAssistantAgentThread } from '../assistantAgent/assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { useInstanceAiStore } from '../instanceAi.store';
 import InstanceAiThreadRouteView from '../InstanceAiThreadRouteView.vue';
 
@@ -117,6 +118,10 @@ describe('InstanceAiThreadRouteView', () => {
 		);
 		expect(getByTestId('agent-thread-view')).toHaveTextContent('agent-thread:project-2');
 		expect(queryByTestId('assistant-thread-view')).not.toBeInTheDocument();
+		// The lists get the thread from the lookup, so the thread view does not request it again.
+		expect(mockedStore(useAssistantAgentThreadsStore).addOpenedThread).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'agent-thread', projectId: 'project-2' }),
+		);
 	});
 
 	it('opens an unknown thread that the agents runtime does not have in the current Assistant', async () => {

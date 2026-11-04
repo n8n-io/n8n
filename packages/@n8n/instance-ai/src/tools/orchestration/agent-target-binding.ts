@@ -14,7 +14,7 @@ import { z } from 'zod';
 import {
 	AGENT_PREVIEW_SESSION_METADATA_KEY,
 	type AgentPreviewSession,
-} from './agent-preview-session-binding';
+} from './agent-test-session-binding';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 
@@ -296,6 +296,32 @@ export function withBoundAgentTarget(
 		[METADATA_KEY]: entry,
 		[REGISTRY_METADATA_KEY]: registry,
 	};
+}
+
+/**
+ * The thread metadata that binds an agent the editor attached to the message,
+ * the same binding the editor writes before it opens a thread on the current
+ * runtime. A pending agent gets the pending marker, so a build reuses its id.
+ * When the editor saved the pending agent, the marker becomes the binding.
+ * Returns `undefined` when the thread already targets an agent.
+ */
+export function withAttachedAgentTarget(
+	metadata: Record<string, unknown>,
+	attached: { id: string; projectId: string; name?: string; pending?: true },
+): Record<string, unknown> | undefined {
+	if (parseTarget(metadata[METADATA_KEY])) return undefined;
+	const { id: agentId, projectId, name } = attached;
+	const pending = pendingAgentTargetSchema.safeParse(metadata[PENDING_AGENT_METADATA_KEY]);
+	if (
+		pending.success &&
+		(attached.pending || pending.data.agentId !== agentId || pending.data.projectId !== projectId)
+	) {
+		return undefined;
+	}
+	if (attached.pending) {
+		return { ...metadata, [PENDING_AGENT_METADATA_KEY]: { projectId, agentId } };
+	}
+	return withBoundAgentTarget(metadata, { agentId, projectId, ...(name ? { name } : {}) });
 }
 
 /**

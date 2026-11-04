@@ -306,7 +306,10 @@ export class Expression {
 
 	private static shadowRunner?: ExpressionShadowRunner;
 
-	constructor(private readonly timezone: string) {}
+	constructor(
+		private readonly timezone: string,
+		private readonly allowNativeEvaluation = true,
+	) {}
 
 	/**
 	 * Check if VM evaluator should be used for evaluation.
@@ -459,6 +462,12 @@ export class Expression {
 			logger: LoggerProxy,
 			observability: options.observability,
 		});
+	}
+
+	/** Load the QuickJS WASM module, so a QuickJS evaluator created later starts without it. */
+	static async loadQuickJsWasm(): Promise<void> {
+		const runtime = await import('@n8n/expression-runtime');
+		await runtime.QuickJsBridge.loadWasm();
 	}
 
 	/**
@@ -853,16 +862,18 @@ export class Expression {
 		// engine (isolate). Everything else takes the regular pipeline below.
 		// Verify mode evaluates natively here, then returns the engine's result.
 		let nativeResult: ExpressionEvaluationOutcome | undefined;
-		if (Expression.shouldVerifyNative(parameterValue)) {
-			try {
-				const native = evaluateNatively(parameterValue, data);
-				if (native.handled) nativeResult = { ok: true, value: native.value };
-			} catch (error) {
-				nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
+		if (this.allowNativeEvaluation) {
+			if (Expression.shouldVerifyNative(parameterValue)) {
+				try {
+					const native = evaluateNatively(parameterValue, data);
+					if (native.handled) nativeResult = { ok: true, value: native.value };
+				} catch (error) {
+					nativeResult = { ok: false, error, errorClass: errorClassOf(error) };
+				}
+			} else if (Expression.nativeEvaluation) {
+				const native = Expression.evaluateNative(parameterValue, data);
+				if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 			}
-		} else if (Expression.nativeEvaluation) {
-			const native = Expression.evaluateNative(parameterValue, data);
-			if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 		}
 
 		// Support only a subset of process properties

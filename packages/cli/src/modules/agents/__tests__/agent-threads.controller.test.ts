@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentMemoryTraceService } from '../agent-memory-trace.service';
 import type { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
 import { AgentThreadsController } from '../agent-threads.controller';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -48,8 +49,12 @@ describe('AgentThreadsController route access scopes', () => {
 
 	it('omits internal ownership fields from a thread response', async () => {
 		const agentExecutionService = mock<AgentExecutionService>();
+		const memoryTraceService = mock<AgentMemoryTraceService>();
+		const memory = { recalls: {}, flags: {} };
+		memoryTraceService.getThreadMemory.mockResolvedValue(memory);
 		const controller = new AgentThreadsController(
 			agentExecutionService,
+			memoryTraceService,
 			mock<AgentSessionLangSmithExportService>(),
 			new SystemAgentRegistry(),
 			mock<AgentSessionStopService>(),
@@ -73,6 +78,14 @@ describe('AgentThreadsController route access scopes', () => {
 		expect(result.thread).not.toHaveProperty('ownerId');
 		expect(result.thread).not.toHaveProperty('accessScope');
 		expect(result.thread).not.toHaveProperty('owner');
+		expect(result.memory).toBe(memory);
+		expect(memoryTraceService.getThreadMemory).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			userId: 'user-1',
+			threadId: 'thread-1',
+			executions: [],
+		});
 	});
 });
 
@@ -91,6 +104,7 @@ describe('AgentThreadsController session details', () => {
 			const service = mock<AgentExecutionService>();
 			const controller = new AgentThreadsController(
 				service,
+				mock<AgentMemoryTraceService>(),
 				mock<AgentSessionLangSmithExportService>(),
 				new SystemAgentRegistry(),
 				mock<AgentSessionStopService>(),
@@ -134,6 +148,7 @@ describe('AgentThreadsController deleteThread', () => {
 		});
 		const controller = new AgentThreadsController(
 			service,
+			mock<AgentMemoryTraceService>(),
 			mock<AgentSessionLangSmithExportService>(),
 			registry,
 			mock<AgentSessionStopService>(),
@@ -173,6 +188,7 @@ describe('AgentThreadsController stopSession', () => {
 		const stopService = mock<AgentSessionStopService>();
 		const controller = new AgentThreadsController(
 			mock<AgentExecutionService>(),
+			mock<AgentMemoryTraceService>(),
 			mock<AgentSessionLangSmithExportService>(),
 			new SystemAgentRegistry(),
 			stopService,

@@ -7,7 +7,10 @@ import { useRouter } from 'vue-router';
 
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import {
+	ENVIRONMENTS_UPGRADE_DOCS_URL,
+	PROMOTIONS_SETTINGS_VIEW,
+} from '@/features/integrations/promotions.ee/promotions.constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 /** Moves the instance between Environments (v1) and Environments v2 after a confirmation. */
@@ -18,11 +21,9 @@ export function useEnvironmentsVersionSwitch() {
 	const router = useRouter();
 	const sourceControlStore = useSourceControlStore();
 
-	/** Only an admin of an instance with a v1 repository has a classic setup to go back to. */
-	const canSwitchBack = computed(
-		() =>
-			sourceControlStore.preferences.connected &&
-			hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
+	/** While Environments v2 is in preview, any admin can switch back, with or without a classic setup. */
+	const canSwitchBack = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'sourceControl:manage' } }),
 	);
 
 	const busy = ref(false);
@@ -45,9 +46,14 @@ export function useEnvironmentsVersionSwitch() {
 					h('p', { class: 'mb-l' }, i18n.baseText(`${keys}.message` as const)),
 					h('p', [
 						beforeLink,
-						// FIXME: link to the environments docs page once it exists.
-						h(N8nExternalLink, { href: '#', inline: true, size: 'small' }, () =>
-							i18n.baseText('settings.sourceControl.switch.link'),
+						h(
+							N8nExternalLink,
+							{
+								href: `${ENVIRONMENTS_UPGRADE_DOCS_URL}#compare-classic-and-environments`,
+								inline: true,
+								size: 'small',
+							},
+							() => i18n.baseText('settings.sourceControl.switch.link'),
 						),
 						afterLink,
 					]),

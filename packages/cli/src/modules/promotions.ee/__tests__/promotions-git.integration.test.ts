@@ -126,12 +126,33 @@ describe('Promotion Git checkout', () => {
 
 describe('Promotion Git reads at a commit', () => {
 	let tmpRoot: string;
+	let repositoryFolder: string;
+	let commitSha: string;
+	const git = (...args: string[]) =>
+		execFileSync('git', ['-C', repositoryFolder, ...args], { encoding: 'utf8' }).trim();
 
-	beforeEach(async () => {
+	beforeAll(async () => {
 		tmpRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-tree-'));
+		repositoryFolder = path.join(tmpRoot, 'repository');
+		execFileSync('git', ['init', '--quiet', '--initial-branch=main', repositoryFolder]);
+		await mkdir(path.join(repositoryFolder, 'n8n'), { recursive: true });
+		await writeFile(path.join(repositoryFolder, 'n8n', 'a.json'), '{}');
+		await writeFile(path.join(repositoryFolder, 'n8n', 'b.json'), '{}');
+		git('add', '--all');
+		git(
+			'-c',
+			'user.name=n8n',
+			'-c',
+			'user.email=n8n@example.com',
+			'commit',
+			'--quiet',
+			'-m',
+			'Add',
+		);
+		commitSha = git('rev-parse', 'HEAD');
 	});
 
-	afterEach(async () => {
+	afterAll(async () => {
 		await rm(tmpRoot, { recursive: true, force: true });
 	});
 
@@ -150,25 +171,6 @@ describe('Promotion Git reads at a commit', () => {
 			error: 'Package entry path exceeds the maximum allowed length',
 		},
 	])('rejects a package over the $limit limit, as Apply does', async ({ lowered, error }) => {
-		const repositoryFolder = path.join(tmpRoot, 'repository');
-		const git = (...args: string[]) =>
-			execFileSync('git', ['-C', repositoryFolder, ...args], { encoding: 'utf8' }).trim();
-		execFileSync('git', ['init', '--quiet', '--initial-branch=main', repositoryFolder]);
-		await mkdir(path.join(repositoryFolder, 'n8n'), { recursive: true });
-		await writeFile(path.join(repositoryFolder, 'n8n', 'a.json'), '{}');
-		await writeFile(path.join(repositoryFolder, 'n8n', 'b.json'), '{}');
-		git('add', '--all');
-		git(
-			'-c',
-			'user.name=n8n',
-			'-c',
-			'user.email=n8n@example.com',
-			'commit',
-			'--quiet',
-			'-m',
-			'Add',
-		);
-
 		await expect(
 			new PromotionsGitService(mockLogger()).readTreeAtCommit({
 				remoteUrl: pathToFileURL(repositoryFolder).href,
@@ -181,7 +183,7 @@ describe('Promotion Git reads at a commit', () => {
 				},
 				branchName: 'main',
 				environmentId: 'environment-1',
-				commitSha: git('rev-parse', 'HEAD'),
+				commitSha,
 				directory: 'n8n',
 				limits: { ...limits, ...lowered },
 			}),

@@ -1,3 +1,4 @@
+import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { ExecutionsConfig } from '@n8n/config';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -8,7 +9,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
-import type { AgentQueuedPreviewStreamService } from '../agent-queued-preview-stream.service';
+import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
@@ -20,8 +21,9 @@ describe('AgentSessionStopService', () => {
 	const config = mock<ExecutionsConfig>({ mode: 'regular' });
 	const systemAgents = new SystemAgentRegistry();
 	const chatExecutions = mock<AgentChatExecutionService>();
-	const streams = mock<AgentQueuedPreviewStreamService>();
+	const streams = mock<AgentQueuedTestStreamService>();
 	const attachments = mock<AgentChatAttachmentService>();
+	const threads = mock<AgentExecutionThreadRepository>();
 	const service = new AgentSessionStopService(
 		executionService,
 		queue,
@@ -31,6 +33,7 @@ describe('AgentSessionStopService', () => {
 		chatExecutions,
 		streams,
 		attachments,
+		threads,
 	);
 	const thread = mock<AgentExecutionThread>({
 		id: 'thread-1',
@@ -169,5 +172,12 @@ describe('AgentSessionStopService', () => {
 		await expect(stop()).rejects.toThrow('Relay failed');
 		expect(chatExecutions.cancelSessionWork).toHaveBeenCalledTimes(1);
 		expect(attachments.deleteByIds).toHaveBeenCalledWith(prepared.attachmentIds);
+	});
+	it('stops all project sessions and cancels suspended background work', async () => {
+		threads.findMemoryThreadsForProject.mockResolvedValue([thread]);
+		await service.stopProjectSessions('project-1');
+		expect(queue.prepareSessionStop).toHaveBeenCalledWith(thread.id, { preserveInput: true });
+		expect(chatExecutions.cancelProjectSessionWork).toHaveBeenCalledWith(thread.agentId, thread.id);
+		expect(attachments.deleteByIds).not.toHaveBeenCalled();
 	});
 });

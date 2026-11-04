@@ -88,6 +88,66 @@ describe('agent channel platform registry', () => {
 		expect(wrapper.get('a').text()).toBe('agents.channels.modal.teamsResourcesNotDeleted.link');
 	});
 
+	it('confirms every WhatsApp removal', () => {
+		const platform = getAgentChannelPlatform('whatsapp');
+
+		expect(platform.disconnectConfirmationComponent).toBeDefined();
+		expect(
+			platform.shouldConfirmDisconnect?.({ loading: ref(false), load: async () => {} }, 'cred-1', {
+				isPublished: false,
+			}),
+		).toBe(true);
+	});
+
+	it('tells the user a removed WhatsApp number is still connected in Meta', () => {
+		const platform = getAgentChannelPlatform('whatsapp');
+		const interpolations: Array<Record<string, string> | undefined> = [];
+		const presentation = platform.presentDisconnectWarning?.(
+			{
+				integrationType: 'whatsapp',
+				code: 'number_still_connected',
+				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
+				details: { displayPhoneNumber: '+1 555-184-1090' },
+			},
+			{
+				text: (key, interpolate) => {
+					interpolations.push(interpolate);
+					return key;
+				},
+			},
+		);
+
+		expect(presentation?.title).toBe('agents.channels.whatsapp.removed.title');
+		expect(interpolations).toContainEqual({ number: '+1 555-184-1090' });
+		const wrapper = mount(() => presentation?.message);
+		expect(wrapper.text()).toContain('agents.channels.whatsapp.removed.message');
+		expect(wrapper.get('a').attributes('href')).toBe('https://developers.facebook.com/apps');
+		expect(wrapper.get('a').attributes('target')).toBe('_blank');
+		expect(wrapper.get('a').text()).toBe('agents.channels.whatsapp.removed.link');
+	});
+
+	it('words the WhatsApp removal warning without a number when none is known', () => {
+		const presentation = getAgentChannelPlatform('whatsapp').presentDisconnectWarning?.(
+			{
+				integrationType: 'whatsapp',
+				code: 'number_still_connected',
+				action: { type: 'open_url', url: 'https://developers.facebook.com/apps' },
+			},
+			{ text },
+		);
+
+		expect(presentation?.title).toBe('agents.channels.whatsapp.removed.titleNoNumber');
+	});
+
+	it('ignores a WhatsApp warning it does not recognise', () => {
+		const presentation = getAgentChannelPlatform('whatsapp').presentDisconnectWarning?.(
+			{ integrationType: 'whatsapp', code: 'something_else' },
+			{ text },
+		);
+
+		expect(presentation).toBeNull();
+	});
+
 	it('registers n8n Chat with its "Make available" connect action', () => {
 		const platform = getAgentChannelPlatform('n8n_chat');
 		const action = platform.getConnectAction(

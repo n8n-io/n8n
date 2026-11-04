@@ -8,10 +8,9 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, NotFoundError } from '@n8n/errors';
-import { sleep } from '@n8n/utils/sleep';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { retry } from '@n8n/utils/retry';
 import { FileNotFoundError } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { buffer as streamToBuffer } from 'node:stream/consumers';
 
@@ -31,7 +30,11 @@ import {
 	AgentExecutionRepository,
 	type AgentExecutionUsageRow,
 } from '../repositories/agent-execution.repository';
-import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import {
+	AgentExecutionThreadRepository,
+	type AgentExecutionThreadKeyset,
+	type AgentExecutionThreadKeysetPage,
+} from '../repositories/agent-execution-thread.repository';
 import { AgentThreadGrantRepository } from '../repositories/agent-thread-grant.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
@@ -113,13 +116,6 @@ function runOptionsOf(handle: SystemAgentTurnHandle) {
 }
 
 type SessionRef = Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>;
-
-/**
- * User deletion stops a running turn first. The turn records its end
- * asynchronously, so the delete retries a few times before it gives up.
- */
-const USER_DELETION_DELETE_ATTEMPTS = 5;
-const USER_DELETION_RETRY_DELAY_MS = 1_000;
 
 /**
  * Runs code-defined instance agents on the Agents runtime. A conversation is
@@ -281,9 +277,23 @@ export class SystemAgentExecutionService {
 		return { provider, thread };
 	}
 
-	async listThreads(agentId: string, user: User, limit?: number) {
+	/**
+	 * One page of the user's own sessions with the agent, newest first. `search`
+	 * matches the title, and `before` is the last session of the previous page.
+	 */
+	async listThreads(
+		agentId: string,
+		user: User,
+		options: { limit: number; search?: string; before?: AgentExecutionThreadKeyset },
+	): Promise<AgentExecutionThreadKeysetPage> {
 		this.assertRegistered(agentId);
-		return await this.threadRepository.findOwnedByAgent(agentId, user.id, { limit });
+		return await this.threadRepository.findOwnedHistoryPage(
+			agentId,
+			user.id,
+			options.limit,
+			options.search,
+			options.before,
+		);
 	}
 
 	/** Load a thread the user owns. It checks ownership only, not the floor. */
@@ -293,13 +303,17 @@ export class SystemAgentExecutionService {
 		return thread;
 	}
 
+	/**
+	 * Rename a thread, move it to another project, or both. The user must be able to
+	 * use the thread, and to use the target project of a move.
+	 */
 	async updateThread(
 		agentId: string,
 		user: User,
 		threadId: string,
 		changes: { title?: string; projectId?: string },
 	): Promise<AgentExecutionThread> {
-		const thread = await this.getThread(agentId, user, threadId);
+		const thread = await this.getUsableThread(agentId, user, threadId);
 		const { title, projectId } = changes;
 		const moving = projectId !== undefined && projectId !== thread.projectId;
 		if (moving) await this.assertCanUse(agentId, user, projectId);
@@ -332,19 +346,8 @@ export class SystemAgentExecutionService {
 		await this.deleteOwnedThread(thread, user.id);
 	}
 
-	/**
-	 * Delete every private system agent session of a user, before the user is
-	 * deleted. The owner column is `ON DELETE SET NULL`, so a session that is
-	 * not deleted here stays without an owner and nobody can open it again.
-	 *
-	 * It does not need a registered provider or the Agents feature toggle:
-	 * sessions created while either was on must go too. The child sessions of
-	 * delegated runs go too: they copy the owner of their parent. A running
-	 * turn is stopped first. The deletion is best effort: a session that fails
-	 * is logged and skipped, so it does not block the others or the user
-	 * deletion.
-	 */
-	async deleteThreadsOfUser(userId: string): Promise<void> {
+	/** Stop running system-agent turns and discard queued turns before account cleanup. */
+	async stopThreadsOfUser(userId: string): Promise<void> {
 		let sessions: SessionRef[];
 		try {
 			sessions = await this.threadRepository.findOwnedSystemAgentSessions(userId);
@@ -356,32 +359,50 @@ export class SystemAgentExecutionService {
 			return;
 		}
 		for (const session of sessions) {
-			let descendants: SessionRef[];
 			try {
-				descendants = await this.findDescendantSessions(session);
+				const descendants = await this.findDescendantSessions(session);
 				await this.stopRunningTurn(session, [session, ...descendants], userId);
 			} catch (error) {
-				this.logUserSessionDeletionFailure(userId, session, error);
-				continue;
-			}
-			// Children first, deepest level first: only the parent links to them.
-			for (const thread of [...descendants.reverse(), session]) {
-				try {
-					await this.deleteWithRetry(thread, userId);
-				} catch (error) {
-					this.logUserSessionDeletionFailure(userId, thread, error);
-				}
+				this.logger.warn('Failed to stop a system agent session on account deletion', {
+					userId,
+					threadId: session.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		}
 	}
 
-	private logUserSessionDeletionFailure(userId: string, thread: SessionRef, error: unknown) {
-		this.logger.warn('Failed to delete a system agent session of a deleted user', {
-			userId,
-			agentId: thread.agentId,
-			threadId: thread.id,
-			error: error instanceof Error ? error.message : String(error),
-		});
+	/** Remove private system-agent chats after their turns have been stopped. */
+	async deleteThreadsOfUser(userId: string): Promise<void> {
+		const sessions = await this.threadRepository.findPrivateSystemAgentSessionsForDeletion(userId);
+		for (const session of sessions) {
+			const deleted = await retry(
+				async () => {
+					try {
+						await this.deleteOwnedThread(session, userId);
+						return true;
+					} catch (error) {
+						if (error instanceof ConflictError) return false;
+						if (
+							error instanceof NotFoundError &&
+							!(await this.executionService.findThreadById(session.id))
+						) {
+							await this.destroyThreadWorkspace(session.agentId, session.id, userId);
+							return true;
+						}
+						throw error;
+					}
+				},
+				1_000,
+				5,
+				null,
+			);
+			if (!deleted) {
+				throw new ConflictError(
+					'Stop the running assistant session before you delete the account.',
+				);
+			}
+		}
 	}
 
 	/** Child sessions of delegated runs, level by level. A child stays in the project of its parent. */
@@ -419,9 +440,11 @@ export class SystemAgentExecutionService {
 	): Promise<void> {
 		let running = false;
 		for (const thread of tree) {
-			if (await this.executionRepository.existsRunningByThread(thread.id)) {
-				running = true;
-				break;
+			try {
+				const stop = await this.messageQueue.prepareSessionStop(thread.id, { preserveInput: true });
+				if (stop.executionIds.length > 0) running = true;
+			} catch (error) {
+				if (!(error instanceof NotFoundError)) throw error;
 			}
 		}
 		if (!running) return;
@@ -435,21 +458,6 @@ export class SystemAgentExecutionService {
 			userId,
 			surface: 'system',
 		});
-	}
-
-	/** `deleteThread` refuses a session with a running turn. Wait for the stopped turn to end. */
-	private async deleteWithRetry(session: SessionRef, userId: string): Promise<void> {
-		for (let attempt = 1; ; attempt++) {
-			try {
-				await this.deleteOwnedThread(session, userId);
-				return;
-			} catch (error) {
-				if (!(error instanceof ConflictError) || attempt >= USER_DELETION_DELETE_ATTEMPTS) {
-					throw error;
-				}
-				await sleep(USER_DELETION_RETRY_DELAY_MS);
-			}
-		}
 	}
 
 	/** Delete a session with its sandbox. The caller checks ownership. */
@@ -1064,7 +1072,7 @@ export class SystemAgentExecutionService {
 		const stopTurn = () => controller.abort(providerSignal?.reason);
 		if (providerSignal?.aborted) stopTurn();
 		else providerSignal?.addEventListener('abort', stopTurn, { once: true });
-		try {
+		const consume = async () => {
 			const stream = this.turnExecutionService.execute({
 				admittedExecution: admission,
 				agentInstance: handle.agent,
@@ -1101,6 +1109,10 @@ export class SystemAgentExecutionService {
 				}
 				handle.onChunk?.(chunk);
 			}
+		};
+		try {
+			if (handle.withTurnContext) await handle.withTurnContext(consume);
+			else await consume();
 		} catch (caught) {
 			failure = caught;
 			const formatted = await formatError(caught);

@@ -72,6 +72,9 @@ const clientDetails = computed<ConsentDetailsPicker | null>(() => {
 });
 const resourceName = computed(() => clientDetails.value?.resourceName);
 const uiHints = computed(() => consentStore.consentDetails?.uiHints);
+const isAppConsent = computed(
+	() => clientDetails.value?.isFirstParty && uiHints.value?.consentType === 'app',
+);
 // Localized noun for first-party copy, driven by the resource's consentType hint.
 const firstPartyResourceType = computed(() =>
 	i18n.baseText(
@@ -277,9 +280,12 @@ watch(
 			<div v-else :class="$style.content" data-test-id="consent-content">
 				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
 					{{
-						i18n.baseText('oauth.consentView.firstParty.heading', {
-							interpolate: { resourceName: resourceName ?? '' },
-						})
+						i18n.baseText(
+							isAppConsent
+								? 'oauth.consentView.app.heading'
+								: 'oauth.consentView.firstParty.heading',
+							{ interpolate: { resourceName: resourceName ?? '' } },
+						)
 					}}
 				</N8nHeading>
 				<!-- A resource that advertises scopes is not a workflow; the scope list says what it grants. -->
@@ -307,9 +313,11 @@ watch(
 				<div :class="$style['text-content']">
 					<N8nText v-if="clientDetails?.isFirstParty" color="text-base" size="medium">
 						{{
-							i18n.baseText('oauth.consentView.firstParty.description', {
-								interpolate: { resourceType: firstPartyResourceType },
-							})
+							isAppConsent
+								? i18n.baseText('oauth.consentView.app.description')
+								: i18n.baseText('oauth.consentView.firstParty.description', {
+										interpolate: { resourceType: firstPartyResourceType },
+									})
 						}}
 					</N8nText>
 					<N8nText v-else-if="hasScopes" color="text-base" size="medium">
@@ -416,7 +424,11 @@ watch(
 									:disabled="allowDisabled"
 									@click="handleAllow"
 								>
-									{{ i18n.baseText('oauth.consentView.allow') }}
+									{{
+										i18n.baseText(
+											isAppConsent ? 'oauth.consentView.app.allow' : 'oauth.consentView.allow',
+										)
+									}}
 								</N8nButton>
 							</N8nTooltip>
 						</template>

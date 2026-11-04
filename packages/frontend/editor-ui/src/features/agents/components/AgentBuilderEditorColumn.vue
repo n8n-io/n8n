@@ -15,7 +15,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
@@ -33,7 +33,7 @@ import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
-import AgentPreviewButton from './AgentPreviewButton.vue';
+import AgentTestButton from './AgentTestButton.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
@@ -94,14 +94,7 @@ watch(
 	},
 );
 
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
-watch(
-	() => props.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
+useTypeAvailability(() => props.projectId);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -201,7 +194,7 @@ defineExpose({ onSetupTaskAction });
 						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
-					<AgentPreviewButton
+					<AgentTestButton
 						v-if="!props.hidePreviewButton"
 						:disabled-reason="props.previewDisabledReason"
 						:is-runnable="props.agent?.isRunnable === true"
@@ -257,7 +250,7 @@ defineExpose({ onSetupTaskAction });
 						:description="i18n.baseText('agents.builder.triggers.description')"
 					>
 						<template #header-actions>
-							<AgentPreviewButton
+							<AgentTestButton
 								:disabled-reason="props.previewDisabledReason"
 								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"

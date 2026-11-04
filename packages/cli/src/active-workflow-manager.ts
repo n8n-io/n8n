@@ -28,10 +28,10 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
-	UnexpectedError,
 	IsolateError,
 	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -430,6 +430,12 @@ export class ActiveWorkflowManager {
 	) {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
+
+		// With the default batch size of 1, this is the last line before a crash during registration
+		this.logger.info(`Activating workflow ${formatWorkflow(dbWorkflow)}`, {
+			workflowName: dbWorkflow.name,
+			workflowId: dbWorkflow.id,
+		});
 
 		try {
 			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {

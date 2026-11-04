@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { vElementSize } from '@vueuse/components';
-import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentChatResumeDto, AgentJsonConfig, AgentThreadMemoryDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
@@ -22,6 +22,8 @@ const props = defineProps<{
 	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 	tools?: AgentJsonConfig['tools'];
+	memory?: AgentThreadMemoryDto;
+	onMemoryDeleted?: () => void;
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
 	searchQuery?: string;
@@ -50,6 +52,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.agent');
 		case 'skill':
 			return i18n.baseText('agentSessions.timeline.skill');
+		case 'memory':
+			return i18n.baseText('agentSessions.timeline.memory');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -294,6 +298,8 @@ onBeforeUnmount(() => {
 							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
 							:tools="props.tools"
+							:memory="props.memory"
+							:on-memory-deleted="props.onMemoryDeleted"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
@@ -343,6 +349,8 @@ onBeforeUnmount(() => {
 							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
 							:tools="props.tools"
+							:memory="props.memory"
+							:on-memory-deleted="props.onMemoryDeleted"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"

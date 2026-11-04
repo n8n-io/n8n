@@ -25,16 +25,16 @@ import { userFields, userOperations } from './UserDescription';
 
 export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Paddle',
+		displayName: 'Paddle Classic',
 		name: 'paddle',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:paddle.png',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Paddle API',
+		description: 'Consume Paddle Classic API',
 		defaults: {
-			name: 'Paddle',
+			name: 'Paddle Classic',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
@@ -46,6 +46,13 @@ export class Paddle implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'This node only works with Paddle Classic. If you use Paddle Billing, use the Paddle Billing node instead.',
+				name: 'paddleBillingNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

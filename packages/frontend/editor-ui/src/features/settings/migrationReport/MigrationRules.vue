@@ -16,8 +16,8 @@ import {
 import { VIEWS } from '@/app/constants';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useAsyncState } from '@vueuse/core';
-import { computed, ref, useCssModule } from 'vue';
+import { useAsyncState, useTimeoutFn } from '@vueuse/core';
+import { computed, ref, useCssModule, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import orderBy from 'lodash/orderBy';
@@ -28,6 +28,7 @@ import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { BREAKING_CHANGES_DOCUMENTATION_URL } from './constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useToast } from '@n8n/composables/useToast';
 import { saveAs } from 'file-saver';
@@ -51,7 +52,6 @@ const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 
 const targetVersionMajor = MIGRATION_REPORT_TARGET_VERSION?.slice(1) ?? '2';
 const targetVersionDisplay = `${targetVersionMajor}.0.0`;
-const documentationUrl = 'https://docs.n8n.io/changelog/v30-breaking-changes';
 
 type WorkflowRuleResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
@@ -75,6 +75,21 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 	}
 	return await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 }, undefined);
+
+// A scan on a large instance can take several seconds, so tell the user it is still running.
+const isSlowLoading = ref(false);
+const slowLoadingTimer = useTimeoutFn(() => (isSlowLoading.value = true), 5000, {
+	immediate: false,
+});
+watch(
+	isLoading,
+	(loading) => {
+		isSlowLoading.value = false;
+		if (loading) slowLoadingTimer.start();
+		else slowLoadingTimer.stop();
+	},
+	{ immediate: true },
+);
 
 const openWorkflowRulesCount = computed(
 	() => state.value?.report.workflowResults.filter(isOpenRule).length ?? 0,
@@ -209,7 +224,7 @@ const sortedInstanceResults = computed(() => {
 					},
 				})
 			"
-			:docs-url="documentationUrl"
+			:docs-url="BREAKING_CHANGES_DOCUMENTATION_URL"
 			:docs-label="i18n.baseText('settings.migrationReport.documentationLink')"
 			docs-leading-text=""
 		/>
@@ -286,16 +301,31 @@ const sortedInstanceResults = computed(() => {
 				</div>
 			</div>
 
-			<N8nSettingsRowGroup v-if="isLoading">
-				<N8nSettingsRow v-for="i in 4" :key="i">
-					<template #info>
-						<N8nLoading variant="p" :rows="3" :class="$style.PLoading"></N8nLoading>
-					</template>
-					<template #action>
-						<N8nLoading variant="button"></N8nLoading>
-					</template>
-				</N8nSettingsRow>
-			</N8nSettingsRowGroup>
+			<div v-if="isLoading" :class="$style.LoadingContainer">
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow v-for="i in 4" :key="i">
+						<template #info>
+							<N8nLoading variant="p" :rows="3" :class="$style.PLoading"></N8nLoading>
+						</template>
+						<template #action>
+							<N8nLoading variant="button"></N8nLoading>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<div
+					v-if="isSlowLoading"
+					:class="$style.SlowLoadingOverlay"
+					role="status"
+					data-test-id="migration-report-slow-loading"
+				>
+					<N8nText tag="p" size="medium" color="text-dark" bold>
+						{{ i18n.baseText('settings.migrationReport.slowLoading.title') }}
+					</N8nText>
+					<N8nText tag="p" size="small" color="text-base">
+						{{ i18n.baseText('settings.migrationReport.slowLoading.description') }}
+					</N8nText>
+				</div>
+			</div>
 			<template v-else-if="currentTab === 'workflow-issues'">
 				<template v-if="state && openWorkflowRulesCount === 0">
 					<EmptyTab>
@@ -477,6 +507,22 @@ const sortedInstanceResults = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+
+.LoadingContainer {
+	position: relative;
+}
+
+.SlowLoadingOverlay {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	padding: var(--spacing--sm) var(--spacing--lg);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+	text-align: center;
 }
 
 .PLoading {

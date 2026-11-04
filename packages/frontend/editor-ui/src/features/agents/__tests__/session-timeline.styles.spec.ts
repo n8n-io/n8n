@@ -12,6 +12,7 @@ describe('timelineColors', () => {
 		['agent', 'purple', 'purple'],
 		['skill', 'neutral', 'orange'],
 		['tool', 'neutral', 'green'],
+		['memory', 'neutral', 'yellow'],
 		['node', 'neutral', 'neutral'],
 		['workflow', 'neutral', 'pink'],
 		['suspension', 'neutral', 'yellow'],

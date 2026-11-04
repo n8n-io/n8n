@@ -152,9 +152,9 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 			scope,
 			project_id: z.string().optional().describe("Set only when the scope is 'project'"),
 			outcome: z
-				.enum(['applied', 'blocked', 'source_changed', 'failed'])
+				.enum(['applied', 'blocked', 'source_changed', 'preview_changed', 'failed'])
 				.describe(
-					"'blocked' = the check found blocking issues, so nothing was imported; 'source_changed' = the branch changed after the user reviewed it, so nothing was imported",
+					"'blocked' = the check found blocking issues, so nothing was imported; 'source_changed' = the branch changed after the user reviewed it; 'preview_changed' = the instance changed after the user reviewed it. Neither imports changes",
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),

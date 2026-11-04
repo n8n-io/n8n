@@ -7,9 +7,8 @@ import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
-import { UserError } from 'n8n-workflow';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, UserError } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import {
@@ -41,6 +40,7 @@ import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.u
 import type {
 	CompleteAgentDefinition,
 	AgentDefinitionMetadata,
+	AgentSkillWriter,
 	PlannedAgentDestinations,
 } from './utils/agent-definition';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
@@ -99,6 +99,7 @@ export class AgentConfigService {
 			expectedRevision: number;
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
+			writeSkills?: AgentSkillWriter;
 		},
 	): Promise<ProjectAgent> {
 		await Container.get(AgentsSettingsService).assertEnabled();
@@ -130,10 +131,7 @@ export class AgentConfigService {
 			agent.schema,
 			{ kind: 'user', user },
 		);
-		const sidecarChanges = {
-			skills: !isEqual(previousSkills.skills, content.skills),
-			tools: !isEqual(agent.tools, content.tools),
-		};
+		const toolsChanged = !isEqual(agent.tools, content.tools);
 		const decomposed = content.config
 			? decomposeJsonConfig(content.config)
 			: { schemaConfig: null, integrations: [] };
@@ -147,11 +145,10 @@ export class AgentConfigService {
 		markAgentDraftDirty(agent);
 		const { skillRefs, tasksChanged } = await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx, options.metadata);
-			const skillRefs = await this.agentSkillRefs.importDraftSkills(
+			await options.writeSkills?.(ctx);
+			const skillRefs = await this.agentSkillRefs.replaceAllDraftRefs(
 				agent,
 				incomingSkillRefs,
-				content.skills,
-				user.id,
 				ctx,
 			);
 			const tasksChanged = await this.agentTaskRepository.replaceForAgent(
@@ -174,7 +171,14 @@ export class AgentConfigService {
 					previousIntegrations,
 					agent.integrations,
 					{
-						...sidecarChanges,
+						// A shared skill can change before this save, so `writeSkills` also reports a change.
+						skills:
+							options.writeSkills !== undefined ||
+							!isEqual(
+								previousSkills.skills,
+								await this.agentSkillRefs.skillsForRefs(skillRefs, {}),
+							),
+						tools: toolsChanged,
 						tasks: tasksChanged,
 					},
 				),

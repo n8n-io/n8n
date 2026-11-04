@@ -54,7 +54,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
-import { restoreRecordedRuns } from './recorded-runs';
+import { restoreRecordedRuns, seedNodeNamesById } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -294,7 +294,8 @@ export interface BuildResult {
 	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
-	/** The build's own project; `cleanupBuild` deletes the user that owns it. */
+	/** The build's own project. `cleanupBuild` deletes the user that owns it, or the
+	 *  project itself when no user is set (a team project). */
 	buildProjectId?: string;
 	buildUserId?: string;
 	/** The ROOT folders a seed created in the thread's project (a folder delete
@@ -306,8 +307,13 @@ export interface BuildResult {
 	 *  rows into the table the built workflow actually bound.
 	 *  Absent when the case declares no scenario seed tables. */
 	seededScenarioTableIdsByName?: Record<string, string>;
+	/** The thread that seeds scenario table rows when the build has no Instance AI
+	 *  thread of its own (MCP builds). The server scopes row seeding to a thread's
+	 *  project. */
+	seedThreadId?: string;
 	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
-	 *  fed to the build-expectations judge context. Empty/undefined for prebuilt runs. */
+	 *  or from `create_agent` results on MCP builds. Fed to the build-expectations
+	 *  judge context. Empty/undefined for prebuilt runs. */
 	artifactRefs?: ArtifactRef[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
@@ -530,8 +536,9 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
-	/** Gives the build a fresh project. Absent: the owner's personal project. */
-	buildProject?: () => Promise<{ userId: string; projectId: string }>;
+	/** Gives the build a fresh project: a team project the owner administers, or a
+	 *  member's personal project (`userId` set). Absent: the owner's personal project. */
+	buildProject?: () => Promise<{ userId?: string; projectId: string }>;
 	/** History restored before the live message — carried in the case
 	 *  (`mode: 'inline'`) or reconstructed from a trace (`mode: 'replay'`, which
 	 *  also supplies the live turn). */
@@ -618,11 +625,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
-	let buildProject: { userId: string; projectId: string } | undefined;
-	// On every return path, so cleanup deletes the build user even after a failure.
+	let buildProject: { userId?: string; projectId: string } | undefined;
+	// On every return path, so cleanup deletes the build project even after a failure.
 	const buildProjectFields = () =>
 		buildProject
-			? { buildProjectId: buildProject.projectId, buildUserId: buildProject.userId }
+			? {
+					buildProjectId: buildProject.projectId,
+					...(buildProject.userId ? { buildUserId: buildProject.userId } : {}),
+				}
 			: {};
 	let parsedToolCalls: CapturedToolCall[] | undefined;
 	const foreignReadFields = () => {
@@ -1031,6 +1041,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						threadId,
 						recordedRuns: config.seed.recordedRuns,
 						seedWorkflows: seedWorkflowsBySeedId,
+						seedNodeNames: seedNodeNamesById(config.seed.workflows),
 						logger,
 						laneTag: config.laneTag,
 					});

@@ -26,7 +26,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(ApplyInstanceDialog, {
-	props: { open: true, environmentId: 'environment-1', branchName: 'main' },
+	props: {
+		open: true,
+		environmentId: 'environment-1',
+		environmentName: 'Development',
+		branchName: 'main',
+	},
 });
 
 describe('ApplyInstanceDialog', () => {
@@ -62,7 +67,10 @@ describe('ApplyInstanceDialog', () => {
 				},
 			},
 		});
-		const { findByTestId, emitted } = renderComponent();
+		const { findByTestId, findByRole, emitted } = renderComponent({
+			props: { environmentName: 'Staging' },
+		});
+		expect(await findByRole('heading', { name: 'Apply changes from Staging' })).toBeVisible();
 
 		await userEvent.click(await findByTestId('apply-confirm-button'));
 
@@ -182,7 +190,7 @@ describe('ApplyInstanceDialog', () => {
 			global: {
 				stubs: {
 					PromotionBindingsFlow: defineComponent({
-						emits: ['applied', 'update:open'],
+						emits: ['project-created', 'applied', 'update:open'],
 						setup:
 							(_props, { emit }) =>
 							() =>
@@ -190,7 +198,16 @@ describe('ApplyInstanceDialog', () => {
 									'data-test-id': 'stub-applied',
 									// Same order as the bindings dialog after a successful Continue.
 									onClick: () => {
-										emit('applied', applied);
+										emit('project-created', { id: 'project-a', name: 'A' });
+										emit('project-created', { id: 'project-b', name: 'B' });
+										// The apply finds both projects and updates them.
+										emit('applied', {
+											...applied,
+											counts: {
+												...applied.counts,
+												projects: { created: 1, updated: 2, skipped: 0, deleted: 0 },
+											},
+										});
 										emit('update:open', false);
 									},
 								}),
@@ -205,8 +222,12 @@ describe('ApplyInstanceDialog', () => {
 
 		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
 		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		// The toast counts the projects that the binding flow created as created.
 		expect(mockShowMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ title: 'Instance updated' }),
+			expect.objectContaining({
+				title: 'Instance updated',
+				message: expect.stringMatching(/^Projects: 3 created, 0 deleted\./),
+			}),
 		);
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});

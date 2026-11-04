@@ -69,7 +69,6 @@ describe('MainSidebarSourceControl', () => {
 	it('renders nothing while the instance uses Environments v2', async () => {
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isModuleActive.mockReturnValue(true);
-		settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_PROMOTIONS: 'true' };
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 			branchName: 'main',
 			branches: [],

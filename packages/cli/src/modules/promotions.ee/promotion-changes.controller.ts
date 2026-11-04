@@ -1,9 +1,7 @@
 import {
-	ApplyCheckQueryDto,
 	PromotionChangesQueryDto,
 	PromotionResourceDetailsRequestDto,
 	promotionDirectionSchema,
-	type ApplyCheckResult,
 	type PromotionDirection,
 	type PromotionPreview,
 	type PromotionResourceDetails,
@@ -25,14 +23,10 @@ import type { Response } from 'express';
 import { NotFoundError } from '@n8n/errors';
 
 import { PromotionChangeService } from './promotion-change.service';
-import { PromotionsService } from './promotions.service';
 
 @RestController('/promotions')
 export class PromotionChangesController {
-	constructor(
-		private readonly changeService: PromotionChangeService,
-		private readonly promotionsService: PromotionsService,
-	) {}
+	constructor(private readonly changeService: PromotionChangeService) {}
 
 	@Get('/:projectId/changes/:direction')
 	@GlobalScope('promotions:read')
@@ -50,19 +44,6 @@ export class PromotionChangesController {
 			parseDirection(direction),
 			query,
 		);
-	}
-
-	// The Apply check uses the same scope as Apply.
-	@Get('/:projectId/changes/apply/blockers')
-	@GlobalScope('promotions:apply')
-	@Licensed(LICENSE_FEATURES.PROMOTIONS)
-	async getApplyBlockers(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('projectId') projectId: string,
-		@Query query: ApplyCheckQueryDto,
-	): Promise<ApplyCheckResult> {
-		return await this.promotionsService.checkApplyBlockers(projectId, query.commitSha);
 	}
 
 	@Post('/:projectId/changes/:direction/details')

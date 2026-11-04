@@ -11,8 +11,10 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
+export * from './skills/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
+export * from './schemas/app-binding.schema';
 export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
@@ -207,6 +209,8 @@ export {
 export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
 	credentialDescriptionSchema,
+	updateCredentialDescriptionSchema,
+	UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
 } from './schemas/credential-description.schema';
 export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
@@ -410,6 +414,9 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildWorkflowActionSessionGrantKey,
+	buildWorkspaceSessionGrantKey,
+	buildCleanupTestExecutionsSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
@@ -426,10 +433,15 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
+	tasksUpdatePayloadSchema,
+	instanceContextPayloadSchema,
+	statusPayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	workflowsArchivedPayloadSchema,
+	ASSISTANT_TRACE_EVENT,
+	assistantTracePayloadSchema,
 	agentSpawnedPayloadSchema,
 	agentActivitySchema,
 	agentChangeSchema,
@@ -441,6 +453,8 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	confirmationInputTypeSchema,
+	appBlueprintSchema,
+	appBlueprintResumeSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -500,9 +514,6 @@ export {
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiHandoffContextSchema,
 	instanceAiThreadArtifactSchema,
-	instanceAiThreadTabRefSchema,
-	instanceAiThreadTabSchema,
-	instanceAiThreadTabsStateSchema,
 	instanceAiThreadArtifactsContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -533,9 +544,13 @@ export {
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	instanceAiAgentAttachmentSchema,
+	instanceAiAppTargetSchema,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
 	formatAttachmentSizeLimit,
@@ -543,8 +558,6 @@ export {
 	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
-	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
-	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	MAX_INSTANCE_AI_NODES_PER_SET,
@@ -596,6 +609,8 @@ export type {
 	InstanceAiSetupStateInput,
 	InstanceAiRunLimitReason,
 	InstanceAiRunLimitMeta,
+	AppBlueprint,
+	AppBlueprintResume,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -645,12 +660,14 @@ export type {
 	AiPreferencesAppliedPayload,
 	InstanceAiSkillUpdatePayload,
 	InstanceAiErrorEvent,
+	AssistantTracePayload,
 	McpTool,
 	McpToolAnnotations,
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,
 	InstanceAiAgentAttachment,
+	InstanceAiAppTarget,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,
@@ -700,6 +717,7 @@ export type {
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
 	InstanceAiNodesAttachment,
+	InstanceAiElementAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
@@ -713,10 +731,6 @@ export type {
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
-	InstanceAiThreadTabRef,
-	InstanceAiThreadTab,
-	InstanceAiThreadTabsState,
-	InstanceAiThreadTabsResponse,
 	InstanceAiThreadArtifactsContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
@@ -743,6 +757,22 @@ export type {
 	InstanceAiEvalSeedAgent,
 	InstanceAiEvalSeedFolder,
 } from './schemas/instance-ai.schema';
+
+export {
+	assistantArtifactTypeSchema,
+	assistantThreadTabRefSchema,
+	assistantThreadTabSchema,
+	assistantThreadTabsStateSchema,
+	MAX_ASSISTANT_THREAD_OPEN_TABS,
+	MAX_ASSISTANT_THREAD_CLOSED_TABS,
+} from './schemas/assistant-thread-tabs.schema';
+export type {
+	AssistantArtifactType,
+	AssistantThreadTabRef,
+	AssistantThreadTab,
+	AssistantThreadTabsState,
+	AssistantThreadTabsResponse,
+} from './schemas/assistant-thread-tabs.schema';
 
 export {
 	instanceAiSetupCredentialSelectionKey,
@@ -977,6 +1007,7 @@ export {
 	SSO_ERROR_LOGIN_FAILED,
 } from './constants/role-mapping';
 export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
+export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI } from './constants/client';
 
 export {
 	instanceAiApprovalDetailsSchema,
@@ -1027,3 +1058,11 @@ export {
 	scimListResponseSchema,
 	scimErrorSchema,
 } from './schemas/scim.schema';
+export {
+	scimDeprovisioningPolicySchema,
+	type ScimConfigResponse,
+	type ScimDeprovisioningPolicy,
+	type ScimTransferTargetPerson,
+	type ScimTransferTargetProject,
+	type ScimTransferTargetsResponse,
+} from './schemas/scim-config.schema';

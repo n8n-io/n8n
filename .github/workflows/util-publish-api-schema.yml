@@ -1,20 +1,30 @@
 name: 'Util: Publish API Schema'
 
+# Publishes the Public API OpenAPI spec of a release to Cloudflare Pages.
 on:
-  # Publish when the Public API source specs (or the bundler version) change
-  push:
-    branches:
-      - master
-    paths:
-      - 'packages/cli/src/public-api/**/*.yml' # Public API specs, incl. generated fragments
-      - 'packages/cli/src/public-api/**/*.yaml'
-      - 'packages/cli/src/public-api/**/*.css'
-      - 'packages/cli/src/public-api/v1/openapi-gen/**/*.ts' # changes to the OpenAPI generator
-      - 'packages/cli/scripts/build.mjs' # changes to the build script that generates the OpenAPI spec
-      - 'packages/cli/package.json' # changes to Redocly or @asteasolutions/zod-to-openapi versions
+  workflow_call:
+    inputs:
+      version:
+        description: 'The release version to publish the spec from (e.g. 2.45.3)'
+        required: true
+        type: string
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
 
   # Allow manual re-publish
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'The release version to publish the spec from (e.g. 2.45.3), or `stable`'
+        required: true
+        type: string
+        default: stable
+
+permissions:
+  contents: read
 
 jobs:
   publish-api-schema:
@@ -24,12 +34,34 @@ jobs:
     permissions:
       contents: read
       deployments: write
+    concurrency:
+      group: publish-api-schema
+      cancel-in-progress: false
 
     steps:
+      - name: Resolve release tag
+        id: tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$VERSION" == "stable" ]]; then
+            echo "ref=refs/tags/stable" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ref=n8n@$VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Invalid version '$VERSION'. Use 'stable' or '<major>.<minor>.<patch>'."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ steps.tag.outputs.ref }}
           persist-credentials: false
+
+      - name: Resolve release commit
+        id: release
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js and Build
         uses: ./.github/actions/setup-nodejs
@@ -73,5 +105,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy api-schema-publish --project-name=n8n-openapi --branch=${{ github.ref_name }} --commit-hash=${{ github.sha }}
+          command: pages deploy api-schema-publish --project-name=n8n-openapi --branch=stable --commit-hash=${{ steps.release.outputs.sha }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -13,11 +13,10 @@ import { TransactionRunner, isUniqueConstraintError, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
-import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { Telemetry } from '@/telemetry';
 
 import { AgentDefinitionService } from './agent-definition.service';
@@ -292,7 +291,7 @@ export class AgentPublishService {
 		agentId: string,
 	): Promise<AgentKnowledgeTotals | undefined> {
 		try {
-			return await this.agentFileRepository.getKnowledgeTotals(agentId);
+			return await this.agentFileRepository.getKnowledgeTotals(agentId, {});
 		} catch (error) {
 			this.logger.warn('Failed to read knowledge totals for the publish event', {
 				agentId,
@@ -413,7 +412,11 @@ export class AgentPublishService {
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(
+			versionId,
+			agentId,
+			{},
+		);
 		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
 		await this.restoreVersion(agent, version, uuid(), { user, modifiedBy, pushRef });
 
@@ -503,7 +506,11 @@ export class AgentPublishService {
 	): Promise<{ agent: ProjectAgent; version: AgentHistory; definition: AgentDefinition }> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(
+			versionId,
+			agentId,
+			{},
+		);
 		if (!version) {
 			throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
 		}
@@ -520,7 +527,7 @@ export class AgentPublishService {
 	): Promise<AgentVersionListItemDto[]> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
+		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip, {});
 
 		const publications = await this.publishHistory.findLatestForVersions(
 			agentId,
@@ -565,14 +572,14 @@ export class AgentPublishService {
 		versionId: string,
 	): Promise<AgentVersionListItemDto> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
-		const version = await this.agentHistoryRepository.findSummary(agentId, versionId);
+		const version = await this.agentHistoryRepository.findSummary(agentId, versionId, {});
 		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
 		const publications = await this.publishHistory.findLatestForVersions(agentId, [versionId], {});
 		return this.versionSummary(agent, version, publications.get(versionId));
 	}
 
 	async hasVersionHistory(agentId: string): Promise<boolean> {
-		return await this.agentHistoryRepository.existsForAgent(agentId);
+		return await this.agentHistoryRepository.existsForAgent(agentId, {});
 	}
 
 	async updateVersionMetadata(
@@ -582,9 +589,13 @@ export class AgentPublishService {
 		metadata: UpdateAgentVersionDto,
 	): Promise<void> {
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
-		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(
+			versionId,
+			agentId,
+			{},
+		);
 		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
-		await this.agentHistoryRepository.updateMetadata(agentId, versionId, metadata);
+		await this.agentHistoryRepository.updateMetadata(agentId, versionId, metadata, {});
 	}
 
 	async listPublishHistory(
@@ -673,7 +684,7 @@ export class AgentPublishService {
 	): Promise<AgentHistory> {
 		const id = versionId ?? agent.versionId;
 		if (id) {
-			const target = await this.agentHistoryRepository.findByVersionAndAgentId(id, agent.id);
+			const target = await this.agentHistoryRepository.findByVersionAndAgentId(id, agent.id, {});
 			if (target) return target;
 		}
 		if (versionId && versionId !== agent.versionId)

@@ -159,6 +159,8 @@ export type StreamChunk = ContentMetadata &
 				canceled?: boolean;
 				/** Configured name of the MCP server the tool belongs to; absent for non-MCP tools. */
 				mcpServerName?: string;
+				/** Host-only trace data from the tool's `toTraceOutput`. The model never sees it. */
+				traceOutput?: unknown;
 		  }
 		| {
 				type: 'tool-call-suspended';
@@ -243,7 +245,7 @@ export interface AgentInputBoundary {
 }
 
 export interface ExecutionOptions {
-	/** Expose local and provider tools to the model. Defaults to true. */
+	/** Allow tool calls. Defaults to true. Keep tool definitions for history replay when false. */
 	toolsEnabled?: boolean;
 	/**
 	 * The text that title generation titles a new thread from. Set it when the

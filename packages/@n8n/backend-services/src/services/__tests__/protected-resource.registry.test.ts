@@ -33,6 +33,16 @@ describe('ProtectedResourceRegistry', () => {
 	});
 
 	describe('lookups', () => {
+		it('matches virtual client URL shapes without resolving their resources', () => {
+			const resolver = mock<ProtectedResourceResolver>({
+				matchesVirtualClientUrl: (url) => url === 'https://apps.example.com/callback',
+			});
+			registry.registerResolver(resolver);
+			expect(registry.matchesVirtualClientUrl('https://apps.example.com/callback')).toBe(true);
+			expect(registry.matchesVirtualClientUrl('https://other.example.com/callback')).toBe(false);
+			expect(resolver.resolveByUrl).not.toHaveBeenCalled();
+		});
+
 		it('should resolve resources by id', () => {
 			expect(registry.getById('instance-mcp')).toBe(resourceA);
 			expect(registry.getById('workflow-trigger')).toBe(resourceB);

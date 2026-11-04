@@ -32,6 +32,8 @@ import {
 	isSetupPanelEnabled,
 	observeWorkflowSetupStates,
 	orchestratorAgentId,
+	parseAppTargets,
+	parsePendingAppTarget,
 	saveAgentBuilderTarget,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
@@ -40,15 +42,12 @@ import {
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';
 import type { AssistantTurnRuntime } from './assistant-turn-runtime';
-import {
-	assertAgentPreviewHandoffScopes,
-	resolveAgentPreviewHandoff,
-} from '../agent-preview-handoff';
+import { assertAgentTestHandoffScopes, resolveAgentTestHandoff } from '../agent-test-handoff';
 import { getAgentContextService } from '../agents-access';
 import {
 	INSTANCE_CONTEXT_CURSOR,
@@ -61,6 +60,7 @@ import {
 import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
+	buildAppTargetsBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
 	buildOnboardingSkillBlock,
@@ -81,11 +81,17 @@ import {
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 import { type OrchestratorResumeReason } from '../tracing';
 
-/** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
+/**
+ * Workflow/agent attachments carry a display name; a nodes attachment doesn't.
+ * An unsaved agent has only a placeholder name, so it cannot title a thread.
+ */
 function isNamedResourceAttachment(
 	attachment: InstanceAiResourceAttachment,
 ): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
-	return attachment.type !== 'nodes' && Boolean(attachment.name);
+	if (attachment.type === 'agent' && attachment.pending) return false;
+	return (
+		(attachment.type === 'workflow' || attachment.type === 'agent') && Boolean(attachment.name)
+	);
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
@@ -302,12 +308,12 @@ export class AssistantTurnInputBuilder {
 					`Assistant thread "${threadId}" has no bound project; agent-preview handoff requires a project`,
 				);
 			}
-			await assertAgentPreviewHandoffScopes(user, projectId);
+			await assertAgentTestHandoffScopes(user, projectId);
 			const agents = getAgentContextService();
 			if (!agents) {
 				throw new UserError('Agent preview handoff is not available');
 			}
-			const resolved = await resolveAgentPreviewHandoff(handoffContext, {
+			const resolved = await resolveAgentTestHandoff(handoffContext, {
 				projectId,
 				userId: user.id,
 				getThreadDetail: async (threadId, projectId, agentId) =>
@@ -458,6 +464,10 @@ export class AssistantTurnInputBuilder {
 						loadReplayedHistory,
 					)
 				: '';
+		const appTargetsBlock =
+			resumeReason === undefined
+				? await this.resolveAppTargetsBlock(context, thread?.metadata ?? {})
+				: '';
 		const [boundProject, pastConversationsSection] = await Promise.all([
 			this.resolveBoundProject(context),
 			isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
@@ -477,6 +487,7 @@ export class AssistantTurnInputBuilder {
 			// and stays in the history for the later turns.
 			onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 			threadArtifactsBlock,
+			appTargetsBlock,
 			projectSection ? buildProjectContextBlock(projectSection) : undefined,
 			resumeReason === undefined
 				? buildInstanceUrlsBlock({
@@ -574,6 +585,23 @@ export class AssistantTurnInputBuilder {
 			});
 			return '';
 		}
+	}
+
+	private async resolveAppTargetsBlock(
+		context: InstanceAiContext,
+		metadata: Record<string, unknown>,
+	): Promise<string> {
+		const appService = context.appService;
+		if (!appService) return '';
+		const apps = await Promise.all(
+			parseAppTargets(metadata).map(
+				async ({ appId }) => await appService.getApp(appId).catch(() => undefined),
+			),
+		);
+		return buildAppTargetsBlock(
+			apps.flatMap((app) => (app ? [app] : [])),
+			parsePendingAppTarget(metadata) !== undefined,
+		);
 	}
 
 	/**

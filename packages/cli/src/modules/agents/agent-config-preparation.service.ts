@@ -9,9 +9,9 @@ import {
 import { WorkflowRepository, type User } from '@n8n/db';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { Container, Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
-import { getStaticSubworkflowId, UserError } from 'n8n-workflow';
+import { getStaticSubworkflowId } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -135,13 +135,10 @@ export class AgentConfigPreparationService {
 		agentId: string,
 		definition: CompleteAgentDefinition,
 	): Promise<CompleteAgentDefinition> {
-		const [{ AgentSkillsService }, { AgentCustomToolsService }, { AgentTaskService }] =
-			await Promise.all([
-				import('./agent-skills.service.js'),
-				import('./agent-custom-tools.service.js'),
-				import('./agent-task.service.js'),
-			]);
-		Container.get(AgentSkillsService).validateSkills(Object.values(definition.skills));
+		const [{ AgentCustomToolsService }, { AgentTaskService }] = await Promise.all([
+			import('./agent-custom-tools.service.js'),
+			import('./agent-task.service.js'),
+		]);
 		for (const tool of Object.values(definition.tools)) {
 			Container.get(AgentCustomToolsService).validateDescriptor(tool.descriptor);
 		}

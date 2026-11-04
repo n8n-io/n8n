@@ -9,9 +9,11 @@ import { isRecord } from '@n8n/utils/is-record';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 import type {
+	EventKind,
 	HitlRequestType,
 	HitlResponseStatus,
 	TimelineActivityStatus,
+	MemoryAction,
 	TimelineItem,
 	TimelineStatusFilterKey,
 	ToolCallOutcome,
@@ -27,6 +29,10 @@ import {
 } from './utils/toolDisplayName';
 
 const LOAD_SKILL_TOOL_NAME = 'load_skill';
+const MEMORY_ACTIONS: Partial<Record<string, MemoryAction>> = {
+	recall_memory: 'recall',
+	flag_memory: 'flag',
+};
 
 const GUARDRAIL_STOP_MESSAGE_KEYS: Partial<Record<string, BaseTextKey>> = {
 	'budget.session': 'agentSessions.timeline.guardrailStop.session',
@@ -162,6 +168,15 @@ export function backgroundJobSignalSummary(
 		backgroundJobResultLabel(job, i18n),
 	);
 	return new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(labels);
+}
+
+/** Row name of a memory item: what the run recalled or flagged. */
+export function memoryTimelineName(item: TimelineItem, i18n: TimelineI18n): string {
+	return i18n.baseText(
+		item.memoryAction === 'flag'
+			? 'agentSessions.timeline.memory.flagged'
+			: 'agentSessions.timeline.memory.recalled',
+	);
 }
 
 export function executionErrorLabel(item: TimelineItem, i18n: TimelineI18n): string {
@@ -518,6 +533,20 @@ function isSkillToolCall(event: RawToolCallEvent): boolean {
 	return event.kind === 'skill' || event.name === LOAD_SKILL_TOOL_NAME;
 }
 
+/** Only a completed, successful memory call becomes a memory row; others stay tool rows. */
+function memoryActionOf(event: RawToolCallEvent): MemoryAction | undefined {
+	if (toolCallOutcome(event) !== 'success') return undefined;
+	return MEMORY_ACTIONS[event.name];
+}
+
+function toolCallKind(event: RawToolCallEvent): EventKind {
+	if (event.kind === 'workflow') return 'workflow';
+	if (event.kind === 'node') return 'node';
+	if (isSkillToolCall(event)) return 'skill';
+	if (memoryActionOf(event)) return 'memory';
+	return 'tool';
+}
+
 function skillNameFromText(value: string): string | undefined {
 	const match = /^\[Skill: ([^\]]+)\]/m.exec(value);
 	const name = match?.[1];
@@ -792,13 +821,14 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
-				const isSkill = isSkillToolCall(event);
+				const kind = toolCallKind(event);
 				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
 				const item: TimelineItem = {
-					kind: isWorkflow ? 'workflow' : isNode ? 'node' : isSkill ? 'skill' : 'tool',
+					kind,
 					executionId: exec.id,
 					toolName: event.name,
-					skillName: isSkill ? skillNameFromEvent(event) : undefined,
+					skillName: kind === 'skill' ? skillNameFromEvent(event) : undefined,
+					memoryAction: kind === 'memory' ? memoryActionOf(event) : undefined,
 					toolCallId: event.toolCallId,
 					toolInput: event.input,
 					toolOutput: event.output,

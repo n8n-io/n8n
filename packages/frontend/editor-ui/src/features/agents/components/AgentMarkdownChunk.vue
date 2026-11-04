@@ -5,7 +5,7 @@ import type { PluginSimple } from 'markdown-it';
 import { inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
-import { resolveAgentPreviewLink } from '../utils/agentPreviewUrl';
+import { resolveAgentTestLink } from '../utils/agentTestUrl';
 
 const props = defineProps<{
 	source: string;
@@ -55,7 +55,7 @@ function handleLinkClick(event: MouseEvent) {
 		if (props.canOpenBuild) emit('open-build', href === AGENT_PREVIEW_EDIT_HREF);
 		return;
 	}
-	const previewTarget = resolveAgentPreviewLink(href);
+	const previewTarget = resolveAgentTestLink(href);
 	if (!previewTarget) return;
 	link.setAttribute('href', previewTarget.href);
 	if (standaloneBuilder && (event.metaKey || event.ctrlKey)) return;

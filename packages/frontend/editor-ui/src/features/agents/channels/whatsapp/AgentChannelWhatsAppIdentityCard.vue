@@ -5,6 +5,7 @@ import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { AgentJsonConfig, WhatsAppBusinessProfile } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
+import { WHATSAPP_MANAGER_URL } from './metaStatus';
 
 const props = withDefaults(
 	defineProps<{
@@ -28,9 +29,6 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ connect: []; openManager: [] }>();
-
-/** The profile is edited in Meta, not in n8n. */
-const WHATSAPP_MANAGER_URL = 'https://business.facebook.com/latest/whatsapp_manager/phone_numbers/';
 
 const i18n = useI18n();
 
