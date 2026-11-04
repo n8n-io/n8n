@@ -19,7 +19,7 @@ const EXEMPT_NAMES = new Set([
 	'simplify',
 	'authentication',
 ]);
-const EXEMPT_TYPES = new Set(['collection', 'fixedCollection', 'notice']);
+const EXEMPT_TYPES = new Set(['collection', 'fixedCollection', 'notice', 'hidden']);
 
 export const OptionalFieldsInCollectionRule = createRule({
 	name: 'optional-fields-in-collection',

@@ -104,6 +104,15 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 			expect(lintOptionalFields(code)).toEqual([]);
 		});
 
+		it('accepts hidden fields', () => {
+			const code = createNodeCode(`
+				{ displayName: 'Internal Mode', name: 'internalMode', type: 'hidden', default: 'contact' },
+				{ displayName: 'Schema Version', name: 'schemaVersion', type: 'hidden', required: false, default: 1 },
+			`);
+
+			expect(lintOptionalFields(code)).toEqual([]);
+		});
+
 		it('accepts notices and fixed collections', () => {
 			const code = createNodeCode(`
 				{ displayName: 'A helpful notice', name: 'notice', type: 'notice', default: '' },

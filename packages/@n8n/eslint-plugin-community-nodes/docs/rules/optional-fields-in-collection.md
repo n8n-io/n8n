@@ -8,7 +8,7 @@
 
 This rule warns about optional fields at the top level of `description.properties` in `.node.ts` files. Put optional fields inside an Additional Fields or Options collection. This keeps the required inputs easy to find.
 
-The rule exempts required fields, collections, fixed collections, and notices. It also exempts `resource`, `operation`, `returnAll`, `limit`, `simplify`, `authentication`, and fields with `noDataExpression: true`.
+The rule exempts required fields, collections, fixed collections, notices, and hidden fields. It also exempts `resource`, `operation`, `returnAll`, `limit`, `simplify`, `authentication`, and fields with `noDataExpression: true`.
 
 The rule checks inline top-level fields only. It does not inspect separate arrays or fields inside collections.
 
