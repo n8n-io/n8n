@@ -14,10 +14,8 @@ const getLatestDeletedDataTableId = (node: InstanceAiAgentNode) =>
 	utils.getLatestDeletedDataTableId(turns(node));
 const getLatestWorkflowUpdateResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestWorkflowUpdateResult(turns(node));
-const getLatestAgentArtifactResult = (
-	node: InstanceAiAgentNode,
-	fallbackTarget?: Parameters<typeof utils.getLatestAgentArtifactResult>[1],
-) => utils.getLatestAgentArtifactResult(turns(node), fallbackTarget);
+const getLatestAgentArtifactResult = (node: InstanceAiAgentNode) =>
+	utils.getLatestAgentArtifactResult(turns(node));
 const getLatestAgentConfigMutation = (node: InstanceAiAgentNode) =>
 	utils.getLatestAgentConfigMutation(turns(node));
 const getExecutionResultsByWorkflow = (node: InstanceAiAgentNode) =>
@@ -283,154 +281,6 @@ describe('getLatestAgentArtifactResult', () => {
 			toolCallId: 'tc-patch',
 			kind: 'mutated',
 		});
-	});
-
-	test('returns no artifact for an explicit unchanged result', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolName: 'agent_builder_build_agent',
-					args: { name: 'Existing Agent' },
-					result: { ok: true, agentChange: 'none', configUpdated: false },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, {
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			}),
-		).toBeUndefined();
-	});
-
-	test('uses parent agent target for nested agent mutations', () => {
-		const nestedAgentBuilder = makeAgentNode({
-			agentId: 'nested-builder',
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-nested-build',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a step' },
-					result: { ok: true, configUpdated: true },
-				}),
-			],
-		});
-		const parentAgentBuilder = makeAgentNode({
-			agentId: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			children: [nestedAgentBuilder],
-		});
-
-		expect(getLatestAgentArtifactResult(parentAgentBuilder)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-nested-build',
-			kind: 'mutated',
-		});
-	});
-
-	test('creates from a name arg, resolving identity from the spawned builder child target', () => {
-		const builderChild = makeAgentNode({
-			agentId: 'builder-child',
-			role: 'agent-builder',
-			kind: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'New Agent' },
-		});
-		const orchestrator = makeAgentNode({
-			children: [builderChild],
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-create',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'build me an agent', name: 'New Agent' },
-					result: { ok: true, builderReply: 'Created it' },
-				}),
-			],
-		});
-
-		expect(getLatestAgentArtifactResult(orchestrator)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-create',
-			kind: 'created',
-		});
-	});
-
-	test('mutates using fallbackTarget when no targetResource exists in the tree', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-mutate',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
-		).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-mutate',
-			kind: 'mutated',
-		});
-	});
-
-	test('mutates on a failed turn that still updated the config', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-mutate-fail',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: false, error: 'The agent builder run errored.', configUpdated: true },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
-		).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-mutate-fail',
-			kind: 'mutated',
-		});
-	});
-
-	test('returns undefined for a reply-only turn (ok but no name and no configUpdated)', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-reply',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'what does this agent do?' },
-					result: { ok: true, builderReply: 'It triages your inbox.' },
-				}),
-			],
-		});
-
-		expect(
-			getLatestAgentArtifactResult(orchestrator, { agentId: 'agent-1', projectId: 'project-1' }),
-		).toBeUndefined();
-	});
-
-	test('returns undefined when no target is available anywhere in the tree', () => {
-		const orchestrator = makeAgentNode({
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-mutate',
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
-				}),
-			],
-		});
-
-		expect(getLatestAgentArtifactResult(orchestrator)).toBeUndefined();
 	});
 });
 
@@ -1315,15 +1165,13 @@ describe('isAgentEditingWorkflow', () => {
 });
 
 describe('isAgentEditingAgent', () => {
-	test('locks while an active agent run has a successful build-agent result for the agent', () => {
+	test('locks while an active agent run has a config mutation for the agent', () => {
 		const node = makeAgentNode({
 			status: 'active',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
+					toolName: 'agent_builder_add_skill',
+					result: { ok: true, configMutated: true, agentId: 'agent-1', projectId: 'project-1' },
 				}),
 			],
 		});
@@ -1333,12 +1181,10 @@ describe('isAgentEditingAgent', () => {
 	test('does not lock the same tree once the root node is no longer active', () => {
 		const node = makeAgentNode({
 			status: 'completed',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
 				makeToolCall({
-					toolName: 'agent_builder_build_agent',
-					args: { message: 'add a skill' },
-					result: { ok: true, configUpdated: true },
+					toolName: 'agent_builder_add_skill',
+					result: { ok: true, configMutated: true, agentId: 'agent-1', projectId: 'project-1' },
 				}),
 			],
 		});
