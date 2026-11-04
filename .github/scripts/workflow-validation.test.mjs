@@ -198,6 +198,26 @@ describe('release SBOM validation in PR CI', () => {
 	});
 });
 
+describe('release PR verification gate', () => {
+	const workflow = workflowFile('release-create-pr.yml');
+
+	it('requires successful verification before creating the PR', () => {
+		const create = workflow.jobs['create-release-pr'];
+		assert.ok(create.needs.includes('verify-single-instance-npm-full'));
+		assert.equal(create.if ?? 'success()', 'success()');
+		assert.ok(workflow.jobs['approve-and-automerge'].needs.includes('create-release-pr'));
+	});
+
+	it('fails release preparation on findings from all packages on the release base', () => {
+		const verify = workflow.jobs['verify-single-instance-npm-full'];
+		assert.equal(verify.uses, './.github/workflows/test-single-instance-npm.yml');
+		assert.equal(verify.with.scope, 'all');
+		assert.equal(verify.with.blocking, true);
+		assert.equal(verify.with['base-branch'], '${{ inputs.base-branch }}');
+		assert.equal(verify['continue-on-error'] ?? false, false);
+	});
+});
+
 describe('test-e2e-reusable.yml', () => {
 	const workflow = workflowFile('test-e2e-reusable.yml');
 	const shardUpload = stepNamed(workflow, 'test', 'Upload Shard Artifacts');
