@@ -55,7 +55,7 @@ export class AppPublicationController {
 	async publish(req: AppRequest, _res: Response, @Body dto: PublishAppDto) {
 		const { projectId, appId } = req.params;
 		const { versionId, ...details } = dto;
-		await this.publication.publish(projectId, appId, versionId, details);
+		await this.publication.publish(projectId, appId, versionId, details, { userId: req.user.id });
 		return await this.apps.getApp(projectId, appId);
 	}
 
@@ -63,7 +63,7 @@ export class AppPublicationController {
 	@ProjectScope('app:update')
 	async unpublish(req: AppRequest) {
 		const { projectId, appId } = req.params;
-		await this.publication.publish(projectId, appId, null);
+		await this.publication.publish(projectId, appId, null, {}, { userId: req.user.id });
 		return await this.apps.getApp(projectId, appId);
 	}
 }

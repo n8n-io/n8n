@@ -215,6 +215,10 @@ function isTelemetryConfigurableAgent(
 	);
 }
 
+function toTelemetryInputType(inputType: string): string {
+	return inputType === 'app-blueprint' ? 'app_blueprint' : inputType;
+}
+
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
 const CONFIRMATION_EXPIRED_MESSAGE =
@@ -4605,7 +4609,7 @@ export class InstanceAiService {
 			?.servers;
 		let type: string;
 		if (inputType) {
-			type = inputType;
+			type = toTelemetryInputType(inputType);
 		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
 			type = 'setup';
 		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
