@@ -1,5 +1,4 @@
 import type { InstanceAiQuestion } from '@n8n/api-types';
-import type { useTelemetry } from '@n8n/composables/useTelemetry';
 
 import { questionsInputs, trackInputCompleted } from '../confirmationTelemetry';
 
@@ -52,7 +51,7 @@ describe('trackInputCompleted', () => {
 		const track = vi.fn();
 
 		trackInputCompleted(
-			{ track } as ReturnType<typeof useTelemetry>,
+			{ track },
 			{
 				threadId: 'thread-1',
 				instanceId: 'instance-1',

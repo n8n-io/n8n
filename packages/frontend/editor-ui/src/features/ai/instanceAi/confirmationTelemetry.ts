@@ -179,7 +179,7 @@ function toTelemetryInputType(inputType: string): string {
 }
 
 export function trackInputCompleted(
-	telemetry: ReturnType<typeof useTelemetry>,
+	telemetry: Pick<ReturnType<typeof useTelemetry>, 'track'>,
 	context: {
 		threadId: string;
 		inputThreadId?: string;
