@@ -41,7 +41,7 @@ variable "PC_RUNTIME_IMAGE" {
 variable "N8N_VERSION" { default = "snapshot" }
 variable "N8N_RELEASE_TYPE" { default = "dev" }
 variable "N8N_APPS_BASE_URL" { default = "" }
-variable "N8N_CONTENT_SECURITY_POLICY" { default = "" }
+variable "N8N_IMAGE_CONTENT_SECURITY_POLICY" { default = "" }
 
 variable "IMAGE_BASE_NAME" { default = "n8nio/n8n" }
 variable "IMAGE_TAG" { default = "local" }
@@ -84,10 +84,10 @@ target "n8n" {
   dockerfile = "docker/images/n8n/Dockerfile"
   tags       = tags(N8N_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}")
   args = {
-    BUILDER_IMAGE               = BUILDER_IMAGE
-    RUNTIME_IMAGE							  = RUNTIME_IMAGE
-		N8N_APPS_BASE_URL           = N8N_APPS_BASE_URL
-		N8N_CONTENT_SECURITY_POLICY = N8N_CONTENT_SECURITY_POLICY
+    BUILDER_IMAGE                     = BUILDER_IMAGE
+    RUNTIME_IMAGE										  = RUNTIME_IMAGE
+		N8N_APPS_BASE_URL								  = N8N_APPS_BASE_URL
+		N8N_IMAGE_CONTENT_SECURITY_POLICY = N8N_IMAGE_CONTENT_SECURITY_POLICY
   }
 }
 

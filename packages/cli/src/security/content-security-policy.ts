@@ -25,7 +25,10 @@ export const resolveContentSecurityPolicies = (
 	policy: ContentSecurityPolicySetting,
 	reportOnly: ContentSecurityPolicyReportOnlySetting,
 	logger: Pick<Logger, 'warn'>,
+	policyOverride?: ContentSecurityPolicySetting,
 ): ContentSecurityPolicies => {
+	policy = policyOverride ?? policy;
+
 	if (isLegacyBooleanSetting(reportOnly)) {
 		logger.warn(
 			'N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY is deprecated as a boolean: the variable now holds the policy to report on, in the same formats as N8N_CONTENT_SECURITY_POLICY. Honoring the old meaning for now - set it to a policy, or to `{}` to report on nothing.',

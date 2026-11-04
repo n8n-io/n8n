@@ -74,6 +74,13 @@ describe('SecurityConfig', () => {
 			consoleWarnSpy.mockRestore();
 		});
 
+		test('reads the image policy override', () => {
+			const policy = "script-src 'self'";
+			process.env = { N8N_IMAGE_CONTENT_SECURITY_POLICY: policy };
+
+			expect(Container.get(SecurityConfig).contentSecurityPolicyOverride).toBe(policy);
+		});
+
 		test("warns and keeps n8n's own policy when the report-only policy is unservable", () => {
 			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 

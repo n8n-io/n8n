@@ -95,6 +95,13 @@ export class SecurityConfig {
 	contentSecurityPolicy: ContentSecurityPolicySetting = undefined;
 
 	/**
+	 * An image-specific Content-Security-Policy that takes precedence over
+	 * `N8N_CONTENT_SECURITY_POLICY`. Use this setting for images that must enforce their own policy.
+	 */
+	@Env('N8N_IMAGE_CONTENT_SECURITY_POLICY', contentSecurityPolicySchema)
+	contentSecurityPolicyOverride: ContentSecurityPolicySetting = undefined;
+
+	/**
 	 * The policy n8n serves as `Content-Security-Policy-Report-Only`, in the same two formats
 	 * `N8N_CONTENT_SECURITY_POLICY` accepts. This header blocks nothing, so use it to try a
 	 * policy out first. Both headers report violations, but only the enforced one blocks.

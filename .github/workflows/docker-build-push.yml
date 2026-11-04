@@ -111,7 +111,7 @@ on:
         required: false
         type: string
       content_security_policy:
-        description: 'Value for N8N_CONTENT_SECURITY_POLICY in the n8n image'
+        description: 'Value for N8N_IMAGE_CONTENT_SECURITY_POLICY in the n8n image'
         required: false
         type: string
 
@@ -299,7 +299,7 @@ jobs:
           RUNNERS_DEBIAN_TAGS: ${{ steps.determine-tags.outputs.runners_debian_tags }}
           PUSH_ENABLED: ${{ needs.determine-build-context.outputs.push_enabled }}
           N8N_APPS_BASE_URL: ${{ inputs.apps_base_url }}
-          N8N_CONTENT_SECURITY_POLICY: ${{ inputs.content_security_policy }}
+          N8N_IMAGE_CONTENT_SECURITY_POLICY: ${{ inputs.content_security_policy }}
         run: |
           TARGETS=(n8n runners runners-distroless)
           if [ -n "$N8N_PC_TAGS" ] && [ "$PUSH_ENABLED" = 'true' ]; then

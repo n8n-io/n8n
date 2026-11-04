@@ -225,6 +225,7 @@ export class Server extends AbstractServer {
 					securityConfig.contentSecurityPolicy,
 					securityConfig.contentSecurityPolicyReportOnly,
 					this.logger,
+					securityConfig.contentSecurityPolicyOverride,
 				),
 			),
 		);

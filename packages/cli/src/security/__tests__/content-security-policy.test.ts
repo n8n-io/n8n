@@ -25,7 +25,8 @@ describe('resolveContentSecurityPolicies', () => {
 	const resolve = (
 		policy: ContentSecurityPolicySetting,
 		reportOnly: ContentSecurityPolicyReportOnlySetting,
-	) => resolveContentSecurityPolicies(policy, reportOnly, logger);
+		policyOverride?: ContentSecurityPolicySetting,
+	) => resolveContentSecurityPolicies(policy, reportOnly, logger, policyOverride);
 
 	/** What each setting holds when the operator sets neither variable. */
 	const UNSET_POLICY = undefined;
@@ -114,6 +115,13 @@ describe('resolveContentSecurityPolicies', () => {
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
+	it('should use the image policy instead of the configured policy', () => {
+		expect(resolve(A, UNSET_REPORT_ONLY, B)).toEqual({
+			enforced: B,
+			reportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+		});
+	});
+
 	describe('with the report-only setting holding a legacy boolean', () => {
 		it.each([true, false])('should warn for %s', (legacyBoolean) => {
 			resolve(A, { legacyBoolean });
@@ -126,6 +134,13 @@ describe('resolveContentSecurityPolicies', () => {
 
 			expect(enforced).not.toBe('true');
 			expect(reportOnly).not.toBe('true');
+		});
+
+		it.each([
+			[true, { enforced: undefined, reportOnly: B }],
+			[false, { enforced: B, reportOnly: DEFAULT_CONTENT_SECURITY_POLICY }],
+		])('should use the image policy when the legacy value is %s', (legacyBoolean, expected) => {
+			expect(resolve(A, { legacyBoolean }, B)).toEqual(expected);
 		});
 	});
 });
