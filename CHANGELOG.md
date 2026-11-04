@@ -1,3 +1,12 @@
+## [2.47.1](https://github.com/n8n-io/n8n/compare/n8n@2.47.0...n8n@2.47.1) (2026-11-04)
+
+
+### Features
+
+* **core:** Hide archived workflows in the migration report by default ([#42994](https://github.com/n8n-io/n8n/issues/42994)) ([f2d4913](https://github.com/n8n-io/n8n/commit/f2d491344409cdf9bd196935cb360fff8107a99b))
+* **editor:** Show a message when the migration report takes long to load ([#43000](https://github.com/n8n-io/n8n/issues/43000)) ([20ff7df](https://github.com/n8n-io/n8n/commit/20ff7df18c14559d6e63d60c9b98f25d9266a09b))
+
+
 # [2.47.0](https://github.com/n8n-io/n8n/compare/n8n@2.46.0...n8n@2.47.0) (2026-11-03)
 
 
