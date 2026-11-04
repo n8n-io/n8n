@@ -1,14 +1,16 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
+import { formatActivityLogRow } from '../actions/board/getActivityLogs.operation';
 import {
-	buildBoardFieldSelection,
-	buildReplacePlan,
 	buildSubscriberRows,
 	buildSubscribersSelection,
-	changeBoardSubscribers,
-	formatActivityLogRow,
-} from '../actions/board/board.execute';
+} from '../actions/board/getBoardSubscribers.operation';
+import {
+	buildReplacePlan,
+	execute as changeBoardSubscribers,
+} from '../actions/board/updateBoardSubscribers.operation';
+import { buildBoardFieldSelection } from '../helpers/boardFields';
 import type { MondayGraphQLClient } from '../transport/MondayGraphQLClient';
 
 /** Context whose getNodeParameter resolves from a name → value map. */

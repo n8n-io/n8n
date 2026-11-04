@@ -1,381 +1,28 @@
-import type { INodeProperties } from 'n8n-workflow';
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeProperties,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-import { CREATABLE_COLUMN_TYPES, STATUS_COLOR_OPTIONS } from '../../helpers/columnDefaults';
+import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { boardResourceLocator } from '../../helpers/boardLocator';
+import {
+	buildDropdownColumnDefaults,
+	buildStatusColumnDefaults,
+	buildTypeSettingsDefaults,
+	CREATABLE_COLUMN_TYPES,
+	resolveAfterColumnId,
+	STATUS_COLOR_OPTIONS,
+	type StatusLabelRow,
+	validateCustomColumnId,
+} from '../../helpers/columnDefaults';
+import { assertRollupFunctionAllowed } from '../../helpers/columnEdit';
+import { isPlainJsonObject, safeJsonParse } from '../../helpers/json';
+import type { MondayGraphQLClient } from '../../transport/MondayGraphQLClient';
 
-export const columnOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: { show: { resource: ['column'] } },
-		options: [
-			{
-				name: 'Add Label',
-				value: 'addColumnLabel',
-				action: 'Add a label to a column',
-				description: 'Add a new label to an existing status or dropdown column',
-			},
-			{
-				name: 'Create',
-				value: 'createColumn',
-				action: 'Create a board column',
-				description: 'Create a new column on a board, with typed per-type settings',
-			},
-			{
-				// Tags live under Column actions (product decision 2026-07-19):
-				// tag values are written through tags columns.
-				name: 'Create or Get Tag',
-				value: 'createOrGetTag',
-				action: 'Create or get a tag',
-				description:
-					'Return the tag with this name, creating it if it does not exist yet — for writing into tags columns',
-			},
-			{
-				name: 'Delete',
-				value: 'deleteColumn',
-				action: 'Delete a column',
-				description: 'Permanently delete a column from a board, including its values',
-			},
-			{
-				name: 'Get Many',
-				value: 'getColumns',
-				action: 'Get many columns',
-				description:
-					'Return the column schema of a board (IDs, types, settings) for use in expressions',
-			},
-			{
-				name: 'Update',
-				value: 'updateColumn',
-				action: 'Update a column',
-				description: 'Change the title, description, width, or settings of an existing column',
-			},
-			{
-				name: 'Update Label',
-				value: 'updateColumnLabel',
-				action: 'Update a label of a column',
-				description:
-					'Rename, recolor, deactivate, or otherwise modify a label of a status or dropdown column',
-			},
-		],
-		default: 'createColumn',
-	},
-];
-
-export const columnFields: INodeProperties[] = [
-	{
-		displayName: 'Column Name or ID',
-		name: 'updateColumnId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoardColumns',
-			loadOptionsDependsOn: ['boardId.value'],
-		},
-		default: '',
-		required: true,
-		description:
-			'The column to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-		displayOptions: { show: { operation: ['updateColumn'] } },
-	},
-	{
-		displayName: 'Column Name or ID',
-		name: 'deleteColumnId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoardColumns',
-			loadOptionsDependsOn: ['boardId.value'],
-		},
-		default: '',
-		required: true,
-		description:
-			'The column to permanently delete — its values on all items are lost. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-		displayOptions: { show: { operation: ['deleteColumn'] } },
-	},
-	{
-		displayName: 'New Title',
-		name: 'newColumnTitle',
-		type: 'string',
-		default: '',
-		description: 'The new title for the column; leave empty to keep the current title',
-		displayOptions: { show: { operation: ['updateColumn'] } },
-	},
-	{
-		displayName: 'New Description',
-		name: 'newColumnDescription',
-		type: 'string',
-		default: '',
-		description: 'The new description for the column; leave empty to keep the current description',
-		displayOptions: { show: { operation: ['updateColumn'] } },
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateColumnOptions',
-		type: 'collection',
-		placeholder: 'Add field',
-		default: {},
-		displayOptions: { show: { operation: ['updateColumn'] } },
-		options: [
-			{
-				displayName: 'Rollup Function (Multi-Level Boards)',
-				name: 'rollupFunction',
-				type: 'options',
-				options: [
-					{ name: 'Count Labels (Status)', value: 'COUNT_KEYS' },
-					{ name: 'Max (Numbers, Date)', value: 'MAX' },
-					{ name: 'Min (Numbers, Date)', value: 'MIN' },
-					{ name: 'Min & Max Span (Timeline)', value: 'MIN_MAX' },
-					{ name: 'None — Disable Rollup', value: 'NONE' },
-					{ name: 'Sum (Numbers)', value: 'SUM' },
-				],
-				default: 'NONE',
-				description:
-					'How the column calculates its value on parent items from their children, on multi-level boards. Each function only works on the column types in its parentheses; None turns the rollup off. Not supported on classic boards.',
-			},
-			{
-				displayName: 'Settings (JSON)',
-				name: 'settingsJson',
-				type: 'json',
-				default: '{}',
-				description:
-					'Column settings to change, in the API format (same shape as the settings returned by Get Many). Merged into the current settings at the top level — only the keys you send change, but a sent nested object (e.g. a numbers column\'s "unit") replaces that object entirely. To edit status/dropdown labels, prefer the Add Label / Update Label operations.',
-			},
-			{
-				displayName: 'Width',
-				name: 'width',
-				type: 'number',
-				typeOptions: { minValue: 1 },
-				default: 120,
-				description: 'The column width in pixels',
-			},
-		],
-	},
-	{
-		displayName: 'Column Kind',
-		name: 'labelColumnKind',
-		type: 'options',
-		noDataExpression: true,
-		options: [
-			{ name: 'Dropdown', value: 'dropdown' },
-			{ name: 'Status', value: 'status' },
-		],
-		default: 'status',
-		description: 'The kind of column to edit labels on',
-		displayOptions: { show: { operation: ['addColumnLabel', 'updateColumnLabel'] } },
-	},
-	{
-		displayName: 'Column Name or ID',
-		name: 'labelColumnId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBoardLabelColumns',
-			loadOptionsDependsOn: ['boardId.value', 'labelColumnKind'],
-		},
-		default: '',
-		required: true,
-		description:
-			'The status/dropdown column to edit labels on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-		displayOptions: { show: { operation: ['addColumnLabel', 'updateColumnLabel'] } },
-	},
-	{
-		displayName: 'Label Name',
-		name: 'newLabelName',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'The text of the new label',
-		displayOptions: { show: { operation: ['addColumnLabel'] } },
-	},
-	{
-		displayName: 'Color',
-		name: 'newLabelColor',
-		type: 'options',
-		options: STATUS_COLOR_OPTIONS,
-		default: 'working_orange',
-		description: 'The color of the new label, from monday’s status palette',
-		displayOptions: { show: { operation: ['addColumnLabel'], labelColumnKind: ['status'] } },
-	},
-	{
-		displayName: 'Options',
-		name: 'addColumnLabelOptions',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		displayOptions: { show: { operation: ['addColumnLabel'], labelColumnKind: ['status'] } },
-		options: [
-			{
-				displayName: 'Counts as Done',
-				name: 'isDone',
-				type: 'boolean',
-				default: false,
-				description: 'Whether items with this label count as done (e.g. for battery views)',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'Optional label description, shown in the status tooltip',
-			},
-			{
-				displayName: 'Position',
-				name: 'labelPosition',
-				type: 'options',
-				options: [
-					{ name: 'After Label', value: 'after' },
-					{ name: 'At Beginning', value: 'first' },
-					{ name: 'At End', value: 'last' },
-					{ name: 'Before Label', value: 'before' },
-				],
-				default: 'last',
-				description:
-					'Where to place the new label in the column’s label order; left unset, it goes at the end',
-			},
-			{
-				// Prefix keeps it next to Position; suffixing "Name or ID" would break that.
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Position: Relative To Label',
-				name: 'positionLabelId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getColumnLabels',
-					loadOptionsDependsOn: ['boardId.value', 'labelColumnKind', 'labelColumnId'],
-				},
-				default: '',
-				description:
-					'The existing label the new label is placed before or after (used with Position "After Label" / "Before Label"). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-				displayOptions: { show: { labelPosition: ['after', 'before'] } },
-			},
-		],
-	},
-	{
-		displayName: 'Label Name or ID',
-		name: 'existingLabelId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getColumnLabels',
-			loadOptionsDependsOn: ['boardId.value', 'labelColumnKind', 'labelColumnId'],
-		},
-		default: '',
-		required: true,
-		description:
-			'The label to modify (by its label ID). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-		displayOptions: { show: { operation: ['updateColumnLabel'] } },
-	},
-	{
-		displayName: 'Changes',
-		name: 'labelChanges',
-		type: 'collection',
-		placeholder: 'Add change',
-		default: {},
-		description: 'What to change on the label. Anything not set keeps its current value.',
-		displayOptions: { show: { operation: ['updateColumnLabel'] } },
-		options: [
-			{
-				displayName: 'Color',
-				name: 'color',
-				type: 'options',
-				options: STATUS_COLOR_OPTIONS,
-				default: 'working_orange',
-				description: 'The new color (status columns only)',
-				displayOptions: { show: { '/labelColumnKind': ['status'] } },
-			},
-			{
-				displayName: 'Counts as Done',
-				name: 'isDone',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether items with this label count as done (status columns only, e.g. for battery views)',
-				displayOptions: { show: { '/labelColumnKind': ['status'] } },
-			},
-			{
-				displayName: 'Deactivated',
-				name: 'isDeactivated',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether the label is deactivated. Deactivating hides it from pickers — this is how labels are "deleted"; setting it back to false reactivates the label.',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				description: 'The new label description (status columns only)',
-				displayOptions: { show: { '/labelColumnKind': ['status'] } },
-			},
-			{
-				displayName: 'New Name',
-				name: 'newName',
-				type: 'string',
-				default: '',
-				description:
-					'The new label text. Existing item values follow the rename (labels are tracked by ID).',
-			},
-			{
-				displayName: 'Position',
-				name: 'labelPosition',
-				type: 'options',
-				options: [
-					{ name: 'After Label', value: 'after' },
-					{ name: 'At Beginning', value: 'first' },
-					{ name: 'At End', value: 'last' },
-					{ name: 'Before Label', value: 'before' },
-				],
-				default: 'last',
-				description: 'Where to move the label in the column’s label order (status columns only)',
-				displayOptions: { show: { '/labelColumnKind': ['status'] } },
-			},
-			{
-				// Prefix keeps it next to Position; suffixing "Name or ID" would break that.
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Position: Relative To Label',
-				name: 'positionLabelId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getColumnLabels',
-					loadOptionsDependsOn: ['boardId.value', 'labelColumnKind', 'labelColumnId'],
-				},
-				default: '',
-				description:
-					'The existing label this label is moved before or after (used with Position "After Label" / "Before Label"). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-				displayOptions: {
-					show: { '/labelColumnKind': ['status'], labelPosition: ['after', 'before'] },
-				},
-			},
-		],
-	},
-
-	{
-		displayName: 'Tag Name',
-		name: 'tagName',
-		type: 'string',
-		default: '',
-		required: true,
-		description: 'The name of the tag to get or create. Tag names are case sensitive.',
-		displayOptions: { show: { operation: ['createOrGetTag'] } },
-	},
-	{
-		displayName: 'Options',
-		name: 'tagOptions',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		displayOptions: { show: { operation: ['createOrGetTag'] } },
-		options: [
-			{
-				// The board ID string is the value; "Name or ID" suffix per lint.
-				displayName: 'Private Board Name or ID',
-				name: 'boardId',
-				type: 'options',
-				typeOptions: { loadOptionsMethod: 'getBoardList' },
-				default: '',
-				description:
-					'Only needed for tags on private or shareable boards; leave unset for public-board tags. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-			},
-		],
-	},
-
+const properties: INodeProperties[] = [
+	boardResourceLocator,
 	{
 		displayName: 'Column Title',
 		name: 'columnTitle',
@@ -383,7 +30,6 @@ export const columnFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description: 'The title of the new column',
-		displayOptions: { show: { operation: ['createColumn'] } },
 	},
 	{
 		displayName: 'Column Type',
@@ -394,7 +40,6 @@ export const columnFields: INodeProperties[] = [
 		required: true,
 		description:
 			'The type of column to create. Types needing complex settings (connect boards, mirror, formula) are not listed — use the GraphQL operation for those.',
-		displayOptions: { show: { operation: ['createColumn'] } },
 	},
 	{
 		displayName: 'Labels',
@@ -405,7 +50,7 @@ export const columnFields: INodeProperties[] = [
 		default: {},
 		description:
 			'The status labels to create, in display order. Left empty, monday creates its default labels (Working on it / Done / Stuck).',
-		displayOptions: { show: { operation: ['createColumn'], columnType: ['status'] } },
+		displayOptions: { show: { columnType: ['status'] } },
 		options: [
 			{
 				displayName: 'Label',
@@ -454,7 +99,7 @@ export const columnFields: INodeProperties[] = [
 		default: {},
 		description:
 			'The dropdown options to create, in display order. Left empty, the dropdown starts without options.',
-		displayOptions: { show: { operation: ['createColumn'], columnType: ['dropdown'] } },
+		displayOptions: { show: { columnType: ['dropdown'] } },
 		options: [
 			{
 				displayName: 'Label',
@@ -482,7 +127,6 @@ export const columnFields: INodeProperties[] = [
 			'Settings specific to the selected column type. Anything not set keeps monday’s default.',
 		displayOptions: {
 			show: {
-				operation: ['createColumn'],
 				columnType: [
 					'checkbox',
 					'color_picker',
@@ -852,7 +496,6 @@ export const columnFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add option',
 		default: {},
-		displayOptions: { show: { operation: ['createColumn'] } },
 		options: [
 			{
 				displayName: 'Column ID',
@@ -909,3 +552,294 @@ export const columnFields: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['column'],
+		operation: ['createColumn'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+/** The fields every create-column mutation returns. */
+const CREATED_COLUMN_FIELDS = 'id title type description settings_str revision';
+
+/**
+ * Resolves the after_column_id argument for the Position option.
+ * "Before" needs the board's column order, fetched in one bounded call.
+ */
+async function resolveColumnPosition(
+	this: IExecuteFunctions,
+	client: MondayGraphQLClient,
+	itemIndex: number,
+	boardId: string,
+	options: IDataObject,
+): Promise<string | undefined> {
+	const position = (options.columnPosition as string) || 'end';
+	if (position === 'end') return undefined;
+	if (position === 'start') return 'name';
+
+	const anchorColumnId = (options.positionColumnId as string) || '';
+	if (!anchorColumnId) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Select the column the new column should be placed before or after (Position: Relative To Column)',
+			{ itemIndex },
+		);
+	}
+
+	let orderedColumnIds: string[] = [];
+	if (position === 'before') {
+		const data = await client.execute(
+			'query ($ids: [ID!]) { boards(ids: $ids) { columns { id } } }',
+			itemIndex,
+			{ ids: [boardId] },
+		);
+		const boards = (data.boards ?? []) as Array<{ columns?: Array<{ id: string }> }>;
+		orderedColumnIds = (boards[0]?.columns ?? []).map((column) => column.id);
+	}
+
+	const resolved = resolveAfterColumnId(position, anchorColumnId, orderedColumnIds);
+	if (resolved === null) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Column "${anchorColumnId}" was not found on board ${boardId}, so the new column can't be positioned relative to it`,
+			{ itemIndex },
+		);
+	}
+	return resolved;
+}
+
+/**
+ * The custom-column-ID argument for the create mutations. The API rejects an
+ * explicit `id: null` ("The specified ID ... cannot be empty", verified live),
+ * so the argument and its variable are omitted entirely when the user left
+ * Column ID unset — GraphQL also forbids declaring an unused variable.
+ * Exported for unit tests.
+ */
+export function buildCustomColumnIdArgs(customColumnId: string): {
+	varDef: string;
+	arg: string;
+	variables: Record<string, string>;
+} {
+	if (!customColumnId) return { varDef: '', arg: '', variables: {} };
+	return {
+		varDef: ', $customColumnId: String',
+		arg: 'id: $customColumnId,',
+		variables: { customColumnId },
+	};
+}
+
+/**
+ * Column: Add to Board. Status and dropdown label builders go through the
+ * typed create_status_column / create_dropdown_column mutations (name, color,
+ * is_done, selection limits); every other type compiles its Type Settings
+ * collection into the generic create_column defaults JSON, which the API
+ * validates against the column type's schema. The Defaults (JSON) option
+ * remains the raw escape hatch and takes precedence over both.
+ */
+export async function execute(
+	this: IExecuteFunctions,
+	client: MondayGraphQLClient,
+	itemIndex: number,
+): Promise<IDataObject> {
+	const boardId = this.getNodeParameter('boardId', itemIndex, undefined, {
+		extractValue: true,
+	}) as string;
+	const title = this.getNodeParameter('columnTitle', itemIndex) as string;
+	const columnType = this.getNodeParameter('columnType', itemIndex) as string;
+	const typeSettings = this.getNodeParameter('columnTypeSettings', itemIndex, {}) as IDataObject;
+	const options = this.getNodeParameter('createColumnOptions', itemIndex, {}) as IDataObject;
+
+	const afterColumnId = await resolveColumnPosition.call(this, client, itemIndex, boardId, options);
+	const description = (options.description as string) || null;
+
+	const customColumnId = ((options.customColumnId as string) || '').trim();
+	if (customColumnId) {
+		const problem = validateCustomColumnId(customColumnId);
+		if (problem) {
+			throw new NodeOperationError(this.getNode(), `Column ID ${problem}`, {
+				itemIndex,
+				description: `"${customColumnId}" is not a valid column ID. Use up to 24 characters: lowercase letters, digits and underscores, not starting with a digit.`,
+			});
+		}
+	}
+
+	let rawDefaults: Record<string, unknown> | undefined;
+	const rawDefaultsInput = options.defaultsJson;
+	if (rawDefaultsInput && rawDefaultsInput !== '{}') {
+		const parsed =
+			typeof rawDefaultsInput === 'string' ? safeJsonParse(rawDefaultsInput) : rawDefaultsInput;
+		if (!isPlainJsonObject(parsed)) {
+			throw new NodeOperationError(this.getNode(), 'Defaults (JSON) must be a valid JSON object', {
+				itemIndex,
+			});
+		}
+		rawDefaults = parsed as Record<string, unknown>;
+	}
+
+	const customId = buildCustomColumnIdArgs(customColumnId);
+	const baseVariables = {
+		boardId,
+		title,
+		description,
+		afterColumnId: afterColumnId ?? null,
+		...customId.variables,
+	};
+
+	// Rollup (multi-level boards): sent as the capabilities argument. Only
+	// combinations the API supports pass — anything else is a friendly error
+	// instead of a cryptic 500.
+	const rollupFunction = (typeSettings.rollupFunction as string) || '';
+	assertRollupFunctionAllowed(this.getNode(), itemIndex, columnType, rollupFunction);
+	const capabilities = rollupFunction ? { calculated: { function: rollupFunction } } : null;
+
+	if (!rawDefaults && columnType === 'status') {
+		const rows = ((this.getNodeParameter('statusLabels', itemIndex, {}) as IDataObject).label ??
+			[]) as StatusLabelRow[];
+		const defaults = buildStatusColumnDefaults(rows);
+		if (defaults || capabilities) {
+			const data = await client.execute(
+				`mutation ($boardId: ID!${customId.varDef}, $title: String!, $description: String, $afterColumnId: ID, $defaults: CreateStatusColumnSettingsInput, $capabilities: StatusColumnCapabilitiesInput) {
+					create_status_column(
+						board_id: $boardId,
+						${customId.arg}
+						title: $title,
+						description: $description,
+						after_column_id: $afterColumnId,
+						defaults: $defaults,
+						capabilities: $capabilities
+					) { ${CREATED_COLUMN_FIELDS} }
+				}`,
+				itemIndex,
+				{ ...baseVariables, defaults: defaults ?? null, capabilities },
+			);
+			return (data.create_status_column ?? {}) as IDataObject;
+		}
+	}
+
+	if (!rawDefaults && columnType === 'dropdown') {
+		const rows = ((this.getNodeParameter('dropdownLabels', itemIndex, {}) as IDataObject).label ??
+			[]) as Array<{ label: string }>;
+		// create_dropdown_column requires labels, so the selection limit can
+		// only be applied together with them — fail loudly instead of dropping it.
+		if (rows.length === 0 && typeSettings.limitSelect === true) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Limit Selection requires at least one dropdown label',
+				{
+					itemIndex,
+					description:
+						'Add the labels under Dropdown Labels, or turn off Limit Selection and set the limit later with Column: Update.',
+				},
+			);
+		}
+		const defaults = buildDropdownColumnDefaults(rows, {
+			limitSelect: typeSettings.limitSelect as boolean | undefined,
+			labelLimitCount: typeSettings.labelLimitCount as number | undefined,
+		});
+		if (defaults) {
+			const data = await client.execute(
+				`mutation ($boardId: ID!${customId.varDef}, $title: String!, $description: String, $afterColumnId: ID, $defaults: CreateDropdownColumnSettingsInput) {
+					create_dropdown_column(
+						board_id: $boardId,
+						${customId.arg}
+						title: $title,
+						description: $description,
+						after_column_id: $afterColumnId,
+						defaults: $defaults
+					) { ${CREATED_COLUMN_FIELDS} }
+				}`,
+				itemIndex,
+				{ ...baseVariables, defaults },
+			);
+			return (data.create_dropdown_column ?? {}) as IDataObject;
+		}
+	}
+
+	const defaults = rawDefaults ?? buildTypeSettingsDefaults(columnType, typeSettings);
+
+	let data: IDataObject;
+	try {
+		data = await client.execute(
+			`mutation ($boardId: ID!${customId.varDef}, $title: String!, $columnType: ColumnType!, $description: String, $afterColumnId: ID, $defaults: JSON, $capabilities: ColumnCapabilitiesInput) {
+				create_column(
+					board_id: $boardId,
+					${customId.arg}
+					title: $title,
+					column_type: $columnType,
+					description: $description,
+					after_column_id: $afterColumnId,
+					defaults: $defaults,
+					capabilities: $capabilities
+				) { ${CREATED_COLUMN_FIELDS} }
+			}`,
+			itemIndex,
+			{
+				...baseVariables,
+				columnType,
+				// The API's JSON scalar arrives as a string.
+				defaults: defaults ? JSON.stringify(defaults) : null,
+				capabilities,
+			},
+		);
+	} catch (error) {
+		// A board can hold only ONE dependency column; a second create fails
+		// with the generic "Cannot add column" (verified live 2026-07-17).
+		if (
+			columnType === 'dependency' &&
+			error instanceof Error &&
+			error.message.includes('Cannot add column')
+		) {
+			throw new NodeOperationError(this.getNode(), 'Cannot add a dependency column', {
+				itemIndex,
+				description:
+					'A board can only have one dependency column — this board most likely already has one. Use the existing column, or delete it first.',
+			});
+		}
+		// Everything the client throws is already a mapped NodeApiError.
+		throw error;
+	}
+
+	const created = (data.create_column ?? {}) as IDataObject;
+
+	// dependency: create_column silently DISCARDS defaults for this type
+	// (verified live 2026-07-17), so Allow Linking Multiple Items is applied
+	// via a follow-up update_column. That mutation REPLACES the dependency
+	// settings wholesale — boardIds must be re-sent or it is wiped to [],
+	// which breaks all value writes on the column (verified live).
+	if (
+		columnType === 'dependency' &&
+		typeof typeSettings.allowMultipleItems === 'boolean' &&
+		!rawDefaults &&
+		created.id
+	) {
+		const updated = await client.execute(
+			`mutation ($boardId: ID!, $columnId: String!, $revision: String!, $settings: JSON) {
+				update_column(
+					board_id: $boardId,
+					id: $columnId,
+					column_type: dependency,
+					revision: $revision,
+					settings: $settings
+				) { ${CREATED_COLUMN_FIELDS} }
+			}`,
+			itemIndex,
+			{
+				boardId,
+				columnId: created.id,
+				revision: created.revision,
+				// update_column wants a real JSON object here, not a string —
+				// the exact opposite of create_column's defaults (verified live).
+				settings: {
+					allowMultipleItems: typeSettings.allowMultipleItems,
+					boardIds: [Number(boardId)],
+				},
+			},
+		);
+		return (updated.update_column ?? created) as IDataObject;
+	}
+
+	return created;
+}

@@ -3,17 +3,18 @@ import type { IDataObject, IExecuteFunctions, INodeTypeBaseDescription } from 'n
 import { jsonParse, NodeHelpers } from 'n8n-workflow';
 import { describe, expect, it, vi } from 'vitest';
 
+import { buildBulkArchiveOrDeleteMutation } from '../actions/item/archiveOrDeleteItem.operation';
+import { buildClearColumnValuesMutation } from '../actions/item/clearColumnValues.operation';
+import { formatColumnValueOutput } from '../actions/item/getColumnValue.operation';
+import { buildGetItemQuery, flattenItemColumns } from '../actions/item/getItem.operation';
 import {
-	buildBulkArchiveOrDeleteMutation,
-	buildClearColumnValuesMutation,
-	buildGetItemQuery,
 	completeMoveColumnsMapping,
-	flattenItemColumns,
-	formatColumnValueOutput,
-	moveItem,
+	execute as moveItem,
+} from '../actions/item/moveItem.operation';
+import {
 	resolveArchiveOrDeleteAction,
 	withArchiveOrDeleteOutcome,
-} from '../actions/item/item.execute';
+} from '../helpers/archiveOrDelete';
 import { MondayComV2 } from '../MondayComV2.node';
 import type { MondayGraphQLClient } from '../transport/MondayGraphQLClient';
 
@@ -680,13 +681,14 @@ describe('item input mode for item-only operations', () => {
 		const itemListBlocks = properties.filter(
 			(p) => p.name === 'itemId' && p.displayOptions?.show?.itemInputMode?.[0] === 'list',
 		);
-		// Item slice + updates each contribute a block; notifications add the
-		// third in a later PR (the community node has 3).
-		expect(itemListBlocks.length).toBe(2);
+		// One block per item-only operation.
+		expect(itemListBlocks.length).toBe(itemOnlyOps.length);
 
 		for (const block of itemListBlocks) {
+			const resource = (block.displayOptions!.show!.resource as string[])[0];
 			const operation = (block.displayOptions!.show!.operation as string[])[0];
 			const base: IDataObject = {
+				resource,
 				operation,
 				itemInputMode: 'list',
 				updatesScope: 'item',
@@ -714,7 +716,11 @@ describe('item input mode for item-only operations', () => {
 		expect(dualModeBlock).toBeDefined();
 		expect(
 			NodeHelpers.displayParameter(
-				{ operation: 'updateItem', boardId: { __rl: true, mode: 'list', value: '' } },
+				{
+					resource: 'item',
+					operation: 'updateItem',
+					boardId: { __rl: true, mode: 'list', value: '' },
+				},
 				dualModeBlock!,
 				{ typeVersion: 2 },
 				description,
