@@ -1238,6 +1238,21 @@ describe('AssistantAgentProvider', () => {
 			});
 		});
 
+		it('keeps the setup error and ends the turn when the report fails', async () => {
+			const { provider, sentry, agentFactory, errorReporter, trace } = tracedSetup();
+			sentry.error.mockImplementation(() => {
+				throw new Error('sentry down');
+			});
+			const endRun = vi.spyOn(errorReporter, 'endRun');
+			const error = new Error('No model');
+			agentFactory.createAgent.mockRejectedValue(error);
+
+			await expect(provider.prepareTurn(startTurn())).rejects.toBe(error);
+
+			expect(endRun).toHaveBeenCalledWith('run-1', expect.any(Symbol));
+			expect(trace.finish).toHaveBeenCalledWith({ status: 'errored', error });
+		});
+
 		it('reports a failure of the turn setup before the trace starts', async () => {
 			const { provider, sentry, adapterService } = setup();
 			const error = new Error('flags down');

@@ -307,19 +307,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			}
 			return await shown;
 		};
-		// A failed report must not stop the usage claim or the trace of the turn.
-		const reportSettledError = async (error: unknown) => {
-			try {
-				const component = streamErrors.has(error) ? 'instance-ai-stream' : 'instance-ai-run';
-				this.reportTurnError(await shownErrorOf(error), component, turn, options, trace);
-			} catch (reportError) {
-				this.logger.warn('Failed to report the Assistant turn error', {
-					threadId: thread.id,
-					runId,
-					error: reportError,
-				});
-			}
-		};
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
@@ -370,7 +357,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 						this.emitArchivedWorkflows(turn, thread.id, archived);
 					}
 				} finally {
-					if (outcome.status === 'errored') await reportSettledError(outcome.error);
+					if (outcome.status === 'errored') {
+						const component = streamErrors.has(outcome.error)
+							? 'instance-ai-stream'
+							: 'instance-ai-run';
+						this.reportTurnError(
+							await shownErrorOf(outcome.error),
+							component,
+							turn,
+							options,
+							trace,
+						);
+					}
 					await trace?.finish(outcome, environment.modelId);
 					this.errorReporter.endRun(runId, errorReporting);
 				}
@@ -543,17 +541,26 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		trace: AssistantTurnTrace | undefined,
 	): void {
 		const { runId, messageGroupId } = options;
-		this.errorReporter.report(error ?? new Error('Assistant turn errored'), {
-			component,
-			...(component === 'instance-ai-stream' ? { providerStream: true } : {}),
-			threadId: turn.thread.id,
-			runId,
-			projectId: turn.thread.projectId,
-			userId: turn.user.id,
-			agentId: orchestratorAgentId(runId),
-			messageGroupId,
-			...(trace ? { tracing: trace.context } : {}),
-		});
+		// A failed report must not replace the turn error or skip the cleanup of the turn.
+		try {
+			this.errorReporter.report(error ?? new Error('Assistant turn errored'), {
+				component,
+				...(component === 'instance-ai-stream' ? { providerStream: true } : {}),
+				threadId: turn.thread.id,
+				runId,
+				projectId: turn.thread.projectId,
+				userId: turn.user.id,
+				agentId: orchestratorAgentId(runId),
+				messageGroupId,
+				...(trace ? { tracing: trace.context } : {}),
+			});
+		} catch (reportError) {
+			this.logger.warn('Failed to report the Assistant turn error', {
+				threadId: turn.thread.id,
+				runId,
+				error: reportError,
+			});
+		}
 	}
 
 	/**
