@@ -1,3 +1,19 @@
+## [2.46.5](https://github.com/n8n-io/n8n/compare/n8n@2.46.4...n8n@2.46.5) (2026-11-04)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Point the deprecated agent type callout to an action that works ([#42908](https://github.com/n8n-io/n8n/issues/42908)) ([6fa6e60](https://github.com/n8n-io/n8n/commit/6fa6e60713791c885c0b97af307762120a454db2))
+* **core:** Improve credential resolution for node parameter loading ([#42755](https://github.com/n8n-io/n8n/issues/42755)) ([e4e033e](https://github.com/n8n-io/n8n/commit/e4e033e179bd7f35db7089bf12138b4097ee518c))
+* **core:** Read named array keys in expressions ([#42970](https://github.com/n8n-io/n8n/issues/42970)) ([00a1fbc](https://github.com/n8n-io/n8n/commit/00a1fbc07a0477195b36c141c85d26198cf49b41))
+
+
+### Features
+
+* **core:** Hide archived workflows in the migration report by default ([#42995](https://github.com/n8n-io/n8n/issues/42995)) ([23232e7](https://github.com/n8n-io/n8n/commit/23232e724b6ea1a72a1ee440bb3fcf8c38759c2f))
+* **editor:** Show a message when the migration report takes long to load ([#43001](https://github.com/n8n-io/n8n/issues/43001)) ([f7dafbb](https://github.com/n8n-io/n8n/commit/f7dafbb5ff1eca870860e02f3edead831e821c70))
+
+
 ## [2.46.4](https://github.com/n8n-io/n8n/compare/n8n@2.46.3...n8n@2.46.4) (2026-11-02)
 
 
