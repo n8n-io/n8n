@@ -22,8 +22,10 @@ describe('ExecutionPruningSoftDeleteTask', () => {
 	it('should declare the configured soft-delete cadence', () => {
 		expect(task.name).toBe('execution-pruning-soft-delete');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 3600 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true, timeoutSeconds: 600 },
+		});
 	});
 
 	it.each([
@@ -37,7 +39,8 @@ describe('ExecutionPruningSoftDeleteTask', () => {
 			const database = mock<DatabaseConfig>({ type, postgresdb: { statementTimeoutMs } });
 
 			expect(
-				new ExecutionPruningSoftDeleteTask(config, database, pruningService).timeoutSeconds,
+				new ExecutionPruningSoftDeleteTask(config, database, pruningService).target.scheduler
+					.timeoutSeconds,
 			).toBe(timeoutSeconds);
 		},
 	);

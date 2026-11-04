@@ -1,11 +1,7 @@
 oneOf:
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -52,15 +48,30 @@ oneOf:
               created:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+                description: Existing folders that Apply moved or renamed to match the branch.
               skipped:
                 type: integer
                 minimum: 0
+              moved:
+                type: integer
+                minimum: 0
+                description: Updated folders that Apply moved under another parent of their project. Included in `updated`.
+              renamed:
+                type: integer
+                minimum: 0
+                description: Updated folders that Apply gave the name on the branch. Included in `updated`.
               removed:
                 type: integer
                 minimum: 0
             required:
               - created
+              - updated
               - skipped
+              - moved
+              - renamed
               - removed
           workflows:
             type: object
@@ -74,6 +85,10 @@ oneOf:
               skipped:
                 type: integer
                 minimum: 0
+              moved:
+                type: integer
+                minimum: 0
+                description: Updated workflows that Apply also moved to another folder of their project. Included in `updated`.
               archived:
                 type: integer
                 minimum: 0
@@ -108,6 +123,7 @@ oneOf:
               - created
               - updated
               - skipped
+              - moved
               - archived
               - deleted
               - publishing
@@ -120,9 +136,13 @@ oneOf:
               stubbed:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
             required:
               - matched
               - stubbed
+              - updated
           dataTables:
             type: object
             properties:
@@ -261,19 +281,14 @@ oneOf:
             - scope
             - consumers
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
       - counts
       - warnings
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -291,7 +306,7 @@ oneOf:
         type: string
         enum:
           - blocked
-      preflight:
+      check:
         type: object
         properties:
           missingProjects:
@@ -334,7 +349,7 @@ oneOf:
               required:
                 - id
                 - name
-            description: Projects in the package that do not exist on this instance. Preflight preserves their metadata without checking project creation rules. The project creation API can reject invalid values.
+            description: Projects in the package that do not exist on this instance. The check keeps their metadata without checking project creation rules. The project creation API can reject invalid values.
           missingBindings:
             type: array
             items:
@@ -1095,6 +1110,31 @@ oneOf:
                     kind:
                       type: string
                       enum:
+                        - project
+                    code:
+                      type: string
+                      enum:
+                        - project-deletion
+                    project:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                  required:
+                    - kind
+                    - code
+                    - project
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
                         - data-table
                     code:
                       type: string
@@ -1283,6 +1323,248 @@ oneOf:
                     - name
                     - consumers
                     - changes
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - workflow
+                    code:
+                      type: string
+                      enum:
+                        - workflow-id-conflict
+                        - lineage-conflict
+                        - policy-violation
+                        - missing-node-type
+                        - workflow-forbidden
+                    reason:
+                      type: string
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - data-table
+                    code:
+                      type: string
+                      enum:
+                        - data-table-conflict
+                    id:
+                      type: string
+                      minLength: 1
+                    name:
+                      type: string
+                    reason:
+                      type: string
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - reason
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - tag
+                    code:
+                      type: string
+                      enum:
+                        - tag-conflict
+                    id:
+                      type: string
+                      minLength: 1
+                    name:
+                      type: string
+                    reason:
+                      type: string
+                    consumers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          project:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                minLength: 1
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          workflows:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  minLength: 1
+                                name:
+                                  type: string
+                              required:
+                                - id
+                                - name
+                            minItems: 1
+                        required:
+                          - project
+                          - workflows
+                      minItems: 1
+                  required:
+                    - kind
+                    - code
+                    - reason
+                    - consumers
+                - type: object
+                  properties:
+                    kind:
+                      type: string
+                      enum:
+                        - project
+                    code:
+                      type: string
+                      enum:
+                        - project-conflict
+                        - check-not-run
+                        - import-blocked
+                        - project-not-on-branch
+                    project:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    reason:
+                      type: string
+                  required:
+                    - kind
+                    - code
+                    - project
+                - type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    project:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    projectExists:
+                      type: boolean
+                    instanceProject:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                    kind:
+                      type: string
+                      enum:
+                        - workflow
+                        - folder
+                    code:
+                      type: string
+                      enum:
+                        - moved
+                  required:
+                    - id
+                    - name
+                    - project
+                    - projectExists
+                    - instanceProject
+                    - kind
+                    - code
               type: object
           warnings:
             type: array
@@ -1356,18 +1638,13 @@ oneOf:
           - conflicts
           - warnings
     required:
-      - connectionId
-      - configId
+      - environmentId
       - git
       - status
-      - preflight
+      - check
   - type: object
     properties:
-      connectionId:
-        type: string
-        minLength: 1
-        maxLength: 36
-      configId:
+      environmentId:
         type: string
         minLength: 1
         maxLength: 36
@@ -1386,8 +1663,31 @@ oneOf:
         enum:
           - source-changed
     required:
-      - connectionId
-      - configId
+      - environmentId
+      - git
+      - status
+  - type: object
+    properties:
+      environmentId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - preview-changed
+    required:
+      - environmentId
       - git
       - status
 type: object

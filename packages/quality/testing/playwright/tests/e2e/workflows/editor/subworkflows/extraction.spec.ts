@@ -56,8 +56,7 @@ test.describe(
 			await n8n.canvas.nodeByName(EDIT_FIELDS_NAMES[0]).click();
 
 			await n8n.canvas.extendSelectionWithArrows('right');
-
-			await n8n.canvas.openCanvasContextMenu();
+			await n8n.canvas.rightClickNode(EDIT_FIELDS_NAMES[0]);
 			await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
 			await n8n.canvas.convertToSubworkflowModal.waitForModal();
 			await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();
@@ -86,7 +85,7 @@ test.describe(
 				await n8n.canvas.nodeByName('Edit Fields Disconnected 1').click();
 				await n8n.canvas.extendSelectionWithArrows('right');
 
-				await n8n.canvas.openCanvasContextMenu();
+				await n8n.canvas.rightClickNode('Edit Fields Disconnected 1');
 				await n8n.canvas.clickContextMenuAction('extract_sub_workflow');
 				await n8n.canvas.convertToSubworkflowModal.waitForModal();
 				await n8n.canvas.convertToSubworkflowModal.clickSubmitButton();

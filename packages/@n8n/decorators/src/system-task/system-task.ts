@@ -5,97 +5,20 @@ import {
 	ScheduledJobMisfirePolicy,
 	Time,
 	type IntervalDefinition,
-	type OneOffDefinition,
-	type ScheduleDefinition,
 } from '@n8n/constants';
 import { Service, type Constructable } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { SystemTaskPlacement } from './system-task-placement';
+import type {
+	ClusterTarget,
+	InstanceTarget,
+	LeaderTimerOptions,
+	LeaderTimerTarget,
+	SystemTask as SystemTaskContract,
+	SystemTaskSchedule,
+} from './types';
 
-/** Whether a run is safe to repeat. */
-export type SystemTaskEffects = 'idempotent' | 'non-idempotent';
-
-/** A system task always has a next run, so a one-off schedule is not allowed. */
-export type SystemTaskSchedule = Exclude<ScheduleDefinition, OneOffDefinition>;
-
-/**
- * A periodic background task owned by the system rather than by a workflow.
- */
-export interface SystemTask {
-	/**
-	 * Identity of the task, unique across all system tasks. Registration sees
-	 * only the class, so the consumer that resolves the instances has to enforce
-	 * this.
-	 */
-	readonly name: string;
-
-	readonly schedule: SystemTaskSchedule;
-
-	/** What kind of effects a run has, which sets the defaults of the overrides below. */
-	readonly effects: SystemTaskEffects;
-
-	/** Where the occurrences run. */
-	readonly placement: SystemTaskPlacement;
-
-	/**
-	 * How long after a failed run an earlier retry occurrence runs, instead of
-	 * waiting for the next scheduled one. In-memory timers only, and only
-	 * honored for idempotent work. Durable runs retry via `maxAttempts`.
-	 * An integer of at least 1, capped at what a timeout honors (about 24 days).
-	 */
-	readonly retryDelaySeconds?: number;
-
-	/**
-	 * Overrides what happens to occurrences that missed their grace window.
-	 * Defaults to `coalesce` for idempotent work and `skip` otherwise.
-	 */
-	readonly misfirePolicy?: ScheduledJobMisfirePolicy;
-
-	/**
-	 * Overrides how late an occurrence may run before the misfire policy applies.
-	 * At least 1: a grace of `0` leaves every occurrence past its deadline the
-	 * instant it comes due.
-	 * Defaults to {@link DEFAULT_MISFIRE_GRACE_SECONDS}.
-	 */
-	readonly misfireGraceSeconds?: number;
-
-	/**
-	 * Overrides how many times an occurrence is attempted before it is given up on.
-	 * Defaults to 3 for idempotent work. Ignored for non-idempotent work, which is
-	 * always kept to a single attempt.
-	 */
-	readonly maxAttempts?: number;
-
-	/**
-	 * Overrides how many durable occurrences may run at the same time.
-	 * `null` removes the limit. Defaults to
-	 * {@link DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT}.
-	 */
-	readonly concurrencyLimit?: number | null;
-
-	/**
-	 * Overrides how long, in seconds, one durable run may take before the
-	 * scheduler aborts its signal and gives the occurrence back. Rounded to the
-	 * whole second, never below one, at most {@link MAX_TIMER_DELAY_SECONDS}.
-	 * Defaults to N8N_SCHEDULER_TASK_TIMEOUT_SECONDS.
-	 */
-	readonly timeoutSeconds?: number;
-
-	/**
-	 * Executes one occurrence of the task. A durable run may take up to its timeout.
-	 * `signal` aborts on shutdown, and on loss of leadership for an in-memory timer.
-	 * A durable run also aborts on lease loss or expiry, and when it reaches its timeout.
-	 * Ignoring the signal delays shutdown and can let another run overlap.
-	 * A durable run that settles after a lease abort counts as a failed attempt
-	 * while its claim still matches, and retries only while attempts remain.
-	 */
-	run(signal: AbortSignal, context: SystemTaskRunContext): Promise<void>;
-}
-
-export interface SystemTaskRunContext {
-	readonly durable: boolean;
-}
+export type SystemTask = SystemTaskContract;
 
 /** How a task's occurrences are retried and how late they may still run. */
 export interface SystemTaskRunOptions {
@@ -109,56 +32,75 @@ export interface SystemTaskRunOptions {
 }
 
 /** One occurrence at a time, like the in-memory timer. */
-export const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
+const DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT = 1;
+
+const MAX_ATTEMPTS_WITH_RETRY = 3;
+
+/** A target that runs the task once for the cluster, on the durable scheduler. */
+export function clusterTarget(options: Omit<ClusterTarget, 'scope'>): ClusterTarget {
+	return { scope: 'cluster', ...options };
+}
+
+/** @deprecated Move the task to `clusterTarget`. */
+export function leaderTimerTarget(leaderTimer: LeaderTimerOptions): LeaderTimerTarget {
+	return { scope: 'cluster', leaderTimer };
+}
+
+/** A target that runs the task in every instance of `instanceTypes`. */
+export function instanceTarget(instanceTypes: InstanceTarget['instanceTypes']): InstanceTarget {
+	return { scope: 'instance', instanceTypes };
+}
+
+/** How a task runs, resolved from what it declares. */
+export interface ResolvedSystemTask {
+	readonly schedule: SystemTaskSchedule;
+	/** What the scheduler stores. `undefined` for a task that does not run on the scheduler. */
+	readonly runOptions: SystemTaskRunOptions | undefined;
+}
 
 /**
- * Run options a task's effects imply, when the task declares no override:
- * retries and late runs only where a repeat is harmless.
- * The grace window and the concurrency limit do not depend on effects.
+ * Resolves the schedule and the scheduler run options of a task, and rejects a
+ * task that declares an option the runners cannot honor.
+ *
+ * @throws {UnexpectedError} when `retryDelaySeconds` or a scheduler option is out of range
+ * @throws {UnexpectedError} when an instance task declares an interval that is not positive and finite
  */
-const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<
-	SystemTaskEffects,
-	Omit<SystemTaskRunOptions, 'misfireGraceSeconds' | 'concurrencyLimit' | 'timeoutSeconds'>
-> = {
-	idempotent: {
-		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
-		maxAttempts: 3,
-	},
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'non-idempotent': {
-		misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-		maxAttempts: 1,
-	},
-};
+export function resolveSystemTask(task: SystemTask): ResolvedSystemTask {
+	const runOptions = resolveSystemTaskRunOptions(task);
+	validateTimerOptions(task);
+	return { schedule: resolveSystemTaskSchedule(task), runOptions };
+}
 
 /**
- * Resolves the run options a task is scheduled with, and rejects values the
- * scheduler cannot store. A task's own overrides win over the defaults its
- * effects imply, except for `maxAttempts` on non-idempotent work, which stays
- * at a single attempt.
+ * Resolves the run options the scheduler stores for a task, and rejects values
+ * it cannot store. Returns `undefined` for a task that does not run on the scheduler.
+ *
+ * @throws {UnexpectedError} when an option is out of range
  */
-export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions {
-	const defaults = SYSTEM_TASK_RUN_OPTION_DEFAULTS[task.effects];
+function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions | undefined {
+	const { scheduler } = task.target;
+	if (scheduler === undefined) {
+		return undefined;
+	}
+	const concurrencyLimit = scheduler.concurrencyLimit ?? DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT;
 
 	const options = {
-		misfirePolicy: task.misfirePolicy ?? defaults.misfirePolicy,
-		misfireGraceSeconds: task.misfireGraceSeconds ?? DEFAULT_MISFIRE_GRACE_SECONDS,
-		maxAttempts: task.effects === 'non-idempotent' ? 1 : (task.maxAttempts ?? defaults.maxAttempts),
-		concurrencyLimit:
-			task.concurrencyLimit === undefined
-				? DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT
-				: task.concurrencyLimit,
-		timeoutSeconds: roundedTimeoutSeconds(task.timeoutSeconds),
+		misfirePolicy:
+			scheduler.catchUp === false
+				? ScheduledJobMisfirePolicy.Skip
+				: ScheduledJobMisfirePolicy.Coalesce,
+		misfireGraceSeconds: scheduler.missedAfterSeconds ?? DEFAULT_MISFIRE_GRACE_SECONDS,
+		maxAttempts: scheduler.retryOnFailure ? MAX_ATTEMPTS_WITH_RETRY : 1,
+		concurrencyLimit: concurrencyLimit === 'unlimited' ? null : concurrencyLimit,
+		timeoutSeconds: roundedTimeoutSeconds(scheduler.timeoutSeconds),
 	};
 
 	// These end up in `int` columns, where a fractional value is rounded and anything
-	// above the signed 32-bit maximum is rejected, and an override of `0` passes the
-	// `??` above. `scheduled_job` rejects a grace of `0` outright, so match the
-	// column's whole range here rather than at the failing insert.
+	// above the signed 32-bit maximum is rejected. `scheduled_job` rejects a grace of `0`
+	// outright, so match the column's whole range here rather than at the failing insert.
 	// Only a static floor: the scheduler's usable minimum depends on its configured
 	// intervals, so whatever provisions a task still has to clamp against those.
-	assertInRange(task.name, 'maxAttempts', options.maxAttempts, 1);
-	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
+	assertInRange(task.name, 'missedAfterSeconds', options.misfireGraceSeconds, 1);
 	// A limit below 1 would block every occurrence.
 	if (options.concurrencyLimit !== null) {
 		assertInRange(task.name, 'concurrencyLimit', options.concurrencyLimit, 1);
@@ -171,15 +113,15 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 }
 
 /**
- * Rejects a task that declares an option the schedulers cannot honor.
+ * Rejects a task that declares a timer option the in-memory timers cannot honor.
  *
- * @throws {UnexpectedError} when `retryDelaySeconds`, `maxAttempts`, `misfireGraceSeconds` or `timeoutSeconds` is out of range
+ * @throws {UnexpectedError} when `retryDelaySeconds` is out of range
  * @throws {UnexpectedError} when an instance task declares an interval that is not positive and finite
  */
-export function validateSystemTask(task: SystemTask): void {
-	resolveSystemTaskRunOptions(task);
-
-	const { retryDelaySeconds } = task;
+function validateTimerOptions(task: SystemTask): void {
+	const { target } = task;
+	// oxlint-disable-next-line typescript/no-deprecated -- validated while the leader timer still runs tasks
+	const retryDelaySeconds = target.leaderTimer?.retryDelaySeconds;
 	if (
 		retryDelaySeconds !== undefined &&
 		(!Number.isInteger(retryDelaySeconds) ||
@@ -193,9 +135,9 @@ export function validateSystemTask(task: SystemTask): void {
 
 	// A cluster task's interval is rounded up to one second, but an instance
 	// task's is kept to the millisecond, so a non-positive one would fire every millisecond.
-	const { schedule, placement } = task;
+	const { schedule } = task;
 	if (
-		placement.scope === 'instance' &&
+		target.scope === 'instance' &&
 		schedule.kind === 'interval' &&
 		!(schedule.intervalSeconds > 0 && Number.isFinite(schedule.intervalSeconds))
 	) {
@@ -248,12 +190,14 @@ export function intervalFromMilliseconds(milliseconds: number): IntervalDefiniti
  * a fractional config value keeps running as it did on the legacy timers. An
  * instance task's interval keeps its sub-second part, rounded to the millisecond.
  */
-export function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
+function resolveSystemTaskSchedule(task: SystemTask): SystemTaskSchedule {
 	const { schedule } = task;
-	if (schedule.kind !== 'interval') return schedule;
+	if (schedule.kind !== 'interval') {
+		return schedule;
+	}
 
 	const intervalSeconds =
-		task.placement.scope === 'instance'
+		task.target.scope === 'instance'
 			? wholeMilliseconds(schedule.intervalSeconds)
 			: wholeSeconds(schedule.intervalSeconds);
 

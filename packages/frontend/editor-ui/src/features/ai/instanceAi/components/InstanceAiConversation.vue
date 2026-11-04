@@ -22,7 +22,6 @@ import type {
 } from '@n8n/api-types';
 import type { SuggestionSelectionPayload } from './InstanceAiInput.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
@@ -35,7 +34,6 @@ import { useThread, useInstanceAiStore } from '../instanceAi.store';
 import { getAgentBuilderTargetFromThreadMetadata } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { isPendingItemFloating } from '../confirmationKinds';
-import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import {
 	clearPendingAgentAttachment,
@@ -86,6 +84,8 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 const props = defineProps<{
 	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 	beforeSend?: () => Promise<void>;
+	placeholder?: string;
+	composerHeight?: string;
 	/**
 	 * The live embed subject (an agent in the builder today). When it refers to
 	 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
@@ -102,11 +102,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'thread-missing': [];
+	'message-sent': [];
 	'agent-attachment-restored': [attachment: InstanceAiAgentAttachment];
 }>();
 
 defineSlots<{
 	'above-input'?: () => unknown;
+	'composer-start'?: () => unknown;
+	'composer-footer'?: () => unknown;
 	'inline-offers'?: () => unknown;
 	/** A host's welcome state, rendered until the thread has its first message. */
 	empty?: () => unknown;
@@ -121,25 +124,27 @@ const settingsStore = useInstanceAiSettingsStore();
 // `isCurrentThreadRuntime()` compares against `store.getRuntime(thread.id)` to detect a
 // disposed/recreated runtime, so an unregistered runtime object would never connect.
 const thread = useThread();
+watch(
+	() => thread.messages.some((message) => message.role === 'user'),
+	(hasMessages) => {
+		if (hasMessages) emit('message-sent');
+	},
+	{ immediate: true },
+);
 const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
 	'openWorkflowPreview',
 	undefined,
 );
-const { showCreditWarning, quotaLocked, isOutOfCredits } = storeToRefs(store);
-const appSettingsStore = useSettingsStore();
+const { isLowCredits, isOutOfCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(showCreditWarning);
+const creditBanner = useCreditWarningBanner(isLowCredits);
 const outOfCreditsMessage = computed(() => {
 	if (!isOutOfCredits.value) return undefined;
-	return i18n.baseText(
-		appSettingsStore.moduleSettings?.['instance-ai']?.activationCapped
-			? 'instanceAi.error.outOfCredits.trialTitle'
-			: 'instanceAi.error.outOfCredits.title',
-	);
+	return i18n.baseText('instanceAi.error.outOfCredits.title');
 });
 
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
@@ -494,16 +499,13 @@ watch(
 	},
 );
 
-watch(
-	[chatInputRef, pendingComposerDraft, () => thread.pendingPlanReview],
-	([input, draft, planReview]) => {
-		if (!input || !draft || planReview) return;
-		input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
-		generatedComposerDraft.value = draft.text;
-		pendingComposerDraft.value = null;
-		void nextTick(focusChatInputIfFocusIsIdle);
-	},
-);
+watch([chatInputRef, pendingComposerDraft], ([input, draft]) => {
+	if (!input || !draft) return;
+	input.setPrefill({ text: draft.text, prefillType: draft.prefillType });
+	generatedComposerDraft.value = draft.text;
+	pendingComposerDraft.value = null;
+	void nextTick(focusChatInputIfFocusIsIdle);
+});
 
 function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(thread.id) === thread;
@@ -622,16 +624,6 @@ function restoreFailedSubmission(restoreDraft: () => boolean) {
 	restoreDraft();
 }
 
-/**
- * A plan change request is in flight. `confirmAction` never touches the send
- * counter, so without this the composer stays live for the round trip and a
- * second Enter is dropped by the runtime's duplicate guard without a trace.
- */
-const isPlanChangeInFlight = computed(() => {
-	const requestId = thread.pendingPlanReview?.requestId;
-	return requestId !== undefined && thread.updatingPlanRequestIds.has(requestId);
-});
-
 // --- Message handlers ---
 async function handleSubmit(
 	message: string,
@@ -663,39 +655,6 @@ async function handleSubmit(
 
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-
-	// While a plan review is pending every message is feedback on that plan —
-	// the user does not have to click "Ask for edits" first.
-	const planReview = thread.pendingPlanReview;
-	if (planReview) {
-		void thread.requestPlanChanges(planReview.requestId, message).then((sent) => {
-			if (!sent) {
-				restoreFailedSubmission(restoreDraft);
-				return;
-			}
-			acceptDraft();
-			// Only an accepted request revises the plan. Tracking up front would
-			// also count a dropped or failed submit the run never saw.
-			telemetry.track('User finished providing input', {
-				thread_id: thread.id,
-				input_thread_id: planReview.inputThreadId ?? '',
-				instance_id: rootStore.instanceId,
-				type: 'plan-review',
-				provided_inputs: [
-					{
-						label: 'plan',
-						options: ['approve', 'ask-for-edits', 'deny'],
-						option_chosen: 'ask-for-edits',
-					},
-				],
-				skipped_inputs: [],
-				num_tasks: planReview.taskCount,
-				feedback: scrubSecretsInText(message),
-				plan_feedback_type: 'changes_requested',
-			});
-		});
-		return;
-	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
 	const submittedGeneratedDraft = generatedComposerDraft.value;
@@ -741,6 +700,7 @@ async function handleSubmit(
 			if (nodeCount > 0) {
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 					node_count: nodeCount,
+					runtime: 'instance-ai',
 				});
 			}
 			// Clear the canvas selection only once the send succeeded — clearing it
@@ -811,9 +771,7 @@ function applyHandoff(context: InstanceAiHandoffContext, initialDraft?: PendingC
 		clearGeneratedDraft();
 	}
 
-	if (!thread.pendingPlanReview) {
-		void nextTick(() => chatInputRef.value?.focus());
-	}
+	void nextTick(() => chatInputRef.value?.focus());
 }
 
 function clearPendingComposerHandoff() {
@@ -889,6 +847,7 @@ function resetScroll() {
 }
 
 defineExpose({
+	focus: () => chatInputRef.value?.focus(),
 	isDirty,
 	applyHandoff,
 	dismissPendingComposerContext,
@@ -965,7 +924,7 @@ defineExpose({
 							:agent-node="builder"
 						/>
 					</div>
-					<!-- Inline confirmations (plan review, text, setup, credential,
+					<!-- Inline confirmations (text, setup, credential,
 						 gateway resource-decision, continue) render in
 						 the chat flow. Floating-eligible items take over the chat
 						 input slot below instead - see `hasFloatingConfirmation`. -->
@@ -1017,7 +976,6 @@ defineExpose({
 								v-if="isOutOfCredits || creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
 								:credits-quota="store.creditsQuota"
-								:amounts-hidden="quotaLocked"
 								:message="outOfCreditsMessage"
 								:dismissible="!isOutOfCredits"
 								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -1039,16 +997,16 @@ defineExpose({
 										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
 											thread.isSendingMessage ||
-											isPlanChangeInFlight ||
 											thread.hydrationStatus === 'idle' ||
 											thread.isHydratingThread
 										"
 										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-										:is-awaiting-plan-review="thread.pendingPlanReview !== null"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
+										:placeholder="props.placeholder"
+										:composer-height="props.composerHeight"
 										:placeholder-key="
 											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
 										"
@@ -1064,12 +1022,19 @@ defineExpose({
 										@mention-reference-added="addMentionReference"
 										@mention-reference-removed="removeMentionReference"
 										@mention-workflow-open="openMentionWorkflow"
-									/>
+									>
+										<template v-if="$slots['composer-start']" #footer-start>
+											<slot name="composer-start" />
+										</template>
+									</InstanceAiInput>
 								</Transition>
+								<slot v-if="hasFloatingConfirmation" name="composer-start" />
 							</div>
-							<p v-if="hasAssistantResponse" :class="$style.disclaimer">
-								{{ i18n.baseText('instanceAi.input.disclaimer') }}
-							</p>
+							<slot name="composer-footer">
+								<p v-if="hasAssistantResponse" :class="$style.disclaimer">
+									{{ i18n.baseText('instanceAi.input.disclaimer') }}
+								</p>
+							</slot>
 						</div>
 					</div>
 				</div>
@@ -1098,14 +1063,15 @@ defineExpose({
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
 
-	:global([data-orientation='vertical'][data-orientation='vertical']) {
+	// Only the scrollbar, a direct child: menus inside the chat are vertical too.
+	> :global([data-orientation='vertical'][data-orientation='vertical']) {
 		background: transparent;
 		padding: 0;
 		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
 		z-index: 4;
 	}
 
-	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+	> :global([data-orientation='vertical'][data-orientation='vertical'] > *) {
 		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
 
 		&:hover {
@@ -1123,7 +1089,7 @@ defineExpose({
 
 .messageList {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: min(800px, 100%);
+	max-width: min(var(--instance-ai-chat-max-width, 800px), 100%);
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	display: flex;
@@ -1188,7 +1154,7 @@ defineExpose({
 }
 
 .inputContainer {
-	padding: 0 var(--spacing--lg) var(--spacing--sm);
+	padding: var(--instance-ai-input-padding, 0 var(--spacing--lg) var(--spacing--sm));
 	// Fades into the host's surface: the thread view paints `light-2`, an
 	// embedding panel overrides the variable with its own background.
 	background: linear-gradient(
@@ -1204,7 +1170,7 @@ defineExpose({
 
 .inputConstraint {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 750px;
+	max-width: var(--instance-ai-input-max-width, 750px);
 	margin: 0 auto;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 	display: flex;

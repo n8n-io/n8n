@@ -24,13 +24,15 @@ import {
 } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
-import { WORKFLOW_REVIEW_REQUESTS_VIEW } from '@/features/workflow-reviews/constants';
-import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { INBOX_VIEW } from '@n8n/frontend-module-inbox';
 import {
 	AGENT_N8N_CHAT_VIEW,
 	AGENT_N8N_CHAT_RECENT_THREADS_LIMIT,
 } from '@/features/agents/constants';
+import N8nChatHintPopover from '@/features/agents/components/N8nChatHintPopover.vue';
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import { useAssistantAgentThreadsStore } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store';
+import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useRecentChats } from '@/features/agents/n8nChatPage/useRecentChats';
@@ -64,6 +66,8 @@ const favoritesStore = useFavoritesStore();
 const instanceAiStore = useInstanceAiStore();
 const agentThreadsStore = useAgentN8nChatThreadsStore();
 const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
+const assistantAgentThreadsStore = useAssistantAgentThreadsStore();
+const instanceAiSettingsStore = useInstanceAiSettingsStore();
 const agentTelemetry = useAgentTelemetry();
 
 const {
@@ -111,6 +115,13 @@ watch(
 	},
 	{ immediate: true },
 );
+watch(
+	[isInstanceAiNavVisible, () => instanceAiSettingsStore.isAssistantAgentEnabled],
+	([visible, enabled]) => {
+		if (visible && enabled) void assistantAgentThreadsStore.fetchRecent();
+	},
+	{ immediate: true },
+);
 
 // Another tab can start a chat; refresh the list when the user comes back to this one.
 const { onDocumentVisible } = useDocumentVisibility();
@@ -119,6 +130,8 @@ onDocumentVisible(() => {
 	void instanceAiStore.loadThreads();
 	if (isAgentsN8nChatFlag.value)
 		void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
+	if (instanceAiSettingsStore.isAssistantAgentEnabled)
+		void assistantAgentThreadsStore.fetchRecent();
 });
 
 watch(favoritesCollapsed, (val) =>
@@ -175,12 +188,11 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 const instanceAi = computed<IMenuItem>(() => ({
 	id: 'instance-ai',
-	icon: isAgentsN8nChatFlag.value ? 'message-square-plus' : 'sparkles',
+	icon: isAgentsN8nChatFlag.value ? 'message-square-plus' : 'n8n-assistant',
 	label: isAgentsN8nChatFlag.value
 		? locale.baseText('instanceAi.thread.new')
 		: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
-	preview: true,
 }));
 
 function onNewChatClick(): void {
@@ -198,27 +210,33 @@ const sidebarActiveTabId = computed(() =>
 	isInstanceAiThreadView.value ? undefined : activeTabId.value,
 );
 
+const CHAT_MENU_ITEM_ID_PREFIX: Record<RecentChatItem['kind'], string> = {
+	assistant: 'instance-ai-thread-',
+	'assistant-agent': 'assistant-agent-thread-',
+	agent: 'agent-n8n-chat-thread-',
+};
+
 const getChatMenuItem = (item: RecentChatItem): IMenuItem => ({
-	id:
-		item.kind === 'assistant'
-			? `instance-ai-thread-${item.thread.id}`
-			: `agent-n8n-chat-thread-${item.thread.id}`,
+	id: `${CHAT_MENU_ITEM_ID_PREFIX[item.kind]}${item.thread.id}`,
 	icon: 'message-circle',
 	label: chatItemTitle(item, locale),
 	route: { to: chatItemRoute(item) },
 });
 
 function onChatItemClick(item: RecentChatItem): void {
-	agentTelemetry.trackClickedSidebarItem({ item: 'chat', chatType: item.kind });
+	agentTelemetry.trackClickedSidebarItem({
+		item: 'chat',
+		chatType: item.kind === 'agent' ? 'agent' : 'assistant',
+	});
 }
 
-const { isWorkflowReviewsEnabled: isWorkflowReviewsNavVisible } = useWorkflowReviewsFeature();
+const isInboxVisible = computed(() => settingsStore.settings.inbox?.enabled === true);
 
-const workflowReviews = computed<IMenuItem>(() => ({
-	id: 'workflow-reviews',
-	icon: 'message-square-text',
-	label: locale.baseText('workflowReviews.menu.title'),
-	route: { to: { name: WORKFLOW_REVIEW_REQUESTS_VIEW } },
+const inbox = computed<IMenuItem>(() => ({
+	id: 'inbox',
+	icon: 'inbox',
+	label: locale.baseText('inbox.title'),
+	route: { to: { name: INBOX_VIEW } },
 }));
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
@@ -250,19 +268,27 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.projects">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
-			<N8nMenuItem
+			<N8nChatHintPopover
 				v-if="isInstanceAiNavVisible"
-				:item="instanceAi"
-				:compact="props.collapsed"
-				:active="
-					activeTabId === 'instance-ai' && !isInstanceAiThreadView && !isAgentN8nChatThreadView
-				"
-				:class="{
-					[$style.instanceAiParentInactive]: isInstanceAiThreadView || isAgentN8nChatThreadView,
-				}"
-				data-test-id="project-instance-ai-menu-item"
-				@click="onNewChatClick"
-			/>
+				hint="new_chat_sidebar"
+				:active="isAgentsN8nChatFlag"
+				:title="locale.baseText('agents.n8nChatHint.newChatSidebar.title')"
+				:body="locale.baseText('agents.n8nChatHint.newChatSidebar.body')"
+				side="right"
+			>
+				<N8nMenuItem
+					:item="instanceAi"
+					:compact="props.collapsed"
+					:active="
+						activeTabId === 'instance-ai' && !isInstanceAiThreadView && !isAgentN8nChatThreadView
+					"
+					:class="{
+						[$style.instanceAiParentInactive]: isInstanceAiThreadView || isAgentN8nChatThreadView,
+					}"
+					data-test-id="project-instance-ai-menu-item"
+					@click="onNewChatClick"
+				/>
+			</N8nChatHintPopover>
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
@@ -290,11 +316,11 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 			<N8nMenuItem
-				v-if="isWorkflowReviewsNavVisible"
-				:item="workflowReviews"
+				v-if="isInboxVisible"
+				:item="inbox"
 				:compact="props.collapsed"
-				:active="sidebarActiveTabId === 'workflow-reviews'"
-				data-test-id="project-workflow-reviews-menu-item"
+				:active="sidebarActiveTabId === 'inbox'"
+				data-test-id="project-inbox-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"
@@ -315,7 +341,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="medium"
+					size="xsmall"
 					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -369,7 +395,7 @@ onBeforeUnmount(() => {
 					</N8nText>
 					<N8nIcon
 						icon="chevron-down"
-						size="medium"
+						:size="12"
 						:class="[$style.chevron, instanceAiChatsCollapsed ? $style.chevronCollapsed : '']"
 					/>
 				</button>
@@ -404,7 +430,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="medium"
+					size="small"
 					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -432,6 +458,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .projects {
 	width: 100%;
 	align-items: start;
@@ -560,8 +588,7 @@ onBeforeUnmount(() => {
 	}
 
 	&:focus-visible {
-		outline: 1px solid var(--color--secondary);
-		outline-offset: -1px;
+		@include focus.focus-ring;
 	}
 }
 
@@ -610,10 +637,11 @@ onBeforeUnmount(() => {
 }
 
 .home {
-	padding: 0 var(--spacing--3xs) var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 
 	&.collapsed {
 		border-bottom: var(--border);
+		padding-inline: var(--spacing--3xs);
 	}
 }
 

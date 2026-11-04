@@ -5,7 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { SystemTask, SystemTaskSchedule } from '@n8n/decorators';
+import type { SchedulerOptions, SystemTask, SystemTaskSchedule } from '@n8n/decorators';
 import { UnregisteredOwnerTypeError } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
@@ -15,6 +15,7 @@ import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import {
 	SystemTaskJobRegistrar,
 	systemTaskProvisionRequest,
+	durableSystemTask,
 } from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 
@@ -35,17 +36,19 @@ describe('system task provisioning', () => {
 	let provisioner: DurableJobProvisioner;
 	let registrar: SystemTaskJobRegistrar;
 
-	const task = (over: Partial<SystemTask> = {}): SystemTask => ({
+	type TaskOverrides = { schedule?: SystemTaskSchedule; scheduler?: Partial<SchedulerOptions> };
+
+	const task = ({ schedule, scheduler }: TaskOverrides = {}): SystemTask => ({
 		name: TASK_NAME,
-		schedule: { kind: 'interval', intervalSeconds: 60 },
-		effects: 'idempotent',
-		placement: { scope: 'cluster', durable: true },
+		schedule: schedule ?? { kind: 'interval', intervalSeconds: 60 },
+		target: { scope: 'cluster', scheduler: { retryOnFailure: true, ...scheduler } },
 		run: async () => {},
-		...over,
 	});
 
-	const provision = async (over: Partial<SystemTask> = {}) =>
-		await provisioner.provision(systemTaskProvisionRequest(task(over), owner, 'UTC', new Date()));
+	const provision = async (over: TaskOverrides = {}) =>
+		await provisioner.provision(
+			systemTaskProvisionRequest(durableSystemTask(task(over)), owner, 'UTC', new Date()),
+		);
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -103,7 +106,7 @@ describe('system task provisioning', () => {
 			{ status: 'running', claimedBy: 'main-a', leaseExpiresAt: new Date(Date.now() + 60_000) },
 		);
 
-		const summary = await provision({ schedule, timeoutSeconds: 600 });
+		const summary = await provision({ schedule, scheduler: { timeoutSeconds: 600 } });
 
 		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
 		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
@@ -168,21 +171,24 @@ describe('system task provisioning', () => {
 	});
 
 	it.each([
-		['permits overlap', null],
-		['raises the ceiling', 4],
-	])('stores the concurrency limit a task declares when it %s', async (_case, concurrencyLimit) => {
-		await provision({ concurrencyLimit });
+		['permits overlap', 'unlimited', null],
+		['raises the ceiling', 4, 4],
+	] as const)(
+		'stores the concurrency limit a task declares when it %s',
+		async (_case, concurrencyLimit, stored) => {
+			await provision({ scheduler: { concurrencyLimit } });
 
-		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
-		expect(row.concurrencyLimit).toBe(concurrencyLimit);
-	});
+			const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+			expect(row.concurrencyLimit).toBe(stored);
+		},
+	);
 
 	it('reconciles a changed concurrency limit on an unchanged cadence', async () => {
 		await provision();
 		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
 		expect(inserted.concurrencyLimit).toBe(1);
 
-		const summary = await provision({ concurrencyLimit: null });
+		const summary = await provision({ scheduler: { concurrencyLimit: 'unlimited' } });
 
 		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
 		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
@@ -195,7 +201,7 @@ describe('system task provisioning', () => {
 		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
 		expect(inserted.maxAttempts).toBe(3);
 
-		const summary = await provision({ maxAttempts: 1 });
+		const summary = await provision({ scheduler: { retryOnFailure: false } });
 
 		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
 		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
@@ -242,7 +248,9 @@ describe('system task provisioning', () => {
 			Container.get(ErrorReporter),
 			Container.get(EventService),
 		);
-		await provisioner.provision(systemTaskProvisionRequest(task(), booting, 'UTC', new Date()));
+		await provisioner.provision(
+			systemTaskProvisionRequest(durableSystemTask(task()), booting, 'UTC', new Date()),
+		);
 		await store('from-a-newer-version', inc(N8N_VERSION, 'minor') as string);
 		const older = await store('from-an-older-version', '0.0.1');
 

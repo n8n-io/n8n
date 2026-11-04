@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { LAKEBASE_MAX_PAGES, LAKEBASE_PAGE_SIZE } from '../../constants';
 import { lakebaseApiRequest } from '../../transport';
@@ -12,28 +13,21 @@ import { resolveLakebaseSchemaUrl, resolveLakebaseTableUrl } from './helpers';
 import { fetchLakebaseColumns } from './schema';
 
 /**
- * Offset paging needs a stable order, otherwise a row can arrive twice or not at
- * all. When the user set no sort rule, order by the primary key instead. Best
- * effort: a table without one, or a project that does not serve the schema
- * document, still pages.
+ * Offset paging needs a total order, otherwise a row can arrive twice or not at
+ * all. A user sort is not necessarily unique, so the primary key goes on the end
+ * as a tie-breaker rather than only when no sort was set. Best effort: a table
+ * without one, or a project that does not serve the schema document, still pages.
  */
-async function stableOrderFallback(
-	context: IExecuteFunctions,
-	i: number,
-): Promise<string | undefined> {
+async function primaryKeyColumns(context: IExecuteFunctions, i: number): Promise<string[]> {
 	try {
 		const schemaUrl = await resolveLakebaseSchemaUrl(context, i);
 		const table = context.getNodeParameter('lakebaseTable', i, '', {
 			extractValue: true,
 		}) as string;
-		const primaryKeys = (await fetchLakebaseColumns(context, schemaUrl, table)).filter(
-			(column) => column.isPrimaryKey,
-		);
-		if (primaryKeys.length === 0) return undefined;
-
-		return primaryKeys.map((column) => `${quotePostgrestComponent(column.name)}.asc`).join(',');
+		const columns = await fetchLakebaseColumns(context, schemaUrl, table);
+		return columns.filter((column) => column.isPrimaryKey).map((column) => column.name);
 	} catch {
-		return undefined;
+		return [];
 	}
 }
 
@@ -50,9 +44,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const qs = buildLakebaseQuery({ where, combineConditions, sort, outputColumns });
 
 	// Every page has to share one ordering, so this is settled before the first request
-	if (qs.order === undefined && (returnAll || limit > LAKEBASE_PAGE_SIZE)) {
-		const order = await stableOrderFallback(this, i);
-		if (order) qs.order = order;
+	if (returnAll || limit > LAKEBASE_PAGE_SIZE) {
+		const alreadySorted = new Set(
+			sort.filter((rule) => rule.column).map((rule) => String(rule.column)),
+		);
+		const tieBreakers = (await primaryKeyColumns(this, i))
+			.filter((name) => !alreadySorted.has(name))
+			.map((name) => `${quotePostgrestComponent(name)}.asc`);
+		if (tieBreakers.length > 0) {
+			qs.order = [qs.order, ...tieBreakers].filter(Boolean).join(',');
+		}
 	}
 
 	const rows: IDataObject[] = [];
@@ -61,12 +62,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	// have to be the last one. Only once the API has filled a request can a shorter
 	// answer be read as the end of the table.
 	let apiHasFilledAPage = false;
+	let reachedTheEnd = false;
 
 	for (let page = 0; page < LAKEBASE_MAX_PAGES; page++) {
 		const requested = returnAll
 			? LAKEBASE_PAGE_SIZE
 			: Math.min(limit - rows.length, LAKEBASE_PAGE_SIZE);
-		if (requested <= 0) break;
+		if (requested <= 0) {
+			reachedTheEnd = true;
+			break;
+		}
 
 		const response = await lakebaseApiRequest(this, {
 			method: 'GET',
@@ -78,12 +83,35 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		const batch = Array.isArray(response) ? (response as IDataObject[]) : [];
 		rows.push(...batch);
-		if (batch.length === 0) break;
+		if (batch.length === 0) {
+			reachedTheEnd = true;
+			break;
+		}
 
 		if (batch.length >= requested) apiHasFilledAPage = true;
-		else if (apiHasFilledAPage) break;
+		else if (apiHasFilledAPage) {
+			reachedTheEnd = true;
+			break;
+		}
 
-		if (!returnAll && rows.length >= limit) break;
+		if (!returnAll && rows.length >= limit) {
+			reachedTheEnd = true;
+			break;
+		}
+	}
+
+	// Handing back part of the table as though it were all of it would be read as the
+	// table being that size, so stop instead of truncating in silence.
+	if (!reachedTheEnd) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The table holds more rows than one run can read (${LAKEBASE_MAX_PAGES * LAKEBASE_PAGE_SIZE})`,
+			{
+				itemIndex: i,
+				description:
+					'Narrow the result with a condition under Select Rows, or turn off Return All and set a Limit.',
+			},
+		);
 	}
 
 	return rows.map((row) => ({ json: row, pairedItem: { item: i } }));

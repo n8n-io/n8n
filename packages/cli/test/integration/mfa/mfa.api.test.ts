@@ -4,9 +4,11 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import { SettingsRepository, UserRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomString } from 'n8n-workflow';
+import request from 'supertest';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { MFA_ENFORCE_SETTING } from '@/mfa/constants';
@@ -14,6 +16,7 @@ import { MFA_CACHE_KEY } from '@/mfa/mfa.service';
 import { TOTPService } from '@/mfa/totp.service';
 import { CacheService } from '@n8n/backend-services';
 
+import { REST_PATH_SEGMENT } from '../shared/constants';
 import { createOwner, createUser, createUserWithMfaEnabled } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
@@ -220,6 +223,42 @@ describe('Disable MFA setup', () => {
 		const { user } = await createUserWithMfaEnabled();
 
 		await testServer.authAgentFor(user).post('/mfa/disable').send({ anotherParam: '' }).expect(400);
+	});
+
+	test('should keep a session issued before disabling MFA invalid after MFA is enabled again', async () => {
+		const { user, rawSecret } = await createUserWithMfaEnabled();
+		const earlierToken = Container.get(AuthService).issueJWT(user, true, 'test-browser-id');
+		const getCurrentUser = async (token: string) =>
+			await request(testServer.app)
+				.get(`/${REST_PATH_SEGMENT}/login`)
+				.set('Cookie', `${AUTH_COOKIE_NAME}=${token}`);
+
+		expect((await getCurrentUser(earlierToken)).status).toBe(200);
+
+		await testServer
+			.authAgentFor(user)
+			.post('/mfa/disable')
+			.send({ mfaCode: new TOTPService().generateTOTP(rawSecret) })
+			.expect(200);
+
+		expect((await getCurrentUser(earlierToken)).status).toBe(401);
+
+		const userWithoutMfa = await Container.get(UserRepository).findOneOrFail({
+			where: { id: user.id },
+		});
+		const qrResponse = await testServer.authAgentFor(userWithoutMfa).get('/mfa/qr').expect(200);
+		const mfaCode = new TOTPService().generateTOTP(qrResponse.body.data.secret);
+		await testServer.authAgentFor(userWithoutMfa).post('/mfa/verify').send({ mfaCode }).expect(200);
+		await testServer.authAgentFor(userWithoutMfa).post('/mfa/enable').send({ mfaCode }).expect(200);
+
+		// Confirm the final rejection follows a real, different enrollment, not an MFA-less user.
+		const userWithNewMfa = await Container.get(UserRepository).findOneOrFail({
+			where: { id: user.id },
+		});
+		expect(userWithNewMfa.mfaEnabled).toBe(true);
+		expect(userWithNewMfa.mfaSecret).not.toBe(user.mfaSecret);
+
+		expect((await getCurrentUser(earlierToken)).status).toBe(401);
 	});
 });
 

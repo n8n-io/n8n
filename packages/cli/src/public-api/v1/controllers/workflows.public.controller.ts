@@ -3,11 +3,14 @@ import {
 	CreatedWorkflowPublicDto,
 	CreateWorkflowPublicDto,
 	DeletedWorkflowPublicDto,
+	DependencyListPublicDto,
 	DeprecatedWorkflowVersionPublicDto,
 	GetWorkflowQueryDto,
+	ListDependenciesQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
+	RetrievedWorkflowPublicDto,
 	TagIdsPublicDto,
 	TransferWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
@@ -61,7 +64,9 @@ import { ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { toDependencyListPublicDto } from '@/public-api/v1/shared/dependency.mapper';
 import { toPublicProject } from '@/public-api/v1/shared/project.mapper';
 import {
 	decodeCursor,
@@ -120,6 +125,10 @@ function toPublicFolder(folder: Folder) {
 		createdAt: folder.createdAt.toISOString(),
 		updatedAt: folder.updatedAt.toISOString(),
 	};
+}
+
+function toPublicParentFolderRef(folder: Folder | null) {
+	return folder ? { id: folder.id } : null;
 }
 
 function toPublicSharedWorkflow(sharedWorkflow: SharedWorkflow) {
@@ -214,6 +223,7 @@ export class WorkflowsPublicController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -266,6 +276,7 @@ export class WorkflowsPublicController {
 				includePinnedData: !query.excludePinnedData,
 				includeTags: this.workflowTagsEnabled,
 				includeActiveVersion: true,
+				includeParentFolder: query.includeParentFolder,
 			},
 		);
 
@@ -295,6 +306,9 @@ export class WorkflowsPublicController {
 				...(query.excludePinnedData ? {} : { pinData: toPublicJson(workflow.pinData) }),
 				...(workflow.tags ? { tags: workflow.tags.map(toPublicTag) } : {}),
 				shared: workflow.shared.map(toPublicListSharedWorkflow),
+				...(query.includeParentFolder
+					? { parentFolder: toPublicParentFolderRef(workflow.parentFolder) }
+					: {}),
 				activeVersion: workflow.activeVersion
 					? toPublicActiveVersionWithoutHistory(workflow.activeVersion)
 					: null,
@@ -343,14 +357,14 @@ export class WorkflowsPublicController {
 	@ApiSummary('Retrieve a workflow')
 	@ApiDescription('Retrieve a workflow.')
 	@ApiTags(['Workflow'])
-	@ApiResponse(200, WorkflowPublicDto)
+	@ApiResponse(200, RetrievedWorkflowPublicDto)
 	@ApiErrorResponse(404)
 	async getWorkflow(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Query query: GetWorkflowQueryDto,
-	): Promise<WorkflowPublicDto> {
+	): Promise<RetrievedWorkflowPublicDto> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			req.user,
@@ -358,6 +372,7 @@ export class WorkflowsPublicController {
 			{
 				includeTags: this.workflowTagsEnabled,
 				includeActiveVersion: true,
+				includeParentFolder: true,
 			},
 		);
 
@@ -370,7 +385,10 @@ export class WorkflowsPublicController {
 			publicApi: true,
 		});
 
-		return this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData });
+		return {
+			...this.toWorkflowPublicDto(workflow, { excludePinnedData: query.excludePinnedData }),
+			parentFolder: workflow.parentFolder ? toPublicFolder(workflow.parentFolder) : null,
+		};
 	}
 
 	@Put('/:workflowId')
@@ -832,6 +850,42 @@ export class WorkflowsPublicController {
 		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
 
 		return tags.map(toPublicTag);
+	}
+
+	@Get('/:workflowId/dependencies')
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('List workflow dependencies')
+	@ApiDescription(
+		'List the credentials, data tables, sub-workflows and error workflow that the workflow uses, ' +
+			'and the workflows and agents that use the workflow.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, DependencyListPublicDto)
+	@ApiErrorResponse(404)
+	async getWorkflowDependencies(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Query query: ListDependenciesQueryDto,
+	): Promise<DependencyListPublicDto> {
+		const pagination = resolveOffsetPagination(query);
+		const workflow = await this.workflowFinderService.findWorkflowHeadForUser(
+			workflowId,
+			req.user,
+			['workflow:read'],
+		);
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const result = await this.workflowDependencyQueryService.getResourceDependencies(
+			[workflowId],
+			'workflow',
+			req.user,
+		);
+
+		return toDependencyListPublicDto(result[workflowId], pagination);
 	}
 
 	/**

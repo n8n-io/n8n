@@ -2,12 +2,11 @@
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import VueJsonPretty from 'vue-json-pretty';
-import RunDataHtml from './RunDataHtml.vue';
 import RunDataMarkdown from './RunDataMarkdown.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { BinaryMetadata } from '@n8n/design-system';
+import { N8nHtmlPreview, type BinaryMetadata } from '@n8n/design-system';
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -132,14 +131,18 @@ onBeforeUnmount(() => {
 	<Modal
 		width="60%"
 		height="90%"
-		title="File Preview"
+		:title="i18n.baseText('binaryDataDisplay.filePreview')"
 		:name="BINARY_DATA_VIEW_MODAL_KEY"
 		:center="true"
 	>
 		<template #content>
 			<div :class="['binary-data-modal-content', binaryData.fileType]">
-				<div v-if="isLoading" class="loading-message">Loading binary data...</div>
-				<div v-else-if="error" class="error-message">Error loading binary data</div>
+				<div v-if="isLoading" class="loading-message">
+					{{ i18n.baseText('binaryDataDisplay.loading') }}
+				</div>
+				<div v-else-if="error" class="error-message">
+					{{ i18n.baseText('binaryDataDisplay.errorLoading') }}
+				</div>
 
 				<div v-else class="content-wrapper">
 					<!-- VIDEO -->
@@ -158,7 +161,7 @@ onBeforeUnmount(() => {
 					<img
 						v-else-if="binaryData.fileType === 'image'"
 						:src="embedSource"
-						:alt="binaryData.fileName || 'Image preview'"
+						:alt="binaryData.fileName || i18n.baseText('binaryDataDisplay.imagePreview')"
 					/>
 
 					<!-- JSON -->
@@ -170,7 +173,7 @@ onBeforeUnmount(() => {
 					/>
 
 					<!-- HTML -->
-					<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="displayData" />
+					<N8nHtmlPreview v-else-if="binaryData.fileType === 'html'" :html="displayData" />
 
 					<!-- Markdown -->
 					<RunDataMarkdown
@@ -194,7 +197,9 @@ onBeforeUnmount(() => {
 					/>
 
 					<!-- UNKNOWN -->
-					<div v-else class="error-message">Preview not available for this file type</div>
+					<div v-else class="error-message">
+						{{ i18n.baseText('binaryDataDisplay.previewNotAvailable') }}
+					</div>
 				</div>
 			</div>
 		</template>

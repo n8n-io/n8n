@@ -23,19 +23,16 @@ exports[`CanvasNodeAddNodes > should render node correctly 1`] = `
         aria-hidden="true"
         class="n8n-icon"
         data-icon="plus"
+        fill="currentColor"
         focusable="false"
         height="40px"
         role="img"
-        viewBox="0 0 24 24"
+        viewBox="0 0 16 16"
         width="40px"
+        xmlns="http://www.w3.org/2000/svg"
       >
         <path
-          d="M5 12h14m-7-7v14"
-          fill="none"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
+          d="M8.75 7.25h6.5v1.5h-6.5v6.5h-1.5v-6.5H.75v-1.5h6.5V.75h1.5z"
         />
       </svg>
     </button>

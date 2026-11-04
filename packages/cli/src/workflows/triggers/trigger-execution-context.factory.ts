@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, WorkflowPublishedDataService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -29,7 +29,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { Workflow, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -46,7 +47,7 @@ import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-tr
 import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 

@@ -1,5 +1,6 @@
 import type { PolicyViolation } from '@n8n/decorators';
-import { hasPolicyRefusalMarker, UserError } from 'n8n-workflow';
+import { hasPolicyRefusalMarker } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /** `enforce*` only throws when something objected, so an empty list is a bug, not a case. */
 export type NonEmptyViolations = [PolicyViolation, ...PolicyViolation[]];
@@ -62,4 +63,19 @@ export class PolicyViolationError extends UserError {
  */
 export function isPolicyRefusal(error: unknown): boolean {
 	return error instanceof PolicyViolationError || hasPolicyRefusalMarker(error);
+}
+
+/** Bounds the `cause` walk, so a cyclic chain cannot loop. */
+const MAX_CAUSE_DEPTH = 5;
+
+/** The violations of a refusal, also when a node error wraps it as its `cause`. */
+export function findPolicyViolations(error: unknown): NonEmptyViolations | undefined {
+	let current = error;
+	for (let depth = 0; depth < MAX_CAUSE_DEPTH && current instanceof Error; depth++) {
+		if (current instanceof PolicyViolationError && hasViolations(current.violations)) {
+			return current.violations;
+		}
+		current = current.cause;
+	}
+	return undefined;
 }

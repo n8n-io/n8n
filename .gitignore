@@ -17,6 +17,7 @@ _START_PACKAGE
 .env
 .env.local
 .env.eval
+.env.ai-surfaces
 .vscode/*
 !.claude
 !.vscode/extensions.json
@@ -100,3 +101,5 @@ stryker.log
 # Generated migration indexes (scripts/generate-migration-index.mjs)
 packages/@n8n/db/src/migrations/sqlite/index.ts
 packages/@n8n/db/src/migrations/postgresdb/index.ts
+# Files that local dev tools generate, such as `pnpm telemetry:sink`
+.output/

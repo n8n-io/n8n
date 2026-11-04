@@ -1,4 +1,4 @@
-import type { BreakingChangeWorkflowOwner } from '@n8n/api-types';
+import type { BreakingChangeWorkflowOwner, MigrationOwnerCandidate } from '@n8n/api-types';
 import { WorkflowSharingService } from '@n8n/backend-services';
 import { UserRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -6,7 +6,7 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
 import { MigrationOwnerSuggestionService } from './migration-owner-suggestion.service';
-import { toWorkflowOwner } from './workflow-owner';
+import { canOwnFindings, toWorkflowOwner } from './workflow-owner';
 
 /** Lets a person choose who owns a workflow's findings, or hand it back to the heuristic. */
 @Service()
@@ -27,6 +27,9 @@ export class MigrationOwnerAssignmentService {
 		await this.ensureWorkflowExists(workflowId);
 		const user = await this.findUser(userId);
 		if (!user) throw new NotFoundError(`User with ID '${userId}' not found.`);
+		if (!canOwnFindings(user)) {
+			throw new BadRequestError('The user cannot sign in, so they cannot own the workflow');
+		}
 
 		// An owner has to be able to open the workflow to fix it.
 		const allowedUserIds =
@@ -37,6 +40,19 @@ export class MigrationOwnerAssignmentService {
 
 		await this.ownerRepository.assign(workflowId, userId, assignedBy.id, {});
 		return toWorkflowOwner(user, 'assigned');
+	}
+
+	/** The users who can be the owner: those who can open the workflow, as `assign` checks. */
+	async candidates(workflowId: string): Promise<MigrationOwnerCandidate[]> {
+		await this.ensureWorkflowExists(workflowId);
+		const userIds = await this.workflowSharingService.getUserIdsWithAccessToWorkflow(workflowId);
+		const users = await this.userRepository.findManyByIds(userIds, {
+			includeRole: true,
+			includeAuthIdentities: true,
+		});
+		return users
+			.filter(canOwnFindings)
+			.map(({ id, firstName, lastName, email }) => ({ id, firstName, lastName, email }));
 	}
 
 	/**
@@ -63,7 +79,10 @@ export class MigrationOwnerAssignmentService {
 	}
 
 	private async findUser(userId: string): Promise<User | undefined> {
-		const [user] = await this.userRepository.findManyByIds([userId]);
+		const [user] = await this.userRepository.findManyByIds([userId], {
+			includeRole: true,
+			includeAuthIdentities: true,
+		});
 		return user;
 	}
 }

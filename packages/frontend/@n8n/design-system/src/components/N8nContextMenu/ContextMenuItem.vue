@@ -128,7 +128,7 @@ function handleSubmenuOpenChange(open: boolean) {
 					<slot name="item-trailing" v-bind="slotProps" />
 				</template>
 			</ContextMenuItemContent>
-			<Icon icon="chevron-right" :class="$style.subIndicator" :color="iconColor" size="large" />
+			<Icon icon="chevron-right-12" :class="$style.subIndicator" :color="iconColor" :size="12" />
 		</ContextMenuSubTrigger>
 		<ContextMenuPortal>
 			<ContextMenuSubContent
@@ -258,10 +258,10 @@ function handleSubmenuOpenChange(open: boolean) {
 	min-width: 0;
 
 	&:not([data-disabled]) {
-		&:hover,
+		cursor: pointer;
+
 		&[data-highlighted] {
 			background-color: var(--background--hover);
-			cursor: pointer;
 		}
 	}
 
@@ -274,7 +274,6 @@ function handleSubmenuOpenChange(open: boolean) {
 .destructive:not([data-disabled]) {
 	color: var(--text-color--danger);
 
-	&:hover,
 	&[data-highlighted] {
 		background-color: var(--background--danger);
 	}

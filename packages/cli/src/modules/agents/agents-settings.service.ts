@@ -9,6 +9,7 @@ import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentMessageRepository } from './repositories/agent-message.repository';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { readInboundUserMessage } from './utils/inbound-attachments';
 
 const AGENTS_ENABLED_KEY = 'agents.enabled';
@@ -24,6 +25,7 @@ export class AgentsSettingsService {
 		private readonly attachments: AgentChatAttachmentService,
 		private readonly updates: AgentExecutionUpdateBroadcaster,
 		private readonly logger: Logger,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	async getEnabled(ctx: OperationContext = {}): Promise<boolean> {
@@ -60,7 +62,11 @@ export class AgentsSettingsService {
 	private async cancelPendingMessages(ctx: OperationContext): Promise<AgentMessageQueue[]> {
 		const removed: AgentMessageQueue[] = [];
 		for (const threadId of await this.queue.findThreadIds(ctx)) {
-			if (!(await this.threads.lockById(threadId, ctx))) continue;
+			const thread = await this.threads.lockById(threadId, ctx);
+
+			// Queued messages of agents that the setting does not cover stay.
+			if (!thread || !this.appliesTo(thread.agentId)) continue;
+
 			for (const item of await this.queue.listPending(threadId, ctx)) {
 				if (item.steeringExecutionId !== null) continue;
 				if (!(await this.queue.removePending(threadId, item.id, ctx))) continue;
@@ -69,6 +75,19 @@ export class AgentsSettingsService {
 			}
 		}
 		return removed;
+	}
+
+	/**
+	 * The setting covers custom agents. A registered system agent keeps
+	 * running when an admin turns custom agents off.
+	 */
+	appliesTo(agentId: string): boolean {
+		return !this.systemAgents.has(agentId);
+	}
+
+	/** Throws when the setting is off and applies to the agent. */
+	async assertEnabledFor(agentId: string, ctx: OperationContext = {}): Promise<void> {
+		if (this.appliesTo(agentId)) await this.assertEnabled(ctx);
 	}
 
 	async assertEnabled(ctx: OperationContext = {}): Promise<void> {

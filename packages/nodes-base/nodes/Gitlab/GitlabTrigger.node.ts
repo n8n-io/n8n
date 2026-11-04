@@ -196,7 +196,7 @@ export class GitlabTrigger implements INodeType {
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.cause.httpCode === '404' || error.description.includes('404')) {
+					if (error.httpCode === '404' || error.description?.includes('404')) {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -205,7 +205,7 @@ export class GitlabTrigger implements INodeType {
 						return false;
 					}
 
-					// Some error occured
+					// Some error occurred
 					throw error;
 				}
 

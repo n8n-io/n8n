@@ -1,5 +1,7 @@
+import { asSchema } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import { describe, expect, it, vi } from 'vitest';
+import type { ZodTypeAny } from 'zod';
 
 import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
 import type { GenerateResult } from '../../types/sdk/agent';
@@ -18,6 +20,7 @@ import {
 	type DelegateSubAgentToolOutput,
 } from '../tools/delegate-sub-agent-tool';
 import type { SubAgentTaskPath } from '../tools/sub-agent-task-path';
+import { toAiSdkTools } from '../tools/tool-adapter';
 
 const input = {
 	subAgentId: INLINE_SUB_AGENT_ID,
@@ -186,6 +189,12 @@ describe('createDelegateSubAgentTool', () => {
 			expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
 		},
 	);
+
+	it('tells the model to pass files in fileIds', () => {
+		expect(createDelegateSubAgentTool().systemInstruction).toContain(
+			'Pass files in fileIds, not in the goal or context text.',
+		);
+	});
 
 	it('uses a host-provided system instruction instead of the built-in guidance', () => {
 		const tool = createDelegateSubAgentTool({
@@ -753,6 +762,27 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentAbortSignal');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentExecutionCounter');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentTelemetry');
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentOnGuardrailNotice');
+	});
+
+	it('forwards the guardrail notice sink from the tool context to the runner callback', async () => {
+		const runSubAgent = vi
+			.fn<DelegateSubAgentRunner>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		const parentOnGuardrailNotice = vi.fn();
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			onGuardrailNotice: parentOnGuardrailNotice,
+		});
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ parentOnGuardrailNotice }),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
 	});
 
 	it('forwards the parent telemetry from the tool context to the runner callback', async () => {
@@ -1129,6 +1159,14 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
 	});
 
+	it('lists the file IDs the child can use', () => {
+		expect(renderDelegateSubAgentPrompt({ goal: 'Find it.' })).not.toContain('FILES');
+
+		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.', fileIds: ['f1', 'f2'] });
+
+		expect(prompt).toContain('FILES (pass these fileIds to tools):\nf1\nf2');
+	});
+
 	it('uses generic summary guidance for delegated work', () => {
 		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.' });
 
@@ -1199,6 +1237,66 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
 			status: 'failed',
 			answer: '',
+			error: 'boom',
+		});
+	});
+
+	it('maps a guardrail stop to failed with the session cap reason', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-6',
+			messages: [],
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.session' },
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
+			finishReason: 'guardrail',
+			error: 'The sub-agent run was stopped: the session cost cap is spent.',
+		});
+	});
+
+	it('maps a monthly budget stop to failed with the monthly reason', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-7',
+			messages: [],
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.monthly' },
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
+			finishReason: 'guardrail',
+			error: 'The sub-agent run was stopped: the monthly budget is spent.',
+		});
+	});
+
+	it('keeps a recorded error over the guardrail stop reason', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-8',
+			messages: [],
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.session' },
+			error: new Error('boom'),
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
 			error: 'boom',
 		});
 	});
@@ -1305,5 +1403,56 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 		expect(
 			generateResultToDelegateSubAgentOutput('/root/x_0', result).pendingSuspend,
 		).toBeUndefined();
+	});
+});
+
+describe('delegate_subagent model-facing schema', () => {
+	// The tool definition that the AI SDK sends to the model.
+	async function modelSchema() {
+		const tool = createDelegateSubAgentTool({ runBackgroundSubAgent: vi.fn() });
+		const definition = toAiSdkTools([tool])[DELEGATE_SUB_AGENT_TOOL_NAME];
+		return { tool, jsonSchema: (await asSchema(definition.inputSchema).jsonSchema) as JSONSchema7 };
+	}
+
+	it('sends the required fields and the nested plan task reference', async () => {
+		const { jsonSchema } = await modelSchema();
+		const planTask = jsonSchema.properties?.planTask as JSONSchema7;
+
+		expect(jsonSchema.required).toEqual(expect.arrayContaining(['subAgentId', 'taskName', 'goal']));
+		expect(planTask.required).toEqual(expect.arrayContaining(['planId', 'planTaskId']));
+	});
+
+	it('names the required fields in the system instruction', async () => {
+		const { tool } = await modelSchema();
+
+		for (const field of ['subAgentId', 'taskName', 'goal']) {
+			expect(tool.systemInstruction).toContain(field);
+		}
+	});
+
+	it('rejects the guessed field names and accepts the schema field names', async () => {
+		const { tool } = await modelSchema();
+		const planId = '00000000-0000-4000-8000-000000000001';
+		const planTaskId = '00000000-0000-4000-8000-000000000002';
+
+		const guessed = (tool.inputSchema as ZodTypeAny).safeParse({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			mode: 'background',
+			planTask: { planId, taskId: planTaskId },
+			task: 'Research suppliers and produce a comparison report.',
+		});
+		expect(guessed.success).toBe(false);
+		expect(guessed.error?.issues.map((issue) => issue.path.join('.'))).toEqual(
+			expect.arrayContaining(['taskName', 'goal', 'planTask.planTaskId']),
+		);
+
+		const corrected = (tool.inputSchema as ZodTypeAny).safeParse({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			mode: 'background',
+			planTask: { planId, planTaskId },
+			taskName: 'Research suppliers',
+			goal: 'Research suppliers and produce a comparison report.',
+		});
+		expect(corrected.success).toBe(true);
 	});
 });

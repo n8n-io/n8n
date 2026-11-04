@@ -8,15 +8,21 @@ import { Z } from '../../zod-class';
 const importPackageSummarySchema = z.object({
 	sourceN8nVersion: z.string(),
 	sourceId: z.string(),
-	exportedAt: z.string().datetime(),
 });
 
-const workflowPublishingOutcomeSchema = z.object({
+const publishingBlockedReasons = [
+	'stub-credential',
+	'incomplete-credential',
+	'missing-node-type',
+	'channel-setup-required',
+] as const;
+
+const publishingOutcomeSchema = z.object({
 	state: z.enum(['published', 'unpublished', 'unchanged', 'blocked', 'failed']).openapi({
 		description:
 			'`blocked` means the imported version could not be published and no version is active ' +
-			'(for example because the workflow uses an empty or partially seeded credential, or uses a node type this ' +
-			'instance does not have). When a prior published version remains active, `state` is ' +
+			'(for example because the Agent or workflow uses an empty or incomplete credential, or a node type this ' +
+			'instance does not have, or an Agent channel needs setup while publication is requested). When a prior published version remains active, `state` is ' +
 			'`unchanged` with `skippedPublishReason` instead. `failed` means publish or unpublish was ' +
 			'attempted but did not succeed.',
 	}),
@@ -25,7 +31,7 @@ const workflowPublishingOutcomeSchema = z.object({
 			'Present when `state` is `failed`. Explains why publish or unpublish could not be applied.',
 	}),
 	blockedReason: z
-		.enum(['stub-credential', 'missing-node-type'])
+		.enum(publishingBlockedReasons)
 		.optional()
 		.openapi({
 			description:
@@ -33,13 +39,13 @@ const workflowPublishingOutcomeSchema = z.object({
 				'version is active.',
 		}),
 	skippedPublishReason: z
-		.enum(['stub-credential', 'missing-node-type'])
+		.enum(publishingBlockedReasons)
 		.optional()
 		.openapi({
 			description:
 				'Present when `state` is `unchanged` but the policy wanted to publish the imported ' +
 				'version: a prior published version is still active (for example after an update with ' +
-				'incomplete credentials).',
+				'empty or incomplete credentials).',
 		}),
 });
 
@@ -49,9 +55,8 @@ const importedWorkflowSummarySchema = z.object({
 		.openapi({ description: 'Workflow id as it appeared in the package.' }),
 	localId: z.string().openapi({
 		description:
-			'Workflow id on the target instance: newly assigned for `created` (fresh under ' +
-			"`workflowIdPolicy=new`, the package id under `source`), the existing workflow's id for " +
-			'`updated`/`skipped`.',
+			'Workflow ID on the target instance. New workflows use the package ID. ' +
+			'Updated and skipped workflows keep their destination ID.',
 	}),
 	name: z.string(),
 	projectId: z.string(),
@@ -69,11 +74,61 @@ const importedWorkflowSummarySchema = z.object({
 			'Whether the workflow is archived on the target after import. Under `new-version` this ' +
 			"follows the package's `isArchived` flag. A skipped workflow keeps its own state.",
 	}),
-	publishing: workflowPublishingOutcomeSchema.openapi({
+	publishing: publishingOutcomeSchema.openapi({
 		description: 'Outcome of applying the selected publishing policy to this workflow.',
 	}),
 	status: z.enum(['created', 'updated', 'skipped']).openapi({
 		description: 'Import outcome for this package workflow.',
+	}),
+});
+
+const importedAgentChannelSchema = z.discriminatedUnion('status', [
+	z.object({
+		type: z.string().openapi({ description: 'Channel type, for example `slack`.' }),
+		status: z.literal('reused').openapi({
+			description: 'The import kept the channel connection that the destination Agent already had.',
+		}),
+	}),
+	z.object({
+		type: z.string().openapi({ description: 'Channel type, for example `slack`.' }),
+		status: z.literal('setup-required').openapi({
+			description:
+				'The import saved the channel settings without a connection. Set up the channel in the ' +
+				'destination before the Agent can be published.',
+		}),
+		reason: z.enum(['new-channel', 'destination-draft']).openapi({
+			description:
+				'`new-channel`: the destination Agent had no connection for this channel. ' +
+				'`destination-draft`: the destination Agent has this channel, but its setup is not complete.',
+		}),
+		setupUrl: z.string().openapi({
+			description: 'Link to the destination Agent, where you can set up the channel.',
+		}),
+	}),
+]);
+
+export type ImportedAgentChannel = z.infer<typeof importedAgentChannelSchema>;
+
+const importedAgentSummarySchema = z.object({
+	sourceAgentId: z.string().openapi({ description: 'Agent ID in the package.' }),
+	localId: z.string().openapi({
+		description:
+			'Agent ID on the target instance. New Agents use the package ID. ' +
+			'Updated and skipped Agents keep their destination ID.',
+	}),
+	name: z.string(),
+	projectId: z.string(),
+	activeVersionId: z.string().nullable().openapi({
+		description: 'Published version on the target after import. Null when no version is published.',
+	}),
+	status: z.enum(['created', 'updated', 'skipped']),
+	publishing: publishingOutcomeSchema.openapi({
+		description: 'Publication outcome. A failed publication does not undo the definition import.',
+	}),
+	channels: z.array(importedAgentChannelSchema).openapi({
+		description:
+			'Channel outcome for each external channel in the imported definition. A credential from the ' +
+			'package never connects a channel. Empty for skipped Agents.',
 	}),
 });
 
@@ -146,14 +201,28 @@ const importCredentialSummarySchema = z
 		}),
 		seeded: z.array(z.string()).openapi({
 			description:
-				'Source credential ids for which credentials were created with bundled expression values ' +
-				'in the target project. Partial or unverified bundled data still blocks workflow publishing.',
+				'Source credential ids for which credentials were created in the target project with ' +
+				'all their source data from the bundled expression values.',
+		}),
+		incomplete: z.array(z.string()).openapi({
+			description:
+				'Source credential ids for which credentials were created in the target project with ' +
+				'bundled expression values, but the package does not confirm that it carries all source ' +
+				'data. These credentials need input. The import does not publish the imported version ' +
+				'of workflows that use them (`incomplete-credential`).',
+		}),
+		updated: z.array(z.string()).openapi({
+			description:
+				'Source credential ids whose matched credential this import changed under ' +
+				'`credentialConflictPolicy=overwrite`. These ids are not listed under `matched`. ' +
+				'Empty for other policies.',
 		}),
 	})
 	.openapi({
 		description:
-			'Source credential ids grouped by whether they matched an existing credential or were ' +
-			'created as empty stubs or seeded credentials. Full source→target id mapping is in `bindings.credentials`.',
+			'Source credential ids grouped by whether they matched an existing credential, were ' +
+			'created as empty stubs, seeded credentials, or incomplete credentials, or matched a ' +
+			'credential that this import updated. Full source→target id mapping is in `bindings.credentials`.',
 	});
 
 const importDataTableSummarySchema = z.object({
@@ -234,13 +303,16 @@ const importTagSummarySchema = z
 
 const serializedBindingsSchema = z
 	.object({
+		agents: z.record(z.string(), z.string()).openapi({
+			description: 'Source-to-target IDs for created, updated, and skipped package Agents.',
+		}),
 		workflows: z.record(z.string(), z.string()),
 		credentials: z.record(z.string(), z.string()).openapi({
 			description:
 				'Credential id from `requirements.credentials` in the package manifest → resolved ' +
 				'target credential id on the target instance. Covers both a matched existing ' +
-				'credential and a credential created as a stub under ' +
-				'`credentialMissingMode=create-stub`.',
+				'credential and a credential that the import created under ' +
+				'`credentialMissingMode=create-stub` or `create-with-values`.',
 		}),
 	})
 	.openapi({
@@ -251,6 +323,14 @@ const serializedBindingsSchema = z
 
 export const importResultSchema = z.object({
 	package: importPackageSummarySchema,
+	agents: z.array(importedAgentSummarySchema),
+	counts: z.object({
+		agents: z.object({
+			created: z.number().int().nonnegative(),
+			updated: z.number().int().nonnegative(),
+			skipped: z.number().int().nonnegative(),
+		}),
+	}),
 	workflows: z.array(importedWorkflowSummarySchema),
 	removedWorkflows: z.array(removedWorkflowSummarySchema).openapi({
 		description: 'Workflows removed from the target during this import.',

@@ -5,6 +5,7 @@ import {
 	type ChatHubBaseLLMModel,
 	type ChatProviderSettingsDto,
 	type ChatHubAgentKnowledgeItem,
+	isChatHubToolTypeAllowed,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -43,13 +44,12 @@ import {
 	MEMORY_MANAGER_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
-	OperationalError,
 	type IBinaryData,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError } from '@n8n/errors';
 import type { UserLike } from '@/types/user-like.types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
@@ -1361,13 +1361,29 @@ Respond the title only:`,
 				credentials,
 				model,
 				systemMessage,
-				tools,
+				this.filterAllowedTools(user, tools),
 				timeZone,
 				vectorStoreSearch,
 				executionMetadata,
 				txCtx,
 				providerSettings,
 			);
+		});
+	}
+
+	/**
+	 * Stored tools can predate a tool type rule or a role change, so check them
+	 * again before each run.
+	 */
+	private filterAllowedTools(user: User, tools: INode[]): INode[] {
+		const isChatUser = user.role.slug === 'global:chatUser';
+		return tools.filter((tool) => {
+			if (isChatHubToolTypeAllowed(tool.type, { isChatUser })) return true;
+			this.logger.warn('Skipped a Chat Hub tool that the user is not allowed to run', {
+				userId: user.id,
+				toolType: tool.type,
+			});
+			return false;
 		});
 	}
 

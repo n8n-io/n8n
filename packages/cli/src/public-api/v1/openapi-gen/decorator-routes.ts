@@ -5,13 +5,12 @@ import './zod-extend';
 // resolvePublicApiRoutes()
 import '../controllers';
 
-import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
 import type { BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
-import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
+import { honorsIdempotencyKey } from '@/idempotency/idempotency-request';
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
 	isRequestBodyRequired,
@@ -20,9 +19,9 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
-import { applySchemaModifiers } from './schema-modifiers';
-
-const REQUEST_BODY_COMPONENT = 'RequestBody';
+const IDEMPOTENCY_KEY_PARAMETER = {
+	$ref: '../../../../shared/spec/parameters/idempotencyKey.yml',
+};
 
 // Query fields backed by shared hand-written parameter files instead of being generated
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
@@ -42,6 +41,7 @@ export const ERROR_RESPONSE_REFS = {
 	413: { $ref: '../../../../shared/spec/responses/contentTooLarge.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	429: { $ref: '../../../../shared/spec/responses/tooManyRequests.yml' },
 	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
@@ -66,6 +66,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	413: 'Content too large.',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
+	429: 'Too many requests.',
 	500: 'Internal server error.',
 	503: 'The requested service is temporarily unavailable.',
 };
@@ -178,27 +179,6 @@ function buildRequestBody(
 	};
 }
 
-/**
- * Converts a route's `@Body` DTO into JSON Schema, using the same conversion the build runs when
- * it writes the OpenAPI files. zod-to-openapi can only convert a schema that a registry holds, so
- * this registers one under a throwaway name and then reads the result back out.
- */
-export function buildRequestBodyJsonSchema(
-	route: ResolvedPublicApiRoute,
-): Record<string, unknown> | undefined {
-	if (!route.requestBodyDto) return undefined;
-
-	const registry = new OpenAPIRegistry();
-	registry.register(REQUEST_BODY_COMPONENT, route.requestBodyDto.schema);
-
-	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
-	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
-
-	applySchemaModifiers(schema);
-
-	return isRecord(schema) ? schema : undefined;
-}
-
 /** Documents a success body the controller method writes itself, with its declared headers. */
 export function buildBinarySuccessResponse({ mediaType, description, headers }: BinaryResponse) {
 	const responseHeaders: Record<
@@ -245,9 +225,10 @@ export function buildJsonSuccessResponse(
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
- * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
- * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
- * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
+ * sends), auth always 401s, rate limiting can return 429, `@ApiKeyScope` always 403s on mismatch,
+ * and a body/query DTO always 400s on failed `.safeParse()`. Anything else - like a 404 from a
+ * business-rule lookup that isn't visible in decorator metadata - has to be declared explicitly
+ * via `@ApiErrorResponse`.
  * A binary `@ApiResponse` documents its media type, description and headers instead of a JSON DTO.
  */
 function buildResponses(
@@ -279,6 +260,7 @@ function buildResponses(
 		}
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
+	responses[429] = ERROR_RESPONSE_REFS[429];
 	if (route.apiKeyScope) {
 		responses[403] = ERROR_RESPONSE_REFS[403];
 	}
@@ -308,6 +290,12 @@ function buildResponses(
 		}
 	}
 
+	if (honorsIdempotencyKey(route.method, route.path)) {
+		responses[400] ??= ERROR_RESPONSE_REFS[400];
+		responses[409] ??= ERROR_RESPONSE_REFS[409];
+		responses[422] ??= ERROR_RESPONSE_REFS[422];
+	}
+
 	return responses;
 }
 
@@ -321,8 +309,7 @@ export interface GeneratedDecoratorOperation {
 
 /**
  * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class.
- * A new `@PublicApiController` shows up here automatically; a legacy eov-routed endpoint (still hand-written YAML)
- * is untouched until it's migrated to the controller pattern.
+ * A new `@PublicApiController` shows up here automatically.
  *
  * Output path convention: `handlers/<first-path-segment>/spec/paths/<handlerName>.generated.yml`
  */
@@ -333,7 +320,11 @@ export function getDecoratorGeneratedOperations(
 
 	return publicApiRoutes.map((route) => {
 		const pathKey = toOpenApiPathTemplate(route.path);
-		const { parameters, requestQuery } = buildQueryConfig(route);
+		const { parameters: queryParameters, requestQuery } = buildQueryConfig(route);
+		const parameters: NonNullable<RouteConfig['parameters']> = queryParameters ?? [];
+		if (honorsIdempotencyKey(route.method, route.path)) {
+			parameters.push(IDEMPOTENCY_KEY_PARAMETER);
+		}
 		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
 		const resource = route.path.split('/').find(Boolean) ?? 'root';
@@ -349,7 +340,7 @@ export function getDecoratorGeneratedOperations(
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),
 			...(route.deprecated ? { deprecated: true } : {}),
-			...(parameters ? { parameters } : {}),
+			...(parameters.length ? { parameters } : {}),
 			...((requestParams ?? requestQuery ?? requestBody)
 				? {
 						request: {
@@ -360,11 +351,6 @@ export function getDecoratorGeneratedOperations(
 					}
 				: {}),
 			responses: buildResponses(route, resolveSchema),
-			// Satisfies express-openapi-validator's operation-handler installer, which requires
-			// every operation in the spec to resolve to something.
-			'x-eov-operation-id': 'unreachable',
-			'x-eov-operation-handler': 'v1/handlers/decorator-routed.handler',
-			'x-decorator-routed': true,
 		};
 
 		return {

@@ -2,16 +2,29 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import {
 	BaseRepository,
-	TransactionRunner,
 	escapeLike,
 	LIKE_ESCAPE_CLAUSE,
+	TransactionRunner,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Not,
+	type EntityManager,
+	type SelectQueryBuilder,
+	type FindOptionsWhere,
+} from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError, OperationalError } from '@n8n/errors';
 
+import { AgentProjectDeletionRepository } from './agent-project-deletion.repository';
+import { AgentUserDeletionRepository } from './agent-user-deletion.repository';
+
+import { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
@@ -19,6 +32,7 @@ import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from '../entities/agent-execution-thread.entity';
+import type { AgentTaskStop } from '../types/agent-task-stop';
 import {
 	getDelegatedChildCheckpoints,
 	type DelegatedChildCheckpoint,
@@ -31,6 +45,8 @@ import {
 
 const CHECKPOINT_BATCH_SIZE = 400;
 
+type TaskStopScope = AgentTaskStop & { threadId: string };
+
 export interface AgentExecutionThreadMetadata {
 	parentThreadId?: string;
 	parentAgentId?: string;
@@ -41,6 +57,39 @@ export interface AgentExecutionThreadPage {
 	nextCursor: string | null;
 }
 
+/** Position of the last thread on a keyset page: `updatedAt`, then `id` breaks ties. */
+export interface AgentExecutionThreadKeyset {
+	updatedAt: Date;
+	id: string;
+}
+
+export interface AgentExecutionThreadKeysetPage {
+	threads: AgentExecutionThread[];
+	hasMore: boolean;
+}
+
+function ownedSessionWhere(agentId: string, ownerId: string, threadId: string) {
+	return {
+		id: threadId,
+		agentId,
+		ownerId,
+		accessScope: 'user' as const,
+		parentThreadId: IsNull(),
+	};
+}
+
+function accessibleSessionWhere(
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	userId: string,
+): Array<FindOptionsWhere<AgentExecutionThread>> {
+	return [
+		{ id: threadId, projectId, agentId, accessScope: 'project' },
+		{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+	];
+}
+
 interface AgentSessionDeletionRefs {
 	attachmentBinaryDataIds: string[];
 	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
@@ -48,8 +97,41 @@ interface AgentSessionDeletionRefs {
 
 @Service()
 export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutionThread> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(AgentExecutionThread, dataSource.manager, transactionRunner);
+	constructor(
+		dataSource: DataSource,
+		private readonly txRunner: TransactionRunner,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly userDeletion: AgentUserDeletionRepository,
+	) {
+		super(AgentExecutionThread, dataSource.manager, txRunner);
+	}
+
+	/** Keep project-agent sessions readable after their user is removed. */
+	async shareUserSessionHistory(userId: string, ctx: OperationContext = {}): Promise<void> {
+		const threads = await this.managerFor(ctx).find(AgentExecutionThread, {
+			select: { id: true },
+			where: { ownerId: userId, accessScope: 'user', agent: { scope: 'project' } },
+		});
+		for (const batch of chunk(threads, CHECKPOINT_BATCH_SIZE)) {
+			await this.managerFor(ctx).update(
+				AgentExecutionThread,
+				{ id: In(batch.map(({ id }) => id)) },
+				{ accessScope: 'project' },
+			);
+		}
+	}
+
+	async deleteCheckpointsForThreads(threadIds: string[]): Promise<void> {
+		if (threadIds.length === 0) return;
+		for (const threadId of threadIds) {
+			await this.txRunner.run({}, async (ctx) => {
+				if (!(await this.lockById(threadId, ctx))) return;
+				const manager = this.managerFor(ctx);
+				if (await manager.existsBy(AgentExecution, { threadId, status: 'running' }))
+					throw new OperationalError('Stop the Agent session before deleting its checkpoints');
+				await manager.delete(AgentCheckpoint, { threadId });
+			});
+		}
 	}
 
 	async lockById(threadId: string, ctx: OperationContext): Promise<AgentExecutionThread | null> {
@@ -61,11 +143,57 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 	}
 
+	async findAccessibleById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy(accessibleSessionWhere(projectId, agentId, threadId, userId));
+	}
+
 	/**
 	 * Find an existing thread or create a new one.
 	 * Assign a display number on creation. Concurrent sessions can share a number.
 	 */
 	async findOrCreate(
+		threadId: string,
+		agentId: string,
+		agentName: string,
+		projectId: string,
+		access: AgentThreadAccess,
+		ctx: OperationContext,
+		metadata?: AgentExecutionThreadMetadata,
+		taskId?: string | null,
+		taskVersionId?: string | null,
+		sessionMode: AgentSessionMode = 'new',
+	): Promise<{ thread: AgentExecutionThread; created: boolean }> {
+		return await this.projectDeletion.withWritableProject(
+			projectId,
+			async (ctx) =>
+				await this.findOrCreateWritable(
+					threadId,
+					agentId,
+					agentName,
+					projectId,
+					access,
+					ctx,
+					metadata,
+					taskId,
+					taskVersionId,
+					sessionMode,
+				),
+			ctx,
+		);
+	}
+
+	async assertOwnerActive(access: AgentThreadAccess, ctx: OperationContext): Promise<void> {
+		if (access.accessScope === 'user' && access.ownerId) {
+			await this.userDeletion.assertActiveUser(access.ownerId, ctx);
+		}
+	}
+
+	private async findOrCreateWritable(
 		threadId: string,
 		agentId: string,
 		agentName: string,
@@ -92,6 +220,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			}
 		}
 		if (access.accessScope === 'user' && !access.ownerId) throw new UserError('Session not found');
+		await this.assertOwnerActive(access, ctx);
 
 		const isPostgres = manager.connection.options.type === 'postgres';
 		const findSession = async () =>
@@ -404,6 +533,172 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
+	async findMemoryThreadsForProject(
+		projectId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId'>>> {
+		return await this.find({ select: ['id', 'agentId'], where: { projectId } });
+	}
+
+	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
+		if (ids.length === 0) return [];
+		return await this.findBy({ id: In(ids) });
+	}
+
+	/**
+	 * Top-level private sessions of one user with any instance (system) agent,
+	 * in every project, oldest first. It does not check that a provider is
+	 * registered for the agent, so user deletion finds every session.
+	 */
+	async findOwnedSystemAgentSessions(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: {
+				ownerId,
+				accessScope: 'user',
+				parentThreadId: IsNull(),
+				agent: { scope: 'instance' },
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	/** Include private child sessions and agents whose provider is no longer registered. */
+	async findPrivateSystemAgentSessionsForDeletion(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: { ownerId, accessScope: 'user', agent: { scope: 'instance' } },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+	}
+
+	/** One top-level private session of a user with an agent. */
+	async findOwnedById(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy(ownedSessionWhere(agentId, ownerId, threadId));
+	}
+
+	/**
+	 * Rename a top-level private session of a user with an agent. Returns false
+	 * when no such session exists.
+	 */
+	async renameOwned(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+		title: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ title },
+		);
+		return result.affected === 1;
+	}
+
+	/**
+	 * Store a generated title and emoji on a thread that has no title yet. A
+	 * title that the user set before the generated one arrived stays.
+	 */
+	async setGeneratedTitle(threadId: string, title: string, emoji: string | null): Promise<void> {
+		await this.update({ id: threadId, title: IsNull() }, { title, ...(emoji && { emoji }) });
+	}
+
+	/**
+	 * Move a top-level private session of a user with an agent to another
+	 * project, with its chat attachments. Returns false when no such session
+	 * exists. The caller must check that the user can use the target project,
+	 * and run this in a transaction.
+	 */
+	async moveOwned(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const manager = this.managerFor(ctx);
+		const result = await manager.update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ projectId },
+		);
+		if (result.affected !== 1) return false;
+		// Attachment lookups and session deletion filter on the project of the thread.
+		await manager.update(AgentChatAttachment, { agentId, threadId }, { projectId });
+		return true;
+	}
+
+	/**
+	 * One page of the top-level private sessions of a user with an agent,
+	 * newest first. `before` is the last session of the previous page. The
+	 * `id` breaks ties between sessions with the same `updatedAt`, so no
+	 * session is skipped or repeated across pages.
+	 */
+	async findOwnedHistoryPage(
+		agentId: string,
+		ownerId: string,
+		limit: number,
+		search?: string,
+		before?: AgentExecutionThreadKeyset,
+	): Promise<AgentExecutionThreadKeysetPage> {
+		const updatedAt = this.updatedAtExpression();
+		const query = this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere('thread.ownerId = :ownerId', { ownerId })
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL');
+		const term = search?.trim().toLowerCase();
+		if (term) {
+			query.andWhere(`LOWER(thread.title) LIKE :search ${LIKE_ESCAPE_CLAUSE}`, {
+				search: `%${escapeLike(term)}%`,
+			});
+		}
+		if (before) {
+			query.andWhere(
+				`(${updatedAt} < :beforeAt OR (${updatedAt} = :beforeAt AND thread.id < :beforeId))`,
+				{ beforeAt: before.updatedAt, beforeId: before.id },
+			);
+		}
+		// Order by the same expression as the keyset, so ties stored in another format stay together.
+		const threads = await query
+			.orderBy(updatedAt, 'DESC')
+			.addOrderBy('thread.id', 'DESC')
+			.limit(limit + 1)
+			.getMany();
+		const hasMore = threads.length > limit;
+		if (hasMore) threads.pop();
+		return { threads, hasMore };
+	}
+
+	async findIdsByAgentId(agentId: string): Promise<string[]> {
+		const threads = await this.find({ select: { id: true }, where: { agentId } });
+		return threads.map((thread) => thread.id);
+	}
+
+	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */
+	async findByAgentUpdatedBefore(
+		agentId: string,
+		cutoff: Date,
+		limit: number,
+	): Promise<AgentExecutionThread[]> {
+		const updatedAt = this.updatedAtExpression();
+		return await this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere(`${updatedAt} < :cutoff`, { cutoff })
+			.orderBy(updatedAt, 'ASC')
+			.addOrderBy('thread.id', 'ASC')
+			.limit(limit)
+			.getMany();
+	}
+
 	async findByParentThreadId(
 		parentThreadId: string,
 		projectId: string,
@@ -412,6 +707,33 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			where: { parentThreadId, projectId },
 			order: { createdAt: 'ASC' },
 		});
+	}
+
+	/**
+	 * The thread and the threads that delegated to it, from `threadId` up to
+	 * the root. A thread without a row (an inline agent, or a thread that is
+	 * not created yet) ends the chain with `agentId: null`.
+	 */
+	async findDelegationChain(
+		threadId: string,
+	): Promise<Array<{ id: string; agentId: string | null }>> {
+		const chain: Array<{ id: string; agentId: string | null }> = [];
+		const seen = new Set<string>();
+		let id: string | null = threadId;
+		// ponytail: one query per level; use a recursive CTE if delegation trees get deep.
+		while (id !== null && !seen.has(id)) {
+			seen.add(id);
+			const thread: Pick<AgentExecutionThread, 'agentId' | 'parentThreadId'> | null =
+				await this.findOne({ select: ['agentId', 'parentThreadId'], where: { id } });
+			chain.push({ id, agentId: thread?.agentId ?? null });
+			id = thread?.parentThreadId ?? null;
+		}
+		return chain;
+	}
+
+	async findProjectId(threadId: string): Promise<string | null> {
+		const thread = await this.findOne({ select: ['projectId'], where: { id: threadId } });
+		return thread?.projectId ?? null;
 	}
 
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
@@ -459,10 +781,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
-			where: [
-				{ id: threadId, projectId, agentId, accessScope: 'project' },
-				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
-			],
+			where: accessibleSessionWhere(projectId, agentId, threadId, userId),
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});
@@ -488,6 +807,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			);
 		}
 		await manager.delete(AgentExecutionThread, { id: threadId });
+
 		return {
 			status: 'deleted',
 			refs: {
@@ -536,6 +856,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				})),
 			);
 		}
+
 		return rows;
 	}
 
@@ -551,11 +872,178 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			select: ['id', 'storedAt'],
 			where: { threadId, storedAt: Not('db') },
 		});
+
 		const attachments = await manager.find(AgentChatAttachment, {
 			select: ['id', 'binaryDataId'],
 			where: { projectId, threadId },
 		});
+
 		return { executionLogs, attachments };
+	}
+
+	async findTaskStop(threadId: string, ctx: OperationContext = {}): Promise<TaskStopScope | null> {
+		const thread = await this.managerFor(ctx).findOneBy(AgentExecutionThread, { id: threadId });
+		return this.readStop(thread);
+	}
+
+	async saveStop(stop: TaskStopScope, ctx: OperationContext) {
+		const { threadId, ...taskStop } = stop;
+		await this.managerFor(ctx).update(AgentExecutionThread, { id: threadId }, { taskStop });
+		return stop;
+	}
+
+	/**
+	 * Collect unfinished work for the Stop request. A settled job without a
+	 * delivered result is unfinished, because the stop report delivers it.
+	 */
+	async captureStopTargets(threadId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+
+		const threads = new Set([threadId]);
+		let parents = [threadId];
+
+		while (parents.length) {
+			const children = await manager.find(AgentExecutionThread, {
+				where: { parentThreadId: In(parents) },
+				select: ['id'],
+			});
+
+			parents = children.filter((child) => !threads.has(child.id)).map((child) => child.id);
+			for (const id of parents) threads.add(id);
+		}
+
+		const ids = [...threads];
+		const [executions, jobs] = await Promise.all([
+			manager.find(AgentExecution, {
+				where: [
+					{ threadId: In(ids), status: 'running' },
+					{ threadId: In(ids), hitlStatus: 'suspended' },
+				],
+				select: ['id'],
+			}),
+			manager.find(AgentBackgroundJob, {
+				where: [
+					{ parentThreadId: In(ids), status: In(['running', 'suspended']) },
+					{ parentThreadId: In(ids), notifiedAt: IsNull() },
+				],
+				select: ['id'],
+			}),
+		]);
+
+		return {
+			executionIds: executions.map(({ id }) => id),
+			jobIds: jobs.map(({ id }) => id),
+			threadIds: ids.filter((id) => id !== threadId),
+		};
+	}
+
+	async findJobsCapturedByStop(request: TaskStopScope, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findBy(AgentBackgroundJob, {
+			id: In(request.generation.jobIds),
+		});
+	}
+
+	async findStopTargetsStillActive(request: TaskStopScope, ctx: OperationContext = {}) {
+		const executions = await this.managerFor(ctx).find(AgentExecution, {
+			where: [
+				{ id: In(request.generation.executionIds), status: 'running' },
+				{ id: In(request.generation.executionIds), hitlStatus: 'suspended' },
+			],
+			select: ['id'],
+		});
+
+		const jobs = await this.findJobsCapturedByStop(request, ctx);
+
+		return [
+			...jobs
+				.filter((job) => ['running', 'suspended'].includes(job.status))
+				.map((job) => ({ jobId: job.id, title: job.title })),
+			...executions
+				.filter((execution) => !jobs.some((job) => job.childExecutionId === execution.id))
+				.map((execution) => ({ jobId: execution.id, title: 'Current response' })),
+		];
+	}
+
+	/** A queued report owns these job notifications, including on another main. */
+	async hasTaskStopWithId(stopId: string) {
+		const expression =
+			this.manager.connection.options.type === 'postgres'
+				? "thread.\"taskStop\"->'pause'->>'id'"
+				: "json_extract(thread.taskStop, '$.pause.id')";
+
+		return await this.createQueryBuilder('thread')
+			.where(`${expression} = :stopId`, { stopId })
+			.getExists();
+	}
+
+	/** Stops on this thread and its ancestors whose report has not run yet. */
+	async findPendingStopReports(threadId: string): Promise<TaskStopScope[]> {
+		const stops: TaskStopScope[] = [];
+		const seen = new Set<string>();
+		let id: string | null = threadId;
+
+		while (id && !seen.has(id)) {
+			seen.add(id);
+			const thread: AgentExecutionThread | null = await this.findOneBy({ id });
+			const stop = this.readStop(thread);
+
+			if (stop && !stop.pause.reportedAt) stops.push(stop);
+
+			id = thread?.parentThreadId ?? null;
+		}
+
+		return stops;
+	}
+
+	async markChatResumedAfterStop(threadId: string, userInitiated: boolean, ctx: OperationContext) {
+		if (!userInitiated) return;
+
+		const stop = await this.findTaskStop(threadId, ctx);
+		if (!stop?.pause.reportedAt || stop.pause.resumedAt) return;
+
+		stop.pause.resumedAt = new Date().toISOString();
+
+		await this.saveStop(stop, ctx);
+	}
+
+	async finalizeStopReport(
+		threadId: string,
+		stopId: string,
+		executionId: string,
+		ctx: OperationContext,
+	) {
+		const stop = await this.findTaskStop(threadId, ctx);
+		if (!stop || stop.pause.id !== stopId || stop.pause.reportedAt) return;
+
+		const execution = await this.managerFor(ctx).findOneBy(AgentExecution, { id: executionId });
+		stop.pause.reportedAt = new Date().toISOString();
+		stop.pause.reportFailed = !execution || execution.status !== 'success';
+		await this.saveStop(stop, ctx);
+
+		await this.managerFor(ctx).update(
+			AgentBackgroundJob,
+			{
+				id: In(stop.generation.jobIds),
+				pauseRequestId: stopId,
+				status: In(['paused', 'completed', 'failed', 'cancelled']),
+			},
+			{ notifiedAt: new Date(stop.pause.reportedAt) },
+		);
+	}
+
+	private readStop(thread: AgentExecutionThread | null): TaskStopScope | null {
+		if (!thread?.taskStop) return null;
+		const stop = thread.taskStop;
+
+		return {
+			...stop,
+			threadId: thread.id,
+			pause: stop.pause ?? {
+				id: `legacy:${thread.id}:${stop.requestedAt}`,
+				reportedAt: stop.requestedAt,
+				resumedAt: stop.requestedAt,
+			},
+		};
 	}
 }
 
@@ -564,6 +1052,7 @@ function parseChildCheckpoints(
 	parentAgentId: string,
 ): DelegatedChildCheckpoint[] {
 	if (!state) return [];
+
 	try {
 		return getDelegatedChildCheckpoints(jsonParse<SerializableAgentState>(state), parentAgentId);
 	} catch {
@@ -580,10 +1069,12 @@ function collectUnvisitedChildCheckpoints(
 		for (const child of parseChildCheckpoints(row.state, agentId)) {
 			const key = checkpointKey(child.agentId, child.runId);
 			if (visited.has(key)) continue;
+
 			visited.add(key);
 			children.push(child);
 		}
 	}
+
 	return children;
 }
 

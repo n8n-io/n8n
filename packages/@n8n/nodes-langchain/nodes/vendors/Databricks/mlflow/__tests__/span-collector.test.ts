@@ -333,7 +333,9 @@ describe('MlflowSpanCollector', () => {
 
 			collector.handleToolError(new Error(`workspace rejected ${token}`), 'tool');
 
-			expect(collector.finish()!.spans[1].status.message).not.toContain(token);
+			const status = collector.finish()!.spans[1].status;
+			expect(status.code).toBe('ERROR');
+			expect(status.message).not.toContain(token);
 		});
 
 		it('handles a thrown non-Error value', () => {
@@ -344,6 +346,45 @@ describe('MlflowSpanCollector', () => {
 			collector.handleToolError('plain string' as unknown as Error, 'tool');
 
 			expect(collector.finish()!.spans[1].status.message).toBe('plain string');
+		});
+
+		it.each([
+			['ToolCode / ToolWorkflow', 'There was an error: "clock service unavailable [line 1]"'],
+			['ToolHttpRequest', 'HTTP 401 There was an error: "Unauthorized"'],
+		])('marks the tool span ERROR when a %s node returned an error string', (_label, text) => {
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleToolStart(SEARCH_TOOL, 'x', 'tool', 'root');
+			collector.handleToolEnd(text, 'tool');
+			collector.handleChainEnd({ output: 'done' }, 'root');
+
+			const trace = collector.finish()!;
+			expect(trace.spans[1].status).toEqual({ code: 'ERROR', message: text });
+			expect(outputsOf(trace.spans[1])).toBe(text);
+			expect(trace.state).toBe('OK');
+		});
+
+		it('keeps a tool answer that mentions an error OK', () => {
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleToolStart(SEARCH_TOOL, 'x', 'tool', 'root');
+
+			collector.handleToolEnd('The error rate is 2%', 'tool');
+
+			expect(collector.finish()!.spans[1].status).toEqual({ code: 'OK' });
+		});
+
+		it('scrubs a token from a tool error string', () => {
+			const token = ['dapi', '0123456789abcdef0123456789abcdef'].join('');
+			const collector = new MlflowSpanCollector();
+			collector.handleChainStart(AGENT_EXECUTOR, {}, 'root', undefined);
+			collector.handleToolStart(SEARCH_TOOL, 'x', 'tool', 'root');
+
+			collector.handleToolEnd(`There was an error: "rejected ${token}"`, 'tool');
+
+			const status = collector.finish()!.spans[1].status;
+			expect(status.code).toBe('ERROR');
+			expect(status.message).not.toContain(token);
 		});
 	});
 
@@ -479,7 +520,7 @@ describe('MlflowSpanCollector', () => {
 		it('ignores an end event for a run it never saw start', () => {
 			const collector = collectRun();
 
-			expect(() => collector.handleToolEnd('late', 'unknown')).not.toThrow();
+			expect(() => collector.handleToolEnd('There was an error: "late"', 'unknown')).not.toThrow();
 			expect(collector.finish()!.spans).toHaveLength(3);
 		});
 

@@ -7,12 +7,13 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { JWK } from 'jose';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { JsonWebKey, KeyObject } from 'node:crypto';
 import { createPrivateKey, createPublicKey, generateKeyPair } from 'node:crypto';
 import { promisify } from 'node:util';
 
-import { JwtService, type JwtPayload } from '@/services/jwt.service';
+import { JwtService, type JwtPayload } from '@n8n/backend-services';
 
 import {
 	ACCESS_TOKEN_TYPES,

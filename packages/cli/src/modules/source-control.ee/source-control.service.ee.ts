@@ -5,12 +5,12 @@ import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
-import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import pLimit from 'p-limit';
 import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import { IWorkflowToImport } from '@/interfaces';
 
 import {
@@ -258,9 +258,12 @@ export class SourceControlService {
 				}
 			}
 		}
+		// A first connect moves the instance to Environments v1, also while the promotions flag is off.
+		const wasConnected = this.sourceControlPreferencesService.isSourceControlConnected();
 		await this.sourceControlPreferencesService.setPreferences({
 			branchName: getBranchesResult.currentBranch,
 			connected: true,
+			...(wasConnected ? {} : { environmentsVersion: 'v1' }),
 		});
 		return getBranchesResult;
 	}
@@ -728,7 +731,15 @@ export class SourceControlService {
 	async getStatus(user: User, options: SourceControlGetStatus) {
 		return await this.workfolderMutex(async () => {
 			await this.sanityCheck();
-			return await this.sourceControlStatusService.getStatus(user, options);
+			const result = await this.sourceControlStatusService.getStatus(user, options);
+
+			// Only the preview pays for this; the pull enforces on its own status call.
+			if (options.direction === 'pull') {
+				const files = Array.isArray(result) ? result : result.sourceControlledFiles;
+				await this.sourceControlImportService.previewContentImportPolicy(files, user.id);
+			}
+
+			return result;
 		});
 	}
 

@@ -3,7 +3,8 @@ import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { ExecutionBaseError, UnexpectedError, UserError } from 'n8n-workflow';
+import { ExecutionBaseError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -90,7 +91,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 		);
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
-			startNodes: [{ name: startingNode.name, sourceData: null }],
+			triggerToStartFrom: { name: startingNode.name },
 			workflowData,
 			userId: user.id,
 		};

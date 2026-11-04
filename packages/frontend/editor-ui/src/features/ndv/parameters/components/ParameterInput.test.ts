@@ -301,6 +301,37 @@ describe('ParameterInput.vue', () => {
 		expect(description).toHaveClass('option-description--clamped');
 	});
 
+	test('should match the search in an options dropdown against the label and the value', async () => {
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'modelName',
+				parameter: createTestNodeProperties({
+					displayName: 'Model',
+					name: 'modelName',
+					type: 'options',
+					options: [
+						{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+						{ name: 'Gemini 2.5 Flash', value: 'models/gemini-2.5-flash' },
+					],
+					default: 'models/gemini-2.5-flash',
+				}),
+				modelValue: 'models/gemini-2.5-flash',
+			},
+		});
+		const select = container.querySelector('input') as HTMLInputElement;
+		const optionHeadlines = () =>
+			Array.from(baseElement.querySelectorAll('.option-headline')).map((el) =>
+				el.textContent?.trim(),
+			);
+
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+		await fireEvent.update(select, 'gemini-2.5-pro');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Pro']));
+
+		await fireEvent.update(select, '2.5 flash');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Flash']));
+	});
+
 	test('should pass option disabled state to N8nOption', async () => {
 		const options = [
 			{ name: 'Connected Chat Trigger Node', value: 'auto', disabled: true },
@@ -806,6 +837,53 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toBeUndefined();
 	});
 
+	test('should show the message of a node error payload when options fail to load', async () => {
+		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => {
+			throw { name: 'NodeApiError', message: 'Authentication required' };
+		});
+
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				path: 'columns',
+				parameter: createTestNodeProperties({
+					displayName: 'Columns',
+					name: 'columns',
+					type: 'options',
+					typeOptions: { loadOptionsMethod: 'getColumnsMultiOptions' },
+				}),
+				modelValue: 'id',
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('parameter-issues')).toBeInTheDocument());
+		await userEvent.hover(getByTestId('parameter-issues').firstElementChild as HTMLElement);
+
+		expect(await findByText(/"Authentication required"/)).toBeInTheDocument();
+	});
+
+	test('should not load remote options in read-only mode', async () => {
+		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [{ name: 'ID', value: 'id' }]);
+
+		const { container } = renderComponent({
+			props: {
+				path: 'columns',
+				isReadOnly: true,
+				parameter: createTestNodeProperties({
+					displayName: 'Columns',
+					name: 'columns',
+					type: 'options',
+					typeOptions: { loadOptionsMethod: 'getColumns' },
+				}),
+				modelValue: 'id',
+			},
+		});
+		await flushPromises();
+
+		expect(mockNodeTypesState.getNodeParameterOptions).not.toHaveBeenCalled();
+		const input = container.querySelector('input') as HTMLInputElement;
+		expect(input).toHaveValue('id');
+	});
+
 	test('should render workflow selector without issues when selected workflow is not archived', async () => {
 		const workflowId = faker.string.uuid();
 		const modelValue = {
@@ -1309,6 +1387,7 @@ describe('ParameterInput.vue', () => {
 		function renderModelParam(
 			getModels: () => Promise<Array<{ name: string; value: string }>>,
 			modelValue: string = 'gpt-3.5-turbo',
+			isReadOnly = false,
 		) {
 			mockNodeTypesState.getNodeParameterOptions = vi.fn(getModels);
 			const activeNode = reactive({
@@ -1335,6 +1414,7 @@ describe('ParameterInput.vue', () => {
 						typeOptions: { loadOptionsMethod: 'getModels' },
 					}),
 					modelValue,
+					isReadOnly,
 				},
 			});
 			return { emitted, activeNode };
@@ -1404,6 +1484,16 @@ describe('ParameterInput.vue', () => {
 			const { emitted, activeNode } = renderModelParam(async () => []);
 			await switchCredentialsAndReload(activeNode);
 			await expectModelResetToDefault(emitted);
+		});
+
+		test('should keep the value and load nothing when credentials change in read-only mode', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => [], 'gpt-3.5-turbo', true);
+			activeNode.credentials = { openAiApi: { id: '2', name: 'OpenAI Account 2' } };
+			await nextTick();
+			await flushPromises();
+
+			expect(mockNodeTypesState.getNodeParameterOptions).not.toHaveBeenCalled();
+			expect(emitted('update')).toBeUndefined();
 		});
 
 		test('should not apply a stale reload when credentials change again mid-load', async () => {

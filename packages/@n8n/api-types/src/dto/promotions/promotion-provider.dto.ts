@@ -244,8 +244,8 @@ export const promotionProviderPublicSchema = z.object({
 export class PromotionProviderPublicDto extends Z.class(promotionProviderPublicSchema.shape) {}
 
 /**
- * A provider without its public config. Used for list rows and inside a
- * connection, neither of which shows the public config. Only the provider detail
+ * A provider without its public config. Used for list rows and inside an
+ * environment, neither of which shows the public config. Only the provider detail
  * route does.
  */
 export const promotionProviderSummarySchema = promotionProviderPublicSchema.omit({ config: true });

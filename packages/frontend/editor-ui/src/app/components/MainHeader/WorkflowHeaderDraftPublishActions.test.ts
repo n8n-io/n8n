@@ -47,8 +47,8 @@ import { ResponseError } from '@n8n/rest-api-client';
 // Hoisted: the vue-router mock factory runs before module-level consts initialize
 const { mockRouterPush, mockRouterResolve } = vi.hoisted(() => ({
 	mockRouterPush: vi.fn(),
-	mockRouterResolve: vi.fn(({ params }: { params: { reviewRequestId: string } }) => ({
-		href: `/reviews/${params.reviewRequestId}`,
+	mockRouterResolve: vi.fn(({ params }: { params: { reviewId: string } }) => ({
+		href: `/inbox/reviews/${params.reviewId}`,
 	})),
 }));
 
@@ -712,7 +712,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Latest changes submitted to the existing review',
-				message: '<a href="/reviews/req-1">Open review</a>',
+				message: '<a href="/inbox/reviews/req-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 			const toastConfig = mockShowToast.mock.calls.at(-1)?.[0];
@@ -725,7 +725,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(preventDefault).toHaveBeenCalledOnce();
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 			});
 		});
 
@@ -819,7 +819,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(mockShowToast).toHaveBeenCalledWith({
 				type: 'success',
 				title: 'Workflow version submitted for review',
-				message: '<a href="/reviews/review-1">Open review</a>',
+				message: '<a href="/inbox/reviews/review-1">Open review</a>',
 				onClick: expect.any(Function),
 			});
 		});
@@ -845,7 +845,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				expect(mockShowToast).toHaveBeenCalledWith({
 					type: 'success',
 					title: 'Workflow version submitted for review',
-					message: '<a href="/reviews/review-1">Open review</a>',
+					message: '<a href="/inbox/reviews/review-1">Open review</a>',
 					onClick: expect.any(Function),
 				});
 			});
@@ -917,6 +917,12 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 					main: [[{ node: restrictedNodeWithIssues.name, type: 'main', index: 0 }]],
 				},
 			});
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({
+					name: restrictedNodeWithIssues.type,
+					displayName: 'HTTP Request',
+				}),
+			]);
 			mockRestrictedNodeTypes({ [restrictedNodeWithIssues.type]: 'instance' });
 
 			const { getByTestId, getByText, queryByText } = renderComponent();
@@ -926,6 +932,88 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				getByText(/An administrator blocked 'HTTP Request' on this instance/),
 			).toBeInTheDocument();
 			expect(queryByText(/node has issues/)).not.toBeInTheDocument();
+		});
+
+		const restrictedNode: INodeUi = {
+			id: 'slack-1',
+			name: 'Slack',
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+			disabled: false,
+		};
+
+		const setupRestrictedWorkflow = (node: INodeUi = restrictedNode) => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: restrictedNode.type, displayName: 'Slack' }),
+			]);
+			workflowDocumentStore.setNodes([triggerNode, node]);
+			mockRestrictedNodeTypes({ [restrictedNode.type]: 'instance' });
+		};
+
+		const restrictionText = /An administrator blocked 'Slack' on this instance/;
+
+		it('should disable publish and name the restricted node in the tooltip', () => {
+			setupRestrictedWorkflow();
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(restrictionText)).toBeInTheDocument();
+		});
+
+		it('should disable publish for a published workflow with a restricted node', () => {
+			setupRestrictedWorkflow();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			uiStore.markStateDirty();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should disable publish when the restricted node is disabled', () => {
+			setupRestrictedWorkflow({ ...restrictedNode, disabled: true });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(restrictionText)).toBeInTheDocument();
+		});
+
+		it('should keep publish enabled when no node type is restricted', () => {
+			mockRestrictedNodeTypes({});
+			workflowDocumentStore.setNodes([triggerNode]);
+
+			const { getByTestId, queryByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+			expect(queryByText(/An administrator blocked/)).not.toBeInTheDocument();
+		});
+
+		it('should list restricted node types of different scopes in the tooltip', () => {
+			const jiraNode: INodeUi = {
+				...restrictedNode,
+				id: 'jira-1',
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+			};
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: restrictedNode.type, displayName: 'Slack' }),
+				mockNodeTypeDescription({ name: jiraNode.type, displayName: 'Jira' }),
+			]);
+			workflowDocumentStore.setNodes([triggerNode, restrictedNode, jiraNode]);
+			mockRestrictedNodeTypes({ [restrictedNode.type]: 'instance', [jiraNode.type]: 'project' });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByText(/Restricted on this instance: 'Slack'\./)).toBeInTheDocument();
+			expect(getByText(/Restricted in this project: 'Jira'\./)).toBeInTheDocument();
 		});
 
 		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
@@ -1108,11 +1196,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			},
 		};
 
-		const useCredential = (credential: IUsedCredential, { flagEnabled = true } = {}) => {
-			settingsStore.settings = {
-				...settingsStore.settings,
-				granularCredentialSharing: flagEnabled,
-			};
+		const useCredential = (credential: IUsedCredential) => {
 			workflowDocumentStore.setUsedCredentials([credential]);
 			workflowDocumentStore.setNodes([
 				{
@@ -1216,14 +1300,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 		it('should keep publish enabled when the user can use the credential', () => {
 			useCredential({ ...foreignCredential, currentUserCanUse: true });
-
-			const { getByTestId } = renderComponent();
-
-			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
-		});
-
-		it('should keep publish enabled while the feature flag is off', () => {
-			useCredential(foreignCredential, { flagEnabled: false });
 
 			const { getByTestId } = renderComponent();
 
@@ -1593,6 +1669,33 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
 		});
 
+		it('disables Submit changes with Publish for a restricted node type', async () => {
+			setWorkflowReviewGates();
+			seedLatestReview();
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+			]);
+			workflowDocumentStore.setNodes([
+				triggerNode,
+				{
+					id: 'slack-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+					disabled: false,
+				},
+			]);
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': 'instance' });
+
+			const { findByTestId, getByTestId } = renderComponent({ props: defaultWorkflowProps });
+			await userEvent.click(await findByTestId('workflow-review-status-pill'));
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('workflow-review-submit-changes-button')).toBeDisabled();
+		});
+
 		// The parity has to hold in the enabled direction too, or the assertions above
 		// would pass just as well against a permanently disabled button.
 		it('enables Submit changes with Publish for a publishable workflow', async () => {
@@ -1630,7 +1733,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-				params: { reviewRequestId: 'req-1' },
+				params: { reviewId: 'req-1' },
 				query: undefined,
 			});
 		});

@@ -142,7 +142,7 @@ onMounted(async () => {
 	padding: var(--spacing--md) var(--spacing--md) var(--spacing--xs);
 
 	label {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		padding-bottom: var(--spacing--5xs);
 	}
 

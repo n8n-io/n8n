@@ -5,6 +5,7 @@ import {
 	BINARY_OPS,
 	CALLABLE_METHODS,
 	DATA_ROOTS,
+	EXTENSION_METHODS,
 	ITERATOR_METHODS,
 	LEGACY_NODE_REF_MEMBERS,
 	MAX_DEPTH,
@@ -12,6 +13,9 @@ import {
 	NODE_REF_MEMBERS,
 	NODE_REF_METHODS,
 	RESERVED_NAMES,
+	TIME_MEMBERS,
+	TIME_METHODS,
+	TIME_ROOTS,
 	UNARY_OPS,
 	isOneOf,
 	type Literal,
@@ -141,6 +145,16 @@ function parseNodeRef(node: AstNode): NodeRef | null {
 	return null;
 }
 
+type TimeRef = Extract<SimpleNode, { kind: 'timeRoot' }>;
+
+// `$now` or `$today` in object/receiver position. As with parseNodeRef, only
+// the member and call parsers ask, so the DateTime never stands alone.
+function parseTimeRoot(node: AstNode): TimeRef | null {
+	if (node.type !== 'Identifier' || !isOneOf(TIME_ROOTS, node.name)) return null;
+
+	return { kind: 'timeRoot', name: node.name };
+}
+
 // Only static keys are representable. Dynamic keys ($json[$json.key]) need
 // the sandbox's PrototypeSanitizer, so they stay on the engine. String keys
 // are vetted at parse time (isSafeObjectProperty), which keeps prototype
@@ -158,6 +172,13 @@ function parseMember(node: namedTypes.MemberExpression, parse: ParseChild): Simp
 		if (typeof key !== 'string' || !allowed.has(key)) return null;
 
 		return { kind: 'member', object: ref, key, optional: node.optional === true };
+	}
+
+	const time = parseTimeRoot(node.object);
+	if (time !== null) {
+		if (typeof key !== 'string' || !TIME_MEMBERS.has(key)) return null;
+
+		return { kind: 'member', object: time, key, optional: node.optional === true };
 	}
 
 	const object = parse(node.object);
@@ -219,6 +240,20 @@ function parseCallback(
 	return parse(fn.body, name);
 }
 
+// `$now.toMillis()` and friends: Luxon's own primitive-returning methods, no
+// arguments. Null when the receiver is not a time root or the call declines.
+function parseTimeCall(
+	node: namedTypes.CallExpression,
+	callee: namedTypes.MemberExpression,
+	method: string,
+): SimpleNode | null {
+	const time = parseTimeRoot(callee.object);
+	if (time === null || !TIME_METHODS.has(method) || node.arguments.length > 0) return null;
+
+	const optional = node.optional === true || callee.optional === true;
+	return { kind: 'call', receiver: time, method, args: [], optional };
+}
+
 function parseCall(
 	node: namedTypes.CallExpression,
 	parse: ParseChild,
@@ -226,6 +261,8 @@ function parseCall(
 ): SimpleNode | null {
 	const callee = node.callee;
 	if (callee.type !== 'MemberExpression' || callee.computed === true) return null;
+	// The callee is read here, not re-parsed, so its comments are checked here.
+	if (callee.comments?.length) return null;
 
 	const property = callee.property;
 	if (property.type !== 'Identifier') return null;
@@ -242,12 +279,22 @@ function parseCall(
 		return { kind: 'call', receiver: ref, method: property.name, args: [], optional };
 	}
 
+	const time = parseTimeCall(node, callee, property.name);
+	if (time !== null) return time;
+
 	const method = property.name;
 	const isIterator = isOneOf(ITERATOR_METHODS, method);
-	if (!isIterator && !CALLABLE_METHODS.has(method)) return null;
+	if (!isIterator && !CALLABLE_METHODS.has(method) && !EXTENSION_METHODS.has(method)) return null;
 
 	const receiver = parse(callee.object);
 	if (receiver === null) return null;
+
+	// A root is a proxy the engines hand to extend() in their own way, so an
+	// extension call on a receiver that can evaluate to one stays on the
+	// engine (the syntax has to be checked: a logical or conditional receiver
+	// can still yield a root at runtime, and the host $json proxy is built on
+	// every access, so there is no instance to compare against).
+	if (EXTENSION_METHODS.has(method) && mayBeRoot(receiver)) return null;
 
 	// `a?.m()` marks the member optional, `a.m?.()` marks the call optional;
 	// both short-circuit on a missing receiver, so one flag carries both.
@@ -271,6 +318,12 @@ function parseCall(
 	return { kind: 'call', receiver, method, args, optional };
 }
 
+const mayBeRoot = (node: SimpleNode): boolean =>
+	node.kind === 'root' ||
+	(node.kind === 'chain' && mayBeRoot(node.expression)) ||
+	(node.kind === 'logical' && (mayBeRoot(node.left) || mayBeRoot(node.right))) ||
+	(node.kind === 'conditional' && (mayBeRoot(node.consequent) || mayBeRoot(node.alternate)));
+
 // The wrapper esprima puts around every optional chain. It is the boundary an
 // optional hop short-circuits to: `a?.b.c` yields undefined for a missing
 // `a`, while `(a?.b).c` throws. Parentheses end the chain in the AST too.
@@ -279,6 +332,60 @@ function parseChain(node: namedTypes.ChainExpression, parse: ParseChild): Simple
 	if (expression === null) return null;
 
 	return { kind: 'chain', expression };
+}
+
+/**
+ * Once a chunk holds an extension call, extendTransform rewrites every
+ * optional chain in it through its own polyfill, and that reprint drops the
+ * parentheses around a `??` operand mixed with `&&` or `||`: the engines
+ * then throw "invalid syntax" where this interpreter would evaluate. An
+ * extension call in any chunk sends every chunk through the rewrite, so an
+ * expression with both an optional chain and an extension call is theirs,
+ * even when the two are in different chunks. The rewrite matches by method
+ * name alone, so a node-ref call like `$input.first()` counts too.
+ */
+export function usesPolyfilledChain(roots: SimpleNode[]): boolean {
+	let chain = false;
+	let extension = false;
+	const visit = (node: SimpleNode): void => {
+		switch (node.kind) {
+			case 'chain':
+				chain = true;
+				visit(node.expression);
+				return;
+			case 'call':
+				if (EXTENSION_METHODS.has(node.method)) {
+					extension = true;
+				}
+				visit(node.receiver);
+				node.args.forEach(visit);
+				return;
+			case 'iterate':
+				visit(node.receiver);
+				visit(node.body);
+				return;
+			case 'member':
+				visit(node.object);
+				return;
+			case 'unary':
+				visit(node.argument);
+				return;
+			case 'binary':
+			case 'logical':
+				visit(node.left);
+				visit(node.right);
+				return;
+			case 'conditional':
+				visit(node.test);
+				visit(node.consequent);
+				visit(node.alternate);
+				return;
+			default:
+				return;
+		}
+	};
+	roots.forEach(visit);
+	return chain && extension;
 }
 
 function parseBranches(
@@ -331,6 +438,10 @@ export function parseSimple(
 	param: string | null = null,
 ): SimpleNode | null {
 	if (depth > MAX_DEPTH) return null;
+	// extendSyntax finds extension calls by regex over the source text, and a
+	// comment between the name and the parentheses hides one from it. The
+	// parser attaches comments to the nearest node; any comment declines.
+	if (node.comments?.length) return null;
 	const parse: ParseChild = (child, childParam = param) =>
 		parseSimple(child, depth + 1, childParam);
 

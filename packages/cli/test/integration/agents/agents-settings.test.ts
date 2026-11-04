@@ -65,6 +65,7 @@ describe('Agents instance settings', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 			await expect(peer.getEnabled()).resolves.toBe(false);
 

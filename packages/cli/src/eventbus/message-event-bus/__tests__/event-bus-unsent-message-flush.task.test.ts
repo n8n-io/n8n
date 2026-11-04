@@ -17,8 +17,7 @@ describe('EventBusUnsentMessageFlushTask', () => {
 	it('should retry in every kind of instance at the configured interval', () => {
 		expect(task.name).toBe('event-bus-unsent-message-flush');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
-		expect(task.effects).toBe('non-idempotent');
-		expect(task.placement).toEqual({
+		expect(task.target).toEqual({
 			scope: 'instance',
 			instanceTypes: ['main', 'worker', 'webhook'],
 		});

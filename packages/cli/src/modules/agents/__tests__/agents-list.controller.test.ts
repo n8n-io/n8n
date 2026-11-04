@@ -21,11 +21,11 @@ describe('AgentsListController', () => {
 		const res = mock<Response>();
 		const query = { skip: 0, take: 50, sortBy: 'updatedAt:desc' } as never;
 
-		agentsService.findByUserMembershipPaginated.mockResolvedValue(response);
+		agentsService.findListableByUserPaginated.mockResolvedValue(response);
 
 		await controller.list(req, res, query);
 
-		expect(agentsService.findByUserMembershipPaginated).toHaveBeenCalledWith(user, query);
+		expect(agentsService.findListableByUserPaginated).toHaveBeenCalledWith(user, query);
 		expect(agentsService.findChatReachableByUserPaginated).not.toHaveBeenCalled();
 		expect(res.json).toHaveBeenCalledWith(response);
 	});
@@ -35,11 +35,11 @@ describe('AgentsListController', () => {
 		const res = mock<Response>();
 		const query = { skip: 0, take: 10, filter: { query: 'support' } } as never;
 
-		agentsService.findByUserMembershipPaginated.mockResolvedValue({ count: 0, data: [] } as never);
+		agentsService.findListableByUserPaginated.mockResolvedValue({ count: 0, data: [] } as never);
 
 		await controller.list(req, res, query);
 
-		expect(agentsService.findByUserMembershipPaginated).toHaveBeenCalledWith(user, query);
+		expect(agentsService.findListableByUserPaginated).toHaveBeenCalledWith(user, query);
 	});
 
 	it.each([true, false])('serves the chat list when availableInChat is %s', async (value) => {
@@ -53,7 +53,7 @@ describe('AgentsListController', () => {
 		await controller.list(req, res, query);
 
 		expect(agentsService.findChatReachableByUserPaginated).toHaveBeenCalledWith(user, query);
-		expect(agentsService.findByUserMembershipPaginated).not.toHaveBeenCalled();
+		expect(agentsService.findListableByUserPaginated).not.toHaveBeenCalled();
 		expect(res.json).toHaveBeenCalledWith(response);
 	});
 
@@ -63,7 +63,7 @@ describe('AgentsListController', () => {
 		const query = { skip: 0, take: 50 } as never;
 		const emptyResponse = { count: 0, data: [] } as never;
 
-		agentsService.findByUserMembershipPaginated.mockResolvedValue(emptyResponse);
+		agentsService.findListableByUserPaginated.mockResolvedValue(emptyResponse);
 
 		await controller.list(req, res, query);
 

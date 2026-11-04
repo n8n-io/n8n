@@ -18,7 +18,6 @@ import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -26,6 +25,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { InboxService } from '@/modules/inbox/inbox.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -141,6 +141,7 @@ export class FrontendService {
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly inboxService: InboxService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -308,7 +309,6 @@ export class FrontendService {
 			workflowsGroupsWithManyBoundariesEnabled:
 				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
-			granularCredentialSharing: isCredSharingEnabled(),
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -666,6 +666,9 @@ export class FrontendService {
 		} else {
 			delete this.settings.workflowReviews;
 		}
+		this.settings.inbox = this.moduleRegistry.isActive('inbox')
+			? await this.inboxService.getSettings()
+			: { enabled: false, availableTypes: [], failedTypes: [] };
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
@@ -825,6 +828,10 @@ export class FrontendService {
 			if (credential.name in credentialsOverwrites) {
 				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
 			}
+
+			overwrittenProperties.push(
+				...this.credentialsOverwrites.getNewerAppProperties(credential.name),
+			);
 
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);

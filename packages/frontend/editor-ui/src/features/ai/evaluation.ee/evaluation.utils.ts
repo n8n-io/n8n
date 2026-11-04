@@ -256,6 +256,17 @@ function resolveDisplayScale(options: {
 	return getMetricScale(options.category);
 }
 
+export function isUnscaledCustomMetric(
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
+): boolean {
+	if (options.scale) return false;
+	return (options.category ?? getMetricCategory(options.key)) === 'custom';
+}
+
+function formatMetricNumber(value: number): string {
+	return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
+}
+
 // A check as rendered on the wizard results page. `isAiJudged` checks show an
 // average score; the rest are pass/fail. Icon fields mirror the check tile.
 export type ResultCheck = {
@@ -298,6 +309,17 @@ export function formatMetricPercent(
 				? num * 100
 				: num;
 	return `${Math.round(scaled)}%`;
+}
+
+/** Format a metric for display, preserving score formatting where the scale is known. */
+export function formatMetricValue(
+	value: number | undefined,
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
+): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined) return '–';
+	if (isUnscaledCustomMetric(options)) return formatMetricNumber(num);
+	return formatMetricPercent(num, options);
 }
 
 // snake_case / camelCase → Title Case (e.g. count_accuracy → "Count Accuracy").
@@ -399,6 +421,18 @@ export function formatDeltaPercent(
 	const rounded = Math.round(scaled);
 	const sign = rounded > 0 ? '+' : '';
 	return `${sign}${rounded}%`;
+}
+
+export function formatMetricDelta(
+	delta: number | undefined,
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
+): string {
+	if (delta === undefined || Number.isNaN(delta)) return '';
+	if (isUnscaledCustomMetric(options)) {
+		const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+		return `${sign}${formatMetricNumber(Math.abs(delta))}`;
+	}
+	return formatDeltaPercent(delta, options);
 }
 
 // Compact duration: <1s → "243ms", <60s → "8s"/"1.2s", ≥60s → "1m 30s"/"2m".

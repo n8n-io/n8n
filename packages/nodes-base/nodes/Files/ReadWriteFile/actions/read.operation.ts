@@ -1,4 +1,3 @@
-import glob from 'fast-glob';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -9,7 +8,13 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { errorMapper, escapeBracketsAndParens, normalizeFileSelector } from '../helpers/utils';
+import {
+	GLOB_TIMEOUT_MS,
+	errorMapper,
+	escapeBracketsAndParens,
+	globWithDeadline,
+	normalizeFileSelector,
+} from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -98,6 +103,11 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 	const returnData: INodeExecutionData[] = [];
 	let fileSelector;
 
+	// One glob-time budget for the whole execution, so N items cannot each burn a
+	// full timeout. Only time spent globbing is charged — file reads in between
+	// must not make a later selector look slow.
+	let remainingGlobMs = GLOB_TIMEOUT_MS;
+
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		try {
 			fileSelector = normalizeFileSelector(
@@ -116,9 +126,23 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 			const escaped = escapeBracketsAndParens(fileSelector);
 			// Unescaped `(` would otherwise open extglob, whose nested quantifiers make
 			// matching cost grow exponentially with the length of a file name
-			const files = literalBrackets
-				? await glob(escaped)
-				: await glob(fileSelector, { extglob: false });
+			const startedGlobAt = Date.now();
+			let files: string[];
+			try {
+				files = literalBrackets
+					? await globWithDeadline(this.getNode(), escaped, {}, itemIndex, remainingGlobMs)
+					: await globWithDeadline(
+							this.getNode(),
+							fileSelector,
+							{ extglob: false },
+							itemIndex,
+							remainingGlobMs,
+						);
+			} finally {
+				// Charge the budget even when the glob times out, so a failing item
+				// cannot hand the next one (with Continue On Fail) a fresh full budget.
+				remainingGlobMs -= Date.now() - startedGlobAt;
+			}
 
 			if (files.length === 0 && nodeVersion > 1) {
 				const hasUnescapedBrackets = escaped !== fileSelector;

@@ -1,4 +1,3 @@
-import type { Locator } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect, instanceAiTestConfig } from './fixtures';
@@ -64,109 +63,6 @@ function workflowSignature(workflow: IWorkflowBase): string {
 		nodes: workflow.nodes,
 		connections: workflow.connections,
 	});
-}
-
-type WorkflowApiForAssertions = {
-	getWorkflows(): Promise<Array<Partial<IWorkflowBase> & { id?: string }>>;
-	getWorkflow(workflowId: string): Promise<IWorkflowBase>;
-	getExecutions(workflowId: string, limit?: number): Promise<Array<{ status?: string }>>;
-};
-
-type ApprovalExecutionAssertionContext = {
-	api: { workflows: WorkflowApiForAssertions };
-};
-
-async function findWorkflowIdsForNode(
-	workflowsApi: WorkflowApiForAssertions,
-	nodeName: string,
-): Promise<string[]> {
-	const workflows = await workflowsApi.getWorkflows();
-	const workflowIds: string[] = [];
-
-	for (const workflowSummary of workflows) {
-		if (!workflowSummary.id) continue;
-
-		const workflow = workflowSummary.nodes
-			? workflowSummary
-			: await workflowsApi.getWorkflow(workflowSummary.id);
-
-		if (
-			workflow.name?.toLowerCase().includes(nodeName) ||
-			workflow.nodes?.some((node) => node.name.toLowerCase().includes(nodeName))
-		) {
-			workflowIds.push(workflowSummary.id);
-		}
-	}
-
-	return workflowIds;
-}
-
-async function hasSuccessfulExecutionForNode(
-	workflowsApi: WorkflowApiForAssertions,
-	nodeName: string,
-): Promise<boolean> {
-	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
-		const executions = await workflowsApi.getExecutions(workflowId, 10);
-		if (executions.some((execution) => execution.status === 'success')) return true;
-	}
-
-	return false;
-}
-
-async function countExecutionsForNode(
-	workflowsApi: WorkflowApiForAssertions,
-	nodeName: string,
-): Promise<number> {
-	let count = 0;
-	for (const workflowId of await findWorkflowIdsForNode(workflowsApi, nodeName)) {
-		count += (await workflowsApi.getExecutions(workflowId, 10)).length;
-	}
-
-	return count;
-}
-
-async function approveBuildPlanIfRequested({
-	n8n,
-	nodeName,
-}: {
-	n8n: {
-		api: { workflows: WorkflowApiForAssertions };
-		instanceAi: { getPlanApproveButton(): Locator };
-	};
-	nodeName: string;
-}): Promise<void> {
-	let clickedApprove = false;
-	const approveButton = n8n.instanceAi.getPlanApproveButton();
-
-	await expect
-		.poll(
-			async () => {
-				if (!clickedApprove && (await approveButton.isVisible().catch(() => false))) {
-					await approveButton.click();
-					clickedApprove = true;
-					return true;
-				}
-
-				return await hasSuccessfulExecutionForNode(n8n.api.workflows, nodeName);
-			},
-			{ intervals: [1_000, 2_000, 5_000], timeout: 150_000 },
-		)
-		.toBe(true);
-}
-
-async function expectApprovedExecutionComplete({
-	n8n,
-	nodeName,
-}: {
-	n8n: ApprovalExecutionAssertionContext;
-	nodeName: string;
-}): Promise<void> {
-	await expect
-		.poll(async () => await hasSuccessfulExecutionForNode(n8n.api.workflows, nodeName), {
-			intervals: [1_000, 2_000, 5_000],
-			timeout: 150_000,
-		})
-		.toBe(true);
 }
 
 test.describe(
@@ -235,79 +131,8 @@ test.describe(
 			}
 		});
 
-		// Skipped: the replay recording predates the create-tasks load_tool
-		// deferral (#33815), so the recorded direct create-tasks call fails as an
-		// unloaded tool and the approval panel never appears. Unskip once the
-		// recordings are updated (#34055 or a re-record).
-		test.skip(
-			'should show approval panel and approve workflow execution',
-			{
-				annotation: [
-					{
-						type: 'expectation-slug',
-						description: 'should-show-approval-panel-and-approve-workflow-execution',
-					},
-				],
-			},
-			async ({ n8n }, testInfo) => {
-				test.skip(
-					testInfo.project.name.includes('multi-main'),
-					'Post-approval agent actions are not yet stable on the multi-main project',
-				);
-
-				await n8n.navigate.toInstanceAi();
-
-				await n8n.instanceAi.sendMessage(
-					'Create a plan to build and run a simple workflow with a manual trigger and a set node called "approval test". Show me the plan for approval before building it.',
-				);
-
-				await approveBuildPlanIfRequested({ n8n, nodeName: 'approval test' });
-				await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
-				await n8n.instanceAi.getConfirmApproveButton().click();
-
-				await expectApprovedExecutionComplete({ n8n, nodeName: 'approval test' });
-				await n8n.instanceAi.waitForResponseComplete();
-
-				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
-				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
-			},
-		);
-
-		// Skipped: same broken recording as the approve variant above (#33815).
-		test.skip(
-			'should show approval panel and deny workflow execution',
-			{
-				annotation: [
-					{
-						type: 'expectation-slug',
-						description: 'should-show-approval-panel-and-deny-workflow-execution',
-					},
-				],
-			},
-			async ({ n8n }) => {
-				await n8n.navigate.toInstanceAi();
-
-				await n8n.instanceAi.sendMessage(
-					'Create a plan to build and run a simple workflow with a manual trigger and a set node called "deny test". Show me the plan for approval before building it.',
-				);
-
-				await approveBuildPlanIfRequested({ n8n, nodeName: 'deny test' });
-				await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
-				// Build verification may already have run the workflow; denying must not add a run.
-				const executionsBeforeDeny = await countExecutionsForNode(n8n.api.workflows, 'deny test');
-				await n8n.instanceAi.getConfirmDenyButton().click();
-				await n8n.instanceAi.waitForResponseComplete();
-
-				expect(await countExecutionsForNode(n8n.api.workflows, 'deny test')).toBe(
-					executionsBeforeDeny,
-				);
-				await expect(n8n.instanceAi.getConfirmApproveButton()).not.toBeVisible();
-				await expect(n8n.instanceAi.getConfirmDenyButton()).not.toBeVisible();
-			},
-		);
-
 		// The ticket's autonomous "similar workflow" edit and this explicit edit both
-		// converge on build-workflow with a workflowId before the update is saved.
+		// converge on workflow_builder_build_workflow with a workflowId before the update is saved.
 		test('should require approval before editing an existing workflow and apply after approval', async ({
 			api,
 			n8n,

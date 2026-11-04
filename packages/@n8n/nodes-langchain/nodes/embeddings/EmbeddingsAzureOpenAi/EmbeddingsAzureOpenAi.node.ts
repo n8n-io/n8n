@@ -68,7 +68,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Foundry Embeddings',
 		name: 'embeddingsAzureOpenAi',
-		icon: 'file:azure.svg',
+		icon: 'file:foundry.svg',
 		credentials: [
 			{
 				name: API_KEY_AUTH,
