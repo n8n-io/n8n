@@ -31,7 +31,7 @@ import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
 import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 
 import { N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -44,7 +44,6 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
 // Credentials-list credential help (shared with the new-credential dialog): opens
 // Instance AI in a new tab asking about the credential alone.
@@ -278,12 +277,8 @@ sourceControlStore.$onAction(({ name, after }) => {
 watch(() => route?.params?.projectId, initialize);
 
 // A new credential goes to this project, so the new credential picker reads its policy.
-watch(
+useTypeAvailability(
 	() => (route?.params?.projectId as string | undefined) ?? projectsStore.personalProject?.id,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
 );
 
 watch(

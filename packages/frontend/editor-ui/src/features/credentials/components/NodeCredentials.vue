@@ -1463,7 +1463,7 @@ function onCredentialOptionSelected(
 		return;
 	}
 	// Enter still selects a highlighted row that a policy blocked after the list opened.
-	const credentialType = credentialsStore.getCredentialById(credentialIdOrTag)?.type;
+	const credentialType = findDisplayedCredential(type.name, credentialIdOrTag)?.type;
 	if (credentialType && getCredentialTypeRestriction(credentialType)) return;
 	onCredentialSelected(type.name, credentialIdOrTag, showMixedCredentials(type));
 }

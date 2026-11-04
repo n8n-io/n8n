@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { nextTick } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -159,6 +159,10 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 		mockRestrictedNodeTypes({});
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('keeps the list hidden while the project policy loads', async () => {
 		const policies = mockedStore(useTypeAvailabilityPoliciesStore);
 		policies.isLoading = true;
@@ -184,7 +188,6 @@ describe('CredentialsSelectModal — restricted credential types', () => {
 		await flushPromises();
 		vi.runAllTimers();
 		expect(selectFocus).toHaveBeenCalled();
-		vi.useRealTimers();
 	});
 
 	it('does not change the project the policy store holds', async () => {
