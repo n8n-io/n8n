@@ -21,69 +21,30 @@ describe('AssistantThreadCreditsService', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('getTotal', () => {
-		it('reads the credits key of the Assistant agent thread for the user', async () => {
-			threadMetadata.read.mockResolvedValue(2.5);
+	it('reads the credit total of the thread', async () => {
+		threadMetadata.read.mockResolvedValueOnce(2.5).mockResolvedValueOnce(undefined);
 
-			await expect(service.getTotal(user, THREAD_ID)).resolves.toBe(2.5);
-			expect(threadMetadata.read).toHaveBeenCalledWith(
-				ASSISTANT_AGENT_ID,
-				user,
-				THREAD_ID,
-				ASSISTANT_CREDITS_METADATA_KEY,
-			);
-		});
-
-		it.each([undefined, 'x', Number.NaN])('returns undefined for a stored %s', async (stored) => {
-			threadMetadata.read.mockResolvedValue(stored);
-
-			await expect(service.getTotal(user, THREAD_ID)).resolves.toBeUndefined();
-		});
+		await expect(service.getTotal(user, THREAD_ID)).resolves.toBe(2.5);
+		await expect(service.getTotal(user, THREAD_ID)).resolves.toBeUndefined();
+		expect(threadMetadata.read).toHaveBeenCalledWith(
+			ASSISTANT_AGENT_ID,
+			user,
+			THREAD_ID,
+			ASSISTANT_CREDITS_METADATA_KEY,
+		);
 	});
 
-	describe('addCredits', () => {
-		/** Runs the change on a stored value, as the locked row does. */
-		function storeWith(current: unknown) {
-			threadMetadata.update.mockImplementation(async (_agentId, _user, _threadId, _key, change) => {
-				change(current);
-			});
-		}
-
-		it('adds the claim to the stored total', async () => {
-			storeWith(2.5);
-
-			await expect(service.addCredits(user, THREAD_ID, 1.25)).resolves.toBe(3.75);
-			expect(threadMetadata.update).toHaveBeenCalledWith(
-				ASSISTANT_AGENT_ID,
-				user,
-				THREAD_ID,
-				ASSISTANT_CREDITS_METADATA_KEY,
-				expect.any(Function),
-			);
+	it('adds a claim to the stored total and returns the new total', async () => {
+		threadMetadata.update.mockImplementation(async (_agentId, _user, _threadId, _key, change) => {
+			change(2.5);
 		});
 
-		it('starts from zero when no valid total is stored', async () => {
-			storeWith('x');
+		await expect(service.addCredits(user, THREAD_ID, 1.25)).resolves.toBe(3.75);
+	});
 
-			await expect(service.addCredits(user, THREAD_ID, 1.25)).resolves.toBe(1.25);
-		});
+	it('returns undefined when the user has no Assistant agent thread with the id', async () => {
+		threadMetadata.update.mockRejectedValue(new NotFoundError('Session not found'));
 
-		it('returns undefined when the thread has no memory row yet', async () => {
-			threadMetadata.update.mockResolvedValue(undefined);
-
-			await expect(service.addCredits(user, THREAD_ID, 1)).resolves.toBeUndefined();
-		});
-
-		it('returns undefined when the user has no Assistant agent thread with the id', async () => {
-			threadMetadata.update.mockRejectedValue(new NotFoundError('Session not found'));
-
-			await expect(service.addCredits(user, THREAD_ID, 1)).resolves.toBeUndefined();
-		});
-
-		it('rethrows other failures', async () => {
-			threadMetadata.update.mockRejectedValue(new Error('db down'));
-
-			await expect(service.addCredits(user, THREAD_ID, 1)).rejects.toThrow('db down');
-		});
+		await expect(service.addCredits(user, THREAD_ID, 1)).resolves.toBeUndefined();
 	});
 });

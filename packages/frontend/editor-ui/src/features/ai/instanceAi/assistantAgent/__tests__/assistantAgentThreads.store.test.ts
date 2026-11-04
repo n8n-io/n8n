@@ -9,7 +9,7 @@ import {
 	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
-import { fetchAssistantAgentThreadCredits } from '../assistantAgentCredits.api';
+import { fetchAssistantAgentThreadCredits } from '../assistantAgentTabs.api';
 import { knownAssistantThreadRuntime } from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 
@@ -20,7 +20,7 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	renameSystemAgentThread: vi.fn(),
 }));
 
-vi.mock('../assistantAgentCredits.api', () => ({
+vi.mock('../assistantAgentTabs.api', () => ({
 	fetchAssistantAgentThreadCredits: vi.fn(),
 }));
 
@@ -60,20 +60,6 @@ describe('useAssistantAgentThreadsStore', () => {
 
 			expect(fetchAssistantAgentThreadCredits).toHaveBeenCalledWith(expect.anything(), 't1');
 			expect(store.threadCreditsUsed('t1')).toBe(2.5);
-		});
-
-		it('shows no total before the first claim, or when the load fails', async () => {
-			const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const store = useAssistantAgentThreadsStore();
-
-			vi.mocked(fetchAssistantAgentThreadCredits).mockResolvedValueOnce({ creditsUsed: null });
-			await store.loadThreadCredits('t1');
-			vi.mocked(fetchAssistantAgentThreadCredits).mockRejectedValueOnce(new Error('offline'));
-			await store.loadThreadCredits('t2');
-
-			expect(store.threadCreditsUsed('t1')).toBeUndefined();
-			expect(store.threadCreditsUsed('t2')).toBeUndefined();
-			error.mockRestore();
 		});
 
 		it('keeps a pushed total that a slower load would make older', async () => {

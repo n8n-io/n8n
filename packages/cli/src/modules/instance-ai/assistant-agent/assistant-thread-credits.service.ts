@@ -11,7 +11,7 @@ import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 export const ASSISTANT_CREDITS_METADATA_KEY = 'assistantCreditsUsed';
 
 function asTotal(value: unknown): number | undefined {
-	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+	return typeof value === 'number' ? value : undefined;
 }
 
 /**

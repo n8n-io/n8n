@@ -1,8 +1,4 @@
-import {
-	AssistantThreadTabsRequestDto,
-	type AssistantThreadCreditsResponse,
-	type AssistantThreadTabsResponse,
-} from '@n8n/api-types';
+import { AssistantThreadTabsRequestDto, type AssistantThreadTabsResponse } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Param, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -33,7 +29,7 @@ export class AssistantAgentController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
-	): Promise<AssistantThreadCreditsResponse> {
+	): Promise<{ creditsUsed: number | null }> {
 		return { creditsUsed: (await this.threadCredits.getTotal(req.user, threadId)) ?? null };
 	}
 

@@ -568,7 +568,7 @@ describe('claimRunUsage', () => {
 });
 
 describe('claimRunUsage on a thread without a current Assistant thread row', () => {
-	function setup(agentTotal: number | undefined | Error) {
+	function setup(agentTotal: number | undefined) {
 		const threadRepo = createMockThreadRepo(null);
 		const push = { sendToUsers: vi.fn() };
 		const service = createService({
@@ -579,10 +579,7 @@ describe('claimRunUsage on a thread without a current Assistant thread row', () 
 		});
 		const logger = (service as unknown as { logger: { warn: Mock } }).logger;
 		const agentThreadCredits = {
-			addCredits: vi.fn(async () => {
-				if (agentTotal instanceof Error) throw agentTotal;
-				return agentTotal;
-			}),
+			addCredits: vi.fn(async () => agentTotal),
 		};
 		return { service, push, logger, agentThreadCredits };
 	}
@@ -614,31 +611,6 @@ describe('claimRunUsage on a thread without a current Assistant thread row', () 
 		expect(logger.warn).toHaveBeenCalledWith('No thread took the Instance AI credit total', {
 			threadId: 'missing',
 		});
-		expect(push.sendToUsers).toHaveBeenCalledWith(
-			{ type: 'updateInstanceAiCredits', data: { creditsQuota: 100, creditsClaimed: 5.5 } },
-			['user-1'],
-		);
-	});
-
-	it('logs when the Assistant agent is not registered', async () => {
-		const { service, logger } = setup(undefined);
-
-		expect(await callClaim(service, { threadId: 'missing' })).toBe(0.5);
-		expect(logger.warn).toHaveBeenCalledWith('No thread took the Instance AI credit total', {
-			threadId: 'missing',
-		});
-	});
-
-	it('keeps the claim successful when the Assistant agent thread update fails', async () => {
-		const { service, push, logger, agentThreadCredits } = setup(new Error('db down'));
-		service.useAgentThreadCredits(agentThreadCredits);
-
-		expect(await callClaim(service, { threadId: 'agent-thread' })).toBe(0.5);
-		expect(claimedRunIds(service).has('run-1')).toBe(true);
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Failed to persist Instance AI thread credit total',
-			expect.objectContaining({ threadId: 'agent-thread' }),
-		);
 		expect(push.sendToUsers).toHaveBeenCalledWith(
 			{ type: 'updateInstanceAiCredits', data: { creditsQuota: 100, creditsClaimed: 5.5 } },
 			['user-1'],

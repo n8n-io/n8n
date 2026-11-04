@@ -12,7 +12,7 @@ import {
 	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
-import { fetchAssistantAgentThreadCredits } from './assistantAgentCredits.api';
+import { fetchAssistantAgentThreadCredits } from './assistantAgentTabs.api';
 import {
 	ASSISTANT_AGENT_ID,
 	forgetAssistantAgentThread,
