@@ -72,8 +72,8 @@ function isSupportedLockEntry(entry: unknown): boolean {
 		return false;
 	}
 	if (entry.inBundle === true) return true;
-	if (typeof entry.resolved !== 'string') return false;
-	return typeof entry.integrity === 'string' && entry.integrity.startsWith('sha512-');
+	if (typeof entry.resolved !== 'string' || typeof entry.integrity !== 'string') return false;
+	return entry.integrity.startsWith('sha512-') || entry.integrity.startsWith('sha1-');
 }
 
 export function checkBuildSource(files: AppFiles): string {

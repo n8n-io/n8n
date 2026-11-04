@@ -70,6 +70,16 @@ describe('app scaffold package validation', () => {
 		expect(checkBuildSource(files)).not.toBe(scaffoldKey);
 	});
 
+	it('accepts a public npm dependency with SHA-1 integrity', () => {
+		const files = appScaffold();
+		addDependency(files);
+		const packageLock = readJson<PackageLock>(files, 'package-lock.json');
+		packageLock.packages['node_modules/nanoid'].integrity = 'sha1-dGVzdA==';
+		writeJson(files, 'package-lock.json', packageLock);
+
+		expect(() => checkBuildSource(files)).not.toThrow();
+	});
+
 	it.each(['5.0.0-beta.1', '5.0.0+build.1'])(
 		'accepts the exact dependency version %s',
 		(version) => {
