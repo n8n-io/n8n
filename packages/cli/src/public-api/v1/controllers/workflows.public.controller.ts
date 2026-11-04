@@ -76,6 +76,7 @@ import {
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
+import { normalizeExecuteWorkflowTriggers } from '@/workflows/normalize-execute-workflow-trigger';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -332,7 +333,10 @@ export class WorkflowsPublicController {
 	): Promise<CreatedWorkflowPublicDto> {
 		const { projectId, parentFolderId, shared: _shared, ...rest } = body;
 
-		const workflow = createWorkflowEntityFromPayload(rest);
+		const workflow = createWorkflowEntityFromPayload({
+			...rest,
+			nodes: normalizeExecuteWorkflowTriggers(rest.nodes),
+		});
 
 		await this.redactionEnforcementService.assertNewPolicyAllowed(body.settings.redactionPolicy);
 
@@ -433,7 +437,10 @@ export class WorkflowsPublicController {
 			// Credential tamper protection is enforced centrally in WorkflowService.update
 			updatedWorkflow = await this.workflowService.update(
 				req.user,
-				createWorkflowEntityFromPayload(rest),
+				createWorkflowEntityFromPayload({
+					...rest,
+					nodes: rest.nodes ? normalizeExecuteWorkflowTriggers(rest.nodes) : rest.nodes,
+				}),
 				workflowId,
 				{
 					parentFolderId: resolvedParentFolderId,
