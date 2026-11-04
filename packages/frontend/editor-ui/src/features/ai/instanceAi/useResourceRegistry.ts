@@ -12,7 +12,7 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiWorkflowAttachment, InstanceAiAppTarget } from '@n8n/api-types';
 
-import type { ArtifactSubAgentTarget, ArtifactToolCall, ArtifactTurn } from './artifactTurns';
+import type { ArtifactToolCall, ArtifactTurn } from './artifactTurns';
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
 
 export type ResourceEntry = {
@@ -197,25 +197,6 @@ function toolCallOrigin(tc: ArtifactToolCall): ArtifactOrigin {
 	if (isDataTableReadCall(tc)) return 'fetched';
 	return 'built';
 }
-function entryFromAgentBuilderTarget(
-	target: ArtifactSubAgentTarget | undefined,
-	existing?: ResourceEntry,
-	fallbackName = 'Untitled',
-): ResourceEntry | undefined {
-	if (target?.type !== 'agent' || !target.id) return undefined;
-	const entry: ResourceEntry = {
-		type: 'agent',
-		id: target.id,
-		name:
-			(existing && !existing.pending && existing.name !== 'Untitled' ? existing.name : undefined) ??
-			optionalString(target.name) ??
-			fallbackName,
-	};
-	const projectId = optionalString(target.projectId) ?? existing?.projectId;
-	if (projectId !== undefined) entry.projectId = projectId;
-	return entry;
-}
-
 /**
  * Agent builder results: a successful `agent_builder_select_agent`, and any builder tool
  * stamped with `configMutated: true`. Both carry `agentId`, `projectId`, and `agentName`.
@@ -429,48 +410,10 @@ function extractFromToolCall(tc: ArtifactToolCall, col: Collections): void {
 	}
 }
 
-/**
- * Register the resource that a sub-agent was spawned onto as a produced
- * artifact (e.g. a workflow-builder spawned to edit an existing workflow).
- * Only threads from before the builders ran in the main agent have
- * sub-agents.
- */
-function extractFromSubAgentTarget(target: ArtifactSubAgentTarget, col: Collections): void {
-	if (!target.id) return;
-	if (target.type !== 'workflow' && target.type !== 'data-table' && target.type !== 'agent') return;
-
-	const existing = col.produced.get(target.id);
-	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
-	if (target.type === 'agent') {
-		// A read-only turn cannot confirm that this Agent changed. Wait for the
-		// build result. A mutating build registers the Agent at spawn.
-		if (target.activity === 'exploring' && (!existing || existing.pending)) return;
-		const entry = entryFromAgentBuilderTarget(target, existing, name);
-		if (entry) recordProduced(col, entry);
-		return;
-	}
-	recordProduced(col, { type: target.type, id: target.id, name });
-}
-
-function isReadOnlyAgentTarget(target: ArtifactSubAgentTarget): boolean {
-	return target.type === 'agent' && target.activity === 'exploring';
-}
-
 function collectFromToolCalls(turn: ArtifactTurn, col: Collections): void {
-	const targets = turn.subAgentTargets ?? [];
-	// A sub-agent spawned onto a resource is there to work on it.
-	col.intake = 'built';
-	for (const target of targets) {
-		if (!isReadOnlyAgentTarget(target)) extractFromSubAgentTarget(target, col);
-	}
 	for (const tc of turn.toolCalls) {
 		col.intake = toolCallOrigin(tc);
 		extractFromToolCall(tc, col);
-	}
-	// A read-only Agent sub-agent registers its target only after the calls.
-	col.intake = 'built';
-	for (const target of targets) {
-		if (isReadOnlyAgentTarget(target)) extractFromSubAgentTarget(target, col);
 	}
 }
 

@@ -451,70 +451,35 @@ export function getLatestAppArtifactResult(
 	return getLatestToolArtifactResult(turns, getAppArtifactFromToolCall);
 }
 
-function agentTargetOf(tc: ArtifactToolCall): AgentArtifactTarget | undefined {
-	const target = tc.subAgentTarget;
-	if (target?.type !== 'agent' || typeof target.id !== 'string') return undefined;
-	return {
-		agentId: target.id,
-		...(typeof target.projectId === 'string' ? { projectId: target.projectId } : {}),
-	};
-}
-
-function matchAgentArtifactToolCall(
-	tc: ArtifactToolCall,
-	callTarget: AgentArtifactTarget | undefined,
-): AgentArtifactResult | undefined {
+function getAgentArtifactResult(tc: ArtifactToolCall): AgentArtifactResult | undefined {
 	if (tc.isLoading || !isRecord(tc.result)) return undefined;
 	const result = tc.result;
+	if (typeof result.agentId !== 'string') return undefined;
 
-	// The orchestrator runs the builder tools itself, so their results carry the agent identity.
-	if (typeof result.agentId === 'string') {
-		const ownTarget: AgentArtifactTarget = {
-			agentId: result.agentId,
-			...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+	// The agent runs the builder tools itself, so their results carry the agent identity.
+	const target: AgentArtifactTarget = {
+		agentId: result.agentId,
+		...(typeof result.projectId === 'string' ? { projectId: result.projectId } : {}),
+	};
+	if (tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT) {
+		if (result.ok !== true) return undefined;
+		return {
+			...target,
+			toolCallId: tc.toolCallId,
+			kind: result.agentChange === 'created' ? 'created' : 'selected',
 		};
-		if (tc.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT) {
-			if (result.ok !== true) return undefined;
-			return {
-				...ownTarget,
-				toolCallId: tc.toolCallId,
-				kind: result.agentChange === 'created' ? 'created' : 'selected',
-			};
-		}
-		if (result.configMutated === true) {
-			return { ...ownTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
-		}
 	}
-
-	if (tc.toolName !== AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT || !callTarget) return undefined;
-	if (result.agentChange === 'created') {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
-	}
-	if (result.agentChange === 'updated') {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
-	}
-	// Keep old stored threads working until all results include agentChange.
-	if (result.agentChange === undefined && result.ok === true && typeof tc.args?.name === 'string') {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'created' };
-	}
-	if (result.agentChange === undefined && result.configUpdated === true) {
-		return { ...callTarget, toolCallId: tc.toolCallId, kind: 'mutated' };
+	if (result.configMutated === true) {
+		return { ...target, toolCallId: tc.toolCallId, kind: 'mutated' };
 	}
 	return undefined;
 }
 
-/**
- * The latest Agent that a tool call created, selected or changed. A
- * `agent_builder_build_agent` result of an old thread has no agent id: it
- * takes the id from the sub-agent target of the call, else `fallbackTarget`.
- */
+/** The latest Agent that a tool call created, selected or changed. */
 export function getLatestAgentArtifactResult(
 	turns: readonly ArtifactTurn[],
-	fallbackTarget?: AgentArtifactTarget,
 ): AgentArtifactResult | undefined {
-	return findLatestInTurns(turns, (tc) =>
-		matchAgentArtifactToolCall(tc, agentTargetOf(tc) ?? fallbackTarget),
-	);
+	return findLatestInTurns(turns, getAgentArtifactResult);
 }
 
 /** Builder tool calls whose success means the persisted agent changed in a panel-visible way. */
