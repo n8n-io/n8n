@@ -361,6 +361,39 @@ describe('SCIM /scim/v2/Users', () => {
 		expect((await reload(member.id)).disabled).toBe(true);
 	});
 
+	it('accepts the PATCH format that Entra ID sends without the aadOptscim062020 flag', async () => {
+		const member = await createMember();
+
+		await scimRequest('patch', `/Users/${member.id}`, {
+			body: patchOps({ op: 'Replace', path: 'active', value: 'False' }),
+		}).expect(200);
+		expect((await reload(member.id)).disabled).toBe(true);
+
+		const response = await scimRequest('patch', `/Users/${member.id}`, {
+			body: patchOps({ op: 'Replace', value: { active: 'True' } }),
+		}).expect(200);
+		expect(response.body.active).toBe(true);
+		expect((await reload(member.id)).disabled).toBe(false);
+	});
+
+	it('returns the formatted name', async () => {
+		const response = await scimRequest('post', '/Users', {
+			body: {
+				schemas: [USER_SCHEMA],
+				userName: 'ada@example.com',
+				name: { givenName: 'Ada', familyName: 'Lovelace' },
+			},
+		}).expect(201);
+
+		const fetched = await scimRequest('get', `/Users/${response.body.id}`).expect(200);
+
+		expect(fetched.body.name).toEqual({
+			formatted: 'Ada Lovelace',
+			givenName: 'Ada',
+			familyName: 'Lovelace',
+		});
+	});
+
 	it('returns no resources but the full total for count=0', async () => {
 		await createMember();
 
