@@ -7137,6 +7137,9 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../../../core
+      semver:
+        specifier: 7.7.3
+        version: 7.7.3
       tar:
         specifier: 7.5.21
         version: 7.5.21
@@ -7168,6 +7171,9 @@ importers:
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
+      '@types/semver':
+        specifier: 'catalog:'
+        version: 7.7.0
       jsdom:
         specifier: 'catalog:'
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
