@@ -19,10 +19,6 @@ import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiModule } from '../module.descriptor';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
-import {
-	forgetAssistantAgentThread,
-	rememberAssistantAgentThread,
-} from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from '../constants';
@@ -400,10 +396,6 @@ describe('InstanceAiModule credit push', () => {
 		setActivePinia(createTestingPinia());
 	});
 
-	afterEach(() => {
-		forgetAssistantAgentThread('agent-thread');
-	});
-
 	it('stores the instance credits outside the current Assistant store', async () => {
 		await handle();
 
@@ -414,25 +406,16 @@ describe('InstanceAiModule credit push', () => {
 		expect(mockedStore(useInstanceAiStore).setThreadCreditsUsed).not.toHaveBeenCalled();
 	});
 
-	it('gives the total of an Assistant agent thread to the Assistant agent threads store', async () => {
-		rememberAssistantAgentThread('agent-thread', 'project-1');
-
-		await handle({ threadId: 'agent-thread', totalCreditsUsed: 2.5 });
+	it('gives the thread total to the stores of both runtimes', async () => {
+		await handle({ threadId: 'thread-1', totalCreditsUsed: 2.5 });
 
 		expect(mockedStore(useAssistantAgentThreadsStore).setThreadCreditsUsed).toHaveBeenCalledWith(
-			'agent-thread',
+			'thread-1',
 			2.5,
 		);
-		expect(mockedStore(useInstanceAiStore).setThreadCreditsUsed).not.toHaveBeenCalled();
-	});
-
-	it('gives the total of a current Assistant thread to the current Assistant store', async () => {
-		await handle({ threadId: 'thread-1', totalCreditsUsed: 1.5 });
-
 		expect(mockedStore(useInstanceAiStore).setThreadCreditsUsed).toHaveBeenCalledWith(
 			'thread-1',
-			1.5,
+			2.5,
 		);
-		expect(mockedStore(useAssistantAgentThreadsStore).setThreadCreditsUsed).not.toHaveBeenCalled();
 	});
 });

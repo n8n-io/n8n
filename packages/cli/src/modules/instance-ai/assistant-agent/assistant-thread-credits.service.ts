@@ -37,20 +37,22 @@ export class AssistantThreadCreditsService implements AgentThreadCreditTotals {
 
 	/**
 	 * Add the credits of one claim to the thread total, on the locked thread row.
-	 * Returns the new total, or `undefined` when the user has no Assistant agent
-	 * thread with this id, or the thread has no memory row yet.
+	 * Returns the new total, or `undefined` when the user cannot use an Assistant
+	 * agent thread with this id, or the thread has no memory row yet.
 	 */
 	async addCredits(user: User, threadId: string, delta: number): Promise<number | undefined> {
+		// The change runs on the locked row, so it computes the new total. It does
+		// not run when the thread has no memory row.
+		let total: number | undefined;
 		try {
-			return asTotal(
-				await this.threadMetadata.update(
-					ASSISTANT_AGENT_ID,
-					user,
-					threadId,
-					ASSISTANT_CREDITS_METADATA_KEY,
-					(current) => (asTotal(current) ?? 0) + delta,
-				),
+			await this.threadMetadata.update(
+				ASSISTANT_AGENT_ID,
+				user,
+				threadId,
+				ASSISTANT_CREDITS_METADATA_KEY,
+				(current) => (total = (asTotal(current) ?? 0) + delta),
 			);
+			return total;
 		} catch (error) {
 			if (error instanceof NotFoundError) return undefined;
 			throw error;

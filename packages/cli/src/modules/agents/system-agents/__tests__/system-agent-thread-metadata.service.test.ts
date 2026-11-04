@@ -81,12 +81,10 @@ describe('SystemAgentThreadMetadataService', () => {
 			const row = { exists: true, metadata: { tabs: ['a'], other: true } as Metadata };
 			const { service, systemAgents } = setup(row);
 
-			await expect(
-				service.update(AGENT_ID, user, THREAD_ID, 'tabs', (current) => [
-					...(current as string[]),
-					'b',
-				]),
-			).resolves.toEqual(['a', 'b']);
+			await service.update(AGENT_ID, user, THREAD_ID, 'tabs', (current) => [
+				...(current as string[]),
+				'b',
+			]);
 
 			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(AGENT_ID, user, THREAD_ID);
 			expect(row.metadata).toEqual({ tabs: ['a', 'b'], other: true });
@@ -97,9 +95,7 @@ describe('SystemAgentThreadMetadataService', () => {
 			const row = { exists: true, metadata: metadata as Metadata };
 			const { service } = setup(row);
 
-			await expect(
-				service.update(AGENT_ID, user, THREAD_ID, 'tabs', () => undefined),
-			).resolves.toEqual(['a']);
+			await service.update(AGENT_ID, user, THREAD_ID, 'tabs', () => undefined);
 
 			// A write would replace the metadata object, even with equal content.
 			expect(row.metadata).toBe(metadata);

@@ -64,7 +64,6 @@ export const useAssistantCreditsStore = defineStore('assistantCredits', () => {
 		creditsQuota,
 		creditsClaimed,
 		creditsRemaining,
-		creditsPercentageRemaining,
 		isLowCredits,
 		isOutOfCredits,
 		setCredits,

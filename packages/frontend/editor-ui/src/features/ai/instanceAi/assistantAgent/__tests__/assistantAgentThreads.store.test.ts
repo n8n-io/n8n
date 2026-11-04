@@ -94,6 +94,16 @@ describe('useAssistantAgentThreadsStore', () => {
 			store.setThreadCreditsUsed('t1', 4.5);
 			expect(store.threadCreditsUsed('t1')).toBe(4.5);
 		});
+
+		it('drops the total of a deleted thread', async () => {
+			vi.mocked(deleteSystemAgentThread).mockResolvedValue(undefined);
+			const store = useAssistantAgentThreadsStore();
+			store.setThreadCreditsUsed('t1', 2);
+
+			await store.deleteThread(thread('t1', '2026-01-02T00:00:00.000Z'));
+
+			expect(store.threadCreditsUsed('t1')).toBeUndefined();
+		});
 	});
 
 	it('loads the recent threads newest first, and remembers them as Assistant agent threads', async () => {

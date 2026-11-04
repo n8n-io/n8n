@@ -127,6 +127,7 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		recentThreads.value = recentThreads.value.filter((t) => t.id !== thread.id);
 		openedThreads.value = openedThreads.value.filter((t) => t.id !== thread.id);
 		deletedThreadIds.value.add(thread.id);
+		creditsUsed.value.delete(thread.id);
 		forgetAssistantAgentThread(thread.id);
 		return true;
 	}

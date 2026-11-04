@@ -42,11 +42,11 @@ describe('AssistantThreadCreditsService', () => {
 	});
 
 	describe('addCredits', () => {
-		/** Applies the change the way the metadata service does, and returns the new value. */
+		/** Runs the change on a stored value, as the locked row does. */
 		function storeWith(current: unknown) {
-			threadMetadata.update.mockImplementation(async (_agentId, _user, _threadId, _key, change) =>
-				change(current),
-			);
+			threadMetadata.update.mockImplementation(async (_agentId, _user, _threadId, _key, change) => {
+				change(current);
+			});
 		}
 
 		it('adds the claim to the stored total', async () => {

@@ -30,8 +30,6 @@ export class SystemAgentThreadMetadataService {
 	/**
 	 * Change `key` on the locked thread row. The other keys stay. `change` gets
 	 * the current value, and returns the new value, or `undefined` to write nothing.
-	 * Returns the value of `key` after the change, or `undefined` when the thread
-	 * has no metadata yet.
 	 */
 	async update(
 		agentId: string,
@@ -39,9 +37,9 @@ export class SystemAgentThreadMetadataService {
 		threadId: string,
 		key: string,
 		change: (current: unknown) => unknown,
-	): Promise<unknown> {
+	): Promise<void> {
 		await this.systemAgents.getUsableThread(agentId, user, threadId);
-		const thread = await this.n8nMemory.getImplementation(agentId).patchThread({
+		await this.n8nMemory.getImplementation(agentId).patchThread({
 			threadId,
 			update: ({ metadata }) => {
 				const next = change(metadata?.[key]);
@@ -49,6 +47,5 @@ export class SystemAgentThreadMetadataService {
 				return { metadata: { ...metadata, [key]: next } };
 			},
 		});
-		return thread?.metadata?.[key];
 	}
 }

@@ -121,32 +121,4 @@ describe('useAssistantCreditsStore', () => {
 			expect(store.isLowCredits).toBe(true);
 		});
 	});
-
-	describe('creditsPercentageRemaining', () => {
-		it('returns undefined when credits are not initialized', () => {
-			const store = useAssistantCreditsStore();
-			expect(store.creditsPercentageRemaining).toBeUndefined();
-		});
-
-		it('returns undefined when quota is unlimited', () => {
-			const store = useAssistantCreditsStore();
-			store.creditsQuota = -1;
-			store.creditsClaimed = 50;
-			expect(store.creditsPercentageRemaining).toBeUndefined();
-		});
-
-		it('returns 0 when quota is 0', () => {
-			const store = useAssistantCreditsStore();
-			store.creditsQuota = 0;
-			store.creditsClaimed = 0;
-			expect(store.creditsPercentageRemaining).toBe(0);
-		});
-
-		it('calculates percentage correctly', () => {
-			const store = useAssistantCreditsStore();
-			store.creditsQuota = 100;
-			store.creditsClaimed = 75;
-			expect(store.creditsPercentageRemaining).toBe(25);
-		});
-	});
 });
