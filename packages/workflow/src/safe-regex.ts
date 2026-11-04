@@ -48,7 +48,7 @@ let engine: RegexEngine;
 
 export function parseRegexLiteral(value: string, ignoreCase = false): RegexLiteral {
 	const literal = value.toString();
-	const match = /^\/(.*?)\/([gimusy]*)$/.exec(literal);
+	const match = /^\/(.*?)\/([dgimsuvy]*)$/.exec(literal);
 	if (!match) {
 		return { source: literal, flags: ignoreCase ? 'i' : '' };
 	}
