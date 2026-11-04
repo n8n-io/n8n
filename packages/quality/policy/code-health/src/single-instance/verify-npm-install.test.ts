@@ -9,63 +9,6 @@ import {
 	resolveTargets,
 } from './verify-npm-install.js';
 
-<<<<<<< HEAD
-=======
-function attributedCopy(requiredBy: string | null, range: string | null) {
-	return {
-		version: '1.0.0',
-		path: 'node_modules/example',
-		requiredBy,
-		range,
-		section: requiredBy ? ('dependencies' as const) : null,
-		isWorkspace: false,
-		inPnpmStore: false,
-	};
-}
-
-describe('expectedNpmDuplicateReason', () => {
-	it('allows the exact known form-data origins', () => {
-		expect(
-			expectedNpmDuplicateReason({
-				name: 'form-data',
-				copies: [
-					attributedCopy(null, null),
-					attributedCopy('@getzep/zep-cloud', '4.0.0'),
-					attributedCopy('@getzep/zep-js', '4.0.0'),
-				],
-			}),
-		).toContain('Legacy Zep SDKs');
-	});
-
-	it('rejects an additional origin', () => {
-		expect(
-			expectedNpmDuplicateReason({
-				name: 'form-data',
-				copies: [
-					attributedCopy(null, null),
-					attributedCopy('@getzep/zep-cloud', '4.0.0'),
-					attributedCopy('@getzep/zep-js', '4.0.0'),
-					attributedCopy('new-package', '^4.0.0'),
-				],
-			}),
-		).toBeUndefined();
-	});
-
-	it('rejects a changed dependency range', () => {
-		expect(
-			expectedNpmDuplicateReason({
-				name: '@langchain/core',
-				copies: [
-					attributedCopy(null, null),
-					attributedCopy('langchain', '^0.1.60'),
-					attributedCopy('@langchain/textsplitters', '>0.2.0 <0.3.0'),
-				],
-			}),
-		).toBeUndefined();
-	});
-});
-
->>>>>>> 01c87f9c (fix: Make npm install of n8n work on all platforms again (#43028))
 /** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
 function ws(name: string, deps: Array<[string, string]>) {
 	return {
