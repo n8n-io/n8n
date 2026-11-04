@@ -1,7 +1,7 @@
 import { classifyRestError, EventService, serializePublicApiError } from '@n8n/backend-services';
 import { createIpRateLimit, Get, Middleware, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
@@ -65,10 +65,12 @@ export class AppServingController {
 			}
 			if (!file) throw new NotFoundError('App file not found.');
 			if (isNavigation && file === index) {
+				const userId = context.preview ? context.previewUserId : context.security?.subject.id;
+				if (!userId) throw new UnexpectedError('Authenticated app request has no user ID.');
 				this.events.emit('app-opened', {
 					appId: context.app.id,
 					versionId,
-					userId: context.security?.subject.id ?? context.previewUserId,
+					userId,
 					isPreview: context.preview === true,
 				});
 			}

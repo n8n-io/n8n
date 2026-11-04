@@ -676,10 +676,11 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private appOpened({ userId, appId, versionId, isPreview }: RelayEventMap['app-opened']) {
-		this.telemetry.track(TELEMETRY_EVENT.APPS.APP_OPENED, {
+		this.telemetry.track(TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP, {
 			app_id: appId,
 			version_id: versionId,
 			user_id: userId,
+			interaction_type: 'app_opened',
 			is_preview: isPreview,
 		});
 	}

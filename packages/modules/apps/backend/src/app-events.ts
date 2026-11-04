@@ -33,7 +33,7 @@ export interface AppEventMap {
 		attempts: number;
 		durationMs: number;
 	};
-	'app-opened': { appId: string; versionId: string; userId?: string; isPreview: boolean };
+	'app-opened': { appId: string; versionId: string; userId: string; isPreview: boolean };
 	'app-bindings-changed': {
 		appId: string;
 		projectId: string;

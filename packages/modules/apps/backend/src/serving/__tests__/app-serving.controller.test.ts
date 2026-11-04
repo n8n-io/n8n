@@ -31,7 +31,7 @@ function setup(url = '/', navigation = true) {
 			app: { id: 'app', publishedVersionId: 'version' },
 			versionId: 'version',
 			preview: false,
-			security: undefined,
+			security: mock({ subject: { id: 'viewer-1' } }),
 		},
 	});
 	const res = mock<Response>({ headersSent: false });
@@ -121,7 +121,7 @@ describe('AppServingController', () => {
 
 	it('serves the preview version and allows only the editor to frame it', async () => {
 		const { controller, req, res, bundles } = setup('/assets/main.js', false);
-		req.appContext = { app: mock(), versionId: 'draft', preview: true };
+		req.appContext = { app: mock(), versionId: 'draft', preview: true, previewUserId: 'editor-1' };
 
 		await controller.serve(req, res);
 
@@ -136,7 +136,7 @@ describe('AppServingController', () => {
 
 	it('adds the element inspector to preview HTML with its own ETag', async () => {
 		const { controller, req, res } = setup('/');
-		req.appContext = { app: mock(), versionId: 'draft', preview: true };
+		req.appContext = { app: mock(), versionId: 'draft', preview: true, previewUserId: 'editor-1' };
 
 		await controller.serve(req, res);
 
@@ -160,7 +160,7 @@ describe('AppServingController', () => {
 
 	it('does not add the element inspector to preview assets', async () => {
 		const { controller, req, res } = setup('/assets/main.js', false);
-		req.appContext = { app: mock(), versionId: 'draft', preview: true };
+		req.appContext = { app: mock(), versionId: 'draft', preview: true, previewUserId: 'editor-1' };
 
 		await controller.serve(req, res);
 
@@ -180,7 +180,6 @@ describe('AppServingController', () => {
 	describe('app-opened event', () => {
 		it.each(['/', '/orders/123'])('emits once for a page navigation to %s', async (url) => {
 			const { controller, req, res, events } = setup(url);
-			req.appContext!.security = mock({ subject: { id: 'viewer-1' } });
 
 			await controller.serve(req, res);
 

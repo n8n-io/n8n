@@ -6301,9 +6301,15 @@ describe('TelemetryEventRelay', () => {
 			],
 			[
 				'app-opened',
-				{ appId, versionId: 'v-1', isPreview: false },
-				TELEMETRY_EVENT.APPS.APP_OPENED,
-				{ app_id: appId, version_id: 'v-1', user_id: undefined, is_preview: false },
+				{ appId, versionId: 'v-1', userId: 'user-1', isPreview: false },
+				TELEMETRY_EVENT.APPS.USER_INTERACTED_WITH_APP,
+				{
+					app_id: appId,
+					version_id: 'v-1',
+					user_id: 'user-1',
+					interaction_type: 'app_opened',
+					is_preview: false,
+				},
 			],
 			[
 				'app-bindings-changed',

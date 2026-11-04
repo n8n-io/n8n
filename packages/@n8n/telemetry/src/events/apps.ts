@@ -99,20 +99,6 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			duration_ms: z.number(),
 		}),
 	},
-	APP_OPENED: {
-		name: 'App opened',
-		description:
-			'Someone opened a published app or an app preview in the browser. Fires once per page load, not for the files the page loads. The app builder loads the preview each time it opens, so most preview opens come from the builder.',
-		properties: z.object({
-			app_id: z.string(),
-			version_id: z.string(),
-			user_id: z
-				.string()
-				.optional()
-				.describe('The viewer. For a preview, the editor who opened it'),
-			is_preview: z.boolean(),
-		}),
-	},
 	USER_CLICKED_SHOW_APP_CODE: {
 		name: 'User clicked show app code',
 		description:
@@ -141,12 +127,12 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 	USER_INTERACTED_WITH_APP: {
 		name: 'User interacted with app',
 		description:
-			'A running app called n8n: it ran a workflow, wrote to a data table, or sent a message to an agent. Fires once per successful call. Data table reads and page loads do not fire it.',
+			'A user opened an app or the running app called n8n. Fires once per page load, workflow run, data table write, or agent message. Data table reads do not fire it.',
 		properties: z.object({
 			app_id: z.string(),
 			version_id: z.string(),
 			user_id: z.string().describe('The viewer'),
-			interaction_type: z.enum(['workflow_run', 'data_table_write', 'agent_message']),
+			interaction_type: z.enum(['app_opened', 'workflow_run', 'data_table_write', 'agent_message']),
 			is_preview: z.boolean(),
 		}),
 	},
