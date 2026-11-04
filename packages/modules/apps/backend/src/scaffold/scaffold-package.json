@@ -13,7 +13,7 @@
 	"dependencies": {
 		"@lucide/vue": "1.68.0",
 		"vue": "3.5.44",
-		"vue-router": "5.4.0"
+		"vue-router": "4.6.4"
 	},
 	"devDependencies": {
 		"@vitejs/plugin-vue": "6.0.10",
