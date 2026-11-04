@@ -1,6 +1,7 @@
 import type { InstanceAiQuestion } from '@n8n/api-types';
+import type { useTelemetry } from '@n8n/composables/useTelemetry';
 
-import { questionsInputs } from '../confirmationTelemetry';
+import { questionsInputs, trackInputCompleted } from '../confirmationTelemetry';
 
 describe('questionsInputs', () => {
 	const questions: InstanceAiQuestion[] = [
@@ -43,5 +44,28 @@ describe('questionsInputs', () => {
 		expect(skipped).toEqual([
 			expect.objectContaining({ label: 'channel', options: ['Default channel'] }),
 		]);
+	});
+});
+
+describe('trackInputCompleted', () => {
+	it('normalizes the app blueprint telemetry type', () => {
+		const track = vi.fn();
+
+		trackInputCompleted(
+			{ track } as ReturnType<typeof useTelemetry>,
+			{
+				threadId: 'thread-1',
+				instanceId: 'instance-1',
+				actionSource: 'assistant_page',
+				type: 'app-blueprint',
+				runtime: 'instance-ai',
+			},
+			{ provided: [], skipped: [] },
+		);
+
+		expect(track).toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ type: 'app_blueprint' }),
+		);
 	});
 });

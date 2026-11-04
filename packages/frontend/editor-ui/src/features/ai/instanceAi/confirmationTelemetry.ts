@@ -174,6 +174,10 @@ export function questionsInputs(
 	return { provided, skipped, extra: { num_tasks: answers.length } };
 }
 
+function toTelemetryInputType(inputType: string): string {
+	return inputType === 'app-blueprint' ? 'app_blueprint' : inputType;
+}
+
 export function trackInputCompleted(
 	telemetry: ReturnType<typeof useTelemetry>,
 	context: {
@@ -191,7 +195,7 @@ export function trackInputCompleted(
 		input_thread_id: context.inputThreadId ?? '',
 		instance_id: context.instanceId,
 		action_source: context.actionSource,
-		type: context.type,
+		type: toTelemetryInputType(context.type),
 		runtime: context.runtime,
 		provided_inputs: inputs.provided,
 		skipped_inputs: inputs.skipped,
