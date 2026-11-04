@@ -104,6 +104,22 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 			expect(lintOptionalFields(code)).toEqual([]);
 		});
 
+		it('accepts notices and fixed collections', () => {
+			const code = createNodeCode(`
+				{ displayName: 'A helpful notice', name: 'notice', type: 'notice', default: '' },
+				{ displayName: 'Values', name: 'values', type: 'fixedCollection', default: {},
+					options: [{ displayName: 'Contact', name: 'contact', values: [${optionalFields}] }] },
+			`);
+
+			expect(lintOptionalFields(code)).toEqual([]);
+		});
+
+		it('does not inspect classes that are not nodes', () => {
+			const code = `class Helper { description = { properties: [${optionalFields}] }; }`;
+
+			expect(lintOptionalFields(code)).toEqual([]);
+		});
+
 		it('runs existing node review rules on the same fixture', () => {
 			const code = createNodeCode(`{
 				displayName: 'Resource',
