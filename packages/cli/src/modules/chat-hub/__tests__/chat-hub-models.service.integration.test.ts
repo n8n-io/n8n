@@ -61,6 +61,22 @@ describe('ChatHubModelsService', () => {
 		member = await createMember();
 	});
 
+	describe('transformAndFilterModels', () => {
+		it('should use model name when provided', () => {
+			const rawModels = [{ name: 'GPT-4o', value: 'gpt-4o' }];
+			const result = (chatHubModelsService as any).transformAndFilterModels(rawModels, 'openai');
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('GPT-4o');
+		});
+
+		it('should fall back to model id when name is empty string', () => {
+			const rawModels = [{ name: '', value: 'gpt-4o' }];
+			const result = (chatHubModelsService as any).transformAndFilterModels(rawModels, 'openai');
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('gpt-4o');
+		});
+	});
+
 	describe('getModels', () => {
 		describe('n8n workflow agents', () => {
 			it('should return empty models when user has no workflows', async () => {
