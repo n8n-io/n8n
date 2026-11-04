@@ -1,3 +1,11 @@
+## [2.47.2](https://github.com/n8n-io/n8n/compare/n8n@2.47.1...n8n@2.47.2) (2026-11-04)
+
+
+### Bug Fixes
+
+* Make npm install of n8n work on all platforms again ([#43034](https://github.com/n8n-io/n8n/issues/43034)) ([74e7f26](https://github.com/n8n-io/n8n/commit/74e7f26c9474545b8c793706738e7bd61f965013))
+
+
 ## [2.47.1](https://github.com/n8n-io/n8n/compare/n8n@2.47.0...n8n@2.47.1) (2026-11-04)
 
 
