@@ -1,10 +1,6 @@
 {
   "name": "@n8n/cli",
-<<<<<<< HEAD
   "version": "1.1.0",
-=======
-  "version": "0.26.0",
->>>>>>> d5e7db2bf57dbc06e65648cdbec7f5db6b91bedc
   "description": "Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "LicenseRef-n8n-sustainable-use",
   "bin": {
