@@ -799,13 +799,12 @@ describe('Microsoft Teams Trigger Node', () => {
 					own('a', '/me/chats', HOUR),
 					own('x', '/me/chats', HOUR),
 				]);
-				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, method: string, path: string) => {
-						if (method !== 'GET') throw forbidden(ctx);
-						const id = path.slice('/v1.0/subscriptions/'.length);
-						return { ...own(id, '/me/chats', HOUR), clientState: id === 'a' ? 'secret' : 'other' };
-					},
-				);
+				routeGraph({
+					'GET a': proven('a'),
+					'GET x': { ...own('x', '/me/chats', HOUR), clientState: 'other' },
+					'PATCH a': {},
+					'DELETE x': forbidden(ctx),
+				});
 
 				const result = await checkExists(ctx);
 
@@ -816,12 +815,7 @@ describe('Microsoft Teams Trigger Node', () => {
 					['DELETE', '/v1.0/subscriptions/x'],
 					['PATCH', '/v1.0/subscriptions/a'],
 				]);
-				// The mock refuses every write, so the renewal of the keeper warns as well.
-				expect(ctx.logger.warn).toHaveBeenCalledTimes(2);
-				expect(ctx.logger.warn).toHaveBeenCalledWith(
-					'Microsoft Teams Trigger: failed to renew subscription',
-					expect.objectContaining({ subscriptionId: 'a' }),
-				);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
 				expect(ctx.logger.warn).toHaveBeenCalledWith(
 					'Microsoft Teams Trigger: failed to remove subscription',
 					expect.objectContaining({ subscriptionId: 'x' }),

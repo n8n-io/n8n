@@ -106,18 +106,18 @@ export async function deleteSubscriptions(
 }
 
 /**
- * Renews every id once, in parallel, and returns the ids that Graph answered with 404. Pass only
- * ids whose secret is proven. Never throws: every other failure is warned, and that subscription
- * keeps its expiry until its own `reauthorizationRequired` renews it.
+ * Sends one PATCH per id, in parallel. Pass each id once. Returns the ids that Graph answered
+ * with 404. Pass only ids whose secret is proven. Never throws: every other failure is warned,
+ * and that subscription keeps its expiry until its own `reauthorizationRequired` renews it.
  */
 export async function renewSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	ids: Iterable<string>,
 ): Promise<Set<string>> {
-	// POST, PUT, DELETE and PATCH share 500 requests per 20 s for an app in one tenant, and 2000
-	// across tenants. ponytail: the calls are not paced. An activation renews after its creates, so
-	// a 429 here only warns. Renewals of other activations in the same 20 s can still use up the
-	// budget that their creates need. Pace the calls if that shows up.
+	// POST, PUT, DELETE and PATCH share 500 requests per 20 s for an app in one tenant, 2000 across
+	// tenants. ponytail: the calls are not paced. An activation renews after its first creates, so
+	// a 429 here only warns. The PATCHes can still use up the budget of a later create: a re-create
+	// after a 404, or another activation's creates in the same 20 s. Pace the calls if that shows up.
 	const gone = await Promise.all(
 		[...ids].map(async (id) => {
 			try {
@@ -308,9 +308,9 @@ export function markPendingReconcile(webhookData: IDataObject, pending: boolean)
  * per required resource stays, the uncovered resources are created with the stored secret, and
  * every other listed own subscription goes, except a stored one beside a keeper, which is
  * forgotten, and everything on a held resource. With `renewKeepers`, each keeper is renewed
- * after the creates, and a keeper that answers 404 is created again. Reads and writes
- * `subscriptionIds` itself, so the trust decision and the write share one source. Returns the
- * create errors, and whether the next lifecycle batch must reconcile again. Never throws.
+ * after the creates, and the resource of a keeper that answers 404 is created again. Reads and
+ * writes `subscriptionIds` itself, so the trust decision and the write share one source. Returns
+ * the create errors, and whether the next lifecycle batch must reconcile again. Never throws.
  */
 export async function reconcileSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
@@ -335,10 +335,11 @@ export async function reconcileSubscriptions(
 		 */
 		holdUnproven: boolean;
 		/**
-		 * Activation only: renews each keeper once, after the creates, so a renewal cannot use the
-		 * write budget that a create needs. GET by id first proves every live candidate, because a
-		 * renewal must not extend a subscription with another secret. A keeper that answers 404 is
-		 * created again with the stored secret.
+		 * Activation only: renews each keeper once, after the first creates, so the renewals cannot
+		 * make those creates answer 429. Skipped after a failed create: the activation throws. GET
+		 * by id first proves every live candidate, because a renewal must not extend a subscription
+		 * with another secret. The resource of a keeper that answers 404 is created again, after the
+		 * renewals.
 		 */
 		renewKeepers?: boolean;
 	},
@@ -456,7 +457,7 @@ export async function reconcileSubscriptions(
 		required.filter((resource) => !keepers.has(resource) && !held.has(resource)),
 		clientState,
 	);
-	if (renewKeepers) {
+	if (renewKeepers && errors.length === 0) {
 		// A keeper that answers 404 is gone, so it is not deleted or stored. Its resource is
 		// created again.
 		const missing = await renewSubscriptions.call(this, keepers.values());
