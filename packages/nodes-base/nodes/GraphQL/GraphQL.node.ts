@@ -557,6 +557,46 @@ export class GraphQL implements INodeType {
 				} else {
 					response = await this.helpers.request(requestOptions);
 				}
+				if (responseFormat !== 'string' && typeof response === 'string') {
+					try {
+						response = JSON.parse(response);
+					} catch (error) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Response body is not valid JSON. Change "Response Format" to "String"',
+							{ itemIndex },
+						);
+					}
+				}
+
+				// GraphQL reports failures with an `errors` array on an HTTP 200, so the check
+				// runs before the item is pushed. Pushing first left the item on the success
+				// output as well, and with "Continue (using error output)" both outputs then
+				// fired for the same input item.
+				let errorSource = response;
+				// parse error string messages
+				if (typeof errorSource === 'string' && errorSource.startsWith('{"errors":')) {
+					try {
+						const errorResponse = JSON.parse(errorSource) as IDataObject;
+						if (Array.isArray(errorResponse.errors)) {
+							errorSource = errorResponse;
+						}
+					} catch (e) {}
+				}
+				// throw from response object.errors[]
+				if (typeof errorSource === 'object' && errorSource.errors) {
+					let message = 'Unexpected error';
+					if (Array.isArray(errorSource.errors)) {
+						message = (errorSource.errors as IDataObject[])
+							.map((error) => error.message ?? error)
+							.join(', ');
+					} else if (typeof errorSource.errors === 'string') {
+						message = errorSource.errors;
+					}
+
+					throw new NodeApiError(this.getNode(), errorSource.errors as JsonObject, { message });
+				}
+
 				if (responseFormat === 'string') {
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 					returnItems.push({
@@ -565,46 +605,11 @@ export class GraphQL implements INodeType {
 						},
 					});
 				} else {
-					if (typeof response === 'string') {
-						try {
-							response = JSON.parse(response);
-						} catch (error) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Response body is not valid JSON. Change "Response Format" to "String"',
-								{ itemIndex },
-							);
-						}
-					}
-
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: itemIndex } },
 					);
 					returnItems.push(...executionData);
-				}
-
-				// parse error string messages
-				if (typeof response === 'string' && response.startsWith('{"errors":')) {
-					try {
-						const errorResponse = JSON.parse(response) as IDataObject;
-						if (Array.isArray(errorResponse.errors)) {
-							response = errorResponse;
-						}
-					} catch (e) {}
-				}
-				// throw from response object.errors[]
-				if (typeof response === 'object' && response.errors) {
-					let message = 'Unexpected error';
-					if (Array.isArray(response.errors)) {
-						message = (response.errors as IDataObject[])
-							.map((error) => error.message ?? error)
-							.join(', ');
-					} else if (typeof response.errors === 'string') {
-						message = response.errors;
-					}
-
-					throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
 				}
 			} catch (error) {
 				if (!this.continueOnFail()) {
