@@ -6,10 +6,7 @@ vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
 }));
 
-import type {
-	CredentialsGetManyRequestQuery,
-	CredentialsGetOneRequestQuery,
-} from '@n8n/api-types';
+import type { CredentialsGetManyRequestQuery, CredentialsGetOneRequestQuery } from '@n8n/api-types';
 import type { LicenseState } from '@n8n/backend-common';
 import type {
 	AuthenticatedRequest,
@@ -219,9 +216,7 @@ describe('CredentialsController', () => {
 		});
 
 		describe('with sharing licensed', () => {
-			type GetOneForUserResult = Awaited<
-				ReturnType<EnterpriseCredentialsService['getOneForUser']>
-			>;
+			type GetOneForUserResult = Awaited<ReturnType<EnterpriseCredentialsService['getOneForUser']>>;
 
 			beforeEach(() => {
 				licenseState.isSharingLicensed.mockReturnValue(true);
@@ -265,8 +260,7 @@ describe('CredentialsController', () => {
 			({ id, type: 'githubApi', data: { accessToken: '__n8n_BLANK_VALUE__' } }) as unknown;
 		const requestFor = () =>
 			mock<CredentialRequest.GetMany>({ user: req.user, listQueryOptions: {} });
-		const query = (includeData: boolean) =>
-			({ includeData }) as CredentialsGetManyRequestQuery;
+		const query = (includeData: boolean) => ({ includeData }) as CredentialsGetManyRequestQuery;
 
 		it('should emit one `credentials-list-data-read` for the credentials that carry data', async () => {
 			vi.spyOn(credentialsService, 'getMany').mockResolvedValue([
@@ -292,7 +286,10 @@ describe('CredentialsController', () => {
 
 			await credentialsController.getMany(requestFor(), res, query(true));
 
-			const [, payload] = emitSpy.mock.calls[0] as [string, { credentialIds: string[]; credentialCount: number }];
+			const [, payload] = emitSpy.mock.calls[0] as [
+				string,
+				{ credentialIds: string[]; credentialCount: number },
+			];
 			expect(payload.credentialIds).toHaveLength(100);
 			expect(payload.credentialCount).toBe(120);
 		});
