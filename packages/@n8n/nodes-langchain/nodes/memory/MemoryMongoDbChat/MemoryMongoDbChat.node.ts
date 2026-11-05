@@ -135,6 +135,10 @@ export class MemoryMongoDbChat implements INodeType {
 				minPoolSize: 0,
 				maxPoolSize: 1,
 				maxIdleTimeMS: 30000,
+				driverInfo: {
+					name: 'n8n_memory',
+					version: this.getNode().typeVersion.toString(),
+				},
 			});
 			await client.connect();
 
