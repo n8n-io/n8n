@@ -15,13 +15,21 @@ import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
 
+const decodeDocType = (docType: string) => {
+	try {
+		return decodeURI(docType);
+	} catch {
+		return docType;
+	}
+};
+
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ERPNext',
 		name: 'erpNext',
 		icon: 'file:erpnext.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Consume ERPNext API',
 		defaults: {
@@ -92,18 +100,57 @@ export class ERPNext implements INodeType {
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
+				if (this.getNode().typeVersion < 1.1) {
+					const { data } = await erpNextApiRequest.call(
+						this,
+						'GET',
+						`/api/resource/DocType/${docType}`,
+						{},
+					);
+
+					const docFields = data.fields.map(
+						({ label, fieldname }: { label: string; fieldname: string }) => ({
+							name: label,
+							value: fieldname,
+						}),
+					);
+
+					return processNames(docFields);
+				}
+
+				// https://github.com/frappe/frappe/blob/develop/frappe/desk/form/load.py
+				const response = await erpNextApiRequest.call(
 					this,
 					'GET',
-					`/api/resource/DocType/${docType}`,
+					'/api/method/frappe.desk.form.load.getdoctype',
 					{},
+					{ doctype: decodeDocType(docType) },
 				);
 
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				if (!response || typeof response !== 'object' || !Array.isArray(response.docs)) {
+					return [];
+				}
+
+				const docFields = response.docs.flatMap((doc: unknown) => {
+					if (!doc || typeof doc !== 'object' || !('fields' in doc) || !Array.isArray(doc.fields)) {
+						return [];
+					}
+
+					return doc.fields.flatMap((field: unknown) => {
+						if (
+							!field ||
+							typeof field !== 'object' ||
+							!('label' in field) ||
+							typeof field.label !== 'string' ||
+							!('fieldname' in field) ||
+							typeof field.fieldname !== 'string'
+						) {
+							return [];
+						}
+
+						return [{ name: field.label, value: field.fieldname }];
+					});
+				});
 
 				return processNames(docFields);
 			},
