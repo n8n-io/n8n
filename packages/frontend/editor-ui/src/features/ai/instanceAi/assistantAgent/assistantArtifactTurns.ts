@@ -11,7 +11,7 @@ import type { DeepReadonly } from 'vue';
 import { TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 
-import type { ArtifactSetupAnnouncement, ArtifactToolCall, ArtifactTurn } from '../artifactTurns';
+import type { ArtifactToolCall, ArtifactTurn } from '../artifactTurns';
 
 /** The chat panel exposes its messages read-only. */
 type ReadonlyChatMessages = ReadonlyArray<DeepReadonly<ChatMessage>>;
@@ -79,18 +79,13 @@ export function findArchivedAssistantWorkflowIds(messages: ReadonlyChatMessages)
 	return workflowIds;
 }
 
-/**
- * The latest workflow of the turn's `setup-items` host events. The events have
- * no time, so every in-flight build of a new workflow in the turn can match.
- */
-function findSetupAnnouncement(
-	message: DeepReadonly<ChatMessage>,
-): ArtifactSetupAnnouncement | undefined {
+/** The latest workflow of the turn's `setup-items` host events. */
+function findAnnouncedWorkflowId(message: DeepReadonly<ChatMessage>): string | undefined {
 	const events = message.hostEvents ?? [];
 	for (let i = events.length - 1; i >= 0; i--) {
 		if (events[i].name !== 'setup-items') continue;
 		const parsed = setupItemsPayloadSchema.safeParse(events[i].payload);
-		if (parsed.success) return { workflowId: parsed.data.workflowId };
+		if (parsed.success) return parsed.data.workflowId;
 	}
 	return undefined;
 }
@@ -109,13 +104,13 @@ export function toAssistantArtifactTurns(
 		if (message.role === 'user') {
 			return { id: message.id, role: 'user', isLive: false, toolCalls: [] };
 		}
-		const setupAnnouncement = findSetupAnnouncement(message);
+		const announcedWorkflowId = findAnnouncedWorkflowId(message);
 		return {
 			id: message.id,
 			role: 'assistant',
 			isLive: index === liveIndex,
 			toolCalls: (message.toolCalls ?? []).map(toArtifactToolCall),
-			...(setupAnnouncement ? { setupAnnouncement } : {}),
+			...(announcedWorkflowId ? { announcedWorkflowId } : {}),
 		};
 	});
 }

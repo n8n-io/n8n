@@ -111,9 +111,6 @@ describe('toArtifactTurns', () => {
 			),
 		]);
 
-		expect(turn.setupAnnouncement).toEqual({
-			workflowId: 'wf-1',
-			timestamp: '2026-11-01T00:00:01.000Z',
-		});
+		expect(turn.announcedWorkflowId).toBe('wf-1');
 	});
 });

@@ -1,12 +1,23 @@
 import { describe, test, expect } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import { agentTreeToArtifactTurns } from '../agentTreeArtifactTurns';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import * as utils from '../canvasPreview.utils';
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from '../canvasPreview.utils';
 
 // The fixtures are agent trees of the current runtime. The readers read the
 // flattened turns, so these tests also cover the flattening.
-const turns = agentTreeToArtifactTurns;
+const turns = (agentTree: InstanceAiAgentNode) =>
+	toArtifactTurns([
+		{
+			id: 'msg-1',
+			role: 'assistant',
+			createdAt: '',
+			content: '',
+			reasoning: '',
+			isStreaming: false,
+			agentTree,
+		},
+	]);
 const getLatestBuildResult = (node: InstanceAiAgentNode) => utils.getLatestBuildResult(turns(node));
 const getLatestDataTableResult = (node: InstanceAiAgentNode) =>
 	utils.getLatestDataTableResult(turns(node));
@@ -1012,7 +1023,6 @@ describe('isAgentEditingWorkflow', () => {
 			toolName: 'workflow_builder_build_workflow',
 			args: { filePath: 'workflow.ts' },
 			isLoading: true,
-			startedAt: '2026-09-15T08:00:00.000Z',
 		});
 		const node = makeAgentNode({
 			status: 'active',
@@ -1026,9 +1036,6 @@ describe('isAgentEditingWorkflow', () => {
 		});
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
 		expect(isAgentEditingWorkflow(node, 'wf-other')).toBe(false);
-		call.startedAt = '2026-09-15T08:01:00.000Z';
-		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
-		call.startedAt = '2026-09-15T08:00:00.000Z';
 		call.isLoading = false;
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
 	});

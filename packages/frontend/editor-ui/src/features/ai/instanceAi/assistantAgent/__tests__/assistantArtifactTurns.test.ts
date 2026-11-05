@@ -109,7 +109,7 @@ describe('toAssistantArtifactTurns', () => {
 			false,
 		);
 
-		expect(turn.setupAnnouncement).toEqual({ workflowId: 'wf-2' });
+		expect(turn.announcedWorkflowId).toBe('wf-2');
 	});
 
 	it('locks a workflow that the setup flow announced for a build in flight', () => {
