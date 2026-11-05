@@ -223,33 +223,22 @@ export class WorkflowFinderService {
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
-		const where = await this.findAllWhere(user, scopes);
+		// A user with these scopes globally reaches every workflow, so needs no roles.
+		const [projectRoles, workflowRoles] = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? [[], []]
+			: await Promise.all([
+					this.roleService.rolesWithScope('project', scopes),
+					this.roleService.rolesWithScope('workflow', scopes),
+				]);
 
-		// A workflow may appear via several share paths (project membership +
-		// direct share); dedupe so callers see one entity per id.
-		const seen = new Set<string>();
-		const workflows: WorkflowEntity[] = [];
-
-		for (const chunk of chunkIds(workflowIds)) {
-			const sharedWorkflows = await this.sharedWorkflowRepository.find({
-				where: { ...where, workflowId: In(chunk) },
-				relations: {
-					workflow: {
-						parentFolder: options.includeParentFolder,
-						tags: options.includeTags,
-						activeVersion: options.includeActiveVersion,
-					},
-				},
-			});
-
-			for (const { workflow } of sharedWorkflows) {
-				if (seen.has(workflow.id)) continue;
-				seen.add(workflow.id);
-				workflows.push(workflow);
-			}
-		}
-
-		return workflows;
+		// One read per workflow, with the access check in the same statement, rather than one
+		// read per share the workflow is reachable through.
+		return await this.workflowRepository.findAccessibleByIds(
+			user,
+			{ scopes, projectRoles, workflowRoles },
+			workflowIds,
+			options,
+		);
 	}
 
 	async findWorkflowIdsByFolder(
@@ -488,12 +477,9 @@ export class WorkflowFinderService {
 			meta: true,
 			versionId: true,
 			triggerCount: true,
-			// ListQuery select keys: `ownedBy` = share rows + project relation (nested);
-			// `shared` = share rows only without project relation.
-			...(includeProjects ? { ownedBy: true } : { shared: true }),
+			// Shares and tags are passed as collections below, not selected here.
 			...(includeActiveVersion && { activeVersion: true }),
 			...(includePinnedData && { pinData: true }),
-			...(includeTags && { tags: true }),
 			...(includeParentFolder && { parentFolder: true }),
 		};
 
@@ -511,6 +497,14 @@ export class WorkflowFinderService {
 				select,
 				sortBy: 'id:asc',
 				...(limit !== undefined && { skip: offset, take: limit }),
+			},
+			{
+				shared: includeProjects ? { project: true } : true,
+				tags: includeTags,
+				// The project filter joins `shared` on that project, and the list used to read
+				// shares through the same join, so a filtered list has always returned only the
+				// filtered project's share. Keep that.
+				sharedProjectId: projectId || undefined,
 			},
 		);
 
