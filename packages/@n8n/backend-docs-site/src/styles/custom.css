@@ -372,8 +372,8 @@ pre.mermaid .labelBkg {
 	color: var(--shiki-light);
 }
 
-/* A calendar icon before each top-level group label (Day 1, Week 1, Month 1). The SVG is a
-   mask, so the icon takes the text color in both themes. */
+/* An icon before each top-level group label: Day 1, Week 1, Month 1, How to. Each icon is
+   a mask, so it takes the text color in both themes. */
 .sidebar-content .top-level > li > details > summary .large {
 	display: inline-flex;
 	align-items: center;
@@ -386,8 +386,27 @@ pre.mermaid .labelBkg {
 	width: 0.875rem;
 	height: 0.875rem;
 	background-color: currentColor;
-	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='3' width='12' height='11' rx='2'/%3E%3Cpath d='M2 6.5h12M5.5 1.75v2.5M10.5 1.75v2.5'/%3E%3C/svg%3E")
-		center / contain no-repeat;
+	mask: var(--group-icon) center / contain no-repeat;
+}
+
+/* Day 1: a flag */
+.sidebar-content .top-level > li:nth-child(1) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 14.5V1.75M3.5 2.5h8.75l-2 3 2 3H3.5'/%3E%3C/svg%3E");
+}
+
+/* Week 1: a map */
+.sidebar-content .top-level > li:nth-child(2) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.75 4 5.75 2.25l4.5 1.75 4-1.75V12l-4 1.75-4.5-1.75-4 1.75zM5.75 2.25V12M10.25 4v9.75'/%3E%3C/svg%3E");
+}
+
+/* Month 1: layers */
+.sidebar-content .top-level > li:nth-child(3) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.75 14.25 5 8 8.25 1.75 5zM1.75 8 8 11.25 14.25 8M1.75 11 8 14.25 14.25 11'/%3E%3C/svg%3E");
+}
+
+/* How to: a wrench */
+.sidebar-content .top-level > li:nth-child(4) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.75 1.75a3.5 3.5 0 0 0-3.4 4.4l-5.1 5.1a1.6 1.6 0 0 0 2.25 2.25l5.1-5.1a3.5 3.5 0 0 0 4.4-4.4l-2.05 2.05-1.85-.4-.4-1.85z'/%3E%3C/svg%3E");
 }
 
 /* Top alignment, as on docs.n8n.io: the sidebar card starts 24px below the header. The

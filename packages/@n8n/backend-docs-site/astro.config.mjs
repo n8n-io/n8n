@@ -83,7 +83,7 @@ export default defineConfig({
 					label: 'Week 1',
 					items: pages(TIER_TWO).filter((item) => !DAY_ONE.includes(item.slug)),
 				},
-				{ label: 'Month 1', items: subsystemGroups() },
+				{ label: 'Month 1', collapsed: true, items: subsystemGroups() },
 				{ label: 'How to', items: pages(['run-queue-mode-locally', 'build-a-backend-module', 'write-a-database-migration', 'roll-out-a-change'], 'how-to/') },
 			],
 		}),
