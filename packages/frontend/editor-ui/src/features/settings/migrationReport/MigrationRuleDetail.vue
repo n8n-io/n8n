@@ -682,7 +682,8 @@ async function archiveWorkflows(workflows: AffectedWorkflow[]) {
 	state.value = {
 		...state.value,
 		affectedWorkflows: state.value.affectedWorkflows.map((workflow) =>
-			archivedIds.has(workflow.id) ? { ...workflow, isArchived: true } : workflow,
+			// Archiving also unpublishes the workflow, as the server does.
+			archivedIds.has(workflow.id) ? { ...workflow, isArchived: true, active: false } : workflow,
 		),
 	};
 

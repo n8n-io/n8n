@@ -973,6 +973,27 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.queryByTestId('selected-items-info')).not.toBeInTheDocument();
 			});
 
+			it('should show an archived workflow as not published', async () => {
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+				expect(
+					getRow('Test Workflow 1').getByTestId('migration-workflow-published'),
+				).toBeInTheDocument();
+
+				await userEvent.click(getRowCheckbox('Test Workflow 1'));
+				await userEvent.click(screen.getByTestId('migration-bulk-action-wontFixAndArchive'));
+				await findArchiveDialog();
+				await confirmArchiveDialog();
+				await waitFor(() => expect(screen.queryByText('Test Workflow 1')).not.toBeInTheDocument());
+
+				const filters = await openFilters();
+				await userEvent.click(within(filters).getByTestId('migration-rule-filter-show-archived'));
+
+				expect(
+					getRow('Test Workflow 1').queryByTestId('migration-workflow-published'),
+				).not.toBeInTheDocument();
+			});
+
 			it("should keep won't fix and report the count when some archives fail", async () => {
 				workflowsStore.archiveWorkflow
 					.mockResolvedValueOnce(undefined)
