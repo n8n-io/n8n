@@ -74,7 +74,20 @@ jobs:
           subject-path: './package.json'
           sbom-path: 'sbom-source.cdx.json'
 
-      - name: Attach SBOM, VEX, and license manifest to release
+      # The credential metadata of a release is the baseline that
+      # packages/nodes-base/scripts/check-released-scopes.mjs compares a PR
+      # against, to catch an OAuth scope being removed from under credentials
+      # that already hold a token for it. Attaching it here keeps that baseline
+      # on the GitHub release rather than on a package registry. Both files are
+      # named credentials.json, so they are renamed before upload.
+      - name: Stage credential metadata for release
+        run: |
+          cp packages/nodes-base/dist/types/credentials.json \
+            credentials-n8n-nodes-base.json
+          cp packages/@n8n/nodes-langchain/dist/types/credentials.json \
+            credentials-n8n-nodes-langchain.json
+
+      - name: Attach SBOM, VEX, license manifest, and credential metadata to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG_REF: ${{ inputs.release_tag_ref }}
@@ -83,6 +96,8 @@ jobs:
             sbom-source.cdx.json \
             security/vex.openvex.json \
             packages/cli/THIRD_PARTY_LICENSES.md \
+            credentials-n8n-nodes-base.json \
+            credentials-n8n-nodes-langchain.json \
             --clobber
 
           COMPONENT_COUNT=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
@@ -92,6 +107,7 @@ jobs:
           echo "  - SBOM: all components carry a resolved SPDX license (gated before attest)"
           echo "  - VEX: $VEX_STATEMENTS CVE statements"
           echo "  - THIRD_PARTY_LICENSES.md: rendered from SBOM (same artefact served by /third-party-licenses endpoint)"
+          echo "  - credential metadata: OAuth scope baseline for check-released-scopes.mjs"
 
       - name: Notify Slack on failure
         if: failure()
