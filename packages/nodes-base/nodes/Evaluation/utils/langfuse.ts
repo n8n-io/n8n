@@ -19,6 +19,10 @@ export const LANGFUSE_RESERVED_ROW_KEYS = [
 	'_langfuse',
 ];
 
+const UNSAFE_ROW_KEYS = ['__proto__', 'constructor', 'prototype'];
+
+const MAX_SCAN_PAGES = 500;
+
 export interface LangfusePageMeta {
 	page: number;
 	limit: number;
@@ -57,7 +61,28 @@ export interface LangfuseTriggerOptions {
 	includeMetadata?: boolean;
 }
 
+export interface LangfuseRowOptions {
+	flattenInput: boolean;
+	expectedOutputField: string;
+	includeMetadata: boolean;
+}
+
+export interface LangfuseRowState {
+	position?: number;
+	fetchedAt?: string;
+	datasetId?: string;
+	datasetName?: string;
+}
+
 type LangfuseContext = IExecuteFunctions | ILoadOptionsFunctions;
+
+function scanLimitError(context: LangfuseContext) {
+	return new NodeOperationError(
+		context.getNode(),
+		`Langfuse dataset scan stopped after ${MAX_SCAN_PAGES} pages before reaching the end of the dataset`,
+		{ description: 'Pin a more recent dataset version or archive fewer items in the dataset' },
+	);
+}
 
 export async function langfuseApiRequest(
 	this: LangfuseContext,
@@ -127,6 +152,8 @@ export async function getAllLangfuseDatasetItems(
 	let page = 1;
 
 	while (items.length < params.maxItems) {
+		if (page > MAX_SCAN_PAGES) throw scanLimitError(this);
+
 		const response = await getLangfuseDatasetItemsPage.call(this, {
 			datasetName: params.datasetName,
 			version: params.version,
@@ -145,6 +172,58 @@ export async function getAllLangfuseDatasetItems(
 	}
 
 	return items.slice(0, params.maxItems);
+}
+
+export async function findLangfuseActiveItem(
+	this: LangfuseContext,
+	params: { datasetName: string; version?: string; start: number },
+) {
+	const { datasetName, version } = params;
+
+	const probe = await getLangfuseDatasetItemsPage.call(this, {
+		datasetName,
+		version,
+		page: params.start + 1,
+		limit: 1,
+	});
+
+	if (!probe.data?.length) return null;
+
+	const totalItems = probe.meta?.totalItems;
+
+	if (probe.data[0].status !== 'ARCHIVED') {
+		return { item: probe.data[0], position: params.start, totalItems };
+	}
+
+	let offset = params.start + 1;
+
+	for (let scanned = 0; scanned < MAX_SCAN_PAGES; scanned++) {
+		const page = Math.floor(offset / LANGFUSE_PAGE_SIZE) + 1;
+		const response = await getLangfuseDatasetItemsPage.call(this, {
+			datasetName,
+			version,
+			page,
+			limit: LANGFUSE_PAGE_SIZE,
+		});
+
+		if (!response.data?.length) return null;
+
+		const pageStart = (page - 1) * LANGFUSE_PAGE_SIZE;
+
+		for (let i = offset - pageStart; i < response.data.length; i++) {
+			if (response.data[i].status !== 'ARCHIVED') {
+				return { item: response.data[i], position: pageStart + i, totalItems };
+			}
+		}
+
+		offset = page * LANGFUSE_PAGE_SIZE;
+		if (typeof totalItems === 'number' && offset >= totalItems) return null;
+		if (typeof response.meta?.totalPages === 'number' && page >= response.meta.totalPages) {
+			return null;
+		}
+	}
+
+	throw scanLimitError(this);
 }
 
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2}))?$/;
@@ -177,21 +256,52 @@ export function parseLangfuseDatasetVersion(node: INode, value: unknown): string
 	return date.toISOString();
 }
 
+export function parseLangfuseOptions(
+	node: INode,
+	options: LangfuseTriggerOptions,
+): LangfuseRowOptions {
+	const rawField = options.expectedOutputField ?? 'expectedOutput';
+	const expectedOutputField = typeof rawField === 'string' ? rawField.trim() : '';
+
+	if (
+		expectedOutputField === '' ||
+		LANGFUSE_RESERVED_ROW_KEYS.includes(expectedOutputField) ||
+		UNSAFE_ROW_KEYS.includes(expectedOutputField)
+	) {
+		throw new NodeOperationError(
+			node,
+			`Invalid expected output field "${typeof rawField === 'string' ? rawField : ''}"`,
+			{
+				description: `Use a non-empty name other than ${LANGFUSE_RESERVED_ROW_KEYS.join(', ')}`,
+			},
+		);
+	}
+
+	return {
+		flattenInput: options.flattenInput ?? true,
+		includeMetadata: options.includeMetadata ?? true,
+		expectedOutputField,
+	};
+}
+
 export function buildLangfuseRow(params: {
 	item: LangfuseDatasetItem;
-	dataset: LangfuseDataset;
+	dataset: Pick<LangfuseDataset, 'id' | 'name'>;
 	rowNumber: number;
 	datasetVersion: string | null;
 	fetchedAt: string;
-	options: LangfuseTriggerOptions;
+	options: LangfuseRowOptions;
+	position?: number;
 }): IDataObject {
-	const { item, dataset, rowNumber, datasetVersion, fetchedAt, options } = params;
+	const { item, dataset, rowNumber, datasetVersion, fetchedAt, options, position } = params;
 
-	const flattenInput = options.flattenInput ?? true;
-	const includeMetadata = options.includeMetadata ?? true;
-	const expectedOutputField = options.expectedOutputField || 'expectedOutput';
+	const { flattenInput, includeMetadata, expectedOutputField } = options;
 
-	const reserved = new Set([...LANGFUSE_RESERVED_ROW_KEYS, expectedOutputField]);
+	const reserved = new Set([
+		...LANGFUSE_RESERVED_ROW_KEYS,
+		...UNSAFE_ROW_KEYS,
+		expectedOutputField,
+	]);
 
 	const row: IDataObject = {};
 
@@ -216,6 +326,7 @@ export function buildLangfuseRow(params: {
 		datasetVersion,
 		fetchedAt,
 		expectedOutput: item.expectedOutput ?? null,
+		...(position === undefined ? {} : { position }),
 	} as IDataObject;
 
 	return row;
