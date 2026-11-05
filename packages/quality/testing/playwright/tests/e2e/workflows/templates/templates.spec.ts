@@ -4,6 +4,7 @@ import type { TestRequirements } from '../../../../Types';
 import allTemplatesSearchResponse from '../../../../workflows/all_templates_search_response.json';
 import onboardingWorkflow from '../../../../workflows/Onboarding_workflow.json';
 import salesTemplatesSearchResponse from '../../../../workflows/sales_templates_search_response.json';
+import templateWithoutCredentials from '../../../../workflows/Test_Template_2.json';
 import workflowTemplate from '../../../../workflows/Workflow_template_write_http_query.json';
 
 const TEMPLATE_HOST = {
@@ -16,6 +17,9 @@ const URLS = {
 } as const;
 
 const TEMPLATE_ID = '1';
+// Its nodes require credentials, but the template carries none (stripped on purpose).
+const TEMPLATE_WITHOUT_CREDENTIALS_ID = '1344';
+const TEMPLATE_WITHOUT_CREDENTIALS_NODES = ['IMAP Email', 'Nextcloud'];
 const TEST_CATEGORY = 'sales';
 const SALES_CATEGORY_ID = 3;
 
@@ -99,6 +103,10 @@ function createCustomTemplateHostRequirements(hostname: string): TestRequirement
 			getTemplatePreview: {
 				url: `https://${hostname}/api/templates/workflows/${TEMPLATE_ID}`,
 				response: workflowTemplate,
+			},
+			getTemplateWithoutCredentialsPreview: {
+				url: `https://${hostname}/api/templates/workflows/${TEMPLATE_WITHOUT_CREDENTIALS_ID}`,
+				response: templateWithoutCredentials,
 			},
 		},
 	};
@@ -245,6 +253,15 @@ test.describe(
 				await n8n.navigate.toTemplate(TEMPLATE_ID);
 				await expect(n8n.templates.getDescription()).toBeVisible();
 				await expect(n8n.templates.getDescriptionImages()).toHaveCount(1);
+			});
+
+			test('does not show node issue indicators on the template preview', async ({ n8n }) => {
+				await n8n.navigate.toTemplate(TEMPLATE_WITHOUT_CREDENTIALS_ID);
+
+				for (const nodeName of TEMPLATE_WITHOUT_CREDENTIALS_NODES) {
+					await expect(n8n.canvas.nodeByName(nodeName)).toBeVisible();
+					await expect(n8n.canvas.nodeIssuesBadge(nodeName)).toBeHidden();
+				}
 			});
 
 			test('renders search elements correctly', async ({ n8n }) => {
