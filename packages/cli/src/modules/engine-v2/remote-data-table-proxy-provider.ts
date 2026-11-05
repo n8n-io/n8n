@@ -1,43 +1,32 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import type {
-	AddDataTableColumnOptions,
-	CreateDataTableOptions,
-	DataTable,
-	DataTableColumn,
 	DataTableColumnJsType,
 	DataTableFilter,
-	DataTableInsertRowsBulkResult,
 	DataTableInsertRowsResult,
 	DataTableInsertRowsReturnType,
 	DataTableProxyProvider,
 	DataTableRow,
 	DataTableRowReturn,
-	DataTableRowReturnWithState,
 	DataTableRows,
-	DataTableRowsReturn,
-	DeleteDataTableRowsOptions,
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 	INode,
 	ListDataTableOptions,
 	ListDataTableRowsOptions,
-	MoveDataTableColumnOptions,
-	UpdateDataTableOptions,
-	UpdateDataTableRowOptions,
-	UpsertDataTableRowOptions,
 	Workflow,
 } from 'n8n-workflow';
 import { NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
 import type { z } from 'zod';
 
-import type { EngineDataTablesClient } from './engine-data-tables-client';
-import { dataTableCallResultSchemas } from './engine-data-tables.contract';
-import type {
-	DataTableCall,
-	DataTableCallErrorResponse,
-	DataTableCallKind,
+import {
+	dataTableCallResultSchemas,
+	isDataTableCallErrorResponse,
+	isDataTableCallResponse,
 } from './engine-data-tables.contract';
+import type { DataTableCall, DataTableCallErrorResponse } from './engine-data-tables.contract';
+import { DATA_TABLES_CALL_PATH, DATA_TABLES_CALL_REFUSED_STATUS } from './engine-v2.constants';
 
 type WireRow = Extract<DataTableCall, { kind: 'insertRows' }>['rows'][number];
 type WireFilter = Extract<DataTableCall, { kind: 'deleteRows' }>['options']['filter'];
@@ -72,24 +61,6 @@ function toWireListOptions(options: ListDataTableOptions): WireListOptions {
 	return { ...rest, filter: wireFilter };
 }
 
-/** Sends one call for the node that owns the proxy, and returns the raw `data`. */
-type SendCall = (call: DataTableCall) => Promise<unknown>;
-
-/** Narrows `data` with the result schema of the call. A body that does not fit is a transport failure. */
-function parseResult<T>(
-	kind: DataTableCallKind,
-	schema: z.ZodType<T, z.ZodTypeDef, unknown>,
-	data: unknown,
-): T {
-	const parsed = schema.safeParse(data);
-	if (!parsed.success) {
-		throw new OperationalError(
-			`Control plane returned a malformed result for data table call "${kind}"`,
-		);
-	}
-	return parsed.data;
-}
-
 /** The v1 error the control plane told the data plane to raise. */
 function toV1Error(node: INode, error: DataTableCallErrorResponse['error']): Error {
 	switch (error.kind) {
@@ -100,209 +71,22 @@ function toV1Error(node: INode, error: DataTableCallErrorResponse['error']): Err
 	}
 }
 
-class RemoteDataTableAggregate implements IDataTableProjectAggregateService {
-	constructor(
-		private readonly projectId: string,
-		private readonly send: SendCall,
-	) {}
-
-	getProjectId(): string {
-		return this.projectId;
-	}
-
-	async createDataTable(options: CreateDataTableOptions): Promise<DataTable> {
-		return await this.call(
-			{ kind: 'createDataTable', options },
-			dataTableCallResultSchemas.createDataTable,
-		);
-	}
-
-	async getManyAndCount(
-		options: ListDataTableOptions,
-	): Promise<{ count: number; data: DataTable[] }> {
-		return await this.call(
-			{ kind: 'getManyAndCount', options: toWireListOptions(options) },
-			dataTableCallResultSchemas.getManyAndCount,
-		);
-	}
-
-	/** Not served by the control plane: no node calls it, and it would empty the whole project. */
-	async deleteDataTableAll(): Promise<boolean> {
-		throw new UnimplementedError(
-			'Deleting every data table of a project (deleteDataTableAll) is not supported on Engine v2',
-		);
-	}
-
-	private async call<T>(call: DataTableCall, schema: z.ZodType<T, z.ZodTypeDef, unknown>) {
-		return parseResult(call.kind, schema, await this.send(call));
-	}
-}
-
-class RemoteDataTable implements IDataTableProjectService {
-	constructor(
-		private readonly dataTableId: string,
-		private readonly send: SendCall,
-	) {}
-
-	async updateDataTable(options: UpdateDataTableOptions): Promise<boolean> {
-		return await this.call(
-			{ kind: 'updateDataTable', dataTableId: this.dataTableId, options },
-			dataTableCallResultSchemas.updateDataTable,
-		);
-	}
-
-	async deleteDataTable(): Promise<boolean> {
-		return await this.call(
-			{ kind: 'deleteDataTable', dataTableId: this.dataTableId },
-			dataTableCallResultSchemas.deleteDataTable,
-		);
-	}
-
-	async getColumns(): Promise<DataTableColumn[]> {
-		return await this.call(
-			{ kind: 'getColumns', dataTableId: this.dataTableId },
-			dataTableCallResultSchemas.getColumns,
-		);
-	}
-
-	async addColumn(options: AddDataTableColumnOptions): Promise<DataTableColumn> {
-		return await this.call(
-			{ kind: 'addColumn', dataTableId: this.dataTableId, options },
-			dataTableCallResultSchemas.addColumn,
-		);
-	}
-
-	async moveColumn(columnId: string, options: MoveDataTableColumnOptions): Promise<boolean> {
-		return await this.call(
-			{ kind: 'moveColumn', dataTableId: this.dataTableId, columnId, options },
-			dataTableCallResultSchemas.moveColumn,
-		);
-	}
-
-	async deleteColumn(columnId: string): Promise<boolean> {
-		return await this.call(
-			{ kind: 'deleteColumn', dataTableId: this.dataTableId, columnId },
-			dataTableCallResultSchemas.deleteColumn,
-		);
-	}
-
-	async getManyRowsAndCount(
-		options: Partial<ListDataTableRowsOptions>,
-	): Promise<{ count: number; data: DataTableRowsReturn }> {
-		const { filter, ...rest } = options;
-		return await this.call(
-			{
-				kind: 'getManyRowsAndCount',
-				dataTableId: this.dataTableId,
-				options: { ...rest, filter: filter && toWireFilter(filter) },
-			},
-			dataTableCallResultSchemas.getManyRowsAndCount,
-		);
-	}
-
-	async insertRows(rows: DataTableRows, returnType: 'all'): Promise<DataTableRowReturn[]>;
-	async insertRows(
-		rows: DataTableRows,
-		returnType: 'id',
-	): Promise<Pick<DataTableRowReturn, 'id'>[]>;
-	async insertRows(
-		rows: DataTableRows,
-		returnType: 'count',
-	): Promise<DataTableInsertRowsBulkResult>;
-	async insertRows<T extends DataTableInsertRowsReturnType>(
-		rows: DataTableRows,
-		returnType: T,
-	): Promise<DataTableInsertRowsResult<T>>;
-	async insertRows(
-		rows: DataTableRows,
-		returnType: DataTableInsertRowsReturnType,
-	): Promise<DataTableInsertRowsResult> {
-		return await this.call(
-			{
-				kind: 'insertRows',
-				dataTableId: this.dataTableId,
-				rows: rows.map(toWireRow),
-				returnType,
-			},
-			dataTableCallResultSchemas.insertRows,
-		);
-	}
-
-	async updateRows(
-		options: UpdateDataTableRowOptions,
-	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]> {
-		return await this.call(
-			{
-				kind: 'updateRows',
-				dataTableId: this.dataTableId,
-				options: {
-					filter: toWireFilter(options.filter),
-					data: toWireRow(options.data),
-					dryRun: options.dryRun,
-				},
-			},
-			dataTableCallResultSchemas.updateRows,
-		);
-	}
-
-	async upsertRow(
-		options: UpsertDataTableRowOptions,
-	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]> {
-		return await this.call(
-			{
-				kind: 'upsertRow',
-				dataTableId: this.dataTableId,
-				options: {
-					filter: toWireFilter(options.filter),
-					data: toWireRow(options.data),
-					dryRun: options.dryRun,
-				},
-			},
-			dataTableCallResultSchemas.upsertRow,
-		);
-	}
-
-	async deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]> {
-		const rows = await this.call(
-			{
-				kind: 'deleteRows',
-				dataTableId: this.dataTableId,
-				options: { filter: toWireFilter(options.filter), dryRun: options.dryRun },
-			},
-			dataTableCallResultSchemas.deleteRows,
-		);
-		// A dry run answers rows with state. The proxy type says plain rows, and
-		// the v1 proxy returns the same rows under that type, so match it.
-		return rows as DataTableRowReturn[];
-	}
-
-	async clearRows(): Promise<{ deletedCount: number }> {
-		return await this.call(
-			{ kind: 'clearRows', dataTableId: this.dataTableId },
-			dataTableCallResultSchemas.clearRows,
-		);
-	}
-
-	private async call<T>(call: DataTableCall, schema: z.ZodType<T, z.ZodTypeDef, unknown>) {
-		return parseResult(call.kind, schema, await this.send(call));
-	}
-}
-
 /**
  * The `DataTableProxyProvider` that the engine v2 data plane gives to v1 nodes.
  *
- * The data plane has no control plane database. Every operation goes to the
- * control plane over HTTP, which resolves the project from the workflow and
- * checks the table on each call. A refusal comes back as the v1 error the
- * node expects, so a missing table or a rejected row reads the same on both
- * engines.
+ * The data plane has no control plane database. Every operation of a proxy is
+ * one POST to the control plane, over HTTP even in-process, which resolves the
+ * project from the workflow and checks the table on each call. A refusal comes
+ * back as the v1 error the node expects, so a missing table or a rejected row
+ * reads the same on both engines.
  *
  * One instance per execution: the constructor context names the execution the
  * requests are for.
  */
 export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	constructor(
-		private readonly client: EngineDataTablesClient,
+		/** A client the transport scoped to `data-tables:use`. */
+		private readonly http: HttpRequestClient,
 		private readonly context: AdditionalDataContext,
 		// Every request of this execution uses this one signal. The engine has no
 		// per-step cancellation signal yet. TODO(CAT-4526): pass the step signal.
@@ -320,13 +104,29 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 		node: INode,
 		_projectId?: string,
 	): Promise<IDataTableProjectAggregateService> {
-		const send = this.senderFor(node);
-		const projectId = parseResult(
-			'getProjectId',
-			dataTableCallResultSchemas.getProjectId,
-			await send({ kind: 'getProjectId' }),
-		);
-		return new RemoteDataTableAggregate(projectId, send);
+		const schemas = dataTableCallResultSchemas;
+		const projectId = await this.call(node, { kind: 'getProjectId' }, schemas.getProjectId);
+
+		return {
+			getProjectId: () => projectId,
+
+			createDataTable: async (options) =>
+				await this.call(node, { kind: 'createDataTable', options }, schemas.createDataTable),
+
+			getManyAndCount: async (options) =>
+				await this.call(
+					node,
+					{ kind: 'getManyAndCount', options: toWireListOptions(options) },
+					schemas.getManyAndCount,
+				),
+
+			/** Not served by the control plane: no node calls it, and it would empty the whole project. */
+			deleteDataTableAll: async () => {
+				throw new UnimplementedError(
+					'Deleting every data table of a project (deleteDataTableAll) is not supported on Engine v2',
+				);
+			},
+		};
 	}
 
 	/**
@@ -340,26 +140,175 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 		dataTableId: string,
 		_projectId?: string,
 	): Promise<IDataTableProjectService> {
-		return new RemoteDataTable(dataTableId, this.senderFor(node));
+		const schemas = dataTableCallResultSchemas;
+
+		return {
+			updateDataTable: async (options) =>
+				await this.call(
+					node,
+					{ kind: 'updateDataTable', dataTableId, options },
+					schemas.updateDataTable,
+				),
+
+			deleteDataTable: async () =>
+				await this.call(node, { kind: 'deleteDataTable', dataTableId }, schemas.deleteDataTable),
+
+			getColumns: async () =>
+				await this.call(node, { kind: 'getColumns', dataTableId }, schemas.getColumns),
+
+			addColumn: async (options) =>
+				await this.call(node, { kind: 'addColumn', dataTableId, options }, schemas.addColumn),
+
+			moveColumn: async (columnId, options) =>
+				await this.call(
+					node,
+					{ kind: 'moveColumn', dataTableId, columnId, options },
+					schemas.moveColumn,
+				),
+
+			deleteColumn: async (columnId) =>
+				await this.call(
+					node,
+					{ kind: 'deleteColumn', dataTableId, columnId },
+					schemas.deleteColumn,
+				),
+
+			getManyRowsAndCount: async (options: Partial<ListDataTableRowsOptions>) => {
+				const { filter, ...rest } = options;
+				return await this.call(
+					node,
+					{
+						kind: 'getManyRowsAndCount',
+						dataTableId,
+						options: { ...rest, filter: filter && toWireFilter(filter) },
+					},
+					schemas.getManyRowsAndCount,
+				);
+			},
+
+			insertRows: async <T extends DataTableInsertRowsReturnType>(
+				rows: DataTableRows,
+				returnType: T,
+			) => {
+				const result = await this.call(
+					node,
+					{ kind: 'insertRows', dataTableId, rows: rows.map(toWireRow), returnType },
+					schemas.insertRows,
+				);
+				// The schema admits every return type; the control plane answers the one asked for.
+				return result as DataTableInsertRowsResult<T>;
+			},
+
+			updateRows: async (options) =>
+				await this.call(
+					node,
+					{
+						kind: 'updateRows',
+						dataTableId,
+						options: {
+							filter: toWireFilter(options.filter),
+							data: toWireRow(options.data),
+							dryRun: options.dryRun,
+						},
+					},
+					schemas.updateRows,
+				),
+
+			upsertRow: async (options) =>
+				await this.call(
+					node,
+					{
+						kind: 'upsertRow',
+						dataTableId,
+						options: {
+							filter: toWireFilter(options.filter),
+							data: toWireRow(options.data),
+							dryRun: options.dryRun,
+						},
+					},
+					schemas.upsertRow,
+				),
+
+			deleteRows: async (options) => {
+				const rows = await this.call(
+					node,
+					{
+						kind: 'deleteRows',
+						dataTableId,
+						options: { filter: toWireFilter(options.filter), dryRun: options.dryRun },
+					},
+					schemas.deleteRows,
+				);
+				// A dry run answers rows with state. The proxy type says plain rows, and
+				// the v1 proxy returns the same rows under that type, so match it.
+				return rows as DataTableRowReturn[];
+			},
+
+			clearRows: async () =>
+				await this.call(node, { kind: 'clearRows', dataTableId }, schemas.clearRows),
+		};
 	}
 
-	private senderFor(node: INode): SendCall {
-		return async (call) => {
-			const outcome = await this.client.call(
-				{
-					execution: {
-						executionId: this.context.executionId,
-						workflowId: this.context.workflowId,
-					},
-					consumer: { nodeType: node.type },
-					call,
+	/**
+	 * Sends one call for `node` and returns its result, parsed with `schema`.
+	 * A refusal, on the refusal status only, becomes the v1 error it names.
+	 * Any other non-2xx status, a body of neither shape, and a result the
+	 * schema rejects are transport failures. Those errors omit the response
+	 * body, because it could contain row data that would then end up in node
+	 * output and logs.
+	 */
+	private async call<T>(
+		node: INode,
+		call: DataTableCall,
+		schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+	): Promise<T> {
+		const response = await this.http.request<unknown>({
+			url: DATA_TABLES_CALL_PATH,
+			method: 'POST',
+			body: {
+				execution: {
+					executionId: this.context.executionId,
+					workflowId: this.context.workflowId,
 				},
-				this.signal,
+				consumer: { nodeType: node.type },
+				call,
+			},
+			json: true,
+			returnFullResponse: true,
+			// Inspect the status here rather than catching a generic request error.
+			ignoreHttpStatusErrors: true,
+			// A redirect would forward the token to whatever host it names.
+			disableFollowRedirect: true,
+			// The step owns the deadline. A client timeout would fire first.
+			abortSignal: this.signal,
+		});
+
+		if (
+			response.statusCode === DATA_TABLES_CALL_REFUSED_STATUS &&
+			isDataTableCallErrorResponse(response.body)
+		) {
+			throw toV1Error(node, response.body.error);
+		}
+
+		// 3xx too: redirects are not followed, so one is a misconfiguration.
+		if (response.statusCode >= 300) {
+			throw new OperationalError(
+				`Control plane refused data table call "${call.kind}" with ${response.statusCode}`,
 			);
+		}
 
-			if ('error' in outcome) throw toV1Error(node, outcome.error);
+		if (!isDataTableCallResponse(response.body)) {
+			throw new OperationalError(
+				`Control plane returned a malformed response for data table call "${call.kind}"`,
+			);
+		}
 
-			return outcome.data;
-		};
+		const parsed = schema.safeParse(response.body.data);
+		if (!parsed.success) {
+			throw new OperationalError(
+				`Control plane returned a malformed result for data table call "${call.kind}"`,
+			);
+		}
+		return parsed.data;
 	}
 }

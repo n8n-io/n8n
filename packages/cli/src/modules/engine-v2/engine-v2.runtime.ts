@@ -1,3 +1,4 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -24,8 +25,8 @@ import { NodeTypes } from '@/node-types';
 
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneClient } from './engine-control-plane-client';
+import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
-import { EngineDataTablesClient } from './engine-data-tables-client';
 import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
@@ -53,13 +54,16 @@ export class EngineV2Runtime {
 	 */
 	private stopping?: AbortController;
 
+	/** Sends the data table operations of every step to the control plane. */
+	private readonly dataTablesHttp: HttpRequestClient;
+
 	constructor(
 		private readonly engineConfig: EngineConfig,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly controlPlaneClient: EngineControlPlaneClient,
 		private readonly credentialsClient: EngineCredentialsClient,
-		private readonly dataTablesClient: EngineDataTablesClient,
+		transport: EngineControlPlaneTransport,
 		private readonly subWorkflowClient: EngineSubWorkflowClient,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
@@ -67,6 +71,7 @@ export class EngineV2Runtime {
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
+		this.dataTablesHttp = transport.forScope('data-tables:use');
 	}
 
 	async init(responseSender: ExecutionResponseSender = noopExecutionResponseSender): Promise<void> {
@@ -159,7 +164,7 @@ export class EngineV2Runtime {
 			stopping.signal,
 		);
 		const dataTableProxyProvider = new RemoteDataTableProxyProvider(
-			this.dataTablesClient,
+			this.dataTablesHttp,
 			context,
 			stopping.signal,
 		);

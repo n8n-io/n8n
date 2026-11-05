@@ -1,3 +1,4 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
 import { mintResumeToken, type ExecutionResponseSender } from '@n8n/engine';
@@ -11,8 +12,8 @@ import type { NodeTypes } from '@/node-types';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneClient } from '../engine-control-plane-client';
+import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
-import type { EngineDataTablesClient } from '../engine-data-tables-client';
 import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
@@ -117,7 +118,8 @@ describe('EngineV2Runtime', () => {
 
 	let controlPlaneClient: EngineControlPlaneClient;
 	let credentialsClient: EngineCredentialsClient;
-	let dataTablesClient: EngineDataTablesClient;
+	let transport: EngineControlPlaneTransport;
+	let dataTablesHttp: HttpRequestClient;
 	let subWorkflowClient: EngineSubWorkflowClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
@@ -134,7 +136,7 @@ describe('EngineV2Runtime', () => {
 			mockLogger(),
 			controlPlaneClient,
 			credentialsClient,
-			dataTablesClient,
+			transport,
 			subWorkflowClient,
 			credentialsHelper,
 			credentialTypes,
@@ -170,7 +172,8 @@ describe('EngineV2Runtime', () => {
 		mocks.listen.error = undefined;
 		controlPlaneClient = mock<EngineControlPlaneClient>();
 		credentialsClient = mock<EngineCredentialsClient>();
-		dataTablesClient = mock<EngineDataTablesClient>();
+		dataTablesHttp = mock<HttpRequestClient>();
+		transport = mock<EngineControlPlaneTransport>({ forScope: vi.fn(() => dataTablesHttp) });
 		subWorkflowClient = mock<EngineSubWorkflowClient>();
 		additionalDataBuilder.build.mockImplementation(
 			(_context, helper, dataTableProxyProvider) =>
@@ -341,7 +344,11 @@ describe('EngineV2Runtime', () => {
 
 		it('binds the data table provider to the execution of the step', async () => {
 			await newRuntime().init(responseSender());
-			vi.mocked(dataTablesClient.call).mockResolvedValue({ data: [] });
+			vi.mocked(dataTablesHttp.request).mockResolvedValue({
+				statusCode: 200,
+				body: { data: [] },
+				headers: {},
+			});
 
 			const additionalData = await additionalDataFactory()(stepContext);
 			const table = await additionalData['data-table']!.dataTableProxyProvider.getDataTableProxy(
@@ -351,12 +358,15 @@ describe('EngineV2Runtime', () => {
 			);
 			await table.getColumns();
 
-			expect(dataTablesClient.call).toHaveBeenCalledExactlyOnceWith(
+			expect(transport.forScope).toHaveBeenCalledWith('data-tables:use');
+			expect(dataTablesHttp.request).toHaveBeenCalledExactlyOnceWith(
 				expect.objectContaining({
-					execution: { executionId: 'exec-1', workflowId: 'wf-1' },
-					consumer: { nodeType: 'n8n-nodes-base.dataTable' },
+					body: expect.objectContaining({
+						execution: { executionId: 'exec-1', workflowId: 'wf-1' },
+						consumer: { nodeType: 'n8n-nodes-base.dataTable' },
+					}),
+					abortSignal: expect.any(AbortSignal),
 				}),
-				expect.any(AbortSignal),
 			);
 		});
 

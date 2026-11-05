@@ -1,11 +1,11 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { UnimplementedError } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import type { INode, Workflow } from 'n8n-workflow';
 import { NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { EngineDataTablesClient } from '../engine-data-tables-client';
-import type { DataTableCall } from '../engine-data-tables.contract';
+import type { DataTableCall, DataTableCallRequest } from '../engine-data-tables.contract';
 import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
 
 const context: AdditionalDataContext = {
@@ -32,8 +32,6 @@ const when = '2026-10-27T10:00:00.000Z';
 /** A row as the control plane serialises it: every date an ISO string. */
 const wireRow = { id: 1, createdAt: when, updatedAt: when, name: 'Ada', joined: when };
 
-const column = { id: 'col-1', name: 'name', type: 'string', index: 0, dataTableId: 'dt-1' };
-
 const filter = {
 	type: 'and' as const,
 	filters: [{ columnName: 'joined', condition: 'gt' as const, value: new Date(when) }],
@@ -44,324 +42,94 @@ const wireFilter = {
 };
 
 describe('RemoteDataTableProxyProvider', () => {
-	let client: EngineDataTablesClient;
+	let http: HttpRequestClient;
 	let signal: AbortSignal;
 	let provider: RemoteDataTableProxyProvider;
 
-	const answerWith = (data: unknown) => {
-		vi.mocked(client.call).mockResolvedValue({ data });
+	const respondWith = (statusCode: number, body: unknown) => {
+		vi.mocked(http.request).mockResolvedValue({ statusCode, body, headers: {} });
 	};
+
+	const answerWith = (data: unknown) => respondWith(200, { data });
 
 	const refuseWith = (error: {
 		kind: 'node-operation' | 'user';
 		message: string;
 		description?: string;
-	}) => {
-		vi.mocked(client.call).mockResolvedValue({ error });
-	};
+	}) => respondWith(422, { error });
 
-	/** The call the client was asked to send, without the envelope. */
-	const sentCall = (nth = 0): DataTableCall => vi.mocked(client.call).mock.calls[nth][0].call;
+	/** The body of the nth request. */
+	const sentRequest = (nth = 0): DataTableCallRequest =>
+		vi.mocked(http.request).mock.calls[nth][0].body as DataTableCallRequest;
+
+	/** The call of the nth request, without the envelope. */
+	const sentCall = (nth = 0): DataTableCall => sentRequest(nth).call;
+
+	const table = async () => await provider.getDataTableProxy(workflow, node, 'dt-1');
 
 	beforeEach(() => {
-		client = mock<EngineDataTablesClient>();
+		http = mock<HttpRequestClient>();
 		signal = new AbortController().signal;
-		provider = new RemoteDataTableProxyProvider(client, context, signal);
+		provider = new RemoteDataTableProxyProvider(http, context, signal);
 	});
 
-	describe('aggregate proxy', () => {
-		it('resolves the project from the control plane once, so getProjectId is synchronous', async () => {
-			answerWith('project-1');
+	describe('transport', () => {
+		it('posts the call for the execution and node to the control plane with the step signal', async () => {
+			answerWith([]);
 
-			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
+			await (await table()).getColumns();
 
-			expect(aggregate.getProjectId()).toBe('project-1');
-			expect(client.call).toHaveBeenCalledExactlyOnceWith(
-				{
-					execution: { executionId: 'exec-1', workflowId: 'wf-1' },
-					consumer: { nodeType: 'n8n-nodes-base.dataTable' },
-					call: { kind: 'getProjectId' },
-				},
-				signal,
-			);
-		});
-
-		it('does not send the v1 project override, because the control plane decides', async () => {
-			answerWith('project-1');
-
-			await provider.getDataTableAggregateProxy(workflow, node, 'other-project');
-
-			expect(vi.mocked(client.call).mock.calls[0][0]).not.toHaveProperty('projectId');
-		});
-
-		it('lists tables with the given options and revives their timestamps', async () => {
-			answerWith('project-1');
-			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
-			answerWith({
-				count: 1,
-				data: [
-					{
-						id: 'dt-1',
-						name: 'people',
-						columns: [column],
-						createdAt: when,
-						updatedAt: when,
-						projectId: 'project-1',
+			expect(http.request).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					url: '/internal/data-tables/call',
+					method: 'POST',
+					body: {
+						execution: { executionId: 'exec-1', workflowId: 'wf-1' },
+						consumer: { nodeType: 'n8n-nodes-base.dataTable' },
+						call: { kind: 'getColumns', dataTableId: 'dt-1' },
 					},
-				],
-			});
-
-			const result = await aggregate.getManyAndCount({ filter: { name: 'people' }, take: 1 });
-
-			expect(sentCall(1)).toEqual({
-				kind: 'getManyAndCount',
-				options: { filter: { name: 'people' }, take: 1 },
-			});
-			expect(result.count).toBe(1);
-			expect(result.data[0]).toMatchObject({ id: 'dt-1', columns: [column] });
-			expect(result.data[0].createdAt).toEqual(new Date(when));
-		});
-
-		it('sends only the filter keys the control plane accepts, as v1 ignores the rest', async () => {
-			answerWith('project-1');
-			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
-			answerWith({ count: 0, data: [] });
-
-			await aggregate.getManyAndCount({
-				filter: { name: 'people', projectId: 'other-project', owner: 'nobody' },
-				take: 1,
-			});
-
-			expect(sentCall(1)).toEqual({
-				kind: 'getManyAndCount',
-				options: { filter: { name: 'people' }, take: 1 },
-			});
-		});
-
-		it('creates a table', async () => {
-			answerWith('project-1');
-			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
-			answerWith({
-				id: 'dt-1',
-				name: 'people',
-				columns: [],
-				createdAt: when,
-				updatedAt: when,
-				projectId: 'project-1',
-			});
-
-			const table = await aggregate.createDataTable({ name: 'people', columns: [] });
-
-			expect(sentCall(1)).toEqual({
-				kind: 'createDataTable',
-				options: { name: 'people', columns: [] },
-			});
-			expect(table.id).toBe('dt-1');
-		});
-
-		it('refuses to delete every table of the project', async () => {
-			answerWith('project-1');
-			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
-
-			await expect(aggregate.deleteDataTableAll()).rejects.toThrow(UnimplementedError);
-			expect(client.call).toHaveBeenCalledOnce();
-		});
-	});
-
-	describe('table proxy', () => {
-		it('acquires without a round trip, because every operation checks the table', async () => {
-			await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			expect(client.call).not.toHaveBeenCalled();
-		});
-
-		it('names the execution and the node on every call', async () => {
-			answerWith([column]);
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			await table.getColumns();
-
-			expect(client.call).toHaveBeenCalledExactlyOnceWith(
-				{
-					execution: { executionId: 'exec-1', workflowId: 'wf-1' },
-					consumer: { nodeType: 'n8n-nodes-base.dataTable' },
-					call: { kind: 'getColumns', dataTableId: 'dt-1' },
-				},
-				signal,
+					json: true,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
+					// So the action token reaches only the configured host.
+					disableFollowRedirect: true,
+					// So a stopped step stops waiting.
+					abortSignal: signal,
+				}),
 			);
-		});
-
-		it.each<
-			[
-				string,
-				(
-					table: Awaited<ReturnType<RemoteDataTableProxyProvider['getDataTableProxy']>>,
-				) => Promise<unknown>,
-				DataTableCall,
-				unknown,
-			]
-		>([
-			[
-				'updateDataTable',
-				async (t) => await t.updateDataTable({ name: 'renamed' }),
-				{ kind: 'updateDataTable', dataTableId: 'dt-1', options: { name: 'renamed' } },
-				true,
-			],
-			[
-				'deleteDataTable',
-				async (t) => await t.deleteDataTable(),
-				{ kind: 'deleteDataTable', dataTableId: 'dt-1' },
-				true,
-			],
-			[
-				'addColumn',
-				async (t) => await t.addColumn({ name: 'name', type: 'string' }),
-				{ kind: 'addColumn', dataTableId: 'dt-1', options: { name: 'name', type: 'string' } },
-				column,
-			],
-			[
-				'moveColumn',
-				async (t) => await t.moveColumn('col-1', { targetIndex: 2 }),
-				{ kind: 'moveColumn', dataTableId: 'dt-1', columnId: 'col-1', options: { targetIndex: 2 } },
-				true,
-			],
-			[
-				'deleteColumn',
-				async (t) => await t.deleteColumn('col-1'),
-				{ kind: 'deleteColumn', dataTableId: 'dt-1', columnId: 'col-1' },
-				true,
-			],
-			[
-				'clearRows',
-				async (t) => await t.clearRows(),
-				{ kind: 'clearRows', dataTableId: 'dt-1' },
-				{ deletedCount: 3 },
-			],
-		])('%s sends its call and returns the result', async (_label, run, call, data) => {
-			answerWith(data);
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			await expect(run(table)).resolves.toEqual(data);
-			expect(sentCall()).toEqual(call);
-		});
-
-		it('sends a date in a filter as its ISO string', async () => {
-			answerWith({ count: 0, data: [] });
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			await table.getManyRowsAndCount({ filter, sortBy: ['joined', 'DESC'], take: 10, skip: 0 });
-
-			expect(sentCall()).toEqual({
-				kind: 'getManyRowsAndCount',
-				dataTableId: 'dt-1',
-				options: { filter: wireFilter, sortBy: ['joined', 'DESC'], take: 10, skip: 0 },
-			});
-		});
-
-		it('sends a date in a row as its ISO string', async () => {
-			answerWith({ success: true, insertedRows: 1 });
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			await table.insertRows([{ name: 'Ada', joined: new Date(when) }], 'count');
-
-			expect(sentCall()).toEqual({
-				kind: 'insertRows',
-				dataTableId: 'dt-1',
-				rows: [{ name: 'Ada', joined: when }],
-				returnType: 'count',
-			});
-		});
-
-		it('revives the row timestamps and leaves a date cell as its ISO string', async () => {
-			answerWith({ count: 1, data: [wireRow] });
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			const { data } = await table.getManyRowsAndCount({});
-
-			expect(data[0].createdAt).toEqual(new Date(when));
-			expect(data[0].updatedAt).toEqual(new Date(when));
-			expect(data[0]).toMatchObject({ id: 1, name: 'Ada', joined: when });
 		});
 
 		it.each([
-			// The rows of `all` come back with their timestamps revived.
-			['all', [wireRow], [{ ...wireRow, createdAt: new Date(when), updatedAt: new Date(when) }]],
-			['id', [{ id: 1 }], [{ id: 1 }]],
-			['count', { success: true, insertedRows: 1 }, { success: true, insertedRows: 1 }],
-		] as const)('insertRows returns the %s result', async (returnType, data, expected) => {
-			answerWith(data);
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
+			[302, undefined],
+			[500, { message: 'secret row value' }],
+		])('throws on a %s, naming the call and the status but not the body', async (status, body) => {
+			respondWith(status, body);
 
-			const result = await table.insertRows([{ name: 'Ada' }], returnType);
+			const error = await (await table()).getColumns().catch((e: unknown) => e);
 
-			expect(result).toEqual(expected);
+			expect(error).toBeInstanceOf(OperationalError);
+			expect((error as Error).message).toBe(
+				`Control plane refused data table call "getColumns" with ${status}`,
+			);
 		});
 
-		it('sends update and upsert with their filter, data and dry run flag', async () => {
-			answerWith([]);
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
+		it('trusts an error-shaped body only on the refusal status', async () => {
+			respondWith(500, { error: { kind: 'user', message: 'not a refusal' } });
 
-			await table.updateRows({ filter, data: { joined: new Date(when) }, dryRun: true });
-			await table.upsertRow({ filter, data: { name: 'Ada' } });
+			const error = await (await table()).getColumns().catch((e: unknown) => e);
 
-			expect(sentCall(0)).toEqual({
-				kind: 'updateRows',
-				dataTableId: 'dt-1',
-				options: { filter: wireFilter, data: { joined: when }, dryRun: true },
-			});
-			expect(sentCall(1)).toEqual({
-				kind: 'upsertRow',
-				dataTableId: 'dt-1',
-				options: { filter: wireFilter, data: { name: 'Ada' }, dryRun: undefined },
-			});
+			expect(error).toBeInstanceOf(OperationalError);
 		});
 
-		it('returns the before and after rows of a dry run', async () => {
-			answerWith([
-				{ ...wireRow, dryRunState: 'before' },
-				{ id: null, createdAt: null, updatedAt: null, name: 'Ada', dryRunState: 'after' },
-			]);
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
+		it('reports a result the schema does not accept as a transport failure', async () => {
+			answerWith({ count: 'one', data: [] });
 
-			const rows = await table.upsertRow({ filter, data: { name: 'Ada' }, dryRun: true });
+			const error = await (await table()).getManyRowsAndCount({}).catch((e: unknown) => e);
 
-			expect(rows).toHaveLength(2);
-			expect(rows[1]).toMatchObject({ id: null, dryRunState: 'after' });
-		});
-
-		it('sends deleteRows with its filter and returns the deleted rows', async () => {
-			answerWith([wireRow]);
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			const rows = await table.deleteRows({ filter });
-
-			expect(sentCall()).toEqual({
-				kind: 'deleteRows',
-				dataTableId: 'dt-1',
-				options: { filter: wireFilter, dryRun: undefined },
-			});
-			expect(rows[0].id).toBe(1);
-		});
-
-		it('returns the before and after rows of a dry run delete', async () => {
-			answerWith([
-				{ ...wireRow, dryRunState: 'before' },
-				{
-					id: null,
-					createdAt: null,
-					updatedAt: null,
-					name: null,
-					joined: null,
-					dryRunState: 'after',
-				},
-			]);
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
-
-			const rows = await table.deleteRows({ filter, dryRun: true });
-
-			expect(sentCall()).toMatchObject({ kind: 'deleteRows', options: { dryRun: true } });
-			expect(rows).toHaveLength(2);
-			expect(rows[1]).toMatchObject({ id: null, dryRunState: 'after' });
+			expect(error).toBeInstanceOf(OperationalError);
+			expect((error as Error).message).toBe(
+				'Control plane returned a malformed result for data table call "getManyRowsAndCount"',
+			);
 		});
 	});
 
@@ -372,9 +140,8 @@ describe('RemoteDataTableProxyProvider', () => {
 				message: "Data table with ID 'dt-1' could not be found in this project",
 				description: 'Choose an existing data table in the node.',
 			});
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
 
-			const error = await table.getColumns().catch((e: unknown) => e);
+			const error = await (await table()).getColumns().catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(NodeOperationError);
 			expect((error as NodeOperationError).message).toBe(
@@ -388,24 +155,127 @@ describe('RemoteDataTableProxyProvider', () => {
 
 		it('raises a user error with the service message', async () => {
 			refuseWith({ kind: 'user', message: "unknown column name 'nope'" });
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
 
-			const error = await table.insertRows([{ nope: 1 }], 'all').catch((e: unknown) => e);
+			const error = await (await table()).insertRows([{ nope: 1 }], 'all').catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(UserError);
 			expect((error as UserError).message).toBe("unknown column name 'nope'");
 		});
+	});
 
-		it('reports a result the schema does not accept as a transport failure', async () => {
-			answerWith({ count: 'one', data: [] });
-			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
+	describe('aggregate proxy', () => {
+		it('asks the control plane for the project once and ignores the v1 override', async () => {
+			answerWith('project-1');
 
-			const error = await table.getManyRowsAndCount({}).catch((e: unknown) => e);
+			const aggregate = await provider.getDataTableAggregateProxy(workflow, node, 'other-project');
 
-			expect(error).toBeInstanceOf(OperationalError);
-			expect((error as Error).message).toBe(
-				'Control plane returned a malformed result for data table call "getManyRowsAndCount"',
-			);
+			expect(aggregate.getProjectId()).toBe('project-1');
+			expect(http.request).toHaveBeenCalledOnce();
+			expect(sentRequest()).toEqual({
+				execution: { executionId: 'exec-1', workflowId: 'wf-1' },
+				consumer: { nodeType: 'n8n-nodes-base.dataTable' },
+				call: { kind: 'getProjectId' },
+			});
 		});
+
+		it('lists tables with the filter keys v1 honours and revives their timestamps', async () => {
+			answerWith('project-1');
+			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
+			answerWith({
+				count: 1,
+				data: [
+					{
+						id: 'dt-1',
+						name: 'people',
+						columns: [],
+						createdAt: when,
+						updatedAt: when,
+						projectId: 'project-1',
+					},
+				],
+			});
+
+			const result = await aggregate.getManyAndCount({
+				filter: { name: 'people', projectId: 'other-project', owner: 'nobody' },
+				take: 1,
+			});
+
+			expect(sentCall(1)).toEqual({
+				kind: 'getManyAndCount',
+				options: { filter: { name: 'people' }, take: 1 },
+			});
+			expect(result.count).toBe(1);
+			expect(result.data[0].createdAt).toEqual(new Date(when));
+		});
+
+		it('refuses to delete every table of the project', async () => {
+			answerWith('project-1');
+			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
+
+			await expect(aggregate.deleteDataTableAll()).rejects.toThrow(UnimplementedError);
+			expect(http.request).toHaveBeenCalledOnce();
+		});
+	});
+
+	describe('table proxy', () => {
+		it('acquires without a round trip, because every operation checks the table', async () => {
+			await table();
+
+			expect(http.request).not.toHaveBeenCalled();
+		});
+
+		it('sends a date in a row or a filter as its ISO string', async () => {
+			answerWith([]);
+
+			await (await table()).updateRows({ filter, data: { joined: new Date(when) }, dryRun: true });
+
+			expect(sentCall()).toEqual({
+				kind: 'updateRows',
+				dataTableId: 'dt-1',
+				options: { filter: wireFilter, data: { joined: when }, dryRun: true },
+			});
+		});
+
+		it('revives the row timestamps and leaves a date cell as its ISO string', async () => {
+			answerWith({ count: 1, data: [wireRow] });
+
+			const { data } = await (await table()).getManyRowsAndCount({});
+
+			expect(data[0].createdAt).toEqual(new Date(when));
+			expect(data[0].updatedAt).toEqual(new Date(when));
+			expect(data[0]).toMatchObject({ id: 1, name: 'Ada', joined: when });
+		});
+
+		it.each([
+			// The rows of `all` come back with their timestamps revived.
+			['all', [wireRow], [{ ...wireRow, createdAt: new Date(when), updatedAt: new Date(when) }]],
+			['id', [{ id: 1 }], [{ id: 1 }]],
+			['count', { success: true, insertedRows: 1 }, { success: true, insertedRows: 1 }],
+		] as const)('insertRows returns the %s result', async (returnType, data, expected) => {
+			answerWith(data);
+
+			const result = await (await table()).insertRows([{ name: 'Ada' }], returnType);
+
+			expect(result).toEqual(expected);
+		});
+
+		it.each(['upsertRow', 'deleteRows'] as const)(
+			'%s returns the before and after rows of a dry run',
+			async (operation) => {
+				answerWith([
+					{ ...wireRow, dryRunState: 'before' },
+					{ id: null, createdAt: null, updatedAt: null, name: null, dryRunState: 'after' },
+				]);
+
+				const rows = await (await table())[operation]({
+					filter,
+					data: { name: 'Ada' },
+					dryRun: true,
+				});
+
+				expect(rows).toHaveLength(2);
+				expect(rows[1]).toMatchObject({ id: null, dryRunState: 'after' });
+			},
+		);
 	});
 });
