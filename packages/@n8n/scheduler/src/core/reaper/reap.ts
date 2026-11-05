@@ -167,8 +167,9 @@ async function retireStale(
  * reapers on every main are safe. A row that throws is skipped (reported via
  * `hooks.onRowError`), not allowed to abort the rest of the pass.
  *
- * A pass also retires up to `batchSize * maxRetireBatches` `pending` tasks past
- * their `missedAfter`, so they reach a terminal status and fall to retention.
+ * After recovering leases, a pass retires up to `batchSize * maxRetireBatches`
+ * `pending` tasks past their `missedAfter`, so they reach a terminal status and
+ * fall to retention.
  *
  * One pass resolves up to `batchSize` expired-lease tasks, splitting first on the
  * effect boundary: a task the owner already dispatched is completed as succeeded
@@ -185,12 +186,7 @@ export async function reap(
 	hooks: ReaperHooks = {},
 	signal?: AbortSignal,
 ): Promise<ReapResult> {
-	const missed = await retireStale(store, options, hooks, signal);
-
 	const expired = await store.findExpiredLeases(options.batchSize);
-	// Stryker disable next-line ConditionalExpression: pure early-return optimisation;
-	// without it the loop below is simply empty for an empty array, same result.
-	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0, missed };
 
 	let reclaimed = 0;
 	let deadLettered = 0;
@@ -259,6 +255,9 @@ export async function reap(
 			}
 		}
 	}
+
+	// Last, so a long backlog of stale rows cannot use up the pass before leases are recovered.
+	const missed = await retireStale(store, options, hooks, signal);
 
 	return { reclaimed, deadLettered, missed };
 }

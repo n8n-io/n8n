@@ -441,6 +441,19 @@ describe('reap', () => {
 			expect(onRetireError).toHaveBeenCalledWith(new Error('SQLITE_BUSY'));
 		});
 
+		it('recovers expired leases before it retires stale occurrences', async () => {
+			const { store, run } = setup();
+			store.findExpiredLeases.mockResolvedValue([expiredTask()]);
+			store.retireMissedPending.mockResolvedValue(retired(100));
+
+			const result = await run();
+
+			expect(result).toEqual({ reclaimed: 1, deadLettered: 0, missed: 300 });
+			const [reclaimOrder] = store.reclaimExpired.mock.invocationCallOrder;
+			const [retireOrder] = store.retireMissedPending.mock.invocationCallOrder;
+			expect(reclaimOrder).toBeLessThan(retireOrder);
+		});
+
 		it('stops between batches when the sweep is cancelled', async () => {
 			const controller = new AbortController();
 			const store = mock<ReaperTaskStore>();
