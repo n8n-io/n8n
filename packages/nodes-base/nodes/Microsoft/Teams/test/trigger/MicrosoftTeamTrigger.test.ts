@@ -197,7 +197,6 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(graphCalls()).toEqual([
 					['GET', '/v1.0/subscriptions/sub1'],
 					['PATCH', '/v1.0/subscriptions/sub1'],
-					['DELETE', '/v1.0/subscriptions/sub1'],
 					['POST', '/v1.0/subscriptions'],
 				]);
 				expect(calls('POST')[0][3]).toEqual(
@@ -868,8 +867,8 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(graphCalls()).toEqual([
 					['GET', '/v1.0/subscriptions/a'],
 					['GET', '/v1.0/subscriptions/x'],
-					['PATCH', '/v1.0/subscriptions/a'],
 					['DELETE', '/v1.0/subscriptions/x'],
+					['PATCH', '/v1.0/subscriptions/a'],
 				]);
 				// The mock refuses every write, so the renewal of the keeper warns as well.
 				expect(ctx.logger.warn).toHaveBeenCalledTimes(2);

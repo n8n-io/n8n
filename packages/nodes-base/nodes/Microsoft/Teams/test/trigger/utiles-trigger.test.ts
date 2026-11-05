@@ -1487,6 +1487,29 @@ describe('Microsoft Teams Helpers Functions', () => {
 					},
 				);
 
+				it('renews the keeper of one resource while another is held', async () => {
+					const ids = ['a', 'b'];
+					const { ctx, staticData } = arrange({
+						staticData: { subscriptionIds: ids, webhookSecret: 'secret' },
+						answers: { a: proven('a', TEAM1) },
+					});
+					refuse('GET', 'b', new Error('Too many requests'));
+
+					const result = await activate(ctx, {
+						requiredResources: [TEAM1, TEAM2],
+						subscriptions: [
+							subscription('a', TEAM1, minutes(60)),
+							subscription('b', TEAM2, minutes(60)),
+						],
+					});
+
+					expect(patched()).toEqual(['/v1.0/subscriptions/a']);
+					expect(deleted()).toEqual([]);
+					expect(created()).toEqual([]);
+					expect(result).toEqual({ errors: [], retry: true });
+					expect(staticData.subscriptionIds).toBe(ids);
+				});
+
 				it('adopts and renews an unstored subscription that GET by id proves', async () => {
 					const { ctx, staticData } = arrange({
 						staticData: { subscriptionIds: ['old'], webhookSecret: 'secret' },
@@ -1501,7 +1524,27 @@ describe('Microsoft Teams Helpers Functions', () => {
 					expect(staticData.subscriptionIds).toEqual(['x']);
 				});
 
-				it('replaces only the keeper that answers 404, after the deletes and with the stored secret', async () => {
+				it('renews the keepers after the creates', async () => {
+					const { ctx } = arrange({
+						staticData: { subscriptionIds: ['a'], webhookSecret: 'secret' },
+						answers: { a: proven('a', TEAM1) },
+					});
+
+					await activate(ctx, {
+						requiredResources: [TEAM1, TEAM2],
+						subscriptions: [subscription('a', TEAM1, minutes(60))],
+					});
+
+					expect(
+						(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3)),
+					).toEqual([
+						['GET', '/v1.0/subscriptions/a'],
+						['POST', '/v1.0/subscriptions'],
+						['PATCH', '/v1.0/subscriptions/a'],
+					]);
+				});
+
+				it('replaces only the keeper whose renewal answers 404', async () => {
 					const { ctx, staticData } = arrange({
 						staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
 						answers: { a: proven('a', TEAM1), b: proven('b', TEAM2) },
@@ -1523,10 +1566,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 						['GET', '/v1.0/subscriptions/b'],
 						['PATCH', '/v1.0/subscriptions/a'],
 						['PATCH', '/v1.0/subscriptions/b'],
-						['DELETE', '/v1.0/subscriptions/b'],
 						['POST', '/v1.0/subscriptions'],
 					]);
-					expect(deleted()).toEqual(['/v1.0/subscriptions/b']);
+					expect(deleted()).toEqual([]);
 					expect(created()).toEqual([TEAM2]);
 					expect(calls('POST')[0][3]).toEqual(expect.objectContaining({ clientState: 'secret' }));
 					expect(result).toEqual({ errors: [], retry: false });
@@ -1584,7 +1626,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					expect(staticData.subscriptionIds).toEqual(['b']);
 				});
 
-				it('deletes the proven twin when the keeper answers 404 and creates the resource fresh', async () => {
+				it('forgets the other proven twin when the keeper answers 404', async () => {
 					const { ctx, staticData } = arrange({
 						staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
 						answers: { a: proven('a'), b: proven('b', '/me/chats', minutes(90)) },
@@ -1599,8 +1641,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 
 					expect(patched()).toEqual(['/v1.0/subscriptions/b']);
-					expect(deleted()).toEqual(['/v1.0/subscriptions/a', '/v1.0/subscriptions/b']);
-					expect(calls('POST')[0][3]).toEqual(expect.objectContaining({ clientState: 'secret' }));
+					expect(deleted()).toEqual([]);
+					expect(calls('POST').map((call) => call[3])).toEqual([
+						expect.objectContaining({ resource: '/me/chats', clientState: 'secret' }),
+					]);
 					expect(result).toEqual({ errors: [], retry: false });
 					expect(staticData.subscriptionIds).toEqual(['new-chats']);
 				});

@@ -106,25 +106,20 @@ export async function deleteSubscriptions(
 }
 
 /**
- * Renews every id once, all in parallel, to a full lifetime, and returns the ids that Graph
- * answered with 404. Pass only ids proven to carry the stored secret: a GET by id match, or an
- * id that a verified lifecycle item named. Never throws. Every other failure is warned only. A
- * refused subscription keeps its expiry until its own `reauthorizationRequired` renews it.
+ * Renews every id once, in parallel, and returns the ids that Graph answered with 404. Pass only
+ * ids whose secret is proven. Never throws: every other failure is warned, and that subscription
+ * keeps its expiry until its own `reauthorizationRequired` renews it.
  */
 export async function renewSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	ids: Iterable<string>,
 ): Promise<Set<string>> {
-	// Graph allows 500 POST, PUT, DELETE and PATCH requests together per 20 s for an app in one
-	// tenant, and 2000 across all tenants. GET by id has its own 500 and 2000, the listing 25 and 40.
-	// ponytail: the calls are not paced. A restart of the legacy activation manager can renew
-	// hundreds of keepers at once. These PATCHes share the tenant write budget with the creates of
-	// the same activation. The GET by id reads before them hit their own limit first. Above about
-	// 500 kept subscriptions for one app in one tenant, Graph answers the rest with 429. The
-	// transport does not retry them. Those subscriptions are held, not renewed, and each restart
-	// writes `pendingReconcile`. Pace the calls if that shows up.
+	// POST, PUT, DELETE and PATCH share 500 requests per 20 s for an app in one tenant, and 2000
+	// across tenants. ponytail: the calls are not paced. An activation renews after its creates, so
+	// a 429 here only warns. Renewals of other activations in the same 20 s can still use up the
+	// budget that their creates need. Pace the calls if that shows up.
 	const gone = await Promise.all(
-		[...new Set(ids)].map(async (id) => {
+		[...ids].map(async (id) => {
 			try {
 				await microsoftApiRequest.call(
 					this,
@@ -313,7 +308,7 @@ export function markPendingReconcile(webhookData: IDataObject, pending: boolean)
  * per required resource stays, the uncovered resources are created with the stored secret, and
  * every other listed own subscription goes, except a stored one beside a keeper, which is
  * forgotten, and everything on a held resource. With `renewKeepers`, each keeper is renewed
- * before the deletes, and a keeper that answers 404 is replaced. Reads and writes
+ * after the creates, and a keeper that answers 404 is created again. Reads and writes
  * `subscriptionIds` itself, so the trust decision and the write share one source. Returns the
  * create errors, and whether the next lifecycle batch must reconcile again. Never throws.
  */
@@ -340,10 +335,10 @@ export async function reconcileSubscriptions(
 		 */
 		holdUnproven: boolean;
 		/**
-		 * Activation only: renews each keeper once, so the activation starts a full lifetime. GET by
-		 * id first proves every live candidate, because a renewal must not extend a subscription with
-		 * another secret. A keeper that answers 404 is gone, and its resource is created with the
-		 * stored secret.
+		 * Activation only: renews each keeper once, after the creates, so a renewal cannot use the
+		 * write budget that a create needs. GET by id first proves every live candidate, because a
+		 * renewal must not extend a subscription with another secret. A keeper that answers 404 is
+		 * created again with the stored secret.
 		 */
 		renewKeepers?: boolean;
 	},
@@ -382,8 +377,8 @@ export async function reconcileSubscriptions(
 	// the only live own one and the only stored one on its resource. `renewKeepers` explains why
 	// an activation reads every live one. Outside that shortcut, GET by id proves the live ones.
 	// A live listed subscription with the stored secret then goes only beside a keeper. At
-	// activation it also goes when it is not stored and its read failed, or when the keeper on its
-	// resource answers 404. Stale, unlisted and no longer required ones go without a read.
+	// activation it also goes when it is not stored and its read failed. Stale, unlisted and no
+	// longer required ones go without a read.
 	const keepers = new Map<string, string>();
 	const unproven: SubscriptionResponse[] = [];
 	for (const resource of required) {
@@ -422,23 +417,13 @@ export async function reconcileSubscriptions(
 		const [keeper] = candidates.filter((sub) => proofs.get(sub.id) === 'match').sort(byPreference);
 		if (keeper) keepers.set(resource, keeper.id);
 	}
-	if (renewKeepers) {
-		// A keeper that answers 404 is gone: its resource joins the creates and its id the deletes,
-		// where a 404 counts as done. A twin beside it is deleted too, because the resource has no
-		// keeper now.
-		const missing = await renewSubscriptions.call(this, keepers.values());
-		for (const [resource, id] of keepers) {
-			if (missing.has(id)) keepers.delete(resource);
-		}
-	}
 	const keeperIds = new Set(keepers.values());
 	// A stored subscription beside a keeper is forgotten, not deleted, whatever its listed
 	// expiry: a request that renewed it can run at the same time and keep it, and two requests
 	// that share the stored ids must not delete each other's keeper. Unless it expires first, one
 	// with the stored secret names an unknown id at its next renewal, and that reconcile removes
 	// it. One with another secret is never renewed and expires, or goes now when GET by id
-	// proved it. At activation, a keeper that answers 404 leaves its resource without a keeper,
-	// so the twins on it go too.
+	// proved it.
 	const forgotten = new Set(
 		subscriptions
 			.filter(
@@ -471,6 +456,16 @@ export async function reconcileSubscriptions(
 		required.filter((resource) => !keepers.has(resource) && !held.has(resource)),
 		clientState,
 	);
+	if (renewKeepers) {
+		// A keeper that answers 404 is gone, so it is not deleted or stored. Its resource is
+		// created again.
+		const missing = await renewSubscriptions.call(this, keepers.values());
+		const lost = [...keepers].filter(([, id]) => missing.has(id)).map(([resource]) => resource);
+		for (const resource of lost) keepers.delete(resource);
+		const again = await createSubscriptions.call(this, webhookUrl, lost, clientState);
+		created.push(...again.ids);
+		errors.push(...again.errors);
+	}
 
 	// A stored id that is not listed and that Graph refused to remove stays, so the next
 	// reconcile retries the delete; the by-URL listing cannot find it. The stored ids of a held
@@ -500,13 +495,12 @@ export async function reconcileSubscriptions(
 /**
  * Says whether the stored ids alone cover every required resource with a live subscription at
  * this URL. Returns `undefined` when they do not. Otherwise returns the ids to renew: for each
- * required resource, the one stored id whose answer shows the stored secret. Proven twins on
- * one resource are not returned: the marked next reconcile keeps one of them. Reads each stored
- * id with GET by id. GET by id has its own budget: 2000 requests per 20 s for an app across all
- * tenants, against 40 for the listing. Two stored subscriptions on one resource both count for
- * coverage: keeping them is safer than core's cleanup, and the next reconcile proves each
- * secret. An answer with another clientState covers nothing. An answer without one still
- * covers, but it is not returned. The reconcile treats it as unproven. Never throws.
+ * required resource, the one stored id whose answer shows the stored secret. Twins on one
+ * resource both cover, which is safer than core's cleanup, but proven twins are not returned:
+ * the marked next reconcile keeps one. An answer with another clientState covers nothing, and
+ * one without a clientState covers but is not returned. Reads each stored id with GET by id,
+ * which has its own budget: 2000 requests per 20 s for an app across all tenants, against 40
+ * for the listing. Never throws.
  */
 export async function storedSubscriptionsCover(
 	this: IHookFunctions | IWebhookFunctions,
