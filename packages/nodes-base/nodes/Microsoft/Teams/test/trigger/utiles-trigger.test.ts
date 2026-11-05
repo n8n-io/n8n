@@ -1657,14 +1657,19 @@ describe('Microsoft Teams Helpers Functions', () => {
 				calls('GET')
 					.map((call) => call[2])
 					.filter((path) => String(path).startsWith('/v1.0/subscriptions/'));
+			const answered = (id: string, resource: string, clientState: unknown) => ({
+				...subscription(id, resource, minutes(60)),
+				clientState,
+			});
 
 			it('covers the required resource with a live stored subscription at this URL', async () => {
 				const { ctx, staticData } = arrange();
 				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
 
+				// The answer has no clientState: it covers, but there is nothing proven to renew.
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
-				).resolves.toBe(true);
+				).resolves.toEqual([]);
 				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
 				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 				expect(ctx.logger.debug).not.toHaveBeenCalled();
@@ -1695,22 +1700,40 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
-				).resolves.toBe(false);
+				).resolves.toBeUndefined();
 			});
 
 			it.each([
-				['the stored one', 'secret'],
-				['null', null],
-			])('covers when Graph answers with %s as clientState', async (_label, answered) => {
-				const { ctx } = arrange();
-				answerById({
-					sub1: { ...subscription('sub1', '/me/chats', minutes(60)), clientState: answered },
-				});
+				[
+					'the stored secret',
+					['sub1'],
+					{ sub1: answered('sub1', '/me/chats', 'secret') },
+					['sub1'],
+				],
+				['a null clientState', ['sub1'], { sub1: answered('sub1', '/me/chats', null) }, []],
+				[
+					'the stored secret, beside a proven id on a resource that is not required',
+					['sub1', 'x'],
+					{ sub1: answered('sub1', '/me/chats', 'secret'), x: answered('x', TEAM1, 'secret') },
+					['sub1'],
+				],
+				[
+					'the stored secret on two twins',
+					['a', 'b'],
+					{ a: answered('a', '/me/chats', 'secret'), b: answered('b', '/me/chats', 'secret') },
+					[],
+				],
+			])(
+				'covers when Graph answers with %s and returns the ids to renew',
+				async (_label, subscriptionIds, byId, expected) => {
+					const { ctx } = arrange({ staticData: { subscriptionIds, webhookSecret: 'secret' } });
+					answerById(byId);
 
-				await expect(
-					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
-				).resolves.toBe(true);
-			});
+					await expect(
+						storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
+					).resolves.toEqual(expected);
+				},
+			);
 
 			it.each([
 				['Graph answers 404', {}, 'failed to read stored subscription'],
@@ -1732,22 +1755,22 @@ describe('Microsoft Teams Helpers Functions', () => {
 				);
 			});
 
-			it('needs every required resource under Watch All', async () => {
+			it('needs every required resource under Watch All and returns only the proven ids', async () => {
 				const { ctx } = arrange({
 					staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
 					params: { event: 'newChannel', watchAllTeams: true },
 				});
-				const a = subscription('a', TEAM1, minutes(60));
+				const a = { ...subscription('a', TEAM1, minutes(60)), clientState: 'secret' };
 
 				answerById({ a });
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChannel'),
-				).resolves.toBe(false);
+				).resolves.toBeUndefined();
 
 				answerById({ a, b: subscription('b', TEAM2, minutes(60)) });
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChannel'),
-				).resolves.toBe(true);
+				).resolves.toEqual(['a']);
 			});
 
 			it('skips a stored id that fails validation without a request', async () => {
@@ -1758,7 +1781,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
-				).resolves.toBe(true);
+				).resolves.toEqual([]);
 				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
 			});
 
@@ -1769,9 +1792,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 				const { ctx } = arrange({ staticData, params: { event } });
 				answerById({ sub1: subscription('sub1', '/me/chats', minutes(60)) });
 
-				await expect(storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', event)).resolves.toBe(
-					false,
-				);
+				await expect(
+					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', event),
+				).resolves.toBeUndefined();
 				expect(reads()).toEqual([]);
 			});
 		});

@@ -498,26 +498,30 @@ export async function reconcileSubscriptions(
 }
 
 /**
- * Whether the stored ids alone cover every required resource with a live subscription at
- * this URL. Reads each stored id with GET by id, which has its own budget: 2000 requests per
- * 20 s for an app across all tenants, against 40 for the listing. Two stored subscriptions on
- * one resource both count: keeping them is safer than core's cleanup, and the next reconcile
- * proves each secret. An answer with another clientState covers nothing. An answer without
- * one still counts here; the reconcile treats it as unproven. Never throws.
+ * Says whether the stored ids alone cover every required resource with a live subscription at
+ * this URL. Returns `undefined` when they do not. Otherwise returns the ids to renew: for each
+ * required resource, the one stored id whose answer shows the stored secret. Proven twins on
+ * one resource are not returned: the marked next reconcile keeps one of them. Reads each stored
+ * id with GET by id. GET by id has its own budget: 2000 requests per 20 s for an app across all
+ * tenants, against 40 for the listing. Two stored subscriptions on one resource both count for
+ * coverage: keeping them is safer than core's cleanup, and the next reconcile proves each
+ * secret. An answer with another clientState covers nothing. An answer without one still
+ * covers, but it is not returned. The reconcile treats it as unproven. Never throws.
  */
 export async function storedSubscriptionsCover(
 	this: IHookFunctions | IWebhookFunctions,
 	webhookUrl: string,
 	clientState: string,
 	event: string,
-): Promise<boolean> {
+): Promise<string[] | undefined> {
 	let required: string[];
 	try {
 		required = [await getResourcePath.call(this, event)].flat();
 	} catch {
-		return false;
+		return undefined;
 	}
 	const covered = new Set<string>();
+	const proven = new Map<string, Set<string>>();
 	await Promise.all(
 		getStoredIds(this.getWorkflowStaticData('node')).map(async (id) => {
 			try {
@@ -535,6 +539,9 @@ export async function storedSubscriptionsCover(
 					(typeof answeredSecret !== 'string' || answeredSecret === clientState)
 				) {
 					covered.add(answer.resource);
+					if (answeredSecret === clientState && required.includes(answer.resource)) {
+						proven.set(answer.resource, (proven.get(answer.resource) ?? new Set<string>()).add(id));
+					}
 					return;
 				}
 				logTrigger.call(this, 'debug', 'stored subscription does not count', {
@@ -548,7 +555,8 @@ export async function storedSubscriptionsCover(
 			}
 		}),
 	);
-	return required.every((resource) => covered.has(resource));
+	if (!required.every((resource) => covered.has(resource))) return undefined;
+	return [...proven.values()].filter((ids) => ids.size === 1).map(([id]) => id);
 }
 
 // Anything with a `lifecycleEvent` is a lifecycle item and never a workflow item; the
