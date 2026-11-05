@@ -82,8 +82,8 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 		/** A client the transport scoped to `data-tables:use`. */
 		private readonly http: HttpRequestClient,
 		private readonly context: AdditionalDataContext,
-		// Every request of this execution uses this one signal. The engine has no
-		// per-step cancellation signal yet. TODO(CAT-4526): pass the step signal.
+		// Aborted when the runtime stops, not when the step is cancelled: the engine
+		// has no per-step signal yet. TODO(CAT-4526): pass the step signal.
 		private readonly signal: AbortSignal,
 	) {}
 
