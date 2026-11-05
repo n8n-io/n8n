@@ -263,7 +263,7 @@ class RemoteDataTable implements IDataTableProjectService {
 	}
 
 	async deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]> {
-		return await this.call(
+		const rows = await this.call(
 			{
 				kind: 'deleteRows',
 				dataTableId: this.dataTableId,
@@ -271,6 +271,9 @@ class RemoteDataTable implements IDataTableProjectService {
 			},
 			dataTableCallResultSchemas.deleteRows,
 		);
+		// A dry run answers rows with state. The proxy type says plain rows, and
+		// the v1 proxy returns the same rows under that type, so match it.
+		return rows as DataTableRowReturn[];
 	}
 
 	async clearRows(): Promise<{ deletedCount: number }> {
