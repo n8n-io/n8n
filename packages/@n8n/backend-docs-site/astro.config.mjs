@@ -65,7 +65,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'n8n backend onboarding',
-			favicon: '/favicon.ico',
+			favicon: '/favicon.svg',
 			description: 'Onboarding documents for the n8n backend, rendered from docs/backend.',
 			customCss: ['./src/styles/custom.css'],
 			components: {
@@ -84,7 +84,7 @@ export default defineConfig({
 					items: pages(TIER_TWO).filter((item) => !DAY_ONE.includes(item.slug)),
 				},
 				{ label: 'Month 1', items: subsystemGroups() },
-				{ label: 'How-to', items: pages([], 'how-to/') },
+				{ label: 'How to', items: pages(['run-queue-mode-locally', 'build-a-backend-module', 'write-a-database-migration', 'roll-out-a-change'], 'how-to/') },
 			],
 		}),
 	],

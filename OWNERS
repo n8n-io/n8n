@@ -90,6 +90,9 @@ docs/backend/subsystems/observability.md @n8n-io/governance-and-observability
 docs/backend/subsystems/data-and-packages.md @n8n-io/knowledge
 docs/backend/subsystems/ai-platform.md @n8n-io/ai-assistant
 docs/backend/how-to/build-a-backend-module.md @n8n-io/core-application
+docs/backend/how-to/write-a-database-migration.md @n8n-io/core-execution
+docs/backend/how-to/run-queue-mode-locally.md @n8n-io/core-execution
+docs/backend/how-to/roll-out-a-change.md @n8n-io/core-execution
 patches/                                                @n8n-io/qa-dx
 security/                                               @n8n-io/qa-dx
 .code-health-baseline.json                              @n8n-io/qa-dx required

@@ -3,6 +3,7 @@ title: Introduction
 audience: Backend engineers new to n8n
 tier: 1
 last_reviewed: 2026-11-05
+contact: ivov
 ---
 
 # Introduction
@@ -138,17 +139,18 @@ The backend is in the middle of several transitions. You will meet all of them i
 | Modules move out of `cli` into their own packages | In progress | `packages/modules/<name>/backend`, `@n8n/backend-services`, `@n8n/errors` |
 | Engine v2, a new execution engine with its own data model | Opt-in module, in development | `N8N_ENABLED_MODULES=engine-v2` |
 
-## The four toggle systems
+## The toggle systems
 
-Four different switches decide what an instance does:
+Five different switches decide what an instance does:
 
 - License flags from the certificate.
 - Module enablement from two environment variables.
 - PostHog flags, evaluated for each user at runtime.
 - Cloud instance feature flags, which the control plane maps to environment variables.
+- Environment feature flags `N8N_ENV_FEAT_*`, read from the environment.
 
 > [!WARNING]
-> Never set module variables by hand on a Cloud instance. [Cloud coupling points](cloud-coupling.md#the-four-toggle-systems) has the comparison table.
+> Never set module variables by hand on a Cloud instance. [Cloud coupling points](cloud-coupling.md#the-toggle-systems) has the comparison table.
 
 ## Who to ask
 
@@ -182,6 +184,9 @@ Most of what a joiner needs already exists in the repository. This folder does n
 | `AGENTS.md` at the root | Before your first PR. Conventions, error classes, the TypeORM boundary, security hygiene, PR titles |
 | `packages/cli/AGENTS.md`, `packages/@n8n/db/AGENTS.md` | You write a query or a transaction |
 | [Build a backend module](how-to/build-a-backend-module.md) | You create a module |
+| [Write a database migration](how-to/write-a-database-migration.md) | You change the database schema |
+| [Run queue mode locally](how-to/run-queue-mode-locally.md) | You change queue mode, workers, pubsub, or leader-only code |
+| [Roll out a change](how-to/roll-out-a-change.md) | You ship a change behind a flag |
 | `packages/modules/README.md` | You create a module as its own package |
 | `packages/cli/src/scheduling/system-tasks/README.md` | You add background work that runs on a schedule |
 | `.github/DEVELOPING_V3.md` | You change behavior that users see |

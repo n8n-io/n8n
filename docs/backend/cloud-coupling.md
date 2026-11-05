@@ -3,6 +3,7 @@ title: Cloud coupling points
 audience: Backend engineers new to n8n
 tier: 2
 last_reviewed: 2026-11-05
+contact: CharlieKolb
 ---
 
 # Cloud coupling points
@@ -137,16 +138,17 @@ The backend branches on it in a small number of places. Some examples:
 > [!TIP]
 > Almost everything else is the same code. Before you add a branch on `deployment.type`, ask whether a license flag or a config value can do the same job for self-hosters.
 
-## The four toggle systems
+## The toggle systems
 
-New joiners confuse four different switches. They differ in where they are defined, who evaluates them, and when they change.
+New joiners confuse five different switches. They differ in where they are defined, who evaluates them, and when they change.
 
 | System | Defined in | Evaluated by | Changes when | On Cloud |
 |---|---|---|---|---|
 | **License flags** `feat:*` and `quota:*` | `packages/@n8n/constants/src/index.ts` | `LicenseState`, `@Licensed`, module `licenseFlag` | The license certificate renews or a plan changes | The plan decides the flags |
 | **Module enablement** | `MODULE_NAMES` and `defaultModules` in `packages/@n8n/backend-common/src/modules/` | `ModuleRegistry` at boot | `N8N_ENABLED_MODULES` or `N8N_DISABLED_MODULES` changes, then a restart | Set for each version band by the control plane. Never edit it by hand on a Cloud instance |
-| **PostHog feature flags** | The PostHog project. Backend flag keys are constants in `@n8n/api-types`, frontend keys in `packages/frontend/editor-ui/src/app/constants/experiments.ts` | `PostHogClient` at runtime, for each user | Rollout changes in PostHog take effect at once | Shared with self-hosted instances unless the flag filters on the deployment type |
+| **PostHog feature flags** | The PostHog project. Backend flag keys are constants in `@n8n/api-types`, frontend keys in `packages/frontend/editor-ui/src/app/constants/experiments.ts` | `PostHogClient` at runtime, for each user | Up to 10 min after a change in PostHog, because each process caches the flags of each user. The editor gets flags at login and at page load. An instance with diagnostics off never calls PostHog | Shared with self-hosted instances unless the flag filters on the deployment type |
 | **Cloud instance feature flags** | The control plane repository | The control plane, at signup, plan change, or version change | Only when the instance configuration is rebuilt | Each flag maps to environment variables on the instance |
+| **Environment feature flags** `N8N_ENV_FEAT_*` | Environment variables on the instance | `isEnvFeatureEnabled` in `@n8n/backend-common`, and the editor through `envFeatureFlags` | At the next restart | Set by the control plane or the operator |
 
 The fourth system is not visible from this repository. As of September 2026, an instance picked up a new Cloud flag only when its configuration was rebuilt. For this reason a Cloud rollout can show many more "eligible" instances than "enabled" ones.
 
@@ -163,5 +165,5 @@ When you weigh a default, weigh it for both homes. Cloud can override a default 
 
 1. Keep the old name working for one release. Use `DeprecationService` for variables. Keep a re-export for a moved file that the hooks file imports.
 2. Keep `/healthz`, `/healthz/readiness`, and `/metrics` stable in path and status codes.
-3. Keep migrations fast and backward compatible for one release.
+3. Keep migrations fast and backward compatible for one release. See [Write a database migration](how-to/write-a-database-migration.md).
 4. Coordinate with Cloud before you rename a module, a license flag, a table that the backup reads, or a `HooksService` method.

@@ -3,6 +3,7 @@ title: Persistence
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-05
+contact: ivov
 ---
 
 # Persistence
@@ -58,6 +59,7 @@ Execution rows always live in the database. The execution data bundle and binary
 - `docs/db.md` and `packages/@n8n/db/AGENTS.md`
 - Root `AGENTS.md`, section "Persistence layer & the TypeORM boundary"
 - [Patterns](../patterns.md#services-repositories-and-the-typeorm-boundary)
+- [Write a database migration](../how-to/write-a-database-migration.md)
 - `.agents/skills/db-migrations/SKILL.md`
 - `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md`
 - `packages/@n8n/blob-storage/README.md` and `packages/@n8n/typeorm/README.md`

@@ -19,6 +19,7 @@ export const collections = {
 				audience: z.string().optional(),
 				tier: z.number().optional(),
 				last_reviewed: z.coerce.date().optional(),
+				contact: z.string().optional(),
 			}),
 		}),
 	}),

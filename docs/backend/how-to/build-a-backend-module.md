@@ -3,6 +3,7 @@ title: Build a backend module
 audience: Backend engineers who add a feature to n8n
 tier: 3
 last_reviewed: 2026-11-05
+contact: ivov
 ---
 
 # Build a backend module
@@ -207,7 +208,7 @@ Each part follows a pattern on the [Recurring patterns](../patterns.md) page. Th
 
 5. **Migrations**
 
-   Add the migrations to `packages/@n8n/db/src/migrations`, not to the module. n8n runs all migrations, also for a disabled module. The tables of a disabled module therefore exist too.
+   Add the migrations to `packages/@n8n/db/src/migrations`, not to the module. See [Write a database migration](write-a-database-migration.md). n8n runs all migrations, also for a disabled module. The tables of a disabled module therefore exist too.
 
 6. **Configuration**
 

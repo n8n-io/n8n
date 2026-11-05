@@ -1,9 +1,9 @@
 ---
 import Default from '@astrojs/starlight/components/PageTitle.astro';
 import { render } from 'astro:content';
-import { ownerOf } from '../lib/owners';
+import { contactFor } from '../lib/contacts';
 
-// Show the length, the review date, and the owning team of the page.
+// Show the length, the review date, and the contact person of the page.
 // The remark plugin adds `minutes` to the rendered front matter.
 const { entry } = Astro.locals.starlightRoute;
 const data: Record<string, unknown> = entry.data;
@@ -16,12 +16,12 @@ const reviewedLabel = reviewed?.toLocaleDateString('en-US', {
 	month: 'short',
 	timeZone: 'UTC',
 });
-const owner = entry.filePath ? ownerOf(entry.filePath) : undefined;
+const contact = typeof data.contact === 'string' ? contactFor(data.contact) : undefined;
 ---
 
 <Default />
 {
-	(minutes || reviewed || owner) && (
+	(minutes || reviewed || contact) && (
 		<ul class="doc-meta" aria-label="About this page">
 			{minutes && (
 				<li title="Reading time">
@@ -44,17 +44,13 @@ const owner = entry.filePath ? ownerOf(entry.filePath) : undefined;
 					</span>
 				</li>
 			)}
-			{owner && (
-				<li title="Owning team">
-					<a href={owner.url}>
-						<svg viewBox="0 0 16 16" aria-hidden="true">
-							<circle cx="6" cy="5.5" r="2.25" />
-							<path d="M1.75 13.25c.4-2.2 2.1-3.5 4.25-3.5s3.85 1.3 4.25 3.5" />
-							<path d="M10.5 3.4a2.25 2.25 0 0 1 0 4.2M12 9.9c1.2.5 2 1.7 2.25 3.35" />
-						</svg>
+			{contact && (
+				<li title={`For questions on this topic, ask ${contact.name}`}>
+					<a href={contact.url}>
+						<img class="doc-meta-avatar" src={contact.avatar} width="16" height="16" alt="" loading="lazy" />
 						<span>
-							<span class="sr-only">Owning team: </span>
-							{owner.name}
+							<span class="sr-only">For questions on this topic, ask </span>
+							{contact.name}
 						</span>
 					</a>
 				</li>
@@ -94,6 +90,12 @@ const owner = entry.filePath ? ownerOf(entry.filePath) : undefined;
 	.doc-meta li:has(> a):hover {
 		border-color: var(--sl-color-accent);
 		color: var(--sl-color-white);
+	}
+	.doc-meta-avatar {
+		width: 1rem;
+		height: 1rem;
+		border-radius: 50%;
+		flex-shrink: 0;
 	}
 	.doc-meta svg {
 		width: 0.875rem;

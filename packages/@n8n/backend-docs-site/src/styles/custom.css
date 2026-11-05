@@ -252,6 +252,9 @@ h1#_top {
 	border-spacing: 0;
 	border: 1px solid var(--sl-color-hairline);
 	border-radius: 0.75rem;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--sl-color-gray-5) transparent;
 }
 
 .sl-markdown-content :is(th, td) {
@@ -342,9 +345,10 @@ pre.mermaid .labelBkg {
 }
 
 /* Paths wrap after a slash (the remark plugin adds the break points). A long symbol
-   breaks inside a name only when it does not fit the cell. */
+   breaks inside a name only when it does not fit the cell. `anywhere`, unlike
+   `break-word`, also lowers the minimum cell width, so the table does not scroll. */
 .sl-markdown-content td code {
-	overflow-wrap: break-word;
+	overflow-wrap: anywhere;
 }
 
 /* Code blocks: Shiki writes both themes as CSS variables. Pick the one for the active theme. */

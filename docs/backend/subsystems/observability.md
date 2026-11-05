@@ -3,6 +3,7 @@ title: Observability and audit
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-05
+contact: looorent
 ---
 
 # Observability and audit
@@ -55,14 +56,15 @@ Run `pnpm --filter @n8n/telemetry catalog` to list the registered telemetry even
 
 ## Per process
 
-The event bus and the log streaming relay run on every process type, each with its own log file. Tracing runs on mains, workers, and webhook processes. Insights collects on mains and webhook processes, and compacts on the leader.
+The event bus and the log streaming relay run on every process type, each with its own log file. Tracing runs on mains, workers, and webhook processes. Insights collects on mains and webhook processes. Compaction is a cluster system task.
 
 ## What is moving
 
-Insights is a separate package under `packages/modules/insights`, with a backend and a frontend part. Each Prometheus metric is its own service in `packages/cli/src/metrics/prometheus/`, with its own enable flag.
+Insights is a separate package under `packages/modules/insights`, with a backend and a frontend part. Most Prometheus metrics are services in `packages/cli/src/metrics/prometheus/`, each with its own `N8N_METRICS_INCLUDE_*` flag. The version, active workflow count, and leader role metrics have no flag of their own.
 
 ## Read more
 
+- [Roll out a change](../how-to/roll-out-a-change.md) for the metrics flags, health endpoints, log settings, and the event log file
 - `packages/cli/src/modules/log-streaming.ee/README.md`, `packages/cli/src/modules/otel/README.md`
 - `packages/@n8n/telemetry/README.md`
 - [Patterns](../patterns.md#events-and-relays)

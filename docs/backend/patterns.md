@@ -3,6 +3,7 @@ title: Recurring patterns
 audience: Backend engineers new to n8n
 tier: 1
 last_reviewed: 2026-11-05
+contact: ivov
 ---
 
 # Recurring patterns
@@ -281,7 +282,7 @@ Read more: `.agents/review-rules/backend/error-classes.md`.
 > - A surface behind a flag that is off answers 404, not 403. See `AgentEvalsFlagGate` in `packages/cli/src/modules/agent-evals/agent-evals-flag-gate.ts`.
 > - Breaking changes go only to `3.x`, in a PR that targets `3.x`.
 
-The other toggle systems are license flags, cloud instance flags, and module enablement. [Cloud coupling points](cloud-coupling.md#the-four-toggle-systems) compares them.
+The other toggle systems are license flags, cloud instance flags, module enablement, and `N8N_ENV_FEAT_*` variables. [Cloud coupling points](cloud-coupling.md#the-toggle-systems) compares them. [Roll out a change](how-to/roll-out-a-change.md) shows how to roll out a change behind one.
 
 ## Testing
 

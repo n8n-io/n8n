@@ -3,6 +3,7 @@ title: Scaling and multi-main
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-05
+contact: ivov
 ---
 
 # Scaling and multi-main
@@ -19,7 +20,7 @@ Read this when you touch queue mode, workers, the Bull queue, pubsub between pro
 
 **A job carries ids, not data.** The execution is already in the database when the main calls `addJob`. The job holds only ids and flags. A worker reloads the execution, runs it, and writes the result back. All state that matters is in the database.
 
-**Two channels in Redis.** Bull's `global:progress` event carries messages inside a job's life, such as a webhook response or a finished job. Every main hears every progress message, and only the process that holds the execution acts. Pubsub on `n8n.commands` carries n8n's own commands, such as a license reload or a workflow activation. Workers answer on `n8n.worker-response`.
+**Two channels in Redis.** Bull's `global:progress` event carries messages inside a job's life, such as a webhook response or a finished job. Every main and webhook process hears every progress message, and only the process that holds the execution acts. Pubsub on `n8n:n8n.commands` carries n8n's own commands, such as a license reload or a workflow activation. Workers answer on `n8n:n8n.worker-response`. The first `n8n:` is the Redis key prefix.
 
 **Leader handlers are decorators.** A service marks methods with `@OnLeaderTakeover` and `@OnLeaderStepdown`. `@OnPubSubEvent` filters can name an instance role. `PubSubRegistry` checks the role when the event fires, because the role can change at runtime.
 
@@ -70,5 +71,5 @@ The ESLint rule `no-on-leader-takeover` sends new periodic work to system tasks,
 - [Life of a workflow publish](../life-of-a-workflow-publish.md) for the multi-main variant
 - [Patterns](../patterns.md) for pubsub across processes
 - [Startup and process roles](startup-and-processes.md)
-- `packages/quality/environments/containers/README.md` for running a multi-main stack locally
+- [Run queue mode locally](../how-to/run-queue-mode-locally.md) for a local stack and failure drills
 - docs.n8n.io: queue mode and scaling pages

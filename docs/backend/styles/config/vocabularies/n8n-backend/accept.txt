@@ -172,3 +172,16 @@ ADR
 ADRs
 Pyodide
 unarchive
+Cadiac
+CharlieKolb
+afitzek
+dariacodes
+despairblue
+guillaumejacquart
+ivov
+kgrhartlage
+looorent
+tomi
+bjorger
+mfsiega
+SamWooler
