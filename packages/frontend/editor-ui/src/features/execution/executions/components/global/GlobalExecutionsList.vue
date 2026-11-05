@@ -500,7 +500,7 @@ const goToUpgrade = () => {
 	max-width: var(--content-container--width);
 
 	@include breakpoints.breakpoint('sm-and-down') {
-		padding: var(--spacing--sm);
+		padding: var(--spacing--sm) var(--spacing--sm) 0;
 	}
 }
 
