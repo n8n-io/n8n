@@ -3,6 +3,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import {
 	DEBOUNCE_TIME,
+	ARCHIVE_WORKFLOWS_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
 	MODAL_CONFIRM,
 	TIME,
@@ -619,10 +620,29 @@ function reviewUnusedWorkflows() {
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
 }
 
-/** After a won't fix, offers to archive the workflows in a toast, as the workflows list does. */
+// The archive modal asks the user and sends back the workflows to archive.
+const archiveModalBus = createEventBus();
+archiveModalBus.on('archive', ({ workflows }: { workflows: AffectedWorkflow[] }) => {
+	void archiveWorkflows(workflows);
+});
+
+/**
+ * After a won't fix, offers to archive the workflows. On a rule whose executions
+ * will fail, a won't fix usually means the workflow is not needed, so a modal asks.
+ * On other rules the workflow often keeps running, so a toast offers it, as the
+ * workflows list does.
+ */
 function offerToArchive(workflows: AffectedWorkflow[]) {
 	const toArchive = workflows.filter((workflow) => !workflow.isArchived);
 	if (toArchive.length === 0) return;
+
+	if (state.value.ruleImpact === 'executionsFail') {
+		uiStore.openModalWithData({
+			name: ARCHIVE_WORKFLOWS_MODAL_KEY,
+			data: { workflows: toArchive, eventBus: archiveModalBus },
+		});
+		return;
+	}
 
 	const count = toArchive.length;
 	toast.showToast({
@@ -638,18 +658,17 @@ function offerToArchive(workflows: AffectedWorkflow[]) {
 		onClick: (event) => {
 			if (event?.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
-				void archiveWorkflows(toArchive);
+				void confirmAndArchiveWorkflows(toArchive);
 			}
 		},
 	});
 }
 
-async function archiveWorkflows(workflows: AffectedWorkflow[]) {
+async function confirmAndArchiveWorkflows(workflows: AffectedWorkflow[]) {
 	const count = workflows.length;
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.migrationReport.detail.wontFix.archive.confirm.message', {
 			adjustToNumber: count,
-			interpolate: { count: String(count) },
 		}),
 		i18n.baseText('settings.migrationReport.detail.wontFix.archive.confirm.headline', {
 			adjustToNumber: count,
@@ -663,8 +682,11 @@ async function archiveWorkflows(workflows: AffectedWorkflow[]) {
 			cancelButtonText: i18n.baseText('generic.cancel'),
 		},
 	);
-	if (confirmed !== MODAL_CONFIRM) return;
+	if (confirmed === MODAL_CONFIRM) await archiveWorkflows(workflows);
+}
 
+async function archiveWorkflows(workflows: AffectedWorkflow[]) {
+	const count = workflows.length;
 	// One request per workflow. A bulk archive endpoint would be faster for large selections.
 	const archivedIds = new Set<string>();
 	for (const workflow of workflows) {

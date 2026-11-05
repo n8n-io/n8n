@@ -43,3 +43,4 @@ export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';
 export const ADD_EXECUTION_TO_DATASET_MODAL_KEY = 'addExecutionToDataset';
 export const TRIAL_INTRO_MODAL_KEY = 'trialIntroModal';
 export const MIGRATE_WORKFLOW_MODAL_KEY = 'migrateWorkflow';
+export const ARCHIVE_WORKFLOWS_MODAL_KEY = 'archiveWorkflows';
