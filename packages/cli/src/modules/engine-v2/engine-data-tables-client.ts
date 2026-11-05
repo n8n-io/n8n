@@ -8,7 +8,7 @@ import {
 	isDataTableCallResponse,
 } from './engine-data-tables.contract';
 import type { DataTableCallOutcome, DataTableCallRequest } from './engine-data-tables.contract';
-import { DATA_TABLES_CALL_PATH } from './engine-v2.constants';
+import { DATA_TABLES_CALL_PATH, DATA_TABLES_CALL_REFUSED_STATUS } from './engine-v2.constants';
 
 /**
  * Sends one data table operation to the control plane server. Over HTTP even
@@ -25,9 +25,10 @@ export class EngineDataTablesClient {
 	/**
 	 * Returns the result, or the refusal the control plane answered with. A
 	 * refusal is a complete answer: the caller raises the v1 error it names.
-	 * Throws on any other non-2xx status and on a body of neither shape. Error
-	 * messages omit the response body, because it could contain row data that
-	 * would then end up in node output and logs.
+	 * Only the refusal status carries one; an error-shaped body on any other
+	 * status is not trusted. Throws on any other non-2xx status and on a body
+	 * of neither shape. Error messages omit the response body, because it
+	 * could contain row data that would then end up in node output and logs.
 	 */
 	async call(request: DataTableCallRequest, signal: AbortSignal): Promise<DataTableCallOutcome> {
 		const response = await this.http.request<unknown>({
@@ -44,7 +45,12 @@ export class EngineDataTablesClient {
 			abortSignal: signal,
 		});
 
-		if (isDataTableCallErrorResponse(response.body)) return response.body;
+		if (
+			response.statusCode === DATA_TABLES_CALL_REFUSED_STATUS &&
+			isDataTableCallErrorResponse(response.body)
+		) {
+			return response.body;
+		}
 
 		// 3xx too: redirects are not followed, so one is a misconfiguration.
 		if (response.statusCode >= 300) {

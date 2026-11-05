@@ -235,7 +235,7 @@ export const dataTableCallResultSchemas = {
 	]),
 	updateRows: rowsOrRowsWithStateResultSchema,
 	upsertRow: rowsOrRowsWithStateResultSchema,
-	deleteRows: z.array(rowResultSchema),
+	deleteRows: rowsOrRowsWithStateResultSchema,
 	clearRows: z.object({ deletedCount: z.number() }),
 } satisfies Record<DataTableCallKind, z.ZodTypeAny>;
 

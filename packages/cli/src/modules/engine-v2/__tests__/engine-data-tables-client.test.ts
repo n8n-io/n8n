@@ -53,6 +53,8 @@ describe('EngineDataTablesClient', () => {
 					method: 'POST',
 					body: request,
 					json: true,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
 				}),
 			);
 		});
@@ -104,6 +106,17 @@ describe('EngineDataTablesClient', () => {
 				expect((error as Error).message).toBe(
 					`Control plane refused data table call "getColumns" with ${statusCode}`,
 				);
+			},
+		);
+
+		it.each([200, 302, 500])(
+			'throws on a %s with an error-shaped body, because only a 422 is a refusal',
+			async (statusCode) => {
+				respondWith(statusCode, { error: { kind: 'user', message: 'not a refusal' } });
+
+				const error = await client.call(request, signal).catch((e: unknown) => e);
+
+				expect(error).toBeInstanceOf(OperationalError);
 			},
 		);
 

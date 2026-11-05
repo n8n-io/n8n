@@ -342,6 +342,27 @@ describe('RemoteDataTableProxyProvider', () => {
 			});
 			expect(rows[0].id).toBe(1);
 		});
+
+		it('returns the before and after rows of a dry run delete', async () => {
+			answerWith([
+				{ ...wireRow, dryRunState: 'before' },
+				{
+					id: null,
+					createdAt: null,
+					updatedAt: null,
+					name: null,
+					joined: null,
+					dryRunState: 'after',
+				},
+			]);
+			const table = await provider.getDataTableProxy(workflow, node, 'dt-1');
+
+			const rows = await table.deleteRows({ filter, dryRun: true });
+
+			expect(sentCall()).toMatchObject({ kind: 'deleteRows', options: { dryRun: true } });
+			expect(rows).toHaveLength(2);
+			expect(rows[1]).toMatchObject({ id: null, dryRunState: 'after' });
+		});
 	});
 
 	describe('refusals', () => {
