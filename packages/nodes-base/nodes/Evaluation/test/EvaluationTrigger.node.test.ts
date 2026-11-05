@@ -869,6 +869,29 @@ describe('Evaluation Trigger Node', () => {
 			expect(names).toEqual(expect.arrayContaining(['limitRows']));
 		});
 
+		test('the reporting options are hidden when reporting is off', () => {
+			const names = visibleNames(4.7, { source: 'langfuse', reportToLangfuse: false });
+
+			expect(names).toContain('reportToLangfuse');
+			expect(names).not.toContain('langfuseReporting');
+		});
+
+		test('reports runs by default and lists the reporting options', () => {
+			const toggle = description.properties.find(({ name }) => name === 'reportToLangfuse');
+			const reporting = description.properties.find(({ name }) => name === 'langfuseReporting');
+
+			expect(toggle).toMatchObject({ type: 'boolean', default: true });
+			expect(visibleNames(4.7, { source: 'langfuse' })).toEqual(
+				expect.arrayContaining(['reportToLangfuse', 'langfuseReporting']),
+			);
+			expect(((reporting?.options ?? []) as INodeProperties[]).map(({ name }) => name)).toEqual([
+				'environment',
+				'runDescription',
+				'runMetadata',
+				'runName',
+			]);
+		});
+
 		test('offers the three sources on the trigger', () => {
 			const picker = description.properties.find((property) => property.name === 'source');
 

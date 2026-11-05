@@ -216,6 +216,58 @@ export class EvaluationTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Report Runs as Langfuse Experiments',
+				name: 'reportToLangfuse',
+				type: 'boolean',
+				default: true,
+				noDataExpression: true,
+				description:
+					'Whether to report every test run to Langfuse as an experiment, with one item per dataset item',
+				displayOptions: { show: { source: ['langfuse'] } },
+			},
+			{
+				displayName: 'Reporting',
+				name: 'langfuseReporting',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: { show: { source: ['langfuse'], reportToLangfuse: [true] } },
+				options: [
+					{
+						displayName: 'Environment',
+						name: 'environment',
+						type: 'string',
+						default: '',
+						description:
+							'Langfuse environment for the experiment traces. Lowercase letters, digits, hyphens and underscores only, and it must not start with "langfuse".',
+					},
+					{
+						displayName: 'Run Description',
+						name: 'runDescription',
+						type: 'string',
+						typeOptions: { rows: 2 },
+						default: '',
+					},
+					{
+						displayName: 'Run Metadata',
+						name: 'runMetadata',
+						type: 'json',
+						default: '{}',
+						description:
+							'Metadata attached to every experiment item. n8n adds its own workflow and test run IDs.',
+					},
+					{
+						displayName: 'Run Name',
+						name: 'runName',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						description:
+							"Experiment run name. Defaults to '&lt;workflow name&gt; - &lt;test run ID&gt;'. Each run name must be unique per dataset.",
+					},
+				],
+			},
 		],
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
