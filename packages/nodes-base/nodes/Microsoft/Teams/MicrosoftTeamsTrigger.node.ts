@@ -413,6 +413,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					subscriptions,
 					// An unproven leftover is replaced: a failed create here throws, and core retries.
 					holdUnproven: false,
+					renewKeepers: true,
 				});
 				// A resource without a live subscription is a dark trigger, so the activation
 				// fails with the Graph error. A failed removal only warns: the next reconcile
