@@ -109,6 +109,38 @@ type GetAllResponse = { body: { data: ListQueryDb.Credentials.WithOwnedByAndShar
 // GET /credentials - fetch all credentials
 // ----------------------------------------
 describe('GET /credentials', () => {
+	test('should emit one `credentials-list-data-read` only when the data was requested', async () => {
+		const first = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const second = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const listEvents = () =>
+			emitSpy.mock.calls.filter(([eventName]) => eventName === 'credentials-list-data-read');
+
+		try {
+			await authOwnerAgent.get('/credentials').expect(200);
+			expect(listEvents()).toHaveLength(0);
+
+			await authOwnerAgent.get('/credentials').query({ includeData: true }).expect(200);
+			expect(listEvents()).toHaveLength(1);
+			const [, payload] = listEvents()[0] as [
+				string,
+				{ user: { id: string }; credentialIds: string[]; credentialCount: number; publicApi: boolean },
+			];
+			expect(payload.user.id).toBe(owner.id);
+			expect(payload.credentialIds).toEqual(expect.arrayContaining([first.id, second.id]));
+			expect(payload.credentialCount).toBe(payload.credentialIds.length);
+			expect(payload.publicApi).toBe(false);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
 	test('should return all creds for owner', async () => {
 		const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
 			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),
