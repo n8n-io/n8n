@@ -35,7 +35,6 @@ export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
-export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_VERSION_METADATA_MODAL_KEY = 'agentVersionMetadata';
 export const AGENT_PUBLISHED_MODAL_KEY = 'agentPublished';

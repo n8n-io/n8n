@@ -18,6 +18,7 @@ import {
 } from '@/features/agents/constants';
 import { isAgentsN8nChatFlagEnabledOnceEvaluated } from '@/features/agents/composables/useAgentsN8nChatFlag';
 import { AGENTS_MODALS } from '@/features/agents/modals';
+import { PACKAGE_MODALS } from '@/features/shared/n8nPackages/n8nPackages.modals';
 
 const AgentsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentsListView.vue');
@@ -46,7 +47,8 @@ export const AgentsModule = defineFrontendModule({
 	name: 'Agents',
 	description: 'Build and manage AI agents',
 	icon: 'robot',
-	modals: AGENTS_MODALS,
+	// The package dialog is shared. Agent Builder is its only user for now, so this module registers it.
+	modals: [...AGENTS_MODALS, ...PACKAGE_MODALS],
 	routes: [
 		{
 			name: AGENTS_SETTINGS_VIEW,
