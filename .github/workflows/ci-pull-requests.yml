@@ -44,6 +44,7 @@ jobs:
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
+      lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
       currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
@@ -268,20 +269,30 @@ jobs:
       # Generated here because a reusable workflow cannot resolve its own matrix.
       # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
       # full Postgres range, so every merge still gates on the older majors.
+      # CLI_INTEGRATION_RUNS must match `fullCliIntegration` of unit-test: when that
+      # job runs the SQLite suite in full, the DB matrix drops its duplicate run.
       - name: Generate DB test matrix
         id: generate-db-test-matrix
         if: fromJSON(steps.ci-filter.outputs.results).db
         env:
           DB_MATRIX_SCOPE: ${{ github.event_name == 'merge_group' && 'full' || 'pr' }}
-        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE")" >> "$GITHUB_OUTPUT"
+          CLI_INTEGRATION_RUNS: ${{ github.event_name != 'merge_group' && fromJSON(steps.ci-filter.outputs.results).unit }}
+        run: echo "db_test_matrix=$(node .github/scripts/db-test-matrix.mjs --scope="$DB_MATRIX_SCOPE" --cli-integration-runs="$CLI_INTEGRATION_RUNS")" >> "$GITHUB_OUTPUT"
 
       - name: Compute affected packages
         id: affected-packages
         if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
         run: |
-          PACKAGES=$(node packages/quality/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
+          JANITOR=packages/quality/testing/janitor/dist/cli.js
+          # Without a built janitor (a workflow-only PR skips the build), report no
+          # signal: every package then treats a lockfile change as a full run.
+          LOCKFILE_IMPACT=$(node "$JANITOR" lockfile-impact "--base=$MERGE_BASE" || echo ALL)
+          echo "Lockfile impact: $LOCKFILE_IMPACT"
+          echo "lockfile-impact=$LOCKFILE_IMPACT" >> "$GITHUB_OUTPUT"
+          PACKAGES=$(LOCKFILE_IMPACTED_PACKAGES="$LOCKFILE_IMPACT" node "$JANITOR" affected-packages | tr '\n' ' ' | sed 's/ *$//')
           echo "Affected packages: $PACKAGES"
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
@@ -319,6 +330,9 @@ jobs:
       testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
+      # The merge queue keeps the SQLite leg in the DB matrix, so it scopes this suite.
+      fullCliIntegration: ${{ github.event_name != 'merge_group' && needs.install-and-build.outputs.db == 'true' }}
     secrets: inherit
 
   typecheck:
@@ -420,6 +434,10 @@ jobs:
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
 
+      # Line-level selection reads the commit the impact map was built from.
+      - name: Fetch impact map commit
+        run: node packages/quality/testing/playwright/scripts/fetch-impact-map-commit.mjs
+
       - name: Generate shard matrix
         id: generate-matrix
         env:
@@ -512,6 +530,7 @@ jobs:
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
       run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
       changed-files: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfile-impacted-packages: ${{ needs.install-and-build.outputs.lockfile_impact }}
 
   e2e-performance:
     name: E2E Performance

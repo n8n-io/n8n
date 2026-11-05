@@ -1,21 +1,34 @@
 #!/usr/bin/env node
 
-import { resolvePackage, analyzePackageByName } from './scanner.js';
+import {
+	resolvePackage,
+	analyzePackageByName,
+	formatPackageSpec,
+	getExitCode,
+	EXIT_CODES,
+} from './scanner.js';
 
 const [packageSpec] = process.argv.slice(2);
 if (!packageSpec) {
 	console.error('Usage: npx @n8n/scan-community-package <package-name>[@version]');
-	process.exit(1);
+	process.exit(EXIT_CODES.INTERNAL_ERROR);
 }
 
-const { packageName, version } = resolvePackage(packageSpec);
 try {
+	const { packageName, version } = resolvePackage(packageSpec);
 	const result = await analyzePackageByName(packageName, version);
+	const label = formatPackageSpec(packageName, result.version);
+	const exitCode = getExitCode(result);
 
-	if (result.passed) {
-		console.log(`✅ Package ${packageName}@${result.version} has passed all security checks`);
-	} else {
-		console.log(`❌ Package ${packageName}@${result.version} has failed security checks`);
+	console.log(
+		{
+			[EXIT_CODES.SCAN_SUCCEEDED]: `✅ Package "${label}" has passed all security checks`,
+			[EXIT_CODES.SCAN_FAILED]: `❌ Package "${label}" has failed security checks`,
+			[EXIT_CODES.INTERNAL_ERROR]: `❌ Could not complete the scan of "${label}"`,
+		}[exitCode],
+	);
+
+	if (!result.passed) {
 		console.log(`Reason: ${result.message}`);
 
 		if (result.details) {
@@ -23,7 +36,10 @@ try {
 			console.log(result.details);
 		}
 	}
+
+	// Set rather than call process.exit() so piped stdout is flushed first
+	process.exitCode = exitCode;
 } catch (error: unknown) {
 	console.error('Analysis failed:', error);
-	process.exit(1);
+	process.exitCode = EXIT_CODES.INTERNAL_ERROR;
 }

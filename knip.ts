@@ -134,11 +134,6 @@ const config: KnipConfig = {
 		}),
 		'packages/nodes-base': pkg({
 			ignoreDependencies: [
-				// napi-rs wrappers load these platform bindings dynamically at runtime.
-				'@napi-rs/canvas-linux-arm64-musl',
-				'@napi-rs/canvas-linux-x64-musl',
-				'@napi-rs/image-linux-arm64-musl',
-				'@napi-rs/image-linux-x64-musl',
 				// Pins the pg version that pg-promise resolves for npm installs of the published package.
 				'pg',
 			],

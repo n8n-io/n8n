@@ -54,7 +54,7 @@ const mcpTriggerNode = ({
 });
 
 /**
- * Mirrors what `TestWebhooks.needsWebhook` registers when the user tests an
+ * Mirrors what `TestWebhooks.registerWebhooks` registers when the user tests an
  * MCP trigger in the editor. The workflow does not need to exist in the DB:
  * the registration is self-contained.
  */
