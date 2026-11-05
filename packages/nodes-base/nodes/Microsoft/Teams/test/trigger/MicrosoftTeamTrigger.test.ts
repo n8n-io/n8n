@@ -206,6 +206,35 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
 			});
 
+			it('throws the create error when a kept subscription is gone at its renewal and cannot be replaced', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['sub1'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				const createError = forbidden(ctx);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1') });
+				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (callCtx: unknown, method: string, path: string, body?: unknown) => {
+						if (method === 'POST') throw createError;
+						return await baseline?.(callCtx, method, path, body);
+					},
+				);
+
+				await expect(checkExists(ctx)).rejects.toBe(createError);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['PATCH', '/v1.0/subscriptions/sub1'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				// Nothing gone stays stored, so core's cleanup has nothing stale to remove.
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: [] });
+			});
+
 			it('renews a kept subscription even when its expiry is already near the maximum', async () => {
 				const nearMax = 4317 * 60 * 1000;
 				const ctx = hookCtx(
@@ -223,7 +252,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				]);
 			});
 
-			it('create posts once and renews nothing', async () => {
+			it('sends no renewal on a fresh publish', async () => {
 				const ctx = hookCtx({}, { event: 'newChat' });
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 				routeGraph({});
@@ -476,7 +505,11 @@ describe('Microsoft Teams Trigger Node', () => {
 						'the stored secret, with the id stored twice',
 						['sub1', 'sub1'],
 						'secret',
-						expect.arrayContaining([['PATCH', S1]]),
+						[
+							['GET', S1],
+							['GET', S1],
+							['PATCH', S1],
+						],
 						[renewal],
 					],
 				])(
