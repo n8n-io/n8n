@@ -14,15 +14,6 @@ export interface ArtifactToolCall {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	/** ISO timestamp. */
-	startedAt?: string;
-}
-
-/** The latest workflow that the setup flow announced in the turn. */
-export interface ArtifactSetupAnnouncement {
-	workflowId: string;
-	/** ISO timestamp. Without it, every in-flight build of the turn can match. */
-	timestamp?: string;
 }
 
 /** One message of the thread. */
@@ -37,7 +28,8 @@ export interface ArtifactTurn {
 	attachments?: InstanceAiAttachment[];
 	/** The hand-off context of a user message. */
 	context?: InstanceAiHandoffContext;
-	setupAnnouncement?: ArtifactSetupAnnouncement;
+	/** The latest workflow that the setup flow announced in the turn. */
+	announcedWorkflowId?: string;
 }
 
 /** All tool calls of the thread, oldest first. */

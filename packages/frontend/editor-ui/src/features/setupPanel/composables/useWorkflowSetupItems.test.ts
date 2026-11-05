@@ -7,7 +7,8 @@ import type { ICredentialType, INodeParameters } from 'n8n-workflow';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
-import type { InstanceAiAgentNode, InstanceAiSetupItem } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiMessage, InstanceAiSetupItem } from '@n8n/api-types';
+import { toArtifactTurns } from '@/features/ai/instanceAi/agentTreeArtifactTurns';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useSetupPanelState } from '@/features/ai/instanceAi/composables/useSetupPanelState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -315,6 +316,10 @@ describe('useWorkflowSetupItems', () => {
 		};
 		const thread = reactive({
 			messages: [{ agentTree }],
+			get artifactTurns() {
+				// The fixture fills only the agent tree of each message.
+				return toArtifactTurns(this.messages as InstanceAiMessage[]);
+			},
 			setupItemsByWorkflowId: { [WORKFLOW_ID]: [credentialItem({ nodeBindings: undefined })] },
 		});
 		const state = useSetupPanelState({ thread, workflowId: () => WORKFLOW_ID });

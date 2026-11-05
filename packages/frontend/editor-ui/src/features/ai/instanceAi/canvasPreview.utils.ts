@@ -158,17 +158,17 @@ const WORKFLOW_LOCKING_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
 ]);
 
-/** An in-flight build of a new workflow that started before the setup flow announced `workflowId`. */
+/**
+ * An in-flight build of a new workflow in a turn that announced `workflowId`.
+ * The build saves the workflow and announces its setup before it returns.
+ */
 function isAnnouncedBuild(turn: ArtifactTurn, workflowId: string): boolean {
-	const announcement = turn.setupAnnouncement;
-	if (announcement?.workflowId !== workflowId) return false;
+	if (turn.announcedWorkflowId !== workflowId) return false;
 	return turn.toolCalls.some(
 		(call) =>
 			call.isLoading &&
 			call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
-			!call.args?.workflowId &&
-			(announcement.timestamp === undefined ||
-				(call.startedAt !== undefined && announcement.timestamp >= call.startedAt)),
+			!call.args?.workflowId,
 	);
 }
 
