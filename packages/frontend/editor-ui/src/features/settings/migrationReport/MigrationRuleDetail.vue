@@ -5,12 +5,10 @@ import {
 	DEBOUNCE_TIME,
 	ARCHIVE_WORKFLOWS_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
-	MODAL_CONFIRM,
 	TIME,
 	VIEWS,
 } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useMessage } from '@/app/composables/useMessage';
 import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
@@ -60,6 +58,8 @@ import FindingStateSelect from './components/FindingStateSelect.vue';
 import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
+import SplitButton from './components/SplitButton.vue';
+import type { ArchiveWorkflowsModalMode } from './constants';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
 	isUnresolvedState,
@@ -75,7 +75,6 @@ const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const toast = useToast();
-const message = useMessage();
 const workflowsStore = useWorkflowsStore();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
@@ -382,7 +381,7 @@ async function onFindingStatusChange(
 			workflow.id,
 			status,
 		);
-		if (status === 'wont_fix') offerToArchive([workflow]);
+		if (status === 'wont_fix') promptToArchive(workflow);
 	} catch (error) {
 		restoreWorkflows([workflow]);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
@@ -429,7 +428,6 @@ async function changeFindingStatuses(
 			workflowIds,
 			status,
 		);
-		if (status === 'wont_fix') offerToArchive(workflows);
 		return true;
 	} catch (error) {
 		restoreWorkflows(workflows);
@@ -620,69 +618,63 @@ function reviewUnusedWorkflows() {
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
 }
 
-// The archive modal asks the user and sends back the workflows to archive.
+// The archive modal asks the user and sends back the workflows to act on.
 const archiveModalBus = createEventBus();
-archiveModalBus.on('archive', ({ workflows }: { workflows: AffectedWorkflow[] }) => {
-	void archiveWorkflows(workflows);
-});
+archiveModalBus.on(
+	'confirm',
+	({ mode, workflows }: { mode: ArchiveWorkflowsModalMode; workflows: AffectedWorkflow[] }) => {
+		void (mode === 'prompt' ? archiveWorkflows(workflows) : markWontFixAndArchive(workflows));
+	},
+);
 
 /**
- * After a won't fix, offers to archive the workflows. On a rule whose executions
- * will fail, a won't fix usually means the workflow is not needed, so a modal asks.
- * On other rules the workflow often keeps running, so a toast offers it, as the
- * workflows list does.
+ * On a rule whose executions will fail, a won't fix usually means the workflow is
+ * not needed. So a won't fix from the row asks to archive it too. On other rules
+ * the workflow often keeps running, so the row does not ask.
  */
-function offerToArchive(workflows: AffectedWorkflow[]) {
-	const toArchive = workflows.filter((workflow) => !workflow.isArchived);
-	if (toArchive.length === 0) return;
-
-	if (state.value.ruleImpact === 'executionsFail') {
-		uiStore.openModalWithData({
-			name: ARCHIVE_WORKFLOWS_MODAL_KEY,
-			data: { workflows: toArchive, eventBus: archiveModalBus },
-		});
-		return;
-	}
-
-	const count = toArchive.length;
-	toast.showToast({
-		type: 'success',
-		title: i18n.baseText('settings.migrationReport.detail.wontFix.success.title', {
-			adjustToNumber: count,
-			interpolate: { count: String(count) },
-		}),
-		message: `<a href="#" data-test-id="migration-wont-fix-archive-link">${i18n.baseText(
-			'settings.migrationReport.detail.wontFix.archive.link',
-			{ adjustToNumber: count },
-		)}</a>`,
-		onClick: (event) => {
-			if (event?.target instanceof HTMLAnchorElement) {
-				event.preventDefault();
-				void confirmAndArchiveWorkflows(toArchive);
-			}
-		},
+function promptToArchive(workflow: AffectedWorkflow) {
+	if (state.value.ruleImpact !== 'executionsFail' || workflow.isArchived) return;
+	uiStore.openModalWithData({
+		name: ARCHIVE_WORKFLOWS_MODAL_KEY,
+		data: { mode: 'prompt', workflows: [workflow], eventBus: archiveModalBus },
 	});
 }
 
-async function confirmAndArchiveWorkflows(workflows: AffectedWorkflow[]) {
-	const count = workflows.length;
-	const confirmed = await message.confirm(
-		i18n.baseText('settings.migrationReport.detail.wontFix.archive.confirm.message', {
-			adjustToNumber: count,
-		}),
-		i18n.baseText('settings.migrationReport.detail.wontFix.archive.confirm.headline', {
-			adjustToNumber: count,
-			interpolate: { count: String(count) },
-		}),
-		{
-			type: 'warning',
-			confirmButtonText: i18n.baseText(
-				'settings.migrationReport.detail.wontFix.archive.confirm.button',
-			),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		},
-	);
-	if (confirmed === MODAL_CONFIRM) await archiveWorkflows(workflows);
+const bulkArchiveTargets = computed(() =>
+	selectedWorkflows.value.filter(
+		(workflow) => isSelectable(workflow) && !isBusy(workflow) && !workflow.isArchived,
+	),
+);
+
+const bulkWontFixActions = computed(() => [
+	{
+		label: i18n.baseText('settings.migrationReport.detail.bulk.wontFixAndArchive'),
+		value: 'wontFixAndArchive',
+		disabled: bulkArchiveTargets.value.length === 0,
+	},
+]);
+
+// Archiving unpublishes a workflow, and restoring it does not publish it again.
+// So the modal asks first only when a selected workflow is published.
+function onBulkWontFixAndArchive() {
+	const workflows = bulkArchiveTargets.value;
+	if (workflows.length === 0) return;
+	if (!workflows.some((workflow) => workflow.active)) {
+		void markWontFixAndArchive(workflows);
+		return;
+	}
+	uiStore.openModalWithData({
+		name: ARCHIVE_WORKFLOWS_MODAL_KEY,
+		data: { mode: 'confirm', workflows, eventBus: archiveModalBus },
+	});
+}
+
+async function markWontFixAndArchive(workflows: AffectedWorkflow[]) {
+	const toMark = workflows.filter((workflow) => findingState(workflow) !== 'wont_fix');
+	if (toMark.length > 0 && !(await changeFindingStatuses(toMark, 'wont_fix'))) return;
+	const done = new Set(workflows.map((workflow) => workflow.id));
+	selectedWorkflowIds.value = selectedWorkflowIds.value.filter((id) => !done.has(id));
+	await archiveWorkflows(workflows);
 }
 
 async function archiveWorkflows(workflows: AffectedWorkflow[]) {
@@ -1280,12 +1272,13 @@ watch(
 							}}
 						</N8nText>
 					</template>
-					<N8nButton
-						variant="outline"
+					<SplitButton
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
 						:disabled="bulkTargets('wont_fix').length === 0"
+						:actions="bulkWontFixActions"
 						data-test-id="migration-bulk-wont-fix-button"
 						@click="onBulkStatusChange('wont_fix')"
+						@action="onBulkWontFixAndArchive"
 					/>
 					<N8nButton
 						variant="outline"

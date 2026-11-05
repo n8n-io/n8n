@@ -9,11 +9,16 @@ import { STORES } from '@n8n/stores';
 import { useUIStore } from '@/app/stores/ui.store';
 import { ARCHIVE_WORKFLOWS_MODAL_KEY } from '@/app/constants';
 import ArchiveWorkflowsModal from './ArchiveWorkflowsModal.vue';
+import type { ArchiveWorkflowsModalMode } from './constants';
 
-const workflow = (id: string, name: string, lastExecutedAt?: Date) => ({
+const workflow = (
+	id: string,
+	name: string,
+	{ active = false, lastExecutedAt = undefined as Date | undefined } = {},
+) => ({
 	id,
 	name,
-	active: false,
+	active,
 	numberOfExecutions: 0,
 	lastUpdatedAt: new Date('2024-01-15'),
 	lastExecutedAt,
@@ -44,10 +49,10 @@ const renderComponent = createComponentRenderer(ArchiveWorkflowsModal, {
 	},
 });
 
-function render(workflows: Array<ReturnType<typeof workflow>>) {
+function render(mode: ArchiveWorkflowsModalMode, workflows: Array<ReturnType<typeof workflow>>) {
 	eventBus = createEventBus();
 	return renderComponent({
-		props: { modalName: ARCHIVE_WORKFLOWS_MODAL_KEY, data: { workflows, eventBus } },
+		props: { modalName: ARCHIVE_WORKFLOWS_MODAL_KEY, data: { mode, workflows, eventBus } },
 	});
 }
 
@@ -56,52 +61,93 @@ describe('ArchiveWorkflowsModal', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should show the count and list every workflow with its last run', () => {
-		render([
-			workflow('workflow-1', 'Daily report', new Date()),
-			workflow('workflow-2', 'Old sync'),
-		]);
+	describe('prompt', () => {
+		it('should name the workflow and say that it will fail', () => {
+			render('prompt', [workflow('workflow-1', 'Daily report')]);
 
-		expect(screen.getByText('Archive 2 workflows too?')).toBeInTheDocument();
-		const rows = within(screen.getByTestId('archive-workflows-modal-list')).getAllByRole(
-			'listitem',
-		);
-		expect(rows).toHaveLength(2);
-		expect(rows[0]).toHaveTextContent('Daily report');
-		expect(rows[0]).toHaveTextContent('last run');
-		expect(rows[1]).toHaveTextContent('Old sync');
-		expect(rows[1]).toHaveTextContent('never run');
+			expect(screen.getByText("Archive 'Daily report' too?")).toBeInTheDocument();
+			expect(screen.getByText(/so it'll fail after the upgrade to n8n 3.0/)).toBeInTheDocument();
+			expect(screen.queryByText(/It's published/)).not.toBeInTheDocument();
+			expect(screen.queryByTestId('archive-workflows-modal-list')).not.toBeInTheDocument();
+		});
+
+		it('should warn that archiving stops a published workflow', () => {
+			render('prompt', [workflow('workflow-1', 'Daily report', { active: true })]);
+
+			expect(screen.getByText(/It's published. Archiving stops it./)).toBeInTheDocument();
+		});
+
+		it('should send the workflow back on archive and close', async () => {
+			const workflows = [workflow('workflow-1', 'Daily report')];
+			render('prompt', workflows);
+			const onConfirm = vi.fn();
+			eventBus.on('confirm', onConfirm);
+
+			await userEvent.click(screen.getByTestId('archive-workflows-modal-confirm-button'));
+
+			expect(onConfirm).toHaveBeenCalledWith({ mode: 'prompt', workflows });
+			expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(ARCHIVE_WORKFLOWS_MODAL_KEY);
+		});
+
+		it('should close without sending anything when the user keeps the workflow', async () => {
+			render('prompt', [workflow('workflow-1', 'Daily report')]);
+			const onConfirm = vi.fn();
+			eventBus.on('confirm', onConfirm);
+
+			await userEvent.click(screen.getByTestId('archive-workflows-modal-cancel-button'));
+
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(ARCHIVE_WORKFLOWS_MODAL_KEY);
+		});
 	});
 
-	it('should list every workflow of a large selection', () => {
-		render(Array.from({ length: 40 }, (_, i) => workflow(`workflow-${i}`, `Workflow ${i}`)));
+	describe('confirm', () => {
+		it('should show the count and list only the published workflows with their last run', () => {
+			render('confirm', [
+				workflow('workflow-1', 'Daily report', { active: true, lastExecutedAt: new Date() }),
+				workflow('workflow-2', 'Old sync', { active: true }),
+				workflow('workflow-3', 'Draft'),
+			]);
 
-		expect(screen.getByText('Archive 40 workflows too?')).toBeInTheDocument();
-		expect(
-			within(screen.getByTestId('archive-workflows-modal-list')).getAllByRole('listitem'),
-		).toHaveLength(40);
-	});
+			expect(
+				screen.getByText("Mark 3 workflows as won't fix and archive them?"),
+			).toBeInTheDocument();
+			expect(screen.getByText(/2 of these workflows are published/)).toBeInTheDocument();
+			const rows = within(screen.getByTestId('archive-workflows-modal-list')).getAllByRole(
+				'listitem',
+			);
+			expect(rows).toHaveLength(2);
+			expect(rows[0]).toHaveTextContent('Daily report');
+			expect(rows[0]).toHaveTextContent('last run');
+			expect(rows[1]).toHaveTextContent('Old sync');
+			expect(rows[1]).toHaveTextContent('never run');
+		});
 
-	it('should send the workflows to archive and close on confirm', async () => {
-		const workflows = [workflow('workflow-1', 'Daily report')];
-		render(workflows);
-		const onArchive = vi.fn();
-		eventBus.on('archive', onArchive);
+		it('should list every published workflow of a large selection', () => {
+			render(
+				'confirm',
+				Array.from({ length: 40 }, (_, i) =>
+					workflow(`workflow-${i}`, `Workflow ${i}`, { active: true }),
+				),
+			);
 
-		await userEvent.click(screen.getByTestId('archive-workflows-modal-archive-button'));
+			expect(
+				within(screen.getByTestId('archive-workflows-modal-list')).getAllByRole('listitem'),
+			).toHaveLength(40);
+		});
 
-		expect(onArchive).toHaveBeenCalledWith({ workflows });
-		expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(ARCHIVE_WORKFLOWS_MODAL_KEY);
-	});
+		it('should send all selected workflows back on confirm', async () => {
+			const workflows = [
+				workflow('workflow-1', 'Daily report', { active: true }),
+				workflow('workflow-2', 'Draft'),
+			];
+			render('confirm', workflows);
+			const onConfirm = vi.fn();
+			eventBus.on('confirm', onConfirm);
 
-	it('should close without archiving when the user keeps the workflows', async () => {
-		render([workflow('workflow-1', 'Daily report')]);
-		const onArchive = vi.fn();
-		eventBus.on('archive', onArchive);
+			await userEvent.click(screen.getByTestId('archive-workflows-modal-confirm-button'));
 
-		await userEvent.click(screen.getByTestId('archive-workflows-modal-keep-button'));
-
-		expect(onArchive).not.toHaveBeenCalled();
-		expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(ARCHIVE_WORKFLOWS_MODAL_KEY);
+			expect(onConfirm).toHaveBeenCalledWith({ mode: 'confirm', workflows });
+		});
 	});
 });
