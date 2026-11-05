@@ -32,7 +32,7 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						name: 'parent_execution_id',
 						type: 'uuid',
 						isNullable: true,
-						comment: 'The execution whose step started this one. Null for a top-level execution.',
+						comment: 'The parent execution. Null for a top-level execution.',
 					},
 					{ name: 'parent_step_id', type: 'uuid', isNullable: true },
 					{
@@ -40,6 +40,13 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						type: 'boolean',
 						isNullable: true,
 						comment: 'Whether the parent step waits for this execution to end.',
+					},
+					{
+						name: 'lifecycle_event_subscription',
+						type: 'jsonb',
+						isNullable: true,
+						comment:
+							'Which lifecycle events the caller subscribes to (none or all). NULL means none.',
 					},
 					{
 						name: 'created_at',

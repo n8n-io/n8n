@@ -91,6 +91,14 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	INSERT_DATA_TABLE_ROWS: 'insert_data_table_rows',
 	UPDATE_DATA_TABLE_ROWS: 'update_data_table_rows',
 	DELETE_DATA_TABLE_ROWS: 'delete_data_table_rows',
+	LIST_PROJECTS: 'list_projects',
+	LIST_TAGS: 'list_tags',
+	TAG_WORKFLOW: 'tag_workflow',
+	CLEANUP_TEST_EXECUTIONS: 'cleanup_test_executions',
+	LIST_FOLDERS: 'list_folders',
+	CREATE_FOLDER: 'create_folder',
+	DELETE_FOLDER: 'delete_folder',
+	MOVE_WORKFLOW_TO_FOLDER: 'move_workflow_to_folder',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',
 	GET_NODE_PARAMETER_OPTIONS: 'get_node_parameter_options',
@@ -267,6 +275,43 @@ export const EXECUTION_TOOL_ACTIONS: readonly ExecutionToolAction[] = Object.key
 
 const SPLIT_EXECUTIONS_TOOL: SplitBuilderTool = { actions: EXECUTION_TOOL_NAME_BY_ACTION };
 
+/** The tool that owns each action of the former multi-action `workspace` tool. */
+export const WORKSPACE_TOOL_NAME_BY_ACTION = {
+	'list-projects': SHARED_BUILDER_TOOL_NAMES.LIST_PROJECTS,
+	'list-tags': SHARED_BUILDER_TOOL_NAMES.LIST_TAGS,
+	'tag-workflow': SHARED_BUILDER_TOOL_NAMES.TAG_WORKFLOW,
+	'cleanup-test-executions': SHARED_BUILDER_TOOL_NAMES.CLEANUP_TEST_EXECUTIONS,
+	'list-folders': SHARED_BUILDER_TOOL_NAMES.LIST_FOLDERS,
+	'create-folder': SHARED_BUILDER_TOOL_NAMES.CREATE_FOLDER,
+	'delete-folder': SHARED_BUILDER_TOOL_NAMES.DELETE_FOLDER,
+	'move-workflow-to-folder': SHARED_BUILDER_TOOL_NAMES.MOVE_WORKFLOW_TO_FOLDER,
+} as const;
+
+export type WorkspaceToolAction = keyof typeof WORKSPACE_TOOL_NAME_BY_ACTION;
+
+export const WORKSPACE_ACTION_TOOL_NAMES: readonly string[] = Object.values(
+	WORKSPACE_TOOL_NAME_BY_ACTION,
+);
+
+function isWorkspaceToolAction(key: string): key is WorkspaceToolAction {
+	return Object.hasOwn(WORKSPACE_TOOL_NAME_BY_ACTION, key);
+}
+
+/** Derived from the map, so a new action always gets a registered tool. */
+export const WORKSPACE_TOOL_ACTIONS: readonly WorkspaceToolAction[] = Object.keys(
+	WORKSPACE_TOOL_NAME_BY_ACTION,
+).filter(isWorkspaceToolAction);
+
+/** Folder actions. The tools exist only when the workspace service supports folders. */
+export const WORKSPACE_FOLDER_TOOL_ACTIONS: readonly WorkspaceToolAction[] = [
+	'list-folders',
+	'create-folder',
+	'delete-folder',
+	'move-workflow-to-folder',
+];
+
+const SPLIT_WORKSPACE_TOOL: SplitBuilderTool = { actions: WORKSPACE_TOOL_NAME_BY_ACTION };
+
 /** Former multi-action tools that became one tool for each action. Never remove an entry. */
 export const SPLIT_BUILDER_TOOLS: Readonly<Record<string, SplitBuilderTool>> = {
 	credentials: SPLIT_CREDENTIALS_TOOL,
@@ -277,6 +322,7 @@ export const SPLIT_BUILDER_TOOLS: Readonly<Record<string, SplitBuilderTool>> = {
 	data_tables: SPLIT_DATA_TABLES_TOOL,
 	executions: SPLIT_EXECUTIONS_TOOL,
 	workflow_builder_executions: SPLIT_EXECUTIONS_TOOL,
+	workspace: SPLIT_WORKSPACE_TOOL,
 };
 
 const hasOwn = (record: object, key: string) => Object.prototype.hasOwnProperty.call(record, key);
@@ -332,6 +378,27 @@ export function getExecutionCallAction(
 		return EXECUTION_TOOL_ACTIONS.find((known) => known === action);
 	}
 	return EXECUTION_TOOL_ACTIONS.find((known) => EXECUTION_TOOL_NAME_BY_ACTION[known] === toolName);
+}
+
+/** Whether a stored tool name is the former multi-action workspace tool. */
+export function isFormerWorkspaceTool(toolName: string): boolean {
+	return (
+		hasOwn(SPLIT_BUILDER_TOOLS, toolName) && SPLIT_BUILDER_TOOLS[toolName] === SPLIT_WORKSPACE_TOOL
+	);
+}
+
+/**
+ * Returns the workspace action of a tool call, for a current workspace tool or a
+ * stored call of the former multi-action tool. Returns `undefined` for other tools.
+ */
+export function getWorkspaceCallAction(
+	toolName: string,
+	action?: unknown,
+): WorkspaceToolAction | undefined {
+	if (isFormerWorkspaceTool(toolName)) {
+		return WORKSPACE_TOOL_ACTIONS.find((known) => known === action);
+	}
+	return WORKSPACE_TOOL_ACTIONS.find((known) => WORKSPACE_TOOL_NAME_BY_ACTION[known] === toolName);
 }
 
 /**

@@ -6,6 +6,7 @@ import {
 	EXECUTION_TOOL_ACTIONS,
 	EXECUTION_TOOL_NAME_BY_ACTION,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
+	WORKSPACE_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
@@ -14,6 +15,7 @@ import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } 
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
+import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -146,7 +148,10 @@ function getOrchestratorDomainToolFactories(
 			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
 			() => loadDataTablesTool().createDataTableTool(context, action),
 		]),
-		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
+		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
+			WORKSPACE_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_NODES, () => loadNodesTool().createSearchNodesTool(context)],

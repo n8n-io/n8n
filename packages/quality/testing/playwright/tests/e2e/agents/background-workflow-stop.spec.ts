@@ -73,9 +73,9 @@ async function mockModel(stack: N8NStack) {
 		{},
 		// Keep the report open while the early Continue request is queued.
 		{ delay: 15 },
-		{ tool: 'resume_background_jobs' },
+		{ tool: 'background_jobs', input: { action: 'resume' } },
 		{},
-		{ tool: 'resume_background_jobs' },
+		{ tool: 'background_jobs', input: { action: 'resume' } },
 		{ tool: 'run_waiting_workflow', input: { value: 'continued' } },
 	];
 	for (const [index, step] of [...steps, {}].entries()) {
@@ -245,7 +245,7 @@ test.describe(
 				const earlyHistory = await api.agents.history(project.id, agent.id, threadId);
 				const earlyResume = earlyHistory.messages
 					.flatMap((message) => message.content)
-					.find((part) => part.toolName === 'resume_background_jobs');
+					.find((part) => part.toolName === 'background_jobs');
 				expect(earlyResume?.output).toMatchObject({ status: 'stopping' });
 				expect(
 					(await api.workflows.getExecutions(workflow.id)).map((execution) => execution.id),
@@ -261,9 +261,7 @@ test.describe(
 				const toolCalls = history.messages
 					.flatMap((message) => message.content)
 					.filter((part) => part.type === 'tool-call');
-				const resume = toolCalls
-					.filter((part) => part.toolName === 'resume_background_jobs')
-					.at(-1);
+				const resume = toolCalls.filter((part) => part.toolName === 'background_jobs').at(-1);
 				expect(resume?.output).toMatchObject({
 					status: 'ready',
 					jobs: [],

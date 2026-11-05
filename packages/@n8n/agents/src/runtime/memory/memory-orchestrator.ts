@@ -20,7 +20,7 @@ import {
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
 import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
-import { getCreatedAt } from '../../sdk/message';
+import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -71,10 +71,11 @@ function stringifyForBudget(value: unknown): string {
 }
 
 function serializeMessageForBudget(message: AgentDbMessage): string {
-	if (!('role' in message) || !Array.isArray(message.content)) return '';
+	const modelMessage = filterLlmMessages([message])[0];
+	if (!modelMessage || !Array.isArray(modelMessage.content)) return '';
 	const parts: string[] = [];
 	// File bytes are not text tokens, so count only the text around them.
-	for (const content of stripHydratedFileData(message).content) {
+	for (const content of stripHydratedFileData(modelMessage).content) {
 		if (content.type === 'text') {
 			parts.push(content.text);
 		} else if (content.type === 'tool-call') {

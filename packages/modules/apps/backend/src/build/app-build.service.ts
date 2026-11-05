@@ -1,5 +1,6 @@
 import type { AppBuildResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { DbLock, DbLockService } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -9,6 +10,7 @@ import { raceAbort } from '@n8n/utils/race-abort';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { AppBuildError, type AppBuildAttempt, type AppBuildStage } from './app-build.types';
+import type { AppBuildOrigin } from '../app-events';
 import { checkBuildSource } from '../scaffold/app-scaffold';
 import { appStorageLockSubKey } from '../storage/app-storage-lock';
 import type { AppVersion } from '../versions/app-version.entity';
@@ -29,6 +31,7 @@ export class AppBuildService {
 		private readonly locks: DbLockService,
 		private readonly logger: Logger,
 		private readonly config: AppsConfig,
+		private readonly events: EventService,
 	) {}
 
 	assertNotStopping() {
@@ -45,8 +48,9 @@ export class AppBuildService {
 		appId: string,
 		versionId: string,
 		retry = false,
+		origin: AppBuildOrigin = {},
 	): Promise<AppBuildResponse> {
-		return await this.execute(projectId, appId, versionId, retry);
+		return await this.execute(projectId, appId, versionId, retry, origin);
 	}
 
 	async startBuild(
@@ -54,10 +58,11 @@ export class AppBuildService {
 		appId: string,
 		versionId: string,
 		retry = false,
+		origin: AppBuildOrigin = {},
 	): Promise<AppBuildResponse> {
 		// Wait for the first claim so invalid retries still fail in the request.
 		const started = createDeferredPromise<AppBuildResponse>();
-		void this.execute(projectId, appId, versionId, retry, (attempt) => {
+		void this.execute(projectId, appId, versionId, retry, origin, (attempt) => {
 			started.resolve({
 				versionId,
 				status: 'running',
@@ -76,23 +81,42 @@ export class AppBuildService {
 		appId: string,
 		versionId: string,
 		retry: boolean,
+		origin: AppBuildOrigin,
 		onStarted?: (attempt: AppBuildAttempt) => void,
 	): Promise<AppBuildResponse> {
-		await this.versionService.getVersion(projectId, appId, versionId);
+		// The counter on the version also holds the attempts of earlier builds, such as before a manual retry.
+		const { buildAttempts: earlierAttempts } = await this.versionService.getVersion(
+			projectId,
+			appId,
+			versionId,
+		);
 		this.assertNotStopping();
 		const startedAt = Date.now();
 		const work = this.run(projectId, appId, versionId, retry, onStarted);
 		this.active.add(work);
 		try {
 			const result = await work;
+			const durationMs = Date.now() - startedAt;
 			this.logger.debug('App build finished.', {
 				projectId,
 				appId,
 				versionId,
 				status: result.status,
 				attempt: result.attempts,
-				durationMs: Date.now() - startedAt,
+				durationMs,
 			});
+			if (result.status === 'succeeded' || result.status === 'failed') {
+				const { changeSource = retry ? 'retry' : 'chat', ...actor } = origin;
+				this.events.emit('app-build-finished', {
+					...actor,
+					appId,
+					versionId,
+					changeSource,
+					status: result.status,
+					attempts: result.attempts - earlierAttempts,
+					durationMs,
+				});
+			}
 			return result;
 		} finally {
 			this.active.delete(work);

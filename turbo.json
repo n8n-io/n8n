@@ -7,6 +7,10 @@
 		// icon barrel), not a real package — declare it so boundaries doesn't flag it.
 		"implicitDependencies": ["~icons"]
 	},
+	"futureFlags": {
+		// `--affected` uses task `inputs`, so it selects a task that reads a file from another package.
+		"affectedUsingTaskInputs": true
+	},
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
@@ -63,6 +67,14 @@
 		"n8n-nodes-base#lint": {
 			"dependsOn": ["^build", "build", "@n8n/eslint-config#build"]
 		},
+		// The @n8n/db lint configs read this manifest from the cli package.
+		"@n8n/db#lint": {
+			"dependsOn": ["^build", "@n8n/eslint-config#build", "@n8n/oxlint-config#build"],
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				"$TURBO_ROOT$/packages/cli/src/services/ownership-transfer/ownership-transfer.manifest.json"
+			]
+		},
 		"lint:fix": {},
 		"lint:styles": {
 			"dependsOn": ["@n8n/stylelint-config#build"]
@@ -79,7 +91,7 @@
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:unit": {
@@ -91,7 +103,7 @@
 		"test:unit:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"test:integration": {
@@ -100,10 +112,24 @@
 			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
 			"passThroughEnv": ["CHANGED_FILES"]
 		},
+		// DB suites (testcontainers). The image is part of the hash, so each
+		// Postgres version caches its own result.
+		"test:postgres:integration:tc": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
+		},
+		"test:postgres": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
+		},
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
+			"env": ["COVERAGE_ENABLED", "CHANGED_FILES", "LOCKFILE_IMPACTED_PACKAGES"],
 			"cache": false
 		},
 		"watch": { "cache": false, "persistent": true },

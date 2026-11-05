@@ -14,7 +14,10 @@ import {
 	type ArchiveLimits,
 	type RepositoryArchive,
 } from '../sources/github/github-archive';
-import { GitHubSkillSourceClient } from '../sources/github/github-skill-source-client';
+import {
+	GitHubSkillSourceClient,
+	retryAfterSeconds,
+} from '../sources/github/github-skill-source-client';
 import type { SkillContent } from '../utils/skill-content-hash';
 import { writeSkillFolder } from '../utils/skill-md';
 
@@ -539,5 +542,25 @@ describe('GitHubSkillSourceClient', () => {
 				reason: 'unreachable',
 			});
 		});
+	});
+});
+
+describe('retryAfterSeconds', () => {
+	const now = 1_000_000_000_000;
+
+	it.each([
+		{ headers: { 'retry-after': '120' }, seconds: 120 },
+		{ headers: { 'retry-after': '0' }, seconds: 0 },
+		// The reset time of the spent limit, in epoch seconds.
+		{ headers: { 'x-ratelimit-reset': String(now / 1000 + 300) }, seconds: 300 },
+		{ headers: { 'x-ratelimit-reset': String(now / 1000 - 10) }, seconds: 0 },
+		{
+			headers: { 'retry-after': '60', 'x-ratelimit-reset': String(now / 1000 + 300) },
+			seconds: 60,
+		},
+		{ headers: {}, seconds: undefined },
+		{ headers: { 'retry-after': 'soon' }, seconds: undefined },
+	])('reads $headers as $seconds', ({ headers, seconds }) => {
+		expect(retryAfterSeconds(headers, now)).toBe(seconds);
 	});
 });

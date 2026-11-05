@@ -4,22 +4,20 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type {
-	ExecutionStatus,
-	INodeExecutionData,
-	IRunData,
-	ITaskData,
-	TerminalExecutionStatus,
-} from 'n8n-workflow';
+import type { ExecutionStatus, IRunData, TerminalExecutionStatus } from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
-
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import {
+	collectResultData,
+	collectResultItems,
+} from '@/workflows/callable/callable-workflow-result';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
+import { AgentFileBridge } from '../agent-file-bridge.service';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -60,6 +58,8 @@ export type BackgroundJobView = Pick<
 	| 'status'
 	| 'result'
 	| 'error'
+	| 'files'
+	| 'skippedFiles'
 	| 'createdAt'
 	| 'timeoutAt'
 	| 'settledAt'
@@ -69,6 +69,10 @@ export type BackgroundJobView = Pick<
 	| 'planId'
 	| 'planTaskId'
 >;
+
+type JobOutputFiles = Required<Pick<AgentBackgroundJobSettlement, 'files' | 'skippedFiles'>>;
+
+const NO_OUTPUT_FILES: JobOutputFiles = { files: null, skippedFiles: null };
 
 /** Cap on the result text persisted on a workflow job row. */
 export const WORKFLOW_JOB_RESULT_MAX_CHARS = 8000;
@@ -87,44 +91,6 @@ export function settlementStatusForExecution(
 	if (status === 'success') return 'completed';
 	if (status === 'canceled') return 'cancelled';
 	return 'failed';
-}
-
-/** Extract the items produced by the last run of a node. */
-function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): INodeExecutionData[] {
-	const lastRun = nodeRuns[nodeRuns.length - 1];
-	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main.flatMap((items) => items ?? []);
-}
-
-/** Build a map from node name to output items. Items keep their binary data. */
-export function collectResultItems(
-	runData: IRunData,
-	allOutputs: boolean,
-): Record<string, INodeExecutionData[]> {
-	const nodeNames = allOutputs ? Object.keys(runData) : Object.keys(runData).slice(-1);
-	const resultItems: Record<string, INodeExecutionData[]> = {};
-	for (const nodeName of nodeNames) {
-		const outputItems = outputItemsFromNodeRuns(runData[nodeName]);
-		if (outputItems.length > 0) resultItems[nodeName] = outputItems;
-	}
-	return resultItems;
-}
-
-/** Map each node's output items to their JSON. */
-export function toResultData(
-	resultItems: Record<string, INodeExecutionData[]>,
-): Record<string, unknown> {
-	return Object.fromEntries(
-		Object.entries(resultItems).map(([nodeName, items]) => [
-			nodeName,
-			items.map((item) => item.json),
-		]),
-	);
-}
-
-/** Build the resultData map from an execution's runData. */
-export function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
-	return toResultData(collectResultItems(runData, allOutputs));
 }
 
 /**
@@ -179,6 +145,7 @@ export class AgentBackgroundJobService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly plans: AgentPlanRepository,
+		private readonly fileBridge: AgentFileBridge,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -253,7 +220,64 @@ export class AgentBackgroundJobService {
 				result: serializeWorkflowJobResult(collectResultData(runData, true)),
 			};
 		}
-		return await this.settle(job.id, settlement);
+		let storedFiles: JobOutputFiles['files'] = null;
+		if (settlement.status === 'completed' && runData && settlement.files === undefined) {
+			const output = await this.storeOutputFiles(job, runData);
+			storedFiles = output.files;
+			settlement = { ...settlement, ...output };
+		}
+		const settled = await this.settle(job.id, settlement);
+		if (!settled) await this.deleteUnusedFiles(job.id, storedFiles);
+		return settled;
+	}
+
+	/**
+	 * Store the binary output as files of the parent thread. Use the same nodes
+	 * as the job result: all nodes for a job that a stop request paused, else the last node. The job keeps the file list,
+	 * so the wake message and the background jobs check can show the file IDs.
+	 * The job also keeps the files that were too large to store, so the model
+	 * knows that they are missing. Each list is null when it is empty.
+	 * A storage error must not block the settle, so it logs and returns no files.
+	 */
+	async storeOutputFiles(
+		job: Pick<
+			AgentBackgroundJob,
+			'id' | 'parentAgentId' | 'parentThreadId' | 'parentResourceId' | 'pauseRequestId'
+		>,
+		runData: IRunData,
+	): Promise<JobOutputFiles> {
+		const items = Object.values(collectResultItems(runData, Boolean(job.pauseRequestId))).flat();
+		if (!items.some((item) => item.binary) || !job.parentResourceId) return NO_OUTPUT_FILES;
+		try {
+			const projectId = await this.threadRepository.findProjectId(job.parentThreadId);
+			if (!projectId) return NO_OUTPUT_FILES;
+			const { files, skippedFiles } = await this.fileBridge.adoptFromItems(items, {
+				agentId: job.parentAgentId,
+				projectId,
+				threadId: job.parentThreadId,
+				resourceId: job.parentResourceId,
+			});
+			return {
+				files: files.length > 0 ? files : null,
+				skippedFiles: skippedFiles.length > 0 ? skippedFiles : null,
+			};
+		} catch (error) {
+			this.logger.warn('Failed to store background job output files', { jobId: job.id, error });
+			return NO_OUTPUT_FILES;
+		}
+	}
+
+	/**
+	 * Another writer settled the job first, so the job does not refer to these files.
+	 * The live callback and reconciliation can both store the same output.
+	 */
+	private async deleteUnusedFiles(jobId: string, files: JobOutputFiles['files']): Promise<void> {
+		if (!files) return;
+		try {
+			await this.fileBridge.deleteFiles(files.map(({ fileId }) => fileId));
+		} catch (error) {
+			this.logger.warn('Failed to delete unused background job output files', { jobId, error });
+		}
 	}
 
 	async settle(
@@ -793,6 +817,8 @@ export class AgentBackgroundJobService {
 			status: job.status,
 			result: job.result,
 			error: job.error,
+			files: job.files,
+			skippedFiles: job.skippedFiles,
 			createdAt: job.createdAt,
 			timeoutAt: job.timeoutAt,
 			settledAt: job.settledAt,
@@ -1105,7 +1131,7 @@ export class AgentBackgroundJobService {
 			await this.settle(job.id, {
 				status: 'cancelled',
 				result: job.childExecutionId
-					? await this.loadExecutionResult(job.childExecutionId, true)
+					? (await this.loadExecutionOutput(job, job.childExecutionId, 'cancelled', true)).result
 					: null,
 			});
 			return 'cancelled';
@@ -1177,10 +1203,12 @@ export class AgentBackgroundJobService {
 	}
 
 	/** Read retained output when the execution data is not in memory. */
-	private async loadExecutionResult(
+	private async loadExecutionOutput(
+		job: AgentBackgroundJob,
 		executionId: string,
+		status: AgentBackgroundJobSettlement['status'],
 		allOutputs = false,
-	): Promise<string | null> {
+	): Promise<{ result: string | null } & JobOutputFiles> {
 		// A failed data read must not block the settle: workflow jobs have no
 		// timeout, so a row skipped here could stay running forever.
 		try {
@@ -1190,15 +1218,18 @@ export class AgentBackgroundJobService {
 			});
 
 			const runData = execution?.data?.resultData?.runData;
-			if (!runData) return null;
+			if (!runData) return { result: null, ...NO_OUTPUT_FILES };
 
-			return serializeWorkflowJobResult(collectResultData(runData, allOutputs));
+			return {
+				result: serializeWorkflowJobResult(collectResultData(runData, allOutputs)),
+				...(status === 'completed' ? await this.storeOutputFiles(job, runData) : NO_OUTPUT_FILES),
+			};
 		} catch (error) {
 			this.logger.warn('Failed to read a finished execution’s data for its job result', {
 				executionId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return null;
+			return { result: null, ...NO_OUTPUT_FILES };
 		}
 	}
 
@@ -1334,14 +1365,17 @@ export class AgentBackgroundJobService {
 			}
 			if (!isTerminalExecutionStatus(executionStatus)) return false;
 			const status = settlementStatusForExecution(executionStatus);
-			return await this.settle(job.id, {
+			const output =
+				status === 'completed' || job.pauseRequestId
+					? await this.loadExecutionOutput(job, executionId, status, Boolean(job.pauseRequestId))
+					: { result: null, ...NO_OUTPUT_FILES };
+			const settled = await this.settle(job.id, {
 				status,
-				result:
-					status === 'completed' || job.pauseRequestId
-						? await this.loadExecutionResult(executionId, Boolean(job.pauseRequestId))
-						: null,
+				...output,
 				error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
 			});
+			if (!settled) await this.deleteUnusedFiles(job.id, output.files);
+			return settled;
 		} catch (error) {
 			this.logger.error('Failed to reconcile workflow background job', {
 				jobId: job.id,

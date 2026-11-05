@@ -237,6 +237,10 @@ export interface AgentMessageBase {
  */
 export interface CustomAgentMessages {
 	___dummyCustomMessage: { dummy: string };
+	runtimeSkillCatalog: {
+		type: 'n8n:runtime-skill-catalog';
+		content: string;
+	};
 	runtimeSkillUpdate: {
 		type: 'n8n:runtime-skill-update';
 		skillUpdate: {

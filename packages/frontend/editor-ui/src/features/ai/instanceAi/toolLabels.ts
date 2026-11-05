@@ -9,6 +9,7 @@ import {
 	WORKFLOW_TOOL_NAMES,
 	getDataTableCallAction,
 	getExecutionCallAction,
+	getWorkspaceCallAction,
 	isFormerExecutionsTool,
 	EXECUTION_TOOL_NAMES,
 	isFormerWorkflowsTool,
@@ -151,6 +152,8 @@ const REMOVED_WORKFLOWS_TOOL_LABEL_NAME = 'workflow_builder_workflows';
 const DATA_TABLE_LABEL_TOOL_NAME = 'data_tables';
 /** Execution tools reuse the per-action labels of the former executions tool. */
 const EXECUTION_LABEL_TOOL_NAME = 'workflow_builder_executions';
+/** Workspace tools reuse the per-action labels of the former workspace tool. */
+const WORKSPACE_LABEL_TOOL_NAME = 'workspace';
 
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
@@ -181,7 +184,12 @@ export function getToolIcon(rawToolName: string): IconName {
 	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.TASK_CONTROL || toolName === 'updateWorkingMemory')
 		return 'brain';
 	if (toolName === 'filesystem') return 'file-text';
-	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
+	if (
+		toolName === WORKSPACE_LABEL_TOOL_NAME ||
+		getWorkspaceCallAction(toolName) ||
+		toolName.startsWith('workspace_')
+	)
+		return 'folder';
 	// The prefix contains "workflow", so match on the rest of the name only.
 	const unprefixedName = toolName.replace(WORKFLOW_BUILDER_PREFIX_PATTERN, '');
 	if (unprefixedName.includes('data-table')) return 'table';
@@ -250,6 +258,7 @@ export function useToolLabel() {
 
 		const dataTableAction = getDataTableCallAction(toolName, args?.action);
 		const executionAction = getExecutionCallAction(toolName, args?.action);
+		const workspaceAction = getWorkspaceCallAction(toolName, args?.action);
 		// Stored calls of removed workflows actions keep the former tool's labels.
 		const labelToolName = isFormerWorkflowsTool(toolName)
 			? REMOVED_WORKFLOWS_TOOL_LABEL_NAME
@@ -257,10 +266,13 @@ export function useToolLabel() {
 				? DATA_TABLE_LABEL_TOOL_NAME
 				: executionAction
 					? EXECUTION_LABEL_TOOL_NAME
-					: toolName;
+					: workspaceAction
+						? WORKSPACE_LABEL_TOOL_NAME
+						: toolName;
 		const action =
 			dataTableAction ??
 			executionAction ??
+			workspaceAction ??
 			(typeof args?.action === 'string' ? args.action : undefined);
 		if (action) {
 			const actionKey = `instanceAi.tools.${labelToolName}.${action}` as BaseTextKey;

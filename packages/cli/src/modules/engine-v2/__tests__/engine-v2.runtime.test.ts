@@ -13,6 +13,7 @@ import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneClient } from '../engine-control-plane-client';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
 import type { EngineDataTablesClient } from '../engine-data-tables-client';
+import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
@@ -66,6 +67,7 @@ const mocks = vi.hoisted(() => {
 			userId?: string;
 			projectId?: string;
 		}) => Promise<AdditionalData>;
+		resolveSubWorkflow: (request: unknown) => Promise<unknown>;
 	};
 
 	return {
@@ -86,7 +88,9 @@ const mocks = vi.hoisted(() => {
 	};
 });
 
-vi.mock('@n8n/engine', () => ({
+// Partial: the sub-workflow client's contract reads the engine's schemas at import.
+vi.mock('@n8n/engine', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/engine')>()),
 	AllowAllAdmittance: vi.fn(),
 	SharedSecretIdentityVerifier: vi.fn(),
 	createDataSource: mocks.createDataSource,
@@ -114,6 +118,7 @@ describe('EngineV2Runtime', () => {
 	let controlPlaneClient: EngineControlPlaneClient;
 	let credentialsClient: EngineCredentialsClient;
 	let dataTablesClient: EngineDataTablesClient;
+	let subWorkflowClient: EngineSubWorkflowClient;
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
 	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
@@ -130,6 +135,7 @@ describe('EngineV2Runtime', () => {
 			controlPlaneClient,
 			credentialsClient,
 			dataTablesClient,
+			subWorkflowClient,
 			credentialsHelper,
 			credentialTypes,
 			additionalDataBuilder,
@@ -165,6 +171,7 @@ describe('EngineV2Runtime', () => {
 		controlPlaneClient = mock<EngineControlPlaneClient>();
 		credentialsClient = mock<EngineCredentialsClient>();
 		dataTablesClient = mock<EngineDataTablesClient>();
+		subWorkflowClient = mock<EngineSubWorkflowClient>();
 		additionalDataBuilder.build.mockImplementation(
 			(_context, helper, dataTableProxyProvider) =>
 				({
@@ -294,6 +301,23 @@ describe('EngineV2Runtime', () => {
 				stepContext,
 				expect.any(RemoteCredentialsHelper),
 				expect.any(RemoteDataTableProxyProvider),
+			);
+		});
+
+		it('gives the step a sub-workflow resolver that asks the control plane', async () => {
+			await newRuntime().init(responseSender());
+			externalDependencies({ executionStore: {}, stepStore: {} });
+			const request = { workflowId: 'sub-execution' };
+			vi.mocked(subWorkflowClient.resolve).mockResolvedValue({
+				workflowId: 'sub-execution',
+			} as never);
+
+			const resolved = await mocks.V1StepExecutor.mock.calls[0][0].resolveSubWorkflow(request);
+
+			expect(resolved).toEqual({ workflowId: 'sub-execution' });
+			expect(subWorkflowClient.resolve).toHaveBeenCalledExactlyOnceWith(
+				request,
+				expect.any(AbortSignal),
 			);
 		});
 

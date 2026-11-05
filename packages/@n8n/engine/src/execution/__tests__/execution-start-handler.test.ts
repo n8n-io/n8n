@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowGraph } from '../../graph';
-import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
@@ -19,13 +22,19 @@ function makeHandler(
 	queue: WorkQueue<OrchestrationMessage>,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
 ): ExecutionStartHandler {
-	return new ExecutionStartHandler(executionStore, stepStore, queue, lifecycleEventPublisher);
+	return new ExecutionStartHandler(
+		executionStore,
+		stepStore,
+		queue,
+		new LifecycleEventPublisherFactory(lifecycleEventPublisher),
+	);
 }
 
 function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn(),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
@@ -58,9 +67,11 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
+		loadFailedSteps: vi.fn().mockResolvedValue([]),
 	};
 }
 
@@ -236,9 +247,12 @@ describe('ExecutionStartHandler lifecycle events', () => {
 	it('announces execution:started with the engine and host modes', async () => {
 		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const executionStore = makeExecutionStore({
-			loadExecution: vi
-				.fn()
-				.mockResolvedValue(record(graph, { callerContext: { hostMode: 'webhook' } })),
+			loadExecution: vi.fn().mockResolvedValue(
+				record(graph, {
+					callerContext: { hostMode: 'webhook' },
+					lifecycleEventSubscription: { kind: 'all' },
+				}),
+			),
 		});
 		const handler = makeHandler(
 			executionStore,
@@ -257,6 +271,30 @@ describe('ExecutionStartHandler lifecycle events', () => {
 			hostMode: 'webhook',
 			at: expect.any(String) as string,
 		});
+	});
+
+	it.each([
+		['is missing', {}],
+		['is null', { lifecycleEventSubscription: null }],
+		['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
+	])('announces nothing when the subscription %s', async (_name, overrides) => {
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph, overrides)),
+		});
+		const queue = makeOrchestrationQueue();
+		const handler = makeHandler(
+			executionStore,
+			makeStepStore(vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }])),
+			queue,
+			lifecycleEventPublisher,
+		);
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		// The run still starts.
+		expect(queue.publish).toHaveBeenCalledOnce();
 	});
 
 	it('announces nothing when it loses the claim', async () => {

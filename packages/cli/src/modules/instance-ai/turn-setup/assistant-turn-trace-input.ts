@@ -20,6 +20,9 @@ function traceResourceAttachment(
 	if (attachment.type === 'nodes') {
 		return { type: attachment.type, id: attachment.workflowId };
 	}
+	if (attachment.type === 'element') {
+		return { type: attachment.type, id: attachment.appId };
+	}
 
 	const resource: TracedResourceAttachment = { type: attachment.type, id: attachment.id };
 	if (attachment.type === 'agent') {

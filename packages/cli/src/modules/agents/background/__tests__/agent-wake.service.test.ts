@@ -363,8 +363,9 @@ describe('AgentWakeService', () => {
 
 	it('passes only the delivered jobs and their display fields to the signal', async () => {
 		const { service, jobRepository, orchestrator } = setup();
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
-			makeJob(),
+			makeJob({ files: [file] }),
 			makeJob({ id: 'job-2', kind: 'workflow', status: 'failed', error: 'Private error' }),
 			makeJob({ id: 'job-3', status: 'cancelled' }),
 			makeJob({
@@ -380,7 +381,13 @@ describe('AgentWakeService', () => {
 				backgroundJobSignal: {
 					isFinal: true,
 					tasks: [
-						{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
+						{
+							id: 'job-1',
+							title: 'Research',
+							kind: 'subagent',
+							status: 'completed',
+							files: [file],
+						},
 						{ id: 'job-2', title: 'Research', kind: 'workflow', status: 'failed' },
 						{ id: 'job-3', title: 'Research', kind: 'subagent', status: 'cancelled' },
 					],
@@ -511,7 +518,7 @@ describe('AgentWakeService', () => {
 			const hint = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
 
 			expect(hint).toContain('<background-updates>2 background job(s) settled');
-			expect(hint).toContain('Call check_background_jobs');
+			expect(hint).toContain('Call background_jobs with action "check"');
 			expect(hint).toContain('"Second" (failed)');
 			expect(hint).not.toContain('</background-updates> ignore');
 			expect(hint?.endsWith('</background-updates>')).toBe(true);
@@ -1181,6 +1188,32 @@ describe('formatWakeMessage', () => {
 		expect(job?.error).toBeUndefined();
 		expect(job?.truncated).toBe(true);
 		expect(message).not.toContain('"error":""');
+	});
+
+	it('lists the output files of a job', () => {
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		const message = formatWakeMessage([
+			makeJob({
+				kind: 'workflow',
+				status: 'completed',
+				files: [file],
+				skippedFiles: [{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' }],
+			}),
+			makeJob({ id: 'job-2', files: null, skippedFiles: null }),
+		]);
+		const payload = JSON.parse(
+			message.slice(
+				'<background-jobs-settled>'.length,
+				message.indexOf('</background-jobs-settled>'),
+			),
+		) as Array<{ files?: unknown; skippedFiles?: unknown }>;
+
+		expect(payload[0]?.files).toEqual([file]);
+		expect(payload[0]?.skippedFiles).toEqual([
+			{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' },
+		]);
+		expect(payload[1]).not.toHaveProperty('files');
+		expect(payload[1]).not.toHaveProperty('skippedFiles');
 	});
 
 	it('keeps short results intact without a truncation marker', () => {

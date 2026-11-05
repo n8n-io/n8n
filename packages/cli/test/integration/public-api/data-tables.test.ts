@@ -4,8 +4,7 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import { DataTableSizeValidator, type DataTable } from '@n8n/backend-module-data-table';
 
 import { createDataTable } from '../shared/db/data-tables';
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';

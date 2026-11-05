@@ -167,4 +167,25 @@ describe('buildAlwaysAllowKey', () => {
 	it('stores no key for a test execution cleanup without a workflow', () => {
 		expect(buildAlwaysAllowKey('workspace', { action: 'cleanup-test-executions' })).toBeNull();
 	});
+
+	it('gives split workspace tools the same grant keys as the former tool', () => {
+		expect(buildAlwaysAllowKey('tag_workflow', {})).toBe('workspace:tag-workflow');
+		expect(buildAlwaysAllowKey('move_workflow_to_folder', {})).toBe(
+			'workspace:move-workflow-to-folder',
+		);
+		expect(buildAlwaysAllowKey('cleanup_test_executions', { workflowId: 'wf-1' })).toBe(
+			'workspace:cleanup-test-executions:wf-1',
+		);
+		expect(buildAlwaysAllowKey('cleanup_test_executions', {})).toBeNull();
+	});
+
+	it.each([
+		['create_folder', 'create-folder'],
+		['delete_folder', 'delete-folder'],
+		['move_workflow_to_folder', 'move-workflow-to-folder'],
+	])('gives %s the same grant key as workspace(action=%s)', (toolName, action) => {
+		const legacyKey = buildAlwaysAllowKey('workspace', { action });
+		expect(legacyKey).toBe(`workspace:${action}`);
+		expect(buildAlwaysAllowKey(toolName, {})).toBe(legacyKey);
+	});
 });
