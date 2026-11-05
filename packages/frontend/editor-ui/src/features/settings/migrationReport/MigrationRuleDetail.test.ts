@@ -12,7 +12,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { MIGRATE_WORKFLOW_MODAL_KEY, MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeRuleDetailResult } from '@n8n/api-types';
@@ -35,15 +36,21 @@ const grace = {
 	email: 'grace@example.com',
 };
 
-const { showError, showMessage, resolveRoute } = vi.hoisted(() => ({
+const { showError, showMessage, showToast, confirm, resolveRoute } = vi.hoisted(() => ({
 	showError: vi.fn(),
 	showMessage: vi.fn(),
+	showToast: vi.fn(),
+	confirm: vi.fn(),
 	resolveRoute: vi.fn(() => ({ href: '/workflow/workflow-1' })),
 }));
 
 vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
 	...(await importOriginal<object>()),
-	useToast: () => ({ showError, showMessage }),
+	useToast: () => ({ showError, showMessage, showToast }),
+}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm }),
 }));
 
 // The test renderer has no router. The open link needs `resolve` to build the workflow URL.
@@ -745,6 +752,9 @@ describe('MigrationRuleDetail', () => {
 					'wont_fix',
 				);
 				expect(breakingChangesApi.updateFindingStatus).not.toHaveBeenCalled();
+				expect(showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ title: "Marked 2 workflows as won't fix" }),
+				);
 			},
 		);
 
@@ -815,6 +825,114 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
 			});
 			expect(searchInput).toHaveValue('');
+		});
+	});
+
+	describe("archive after won't fix", () => {
+		let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+		beforeEach(() => {
+			workflowsStore = mockedStore(useWorkflowsStore);
+			vi.mocked(breakingChangesApi.updateFindingStatus).mockResolvedValue();
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+		});
+
+		const getRow = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return within(row);
+		};
+		const getRowCheckbox = (workflowName: string) => getRow(workflowName).getByRole('checkbox');
+
+		// The toast renders the archive action as a link and passes clicks on it to `onClick`.
+		const clickArchiveLink = async () => {
+			await waitFor(() => expect(showToast).toHaveBeenCalled());
+			const { onClick } = showToast.mock.calls[0][0];
+			onClick({ target: document.createElement('a'), preventDefault: vi.fn() });
+		};
+
+		it("should offer to archive a workflow after its row is marked won't fix, and archive it on confirm", async () => {
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(
+				getRow('Test Workflow 1').getByTestId('migration-finding-state-select'),
+			);
+			await userEvent.click(within(await screen.findByRole('listbox')).getByText("Won't fix"));
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({ title: "Marked 1 workflow as won't fix", type: 'success' }),
+			);
+
+			await clickArchiveLink();
+
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ title: 'Archived 1 workflow', type: 'success' }),
+				),
+			);
+			expect(confirm).toHaveBeenCalledWith(
+				expect.any(String),
+				'Archive 1 workflow?',
+				expect.anything(),
+			);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledExactlyOnceWith('workflow-1');
+			// Archived workflows are hidden by default.
+			expect(screen.queryByText('Test Workflow 1')).not.toBeInTheDocument();
+		});
+
+		it('should archive nothing when the user cancels the confirmation', async () => {
+			confirm.mockResolvedValue(MODAL_CANCEL);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(screen.getByTestId('migration-bulk-wont-fix-button'));
+			await clickArchiveLink();
+
+			await waitFor(() => expect(confirm).toHaveBeenCalled());
+			expect(workflowsStore.archiveWorkflow).not.toHaveBeenCalled();
+			expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+		});
+
+		it('should archive the workflows it can and report how many it archived', async () => {
+			confirm.mockResolvedValue(MODAL_CONFIRM);
+			workflowsStore.archiveWorkflow
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('Forbidden'));
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-wont-fix-button'));
+			await clickArchiveLink();
+
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ title: 'Archived 1 of 2 workflows', type: 'warning' }),
+				),
+			);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(2);
+			expect(screen.queryByText('Test Workflow 1')).not.toBeInTheDocument();
+			expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
+		});
+
+		it('should not offer to archive workflows that are already archived', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [{ ...mockWorkflowWithIssue, isArchived: true }],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			const filters = await openFilters();
+			await userEvent.click(within(filters).getByTestId('migration-rule-filter-show-archived'));
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(screen.getByTestId('migration-bulk-wont-fix-button'));
+
+			await waitFor(() => expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalled());
+			expect(showToast).not.toHaveBeenCalled();
 		});
 	});
 

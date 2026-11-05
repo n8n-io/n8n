@@ -1,8 +1,15 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, TIME, VIEWS } from '@/app/constants';
+import {
+	DEBOUNCE_TIME,
+	MIGRATE_WORKFLOW_MODAL_KEY,
+	MODAL_CONFIRM,
+	TIME,
+	VIEWS,
+} from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useMessage } from '@/app/composables/useMessage';
 import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
@@ -13,6 +20,7 @@ import type {
 	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	N8nBadge,
 	N8nButton,
@@ -66,6 +74,8 @@ const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const toast = useToast();
+const message = useMessage();
+const workflowsStore = useWorkflowsStore();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
@@ -371,6 +381,7 @@ async function onFindingStatusChange(
 			workflow.id,
 			status,
 		);
+		if (status === 'wont_fix') offerToArchive([workflow]);
 	} catch (error) {
 		restoreWorkflows([workflow]);
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
@@ -417,6 +428,7 @@ async function changeFindingStatuses(
 			workflowIds,
 			status,
 		);
+		if (status === 'wont_fix') offerToArchive(workflows);
 		return true;
 	} catch (error) {
 		restoreWorkflows(workflows);
@@ -605,6 +617,89 @@ function reviewUnusedWorkflows() {
 	searchInput.value = '';
 	searchQuery.value = '';
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
+}
+
+/** After a won't fix, offers to archive the workflows in a toast, as the workflows list does. */
+function offerToArchive(workflows: AffectedWorkflow[]) {
+	const toArchive = workflows.filter((workflow) => !workflow.isArchived);
+	if (toArchive.length === 0) return;
+
+	const count = toArchive.length;
+	toast.showToast({
+		type: 'success',
+		title: i18n.baseText('settings.migrationReport.detail.wontFix.success.title', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		}),
+		message: `<a href="#" data-test-id="migration-wont-fix-archive-link">${i18n.baseText(
+			'settings.migrationReport.detail.wontFix.archive.link',
+			{ adjustToNumber: count },
+		)}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void archiveWorkflows(toArchive);
+			}
+		},
+	});
+}
+
+async function archiveWorkflows(workflows: AffectedWorkflow[]) {
+	const count = workflows.length;
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.migrationReport.detail.wontFix.archive.confirm.message', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		}),
+		i18n.baseText('settings.migrationReport.detail.wontFix.archive.confirm.headline', {
+			adjustToNumber: count,
+			interpolate: { count: String(count) },
+		}),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText(
+				'settings.migrationReport.detail.wontFix.archive.confirm.button',
+			),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	// One request per workflow. A bulk archive endpoint would be faster for large selections.
+	const archivedIds = new Set<string>();
+	for (const workflow of workflows) {
+		try {
+			await workflowsStore.archiveWorkflow(workflow.id);
+			archivedIds.add(workflow.id);
+		} catch {
+			// Counted below. The user may triage a workflow without the right to archive it.
+		}
+	}
+
+	state.value = {
+		...state.value,
+		affectedWorkflows: state.value.affectedWorkflows.map((workflow) =>
+			archivedIds.has(workflow.id) ? { ...workflow, isArchived: true } : workflow,
+		),
+	};
+
+	if (archivedIds.size === count) {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.success.title', {
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			}),
+		});
+	} else {
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.title', {
+				interpolate: { archived: String(archivedIds.size), total: String(count) },
+			}),
+			message: i18n.baseText('settings.migrationReport.detail.wontFix.archive.partial.message'),
+		});
+	}
 }
 
 async function markUnusedWorkflowsAsWontFix() {
