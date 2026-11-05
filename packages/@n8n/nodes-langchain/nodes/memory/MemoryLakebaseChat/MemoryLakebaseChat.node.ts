@@ -208,8 +208,6 @@ export class MemoryLakebaseChat implements INodeType {
 		group: ['transform'],
 		version: [1],
 		description: 'Stores the chat history in a Databricks Lakebase table.',
-		// Hidden until the Lakebase resource ships in the Databricks node and the docs page exists
-		hidden: true,
 		defaults: {
 			name: 'Databricks Lakebase Chat Memory',
 		},

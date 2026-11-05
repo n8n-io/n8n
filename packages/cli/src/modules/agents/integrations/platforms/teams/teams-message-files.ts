@@ -1,7 +1,7 @@
 import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment } from 'chat';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { InboundAttachmentAccessError } from '../../agent-chat-integration';
 import { stringProperty } from '../../integration-helpers';
@@ -12,7 +12,7 @@ const GRAPH_V1 = `${GRAPH_ORIGIN}/v1.0`;
 export interface GraphHttp {
 	get(
 		url: string,
-		config?: { responseType?: 'arraybuffer'; maxContentLength?: number },
+		config?: { responseType?: 'arraybuffer'; maxContentLength?: number; signal?: AbortSignal },
 	): Promise<{ data: unknown }>;
 }
 

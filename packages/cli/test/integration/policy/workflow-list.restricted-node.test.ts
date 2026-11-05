@@ -21,7 +21,7 @@ import { createFolder } from '../shared/db/folders';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 const SLACK = 'n8n-nodes-base.slack';
@@ -108,7 +108,7 @@ afterEach(async () => {
 		'WorkflowHistory',
 		'Folder',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 	testServer.license.enable(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 });
 

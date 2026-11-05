@@ -19,7 +19,7 @@ import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { denyRule, putCredentialTypePolicy } from './shared/credential-type-policy';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const CHECK_ID = 'credential-type-availability';
 
@@ -83,7 +83,7 @@ afterEach(async () => {
 		'SharedCredentials',
 		'CredentialsEntity',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 describe('POST /credentials', () => {

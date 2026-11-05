@@ -1,3 +1,7 @@
+import type { SelfHealingResultDetail } from '@n8n/api-types';
+import type { Scope } from '@n8n/permissions';
+import type { ComputedRef } from 'vue';
+
 /**
  * A typed key for a capability. `declareCapability()` is the only way to make
  * one, and the token is the only way to read or write its slot in the registry.
@@ -21,6 +25,15 @@ export interface ModalOpeners {
 	openModalWithData(payload: { name: string; data: Record<string, unknown> }): void;
 }
 
+export interface ProjectPermissions {
+	/** The user's global scopes plus their scopes in the project. Reads reactive state, so call it in a `computed`. */
+	scopesFor(projectId: string): Scope[];
+	/** The current project, or the personal project when no project is open. */
+	defaultProjectId?(): string | undefined;
+	/** Whether the instance blocks writes (source control read-only branch). Reads reactive state. */
+	isReadOnly(): boolean;
+}
+
 export interface McpExposeAllOffer {
 	/** Whether the experiment is on for this user. Reads reactive state, so call it in a `computed`. */
 	isEnabled(): boolean;
@@ -29,4 +42,32 @@ export interface McpExposeAllOffer {
 	 * when the modal opened. `onExposed` runs after the user exposes everything.
 	 */
 	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
+}
+
+export type SelfHealingChatInput = Pick<
+	SelfHealingResultDetail,
+	'resultId' | 'workflowId' | 'report' | 'outcome' | 'reviewState' | 'execution'
+>;
+
+/**
+ * `started` means the chat opened and the report is on its way, so do not start it again.
+ * `busy` and `failed` mean no chat started, so the caller can offer another try.
+ */
+export type SelfHealingChatStartOutcome = 'started' | 'busy' | 'failed' | 'unavailable';
+
+export interface SelfHealingChatHandoff {
+	available: ComputedRef<boolean>;
+	/** Whether the Assistant is ready and the user can read the project. Reads reactive state, so call it in a `computed`. */
+	canStart(projectId: string): boolean;
+	/** Opens a chat in the project and sends the report through the normal Assistant handoff. */
+	start(projectId: string, input: SelfHealingChatInput): Promise<SelfHealingChatStartOutcome>;
+}
+
+export interface AppAssistantHandoff {
+	/** Whether the Assistant is ready to open an App thread. */
+	available: ComputedRef<boolean>;
+	/** Opens the newest Assistant thread linked to an App, or creates one. */
+	openApp(input: { appId: string; projectId: string; appName?: string }): Promise<boolean>;
+	/** Opens the Assistant empty state for a new App. */
+	createApp(input: { appId: string; projectId: string }): Promise<void>;
 }

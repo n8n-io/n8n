@@ -43,6 +43,7 @@ import type { SharedWorkflowRepository } from '@n8n/db';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyCleared } from '@n8n/decorators';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
@@ -148,6 +149,8 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
+				mock(),
+				mock(), // projectScopeService
 				mock(),
 			);
 		});
@@ -434,10 +437,15 @@ describe('WorkflowService', () => {
 				expect(result).toMatchObject({ workflows: [folder], count: 1 });
 				expect(
 					workflowRepositoryMock.getWorkflowsAndFoldersWithCountWithSharingSubquery,
-				).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
-					...restrictedNodeFilter,
-					workflowIdsIn: null,
-				});
+				).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					{
+						...restrictedNodeFilter,
+						workflowIdsIn: null,
+					},
+					undefined,
+				);
 			});
 
 			test('limits the list query to the restricted workflow ids', async () => {
@@ -533,6 +541,8 @@ describe('WorkflowService', () => {
 				nodeGroupRulesFlagGateMock, // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
+				mock(), // projectScopeService
 				mock(),
 			);
 
@@ -1442,6 +1452,144 @@ describe('WorkflowService', () => {
 				);
 			});
 		});
+
+		describe('redactCallerExecutions', () => {
+			beforeEach(async () => {
+				// Use the real default removal, which drops `redactCallerExecutions: true`.
+				const actual = await vi.importActual<typeof WorkflowHelpers>('@/workflow-helpers');
+				vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation(
+					actual.removeDefaultValues,
+				);
+			});
+
+			// `mock()` does not keep `false` values in nested objects, so set the stored
+			// settings on the mock after it is made.
+			function setupStoredCallerRedaction(redactCallerExecutions?: boolean) {
+				const existingWorkflow = setupExistingWorkflow();
+				existingWorkflow.settings =
+					redactCallerExecutions === undefined ? {} : { redactCallerExecutions };
+			}
+
+			const savedSettings = () => workflowRepositoryMock.updateContent.mock.calls[0][1].settings;
+
+			test('requires disableRedaction to turn the setting off', async () => {
+				setupStoredCallerRedaction(undefined);
+				userHasScopesMock.mockResolvedValue(true);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:disableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('strips the setting when the user cannot turn it off', async () => {
+				setupStoredCallerRedaction(undefined);
+				userHasScopesMock.mockResolvedValue(false);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
+			});
+
+			test('requires enableRedaction to turn the setting back on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockResolvedValue(false);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: true }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('requires enableRedaction for a non-boolean value that turns the setting on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockImplementation(
+					async (_user, scopes) =>
+						Array.isArray(scopes) &&
+						scopes.includes('workflow:disableRedaction') &&
+						!scopes.includes('workflow:enableRedaction'),
+				);
+
+				const user = mock<User>();
+				await workflowService.update(
+					user,
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).toHaveBeenCalledWith(user, ['workflow:enableRedaction'], false, {
+					projectId: 'project-1',
+				});
+				expect(savedSettings()).toEqual(expect.objectContaining({ redactCallerExecutions: false }));
+			});
+
+			test('clears the stored value for a non-boolean value that turns the setting on', async () => {
+				setupStoredCallerRedaction(false);
+				userHasScopesMock.mockResolvedValue(true);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: null }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
+			});
+
+			test('does not check scopes or change settings when the effective value does not change', async () => {
+				// Not set means on, so sending `true` changes nothing.
+				setupStoredCallerRedaction(undefined);
+
+				const prepared = await workflowService.prepareUpdate(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: true }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(userHasScopesMock).not.toHaveBeenCalled();
+				expect(prepared.changes.settings).not.toHaveProperty('redactCallerExecutions');
+				expect(prepared.settingsChanged).toBe(false);
+			});
+
+			test('strips a change when the instance lacks the data-redaction license', async () => {
+				setupStoredCallerRedaction(undefined);
+				licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+				userHasScopesMock.mockResolvedValue(true);
+
+				await workflowService.update(
+					mock<User>(),
+					createUpdateData({ redactCallerExecutions: false }),
+					'workflow-1',
+					{ forceSave: true },
+				);
+
+				expect(savedSettings()).not.toHaveProperty('redactCallerExecutions');
+			});
+		});
 	});
 
 	describe('workflow.activate hook', () => {
@@ -1571,6 +1719,8 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
+				mock(), // projectScopeService
 				mock(),
 			);
 
@@ -2264,6 +2414,7 @@ describe('WorkflowService', () => {
 		let globalConfigMock: MockProxy<GlobalConfig>;
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
+		let workflowIndexServiceMock: MockProxy<WorkflowIndexService>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const ACTIVE_VERSION_ID = 'v1';
@@ -2290,6 +2441,7 @@ describe('WorkflowService', () => {
 			});
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
+			workflowIndexServiceMock = mock<WorkflowIndexService>();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -2335,6 +2487,21 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
+				workflowIndexServiceMock,
+			);
+		});
+
+		test('removes the published dependency index after teardown', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID);
+
+			expect(workflowIndexServiceMock.removePublishedDependenciesForWorkflow).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+			);
+			expect(workflowRepositoryMock.update.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowIndexServiceMock.removePublishedDependenciesForWorkflow.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -2381,6 +2548,9 @@ describe('WorkflowService', () => {
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
 			expect(workflowPublishHistoryRepositoryMock.addRecord).not.toHaveBeenCalled();
+			expect(
+				workflowIndexServiceMock.removePublishedDependenciesForWorkflow,
+			).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2478,6 +2648,8 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
+				mock(), // projectScopeService
 				mock(),
 			);
 		});
@@ -2792,6 +2964,8 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -2968,6 +3142,8 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
+				mock(), // projectScopeService
 				mock(),
 			);
 		});
@@ -3159,6 +3335,8 @@ describe('WorkflowService', () => {
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
 				mock(),
+				mock(), // projectScopeService
+				mock(),
 			);
 		});
 
@@ -3264,6 +3442,8 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				mock(), // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
+				mock(), // projectScopeService
 				mock(),
 			);
 		});
@@ -3373,6 +3553,8 @@ describe('WorkflowService', () => {
 				mock(), // nodeGroupRulesFlagGate
 				errorWorkflowValidationServiceMock, // errorWorkflowValidationService
 				mock(), // restrictedNodeTypesProvider
+				mock(),
+				mock(), // projectScopeService
 				mock(),
 			);
 

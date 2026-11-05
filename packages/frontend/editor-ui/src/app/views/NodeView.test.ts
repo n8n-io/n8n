@@ -1263,7 +1263,6 @@ describe('NodeView', () => {
 		};
 
 		beforeEach(() => {
-			useSettingsStore().settings.granularCredentialSharing = true;
 			useNodeTypesStore().setNodeTypes([
 				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
 			]);
@@ -1291,16 +1290,6 @@ describe('NodeView', () => {
 			workflowDocumentStore.setUsedCredentials([
 				{ ...unusableCredential, currentUserCanUse: true },
 			]);
-			const { findByTestId } = renderNodeView();
-
-			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));
-
-			expect(mockRunEntireWorkflow).toHaveBeenCalledWith('main');
-		});
-
-		it('runs from the shortcut while the feature flag is off', async () => {
-			useSettingsStore().settings.granularCredentialSharing = false;
-			workflowDocumentStore.setUsedCredentials([unusableCredential]);
 			const { findByTestId } = renderNodeView();
 
 			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));

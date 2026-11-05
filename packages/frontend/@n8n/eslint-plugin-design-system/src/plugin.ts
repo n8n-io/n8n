@@ -13,14 +13,24 @@ const plugin = {
 	rules: rules as ESLint.Plugin['rules'],
 } satisfies ESLint.Plugin;
 
+const plugins = {
+	'@n8n/design-system': plugin,
+};
+
 const configs = {
 	recommended: {
 		files: ['**/*.vue'],
-		plugins: {
-			'@n8n/design-system': plugin,
-		},
+		plugins,
 		rules: {
+			'@n8n/design-system/no-direct-component-imports': 'error',
 			'@n8n/design-system/require-teleported-tooltip-in-dropdown': 'error',
+		},
+	},
+	componentImports: {
+		files: ['**/*.{ts,tsx}'],
+		plugins,
+		rules: {
+			'@n8n/design-system/no-direct-component-imports': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

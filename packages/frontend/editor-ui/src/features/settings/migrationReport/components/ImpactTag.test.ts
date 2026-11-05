@@ -7,6 +7,7 @@ describe('ImpactTag', () => {
 	it.each([
 		{ impact: 'upgradeBlocked', label: 'Upgrade blocked', variant: 'danger' },
 		{ impact: 'executionsFail', label: 'Executions will fail', variant: 'danger' },
+		{ impact: 'executionsMightFail', label: 'Executions might fail', variant: 'warning' },
 		{ impact: 'behaviorChanges', label: 'Behavior changes', variant: 'warning' },
 		{ impact: 'capabilityRemoved', label: 'Capability removed', variant: 'outline' },
 	] as const)(

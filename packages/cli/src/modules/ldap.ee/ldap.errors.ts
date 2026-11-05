@@ -1,4 +1,4 @@
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 /** LDAP rejected the request outright — wrong bind DN/password/baseDn. */
 export class LdapRejectionError extends UserError {}

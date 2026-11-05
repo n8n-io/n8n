@@ -64,6 +64,7 @@ function source(overrides: SourceOverrides = {}): TrustedSource {
 		status: 'healthy',
 		lastError: null,
 		lastCheckedAt: '2026-10-01T12:00:00.000Z',
+		firstAuthenticatedAt: null,
 		createdAt: '2026-09-30T10:00:00.000Z',
 		updatedAt: '2026-10-01T12:00:00.000Z',
 		config: migrateToLatest(
@@ -385,6 +386,18 @@ describe('Oauth2BearerDriver', () => {
 			expect(advertised.authorizationServers).toEqual([ISSUER]);
 			expect(advertised.challenge).toBe(
 				'Bearer resource_metadata="https://n8n.example/.well-known/oauth-protected-resource/mcp"',
+			);
+		});
+
+		it('keeps the query that selects among resources sharing a path', () => {
+			const url = 'https://n8n.example/webhook/orders?method=POST';
+			const advertised = driver.advertise(
+				{ surface: SURFACE, resource: { url, acceptedAudiences: [url] } },
+				[source()],
+			);
+
+			expect(advertised.challenge).toBe(
+				'Bearer resource_metadata="https://n8n.example/.well-known/oauth-protected-resource/webhook/orders?method=POST"',
 			);
 		});
 	});

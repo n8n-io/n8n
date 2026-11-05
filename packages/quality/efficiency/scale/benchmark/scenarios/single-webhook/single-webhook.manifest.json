@@ -3,5 +3,6 @@
 	"name": "SingleWebhook",
 	"description": "A single webhook trigger that responds with a 200 status code",
 	"scenarioData": { "workflowFiles": ["single-webhook.json"] },
-	"scriptPath": "single-webhook.script.js"
+	"scriptPath": "single-webhook.script.js",
+	"supportedEngines": ["v1", "v2"]
 }

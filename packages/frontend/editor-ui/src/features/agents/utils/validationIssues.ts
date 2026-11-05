@@ -11,6 +11,16 @@ export type UnpublishedWorkflowTool = {
 	workflowId?: string;
 };
 
+/** A policy denies the node type this capability runs as, so it cannot publish or preview. */
+export function isRestrictedIssue(issue: AgentConfigValidationIssue): boolean {
+	return issue.code === 'restricted_node_type';
+}
+
+/** The entry itself is allowed, and only the inline agent it embeds holds a denied type. */
+export function isRestrictedByInlineTool(issue: AgentConfigValidationIssue): boolean {
+	return isRestrictedIssue(issue) && issue.reason === 'restricted_by_inline_tool';
+}
+
 /**
  * A warning blocks publishing but not the draft preview: the workflow tool is
  * compatible, its workflow just has no published version yet.

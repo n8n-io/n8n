@@ -10,6 +10,8 @@ import type { JsonObject } from 'swagger-ui-express';
 import { rememberRawBody } from '@/idempotency/idempotency-request';
 
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
+import { PublicApiRateLimitSettingsService } from './public-api-rate-limit-settings.service';
+import { stripGitBookParentTags } from './swagger-spec';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 import { License } from '@/license';
@@ -85,7 +87,8 @@ function createLazySwaggerMiddleware(
 
 			const YAML = await import('yaml');
 			const spec = await fs.readFile(openApiSpecPath, 'utf-8');
-			const swaggerDocument = YAML.parse(spec) as JsonObject;
+			const openapiSpec = YAML.parse(spec) as JsonObject;
+			const swaggerDocument = stripGitBookParentTags(openapiSpec);
 			// add the server depending on the config so the user can interact with the API
 			// from the Swagger UI
 			swaggerDocument.server = [
@@ -194,6 +197,8 @@ export const loadPublicApiVersions = async (
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
+
+	await Container.get(PublicApiRateLimitSettingsService).load();
 
 	const apiRouters = versions.map((version) => {
 		const openApiPath = path.join(__dirname, version, 'openapi.yml');

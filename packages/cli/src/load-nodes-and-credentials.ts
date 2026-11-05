@@ -40,12 +40,8 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import {
-	injectDomainRestrictionFields,
-	NodeHelpers,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { injectDomainRestrictionFields, NodeHelpers } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -633,12 +629,6 @@ export class LoadNodesAndCredentials {
 
 			types.credentials = types.credentials.concat(processedCredentials);
 
-			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in loaderKnown.credentials) {
-				const credentialType = loader.getCredential(credentialTypeName);
-				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
-			}
-
 			for (const type in loaderKnown.nodes) {
 				const { className, sourcePath } = loaderKnown.nodes[type];
 				known.nodes[`${packageName}.${type}`] = {
@@ -701,15 +691,22 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/** Splits a full node type at its first dot, so the node name keeps any further segments. */
+	private splitNodeType(fullNodeType: string): [packageName: string, nodeType: string] {
+		const separatorIndex = fullNodeType.indexOf('.');
+		if (separatorIndex === -1) return [fullNodeType, ''];
+		return [fullNodeType.slice(0, separatorIndex), fullNodeType.slice(separatorIndex + 1)];
+	}
+
 	recognizesNode(fullNodeType: string): boolean {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.splitNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.splitNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
@@ -741,6 +738,7 @@ export class LoadNodesAndCredentials {
 		for (const loader of Object.values(this.loaders)) {
 			if (credentialType in loader.known.credentials) {
 				const loaded = loader.getCredential(credentialType);
+				loaded.type.properties = injectDomainRestrictionFields(loaded.type);
 				loadedCredentials[credentialType] = loaded;
 			}
 		}

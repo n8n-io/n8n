@@ -61,7 +61,6 @@ function handleClick(event: MouseEvent) {
 	color: var(--ai-activity-step--color, var(--text-color--subtler));
 	font-size: var(--font-size--sm);
 	position: relative;
-	// Inherit header styles through the group without selecting nested buttons.
 	padding: var(--ai-activity-step--padding, 0);
 	height: var(--ai-activity-step--height, var(--button--height));
 	min-height: var(--ai-activity-step--min-height, 0);
@@ -77,7 +76,6 @@ function handleClick(event: MouseEvent) {
 
 	&.nonInteractive {
 		cursor: default;
-		opacity: 1;
 
 		&:hover {
 			color: var(--text-color--subtler);
@@ -95,6 +93,7 @@ function handleClick(event: MouseEvent) {
 }
 
 .label {
+	min-width: 0;
 	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
@@ -120,12 +119,12 @@ function handleClick(event: MouseEvent) {
 
 .shimmer {
 	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: color-mix(
-		in srgb,
-		var(--text-color--subtler) 30%,
-		var(--background--subtle) 70%
+	--animation--shimmer--foreground: color-mix(
+		in oklch,
+		var(--ai-activity-step--color, var(--text-color--subtler)),
+		transparent 50%
 	);
-	--animation--shimmer--foreground: var(--text-color--subtler);
+	--animation--shimmer--background: var(--ai-activity-step--color, var(--text-color--subtler));
 	@include motion.shimmer;
 }
 </style>

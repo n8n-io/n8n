@@ -1,6 +1,9 @@
+import type { SerializedCredential, SerializedCredentialData } from '@n8n/api-types';
+
 import type {
 	ImportBindingMap,
 	CredentialConflictPolicy,
+	CredentialPersonalRoute,
 	CredentialMatchingMode,
 	CredentialMissingMode,
 } from '../../n8n-packages.types';
@@ -8,10 +11,6 @@ import type {
 	PackageCredentialRequirement,
 	PackageRequirementConsumer,
 } from '../../spec/requirements.schema';
-import type {
-	SerializedCredential,
-	SerializedCredentialData,
-} from '../../spec/serialized/credential.schema';
 import type { AgentRequirementSource } from '../requirement-source';
 
 /** A requirement enriched with the expression data the package bundles for it, when any. */
@@ -40,8 +39,22 @@ export type CredentialResolutionFailureKind =
 	| 'source_not_found'
 	| 'type_mismatch';
 
+/**
+ * Why the user cannot use a credential that a reference names by id, for `not_found`.
+ * Set only for a user who can read all credentials.
+ * - `not-on-instance`: no credential has the id.
+ * - `access-required`: the credential exists, but it is not shared with the target project.
+ * - `incompatible-usage-scope`: the credential exists, but it is not a project credential.
+ */
+export type CredentialNotFoundReason =
+	| 'not-on-instance'
+	| 'access-required'
+	| 'incompatible-usage-scope';
+
 export type CredentialResolutionFailure = {
 	kind: CredentialResolutionFailureKind;
+	/** For `not_found` of a credential the matcher looked up by id. */
+	reason?: CredentialNotFoundReason;
 	sourceId: string;
 	name?: string;
 	type?: string;
@@ -71,6 +84,10 @@ export interface CredentialMatch {
  * payload for it. Holds no stored values: the write decrypts and merges again.
  */
 export interface CredentialUpdateCandidate extends CredentialMatch {
+	/** Stored type of the destination credential. An update never changes it. */
+	targetType: string;
+	/** Project on the `credential:owner` sharing of the destination credential. */
+	ownerProjectId: string;
 	/** Package credential name. */
 	name: string;
 	/** Package expression values. Absent when the package was exported without values. */
@@ -78,6 +95,7 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 }
 
 export interface CredentialImportPlan extends CredentialResolution {
+	stubIds: ImportBindingMap;
 	/** Matched credentials the conflict policy can update. Empty under `keep-existing`. */
 	candidates: CredentialUpdateCandidate[];
 	/** The candidates that `overwrite` would change. */
@@ -113,12 +131,18 @@ export interface CredentialUpdateScope {
 	projectIds: ReadonlySet<string>;
 }
 
-export interface CredentialApplyResult {
+/** What binding wrote: the source → target map, and the credentials created for missing ones. */
+export interface CredentialBindResult {
 	bindings: ImportBindingMap;
 	matched: string[];
 	stubbed: string[];
 	seeded: string[];
 	incomplete: string[];
+}
+
+export interface CredentialApplyResult extends CredentialBindResult {
+	/** Source ids whose destination credential this scope wrote under `overwrite`. */
+	updated: string[];
 }
 
 export interface CredentialBindingRequest {
@@ -127,6 +151,8 @@ export interface CredentialBindingRequest {
 	missingMode: CredentialMissingMode;
 	credentialBindings?: ImportBindingMap;
 	conflictPolicy: CredentialConflictPolicy;
+	/** Omitted means `allow`. */
+	personalRoute?: CredentialPersonalRoute;
 	/** Package credential files by credential id. Read only when the policy is not `keep-existing`. */
 	packageCredentials?: ReadonlyMap<string, SerializedCredential>;
 	updateScope: CredentialUpdateScope;

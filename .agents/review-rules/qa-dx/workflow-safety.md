@@ -2,10 +2,10 @@
 
 Applies to: `.github/workflows/**`, `.github/actions/**`, `.poutine.yml`.
 
-Poutine and Zizmor already fail CI for the classic hazards — `pull_request_target`
-(also an error-level `@n8n/code-health` rule), actions unpinned from a full commit
-SHA, untrusted checkout execution, self-hosted runner exposure. Do not repeat
-them. What follows is what the scanners cannot see.
+Poutine already fails CI for the classic hazards — `pull_request_target` (also
+an error-level `@n8n/code-health` rule), actions unpinned from a full commit SHA,
+untrusted checkout execution, self-hosted runner exposure. Do not repeat them.
+What follows is what the scanner cannot see.
 
 ## Silencing a scanner is the change to review
 
@@ -13,10 +13,10 @@ them. What follows is what the scanners cannot see.
 (by purl) and `untrusted_checkout_exec` (by path). The file says "Add new
 entries only after security review". Nothing enforces that.
 
-Flag any addition to `.poutine.yml`'s `skip:` block, any new `zizmor: ignore`
-comment, and any new entry in `.github/poutine-rules/`'s exceptions. Ask what
-was reviewed and why the finding is a false positive rather than a real one.
-The entry needs a comment giving the reason, matching the ones already there.
+Flag any addition to `.poutine.yml`'s `skip:` block or any new entry in
+`.github/poutine-rules/`'s exceptions. Ask what was reviewed and why the finding
+is a false positive rather than a real one. The entry needs a comment giving the
+reason, matching the ones already there.
 
 ## A gate that cannot fail is not a gate
 

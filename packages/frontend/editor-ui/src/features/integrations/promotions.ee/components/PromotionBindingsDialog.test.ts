@@ -4,7 +4,7 @@ import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ApplyPackageResultDto } from '@n8n/api-types';
 import PromotionBindingsDialog from './PromotionBindingsDialog.vue';
-import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
+import { continueApplyPromotion } from '../promotionsSettings.api';
 import {
 	applied,
 	blocked,
@@ -21,9 +21,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 vi.mock('../promotionsSettings.api');
 
-const renderComponent = createComponentRenderer(PromotionBindingsDialog, {
-	props: { continueWith: { kind: 'instance' } },
-});
+const renderComponent = createComponentRenderer(PromotionBindingsDialog, {});
 
 async function renderDialog(options: Parameters<typeof renderComponent>[0]) {
 	const result = renderComponent(options);
@@ -267,48 +265,6 @@ it('creates the original binding, restores focus, and emits the full applied res
 	expect(emitted('close-requested')).toBeUndefined();
 });
 
-it('forwards continueWith so Continue resumes the selection', async () => {
-	vi.mocked(continueApplyProjectSelection).mockResolvedValue(applied);
-	const initial = blocked({ missingBindings: [] });
-	const { getByRole, emitted } = await renderDialog({
-		props: {
-			open: true,
-			blockedResult: initial,
-			createBinding: vi.fn(),
-			continueWith: { kind: 'selection', projectId: 'team-a', workflowIds: ['wf-a', 'wf-b'] },
-		},
-	});
-	await userEvent.click(getByRole('button', { name: 'Continue' }));
-	expect(continueApplyProjectSelection).toHaveBeenCalledWith(
-		{ baseUrl: '/custom/api/v1' },
-		'team-a',
-		{
-			workflowIds: ['wf-a', 'wf-b'],
-			expectedSource: { configId: initial.configId, ...initial.git },
-		},
-	);
-	expect(continueApplyPromotion).not.toHaveBeenCalled();
-	expect(emitted('applied')).toEqual([[applied]]);
-});
-
-it('confirms destructive changes when it resumes a selection', async () => {
-	vi.mocked(continueApplyProjectSelection).mockResolvedValue(applied);
-	const { getByRole } = await renderDialog({
-		props: {
-			open: true,
-			blockedResult: blocked({ missingBindings: [], conflicts: [destructiveChange] }),
-			createBinding: vi.fn(),
-			continueWith: { kind: 'selection', projectId: 'team-a', workflowIds: ['wf-a'] },
-		},
-	});
-	await userEvent.click(getByRole('button', { name: 'Apply data table changes' }));
-	expect(continueApplyProjectSelection).toHaveBeenCalledWith(
-		expect.anything(),
-		'team-a',
-		expect.objectContaining({ confirmDestructiveChanges: true }),
-	);
-});
-
 it.each(['Close', 'Close dialog', 'Back', 'Escape'] as const)(
 	'keeps saved resources when dismissed with %s',
 	async (action) => {
@@ -337,7 +293,8 @@ it('blocks dismissal and repeated form submissions while Continue is pending', a
 	});
 	const button = getByRole('button', { name: 'Continue' });
 	await userEvent.click(button);
-	const form = button.closest('form');
+	// The action sits in the footer and submits the body form through the form attribute.
+	const form = button instanceof HTMLButtonElement ? button.form : null;
 	expect(form).not.toBeNull();
 	await fireEvent.submit(form!);
 	await userEvent.keyboard('{Escape}');
@@ -353,8 +310,7 @@ it('returns a changed source to the caller and stops the session', async () => {
 	const initial = blocked({ missingBindings: [] });
 	const result = {
 		status: 'source-changed' as const,
-		connectionId: initial.connectionId,
-		configId: initial.configId,
+		environmentId: initial.environmentId,
 		git: { branchName: 'main', commitSha: 'b'.repeat(40) },
 	};
 	vi.mocked(continueApplyPromotion).mockResolvedValue(result);

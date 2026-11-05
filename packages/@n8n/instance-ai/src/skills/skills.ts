@@ -23,7 +23,7 @@ function substituteSkillPlaceholders(instructions: string): string {
 	);
 }
 
-/** Every bundled skill, including the fragments that prompt profiles append to other skills. */
+/** Bundled Assistant skills, including the fragments that prompt profiles append. */
 export function loadInstanceAiSkills(): RuntimeSkillSource {
 	cachedSkills ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
 		transformInstructions: substituteSkillPlaceholders,

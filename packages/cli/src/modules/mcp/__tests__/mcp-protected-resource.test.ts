@@ -3,6 +3,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -25,6 +26,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
+import { SkillsGate } from '@/modules/skills';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -33,10 +35,8 @@ const makeGlobalConfig = ({
 	builderEnabled = true,
 	tagsDisabled = false,
 	managedByEnv = false,
-	skillsHubEnabled = true,
 } = {}) =>
 	({
-		agents: { skillsHubEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
@@ -73,9 +73,19 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
+		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
 	});
 
 	describe('getScopeTools', () => {
+		it.each([true, false])('lists description updates only when enabled: %s', async (enabled) => {
+			postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
+			);
+			expect((await resource.getScopeTools())['credential:update']).toEqual(
+				enabled ? ['update_credential_description'] : [],
+			);
+		});
+
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
 			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
 			const scopeTools = await resource.getScopeTools();
@@ -84,21 +94,13 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
-		it('withholds skill scopes and tools when the skills hub is off', async () => {
-			const hubOffResource = new McpProtectedResource(
-				urlService,
-				mcpSettingsService,
-				mcpConfig,
-				makeGlobalConfig({ skillsHubEnabled: false }),
-				moduleRegistry,
-				licenseState,
-				postHogClient,
-			);
+		it('withholds skill scopes and tools while the skills gate is off', async () => {
+			Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: false }));
 
-			expect(hubOffResource.scopes).toContain('agent:read');
-			expect(hubOffResource.scopes).not.toContain('skill:read');
-			expect(hubOffResource.scopes).not.toContain('skill:write');
-			expect(await hubOffResource.getScopeTools()).not.toHaveProperty('skill:read');
+			expect(resource.scopes).toContain('agent:read');
+			expect(resource.scopes).not.toContain('skill:read');
+			expect(resource.scopes).not.toContain('skill:write');
+			expect(await resource.getScopeTools()).not.toHaveProperty('skill:read');
 		});
 
 		it('keeps skill scopes when Agents is disabled', () => {
@@ -117,7 +119,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
 			expect(scopeTools['agent:read']).toContain('search_agents');
-			expect(scopeTools['skill:read']).toContain('search_skills');
+			expect(scopeTools['skill:read']).toContain('search_n8n_skills');
 			expect(scopeTools['skill:write']).toContain('create_skill');
 			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
@@ -167,12 +169,16 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('checks the activity flag without a user argument', async () => {
+		it('checks each instance flag once without a user argument', async () => {
 			await resource.getScopeTools();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledExactlyOnceWith(
-				INSTANCE_ACTIVITY_CONTEXT_FLAG,
-			);
+			for (const flag of [INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG]) {
+				expect(
+					postHogClient.getFeatureFlagForInstance.mock.calls.filter(
+						([requested]) => requested === flag,
+					),
+				).toEqual([[flag]]);
+			}
 		});
 
 		it('should drop tools this instance does not expose', async () => {

@@ -18,6 +18,12 @@ export const lakebaseOperations: INodeProperties = {
 			action: 'Delete rows',
 		},
 		{
+			name: 'Execute Function',
+			value: 'executeFunction',
+			description: 'Run a Postgres function in the schema',
+			action: 'Execute a function',
+		},
+		{
 			name: 'Get Many',
 			value: 'getAll',
 			description: 'Get many rows from a table',

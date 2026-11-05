@@ -1,5 +1,10 @@
+import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { PolicyViolation } from '@n8n/api-types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { TOOL_CALL_STATE } from '../constants';
@@ -69,16 +74,12 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
 }));
 
-vi.mock('@n8n/frontend-module-type-availability-policies', async () => ({
-	getPolicyViolations: (
-		await vi.importActual<typeof import('@n8n/frontend-module-type-availability-policies')>(
-			'@n8n/frontend-module-type-availability-policies',
-		)
-	).getPolicyViolations,
-	ContactInstanceAdminModal: {
-		props: ['open', 'nodeTypeName', 'kind'],
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	ContactAdminModal: {
+		props: ['open', 'nodeTypeName', 'kind', 'audience'],
 		template:
-			'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ nodeTypeName }}</div>',
 	},
 }));
 
@@ -99,6 +100,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
+			'agentSessions.status.cancelled': 'Canceled',
 			'agents.chat.plan.error.rejected':
 				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
@@ -116,8 +118,11 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
 			'agents.chat.toolPolicyRefusal.reason': '{name} is restricted on this instance.',
+			'agents.chat.toolPolicyRefusal.reason.project': '{name} is restricted in this project.',
 			'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
+			'typeAvailabilityPolicies.restrictedNode.scope.project': 'Restricted in this project',
 			'typeAvailabilityPolicies.restrictedNode.contactAdmin': 'Contact instance admin',
+			'typeAvailabilityPolicies.restrictedNode.contactProjectAdmin': 'Contact project admin',
 		} as Record<string, string>,
 		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
@@ -161,6 +166,41 @@ function mountSteps(
 }
 
 describe('AgentChatToolSteps', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	it.each([
+		{ state: TOOL_CALL_STATE.CANCELLED, output: 'Tool call canceled' },
+		{
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Error: Tool call stopped by guardrail: tasks-cancelled',
+		},
+	])('shows canceled work without an error or repair action: $state', (cancellation) => {
+		const wrapper = mountSteps(
+			[{ tool: 'update_plan', toolCallId: 'tc-canceled', ...cancellation }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-summary"]').text()).toBe('Canceled');
+		expect(wrapper.find('[data-testid="tool-step-warning"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('keeps other guardrail refusals visible as tool errors', () => {
+		const error = 'Error: Tool call stopped by guardrail: tool.blocked';
+		const wrapper = mountSteps(
+			[{ tool: 'lookup', toolCallId: 'tc-error', state: TOOL_CALL_STATE.ERROR, output: error }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+	});
+
 	it.each([
 		{
 			tool: 'update_plan',
@@ -825,7 +865,7 @@ describe('AgentChatToolSteps', () => {
 	});
 
 	describe('policy-refused tool calls', () => {
-		function refusedCall(overrides: Partial<ToolCall> = {}): ToolCall {
+		function refusedCall(violation: Partial<PolicyViolation> = {}): ToolCall {
 			return {
 				tool: 'search_nodes',
 				toolCallId: 'tc-refused',
@@ -840,13 +880,30 @@ describe('AgentChatToolSteps', () => {
 							message: 'Not allowed',
 							subject: 'slack',
 							scope: 'instance',
+							...violation,
 						},
 					],
 					instruction: 'Ask the user to pick another tool.',
 				},
-				...overrides,
 			};
 		}
+
+		it('names the project scope and sends the user to the project admins', async () => {
+			useTypeAvailabilityPoliciesStore().policyProject = createTestProject({ id: 'project-1' });
+			const wrapper = mountSteps([refusedCall({ scope: 'project', projectId: 'project-1' })]);
+			const callout = wrapper.get('[data-test-id="tool-step-error"]');
+
+			expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(
+				'Restricted in this project',
+			);
+			expect(callout.text()).toContain('Search nodes is restricted in this project.');
+			const link = callout.get('[data-test-id="agent-chat-tool-policy-refusal-contact-admin"]');
+			expect(link.text()).toBe('Contact project admin');
+			await link.trigger('click');
+			expect(callout.get('[data-test-id="contact-admin-modal"]').attributes('data-audience')).toBe(
+				'project',
+			);
+		});
 
 		it('shows a lock with the scope line as tooltip', () => {
 			const icon = mountSteps([refusedCall()]).get('[data-testid="tool-step-warning"]');
@@ -917,5 +974,105 @@ describe('AgentChatToolSteps', () => {
 				[[expect.objectContaining({ toolCallId: 'tc-normal' })]],
 			]);
 		});
+	});
+});
+
+describe('AgentChatToolSteps — output files', () => {
+	it('renders the files of a tool output as attachments below the step', () => {
+		const toolCall: ToolCall = {
+			tool: 'generate_image',
+			toolCallId: 'tc-image',
+			state: TOOL_CALL_STATE.DONE,
+			output: {
+				status: 'success',
+				data: [{ binary: { data: 'aid-1' } }],
+				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+			},
+		};
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([
+			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
+		]);
+	});
+
+	it('renders the files of a tool output in a group of tool steps', () => {
+		const toolCalls: ToolCall[] = [
+			{
+				tool: 'search',
+				toolCallId: 'tc-search',
+				state: TOOL_CALL_STATE.DONE,
+				output: { status: 'success' },
+			},
+			{
+				tool: 'generate_image',
+				toolCallId: 'tc-image',
+				state: TOOL_CALL_STATE.DONE,
+				output: {
+					status: 'success',
+					data: [{ binary: { data: 'aid-1' } }],
+					files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+				},
+			},
+		];
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls, projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		const lists = wrapper.findAll('[data-test-id="tool-output-files"]');
+		expect(lists).toHaveLength(1);
+		expect(JSON.parse(lists[0].text())).toEqual([
+			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
+		]);
+	});
+
+	it('renders the files that a delegated sub-agent returned below the delegate step', () => {
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+						toolCallId: 'tc-delegate',
+						state: TOOL_CALL_STATE.DONE,
+						input: { subAgentId: 'inline', taskName: 'draw_chart' },
+						output: { status: 'completed', answer: 'Done', files: [file] },
+					},
+				],
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([file]);
 	});
 });

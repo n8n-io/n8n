@@ -746,8 +746,14 @@ function isListed(list: string[], type: string): boolean {
 	return list.some((entry) => withoutToolSuffix(entry) === baseType);
 }
 
+/** A node type is a package name and a node name, joined by a single dot. */
+function isWellFormedNodeType(type: string): boolean {
+	return /^[^.]+\.[^.]+$/.test(type);
+}
+
 /** Returns whether a user can add or run a tool of this type in the Chat Hub. */
 export function isChatHubToolTypeAllowed(type: string, user: { isChatUser: boolean }): boolean {
+	if (!isWellFormedNodeType(type)) return false;
 	if (isListed(ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES, type)) return false;
 	return !(user.isChatUser && isListed(CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES, type));
 }

@@ -34,7 +34,6 @@ import { copyInputItems } from './utils/copy-input-items';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
-// eslint-disable-next-line import-x/no-cycle
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { normalizeItems } from './utils/normalize-items';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
@@ -179,6 +178,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			this.runExecutionData,
 			this.runIndex,
@@ -377,27 +377,38 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 
 			if (sourceNodeName === undefined) return;
 
-			if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
-				runExecutionData.executionData!.metadata = {};
-			}
-
-			let sourceTaskData = runExecutionData.executionData?.metadata?.[sourceNodeName];
-
-			if (!sourceTaskData) {
-				runExecutionData.executionData!.metadata[sourceNodeName] = [];
-				sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
-			}
-			if (!sourceTaskData[currentNodeRunIndex]) {
-				sourceTaskData[currentNodeRunIndex] = {
-					subRun: [],
-				};
-			}
-
-			sourceTaskData[currentNodeRunIndex].subRun!.push({
-				node: nodeName,
-				runIndex: currentNodeRunIndex,
-			});
+			this.stageSubRun(sourceNodeName, currentNodeRunIndex, currentNodeRunIndex);
 		}
+	}
+
+	/**
+	 * Notes this node's run `runIndex` as a sub-run of run `sourceNodeRunIndex` of
+	 * `sourceNodeName`. `WorkflowExecute.moveNodeMetadata` merges the note onto that run at
+	 * the end of the execution.
+	 */
+	stageSubRun(sourceNodeName: string, sourceNodeRunIndex: number, runIndex: number) {
+		const { runExecutionData } = this;
+
+		if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
+			runExecutionData.executionData!.metadata = {};
+		}
+
+		let sourceTaskData = runExecutionData.executionData?.metadata?.[sourceNodeName];
+
+		if (!sourceTaskData) {
+			runExecutionData.executionData!.metadata[sourceNodeName] = [];
+			sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
+		}
+		if (!sourceTaskData[sourceNodeRunIndex]) {
+			sourceTaskData[sourceNodeRunIndex] = {
+				subRun: [],
+			};
+		}
+
+		sourceTaskData[sourceNodeRunIndex].subRun!.push({
+			node: this.node.name,
+			runIndex,
+		});
 	}
 
 	/**

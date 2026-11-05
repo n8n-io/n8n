@@ -21,6 +21,7 @@ const workflow = (
 	lastExecutedAt: daysAgo(1),
 	issues: [],
 	status: 'open',
+	isArchived: false,
 	...overrides,
 });
 
@@ -84,6 +85,43 @@ describe('workflowFilters', () => {
 		expect(matches(workflow({ owner }), { owner: 'user-2' })).toBe(false);
 		expect(matches(workflow({ owner }), { owner: 'unassigned' })).toBe(false);
 		expect(matches(workflow(), { owner: 'unassigned' })).toBe(true);
+	});
+
+	it('should filter the project by team project id or by all personal projects', () => {
+		const team = workflow({ homeProjectId: 'project-1', homeProjectType: 'team' });
+		const personal = workflow({ homeProjectId: 'project-2', homeProjectType: 'personal' });
+		expect(matches(team, { project: 'project-1' })).toBe(true);
+		expect(matches(team, { project: 'project-3' })).toBe(false);
+		expect(matches(team, { project: 'personal' })).toBe(false);
+		expect(matches(personal, { project: 'personal' })).toBe(true);
+	});
+
+	it('should filter the state that the page shows', () => {
+		expect(matches(workflow({ status: 'open' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'open' }), { state: 'wont_fix' })).toBe(false);
+		expect(matches(workflow({ status: 'wont_fix' }), { state: 'wont_fix' })).toBe(true);
+		expect(matches(workflow({ status: 'notified' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'notified' }), { state: 'wont_fix' })).toBe(false);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'wont_fix' })).toBe(false);
+		// A migrated row keeps its status, but the page shows it as migrated.
+		expect(
+			matchesWorkflowFilters(
+				workflow({ status: 'open' }),
+				{ ...DEFAULT_WORKFLOW_FILTERS, state: 'open' },
+				now,
+				'migrated',
+			),
+		).toBe(false);
+	});
+
+	it('should hide archived workflows unless the filter shows them', () => {
+		const archived = workflow({ isArchived: true });
+		expect(matches(archived, {})).toBe(false);
+		expect(matches(archived, { showArchived: true })).toBe(true);
+		expect(matches(workflow(), {})).toBe(true);
+		expect(matches(workflow(), { showArchived: true })).toBe(true);
+		expect(countActiveFilters({ ...DEFAULT_WORKFLOW_FILTERS, showArchived: true })).toBe(1);
 	});
 
 	it('should count the filters that differ from the default', () => {

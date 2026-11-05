@@ -7,13 +7,15 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import type { ICredentialDataDecryptedObject, McpAiGatewayCredentialType } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
-import type { AiGatewayModelCredentialResolver } from '../json-config/model-config';
+import type { AiGatewayModelCredentialResolver } from '../agent-credential-provider.contracts';
+import type { AiGatewayMcpCredentialResolver } from '../json-config/mcp-client-factory';
 import type { AiGatewaySearchCredentialResolver } from '../json-config/web-search-credential';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
@@ -33,7 +35,11 @@ function toResolvedCredential(data: unknown): ResolvedCredential & { apiKey: str
  * Published runtime execution can omit the user and stays project-scoped.
  */
 export class AgentsCredentialProvider
-	implements CredentialProvider, AiGatewayModelCredentialResolver, AiGatewaySearchCredentialResolver
+	implements
+		CredentialProvider,
+		AiGatewayModelCredentialResolver,
+		AiGatewaySearchCredentialResolver,
+		AiGatewayMcpCredentialResolver
 {
 	/**
 	 * AI Gateway tokens this provider set in model configs, and the origins they
@@ -117,6 +123,16 @@ export class AgentsCredentialProvider
 	 */
 	async resolveAiGatewaySearchCredential(credentialType: string): Promise<ResolvedCredential> {
 		return toResolvedCredential(await this.mintGatewayCredential(credentialType));
+	}
+
+	/**
+	 * Mint the Gateway credits credential of an MCP registry server. The AI
+	 * Gateway pins its token to the AI Gateway host, so it needs no `apiKey`.
+	 */
+	async resolveAiGatewayMcpCredential(
+		credentialType: McpAiGatewayCredentialType,
+	): Promise<ICredentialDataDecryptedObject> {
+		return await this.mintGatewayCredential(credentialType);
 	}
 
 	/** Mint a model credential and record its token for `createAiGatewayTokenRefreshFetch`. */
@@ -210,6 +226,7 @@ export class AgentsCredentialProvider
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(this.user, {
 			projectId: this.projectId,
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 	}
 
@@ -225,7 +242,7 @@ export class AgentsCredentialProvider
 
 		const addCreds = (creds: CredentialsEntity[]) => {
 			for (const cred of creds) {
-				if (!allCredsSet.has(cred.id)) {
+				if (!cred.isResolvable && !allCredsSet.has(cred.id)) {
 					allCredsSet.add(cred.id);
 					allCreds.push(cred);
 				}

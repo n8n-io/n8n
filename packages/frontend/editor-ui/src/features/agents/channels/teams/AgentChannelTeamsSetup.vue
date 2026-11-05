@@ -27,9 +27,11 @@ import {
 import type { PermissionsRecord } from '@n8n/permissions';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
+import type { AgentChannelRestart } from '../types';
 import AgentChannelTeamsAvailability from './AgentChannelTeamsAvailability.vue';
 import AgentChannelTeamsManagedApp from './AgentChannelTeamsManagedApp.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
+import { useTeamsSetupRestart } from './useTeamsSetupRestart';
 import { useTeamsUploadInstruction } from './useTeamsUploadInstruction';
 import {
 	availabilityFrom,
@@ -67,6 +69,8 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		forceNewCredential?: boolean;
+		/** The credential the saved channel runs on, or '' while there is none. */
+		savedCredentialId?: string;
 		savedSettings?: AgentTeamsIntegrationSettings;
 		ensureAgentPersisted?: () => Promise<void>;
 		/** Saves without closing the modal, so the card can act on saved settings. */
@@ -85,6 +89,7 @@ const props = withDefaults(
 		errorMessage: '',
 		errorIsConflict: false,
 		forceNewCredential: false,
+		savedCredentialId: '',
 		savedSettings: undefined,
 		ensureAgentPersisted: undefined,
 		persistChannel: undefined,
@@ -96,10 +101,21 @@ const emit = defineEmits<{
 	edit: [];
 	connect: [];
 	done: [];
+	restart: [restart: AgentChannelRestart];
 }>();
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const { restartOnCredentialChange } = useTeamsSetupRestart();
+// Edit mode is guarded by AgentChannelTeamsEditView, which wraps this view.
+const restartFrom = computed(() =>
+	props.mode === 'setup' && props.connected ? props.savedCredentialId : '',
+);
+restartOnCredentialChange(
+	credentialId,
+	() => restartFrom.value,
+	(restart) => emit('restart', restart),
+);
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 
@@ -137,17 +153,6 @@ const offerManagedApp = computed(() => {
 			managed.managerCredentials.some(({ connected }) => connected),
 	);
 });
-
-// The credential the saved channel runs on, so a swap counts as an app change.
-// The modal can hand it over after mount, so the first one given is the saved one.
-const savedCredentialId = ref(credentialId.value);
-if (!savedCredentialId.value) {
-	const stop = watch(credentialId, (id) => {
-		if (!id) return;
-		savedCredentialId.value = id;
-		stop();
-	});
-}
 
 const organization = computed(() => {
 	const managed = props.managedRuntime;
@@ -219,9 +224,9 @@ function editAvailability(value: TeamsAvailability) {
 }
 
 /**
- * Whether saving changes what the installed app carries: its scopes, its bot,
- * or an identity override this view no longer keeps. Teams only picks that up
- * from a new package.
+ * Whether saving changes what the installed app carries: its scopes, or an
+ * identity override this view no longer keeps. Teams only picks that up from
+ * a new package.
  */
 const manifestChanged = computed(() => {
 	if (props.mode !== 'edit') return false;
@@ -231,7 +236,6 @@ const manifestChanged = computed(() => {
 		availability.value.groupChats !== (saved?.groupChats ?? false) ||
 		availability.value.readAllChannelMessages !== (saved?.readAllChannelMessages ?? false) ||
 		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false) ||
-		credentialId.value !== savedCredentialId.value ||
 		savedIdentityOverride.value
 	);
 });
@@ -416,7 +420,15 @@ async function refreshForCredential() {
 	await Promise.all([runCredentialCheck('auto'), loadSetupState()]);
 }
 
-watch(credentialId, refreshForCredential, { immediate: true });
+// A credential that waits for the restart is checked by the new setup, not here.
+watch(
+	credentialId,
+	async (id) => {
+		if (restartFrom.value && id && id !== restartFrom.value) return;
+		await refreshForCredential();
+	},
+	{ immediate: true },
+);
 
 const fileAccessStatus = ref<TeamsFileAccessCheck['status'] | null>(null);
 /**
@@ -562,7 +574,7 @@ function showDownloaded() {
 // The package matches what n8n has saved, not the unsaved form, so an
 // installed app never runs on settings that were never saved.
 async function downloadSaved() {
-	if (!(await downloadPackage(props.savedSettings, savedCredentialId.value))) return;
+	if (!(await downloadPackage(props.savedSettings, credentialId.value))) return;
 	showDownloaded();
 	await loadSetupState();
 }
@@ -651,7 +663,6 @@ defineExpose({
 						:class="[$style.stepStack, $style.fieldStack]"
 					>
 						<AgentIntegrationCredentialConnection
-							v-if="!connected"
 							v-model="credentialId"
 							:integration-type="integration.type"
 							:integration-label="integration.label"
@@ -662,7 +673,7 @@ defineExpose({
 							:loading="loading"
 							:error-message="showConnectError ? '' : errorMessage"
 							:error-is-conflict="errorIsConflict"
-							:force-new-credential="forceNewCredential"
+							:force-new-credential="forceNewCredential && !connected"
 							@create="emit('create')"
 							@edit="emit('edit')"
 						/>

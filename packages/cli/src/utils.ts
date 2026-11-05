@@ -74,19 +74,9 @@ export function rightDiff<T1, T2>(
 	[arr1, keyExtractor1]: [T1[], (item: T1) => string],
 	[arr2, keyExtractor2]: [T2[], (item: T2) => string],
 ): T2[] {
-	// create map { itemKey => true } for fast lookup for diff
-	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
-		map[keyExtractor1(item)] = true;
-		return map;
-	}, {});
+	const keys = new Set(arr1.map(keyExtractor1));
 
-	// diff against map
-	return arr2.reduce<T2[]>((acc, item) => {
-		if (!keyMap[keyExtractor2(item)]) {
-			acc.push(item);
-		}
-		return acc;
-	}, []);
+	return arr2.filter((item) => !keys.has(keyExtractor2(item)));
 }
 
 /**
@@ -143,29 +133,6 @@ export const getAllKeyPaths = (
 	}
 	return paths;
 };
-
-/**
- * Sets Microsoft 365 observability environment variables to their default values if not already set.
- * Sets ENABLE_OBSERVABILITY and ENABLE_A365_OBSERVABILITY_EXPORTER to 'true' if they are undefined or empty.
- */
-export function setMicrosoftObservabilityDefaults(): void {
-	if (process.env.ENABLE_OBSERVABILITY === undefined || process.env.ENABLE_OBSERVABILITY === '') {
-		process.env.ENABLE_OBSERVABILITY = 'true';
-	}
-	if (
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === undefined ||
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === ''
-	) {
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
-	}
-}
-
-export function containsExpression(testString: string): boolean {
-	if (!testString.startsWith('=')) return false;
-	const firstLine = testString.split(/[\r\n\u2028\u2029]/, 1)[0];
-	const opening = firstLine.indexOf('{{', 1);
-	return opening !== -1 && firstLine.lastIndexOf('}}') > opening + 2;
-}
 
 export function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

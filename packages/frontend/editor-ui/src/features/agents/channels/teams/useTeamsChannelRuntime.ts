@@ -15,7 +15,11 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-import type { AgentChannelRuntime, AgentChannelRuntimeContext } from '../types';
+import type {
+	AgentChannelRestart,
+	AgentChannelRuntime,
+	AgentChannelRuntimeContext,
+} from '../types';
 import {
 	createTeamsManagerCredential,
 	getTeamsAzureSubscriptions,
@@ -33,11 +37,21 @@ const TEAMS_MANAGER_CREDENTIAL_TYPE = 'microsoftTeamsManagerOAuth2Api';
 export type TeamsSetupKind = 'managed' | 'manual';
 
 export interface TeamsChannelRuntime extends AgentChannelRuntime {
+	reset: (restart: AgentChannelRestart) => void;
 	managedSetup: Ref<TeamsManagedSetupState>;
 	setupKind: Ref<TeamsSetupKind>;
+	/** The flow the next setup opens on, set by `reset`; without it the setup opens on the recommended one. */
+	nextSetupKind: Ref<TeamsSetupKind | null>;
 	/** Sign-in the recommended flow is currently provisioning with. */
 	managerCredentialId: Ref<string>;
-	connectManagerCredential: (credentialId?: string) => Promise<boolean>;
+	/**
+	 * Resolves to the credential that signed in, or null. `select: false` leaves
+	 * the current sign-in selected, for a caller that switches only later.
+	 */
+	connectManagerCredential: (
+		credentialId?: string,
+		options?: { select?: boolean },
+	) => Promise<string | null>;
 	editManagerCredential: (credentialId: string) => void;
 	/** What each provisioning step left behind, so a step can show its result. */
 	provisionedApp: Ref<TeamsProvisionedAppSummary | null>;
@@ -83,6 +97,7 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 
 	const managedSetup = ref<TeamsManagedSetupState>(emptyState());
 	const setupKind = ref<TeamsSetupKind>('managed');
+	const nextSetupKind = ref<TeamsSetupKind | null>(null);
 	const managerCredentialId = ref('');
 	// Starts false, not true: the channel modal builds a runtime for every
 	// registered platform but only calls `load()` for the ones in the catalog,
@@ -191,7 +206,10 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		if (managerCredentialId.value) void refreshCatalogState().catch(() => {});
 	}
 
-	async function connectManagerCredential(credentialId?: string): Promise<boolean> {
+	async function connectManagerCredential(
+		credentialId?: string,
+		{ select = true }: { select?: boolean } = {},
+	): Promise<string | null> {
 		await context.ensureAgentPersisted?.();
 		let id = credentialId;
 		let createdCredentialId: string | undefined;
@@ -230,10 +248,10 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 				? await credentialOAuth.authorizeNewCredential(credential, { abortOnPopupClose: true })
 				: await credentialOAuth.authorize(credential, undefined, { abortOnPopupClose: true });
 
-			if (!connected) return false;
-			managerCredentialId.value = id;
+			if (!connected) return null;
+			if (select) managerCredentialId.value = id;
 			await load();
-			return true;
+			return id;
 		} finally {
 			// Only for a credential the helper never saw -- the lookup above threw.
 			// Past that point the helper deletes it itself on every path that is
@@ -385,6 +403,21 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 		} catch {}
 	}
 
+	// The sign-in is kept unless the user picked another: it belongs to the
+	// user, not to the setup being redone. A bot credential picked for the new
+	// setup already exists, so only the manual setup can use it.
+	function reset({ credentialId, signInCredentialId }: AgentChannelRestart) {
+		nextSetupKind.value = credentialId ? 'manual' : 'managed';
+		if (signInCredentialId) managerCredentialId.value = signInCredentialId;
+		provisionedApp.value = null;
+		botSetupState.value = null;
+		botSetupStateFor.value = '';
+		provisionedBot.value = null;
+		subscriptions.value = [];
+		catalogState.value = null;
+		connectedCredentialId.value = '';
+	}
+
 	watch(context.credentialModalOpen, (isOpen, wasOpen) => {
 		if (wasOpen && !isOpen) void load();
 	});
@@ -392,9 +425,11 @@ export function useTeamsChannelRuntime(context: AgentChannelRuntimeContext): Tea
 	return {
 		managedSetup,
 		setupKind,
+		nextSetupKind,
 		managerCredentialId,
 		loading: computed(() => loading.value),
 		load,
+		reset,
 		connectManagerCredential,
 		editManagerCredential,
 		provisionedApp,

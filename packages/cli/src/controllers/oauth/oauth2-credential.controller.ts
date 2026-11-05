@@ -14,8 +14,9 @@ import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
+import { withTokenVersion } from '@/managed-versions';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
-import { OAuthRequest } from '@/requests';
+import { AuthlessRequest, OAuthRequest } from '@/requests';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController {
@@ -34,6 +35,12 @@ export class OAuth2CredentialController {
 		const credential = await this.oauthService.getCredentialForAuthFlow(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		return await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res);
+	}
+
+	/** Client ID metadata document (CIMD) that OAuth2 servers fetch to identify n8n */
+	@Get('/client-metadata.json', { skipAuth: true, ipRateLimit: true })
+	getClientMetadata(_req: AuthlessRequest, res: Response) {
+		res.json(this.oauthService.getClientMetadataDocument());
 	}
 
 	/** Verify and store app code. Generate access tokens and store for respective credential */
@@ -66,6 +73,28 @@ export class OAuth2CredentialController {
 					// credential -- so rendering it would report whichever sign-in
 					// happened to be open as connected.
 					return res.render('admin-consent-callback');
+				}
+
+				const { error, error_description: errorDescription, iss } = req.query;
+				if (typeof error === 'string' && error) {
+					this.logger.warn('OAuth2 server returned an authorization error', {
+						error,
+						errorDescription,
+						iss,
+					});
+					// n8n does not record the expected issuer yet, so it cannot verify `iss` (RFC 9207).
+					// The MCP spec forbids showing error details from an unverified issuer.
+					const reason =
+						iss !== undefined
+							? undefined
+							: typeof errorDescription === 'string' && errorDescription
+								? `${error}: ${errorDescription}`
+								: error;
+					return this.oauthService.renderCallbackError(
+						res,
+						'The OAuth2 server returned an error.',
+						reason,
+					);
 				}
 
 				return this.oauthService.renderCallbackError(
@@ -137,9 +166,12 @@ export class OAuth2CredentialController {
 
 			// Only overwrite supplied data as some providers do for example just return the
 			// refresh_token on the very first request and not on subsequent ones.
-			const { oauthTokenData: tokenData } = decryptedDataOriginal;
 			const oauthTokenData: ICredentialDataDecryptedObject = {
-				...(typeof tokenData === 'object' ? tokenData : {}),
+				...this.oauthService.getCarriedOverTokenData(
+					credential.type,
+					decryptedDataOriginal,
+					flowState.managedVersion,
+				),
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
 
@@ -152,8 +184,15 @@ export class OAuth2CredentialController {
 				oauthTokenData.resource = state.resource;
 			}
 
+			// Store the managed app version with the tokens, so every later request of this
+			// credential uses the app that issued them.
+			const tokenDataToSave =
+				flowState.managedVersion === undefined
+					? oauthTokenData
+					: withTokenVersion(oauthTokenData, flowState.managedVersion);
+
 			if (!state.origin || state.origin === 'static-credential') {
-				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData: tokenDataToSave });
 
 				this.logger.debug('OAuth2 callback successful for credential', {
 					credentialId: credential.id,
@@ -177,7 +216,7 @@ export class OAuth2CredentialController {
 
 				await this.oauthService.saveDynamicCredential(
 					credential,
-					{ oauthTokenData },
+					{ oauthTokenData: tokenDataToSave },
 					state.authorizationHeader.split('Bearer ')[1],
 					state.credentialResolverId,
 					(state.authMetadata as Record<string, unknown>) ?? {},

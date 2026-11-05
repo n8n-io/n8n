@@ -8,6 +8,19 @@ describe('isChatHubToolTypeAllowed', () => {
 		},
 	);
 
+	it.each([
+		'n8nNodesBaseSlackTool',
+		'n8n-nodes-base.',
+		'.slackTool',
+		'n8n-nodes-base.slackTool.v2',
+		'n8n-nodes-base.slack.Tool',
+		'@n8n/n8n-nodes-langchain.toolCode.x',
+		'@n8n/n8n-nodes-langchain.toolWorkflow.Tool',
+	])('rejects the malformed node type %s for all users', (type) => {
+		expect(isChatHubToolTypeAllowed(type, { isChatUser: false })).toBe(false);
+		expect(isChatHubToolTypeAllowed(type, { isChatUser: true })).toBe(false);
+	});
+
 	it('blocks the Data Table HITL tool for chat users', () => {
 		expect(isChatHubToolTypeAllowed('n8n-nodes-base.dataTableHitlTool', { isChatUser: true })).toBe(
 			false,

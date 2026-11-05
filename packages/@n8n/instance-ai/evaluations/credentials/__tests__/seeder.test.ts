@@ -132,6 +132,26 @@ describe('createOneCredential — static template path (regression)', () => {
 		expect(createCredential).toHaveBeenCalledTimes(2);
 		expect(createCredential.mock.calls[0][1]).toBe('slackApi');
 	});
+
+	it.each([
+		['anthropicApi', '[eval] Anthropic', ['apiKey', 'url']],
+		['groqApi', '[eval] Groq', ['apiKey']],
+		['wordpressApi', '[eval] WordPress', ['username', 'password', 'url']],
+	])('creates a %s credential with its required fields', async (type, defaultName, fields) => {
+		const createCredential = vi.fn(
+			async (_name: string, _type: string, _data: Record<string, unknown>) =>
+				await Promise.resolve({ id: 'cred-1' }),
+		);
+		const client = makeClient(createCredential);
+
+		const result = await createOneCredential(client, type, undefined, new Map());
+
+		expect(result.name).toBe(defaultName);
+		const [, createdType, data] = createCredential.mock.calls[0];
+		expect(createdType).toBe(type);
+		expect(Object.keys(data).sort()).toEqual([...fields].sort());
+		for (const field of fields) expect(data[field]).toBeTruthy();
+	});
 });
 
 describe('credential descriptions', () => {

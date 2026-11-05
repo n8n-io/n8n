@@ -10,3 +10,6 @@ import type { InjectionKey } from 'vue';
 export type AgentConfigWrite = <T>(write: () => Promise<T>) => Promise<T>;
 
 export const AGENT_CONFIG_WRITE_KEY: InjectionKey<AgentConfigWrite> = Symbol('agentConfigWrite');
+
+/** Scope standalone builder controls to the Agents UI. */
+export const AGENT_BUILDER_STANDALONE_KEY: InjectionKey<boolean> = Symbol('agentBuilderStandalone');

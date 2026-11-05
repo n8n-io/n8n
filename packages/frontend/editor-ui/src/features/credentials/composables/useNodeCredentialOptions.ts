@@ -32,6 +32,7 @@ export function useNodeCredentialOptions(
 	 *  the dropdown does not depend on a slice that may be empty or cleared
 	 *  by a competing scoped fetch. */
 	overrideCredentials: MaybeRefOrGetter<ICredentialsResponse[] | undefined> = undefined,
+	excludeResolvable: MaybeRefOrGetter<boolean> = false,
 ) {
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
@@ -104,6 +105,7 @@ export function useNodeCredentialOptions(
 		option: ICredentialsResponse,
 		credentialTypeName?: string,
 	): boolean {
+		if (toValue(excludeResolvable) && option.isResolvable) return false;
 		if (credentialTypeName && option.type !== credentialTypeName) {
 			return false;
 		}

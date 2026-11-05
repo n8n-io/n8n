@@ -22,7 +22,6 @@ export function parsePnpmVersion(packageManager) {
 		);
 	}
 
-	// Corepack allows an integrity suffix, as in `pnpm@1.2.3+sha512.abc`.
 	const version = packageManager.slice(PNPM_PREFIX.length).split('+')[0];
 
 	if (!VERSION_PATTERN.test(version)) {

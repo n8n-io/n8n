@@ -51,15 +51,13 @@ import {
 	getExecutableNodeNames,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
-	OperationalError,
 	SEND_AND_WAIT_OPERATION,
 	tryToParseUrl,
-	UnexpectedError,
-	UserError,
 	WAIT_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import type { IncomingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
@@ -72,9 +70,18 @@ import {
 	InternalServerError,
 	NotFoundError,
 	UnsupportedMediaTypeError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
 } from '@n8n/errors';
-import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import {
+	createExecutionIdV2,
+	isExecutionIdV2,
+	type ExecutionIdV2,
+} from '@/executions/execution-id';
+import type { EngineV2ResumeRequest } from '@/interfaces';
 import { parseBody } from '@/middlewares';
+import * as ResponseHelper from '@/response-helper';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -445,9 +452,7 @@ async function sendResponseNodeResponse(
 			applySandboxCSP(res);
 			try {
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
-				res.once('close', () => stream.destroy());
-				stream.pipe(res, { end: false });
-				await finished(stream);
+				await ResponseHelper.sendStreamToResponse(res, stream);
 			} finally {
 				void Container.get(WebhookResponseRelay).deleteOffloadedBody(response, {
 					workflowId: workflow.id,
@@ -486,7 +491,9 @@ async function sendResponseNodeResponse(
 			`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 			{ executionId, workflowId: workflow.id },
 		);
-		responder.respondWithError(error);
+		// The client left, or a stream that failed halfway destroyed the response.
+		if (res.destroyed) responder.respondWithNoResponse();
+		else responder.respondWithError(error);
 	}
 }
 
@@ -1026,6 +1033,8 @@ export async function executeWebhook(
 		storedAt?: ExecutionStorageLocation;
 		/** Called before WorkflowRunner.run for an existing execution. */
 		onResume?: () => void;
+		/** For an engine v2 execution: the wait that the resume ends on the data plane. */
+		engineResume?: EngineV2ResumeRequest;
 	},
 ): Promise<string | undefined> {
 	const responder = new WebhookResponder(responseCallback);
@@ -1089,7 +1098,7 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
-	/** The id of the v2 run, created before the webhook node runs. */
+	/** The id of the v2 run, set before the webhook node runs. */
 	let engineV2ExecutionId: ExecutionIdV2 | undefined;
 	/** What the webhook node produced for a v2 run, until the dispatcher takes it. */
 	let engineV2Payload: INodeExecutionData[][] | undefined;
@@ -1105,9 +1114,17 @@ export async function executeWebhook(
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			// A workflow that runs on engine v2 in this mode never starts on v1, so a
+			// resume here names a v2 execution. Anything else is a bug.
+			if (executionId !== undefined && !isExecutionIdV2(executionId)) {
+				throw new UnexpectedError('An engine v2 resume needs a v2 execution id', {
+					extra: { executionId },
+				});
+			}
 			// Created before the node runs, so a file the node stores is written under
-			// the path of its run from the start, and no rename is needed later.
-			engineV2ExecutionId = createExecutionIdV2();
+			// the path of its run from the start, and no rename is needed later. A
+			// resume reuses the id of the waiting execution.
+			engineV2ExecutionId = executionId ?? createExecutionIdV2();
 			additionalData.executionId = engineV2ExecutionId;
 		}
 
@@ -1322,19 +1339,8 @@ export async function executeWebhook(
 			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
-		// Extract W3C trace context from webhook headers for OTEL propagation.
-		const traceparent = req.headers.traceparent;
-		if (
-			typeof traceparent === 'string' &&
-			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
-		) {
-			const tracestate = req.headers.tracestate;
-			runData.tracingContext = {
-				traceparent,
-				tracestate:
-					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
-			};
-		}
+		const tracingContext = extractTracingContext(req.headers, additionalData.otel);
+		if (tracingContext) runData.tracingContext = tracingContext;
 
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
@@ -1349,7 +1355,12 @@ export async function executeWebhook(
 			!responder.hasResponded && !shouldDeferOnReceivedResponse,
 			// An execution id here means we are resuming one that is waiting on this webhook
 			executionId
-				? { executionId, expectedStatus: 'waiting', storedAt: options?.storedAt }
+				? {
+						executionId,
+						expectedStatus: 'waiting',
+						storedAt: options?.storedAt,
+						engineResume: options?.engineResume,
+					}
 				: undefined,
 			responsePromise,
 		);
@@ -1632,8 +1643,8 @@ export async function executeWebhook(
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
-		// The run never reached the dispatcher, so the files the webhook node stored
-		// belong to no execution and the control plane deletes them.
+		// The run never reached the dispatcher, so no run uses the files that the
+		// webhook node stored.
 		if (engineV2Payload !== undefined) {
 			await Container.get(EngineV2PayloadFiles).discard(engineV2Payload);
 		}
@@ -1832,4 +1843,26 @@ function toUnansweredRunResponse(
 				responseCode: 504,
 			};
 	}
+}
+
+export function extractTracingContext(
+	headers: IncomingHttpHeaders,
+	otel: IWorkflowExecuteAdditionalData['otel'],
+): IWorkflowExecutionDataProcess['tracingContext'] {
+	const tracingContext: NonNullable<IWorkflowExecutionDataProcess['tracingContext']> = {};
+
+	const { traceparent, tracestate } = headers;
+	if (
+		typeof traceparent === 'string' &&
+		/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+	) {
+		tracingContext.traceparent = traceparent;
+		tracingContext.tracestate =
+			typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined;
+	}
+
+	const baggage = otel?.extractInboundBaggage(headers.baggage);
+	if (baggage) tracingContext.baggage = baggage;
+
+	return tracingContext.traceparent || tracingContext.baggage ? tracingContext : undefined;
 }
