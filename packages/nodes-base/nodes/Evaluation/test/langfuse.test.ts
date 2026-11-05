@@ -10,11 +10,13 @@ import { NodeOperationError } from 'n8n-workflow';
 import { langfuseDatasetSearch } from '../methods/listSearch';
 import {
 	buildLangfuseRow,
+	findLangfuseActiveItem,
 	getAllLangfuseDatasetItems,
 	getLangfuseDataset,
 	getLangfuseDatasetItemsPage,
 	langfuseApiRequest,
 	parseLangfuseDatasetVersion,
+	parseLangfuseOptions,
 } from '../utils/langfuse';
 import type { LangfuseDatasetItem } from '../utils/langfuse';
 import type { Mock } from 'vitest';
@@ -345,6 +347,7 @@ describe('parseLangfuseDatasetVersion', () => {
 });
 
 describe('buildLangfuseRow', () => {
+	const node = { name: 'Evaluation Trigger' } as INode;
 	const dataset = { id: 'ds-1', name: 'my-dataset' };
 	const base = {
 		dataset,
@@ -362,7 +365,7 @@ describe('buildLangfuseRow', () => {
 				expectedOutput: { answer: 'a' },
 				metadata: { tag: 1 },
 			},
-			options: {},
+			options: parseLangfuseOptions(node, {}),
 		});
 
 		expect(row).toEqual({
@@ -386,7 +389,7 @@ describe('buildLangfuseRow', () => {
 		const row = buildLangfuseRow({
 			...base,
 			item: { id: 'i', input: ['a', 'b'], expectedOutput: 'x' },
-			options: {},
+			options: parseLangfuseOptions(node, {}),
 		});
 
 		expect(Object.keys(row)).toEqual([
@@ -396,5 +399,285 @@ describe('buildLangfuseRow', () => {
 			'row_number',
 			'_langfuse',
 		]);
+	});
+
+	it('never copies prototype-polluting keys from the input', () => {
+		const input = JSON.parse(
+			'{"__proto__":{"polluted":true},"constructor":"c","prototype":"p","ok":1}',
+		) as unknown;
+
+		const row = buildLangfuseRow({
+			...base,
+			item: { id: 'i', input, expectedOutput: 'x' },
+			options: parseLangfuseOptions(node, {}),
+		});
+
+		expect(Object.keys(row)).toEqual([
+			'ok',
+			'input',
+			'expectedOutput',
+			'metadata',
+			'row_number',
+			'_langfuse',
+		]);
+		expect(Object.getPrototypeOf(row)).toBe(Object.prototype);
+		expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+	});
+
+	it('adds the internal position to _langfuse only when given', () => {
+		const row = buildLangfuseRow({
+			...base,
+			item: { id: 'i', input: {}, expectedOutput: 'x' },
+			options: parseLangfuseOptions(node, {}),
+			position: 7,
+		});
+
+		expect(row._langfuse).toMatchObject({ itemId: 'i', position: 7 });
+	});
+});
+
+describe('parseLangfuseOptions', () => {
+	const node = { name: 'Evaluation Trigger' } as INode;
+
+	it('applies the defaults', () => {
+		expect(parseLangfuseOptions(node, {})).toEqual({
+			flattenInput: true,
+			includeMetadata: true,
+			expectedOutputField: 'expectedOutput',
+		});
+	});
+
+	it('trims a custom expected-output field', () => {
+		expect(
+			parseLangfuseOptions(node, { expectedOutputField: ' criteria ' }).expectedOutputField,
+		).toBe('criteria');
+	});
+
+	it.each([
+		'input',
+		'metadata',
+		'row_number',
+		'_rowsLeft',
+		'_langfuse',
+		'__proto__',
+		'constructor',
+		'prototype',
+		'',
+		'   ',
+	])('rejects the expected-output field %p', (expectedOutputField) => {
+		expect(() => parseLangfuseOptions(node, { expectedOutputField })).toThrow(NodeOperationError);
+	});
+});
+
+describe('Langfuse hardening caps', () => {
+	let context: Context;
+	let request: Mock<HttpRequest>;
+
+	beforeEach(() => {
+		request = vi.fn<HttpRequest>();
+		context = mock<IExecuteFunctions>({
+			getCredentials: vi.fn().mockResolvedValue({ host: 'https://langfuse.example.com' }),
+			getNode: vi.fn().mockReturnValue({ name: 'Evaluation Trigger' } as INode),
+			helpers: { httpRequestWithAuthentication: request },
+		}) as unknown as Context;
+	});
+
+	describe('langfuseDatasetSearch', () => {
+		it('stops after 20 pages without a token when a filter is set', async () => {
+			request.mockImplementation(async (_credential, options) => ({
+				data: [{ id: 'x', name: 'other' }],
+				meta: { page: options.qs?.page, limit: 50, totalItems: 5000, totalPages: 100 },
+			}));
+
+			const result = await langfuseDatasetSearch.call(context, 'nomatch');
+
+			expect(request).toHaveBeenCalledTimes(20);
+			expect(result).toEqual({ results: [], paginationToken: undefined });
+		});
+
+		it('stops after 20 pages and returns a token to continue when no filter is set', async () => {
+			request.mockImplementation(async (_credential, options) => ({
+				data: [],
+				meta: { page: options.qs?.page, limit: 50, totalItems: 5000, totalPages: 100 },
+			}));
+
+			const result = await langfuseDatasetSearch.call(context);
+
+			expect(request).toHaveBeenCalledTimes(20);
+			expect(result).toEqual({ results: [], paginationToken: '21' });
+		});
+
+		it('accumulates the matches of every page when a filter is set', async () => {
+			request
+				.mockResolvedValueOnce({
+					data: [
+						{ id: '1', name: 'support-a' },
+						{ id: '2', name: 'other' },
+					],
+					meta: meta(1, 3),
+				})
+				.mockResolvedValueOnce({ data: [{ id: '3', name: 'other' }], meta: meta(2, 3) })
+				.mockResolvedValueOnce({ data: [{ id: '4', name: 'Support-B' }], meta: meta(3, 3) });
+
+			const result = await langfuseDatasetSearch.call(context, 'support');
+
+			expect(request).toHaveBeenCalledTimes(3);
+			expect(result.results.map((entry) => entry.value)).toEqual(['support-a', 'Support-B']);
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('skips datasets whose name is not a string', async () => {
+			request.mockResolvedValueOnce({
+				data: [{ id: '1', name: 42 }, { id: '2' }, null, { id: '3', name: 'ok' }],
+				meta: meta(1, 1),
+			});
+
+			const result = await langfuseDatasetSearch.call(context);
+
+			expect(result.results.map((entry) => entry.value)).toEqual(['ok']);
+		});
+
+		it.each([undefined, '', 'abc', '-3', '0', '1.5', '2e3', '9'.repeat(40)])(
+			'falls back to page 1 for the token %p',
+			async (token) => {
+				request.mockResolvedValueOnce({ data: [], meta: meta(1, 1) });
+
+				await langfuseDatasetSearch.call(context, undefined, token);
+
+				expect(request.mock.calls[0][1].qs?.page).toBe(1);
+			},
+		);
+	});
+
+	describe('getAllLangfuseDatasetItems', () => {
+		it('throws instead of truncating on a server that reports endless archived pages', async () => {
+			request.mockImplementation(async (_credential, options) => ({
+				data: [item('a', 'ARCHIVED')],
+				meta: { page: options.qs?.page, limit: 50, totalItems: 1e9, totalPages: 1e9 },
+			}));
+
+			await expect(
+				getAllLangfuseDatasetItems.call(context, { datasetName: 'ds', maxItems: 100 }),
+			).rejects.toThrow(
+				'Langfuse dataset scan stopped after 500 pages before reaching the end of the dataset',
+			);
+			expect(request).toHaveBeenCalledTimes(500);
+		});
+
+		it('throws when the only active item sits after the page cap', async () => {
+			request.mockImplementation(async (_credential, options) => ({
+				data: [
+					item(`p${String(options.qs?.page)}`, options.qs?.page === 501 ? 'ACTIVE' : 'ARCHIVED'),
+				],
+				meta: { page: options.qs?.page, limit: 50, totalItems: 1e9, totalPages: 1e9 },
+			}));
+
+			await expect(
+				getAllLangfuseDatasetItems.call(context, { datasetName: 'ds', maxItems: 100 }),
+			).rejects.toThrow(NodeOperationError);
+		});
+
+		it('reads past the former page slack when the dataset is long enough', async () => {
+			request.mockImplementation(async (_credential, options) => ({
+				data: [
+					item(`p${String(options.qs?.page)}`, options.qs?.page === 30 ? 'ACTIVE' : 'ARCHIVED'),
+				],
+				meta: { page: options.qs?.page, limit: 50, totalItems: 30, totalPages: 30 },
+			}));
+
+			const items = await getAllLangfuseDatasetItems.call(context, {
+				datasetName: 'ds',
+				maxItems: 100,
+			});
+
+			expect(items.map((i) => i.id)).toEqual(['p30']);
+		});
+	});
+
+	describe('findLangfuseActiveItem', () => {
+		const serve = (all: LangfuseDatasetItem[], includeArchived: boolean) => {
+			const list = includeArchived ? all : all.filter((i) => i.status !== 'ARCHIVED');
+			request.mockImplementation(async (_credential, options) => {
+				const { page, limit } = options.qs as { page: number; limit: number };
+				return {
+					data: list.slice((page - 1) * limit, page * limit),
+					meta: {
+						page,
+						limit,
+						totalItems: list.length,
+						totalPages: Math.ceil(list.length / limit),
+					},
+				};
+			});
+		};
+
+		const mixed = () => [
+			...Array.from({ length: 120 }, (_, i) => item(`a${i}`, 'ARCHIVED')),
+			item('first-active'),
+			item('b', 'ARCHIVED'),
+			item('last-active'),
+		];
+
+		it.each([true, false])(
+			'finds the next active item (archived included: %s)',
+			async (included) => {
+				serve(mixed(), included);
+
+				const found = await findLangfuseActiveItem.call(context, { datasetName: 'ds', start: 0 });
+
+				expect(found?.item.id).toBe('first-active');
+				expect(found?.position).toBe(included ? 120 : 0);
+			},
+		);
+
+		it('scans across aligned pages past the starting offset', async () => {
+			serve(mixed(), true);
+
+			const found = await findLangfuseActiveItem.call(context, { datasetName: 'ds', start: 121 });
+
+			expect(found?.item.id).toBe('last-active');
+			expect(found?.position).toBe(122);
+		});
+
+		it('throws instead of returning null when the page cap is hit before the end', async () => {
+			request.mockImplementation(async (_credential, options) => {
+				const { page, limit } = options.qs as { page: number; limit: number };
+				const archived = limit === 1 || page !== 502;
+				return {
+					data: [item(`p${page}`, archived ? 'ARCHIVED' : 'ACTIVE')],
+					meta: { page, limit, totalItems: 1e9, totalPages: 1e9 },
+				};
+			});
+
+			await expect(
+				findLangfuseActiveItem.call(context, { datasetName: 'ds', start: 0 }),
+			).rejects.toThrow(
+				'Langfuse dataset scan stopped after 500 pages before reaching the end of the dataset',
+			);
+			expect(request).toHaveBeenCalledTimes(501);
+		});
+
+		it('finds an active item beyond the former 20 page limit', async () => {
+			request.mockImplementation(async (_credential, options) => {
+				const { page, limit } = options.qs as { page: number; limit: number };
+				const position = limit === 1 ? page - 1 : (page - 1) * 50;
+				return {
+					data: [item(`i${position}`, position >= 1200 ? 'ACTIVE' : 'ARCHIVED')],
+					meta: { page, limit, totalItems: 5000, totalPages: 100 },
+				};
+			});
+
+			const found = await findLangfuseActiveItem.call(context, { datasetName: 'ds', start: 0 });
+
+			expect(found?.item.id).toBe('i1200');
+		});
+
+		it('returns null when only archived items remain', async () => {
+			serve([item('a'), item('b', 'ARCHIVED'), item('c', 'ARCHIVED')], true);
+
+			expect(
+				await findLangfuseActiveItem.call(context, { datasetName: 'ds', start: 1 }),
+			).toBeNull();
+		});
 	});
 });

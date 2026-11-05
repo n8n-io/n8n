@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import { DEFAULT_EVALUATION_METRIC } from 'n8n-workflow';
 
 import {
@@ -497,4 +497,16 @@ export const sourcePicker: INodeProperties = {
 	],
 	default: 'dataTable',
 	description: 'Where to get the test dataset from',
+};
+
+export const triggerSourcePicker: INodeProperties = {
+	...sourcePicker,
+	options: [
+		...(sourcePicker.options as INodePropertyOptions[]),
+		{
+			name: 'Langfuse',
+			value: 'langfuse',
+			description: 'Use a dataset from Langfuse',
+		},
+	],
 };
