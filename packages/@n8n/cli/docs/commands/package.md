@@ -44,6 +44,10 @@ exports require `project:export`, including projects with Agents.
 Export summaries include Agent counts from the server, including added dependencies.
 JSON output includes these counts and the selected Agent IDs.
 
+The package keeps the channels of each Agent without their credential IDs. A
+credential that only a channel uses is not a package requirement. Connect the
+channels again on the target instance.
+
 `--version-policy` applies to workflows and agents, including agents in a
 project export. The selected version supplies the definition and its references.
 Workflow names, settings (including `errorWorkflow`), and tags always use their
