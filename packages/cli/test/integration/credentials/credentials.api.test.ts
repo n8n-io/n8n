@@ -130,7 +130,12 @@ describe('GET /credentials', () => {
 			expect(listEvents()).toHaveLength(1);
 			const [, payload] = listEvents()[0] as [
 				string,
-				{ user: { id: string }; credentialIds: string[]; credentialCount: number; publicApi: boolean },
+				{
+					user: { id: string };
+					credentialIds: string[];
+					credentialCount: number;
+					publicApi: boolean;
+				},
 			];
 			expect(payload.user.id).toBe(owner.id);
 			expect(payload.credentialIds).toEqual(expect.arrayContaining([first.id, second.id]));
