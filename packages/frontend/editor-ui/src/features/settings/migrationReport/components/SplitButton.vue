@@ -30,11 +30,11 @@ const emit = defineEmits<{
 			v-bind="$attrs"
 			@click="emit('click')"
 		/>
-		<!-- The selection bar sits at the bottom of the page, so the menu opens upward. -->
+		<!-- The menu flips upward on its own when the bar is pinned to the bottom of the page. -->
 		<N8nActionToggle
 			:actions="actions"
 			:disabled="disabled"
-			placement="top-end"
+			placement="bottom-end"
 			@action="emit('action', $event)"
 		>
 			<N8nIconButton
