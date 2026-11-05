@@ -269,6 +269,9 @@ test.describe(
 
 				await preventNavigation(n8n);
 				await n8n.navigate.toTemplate(TEMPLATE_WITHOUT_CREDENTIALS_ID);
+				// The preview computes node issues as part of its load; assert absence
+				// only once the canvas has finished loading.
+				await n8n.canvas.waitForCanvasReady();
 				for (const nodeName of TEMPLATE_WITHOUT_CREDENTIALS_NODES) {
 					await expect(n8n.canvas.nodeByName(nodeName)).toBeVisible();
 					await expect(n8n.canvas.nodeIssuesBadge(nodeName)).toBeHidden();
