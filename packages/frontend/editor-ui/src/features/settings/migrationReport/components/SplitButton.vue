@@ -6,6 +6,8 @@ defineOptions({ inheritAttrs: false });
 
 defineProps<{
 	label: string;
+	// Names the icon-only toggle for screen readers.
+	toggleLabel: string;
 	// Also disables the menu, so the bar shows one state for the whole button.
 	disabled?: boolean;
 	// More actions in the chevron menu.
@@ -38,6 +40,7 @@ const emit = defineEmits<{
 			<N8nIconButton
 				variant="outline"
 				icon="chevron-down"
+				:aria-label="toggleLabel"
 				:disabled="disabled"
 				:class="$style.toggle"
 				data-test-id="split-button-toggle"

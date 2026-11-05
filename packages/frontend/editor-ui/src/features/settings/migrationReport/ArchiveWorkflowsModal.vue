@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { ARCHIVE_WORKFLOWS_MODAL_KEY } from '@/app/constants';
 import type { BreakingChangeRuleDetailWorkflow } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -12,38 +11,33 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { EventBus } from '@n8n/utils/event-bus';
-import { useUIStore } from '@/app/stores/ui.store';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
-import type { ArchiveWorkflowsModalMode } from './constants';
+import { TARGET_VERSION_DISPLAY, type ArchiveWorkflowsModalMode } from './constants';
 
-defineOptions({ inheritAttrs: false });
-
+// The rule detail page renders this dialog only while it is open, and does the work on `confirm`.
 const props = defineProps<{
-	modalName: string;
-	data: {
-		mode: ArchiveWorkflowsModalMode;
-		workflows: BreakingChangeRuleDetailWorkflow[];
-		// Gets `confirm` with the mode and the workflows. The report does the work.
-		eventBus: EventBus;
-	};
+	mode: ArchiveWorkflowsModalMode;
+	workflows: BreakingChangeRuleDetailWorkflow[];
+}>();
+
+const emit = defineEmits<{
+	close: [];
+	confirm: [];
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
-const modalOpen = computed(() => uiStore.modalsById[ARCHIVE_WORKFLOWS_MODAL_KEY]?.open === true);
 
-const isPrompt = computed(() => props.data.mode === 'prompt');
-const published = computed(() => props.data.workflows.filter((workflow) => workflow.active));
+const isPrompt = computed(() => props.mode === 'prompt');
+const published = computed(() => props.workflows.filter((workflow) => workflow.active));
 
 const title = computed(() => {
 	if (isPrompt.value) {
 		return i18n.baseText('settings.migrationReport.detail.wontFix.archive.prompt.title', {
-			interpolate: { name: props.data.workflows[0]?.name ?? '' },
+			interpolate: { name: props.workflows[0]?.name ?? '' },
 		});
 	}
-	const count = props.data.workflows.length;
+	const count = props.workflows.length;
 	return i18n.baseText('settings.migrationReport.detail.wontFix.archive.confirm.title', {
 		adjustToNumber: count,
 		interpolate: { count: String(count) },
@@ -52,7 +46,7 @@ const title = computed(() => {
 
 const publishedNote = computed(() => {
 	if (published.value.length === 0) return '';
-	if (props.data.workflows.length === 1) {
+	if (props.workflows.length === 1) {
 		return i18n.baseText('settings.migrationReport.detail.wontFix.archive.published');
 	}
 	const count = published.value.length;
@@ -62,25 +56,25 @@ const publishedNote = computed(() => {
 	});
 });
 
-function close() {
-	uiStore.closeModal(ARCHIVE_WORKFLOWS_MODAL_KEY);
-}
-
 function confirm() {
-	props.data.eventBus.emit('confirm', { mode: props.data.mode, workflows: props.data.workflows });
-	close();
+	emit('confirm');
+	emit('close');
 }
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" @update:open="(open: boolean) => !open && close()">
+	<N8nDialog :open="true" @update:open="(open: boolean) => !open && emit('close')">
 		<N8nDialogHeader>
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<div :class="$style.content" :data-test-id="`${ARCHIVE_WORKFLOWS_MODAL_KEY}-modal`">
+			<div :class="$style.content" data-test-id="archive-workflows-modal">
 				<N8nText v-if="isPrompt" color="text-dark">
-					{{ i18n.baseText('settings.migrationReport.detail.wontFix.archive.prompt.description') }}
+					{{
+						i18n.baseText('settings.migrationReport.detail.wontFix.archive.prompt.description', {
+							interpolate: { version: TARGET_VERSION_DISPLAY },
+						})
+					}}
 				</N8nText>
 				<N8nText v-if="publishedNote" color="text-dark">{{ publishedNote }}</N8nText>
 				<!-- The user should see which running workflows a bulk archive stops. -->
@@ -116,7 +110,7 @@ function confirm() {
 							: i18n.baseText('generic.cancel')
 					"
 					data-test-id="archive-workflows-modal-cancel-button"
-					@click="close"
+					@click="emit('close')"
 				/>
 				<N8nButton
 					:label="

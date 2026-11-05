@@ -1,13 +1,7 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import {
-	DEBOUNCE_TIME,
-	ARCHIVE_WORKFLOWS_MODAL_KEY,
-	MIGRATE_WORKFLOW_MODAL_KEY,
-	TIME,
-	VIEWS,
-} from '@/app/constants';
+import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, TIME, VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type {
 	BreakingChangeRuleDetailResult,
@@ -59,6 +53,7 @@ import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import SplitButton from './components/SplitButton.vue';
+import ArchiveWorkflowsModal from './ArchiveWorkflowsModal.vue';
 import type { ArchiveWorkflowsModalMode } from './constants';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
@@ -618,14 +613,14 @@ function reviewUnusedWorkflows() {
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
 }
 
-// The archive modal asks the user and sends back the workflows to act on.
-const archiveModalBus = createEventBus();
-archiveModalBus.on(
-	'confirm',
-	({ mode, workflows }: { mode: ArchiveWorkflowsModalMode; workflows: AffectedWorkflow[] }) => {
-		void (mode === 'prompt' ? archiveWorkflows(workflows) : markWontFixAndArchive(workflows));
-	},
-);
+// The open archive dialog, if any. The page does the work when the user confirms.
+const archiveDialog = ref<{ mode: ArchiveWorkflowsModalMode; workflows: AffectedWorkflow[] }>();
+
+function onArchiveDialogConfirm() {
+	if (!archiveDialog.value) return;
+	const { mode, workflows } = archiveDialog.value;
+	void (mode === 'prompt' ? archiveWorkflows(workflows) : markWontFixAndArchive(workflows));
+}
 
 /**
  * On a rule whose executions will fail, a won't fix usually means the workflow is
@@ -634,10 +629,7 @@ archiveModalBus.on(
  */
 function promptToArchive(workflow: AffectedWorkflow) {
 	if (state.value.ruleImpact !== 'executionsFail' || workflow.isArchived) return;
-	uiStore.openModalWithData({
-		name: ARCHIVE_WORKFLOWS_MODAL_KEY,
-		data: { mode: 'prompt', workflows: [workflow], eventBus: archiveModalBus },
-	});
+	archiveDialog.value = { mode: 'prompt', workflows: [workflow] };
 }
 
 const bulkArchiveTargets = computed(() =>
@@ -663,10 +655,7 @@ function onBulkWontFixAndArchive() {
 		void markWontFixAndArchive(workflows);
 		return;
 	}
-	uiStore.openModalWithData({
-		name: ARCHIVE_WORKFLOWS_MODAL_KEY,
-		data: { mode: 'confirm', workflows, eventBus: archiveModalBus },
-	});
+	archiveDialog.value = { mode: 'confirm', workflows };
 }
 
 async function markWontFixAndArchive(workflows: AffectedWorkflow[]) {
@@ -1276,6 +1265,7 @@ watch(
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
 						:disabled="bulkTargets('wont_fix').length === 0"
 						:actions="bulkWontFixActions"
+						:toggle-label="i18n.baseText('settings.migrationReport.detail.bulk.wontFixMore')"
 						data-test-id="migration-bulk-wont-fix-button"
 						@click="onBulkStatusChange('wont_fix')"
 						@action="onBulkWontFixAndArchive"
@@ -1290,6 +1280,14 @@ watch(
 				</template>
 			</N8nSelectedItemsInfo>
 		</div>
+		<!-- Outside the selection bar: the single-row prompt opens with no rows selected. -->
+		<ArchiveWorkflowsModal
+			v-if="archiveDialog"
+			:mode="archiveDialog.mode"
+			:workflows="archiveDialog.workflows"
+			@confirm="onArchiveDialogConfirm"
+			@close="archiveDialog = undefined"
+		/>
 	</N8nSettingsLayout>
 </template>
 

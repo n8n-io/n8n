@@ -1,15 +1,9 @@
 import { createTestingPinia } from '@pinia/testing';
 import { screen, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { vi } from 'vitest';
-import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
-import { STORES } from '@n8n/stores';
-import { useUIStore } from '@/app/stores/ui.store';
-import { ARCHIVE_WORKFLOWS_MODAL_KEY } from '@/app/constants';
 import ArchiveWorkflowsModal from './ArchiveWorkflowsModal.vue';
-import type { ArchiveWorkflowsModalMode } from './constants';
+import { TARGET_VERSION_DISPLAY, type ArchiveWorkflowsModalMode } from './constants';
 
 const workflow = (
 	id: string,
@@ -27,17 +21,9 @@ const workflow = (
 	issues: [],
 });
 
-let eventBus: EventBus;
 const renderComponent = createComponentRenderer(ArchiveWorkflowsModal, {
-	pinia: createTestingPinia({
-		initialState: {
-			[STORES.UI]: {
-				modalStateById: {
-					[ARCHIVE_WORKFLOWS_MODAL_KEY]: { open: true },
-				},
-			},
-		},
-	}),
+	// TimeAgo reads the locale from the root store.
+	pinia: createTestingPinia(),
 	global: {
 		stubs: {
 			// Render the dialog body directly so it is queryable without the open-state portal.
@@ -50,23 +36,20 @@ const renderComponent = createComponentRenderer(ArchiveWorkflowsModal, {
 });
 
 function render(mode: ArchiveWorkflowsModalMode, workflows: Array<ReturnType<typeof workflow>>) {
-	eventBus = createEventBus();
-	return renderComponent({
-		props: { modalName: ARCHIVE_WORKFLOWS_MODAL_KEY, data: { mode, workflows, eventBus } },
-	});
+	return renderComponent({ props: { mode, workflows } });
 }
 
 describe('ArchiveWorkflowsModal', () => {
-	afterEach(() => {
-		vi.clearAllMocks();
-	});
-
 	describe('prompt', () => {
 		it('should name the workflow and say that it will fail', () => {
 			render('prompt', [workflow('workflow-1', 'Daily report')]);
 
 			expect(screen.getByText("Archive 'Daily report' too?")).toBeInTheDocument();
-			expect(screen.getByText(/so it'll fail after the upgrade to n8n 3.0/)).toBeInTheDocument();
+			expect(
+				screen.getByText(
+					new RegExp(`so it'll fail after the upgrade to n8n ${TARGET_VERSION_DISPLAY}`),
+				),
+			).toBeInTheDocument();
 			expect(screen.queryByText(/It's published/)).not.toBeInTheDocument();
 			expect(screen.queryByTestId('archive-workflows-modal-list')).not.toBeInTheDocument();
 		});
@@ -77,27 +60,22 @@ describe('ArchiveWorkflowsModal', () => {
 			expect(screen.getByText(/It's published. Archiving stops it./)).toBeInTheDocument();
 		});
 
-		it('should send the workflow back on archive and close', async () => {
-			const workflows = [workflow('workflow-1', 'Daily report')];
-			render('prompt', workflows);
-			const onConfirm = vi.fn();
-			eventBus.on('confirm', onConfirm);
+		it('should confirm and close on archive', async () => {
+			const { emitted } = render('prompt', [workflow('workflow-1', 'Daily report')]);
 
 			await userEvent.click(screen.getByTestId('archive-workflows-modal-confirm-button'));
 
-			expect(onConfirm).toHaveBeenCalledWith({ mode: 'prompt', workflows });
-			expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(ARCHIVE_WORKFLOWS_MODAL_KEY);
+			expect(emitted()).toHaveProperty('confirm');
+			expect(emitted()).toHaveProperty('close');
 		});
 
-		it('should close without sending anything when the user keeps the workflow', async () => {
-			render('prompt', [workflow('workflow-1', 'Daily report')]);
-			const onConfirm = vi.fn();
-			eventBus.on('confirm', onConfirm);
+		it('should close without confirming when the user keeps the workflow', async () => {
+			const { emitted } = render('prompt', [workflow('workflow-1', 'Daily report')]);
 
 			await userEvent.click(screen.getByTestId('archive-workflows-modal-cancel-button'));
 
-			expect(onConfirm).not.toHaveBeenCalled();
-			expect(mockedStore(useUIStore).closeModal).toHaveBeenCalledWith(ARCHIVE_WORKFLOWS_MODAL_KEY);
+			expect(emitted()).not.toHaveProperty('confirm');
+			expect(emitted()).toHaveProperty('close');
 		});
 	});
 
@@ -136,18 +114,12 @@ describe('ArchiveWorkflowsModal', () => {
 			).toHaveLength(40);
 		});
 
-		it('should send all selected workflows back on confirm', async () => {
-			const workflows = [
-				workflow('workflow-1', 'Daily report', { active: true }),
-				workflow('workflow-2', 'Draft'),
-			];
-			render('confirm', workflows);
-			const onConfirm = vi.fn();
-			eventBus.on('confirm', onConfirm);
+		it('should label the confirm button with the bulk action', () => {
+			render('confirm', [workflow('workflow-1', 'Daily report', { active: true })]);
 
-			await userEvent.click(screen.getByTestId('archive-workflows-modal-confirm-button'));
-
-			expect(onConfirm).toHaveBeenCalledWith({ mode: 'confirm', workflows });
+			expect(screen.getByTestId('archive-workflows-modal-confirm-button')).toHaveTextContent(
+				"Mark won't fix and archive",
+			);
 		});
 	});
 });

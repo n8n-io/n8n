@@ -13,7 +13,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { ARCHIVE_WORKFLOWS_MODAL_KEY, MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
+import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeRuleDetailResult } from '@n8n/api-types';
@@ -151,16 +151,21 @@ describe('MigrationRuleDetail', () => {
 				stubs: {
 					// Render the split button's menu items as plain buttons.
 					N8nActionToggle: {
-						props: ['actions'],
+						props: ['actions', 'disabled'],
 						emits: ['action'],
 						template: `<div><button
 							v-for="action in actions"
 							:key="action.value"
 							:data-test-id="'migration-bulk-action-' + action.value"
-							:disabled="action.disabled"
+							:disabled="disabled || action.disabled"
 							@click="$emit('action', action.value)"
 						>{{ action.label }}</button></div>`,
 					},
+					// Render the archive dialog inline so it is queryable without the portal.
+					Dialog: { template: '<div role="dialog"><slot /></div>' },
+					DialogHeader: { template: '<div><slot /></div>' },
+					DialogTitle: { template: '<h2><slot /></h2>' },
+					DialogFooter: { template: '<div><slot /></div>' },
 				},
 			},
 		});
@@ -762,7 +767,7 @@ describe('MigrationRuleDetail', () => {
 					'wont_fix',
 				);
 				expect(breakingChangesApi.updateFindingStatus).not.toHaveBeenCalled();
-				expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+				expect(screen.queryByTestId('archive-workflows-modal')).not.toBeInTheDocument();
 			},
 		);
 
@@ -858,17 +863,10 @@ describe('MigrationRuleDetail', () => {
 			await userEvent.click(within(await screen.findByRole('listbox')).getByText("Won't fix"));
 		};
 
-		const archiveModalData = () =>
-			uiStore.openModalWithData.mock.calls.find(
-				([modal]) => modal.name === ARCHIVE_WORKFLOWS_MODAL_KEY,
-			)?.[0].data as
-				| { mode: string; workflows: Array<{ id: string }>; eventBus: EventBus }
-				| undefined;
-
-		const confirmArchiveModal = () => {
-			const data = archiveModalData();
-			data?.eventBus.emit('confirm', { mode: data.mode, workflows: data.workflows });
-		};
+		const findArchiveDialog = async () => await screen.findByTestId('archive-workflows-modal');
+		const queryArchiveDialog = () => screen.queryByTestId('archive-workflows-modal');
+		const confirmArchiveDialog = async () =>
+			await userEvent.click(screen.getByTestId('archive-workflows-modal-confirm-button'));
 
 		describe('single row', () => {
 			it('should ask to archive the workflow on a rule whose executions will fail', async () => {
@@ -877,11 +875,8 @@ describe('MigrationRuleDetail', () => {
 
 				await markRowWontFix('Test Workflow 1');
 
-				await waitFor(() => expect(archiveModalData()).toBeDefined());
-				expect(archiveModalData()?.mode).toBe('prompt');
-				expect(archiveModalData()?.workflows).toEqual([
-					expect.objectContaining({ id: 'workflow-1' }),
-				]);
+				expect(await findArchiveDialog()).toBeInTheDocument();
+				expect(screen.getByText("Archive 'Test Workflow 1' too?")).toBeInTheDocument();
 			});
 
 			it('should not ask on a rule whose executions keep running', async () => {
@@ -895,7 +890,7 @@ describe('MigrationRuleDetail', () => {
 				await markRowWontFix('Test Workflow 1');
 
 				await waitFor(() => expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalled());
-				expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+				expect(queryArchiveDialog()).not.toBeInTheDocument();
 			});
 
 			it('should archive the workflow when the user confirms the prompt', async () => {
@@ -903,8 +898,8 @@ describe('MigrationRuleDetail', () => {
 				await screen.findByText('2 affected');
 
 				await markRowWontFix('Test Workflow 1');
-				await waitFor(() => expect(archiveModalData()).toBeDefined());
-				confirmArchiveModal();
+				await findArchiveDialog();
+				await confirmArchiveDialog();
 
 				await waitFor(() =>
 					expect(showMessage).toHaveBeenCalledWith(
@@ -926,7 +921,7 @@ describe('MigrationRuleDetail', () => {
 				await userEvent.click(screen.getByTestId('migration-bulk-wont-fix-button'));
 
 				await waitFor(() => expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalled());
-				expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+				expect(queryArchiveDialog()).not.toBeInTheDocument();
 				expect(workflowsStore.archiveWorkflow).not.toHaveBeenCalled();
 			});
 
@@ -942,7 +937,7 @@ describe('MigrationRuleDetail', () => {
 						expect.objectContaining({ title: 'Archived 1 workflow' }),
 					),
 				);
-				expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+				expect(queryArchiveDialog()).not.toBeInTheDocument();
 				expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
 					rootStore.restApiContext,
 					'rule-1',
@@ -960,11 +955,13 @@ describe('MigrationRuleDetail', () => {
 				await userEvent.click(getRowCheckbox('Test Workflow 2'));
 				await userEvent.click(screen.getByTestId('migration-bulk-action-wontFixAndArchive'));
 
-				await waitFor(() => expect(archiveModalData()).toBeDefined());
-				expect(archiveModalData()?.mode).toBe('confirm');
+				await findArchiveDialog();
+				expect(
+					screen.getByText("Mark 2 workflows as won't fix and archive them?"),
+				).toBeInTheDocument();
 				expect(breakingChangesApi.updateFindingStatuses).not.toHaveBeenCalled();
 
-				confirmArchiveModal();
+				await confirmArchiveDialog();
 
 				await waitFor(() =>
 					expect(showMessage).toHaveBeenCalledWith(
@@ -986,8 +983,8 @@ describe('MigrationRuleDetail', () => {
 				await userEvent.click(getRowCheckbox('Test Workflow 1'));
 				await userEvent.click(getRowCheckbox('Test Workflow 2'));
 				await userEvent.click(screen.getByTestId('migration-bulk-action-wontFixAndArchive'));
-				await waitFor(() => expect(archiveModalData()).toBeDefined());
-				confirmArchiveModal();
+				await findArchiveDialog();
+				await confirmArchiveDialog();
 
 				await waitFor(() =>
 					expect(showMessage).toHaveBeenCalledWith(
@@ -996,6 +993,21 @@ describe('MigrationRuleDetail', () => {
 				);
 				expect(screen.getByText('0 affected')).toBeInTheDocument();
 				expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
+			});
+
+			it("should disable the archive action when every selected row is already won't fix", async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [{ ...mockWorkflowWithIssue, status: 'wont_fix' }],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('0 affected');
+
+				await userEvent.click(getRowCheckbox('Test Workflow 1'));
+
+				expect(screen.getByTestId('migration-bulk-wont-fix-button')).toBeDisabled();
+				expect(screen.getByTestId('migration-bulk-action-wontFixAndArchive')).toBeDisabled();
 			});
 
 			it('should not mark or archive anything when the save fails', async () => {

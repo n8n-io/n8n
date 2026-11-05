@@ -29,7 +29,6 @@ import {
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 	MIGRATE_WORKFLOW_MODAL_KEY,
-	ARCHIVE_WORKFLOWS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -122,7 +121,6 @@ import AddExecutionToDatasetModal from '@/features/ai/evaluation.ee/components/A
 import WorkflowDescriptionModal from '@/features/workflows/components/WorkflowDescriptionModal.vue';
 import WorkflowPublishModal from '@/features/workflows/components/WorkflowPublishModal.vue';
 import MigrateWorkflowModal from '@/features/settings/migrationReport/MigrateWorkflowModal.vue';
-import ArchiveWorkflowsModal from '@/features/settings/migrationReport/ArchiveWorkflowsModal.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/features/resolvers/components/CredentialResolverEditModal.vue';
 import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
@@ -449,12 +447,6 @@ const TrialIntroModal = defineAsyncComponent(
 		<ModalRoot :name="MIGRATE_WORKFLOW_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<MigrateWorkflowModal :modal-name="modalName" :data="data" />
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="ARCHIVE_WORKFLOWS_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<ArchiveWorkflowsModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

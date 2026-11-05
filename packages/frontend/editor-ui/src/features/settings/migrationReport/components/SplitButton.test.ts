@@ -5,6 +5,7 @@ import SplitButton from './SplitButton.vue';
 const renderComponent = createComponentRenderer(SplitButton, {
 	props: {
 		label: "Mark won't fix",
+		toggleLabel: "More won't fix actions",
 		actions: [{ label: "Mark won't fix and archive", value: 'wontFixAndArchive' }],
 	},
 });
@@ -22,5 +23,8 @@ describe('SplitButton', () => {
 
 		expect(screen.getByRole('button', { name: "Mark won't fix" })).toBeEnabled();
 		expect(screen.getByTestId('split-button-toggle')).toBeEnabled();
+		expect(screen.getByRole('button', { name: "More won't fix actions" })).toBe(
+			screen.getByTestId('split-button-toggle'),
+		);
 	});
 });
