@@ -13,8 +13,7 @@
     "@astrojs/starlight": "catalog:",
     "astro": "catalog:",
     "cookie": "catalog:",
-    "mermaid": "catalog:",
-    "starlight-fullview-mode": "catalog:"
+    "mermaid": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

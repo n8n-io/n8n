@@ -145,11 +145,9 @@ profiles, tokens, determinism, and the other commands.
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
 
-For an orientation to the backend (process roles, package map, the two
-"life of" walkthroughs, and what is legacy versus new), start at
-[docs/backend/README.md](docs/backend/README.md). The generated
-[docs/backend/inventory.md](docs/backend/inventory.md) lists every backend
-package, module, and server subsystem with its status label and owning team.
+For an orientation to the backend (process roles, a map of the code, the two
+"life of" walkthroughs, and what is legacy versus new), read
+[docs/backend/README.md](docs/backend/README.md) when a task needs it.
 
 ### Package Structure
 
@@ -393,7 +391,7 @@ The root `pnpm dev` command does not start a server. See the
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `scripts/backend-module/backend-module-guide.md`
+   `docs/backend/how-to/build-a-backend-module.md`
 3. Add API endpoints via controllers
 4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
    frontend feature module, obey

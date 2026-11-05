@@ -2,74 +2,56 @@
 title: Lifecycle and governance
 audience: Backend engineers new to n8n
 tier: 3
-reading_time: 6 min
-last_reviewed: 2026-09-02
-owner: "@n8n-io/ligo"
+last_reviewed: 2026-11-05
 ---
 
 # Lifecycle and governance
 
-Read this when you touch source control, variables, git connections, workflow reviews, version history, the breaking-change report, or the export and import commands.
+Read this when you touch Environments (source control or promotions), variables, workflow reviews, version history, the migration report, or the export and import commands.
 
 ## What it is
 
-This domain covers how workflows and related resources move between instances and how change is controlled. **Source control** syncs an instance with a git branch, the feature users know as Environments. **Git connections** is a newer, public-API-first way to push and pull team projects as packages. **Workflow reviews** gate publishing behind an approval. **Instance version history** records which n8n versions the instance has run. **Breaking changes** produces a pre-upgrade report. The export and import CLI commands move workflows, credentials, or whole databases as JSON.
+This area covers how workflows move between instances and how teams control change.
 
-## How it works
+- **Environments** connects an instance to git. Two generations exist. Environments v1 is the `source-control` module, which syncs the whole instance with one git branch. Environments v2 is the `promotions` module, which promotes team projects as packages between environments.
+- **Variables** are instance or project values that workflows read.
+- **Workflow reviews** put an approval step in front of publishing.
+- **Instance version history** records which n8n versions the instance has run.
+- **Breaking changes** produces the migration report before a major upgrade.
+- The **export and import** CLI commands move workflows, credentials, or whole tables as JSON.
 
-**Source control.** The module loads preferences from `settings` rows: repository URL, branch, read-only flag, and connection type, with the key pair and HTTPS credentials in sibling rows. A git service wraps a git client and points it at n8n's own key. A push runs under a mutex, resolves which files the user may push, writes workflows, credential stubs, projects, tags, folders, variables, and data tables into the work folder, then stages, commits, and pushes. A pull computes status, returns 409 on conflicts unless forced, imports in dependency order, and deletes resources removed from the repository. A read-only branch flips the whole instance to read-only.
+## Why it has this shape
 
-**Variables.** The controller and service remain in `packages/cli/src/environments.ee/variables`. A variable is global when it has no project. Writes are licensed and capped by a quota.
+- **Two Environments generations.** Each instance has an `environmentsVersion` in its source control preferences. An instance that was already connected to git keeps `v1`. A new instance gets `v2`. The value is written once, so that a later v1 disconnect does not move the instance to v2.
+- **Promotions reuse the package format.** Environments v2 exports and imports through the n8n packages pipeline (`.n8np`), not through the source control exporters. Git hosts are adapters, so that promotion logic has no branch per host. A short-lived "git connections" feature came first. The promotions tables replaced it before release.
+- **Source control is instance-wide.** A push or a pull runs under a mutex on one work folder. A read-only branch makes the whole instance read-only.
+- **Publish guards through a proxy.** The workflow reviews module registers a publish guard on a proxy in `@n8n/backend-services`. `WorkflowService` calls the proxy, so it does not import the module. A workflow with an open review request then fails to publish with a reason.
+- **The migration report is switched by a constant.** The module does nothing when `MIGRATION_REPORT_TARGET_VERSION` is null. It is `v3`. Rules use `@BreakingChangeRule`. Findings are stored in tables and kept current between full scans when workflows change.
 
-**Git connections.** Connections live in `git_connection`, linked to projects. Clone, push, and pull work on a per-connection working copy. Push exports team projects through the n8n packages pipeline. Pull imports with the working copy as the source of truth. It is exposed only through the public API, and the module is opt-in through `N8N_ENABLED_MODULES`.
+## Where it lives
 
-**Workflow reviews.** The module registers a publish guard with a proxy in the non-module part of `packages/cli`, so that publishing a workflow with an open review request fails with a reason, and a lifecycle service with the mutation hooks proxy. A feature gate checks both the license and an instance policy row that is off by default.
+| Part | File | Symbol |
+|---|---|---|
+| Environments v1 push and pull | `packages/cli/src/modules/source-control.ee/source-control.service.ee.ts` | `SourceControlService.pushWorkfolder` |
+| Environments version choice | `packages/cli/src/modules/source-control.ee/source-control-preferences.service.ee.ts` | `environmentsVersion` |
+| Environments v2 | `packages/cli/src/modules/promotions.ee/promotions.service.ts` | `PromotionsService.promote` |
+| Git host adapters | `packages/cli/src/modules/promotions.ee/git-hosts/git-host-clients.ts` | `GitHostClients` |
+| Variables | `packages/cli/src/environments.ee/variables/variables.service.ee.ts` | `VariablesService` |
+| Review publish guard | `packages/cli/src/modules/workflow-reviews.ee/workflow-review-publish-guard.service.ts` | `WorkflowReviewPublishGuard` |
+| Publish guard proxy | `packages/@n8n/backend-services/src/workflows/workflow-publish-guard-proxy.service.ts` | `WorkflowPublishGuard` |
+| Version history | `packages/cli/src/modules/instance-version-history/instance-version-history.service.ts` | `InstanceVersionHistoryService` |
+| Migration report | `packages/cli/src/modules/breaking-changes/breaking-changes.module.ts` | `MIGRATION_REPORT_TARGET_VERSION` |
+| Table dump and restore | `packages/cli/src/commands/export/entities.ts` | `ExportEntitiesCommand` |
 
-**Instance version history.** On the leader, the service compares the running version with the newest row and inserts one when it changed. Four read endpoints feed the publish timeline in the editor.
+## What is moving
 
-**Breaking changes.** The module returns early when the target version constant is null, which it is today. Otherwise rules decorated `@BreakingChangeRule({ version })` register, and a report endpoint runs instance, workflow, and batch rules. A migration registry can apply node migrations to a workflow. Rules for v2 and v3 both exist.
-
-**Export and import.** `export:workflow`, `export:credentials`, `export:nodes`, and the import counterparts operate on JSON files. `export:entities` and `import:entities` dump and restore whole tables, including the data table user tables, with an optional custom encryption key.
-
-## Where to look
-
-| Path | What |
-|---|---|
-| `packages/cli/src/modules/source-control.ee/` | Service, git service, preferences, export, import, status, controller, README |
-| `packages/cli/src/environments.ee/variables/` | Variables controller and service |
-| `packages/cli/src/modules/git-connections.ee/` | Connections, plus the public controller under `packages/cli/src/public-api/v1/controllers/` |
-| `packages/cli/src/modules/workflow-reviews.ee/` | Requests, feature gate, publish guard, lifecycle service |
-| `packages/cli/src/modules/instance-version-history/` | Service and controller |
-| `packages/cli/src/modules/breaking-changes/` | Rule engine, registry, migrations, README |
-| `packages/cli/src/commands/export/`, `import/`, `packages/cli/src/services/export.service.ts`, `import.service.ts` | The CLI commands |
-
-## What it owns
-
-Source control owns no table. Preferences are `settings` rows. Variables own `variables`. Git connections own `git_connection` and a project join table with one connection per project. Workflow reviews own six tables under `@n8n/db` for requests, reviewers, authors, activity, comments, and the request-to-workflow join. Instance version history owns `instance_version_history`. Breaking changes owns no table.
-
-## Flags
-
-`feat:sourceControl`, `feat:gitConnections`, and `feat:workflowReviews` on their modules. `feat:variables` on variable writes with `quota:maxVariables`. Instance version history and breaking changes have no license flag. `MIGRATION_REPORT_TARGET_VERSION` in `@n8n/api-types` switches the breaking-change report on for a major version.
-
-## Per mode
-
-Main only, except workflow reviews, which declares no instance types and so loads everywhere. Two v2 breaking-change rules skip on Cloud, about file permissions and the runner image, because Cloud controls both. The `import:entities` command prints that it is under development.
-
-## Was, is, goes
-
-**Was.** Source control started as "Version control" in 2023, lived in `environments.ee`, and moved to a module in January 2026. Only variables remain in the old folder. **Is.** Git connections is new in August 2026 and reuses the packages pipeline rather than the source control exporters. Workflow reviews began in July 2026. **Goes.** Whether git connections replaces source control is not stated in code. The breaking-change README describes v2 only, while v3 rules already exist for the October 2026 release.
-
-## Terms
-
-- **environments**: the user-facing name for source control between instances.
-- **work folder**: the local checkout the source control service writes to and reads from.
-- **git connection**: a per-instance link to a repository for team projects, distinct from source control.
-- **review request**: an approval gate on publishing a workflow.
-- **breaking-change rule**: a class that inspects the instance or a workflow and reports what a major version changes.
+Environments v2 is the default for new connections, and v1 stays for instances that already use it. The code does not say when v1 ends. The migration report gets frequent changes for the v3 release. The `import:entities` command prints that it is under development.
 
 ## Read more
 
 - `packages/cli/src/modules/source-control.ee/README.md`
+- `packages/cli/src/modules/promotions.ee/git-hosts/README.md`
 - `packages/cli/src/modules/breaking-changes/README.md`
+- [Data tables, packages, and indexes](data-and-packages.md) for the package format
 - `.github/DEVELOPING_V3.md`
 - docs.n8n.io: source control and environments, and the breaking changes pages

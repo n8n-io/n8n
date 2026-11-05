@@ -2,9 +2,7 @@
 title: Scaling and multi-main
 audience: Backend engineers new to n8n
 tier: 3
-reading_time: 8 min
-last_reviewed: 2026-09-02
-owner: "@n8n-io/catalysts"
+last_reviewed: 2026-11-05
 ---
 
 # Scaling and multi-main
@@ -13,85 +11,64 @@ Read this when you touch queue mode, workers, the Bull queue, pubsub between pro
 
 ## What it is
 
-**Queue mode**, `EXECUTIONS_MODE=queue`, splits n8n into main, worker, and webhook processes that share one Redis and one database. Mains enqueue executions as Bull jobs on the `jobs` queue. Workers dequeue and run them. Webhook processes receive production webhooks and enqueue. A separate Redis pubsub layer keeps processes in sync outside a job's lifetime. **Multi-main** is the licensed extension where several mains run at once. One is elected **leader** through a Redis key with a time to live, and leader-only duties move between mains on `leader-takeover` and `leader-stepdown` events.
+**Queue mode**, `EXECUTIONS_MODE=queue`, splits n8n into main, worker, and webhook processes. They share one Redis and one database. Mains and webhook processes add executions as Bull jobs to the `jobs` queue. Workers take the jobs and run them. A separate Redis pubsub layer sends commands between processes outside the life of a job.
 
-## How it works
+**Multi-main** is the licensed extension where several mains run at once. One main is the **leader**. It holds a Redis key with a time to live. Leader-only duties move between mains on `leader-takeover` and `leader-stepdown` events.
 
-```mermaid
-flowchart LR
-    subgraph mains["Mains (one leader)"]
-        M1["Main A"]
-        M2["Main B"]
-    end
-    W1["Worker"]
-    W2["Worker"]
-    WH["Webhook process"]
-    R["Redis<br/>Bull queue 'jobs'<br/>pubsub 'n8n.commands'<br/>leader key"]
-    DB["Database"]
-    M1 & M2 & WH -- "add job" --> R
-    R -- "job" --> W1 & W2
-    M1 & M2 & W1 & W2 & WH <-- "pubsub commands" --> R
-    M1 & M2 & W1 & W2 & WH <--> DB
-```
+## Why it has this shape
 
-*Redis holds three things. Bull carries jobs and their progress messages. Pubsub carries commands between processes. The leader key names one main. All state that matters is in the database.*
+**A job carries ids, not data.** The execution is already in the database when the main calls `addJob`. The job holds only ids and flags. A worker reloads the execution, runs it, and writes the result back. All state that matters is in the database.
 
-**The queue.** `ScalingService.setupQueue()` lazily imports `bull`, builds the queue with the `QUEUE_BULL_PREFIX` prefix, and registers listeners by role. A main's `addJob` enqueues a small `JobData` with ids and flags, not the run data, which is already in the database. A worker's `setupWorker(concurrency)` hands each job to `JobProcessor.processJob`, which reloads the execution, refuses a crashed one, marks it running, and runs the engine with the worker's hooks. Results and side channels flow back over Bull's `global:progress` event as `JobMessage` variants: `respond-to-webhook`, `send-chunk`, `mcp-response`, `job-finished`, `job-failed`, `abort-job`. Every main hears every progress message. Only the process that holds the execution acts. The leader runs **queue recovery** on an interval: executions that are `new` or `running` in the database but absent from Bull are marked `crashed`.
+**Two channels in Redis.** Bull's `global:progress` event carries messages inside a job's life, such as a webhook response or a finished job. Every main hears every progress message, and only the process that holds the execution acts. Pubsub on `n8n.commands` carries n8n's own commands, such as a license reload or a workflow activation. Workers answer on `n8n.worker-response`.
 
-**Pubsub.** `Publisher.publishCommand` stamps the sender, whether the sender should also receive it, and whether to debounce, then publishes on `n8n.commands`. `Subscriber` drops the message if this host sent it and the command is not self-send, or if a `targets` list excludes this host, debounces by command name, and emits on an internal bus. `PubSubRegistry` binds every `@OnPubSubEvent(name, filter)` method, and evaluates the instance role filter at fire time because the role can change. Commands include `reload-license`, `add-webhooks-triggers-and-pollers`, `display-workflow-activation`, `workflow-publish-wake-up`, `relay-execution-lifecycle-event`, `stop-execution`, `get-worker-status`, and the community package commands. Workers answer on `n8n.worker-response`.
+**Leader handlers are decorators.** A service marks methods with `@OnLeaderTakeover` and `@OnLeaderStepdown`. `@OnPubSubEvent` filters can name an instance role. `PubSubRegistry` checks the role when the event fires, because the role can change at runtime.
 
-**Leader election.** `MultiMainSetup.init()` tries to set the leader key with the host id, an expiry, and "only if absent". The winner marks itself leader and emits `leader-takeover`. Every `N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL` seconds the leader renews with a script that only extends the key if the value is still its own host id, and steps down if another host owns it. A follower reads the key and claims it when vacant. `@OnLeaderTakeover` and `@OnLeaderStepdown` methods, collected from every service, run on those events.
+**Leader election is a Redis key.** `LeaderElectionClient` sets the key with the host id, an expiry, and "only if absent". The leader renews it on an interval and steps down if another host owns it. A comment in `MultiMainSetup` accepts some inconsistency during a Redis partition and expects recovery when Redis is back.
 
-**Locks and the registry.** `RedisLockService` provides a lease-based lock with a renewal watchdog, bound as the lock service when queue mode, multi-main, or the Redis cache is on. The `instance-registry` module records every process in Redis with a heartbeat and runs cluster checks on the leader: split brain, host id clash, version mismatch.
+**The leader cleans up the queue.** Some executions are `new` or `running` in the database but have no Bull job. Queue recovery marks them as `crashed`.
 
-## Where to look
+**Locks are leases.** `RedisLockService` holds a lock with an expiry and a renewal watchdog. A lease is an efficiency tool. Code must still be correct when two holders overlap.
 
-| Path | What |
-|---|---|
-| `packages/cli/src/scaling/scaling.service.ts` | Queue setup, `addJob`, listeners, queue recovery |
-| `packages/cli/src/scaling/job-processor.ts` | Runs a job on a worker |
-| `packages/cli/src/scaling/scaling.types.ts`, `constants.ts` | `JobData`, `JobMessage`, channel names, self-send and immediate command sets |
-| `packages/cli/src/scaling/pubsub/` | `Publisher`, `Subscriber`, `PubSubRegistry`, the command map |
-| `packages/cli/src/scaling/multi-main-setup.ee.ts`, `leader-election-client.ts` | Leader election |
-| `packages/cli/src/scaling/redis-lock.service.ts` | Lease-based locks |
-| `packages/cli/src/scaling/worker-server.ts` | Worker health, readiness, metrics |
-| `packages/cli/src/modules/instance-registry/` | Process registry and cluster checks |
-| `packages/core/src/instance-settings/instance-settings.ts` | `isLeader`, `isMultiMain`, `hostId` |
+## What still runs only on the leader
 
-## What it owns
+The durable scheduler and the workflow publication service are on by default. Schedule Trigger nodes now fire on any main. A search for `isLeader` and the two leader decorators finds these leader-only duties:
 
-No tables. In Redis: the Bull queue `jobs` under the `bull` prefix, the channels `n8n.commands`, `n8n.worker-response`, and `n8n.mcp-relay`, the leader key `n8n:main_instance_leader`, lock keys under `n8n:lock:`, and the instance registry keys, all under the `N8N_REDIS_KEY_PREFIX` prefix. Queue recovery updates `execution_entity.status`.
+- The publication outbox consumer and reconciler, which activate non-webhook triggers and pollers.
+- `ActiveWorkflowManager`, when the publication service is off.
+- `WaitTracker`.
+- Queue recovery in `ScalingService`.
+- Cluster system tasks, while `N8N_SCHEDULER_SYSTEM_TASKS_ENABLED` is off. These include execution pruning and license renewal.
+- The legacy `ScheduledTaskManager`.
+- Some module services, for example chat integrations in the agents module.
 
-## Flags
+The ESLint rule `no-on-leader-takeover` sends new periodic work to system tasks, so this list is meant to shrink. [Scheduling and waiting](scheduling-and-waiting.md) has the details.
 
-`EXECUTIONS_MODE`, the `QUEUE_BULL_REDIS_*` connection settings, `QUEUE_BULL_PREFIX`, the worker lock settings, and `QUEUE_HEALTH_CHECK_ACTIVE` in `packages/@n8n/config/src/configs/scaling-mode.config.ts`. `N8N_MULTI_MAIN_SETUP_ENABLED`, `N8N_MULTI_MAIN_SETUP_KEY_TTL` (10 seconds), and `N8N_MULTI_MAIN_SETUP_CHECK_INTERVAL` (3 seconds) in `multi-main-setup.config.ts`. `N8N_REDIS_KEY_PREFIX` defaults to `n8n`. Worker concurrency comes from `--concurrency` or `N8N_CONCURRENCY_PRODUCTION_LIMIT`. The license flag `feat:multipleMainInstances` gates multi-main, and followers retry the check with backoff because the leader may not have written the certificate yet.
+## Where it lives
 
-## Per mode
+| Part | File | Symbol |
+|---|---|---|
+| Queue setup and jobs | `packages/cli/src/scaling/scaling.service.ts` | `ScalingService.addJob` |
+| Run a job on a worker | `packages/cli/src/scaling/job-processor.ts` | `JobProcessor.processJob` |
+| Job and channel types | `packages/cli/src/scaling/scaling.types.ts` | `JobMessage` |
+| Channel names | `packages/cli/src/scaling/constants.ts` | `COMMAND_PUBSUB_CHANNEL` |
+| Send a command | `packages/cli/src/scaling/pubsub/publisher.service.ts` | `Publisher.publishCommand` |
+| Receive a command | `packages/cli/src/scaling/pubsub/subscriber.service.ts` | `Subscriber` |
+| Bind handlers | `packages/cli/src/scaling/pubsub/pubsub.registry.ts` | `PubSubRegistry` |
+| Leader election | `packages/cli/src/scaling/multi-main-setup.ee.ts` | `MultiMainSetup.init` |
+| Leader key | `packages/cli/src/scaling/leader-election-client.ts` | `LeaderElectionClient` |
+| Locks | `packages/cli/src/scaling/redis-lock.service.ts` | `RedisLockService` |
+| Process registry | `packages/cli/src/modules/instance-registry/instance-registry.service.ts` | `InstanceRegistryService` |
 
-Regular mode marks the main leader at once and never publishes a command. Queue mode with one main also marks it leader. Multi-main requires queue mode, the flag, and the license. Listeners differ by role: mains and webhook processes listen for job progress, workers process jobs. On shutdown a single main pauses the queue, a worker pauses and waits for its running jobs. Leader-only duties, found by searching for `isLeader` and the two decorators, include trigger and poller registration, the wait tracker, queue recovery, license renewal, pruning and compaction, the publication outbox consumer, insights compaction, instance registry checks, and several module timers.
+## What is moving
 
-## Was, is, goes
-
-**Was.** One orchestration service and leader election inside the multi-main file. **Is.** Bull on ioredis, three pubsub channels, decorator-driven leader handlers, `LeaderElectionClient` extracted in May 2026, `RedisLockService` added in June 2026, and large webhook responses offloaded to storage in queue mode when a worker sets `N8N_WEBHOOK_RESPONSE_RELAY_OFFLOAD_ENABLED`. **Goes.** The lint rule `no-on-leader-takeover` pushes periodic leader work to system tasks on the durable scheduler, which is leaderless by design, so the list of leader-only duties is meant to shrink. The Notion page "Leaderless multi-main" is the plan. A code comment in the multi-main setup accepts inconsistency during a Redis partition and expects recovery once Redis is back.
-
-## Terms
-
-- **main, worker, webhook process**: the three process roles in queue mode.
-- **leader and follower**: the main that holds the leader key, and the others.
-- **JobData**: what is enqueued. It points at an execution that is already in the database.
-- **JobMessage**: progress messages inside a job's lifetime, on Bull's own channel.
-- **PubSub command**: n8n's own Redis messages across processes, outside job lifetimes.
-- **selfSend**: a command also delivered to its sender.
-- **debounce**: same-named commands within 300 milliseconds collapse into one, unless the command is immediate.
-- **queue recovery**: the leader's sweep for executions with no job.
-- **stalled job**: Bull's term for a job whose worker stopped renewing its lock.
-- **lease**: a lock held with an expiry and a renewal watchdog. An efficiency primitive, not a correctness one.
-- **split brain**: two leaders at once, detected by the instance registry.
+- Worker pools are experimental, behind `N8N_WORKER_POOLS_ENABLED`. A worker with a pool name listens on its own queue, `jobs-<name>`.
+- The leader-only list shrinks as cluster work moves to the durable scheduler.
 
 ## Read more
 
-- [Life of a webhook execution](../life-of-a-webhook-execution.md#variant-2-queue-mode)
-- [Life of a workflow publish](../life-of-a-workflow-publish.md#variant-1-multi-main)
-- [Patterns](../patterns.md#13-pubsub-across-processes)
-- `packages/testing/containers/README.md` for running a multi-main stack locally
+- [Life of a webhook execution](../life-of-a-webhook-execution.md) for the queue mode variant
+- [Life of a workflow publish](../life-of-a-workflow-publish.md) for the multi-main variant
+- [Patterns](../patterns.md) for pubsub across processes
+- [Startup and process roles](startup-and-processes.md)
+- `packages/quality/environments/containers/README.md` for running a multi-main stack locally
 - docs.n8n.io: queue mode and scaling pages

@@ -2,9 +2,7 @@
 title: The public API
 audience: Backend engineers new to n8n
 tier: 3
-reading_time: 5 min
-last_reviewed: 2026-09-02
-owner: "@n8n-io/ligo"
+last_reviewed: 2026-11-05
 ---
 
 # The public API
@@ -13,56 +11,41 @@ Read this when you add or change an endpoint under `/api/v1`, or when you need t
 
 ## What it is
 
-The public API is the versioned, API-key-authenticated REST surface at `/api/v1` for scripts, CI, and external tools. It is separate from the session-based internal API at `/rest` that the editor uses. It ships its own OpenAPI document, a Swagger UI, and cursor-based pagination. It is in the middle of a migration from handler modules validated by an OpenAPI validator to decorator-based `@PublicApiController` classes. `@n8n/cli` is a separate client that talks only to this API.
+The public API is the versioned REST surface at `/api/v1` for scripts, CI, and external tools. It is separate from the internal API at `/rest` that the editor uses. Callers authenticate with an API key or another token. The public API ships its own OpenAPI document, a Swagger UI, and cursor-based pagination. Every endpoint is a method on a `@PublicApiController` class. `@n8n/cli` is a separate client that talks only to this API.
 
-## How it works
+## Why it has this shape
 
-`server.ts` calls `loadPublicApiVersions`, which builds one Express router per version folder. The router serves the Swagger UI and the spec, parses JSON, then mounts two layers in order. First, `PublicApiControllerRegistry` registers every class marked by `@PublicApiController`. Second, the OpenAPI validator middleware validates requests against the spec and dispatches to legacy handler modules. For decorator routes, the spec points at a stub so that the validator does not complain while the registry answers first.
+- **A public contract.** External code depends on these endpoints, so a change must not break callers. When an endpoint moves to a new implementation, its public contract must stay the same.
+- **Decorators, not handler modules.** Until October 2026, part of the API ran as handler modules that an OpenAPI validator dispatched. The migration to `@PublicApiController` classes is complete, and the validator stack is gone. The `v1/handlers/` folders still hold YAML schema files and a few helpers. Each controller needs a side-effect import in `packages/cli/src/public-api/v1/controllers/index.ts`.
+- **The spec comes from code.** At build time, a generator reads the DTOs from `@n8n/api-types` and the `@Api*` decorators. It writes `openapi.decorator-routes.generated.yml`, and the build merges it into `openapi.yml`. New endpoints therefore describe themselves.
+- **One middleware order.** The registry adds the middlewares of each route in a fixed order. The order is: deprecation notice, authentication, rate limits, `@ApiKeyScope`, `@GlobalScope` or `@ProjectScope`, `@Licensed`, the body parser, and idempotency. The scope check uses the same `userHasScopes` as the internal API.
+- **Two scope vocabularies.** API key scopes are a smaller set than user scopes. A key can never carry a scope that its owner's role lacks.
+- **Pluggable authentication.** Authentication goes through `AuthStrategyRegistry`. It accepts an API key, a session cookie, a scoped JWT from token exchange, or an OAuth token from a trusted source.
+- **Lint rules guard the direction.** Handlers and controllers must not use repositories (`no-repository-in-public-api-handler`). Developers cannot turn these rules off inline.
 
-Both layers authenticate through `AuthStrategyRegistry`, which accepts an API key, a session cookie, or a scoped JWT from the token exchange module, and on success update the user's last active time and emit an event. Per route the registry pushes middlewares in this order: deprecation notice, authentication, `@ApiKeyScope` checked against the key's scopes, then `@GlobalScope` or `@ProjectScope` through the same `userHasScopes` as the internal API, then `@Licensed`. API key scopes are a smaller vocabulary than user scopes, and a key can never carry scopes its owner's role lacks. List endpoints decode a base64 cursor and return the next one.
+## Where it lives
 
-At build time a generator uses the `@n8n/api-types` DTOs and the `@Api*` decorators to emit an OpenAPI fragment that is merged into the spec. New endpoints therefore describe themselves in code.
+| Part | File | Symbol |
+|---|---|---|
+| Router per version | `packages/cli/src/public-api/index.ts` | `loadPublicApiVersions` |
+| Route registry and middleware order | `packages/cli/src/public-api/public-api-controller.registry.ts` | `PublicApiControllerRegistry.activate` |
+| Spec generator | `packages/cli/src/public-api/v1/openapi-gen/generate.ts` | `getDecoratorGeneratedOperations` |
+| Cursor pagination | `packages/cli/src/public-api/v1/shared/services/pagination.service.ts` | `encodeNextCursor` |
+| Rate limits | `packages/cli/src/public-api/public-api-rate-limit.service.ts` | `PublicApiRateLimitService` |
+| Idempotency keys | `packages/cli/src/public-api/idempotency-key.service.ts` | `IdempotencyKeyService` |
+| Controller decorator | `packages/@n8n/decorators/src/controller/public-api-controller.ts` | `PublicApiController` |
+| API key scopes per role | `packages/@n8n/permissions/src/public-api-permissions.ee.ts` | `getApiKeyScopesForRole` |
+| API key auth switch | `packages/cli/src/public-api/index.ts` | `isApiKeyAuthEnabled` |
 
-## Where to look
+API key authentication is off when the public API is disabled in configuration, or when the license excludes the API.
 
-| Path | What |
-|---|---|
-| `packages/cli/src/public-api/index.ts` | Router setup per version |
-| `packages/cli/src/public-api/public-api-controller.registry.ts` | The decorator-route registry |
-| `packages/cli/src/public-api/v1/controllers/` | Migrated controllers, one per feature |
-| `packages/cli/src/public-api/v1/handlers/` | Legacy handler modules |
-| `packages/cli/src/public-api/v1/openapi.yml` and the generated fragment | The spec |
-| `packages/cli/src/public-api/v1/shared/services/pagination.service.ts` | Cursor pagination |
-| `packages/@n8n/decorators/src/controller/public-api-controller.ts`, `api-key-scope.ts` | The decorators |
-| `packages/@n8n/permissions/src/public-api-permissions.ee.ts` | API key scopes |
-| `packages/@n8n/cli/` | The client CLI and its docs |
-| `.agents/skills/public-api/SKILL.md` | The how-to and the rules |
+## What is moving
 
-## What it owns
-
-`user_api_keys` in `@n8n/db`, with a scopes column. Nothing else. The public API reads domain tables through services.
-
-## Flags
-
-`N8N_PUBLIC_API_DISABLED`, `N8N_PUBLIC_API_ENDPOINT` (default `api`), and `N8N_PUBLIC_API_SWAGGERUI_DISABLED`. The license flag `feat:apiDisabled` switches API key authentication off on plans that exclude the API. Routes are still registered, because the editor uses some of them with the session cookie. Per route `@Licensed` applies as elsewhere.
-
-## Per mode
-
-Main only. No cloud branch in code.
-
-## Was, is, goes
-
-**Was.** Every operation in the spec pointed at a handler module. **Is.** The `@PublicApiController` pattern arrived in July 2026, and the git log since then is a stream of migrations to it, plus commits that route handlers through services ahead of migration. Three lint rules guard the direction: no repository access in handlers, a controller for every new route, and no disabling of either rule. A test checks that scopes in the spec match scopes in code. **Goes.** The skill states the target: controllers under `v1/controllers`, DTOs from `@n8n/api-types`, an `@ApiResponse` on every JSON route, and no business logic in legacy handlers. Migrating an endpoint must not change its public contract. The Linear initiatives "Public API v1+: Foundation" and "Schema-First API" track the work.
-
-## Terms
-
-- **API key scope**: a scope on a key, from a smaller vocabulary than user scopes.
-- **cursor**: an encoded offset and limit, or a last id, returned as `nextCursor`.
-- **handler tuple**: the legacy export shape of a handler module.
-- **decorator route**: a `@PublicApiController` method, self-described for the spec.
+The public API grows new operational features: per-route rate limits with a settings API, and `Idempotency-Key` support on `POST` requests.
 
 ## Read more
 
-- `.agents/skills/public-api/SKILL.md` and its reference
+- `.agents/skills/public-api/SKILL.md` and its reference, the how-to and the rules
 - `packages/@n8n/cli/docs/`
+- [Authentication and sessions](authentication.md) for the strategy chain
 - docs.n8n.io: the API reference

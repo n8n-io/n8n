@@ -1,9 +1,16 @@
-// Remark plugin for the backend docs site. It does three things:
+// Remark plugin for the backend docs site. It does four things:
 // 1. Drops the leading `#` heading. Starlight already renders the front matter title,
 //    and GitHub needs the heading in the file, so the page would show it twice.
 // 2. Turns ```mermaid fences into <pre class="mermaid"> so the browser renders them.
 // 3. Rewrites relative links. A link to another page in docs/backend becomes a site
 //    route. A link to anything else in the repository becomes a GitHub URL.
+// 4. Counts the words of the page and stores the count and the reading time in the
+//    front matter, so that the page title can show them.
+// 5. Adds a line break point after each `/` in inline code, so that a long path wraps
+//    between folders and not in the middle of a name.
+// 6. Turns a multiple choice self-check into a quiz. See `buildQuizzes` for the format.
+// 7. Turns a GitHub alert, such as `> [!NOTE]`, into an aside. GitHub renders the same syntax.
+// 8. Shows an ordered list after a `<!-- steps -->` comment as numbered steps.
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +22,8 @@ const isRelative = (url) => !/^([a-z][a-z0-9+.-]*:|\/|#)/i.test(url);
 
 const escapeHtml = (text) =>
 	text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+const WORDS_PER_MINUTE = 200;
 
 const toPosix = (path) => path.split('\\').join('/');
 
@@ -36,10 +45,143 @@ function walk(node, visit, index, parent) {
 	if (node.children) for (let i = 0; i < node.children.length; i++) walk(node.children[i], visit, i, node);
 }
 
+const OPTION = /^([A-Z])\.\s+/;
+const ANSWER = /^([A-Z])\.\s+/;
+
+const firstText = (node) => {
+	const paragraph = node.children?.[0];
+	const text = paragraph?.children?.[0];
+	return text?.type === 'text' ? text : undefined;
+};
+
+const stripPrefix = (node, pattern) => {
+	const text = firstText(node);
+	if (text) text.value = text.value.replace(pattern, '');
+};
+
+/**
+ * A quiz in Markdown is an ordered list of questions. Each question has a nested list of
+ * options that start with a letter, such as "A. ". The next block is a `<details>` block
+ * with an ordered list of answers. Each answer starts with the letter of the right option
+ * and explains it. On GitHub this reads as a list with a closed answer block. On the site
+ * the options become buttons, and the answer block moves into the questions.
+ */
+function buildQuizzes(tree) {
+	walk(tree, (node) => {
+		if (!node.children) return;
+		const children = node.children;
+		for (let i = 0; i < children.length; i++) {
+			const questions = children[i];
+			if (questions.type !== 'list' || !questions.ordered) continue;
+			const isQuiz = questions.children.every((item) => {
+				const options = item.children.find((child) => child.type === 'list');
+				return options?.children.every((option) => OPTION.test(firstText(option)?.value ?? ''));
+			});
+			if (!isQuiz) continue;
+			const open = children[i + 1];
+			const answers = children[i + 2];
+			const close = children[i + 3];
+			if (
+				open?.type !== 'html' ||
+				!open.value.includes('<details') ||
+				answers?.type !== 'list' ||
+				close?.type !== 'html' ||
+				!close.value.includes('</details>') ||
+				answers.children.length !== questions.children.length
+			) {
+				continue;
+			}
+			questions.data = { hProperties: { className: ['quiz'] } };
+			questions.children.forEach((question, q) => {
+				const answer = answers.children[q];
+				const letter = firstText(answer)?.value.match(ANSWER)?.[1];
+				if (!letter) return;
+				stripPrefix(answer, ANSWER);
+				question.data = { hProperties: { className: ['quiz-question'], dataAnswer: letter } };
+				const options = question.children.find((child) => child.type === 'list');
+				options.data = { hProperties: { className: ['quiz-options'] } };
+				for (const option of options.children) {
+					const optionLetter = firstText(option).value.match(OPTION)[1];
+					stripPrefix(option, OPTION);
+					option.data = { hProperties: { dataLetter: optionLetter } };
+				}
+				question.children.push({
+					type: 'quizExplanation',
+					data: { hName: 'div', hProperties: { className: ['quiz-explanation'], hidden: true } },
+					children: answer.children,
+				});
+			});
+			children.splice(i + 1, 3);
+		}
+	});
+}
+
+const ICON_PATHS = {
+	note: '<circle cx="8" cy="8" r="6.25" /><path d="M8 7.25v3.75M8 5h.01" />',
+	tip: '<path d="M6 12.5h4M6.5 14.5h3M8 1.75a4.25 4.25 0 0 0-2.5 7.7c.4.3.75.8.75 1.3v.25h3.5v-.25c0-.5.35-1 .75-1.3A4.25 4.25 0 0 0 8 1.75Z" />',
+	caution:
+		'<path d="M7.1 2.5 1.6 12a1 1 0 0 0 .9 1.5h11a1 1 0 0 0 .9-1.5L8.9 2.5a1 1 0 0 0-1.8 0Z" /><path d="M8 6.25v3M8 11.25h.01" />',
+};
+
+// GitHub has five alert types. The site shows three styles.
+const ALERT_KINDS = { NOTE: 'note', IMPORTANT: 'note', TIP: 'tip', WARNING: 'caution', CAUTION: 'caution' };
+const ALERT = /^\[!(NOTE|IMPORTANT|TIP|WARNING|CAUTION)\]\s*/;
+
+function buildAsides(tree) {
+	walk(tree, (node, index, parent) => {
+		if (node.type !== 'blockquote' || !parent) return;
+		const text = node.children[0]?.children?.[0];
+		const match = text?.type === 'text' ? text.value.match(ALERT) : null;
+		if (!match) return;
+		const kind = ALERT_KINDS[match[1]];
+		text.value = text.value.replace(ALERT, '');
+		if (!text.value) node.children[0].children.shift();
+		if (node.children[0].children[0]?.type === 'break') node.children[0].children.shift();
+		parent.children[index] = {
+			type: 'aside',
+			data: { hName: 'aside', hProperties: { className: ['n8n-aside', `n8n-aside--${kind}`] } },
+			children: [
+				{
+					type: 'html',
+					value: `<svg class="n8n-aside__icon" viewBox="0 0 16 16" aria-hidden="true">${ICON_PATHS[kind]}</svg>`,
+				},
+				{
+					type: 'asideContent',
+					data: { hName: 'div', hProperties: { className: ['n8n-aside__content'] } },
+					children: node.children,
+				},
+			],
+		};
+	});
+}
+
+function buildSteps(tree) {
+	walk(tree, (node) => {
+		const children = node.children;
+		if (!children) return;
+		for (let i = 0; i < children.length - 1; i++) {
+			const marker = children[i];
+			const list = children[i + 1];
+			if (marker.type !== 'html' || marker.value.trim() !== '<!-- steps -->') continue;
+			if (list.type !== 'list' || !list.ordered) continue;
+			list.data = { hProperties: { className: ['n8n-steps'] } };
+			// A step that starts with a bold-only paragraph shows that paragraph as its title.
+			for (const item of list.children) {
+				const lead = item.children[0];
+				if (lead?.type === 'paragraph' && lead.children.length === 1 && lead.children[0].type === 'strong') {
+					lead.data = { hProperties: { className: ['n8n-step-title'] } };
+				}
+			}
+			children.splice(i, 1);
+		}
+	});
+}
+
 export function remarkBackendDocs() {
 	return (tree, file) => {
 		const filePath = file.path ?? file.history?.[0];
 		const fromDir = filePath ? dirname(filePath) : DOCS_DIR;
+		let words = 0;
 		const first = tree.children[0];
 		if (first?.type === 'heading' && first.depth === 1) tree.children.shift();
 		walk(tree, (node, index, parent) => {
@@ -50,9 +192,28 @@ export function remarkBackendDocs() {
 				};
 				return;
 			}
+			// Count prose and inline code. Code blocks and diagrams are scanned, not read.
+			if (node.type === 'text' || node.type === 'inlineCode') {
+				words += node.value.split(/\s+/).filter(Boolean).length;
+			}
+			if (node.type === 'inlineCode' && node.value.includes('/') && parent) {
+				parent.children[index] = {
+					type: 'html',
+					value: `<code>${escapeHtml(node.value).replaceAll('/', '/<wbr>')}</code>`,
+				};
+				return;
+			}
 			if ((node.type === 'link' || node.type === 'definition') && isRelative(node.url)) {
 				node.url = rewriteLink(node.url, fromDir);
 			}
 		});
+		buildQuizzes(tree);
+		buildAsides(tree);
+		buildSteps(tree);
+		const frontmatter = file.data.astro?.frontmatter;
+		if (frontmatter) {
+			frontmatter.words = words;
+			frontmatter.minutes = Math.max(1, Math.round(words / WORDS_PER_MINUTE));
+		}
 	};
 }

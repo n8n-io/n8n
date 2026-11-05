@@ -3,12 +3,19 @@ import Default from '@astrojs/starlight/components/Head.astro';
 ---
 
 <Default />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+	rel="stylesheet"
+	href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400..700&family=Geist+Mono:wght@400;500&display=swap"
+/>
 
 <script>
 	import mermaid from 'mermaid';
 
 	// The remark plugin leaves each diagram as <pre class="mermaid"> with its source as text.
 	// Render once on load, and again when the reader switches the color theme.
+	const MIN_SCALE = 0.75;
 	const blocks = Array.from(document.querySelectorAll<HTMLElement>('pre.mermaid'));
 	if (blocks.length > 0) {
 		for (const block of blocks) block.dataset.source = block.textContent ?? '';
@@ -18,8 +25,62 @@ import Default from '@astrojs/starlight/components/Head.astro';
 				block.removeAttribute('data-processed');
 				block.textContent = block.dataset.source ?? '';
 			}
-			mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral' });
+			// The diagrams take their colors from the site tokens of the active theme.
+			const css = getComputedStyle(document.documentElement);
+			const token = (name: string) => css.getPropertyValue(name).trim();
+			const page = token('--sl-color-black');
+			const panel = token('--n8n-panel');
+			const border = token('--sl-color-gray-5');
+			const text = token('--sl-color-white');
+			const muted = token('--sl-color-gray-3');
+			mermaid.initialize({
+				startOnLoad: false,
+				theme: 'base',
+				darkMode: dark,
+				fontFamily: token('--__sl-font'),
+				// Tighter than the defaults, so that more diagrams fit the column at full size.
+				flowchart: { nodeSpacing: 32, rankSpacing: 40, padding: 12 },
+				sequence: { actorMargin: 24, boxMargin: 8, messageMargin: 32, mirrorActors: false },
+				themeVariables: {
+					fontFamily: token('--__sl-font'),
+					fontSize: '14px',
+					background: page,
+					primaryColor: panel,
+					primaryBorderColor: border,
+					primaryTextColor: text,
+					secondaryColor: panel,
+					tertiaryColor: page,
+					lineColor: muted,
+					textColor: text,
+					edgeLabelBackground: page,
+					clusterBkg: 'transparent',
+					clusterBorder: border,
+					actorBkg: panel,
+					actorBorder: border,
+					actorTextColor: text,
+					actorLineColor: border,
+					signalColor: muted,
+					signalTextColor: text,
+					labelBoxBkgColor: panel,
+					labelBoxBorderColor: border,
+					labelTextColor: text,
+					loopTextColor: muted,
+					noteBkgColor: token('--sl-color-accent-low'),
+					noteBorderColor: token('--sl-color-accent-low'),
+					noteTextColor: text,
+					activationBkgColor: border,
+					activationBorderColor: border,
+					sequenceNumberColor: page,
+				},
+			});
 			await mermaid.run({ nodes: blocks });
+			// A wide diagram scales down to fit the column, but not below MIN_SCALE. Below that
+			// the text gets too small to read, so the diagram scrolls sideways instead.
+			for (const block of blocks) {
+				const svg = block.querySelector('svg');
+				const naturalWidth = svg?.viewBox.baseVal.width;
+				if (svg && naturalWidth) svg.style.minWidth = `${Math.round(naturalWidth * MIN_SCALE)}px`;
+			}
 		};
 		await render();
 		new MutationObserver(render).observe(document.documentElement, {
@@ -59,5 +120,68 @@ import Default from '@astrojs/starlight/components/Head.astro';
 		document.addEventListener('keydown', (event) => {
 			if (event.key === 'Escape') for (const block of blocks) setZoom(block, false);
 		});
+	}
+</script>
+
+<script>
+	// The header shows its bottom line only when the page is not at the top.
+	const markScrolled = () => document.documentElement.toggleAttribute('data-scrolled', window.scrollY > 0);
+	markScrolled();
+	window.addEventListener('scroll', markScrolled, { passive: true });
+</script>
+
+<script>
+	// The remark plugin marks each quiz question with its right letter. Each option becomes a
+	// button. The first choice locks the question, marks the right and the wrong option, and
+	// shows the explanation with a "Clear" button that resets the question. Nothing is saved.
+	for (const question of document.querySelectorAll<HTMLElement>('.quiz-question')) {
+		const options = Array.from(question.querySelectorAll<HTMLElement>('.quiz-options > li'));
+		const explanation = question.querySelector<HTMLElement>('.quiz-explanation');
+		const buttons = options.map((option) => {
+			const button = document.createElement('button');
+			button.type = 'button';
+			button.className = 'quiz-option';
+			const letter = document.createElement('span');
+			letter.className = 'quiz-letter';
+			letter.textContent = option.dataset.letter ?? '';
+			button.append(letter, ...option.childNodes);
+			option.append(button);
+			return button;
+		});
+		// The verdict and the retry button share the first line of the feedback panel.
+		const head = document.createElement('div');
+		head.className = 'quiz-feedback-head';
+		const verdict = document.createElement('span');
+		verdict.className = 'quiz-verdict';
+		const retry = document.createElement('button');
+		retry.type = 'button';
+		retry.className = 'quiz-retry';
+		retry.innerHTML =
+			'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 8a5.25 5.25 0 1 0 1.6-3.77M2.75 2.75v2.5h2.5" /></svg>Clear';
+		head.append(verdict, retry);
+		explanation?.prepend(head);
+
+		const reset = () => {
+			for (const button of buttons) {
+				button.disabled = false;
+				button.removeAttribute('data-result');
+			}
+			if (explanation) explanation.hidden = true;
+			delete question.dataset.result;
+		};
+		buttons.forEach((button, index) => {
+			button.addEventListener('click', () => {
+				const right = options[index].dataset.letter === question.dataset.answer;
+				buttons.forEach((other, i) => {
+					other.disabled = true;
+					if (options[i].dataset.letter === question.dataset.answer) other.dataset.result = 'right';
+				});
+				if (!right) button.dataset.result = 'wrong';
+				question.dataset.result = right ? 'right' : 'wrong';
+				verdict.textContent = right ? 'Correct' : `Wrong, the answer is ${question.dataset.answer}`;
+				if (explanation) explanation.hidden = false;
+			});
+		});
+		retry.addEventListener('click', reset);
 	}
 </script>

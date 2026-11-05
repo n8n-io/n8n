@@ -2,81 +2,60 @@
 title: Nodes loading and node types
 audience: Backend engineers new to n8n
 tier: 3
-reading_time: 8 min
-last_reviewed: 2026-09-02
-owner: "@n8n-io/catalysts"
+last_reviewed: 2026-11-05
 ---
 
 # Nodes loading and node types
 
-Read this when you need to know how the backend finds node and credential classes, why a node type name has a package prefix, or how community packages join the registry.
+Read this when you need to know how the backend finds node and credential classes, or why a node type name has a package prefix. It also covers community packages.
 
 ## What it is
 
-Node and credential types are TypeScript classes shipped in npm packages, `n8n-nodes-base`, `@n8n/n8n-nodes-langchain`, and community `n8n-nodes-*` packages, or dropped as compiled files into a custom folder. `LoadNodesAndCredentials` in `packages/cli` discovers every source, wraps each in a **loader**, and merges them into one namespace where a node type name is `<packageName>.<name>`. `NodeTypes` and `CredentialTypes` are the thin lookups the engine calls to resolve a name and a version to a class. The system separates what it **knows** exists on disk from what it has **loaded**, so a main can boot with hundreds of nodes while instantiating only what a workflow needs.
+Node and credential types are TypeScript classes in npm packages: `n8n-nodes-base`, `@n8n/n8n-nodes-langchain`, and community `n8n-nodes-*` packages. They can also be compiled files in a custom folder. `LoadNodesAndCredentials` in `packages/cli` finds every source and wraps each in a **loader**. It merges them into one namespace, where a node type name is `<packageName>.<name>`, such as `n8n-nodes-base.set`.
 
-## How it works
+`NodeTypes` and `CredentialTypes` are the lookups that the engine calls. They resolve a name and a version to a class.
 
-`LoadNodesAndCredentials.init()` runs these steps:
+## Why it has this shape
 
-1. Extend the module search path so that node packages and the task runner resolve dependencies.
-2. Apply the exclude list.
-3. Scan for the two built-in packages and run a lazy loader on each.
-4. Run a custom directory loader on `~/.n8n/custom` and on every path in `N8N_CUSTOM_EXTENSIONS`.
-5. Add the loaders that modules contribute through `ModuleInterface.nodeLoaders()`. The community packages module returns one loader per installed package. The MCP registry module returns a loader that synthesizes a node per registry server.
-6. Run `postProcessLoaders()`.
+**Known is not loaded.** A loader keeps what it **knows**, the class name and source path of each type, apart from what it has **loaded**. A main can boot with hundreds of nodes and create only the classes that a workflow needs. A **lazy loader** reads `dist/known/*.json` and `dist/types/*.json`, which the package build writes. It creates a class only on the first `getNode(name)` call.
 
-A loader keeps four structures. `known` holds the class name and source path per type. `nodeTypes` and `credentialTypes` hold the instantiated classes. `types` holds every description for the editor. A **lazy loader** reads `dist/known/*.json` and `dist/types/*.json`, produced at package build time, and instantiates a class only when `getNode(name)` is first called. Outside tests, class instantiation runs inside a Node.js `vm` context that exposes only `require`.
+**Classes load in a `vm` context.** `loadClassInIsolation` runs each node file in a context that exposes only `require`.
 
-`postProcessLoaders()` rebuilds the merged registries, prefixes node type names with the package name, injects a "Custom API Call" option into nodes whose credentials support it, and synthesizes **tool** variants of every node marked `usableAsTool` so that agents can use them. After startup, each process calls `releaseTypes()` to drop the description arrays from memory, and the main writes them to a static cache folder for the editor.
+**Descriptions use a lot of memory.** The editor needs one description for each node version. After startup, each process calls `releaseTypes()` to drop them, and code that needs them later calls `collectTypes()` to rebuild them. A comment there warns that holding types in memory is costly.
 
-`NodeTypes.getByNameAndVersion(name, version)` resolves a tool suffix to its base node when no real node has that name, picks the version, and attaches an `execute` that runs `RoutingNode` for declarative nodes. `CredentialTypes` answers which nodes a credential supports and walks the `extends` chain.
+**The package prefix avoids name clashes.** Two packages can both ship a node called `set`. `postProcessLoaders()` prefixes each name with its package name. Custom folder nodes use the `CUSTOM` prefix.
 
-Community packages are installed into `~/.n8n/nodes` with npm, recorded in the database, and loaded or unloaded at runtime. Other mains learn about an install through pubsub commands. A non-default registry requires the license flag `feat:communityNodes:customRegistry`. Unverified packages can be blocked by configuration, and v3 changes that default.
+**Tool variants are synthetic.** Agents need tool versions of ordinary nodes. `postProcessLoaders()` creates a `...Tool` variant of each node marked `usableAsTool`. It has no class of its own. `NodeTypes` resolves the tool name back to the base node and converts it on demand.
 
-## Where to look
+**Declarative nodes get an `execute`.** A declarative node has no `execute` method. Its description drives HTTP requests. `NodeTypes` attaches an `execute` that runs `RoutingNode`.
 
-| Path | What |
-|---|---|
-| `packages/cli/src/load-nodes-and-credentials.ts` | Discovery, loaders, post-processing |
-| `packages/cli/src/node-types.ts`, `credential-types.ts` | The lookups the engine calls |
-| `packages/core/src/nodes-loader/` | `DirectoryLoader`, `PackageDirectoryLoader`, `LazyPackageDirectoryLoader`, `CustomDirectoryLoader` |
-| `packages/core/bin/generate-metadata` | Writes the `dist/known` and `dist/types` files at build time |
-| `packages/cli/src/tool-generation/` | Tool variants of nodes |
-| `packages/cli/src/modules/community-packages/` | Install, uninstall, verified list |
-| `packages/cli/src/node-catalog/` | Search and describe nodes for the AI tools |
-| `packages/@n8n/constants/src/nodes.ts` | The built-in package names |
+**Modules can add loaders.** A module can return loaders from `nodeLoaders()`. The community packages module returns one loader for each installed package. The MCP registry module returns a loader that creates a node for each registry server. A loader does not have to read the filesystem.
 
-## What it owns
+**Every process loads the same nodes.** Workers and webhook processes hold the same registry as mains. Community packages are installed on a main through REST. Other processes learn about the change through pubsub commands.
 
-`installed_packages` and `installed_nodes`, module entities under `packages/cli/src/modules/community-packages/`. On disk: `~/.n8n/custom`, `~/.n8n/nodes/node_modules`, and the static cache of type descriptions. No Redis keys. Pubsub commands `community-package-install`, `-update`, and `-uninstall`.
+## Where it lives
 
-## Flags
+| Part | File | Symbol |
+|---|---|---|
+| Discovery and merge | `packages/cli/src/load-nodes-and-credentials.ts` | `LoadNodesAndCredentials.postProcessLoaders` |
+| Node lookup | `packages/cli/src/node-types.ts` | `NodeTypes.getByNameAndVersion` |
+| Credential lookup | `packages/cli/src/credential-types.ts` | `CredentialTypes` |
+| Loader base | `packages/core/src/nodes-loader/directory-loader.ts` | `DirectoryLoader` |
+| Lazy loader | `packages/core/src/nodes-loader/lazy-package-directory-loader.ts` | `LazyPackageDirectoryLoader` |
+| Isolated class loading | `packages/core/src/nodes-loader/load-class-in-isolation.ts` | `loadClassInIsolation` |
+| Tool variants | `packages/cli/src/tool-generation/ai-tools.ts` | `convertNodeToAiTool` |
+| Module loaders | `packages/@n8n/backend-common/src/modules/module-registry.ts` | `ModuleRegistry.nodeLoaders` |
+| Community packages | `packages/cli/src/modules/community-packages/community-packages.service.ts` | `CommunityPackagesService` |
+| Node search for AI tools | `packages/cli/src/node-catalog/node-catalog.service.ts` | `NodeCatalogService` |
 
-`NODES_INCLUDE` and `NODES_EXCLUDE`, the latter excluding the Execute Command and Local File Trigger nodes by default. `NODES_ERROR_TRIGGER_TYPE`. `N8N_CUSTOM_EXTENSIONS` for extra folders. `N8N_COMMUNITY_PACKAGES_ENABLED`, `N8N_COMMUNITY_PACKAGES_REGISTRY`, `N8N_UNVERIFIED_PACKAGES_ENABLED`, and `N8N_COMMUNITY_PACKAGES_PREVENT_LOADING` in the module's own config. `N8N_DEV_RELOAD` enables hot reload in development. License flags `feat:communityNodes:customRegistry` and `feat:nodeTypePolicies`.
+The build step that writes the `dist/known` and `dist/types` files is `packages/core/bin/generate-metadata`.
 
-## Per mode
+## What is moving
 
-Every command loads the registry, so workers and webhook processes hold the same nodes as mains. Only the main writes the type descriptions for the editor and serves icons. Package installation is a REST operation on a main. Other processes learn about it through pubsub. No single versus multi-main branch exists here.
-
-## Was, is, goes
-
-**Was.** Every node class loaded eagerly at boot. Lazy loading arrived in 2022 with the generated `dist/known` files. Community packages lived in `packages/cli/src/services` until July 2025 and became a module in August 2025. **Is.** `NodeLoader` is the abstraction, and modules can contribute loaders from any source, not only the filesystem. **Goes.** Open `TODO` markers question the custom directory loading strategy and the old `n8n-nodes-base.` prefix fallback. The node catalog and the node definitions folder serve a newer set of consumers: the workflow SDK, MCP builder tools, and agents.
-
-## Terms
-
-- **known**: a type exists and its file is here, without instantiation.
-- **loaded**: the instantiated class objects.
-- **types**: one description per node version, for the editor, released after boot.
-- **lazy loading**: reading the generated JSON instead of requiring every class.
-- **package prefix**: the full node type name, such as `n8n-nodes-base.set`. Custom folder nodes use `CUSTOM`.
-- **versioned node**: one class per version behind a `getNodeType(version)` method, or one class with a version array.
-- **synthetic tool**: a `...Tool` type with no class of its own, converted from the base node on demand.
-- **declarative node**: no `execute` method, HTTP routing driven by the description.
-- **codex**: the `.node.json` file next to a node with categories and documentation links.
+The node catalog serves newer consumers. Instance AI, the agents builder, and the MCP workflow-builder tools use it to search and describe nodes.
 
 ## Read more
 
 - `packages/nodes-base/AGENTS.md` for the node contract
-- [The workflow model](workflow-model.md)
+- [The workflow model](workflow-model.md) for the node type contract and `typeVersion`
 - docs.n8n.io: community nodes and creating nodes pages

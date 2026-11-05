@@ -1,19 +1,19 @@
 name: 'CI: Backend docs'
 
-# Keeps docs/backend current: text lint (Vale, ASD-STE100 rules), link check
-# (Lychee), and a check that the generated inventory matches the workspace.
-# Runs only when the folder or its inputs change.
+# Keeps docs/backend correct: text lint (Vale, ASD-STE100 rules), link check
+# (Lychee), and a check that the files, symbols, and environment variables that
+# the pages name still exist. Runs on changes to the folder, and once a week so
+# that code moves elsewhere show up without blocking other teams' PRs.
 
 on:
   pull_request:
     paths:
       - 'docs/backend/**'
-      - 'scripts/backend-inventory.mjs'
-      - 'OWNERS'
-      - 'packages/@n8n/backend-common/src/modules/modules.config.ts'
-      - 'packages/cli/src/modules/**/*.module.ts'
-      - 'packages/*/package.json'
-      - 'packages/@n8n/*/package.json'
+      - 'scripts/backend-docs-check.mjs'
+      - '.github/workflows/ci-docs-backend.yml'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -49,8 +49,8 @@ jobs:
           args: --config docs/backend/lychee.toml docs/backend
           fail: true
 
-  inventory:
-    name: Inventory is current
+  code-names:
+    name: Code names resolve
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -58,5 +58,5 @@ jobs:
         with:
           persist-credentials: false
 
-      # The generator only uses node built-ins, so no dependency install is needed.
-      - run: node scripts/backend-inventory.mjs --check
+      # The check only uses node built-ins and git, so no dependency install is needed.
+      - run: node scripts/backend-docs-check.mjs

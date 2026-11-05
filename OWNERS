@@ -65,8 +65,31 @@ packages/@n8n/db/src/migrations/                        @n8n-io/migrations-revie
 
 # Top-level paths
 scripts/                                                @n8n-io/qa-dx
-scripts/backend-inventory.mjs                           @n8n-io/core-application
-docs/backend/                                           @n8n-io/core-application
+scripts/backend-docs-check.mjs                          @n8n-io/core-application
+docs/backend/                                           @n8n-io/core-execution
+docs/backend/subsystems/startup-and-processes.md @n8n-io/core-application
+docs/backend/subsystems/webhooks-push-and-concurrency.md @n8n-io/core-application
+docs/backend/subsystems/realtime.md @n8n-io/core-application
+docs/backend/subsystems/scheduling-and-waiting.md @n8n-io/core-application
+docs/backend/subsystems/nodes-loading.md @n8n-io/core-application
+docs/backend/subsystems/workflow-model.md @n8n-io/core-execution
+docs/backend/subsystems/execution-engine.md @n8n-io/core-execution
+docs/backend/subsystems/manual-executions.md @n8n-io/core-execution
+docs/backend/subsystems/expressions.md @n8n-io/core-execution
+docs/backend/subsystems/scaling-and-multi-main.md @n8n-io/core-execution
+docs/backend/subsystems/task-runners.md @n8n-io/core-execution
+docs/backend/subsystems/persistence.md @n8n-io/core-execution
+docs/backend/subsystems/engine-2.md @n8n-io/core-execution
+docs/backend/subsystems/authentication.md @n8n-io/iam
+docs/backend/subsystems/authorization.md @n8n-io/iam
+docs/backend/subsystems/credentials.md @n8n-io/iam
+docs/backend/subsystems/sso-and-provisioning.md @n8n-io/iam
+docs/backend/subsystems/lifecycle-and-governance.md @n8n-io/ligo
+docs/backend/subsystems/public-api.md @n8n-io/ligo
+docs/backend/subsystems/observability.md @n8n-io/governance-and-observability
+docs/backend/subsystems/data-and-packages.md @n8n-io/knowledge
+docs/backend/subsystems/ai-platform.md @n8n-io/ai-assistant
+docs/backend/how-to/build-a-backend-module.md @n8n-io/core-application
 patches/                                                @n8n-io/qa-dx
 security/                                               @n8n-io/qa-dx
 .code-health-baseline.json                              @n8n-io/qa-dx required

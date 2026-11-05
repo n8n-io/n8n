@@ -17,11 +17,14 @@ The command runs the Astro dev server. Open the printed URL. Edits to the markdo
 - A fenced `mermaid` block becomes a diagram. The browser renders it with the `mermaid` package, in the active color theme.
 - A relative link to another page in `docs/backend` becomes a site route.
 - A relative link to any other file in the repository becomes a link to that file on GitHub, on `master`.
-- The front matter fields `tier`, `reading_time`, `last_reviewed`, and `owner` appear under the page title. The tier shows as Day 1, Week 1, or Month 1.
+- The front matter field `last_reviewed` appears under the page title.
+- The remark plugin counts the words of each page. The page title shows the reading time at 200 words a minute.
 - A click on a diagram opens it in a full-window overlay. Escape or a click outside closes it.
-- The small arrow at the top edge of each sidebar collapses that sidebar. The browser tab remembers the choice. This comes from the `starlight-fullview-mode` plugin.
+- The theme follows docs.n8n.io: the Geist fonts, the n8n colors, and the n8n logomark. The theme is in `src/styles/custom.css`.
+- One sun and moon button switches between the light and dark themes. It is in `src/components/ThemeSelect.astro`.
+- Code blocks use the Shiki highlighter that Astro includes. Expressive Code is off because its stylesheet did not load with Astro 7.
 
-The plugin that does the link and diagram work is `plugins/remark-backend-docs.mjs`. The sidebar order is in `astro.config.mjs` and follows the reading plan in `docs/backend/README.md`. A new page appears in the sidebar without a config change, after the known pages.
+The plugin that does the link and diagram work is `plugins/remark-backend-docs.mjs`. The sidebar order is in `astro.config.mjs` and follows the reading plan in `docs/backend/README.md`. A new page appears in the sidebar without a config change, after the known pages. Month 1 nests its pages by topic. A new page that no topic lists goes into a "More" group.
 
 ## Build a static copy
 

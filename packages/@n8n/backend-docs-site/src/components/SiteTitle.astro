@@ -1,0 +1,37 @@
+---
+import logo from '../../../../frontend/@n8n/design-system/src/components/N8nLogo/logo-icon.svg?raw';
+
+// The logomark is inline so that it takes the text color of the active theme, as on docs.n8n.io.
+const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
+const mark = logo.replace('<svg ', '<svg aria-hidden="true" fill="currentColor" ');
+---
+
+<a href={siteTitleHref} class="site-title sl-flex">
+	<span class="mark" set:html={mark} />
+	<span class="name" translate="no">{siteTitle}</span>
+</a>
+
+<style>
+	.site-title {
+		align-items: center;
+		gap: 0.625rem;
+		font-family: var(--n8n-font-title);
+		font-size: var(--sl-text-base);
+		font-weight: 600;
+		color: var(--sl-color-white);
+		text-decoration: none;
+		white-space: nowrap;
+		min-width: 0;
+	}
+	.mark {
+		display: flex;
+		color: var(--n8n-logo);
+	}
+	.mark :global(svg) {
+		width: 2rem;
+		height: auto;
+	}
+	.name {
+		overflow: hidden;
+	}
+</style>
