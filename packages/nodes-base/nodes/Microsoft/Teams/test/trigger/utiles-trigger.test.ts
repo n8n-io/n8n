@@ -867,6 +867,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 			const deleted = () => calls('DELETE').map((call) => call[2]);
 			const created = () => calls('POST').map((call) => call[3].resource);
+			const patched = () => calls('PATCH').map((call) => call[2]);
 
 			it('keeps the later-expiring renewed id, breaks a tie by id and forgets the others', async () => {
 				const { ctx, staticData } = arrange({
@@ -980,8 +981,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 						subscription('a', '/me/chats', minutes(60)),
 						subscription('b', '/me/chats', minutes(90)),
 					],
+					renewKeepers: true,
 				});
 
+				expect(patched()).toEqual(['/v1.0/subscriptions/b']);
 				expect(deleted()).toEqual([]);
 				expect(created()).toEqual([]);
 				expect(staticData.subscriptionIds).toEqual(['b']);
@@ -1145,8 +1148,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				const result = await reconcile(ctx, {
 					subscriptions: [subscription('x', '/me/chats', minutes(60))],
+					renewKeepers: true,
 				});
 
+				expect(patched()).toEqual(['/v1.0/subscriptions/x']);
 				expect(deleted()).toEqual(['/v1.0/subscriptions/old']);
 				expect(created()).toEqual([]);
 				expect(result).toEqual({ errors: [], retry: false });
@@ -1396,7 +1401,6 @@ describe('Microsoft Teams Helpers Functions', () => {
 					ctx: ReturnType<typeof arrange>['ctx'],
 					input: Partial<Parameters<typeof reconcileSubscriptions>[0]> = {},
 				) => await reconcile(ctx, { renewKeepers: true, ...input });
-				const patched = () => calls('PATCH').map((call) => call[2]);
 				const notFound = () =>
 					new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
 				// Answers as arranged, except that `method` on subscription `id` throws `error`.
@@ -1510,20 +1514,6 @@ describe('Microsoft Teams Helpers Functions', () => {
 					expect(staticData.subscriptionIds).toBe(ids);
 				});
 
-				it('adopts and renews an unstored subscription that GET by id proves', async () => {
-					const { ctx, staticData } = arrange({
-						staticData: { subscriptionIds: ['old'], webhookSecret: 'secret' },
-						answers: { x: proven('x') },
-					});
-
-					await activate(ctx, { subscriptions: [subscription('x', '/me/chats', minutes(60))] });
-
-					expect(patched()).toEqual(['/v1.0/subscriptions/x']);
-					expect(deleted()).toEqual(['/v1.0/subscriptions/old']);
-					expect(created()).toEqual([]);
-					expect(staticData.subscriptionIds).toEqual(['x']);
-				});
-
 				it('renews the keepers after the creates', async () => {
 					const { ctx } = arrange({
 						staticData: { subscriptionIds: ['a'], webhookSecret: 'secret' },
@@ -1605,25 +1595,6 @@ describe('Microsoft Teams Helpers Functions', () => {
 						'Microsoft Teams Trigger: failed to renew subscription',
 						expect.objectContaining({ subscriptionId: 'a', error: expect.any(String) }),
 					);
-				});
-
-				it('renews only the keeper of two proven stored twins and forgets the other one', async () => {
-					const { ctx, staticData } = arrange({
-						staticData: { subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
-						answers: { a: proven('a'), b: proven('b', '/me/chats', minutes(90)) },
-					});
-
-					await activate(ctx, {
-						subscriptions: [
-							subscription('a', '/me/chats', minutes(60)),
-							subscription('b', '/me/chats', minutes(90)),
-						],
-					});
-
-					expect(patched()).toEqual(['/v1.0/subscriptions/b']);
-					expect(deleted()).toEqual([]);
-					expect(created()).toEqual([]);
-					expect(staticData.subscriptionIds).toEqual(['b']);
 				});
 
 				it('forgets the other proven twin when the keeper answers 404', async () => {

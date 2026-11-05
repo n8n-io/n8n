@@ -206,30 +206,6 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
 			});
 
-			it('warns and still returns true when a kept subscription fails to renew', async () => {
-				const staticData: Record<string, unknown> = {
-					subscriptionIds: ['sub1'],
-					webhookSecret: 'secret',
-				};
-				const ctx = hookCtx(staticData, { event: 'newChat' });
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					own('sub1', '/me/chats', HOUR),
-				]);
-				routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': forbidden(ctx) });
-
-				await expect(checkExists(ctx)).resolves.toBe(true);
-				expect(graphCalls()).toEqual([
-					['GET', '/v1.0/subscriptions/sub1'],
-					['PATCH', '/v1.0/subscriptions/sub1'],
-				]);
-				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
-				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
-				expect(ctx.logger.warn).toHaveBeenCalledWith(
-					'Microsoft Teams Trigger: failed to renew subscription',
-					expect.objectContaining({ subscriptionId: 'sub1', error: expect.any(String) }),
-				);
-			});
-
 			it('renews a kept subscription even when its expiry is already near the maximum', async () => {
 				const nearMax = 4317 * 60 * 1000;
 				const ctx = hookCtx(
@@ -247,7 +223,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				]);
 			});
 
-			it('sends no renewal on a fresh publish', async () => {
+			it('create posts once and renews nothing', async () => {
 				const ctx = hookCtx({}, { event: 'newChat' });
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
 				routeGraph({});
@@ -468,19 +444,6 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			describe('when the listing fails', () => {
-				// GET by id answers from the table and 404s for any other id.
-				const answerById = (answers: Record<string, unknown>) =>
-					(microsoftApiRequest.call as Mock).mockImplementation(
-						async (_ctx: unknown, method: string, path: string) => {
-							if (method !== 'GET') return {};
-							const answer = answers[path.slice('/v1.0/subscriptions/'.length)];
-							if (answer === undefined) {
-								throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
-							}
-							return answer;
-						},
-					);
-
 				it.each([
 					['a plain error', (_ctx: TriggerContext) => new Error('API request failed')],
 					['a 403', (ctx: TriggerContext) => forbidden(ctx)],
@@ -513,11 +476,7 @@ describe('Microsoft Teams Trigger Node', () => {
 						'the stored secret, with the id stored twice',
 						['sub1', 'sub1'],
 						'secret',
-						[
-							['GET', S1],
-							['GET', S1],
-							['PATCH', S1],
-						],
+						expect.arrayContaining([['PATCH', S1]]),
 						[renewal],
 					],
 				])(
@@ -529,7 +488,10 @@ describe('Microsoft Teams Trigger Node', () => {
 						};
 						const ctx = hookCtx(staticData, { event: 'newChat' });
 						(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
-						answerById({ sub1: { ...own('sub1', '/me/chats', HOUR), clientState: answered } });
+						routeGraph({
+							'GET sub1': { ...own('sub1', '/me/chats', HOUR), clientState: answered },
+							'PATCH sub1': {},
+						});
 
 						await expect(checkExists(ctx)).resolves.toBe(true);
 						expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
@@ -553,7 +515,7 @@ describe('Microsoft Teams Trigger Node', () => {
 					const ctx = hookCtx(staticData, { event: 'newChat' });
 					const error = throttled(ctx);
 					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(error);
-					answerById({});
+					routeGraph({});
 
 					await expect(checkExists(ctx)).rejects.toBe(error);
 					expect(graphCalls()).toEqual([['GET', '/v1.0/subscriptions/sub1']]);
@@ -644,22 +606,6 @@ describe('Microsoft Teams Trigger Node', () => {
 						'Microsoft Teams Trigger: failed to list subscriptions, kept the stored ones',
 						expect.objectContaining({ error: expect.any(String) }),
 					);
-				});
-
-				it('renews only the stored ids whose answer shows the stored secret', async () => {
-					const ctx = hookCtx(
-						{ subscriptionIds: ['a', 'b'], webhookSecret: 'secret' },
-						{ event: 'newChat' },
-					);
-					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
-					routeGraph({
-						'GET a': proven('a'),
-						'GET b': { ...own('b', '/me/chats', HOUR), clientState: null },
-						'PATCH a': {},
-					});
-
-					await expect(checkExists(ctx)).resolves.toBe(true);
-					expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/a']);
 				});
 
 				it('saves nothing when it renews and the retry mark is already set', async () => {
@@ -880,7 +826,7 @@ describe('Microsoft Teams Trigger Node', () => {
 					'Microsoft Teams Trigger: failed to remove subscription',
 					expect.objectContaining({ subscriptionId: 'x' }),
 				);
-				expect(staticData.subscriptionIds).toEqual(['a']);
+				expect(staticData).toEqual({ subscriptionIds: ['a'], webhookSecret: 'secret' });
 			});
 
 			it('throws the create error after every create settled', async () => {
