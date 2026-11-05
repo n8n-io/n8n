@@ -3,5 +3,5 @@ import { WebhookChannelController } from '../platforms/webhook/webhook-channel.c
 
 describe('WebhookChannelController route access scopes', () => {
 	// The caller is not an n8n user: the channel's own authentication runs in the handler.
-	expectProjectScopedAgentRoutes(WebhookChannelController, new Set(['respond']));
+	expectProjectScopedAgentRoutes(WebhookChannelController, new Set(['respond', 'decide']));
 });

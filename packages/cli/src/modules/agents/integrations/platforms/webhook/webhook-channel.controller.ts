@@ -13,22 +13,43 @@ import { WebhookChannelService } from './webhook-channel.service';
 export class WebhookChannelController {
 	constructor(private readonly webhookChannel: WebhookChannelService) {}
 
-	// Public route: do not add a scope decorator. The caller is not an n8n user,
+	// Public routes: do not add a scope decorator. The caller is not an n8n user,
 	// and the channel's own authentication runs in the service.
 	@Post('/:agentId/responses', { skipAuth: true, allowBots: true, usesTemplates: true })
 	async respond(req: Request<{ agentId: string }>, res: Response) {
-		const abort = new AbortController();
-		// A client that disconnects stops the run.
-		res.on('close', () => {
-			if (!res.writableFinished) abort.abort();
-		});
-
 		const reply = await this.webhookChannel.respond({
 			agentId: req.params.agentId,
 			headers: req.headers,
 			body: req.body,
-			abortSignal: abort.signal,
+			abortSignal: abortOnClose(res),
 		});
 		if (!res.headersSent) res.status(reply.status).json(reply.body);
 	}
+
+	@Post('/:agentId/approvals/:conversationId/:runId/:toolCallId', {
+		skipAuth: true,
+		allowBots: true,
+		usesTemplates: true,
+	})
+	async decide(
+		req: Request<{ agentId: string; conversationId: string; runId: string; toolCallId: string }>,
+		res: Response,
+	) {
+		const reply = await this.webhookChannel.decide({
+			...req.params,
+			headers: req.headers,
+			body: req.body,
+			abortSignal: abortOnClose(res),
+		});
+		if (!res.headersSent) res.status(reply.status).json(reply.body);
+	}
+}
+
+/** A client that disconnects stops the run. */
+function abortOnClose(res: Response) {
+	const abort = new AbortController();
+	res.on('close', () => {
+		if (!res.writableFinished) abort.abort();
+	});
+	return abort.signal;
 }

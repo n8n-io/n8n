@@ -33,6 +33,7 @@ export class WebhookIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Let an external system or a backend send a message to the published agent over HTTP and get the reply in the same response.',
 			'Continue a conversation when the caller sends back the conversation ID.',
+			'Ask the caller to approve an action that needs approval: the reply gives a URL, and the caller sends the decision to it.',
 		],
 		useIntegrationWhen: [
 			'The user wants to call the agent from their own backend or server-side app over HTTP. Browser apps cannot call it yet.',

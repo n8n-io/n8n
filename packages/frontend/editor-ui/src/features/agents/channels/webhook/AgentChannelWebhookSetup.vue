@@ -12,6 +12,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { getAgentWebhookUrl } from '../../composables/useAgentApi';
 import type { AgentChannelViewProps } from '../types';
 import AgentChannelWebhookAuth from './AgentChannelWebhookAuth.vue';
+import AgentChannelWebhookInstructions from './AgentChannelWebhookInstructions.vue';
 
 const credentialId = defineModel<string>({ default: '' });
 const props = defineProps<AgentChannelViewProps>();
@@ -138,9 +139,7 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 								{{ i18n.baseText('agents.channels.webhook.url.hint') }}
 							</N8nText>
 						</div>
-						<N8nText :class="$style.hint" size="small" data-testid="webhook-approval-notice">
-							{{ i18n.baseText('agents.channels.webhook.approvalNotice') }}
-						</N8nText>
+						<AgentChannelWebhookInstructions :authentication="authentication" />
 						<N8nButton
 							v-if="!connected"
 							:class="$style.connectButton"
@@ -201,6 +200,7 @@ defineExpose({ credentialId, currentSettings, credentialRequired });
 					{{ i18n.baseText('agents.channels.webhook.url.hint') }}
 				</N8nText>
 			</div>
+			<AgentChannelWebhookInstructions :authentication="authentication" />
 			<N8nText v-if="!isPublished" :class="$style.hint" size="small">
 				{{ i18n.baseText('agents.channels.webhook.publishNotice') }}
 			</N8nText>

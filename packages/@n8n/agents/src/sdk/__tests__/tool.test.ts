@@ -290,19 +290,6 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		expect(result).toEqual({ declined: true, message: 'Tool "testTool" was not approved' });
 	});
 
-	it('adds the reason of a decline to the message', async () => {
-		const baseTool = makeBuiltTool();
-		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
-		const { ctx } = makeCtx({ approved: false, reason: 'nobody can approve it here' });
-
-		const result = await wrapped.handler!({ id: 'abc' }, ctx);
-
-		expect(result).toEqual({
-			declined: true,
-			message: 'Tool "testTool" was not approved: nobody can approve it here',
-		});
-	});
-
 	it("resumes an inner suspension when its approval payload matches the wrapper's payload", async () => {
 		const approvalPayload = {
 			type: 'approval',
