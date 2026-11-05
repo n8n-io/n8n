@@ -1,0 +1,14 @@
+packages/workflow/src/workflow-expression.ts
+  h_32d8cd6a0d6aad 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "369bbad1f6118b9f32fa09ccae19f08df00091f6",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
