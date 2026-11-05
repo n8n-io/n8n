@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
+import AgentChannelWebhookInstructions from './AgentChannelWebhookInstructions.vue';
 import AgentChannelWebhookSetup from './AgentChannelWebhookSetup.vue';
 
 const { getAgentWebhookUrl } = vi.hoisted(() => ({ getAgentWebhookUrl: vi.fn() }));
@@ -142,6 +143,18 @@ describe('AgentChannelWebhookSetup', () => {
 
 		expect(wrapper.vm.currentSettings).toEqual({ authentication: 'jwtAuth' });
 	});
+
+	it.each(['setup', 'edit'] as const)(
+		'shows API instructions for the selected authentication in %s mode',
+		async (mode) => {
+			const wrapper = mountView({ mode });
+
+			await wrapper.get('[data-testid="webhook-authentication"]').setValue('jwtAuth');
+
+			const instructions = wrapper.getComponent(AgentChannelWebhookInstructions);
+			expect(instructions.props('authentication')).toBe('jwtAuth');
+		},
+	);
 
 	it('tells an unpublished agent to publish before it connects', () => {
 		const wrapper = mountView({ isPublished: false });

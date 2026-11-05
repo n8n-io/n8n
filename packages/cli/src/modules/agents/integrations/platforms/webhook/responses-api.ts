@@ -1,3 +1,4 @@
+import { APPROVAL_RESUME_SCHEMA, type ApprovalSuspendPayload } from '@n8n/agents/tool';
 import { UnprocessableRequestError } from '@n8n/errors';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { randomUUID } from 'node:crypto';
@@ -5,7 +6,8 @@ import { z } from 'zod';
 
 /**
  * The subset of the OpenAI Responses API that the webhook channel speaks: one
- * text message in, one assistant message out. Unknown fields are ignored, so an
+ * text message in, one assistant message out, plus one approval request for
+ * each action that waits for a decision. Unknown fields are ignored, so an
  * OpenAI SDK client can call the channel.
  */
 
@@ -50,14 +52,18 @@ const requestSchema = z.object({
 	stream: z.boolean().optional(),
 });
 
+function invalidRequest(error: z.ZodError) {
+	const [issue] = error.issues;
+	const param = issue?.path[0]?.toString() ?? null;
+	const message =
+		param === 'input' ? 'input must be a non-empty string' : (issue?.message ?? 'Invalid body');
+	return new WebhookChannelError(400, 'invalid_request', message, param);
+}
+
 export function parseResponsesRequest(body: unknown): { input: string; conversationId?: string } {
 	const parsed = requestSchema.safeParse(body);
 	if (!parsed.success) {
-		const [issue] = parsed.error.issues;
-		const param = issue?.path[0]?.toString() ?? null;
-		const message =
-			param === 'input' ? 'input must be a non-empty string' : (issue?.message ?? 'Invalid body');
-		throw new WebhookChannelError(400, 'invalid_request', message, param);
+		throw invalidRequest(parsed.error);
 	}
 	const { input, conversation, stream } = parsed.data;
 	if (stream) {
@@ -74,10 +80,25 @@ export function parseResponsesRequest(body: unknown): { input: string; conversat
 	};
 }
 
+/** The body of a decision: the resume data that every channel sends for an approval. */
+export function parseApprovalDecision(body: unknown) {
+	const parsed = APPROVAL_RESUME_SCHEMA.safeParse(body);
+	if (!parsed.success) throw invalidRequest(parsed.error);
+	return parsed.data;
+}
+
+export interface WebhookApprovalRequest {
+	toolCallId: string;
+	payload: ApprovalSuspendPayload;
+	/** The caller sends the decision to this URL. */
+	url: string;
+}
+
 export function toResponseBody(reply: {
 	model: string;
 	conversationId: string;
 	text: string;
+	approvals?: WebhookApprovalRequest[];
 	createdAt: Date;
 }) {
 	return {
@@ -95,6 +116,16 @@ export function toResponseBody(reply: {
 				role: 'assistant',
 				content: [{ type: 'output_text', text: reply.text, annotations: [] }],
 			},
+			...(reply.approvals ?? []).map(({ toolCallId, payload, url }) => ({
+				type: 'approval_request',
+				id: toolCallId,
+				name: payload.toolName,
+				display_name: payload.displayName ?? payload.toolName,
+				// A JSON string, as in the tool call items of the Responses API.
+				arguments: JSON.stringify(payload.args ?? {}),
+				supports_session_approval: payload.supportsSessionApproval === true,
+				url,
+			})),
 		],
 	};
 }
