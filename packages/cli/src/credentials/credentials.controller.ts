@@ -159,6 +159,16 @@ export class CredentialsController {
 					includeInstanceCredentials: true,
 				});
 
+		if (query.includeData && 'data' in credential && credential.data !== undefined) {
+			// Decrypted data is about to leave the server: audit the read.
+			this.eventService.emit('credentials-data-read', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				publicApi: false,
+			});
+		}
+
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
 			req.params.credentialId,

@@ -9,6 +9,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User, ListQueryDb } from '@n8n/db';
 import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository } from '@n8n/db';
@@ -1987,6 +1988,39 @@ describe('GET /credentials/new', () => {
 });
 
 describe('GET /credentials/:id', () => {
+	test('should emit `credentials-data-read` only when the decrypted data is returned', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const readEvents = () =>
+			emitSpy.mock.calls.filter(([eventName]) => eventName === 'credentials-data-read');
+
+		try {
+			await authOwnerAgent.get(`/credentials/${savedCredential.id}`).expect(200);
+			expect(readEvents()).toHaveLength(0);
+
+			await authOwnerAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+			expect(readEvents()).toEqual([
+				[
+					'credentials-data-read',
+					{
+						user: expect.objectContaining({ id: owner.id }),
+						credentialType: savedCredential.type,
+						credentialId: savedCredential.id,
+						publicApi: false,
+					},
+				],
+			]);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
 	test('should retrieve owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
