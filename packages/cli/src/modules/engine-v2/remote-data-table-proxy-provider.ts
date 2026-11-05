@@ -74,12 +74,6 @@ function toV1Error(node: INode, error: DataTableCallErrorResponse['error']): Err
 /**
  * The `DataTableProxyProvider` that the engine v2 data plane gives to v1 nodes.
  *
- * The data plane has no control plane database. Every operation of a proxy is
- * one POST to the control plane, over HTTP even in-process, which resolves the
- * project from the workflow and checks the table on each call. A refusal comes
- * back as the v1 error the node expects, so a missing table or a rejected row
- * reads the same on both engines.
- *
  * One instance per execution: the constructor context names the execution the
  * requests are for.
  */
