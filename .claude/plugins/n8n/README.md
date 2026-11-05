@@ -31,7 +31,6 @@ skills or overrides remain real directories in this plugin path.
 ```
 .claude/plugins/n8n/
 ├── .claude-plugin/
-│   ├── marketplace.json    # Marketplace manifest
 │   └── plugin.json         # Plugin identity
 ├── agents/
 │   └── <name>.md           # → n8n:<name> agent
@@ -42,6 +41,11 @@ skills or overrides remain real directories in this plugin path.
 │   └── <claude-only>/SKILL.md
 └── README.md
 ```
+
+The marketplace manifest is at the repo root, in `.claude-plugin/marketplace.json`.
+Claude Code loads a symlinked file only if it resolves inside the plugin or
+marketplace directory. A marketplace at the repo root keeps `.agents/skills`
+inside that directory.
 
 Run `pnpm sync:skill-links` after adding or removing shared skills. Run
 `pnpm check:skill-links` before submitting changes.
