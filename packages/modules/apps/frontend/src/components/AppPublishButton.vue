@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nActionDropdown,
@@ -10,22 +11,24 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 
 import { unpublishApp } from '../apps.api';
 import { getAppPermissions } from '../apps.permissions';
 import AppPublishDialog from './publish/AppPublishDialog.vue';
 
-type MenuAction = 'open' | 'unpublish';
+type MenuAction = 'versions' | 'open' | 'showCode' | 'unpublish';
 
 const props = defineProps<{ app: AppResponse; version: AppVersionResponse | null }>();
 
-const emit = defineEmits<{ updated: [app: AppResponse] }>();
+const emit = defineEmits<{ updated: [app: AppResponse]; showVersions: [] }>();
 
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const rootStore = useRootStore();
+const telemetry = useTelemetry();
 
 const busy = ref(false);
 const dialogOpen = ref(false);
@@ -35,10 +38,12 @@ const isUpToDate = computed(
 	() => props.version !== null && props.app.publishedVersionId === props.version.id,
 );
 const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
-	if (!props.app.publishedUrl) return [];
 	const items: Array<ActionDropdownItem<MenuAction>> = [
-		{ id: 'open', label: i18n.baseText('apps.publish.openApp'), icon: 'external-link' },
+		{ id: 'versions', label: i18n.baseText('apps.publish.viewVersions'), icon: 'history' },
+		{ id: 'showCode', label: i18n.baseText('apps.publish.showCode'), icon: 'code' },
 	];
+	if (!props.app.publishedUrl) return items;
+	items.push({ id: 'open', label: i18n.baseText('apps.publish.openApp'), icon: 'external-link' });
 	if (canUpdate.value) {
 		items.push({
 			id: 'unpublish',
@@ -76,7 +81,27 @@ async function unpublish() {
 	}
 }
 
+function showCode() {
+	telemetry.track(TELEMETRY_EVENT.APPS.USER_CLICKED_SHOW_APP_CODE, {
+		app_id: props.app.id,
+		project_id: props.app.projectId,
+	});
+	toast.showMessage({
+		type: 'info',
+		title: i18n.baseText('apps.showCode.comingSoon.title'),
+		message: i18n.baseText('apps.showCode.comingSoon.message'),
+	});
+}
+
 async function onMenuSelect(action: MenuAction) {
+	if (action === 'showCode') {
+		showCode();
+		return;
+	}
+	if (action === 'versions') {
+		emit('showVersions');
+		return;
+	}
 	const url = props.app.publishedUrl;
 	if (!url) return;
 	if (action === 'open') {
@@ -88,7 +113,7 @@ async function onMenuSelect(action: MenuAction) {
 </script>
 
 <template>
-	<div :class="{ [$style.group]: menuItems.length > 0 }" data-test-id="app-publish">
+	<div :class="$style.group" data-test-id="app-publish">
 		<N8nButton
 			:class="[$style.main, { [$style.published]: isUpToDate }]"
 			variant="outline"
@@ -100,7 +125,6 @@ async function onMenuSelect(action: MenuAction) {
 			{{ i18n.baseText(isUpToDate ? 'apps.publish.published' : 'apps.publish.publish') }}
 		</N8nButton>
 		<N8nActionDropdown
-			v-if="menuItems.length > 0"
 			:items="menuItems"
 			:disabled="busy"
 			placement="bottom-end"

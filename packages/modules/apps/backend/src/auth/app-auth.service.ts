@@ -18,6 +18,7 @@ export interface AppRequest extends Request {
 		app: App;
 		versionId: string | null;
 		preview?: boolean;
+		previewUserId?: string;
 		security?: SecurityContext;
 	};
 }

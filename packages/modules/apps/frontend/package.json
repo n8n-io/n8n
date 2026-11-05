@@ -29,6 +29,8 @@
     "@n8n/permissions": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
+    "@n8n/telemetry": "workspace:*",
+    "uuid": "catalog:",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"
   },
@@ -45,6 +47,7 @@
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vue/test-utils": "catalog:frontend",
     "eslint": "catalog:",
     "stylelint": "catalog:",
     "typescript": "catalog:",

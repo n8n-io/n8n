@@ -5,9 +5,21 @@ import {
 	type AppBlueprint,
 	type InstanceAiConfirmRequest,
 } from '@n8n/api-types';
-import { N8nButton, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nOption,
+	N8nSelect,
+	N8nTag,
+	N8nText,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+
+import ToolIcon from '@/features/shared/toolsConnection/ToolIcon.vue';
+
+type AppBlueprintBinding = NonNullable<AppBlueprint['bindings']>[number];
 
 const props = defineProps<{
 	blueprint: AppBlueprint;
@@ -23,6 +35,12 @@ const visibility = ref(props.blueprint.visibility);
 const theme = ref(props.blueprint.theme);
 const additionalInstructions = ref(props.blueprint.additionalInstructions ?? '');
 
+const bindingIcons: Record<AppBlueprintBinding['kind'], IconName> = {
+	workflow: 'workflow',
+	dataTable: 'table',
+	agent: 'robot',
+};
+
 const visibilityOptions = ['project', 'instance'] as const;
 const themeOptions = computed(() =>
 	(['light', 'dark', 'both'] as const).map((value) => ({
@@ -36,6 +54,7 @@ const editedBlueprint = computed<AppBlueprint>(() => ({
 	visibility: visibility.value,
 	description: props.blueprint.description,
 	theme: theme.value,
+	...(props.blueprint.bindings ? { bindings: props.blueprint.bindings } : {}),
 	...(additionalInstructions.value.trim()
 		? { additionalInstructions: additionalInstructions.value.trim() }
 		: {}),
@@ -144,6 +163,37 @@ function cancel() {
 					</N8nSelect>
 				</label>
 			</div>
+
+			<div v-if="blueprint.bindings?.length" :class="$style.bindings">
+				<N8nText size="medium" color="text-dark" bold>
+					{{ i18n.baseText('instanceAi.appBlueprint.bindings.title') }}
+				</N8nText>
+				<div
+					v-for="binding in blueprint.bindings"
+					:key="`${binding.status}:${binding.kind}:${binding.name}`"
+					:class="$style.binding"
+					:data-binding-kind="binding.kind"
+					data-test-id="instance-ai-app-blueprint-binding"
+				>
+					<ToolIcon
+						:source="{
+							type: 'icon',
+							name: bindingIcons[binding.kind],
+							color: 'var(--color--text)',
+						}"
+					/>
+					<div :class="$style.bindingLabels">
+						<div :class="$style.bindingTitle">
+							<N8nText size="medium" color="text-dark">{{ binding.name }}</N8nText>
+							<N8nTag
+								:text="i18n.baseText(`instanceAi.appBlueprint.bindings.${binding.status}`)"
+								:clickable="false"
+							/>
+						</div>
+						<N8nText size="small" color="text-light">{{ binding.description }}</N8nText>
+					</div>
+				</div>
+			</div>
 		</div>
 
 		<div :class="$style.instructions">
@@ -223,6 +273,36 @@ function cancel() {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.bindings {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
+	padding-top: var(--spacing--sm);
+	border-top: var(--border);
+}
+
+.binding {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) 0;
+}
+
+.bindingLabels {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.bindingTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .instructions {
