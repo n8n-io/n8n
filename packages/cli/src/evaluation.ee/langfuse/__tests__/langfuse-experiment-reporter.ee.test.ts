@@ -1,7 +1,15 @@
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createHash } from 'node:crypto';
-import type { IHttpRequestOptions, INode, INodeExecutionData, IWorkflowBase } from 'n8n-workflow';
+import type {
+	IHttpRequestOptions,
+	INode,
+	INodeExecutionData,
+	IRun,
+	IRunData,
+	ITaskData,
+	IWorkflowBase,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
@@ -699,21 +707,33 @@ describe('LangfuseExperimentReporter', () => {
 
 		test('never truncates the metadata attributes, keeping them valid JSON', async () => {
 			const run = await startedRun({
-				langfuseReporting: { runMetadata: JSON.stringify({ note: 'y'.repeat(90 * 1024) }) },
+				langfuseReporting: { runMetadata: JSON.stringify({ note: 'y'.repeat(7 * 1024) }) },
 			});
 
 			await reportSuccess(run);
 
 			const attributes = attributesOf(exportedSpans()[0]);
 			const metadata = JSON.parse(attributes['langfuse.experiment.metadata']);
-			expect(metadata.note).toHaveLength(90 * 1024);
+			expect(metadata.note).toHaveLength(7 * 1024);
 			expect(metadata.n8n_test_run_id).toBe(TEST_RUN_ID);
 			expect(() => JSON.parse(attributes['langfuse.observation.metadata'])).not.toThrow();
 		});
 
-		test('keeps only the n8n metadata keys, with a warning, when run metadata exceeds the cap', async () => {
+		test('keeps run metadata whose JSON is within 8 KiB', async () => {
 			const run = await startedRun({
-				langfuseReporting: { runMetadata: JSON.stringify({ note: 'y'.repeat(120 * 1024) }) },
+				langfuseReporting: { runMetadata: JSON.stringify({ note: 'y'.repeat(7 * 1024) }) },
+			});
+
+			expect(run.metadata.note).toHaveLength(7 * 1024);
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('run metadata'),
+				expect.anything(),
+			);
+		});
+
+		test('keeps only the n8n metadata keys, with a warning, when run metadata exceeds 8 KiB', async () => {
+			const run = await startedRun({
+				langfuseReporting: { runMetadata: JSON.stringify({ note: 'y'.repeat(9 * 1024) }) },
 			});
 
 			expect(run.metadata).toEqual({
@@ -1025,7 +1045,11 @@ describe('LangfuseExperimentReporter', () => {
 
 		test('appends the spans returned by the child span seam to the same trace', async () => {
 			class WithChildSpans extends LangfuseExperimentReporter {
-				protected override buildChildSpans(_data: unknown, parent: ChildSpanParent): OtlpSpan[] {
+				protected override buildChildSpans(
+					_run: ReporterRun,
+					_data: unknown,
+					parent: ChildSpanParent,
+				): OtlpSpan[] {
 					return [
 						{
 							traceId: parent.traceId,
@@ -1065,6 +1089,810 @@ describe('LangfuseExperimentReporter', () => {
 			await reportSuccess(run);
 
 			expect(exportedSpans()).toHaveLength(1);
+		});
+
+		describe('node spans', () => {
+			const START = Date.parse('2026-11-03T10:00:00.000Z');
+
+			const nodes: INode[] = [
+				{
+					id: 'trigger',
+					name: 'Evaluation Trigger',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					typeVersion: 4.7,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'agent',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'llm',
+					name: 'OpenAI Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o' } },
+				},
+				{
+					id: 'llm2',
+					name: 'Dynamic Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: { model: '={{ $json.model }}' },
+				},
+			];
+
+			const task = (offsetMs: number, executionTime: number, extra: Partial<ITaskData> = {}) =>
+				({
+					startTime: START + offsetMs,
+					executionTime,
+					executionIndex: offsetMs,
+					source: [],
+					executionStatus: 'success',
+					data: { main: [[{ json: { ok: true } }]] },
+					...extra,
+				}) as ITaskData;
+
+			const modelTask = (offsetMs: number, tokenUsage?: Record<string, number>) =>
+				task(offsetMs, 300, {
+					data: {
+						ai_languageModel: [
+							[{ json: { response: { text: 'hi' }, ...(tokenUsage && { tokenUsage }) } }],
+						],
+					},
+				});
+
+			const withOutputs = { langfuseReporting: { includeNodeOutputs: true } };
+
+			const execution = (runData: IRunData) =>
+				({ data: { resultData: { runData } } }) as unknown as IRun;
+
+			const reportWith = async (runData: IRunData, parameters: Record<string, unknown> = {}) => {
+				const run = await reporter.startRun({
+					testRun: { id: TEST_RUN_ID },
+					workflow: { ...workflow, nodes },
+					triggerNode: buildTriggerNode(parameters),
+					testCases: [buildRow('item-1')],
+					userId: 'user-1',
+				});
+				assert(run, 'expected a reporter run');
+				await reportSuccess(run, { executionData: execution(runData) });
+				const [root, ...children] = exportedSpans();
+				return { run, root, children };
+			};
+
+			test('adds one child span per node run, parented to the root in the same trace', async () => {
+				const { root, children } = await reportWith(
+					{
+						'AI Agent': [task(500, 800), task(1500, 100)],
+						'Evaluation Trigger': [
+							task(0, 5, {
+								data: { main: [[{ json: { question: 'q', _langfuse: { itemId: 'item-1' } } }]] },
+							}),
+						],
+					},
+					withOutputs,
+				);
+
+				expect(children.map((span) => span.name)).toEqual([
+					'Evaluation Trigger',
+					'AI Agent',
+					'AI Agent',
+				]);
+				for (const span of children) {
+					expect(span.traceId).toBe(root.traceId);
+					expect(span.parentSpanId).toBe(root.spanId);
+					expect(span.spanId).toMatch(/^[0-9a-f]{16}$/);
+					expect(span.kind).toBe(1);
+					expect(span.status).toEqual({ code: 1 });
+				}
+				expect(new Set(children.map((span) => span.spanId)).size).toBe(3);
+
+				const [trigger, firstAgent, secondAgent] = children;
+				expect(trigger.startTimeUnixNano).toBe(String(BigInt(START) * 1_000_000n));
+				expect(trigger.endTimeUnixNano).toBe(String(BigInt(START + 5) * 1_000_000n));
+				expect(firstAgent.endTimeUnixNano).toBe(String(BigInt(START + 1300) * 1_000_000n));
+
+				expect(JSON.parse(attributesOf(firstAgent)['langfuse.observation.metadata'])).toEqual({
+					node_type: '@n8n/n8n-nodes-langchain.agent',
+					node_type_version: 2,
+					run_index: 0,
+				});
+				expect(
+					JSON.parse(attributesOf(secondAgent)['langfuse.observation.metadata']).run_index,
+				).toBe(1);
+				expect(JSON.parse(attributesOf(firstAgent)['langfuse.observation.output'])).toEqual({
+					ok: true,
+				});
+			});
+
+			test('serialises no inputs and strips the reserved _langfuse key from node outputs', async () => {
+				const { children } = await reportWith(
+					{
+						'Evaluation Trigger': [
+							task(0, 5, {
+								inputOverride: { main: [[{ json: { secret: 'input' } }]] },
+								data: { main: [[{ json: { question: 'q', _langfuse: { itemId: 'item-1' } } }]] },
+							}),
+						],
+					},
+					withOutputs,
+				);
+
+				const attributes = attributesOf(children[0]);
+				expect(attributes).not.toHaveProperty('langfuse.observation.input');
+				expect(JSON.parse(attributes['langfuse.observation.output'])).toEqual({ question: 'q' });
+				expect(JSON.stringify(children)).not.toContain('"secret"');
+			});
+
+			test('truncates a child output above the attribute limit on a utf-8 boundary', async () => {
+				const { children } = await reportWith(
+					{
+						'AI Agent': [
+							task(0, 5, { data: { main: [[{ json: { text: 'é'.repeat(80 * 1024) } }]] } }),
+						],
+					},
+					withOutputs,
+				);
+
+				const output = attributesOf(children[0])['langfuse.observation.output'];
+				expect(output.endsWith('... [truncated by n8n]')).toBe(true);
+				expect(Buffer.byteLength(output)).toBeLessThanOrEqual(100 * 1024 + 32);
+				expect(output).not.toContain('�');
+			});
+
+			test('maps a node run with token usage to a generation with model and usage details', async () => {
+				const { children } = await reportWith(
+					{
+						'AI Agent': [task(0, 900)],
+						'OpenAI Chat Model': [
+							modelTask(100, { promptTokens: 12, completionTokens: 5, totalTokens: 17 }),
+							modelTask(500),
+						],
+					},
+					withOutputs,
+				);
+
+				const [agent, generation, plain] = children;
+				expect(attributesOf(agent)).not.toHaveProperty('langfuse.observation.type');
+				expect(attributesOf(generation)).toMatchObject({
+					'langfuse.observation.type': 'generation',
+					'langfuse.observation.model.name': 'gpt-4o',
+				});
+				expect(JSON.parse(attributesOf(generation)['langfuse.observation.usage_details'])).toEqual({
+					input: 12,
+					output: 5,
+					total: 17,
+				});
+				expect(JSON.parse(attributesOf(generation)['langfuse.observation.output'])).toMatchObject({
+					response: { text: 'hi' },
+				});
+				expect(attributesOf(plain)).not.toHaveProperty('langfuse.observation.type');
+				expect(attributesOf(plain)).not.toHaveProperty('langfuse.observation.usage_details');
+			});
+
+			test('reads the token usage estimate and omits a model name that is an expression or unknown', async () => {
+				const { children } = await reportWith({
+					'Dynamic Model': [
+						task(0, 10, {
+							data: {
+								ai_languageModel: [
+									[
+										{
+											json: {
+												tokenUsageEstimate: {
+													promptTokens: 1,
+													completionTokens: 2,
+													totalTokens: 3,
+												},
+											},
+										},
+									],
+								],
+							},
+						}),
+					],
+					'Not In Workflow': [
+						modelTask(20, { promptTokens: 4, completionTokens: 5, totalTokens: 9 }),
+					],
+				});
+
+				for (const span of children) {
+					const attributes = attributesOf(span);
+					expect(attributes['langfuse.observation.type']).toBe('generation');
+					expect(attributes).not.toHaveProperty('langfuse.observation.model.name');
+				}
+				expect(JSON.parse(attributesOf(children[0])['langfuse.observation.usage_details'])).toEqual(
+					{
+						input: 1,
+						output: 2,
+						total: 3,
+					},
+				);
+				expect(JSON.parse(attributesOf(children[1])['langfuse.observation.metadata'])).toEqual({
+					run_index: 0,
+				});
+			});
+
+			test('marks an errored node run with ERROR status and level', async () => {
+				const { children } = await reportWith({
+					'AI Agent': [
+						task(0, 50, {
+							executionStatus: 'error',
+							error: { message: 'model exploded' } as never,
+							data: undefined,
+						}),
+						task(100, 50),
+					],
+				});
+
+				const [errored, healthy] = children;
+				expect(errored.status).toEqual({ code: 2, message: 'Node execution failed' });
+				expect(attributesOf(errored)).toMatchObject({
+					'langfuse.observation.level': 'ERROR',
+				});
+				expect(attributesOf(errored)).not.toHaveProperty('langfuse.observation.status_message');
+				expect(attributesOf(errored)).not.toHaveProperty('langfuse.observation.output');
+				expect(healthy.status).toEqual({ code: 1 });
+				expect(attributesOf(healthy)).not.toHaveProperty('langfuse.observation.level');
+			});
+
+			test('repeats the experiment attributes on every child span', async () => {
+				const { run, root, children } = await reportWith(
+					{
+						'AI Agent': [task(0, 10)],
+						'OpenAI Chat Model': [
+							modelTask(5, { promptTokens: 1, completionTokens: 1, totalTokens: 2 }),
+						],
+					},
+					{
+						langfuseReporting: {
+							runName: 'nightly',
+							runMetadata: '{"git_sha":"abc"}',
+							environment: 'staging',
+						},
+					},
+				);
+
+				expect(children).toHaveLength(2);
+				expect(JSON.parse(attributesOf(root)['langfuse.experiment.metadata'])).toMatchObject({
+					git_sha: 'abc',
+					n8n_test_run_id: TEST_RUN_ID,
+				});
+				for (const span of children) {
+					const attributes = attributesOf(span);
+					expect(attributes).toMatchObject({
+						'langfuse.experiment.id': run.experimentId,
+						'langfuse.experiment.name': 'nightly',
+						'langfuse.experiment.dataset.id': DATASET_ID,
+						'langfuse.experiment.item.id': 'item-1',
+						'langfuse.experiment.item.root_observation_id': root.spanId,
+						'langfuse.environment': 'staging',
+					});
+					expect(attributes['langfuse.experiment.metadata']).toBe(
+						attributesOf(root)['langfuse.experiment.metadata'],
+					);
+					expect(attributes).not.toHaveProperty('langfuse.experiment.description');
+				}
+			});
+
+			test('caps child spans at 200 per case, keeps the earliest node runs and warns once per run', async () => {
+				const manyRuns = (): IRunData => ({
+					'AI Agent': Array.from({ length: 205 }, (_, index) => task(index, 1)),
+				});
+				const { run, children } = await reportWith(manyRuns());
+
+				expect(children).toHaveLength(200);
+				const runIndexes = children.map(
+					(span) => JSON.parse(attributesOf(span)['langfuse.observation.metadata']).run_index,
+				);
+				expect(Math.max(...runIndexes)).toBe(199);
+
+				await reportSuccess(run, { executionData: execution(manyRuns()) });
+
+				expect(
+					vi
+						.mocked(logger.warn)
+						.mock.calls.filter(([message]) => String(message).includes('capped')),
+				).toHaveLength(1);
+			});
+
+			test('adds no child spans when includeNodeSpans is false', async () => {
+				const { children } = await reportWith(
+					{ 'AI Agent': [task(0, 10)] },
+					{ langfuseReporting: { includeNodeSpans: false } },
+				);
+
+				expect(children).toHaveLength(0);
+			});
+
+			test('omits node outputs by default but keeps name, timings, metadata, model and usage', async () => {
+				const { children } = await reportWith({
+					'AI Agent': [task(0, 40)],
+					'OpenAI Chat Model': [
+						modelTask(100, { promptTokens: 12, completionTokens: 5, totalTokens: 17 }),
+					],
+				});
+
+				expect(children.map((span) => span.name)).toEqual(['AI Agent', 'OpenAI Chat Model']);
+				for (const span of children) {
+					expect(attributesOf(span)).not.toHaveProperty('langfuse.observation.output');
+					expect(attributesOf(span)).toHaveProperty('langfuse.observation.metadata');
+				}
+				expect(children[0].endTimeUnixNano).toBe(String(BigInt(START + 40) * 1_000_000n));
+				expect(attributesOf(children[1])).toMatchObject({
+					'langfuse.observation.type': 'generation',
+					'langfuse.observation.model.name': 'gpt-4o',
+				});
+				expect(JSON.stringify(children)).not.toContain('"ok":true');
+				expect(JSON.stringify(children)).not.toContain('"text":"hi"');
+			});
+
+			test.each([[undefined], [false], ['true'], [1]])(
+				'omits node outputs when includeNodeOutputs is %s',
+				async (includeNodeOutputs) => {
+					const { run, children } = await reportWith(
+						{ 'AI Agent': [task(0, 10)] },
+						{ langfuseReporting: { includeNodeOutputs } },
+					);
+
+					expect(run.includeNodeOutputs).toBe(false);
+					expect(attributesOf(children[0])).not.toHaveProperty('langfuse.observation.output');
+				},
+			);
+
+			test('includes the first output item of each node when includeNodeOutputs is true', async () => {
+				const { run, children } = await reportWith({ 'AI Agent': [task(0, 10)] }, withOutputs);
+
+				expect(run.includeNodeOutputs).toBe(true);
+				expect(JSON.parse(attributesOf(children[0])['langfuse.observation.output'])).toEqual({
+					ok: true,
+				});
+			});
+
+			describe('trace size budget', () => {
+				const MIB = 1024 * 1024;
+				const bigText = 'y'.repeat(90 * 1024);
+				const usage = { promptTokens: 3, completionTokens: 4, totalTokens: 7 };
+
+				const bigGenerations = (count: number): IRunData => ({
+					'OpenAI Chat Model': Array.from({ length: count }, (_, index) =>
+						task(index, 7, {
+							data: {
+								ai_languageModel: [[{ json: { response: { text: bigText }, tokenUsage: usage } }]],
+							},
+						}),
+					),
+				});
+
+				const budgetWarnings = () =>
+					vi
+						.mocked(logger.warn)
+						.mock.calls.filter(([message]) => String(message).includes('size budget'));
+
+				test('keeps every child up to the cap but drops outputs after 4 MiB, keeping timings and usage', async () => {
+					const { children } = await reportWith(bigGenerations(210), withOutputs);
+
+					expect(children).toHaveLength(200);
+
+					const hasOutput = children.map((span) =>
+						Object.hasOwn(attributesOf(span), 'langfuse.observation.output'),
+					);
+					const kept = hasOutput.filter(Boolean).length;
+					expect(kept).toBeGreaterThan(10);
+					expect(kept).toBeLessThan(100);
+					expect(hasOutput.slice(0, kept).every(Boolean)).toBe(true);
+					expect(hasOutput.slice(kept).some(Boolean)).toBe(false);
+
+					children.forEach((span, index) => {
+						const attributes = attributesOf(span);
+						expect(span.startTimeUnixNano).toBe(String(BigInt(START + index) * 1_000_000n));
+						expect(span.endTimeUnixNano).toBe(String(BigInt(START + index + 7) * 1_000_000n));
+						expect(attributes['langfuse.observation.type']).toBe('generation');
+						expect(JSON.parse(attributes['langfuse.observation.usage_details'])).toEqual({
+							input: 3,
+							output: 4,
+							total: 7,
+						});
+						expect(JSON.parse(attributes['langfuse.observation.metadata']).run_index).toBe(index);
+					});
+
+					const [traceCall] = callsTo('/api/public/otel/v1/traces');
+					expect(Buffer.byteLength(traceCall.init.body as string)).toBeLessThanOrEqual(
+						4 * MIB + 200 * 1024,
+					);
+				});
+
+				test('warns once per run however many cases exceed the budget', async () => {
+					const { run } = await reportWith(bigGenerations(100), withOutputs);
+					await reportSuccess(run, { executionData: execution(bigGenerations(100)) });
+
+					expect(callsTo('/api/public/otel/v1/traces')).toHaveLength(2);
+					expect(run.budgetExceededCases).toBe(2);
+					expect(budgetWarnings()).toHaveLength(1);
+				});
+
+				test('keeps every output and does not warn below the budget', async () => {
+					const { children } = await reportWith(bigGenerations(10), withOutputs);
+
+					expect(children).toHaveLength(10);
+					for (const span of children) {
+						expect(attributesOf(span)).toHaveProperty('langfuse.observation.output');
+					}
+					expect(budgetWarnings()).toHaveLength(0);
+				});
+
+				test('never drops outputs when node outputs are not requested, even with a huge run', async () => {
+					const { children } = await reportWith(bigGenerations(200));
+
+					expect(children).toHaveLength(200);
+					expect(budgetWarnings()).toHaveLength(0);
+					const [traceCall] = callsTo('/api/public/otel/v1/traces');
+					expect(Buffer.byteLength(traceCall.init.body as string)).toBeLessThan(MIB);
+				});
+
+				const attributeBytesOf = (spans: OtlpSpan[]) =>
+					spans.reduce(
+						(total, span) =>
+							total +
+							span.attributes.reduce(
+								(sum, entry) => sum + Buffer.byteLength(JSON.stringify(entry)),
+								0,
+							),
+						0,
+					);
+
+				test.each([
+					['90 KiB', 90],
+					['30 KiB', 30],
+				])(
+					'bounds the whole trace when every child carries a %s fixed attribute',
+					async (_label, runNameKiB) => {
+						const { run, children } = await reportWith(bigGenerations(150), {
+							langfuseReporting: {
+								includeNodeOutputs: true,
+								runName: 'n'.repeat(runNameKiB * 1024),
+							},
+						});
+
+						const spans = exportedSpans();
+						expect(spans).toHaveLength(children.length + 1);
+						expect(children.length).toBeGreaterThan(0);
+						expect(attributeBytesOf(spans)).toBeLessThanOrEqual(4 * MIB);
+						expect(run.budgetExceededCases).toBe(1);
+						expect(budgetWarnings()).toHaveLength(1);
+					},
+				);
+
+				test('reserves the fixed attributes of every child before granting any output', async () => {
+					const { children } = await reportWith(bigGenerations(100), {
+						langfuseReporting: { includeNodeOutputs: true, runName: 'n'.repeat(30 * 1024) },
+					});
+
+					expect(children).toHaveLength(100);
+					const withOutput = children.filter((span) =>
+						Object.hasOwn(attributesOf(span), 'langfuse.observation.output'),
+					).length;
+					expect(withOutput).toBeGreaterThan(0);
+					expect(withOutput).toBeLessThan(100);
+					expect(attributeBytesOf(exportedSpans())).toBeLessThanOrEqual(4 * MIB);
+				});
+
+				test('counts the root span attributes against the budget', async () => {
+					const run = await reporter.startRun({
+						testRun: { id: TEST_RUN_ID },
+						workflow: { ...workflow, nodes },
+						triggerNode: buildTriggerNode(withOutputs),
+						testCases: [buildRow('item-1')],
+						userId: 'user-1',
+					});
+					assert(run, 'expected a reporter run');
+					await reportSuccess(run, {
+						outputs: { answer: 'z'.repeat(99 * 1024) },
+						executionData: execution(bigGenerations(100)),
+					});
+
+					const [root, ...children] = exportedSpans();
+					const kept = children.filter((span) =>
+						Object.hasOwn(attributesOf(span), 'langfuse.observation.output'),
+					).length;
+					const [traceCall] = callsTo('/api/public/otel/v1/traces');
+					expect(root.parentSpanId).toBeUndefined();
+					expect(kept).toBeLessThan(100);
+					expect(Buffer.byteLength(traceCall.init.body as string)).toBeLessThanOrEqual(
+						4 * MIB + 100 * 1024,
+					);
+				});
+			});
+
+			test('gives every child span the linking keys and the same experiment metadata as the root', async () => {
+				const { run, root, children } = await reportWith(
+					{ 'AI Agent': [task(0, 10), task(20, 10)] },
+					{ langfuseReporting: { runMetadata: '{"git_sha":"abc"}', environment: 'staging' } },
+				);
+
+				const rootMetadata = attributesOf(root)['langfuse.experiment.metadata'];
+				expect(JSON.parse(rootMetadata)).toMatchObject({ git_sha: 'abc' });
+				expect(children).toHaveLength(2);
+				for (const child of children) {
+					expect(attributesOf(child)['langfuse.experiment.metadata']).toBe(rootMetadata);
+					expect(Object.keys(attributesOf(child)).sort()).toEqual(
+						[
+							'langfuse.environment',
+							'langfuse.experiment.dataset.id',
+							'langfuse.experiment.id',
+							'langfuse.experiment.item.id',
+							'langfuse.experiment.item.root_observation_id',
+							'langfuse.experiment.metadata',
+							'langfuse.experiment.name',
+							'langfuse.observation.metadata',
+						].sort(),
+					);
+					expect(attributesOf(child)['langfuse.experiment.id']).toBe(run.experimentId);
+				}
+			});
+
+			test('puts the experiment metadata on the root exactly once', async () => {
+				const { root } = await reportWith({ 'AI Agent': [task(0, 10)] });
+
+				expect(
+					root.attributes.filter(({ key }) => key === 'langfuse.experiment.metadata'),
+				).toHaveLength(1);
+			});
+
+			describe('node errors', () => {
+				const failing = (message: string) =>
+					task(0, 5, {
+						executionStatus: 'error',
+						error: { message } as never,
+						data: undefined,
+					});
+
+				test('truncates a long error to 4 KiB and sends it once, with a short status message', async () => {
+					const message = `BOOM${'é'.repeat(20_000)}`;
+					const { children } = await reportWith({ 'AI Agent': [failing(message)] }, withOutputs);
+
+					const [span] = children;
+					const text = attributesOf(span)['langfuse.observation.status_message'];
+					expect(Buffer.byteLength(text)).toBeLessThanOrEqual(4096);
+					expect(text.startsWith('BOOMéé')).toBe(true);
+					expect(text.endsWith('... [truncated by n8n]')).toBe(true);
+					expect(text).not.toContain('�');
+					expect(span.status).toEqual({ code: 2, message: 'Node execution failed' });
+					expect(JSON.stringify(span).split('BOOMéé')).toHaveLength(2);
+				});
+
+				test('keeps an error of at most 4 KiB intact', async () => {
+					const message = `BOOM${'x'.repeat(4096 - 4)}`;
+					const { children } = await reportWith({ 'AI Agent': [failing(message)] }, withOutputs);
+
+					expect(attributesOf(children[0])['langfuse.observation.status_message']).toBe(message);
+				});
+
+				const apiFailure = () =>
+					task(0, 5, {
+						executionStatus: 'error',
+						error: {
+							name: 'NodeApiError',
+							httpCode: '503',
+							message: 'customer jane@example.com rejected',
+						} as never,
+						data: undefined,
+					});
+
+				test('sends only the error class and HTTP code unless node outputs are included', async () => {
+					const { children } = await reportWith({ 'AI Agent': [apiFailure()] });
+
+					const [span] = children;
+					expect(attributesOf(span)).toMatchObject({
+						'langfuse.observation.level': 'ERROR',
+						'langfuse.observation.status_message': 'NodeApiError HTTP 503',
+					});
+					expect(span.status).toEqual({ code: 2, message: 'Node execution failed' });
+					expect(JSON.stringify(span)).not.toContain('jane@example.com');
+				});
+
+				test('sends the error message when node outputs are included', async () => {
+					const { children } = await reportWith({ 'AI Agent': [apiFailure()] }, withOutputs);
+
+					expect(attributesOf(children[0])['langfuse.observation.status_message']).toBe(
+						'customer jane@example.com rejected',
+					);
+					expect(children[0].status).toEqual({ code: 2, message: 'Node execution failed' });
+				});
+
+				test.each([
+					[
+						'a name without a code',
+						{ name: 'NodeOperationError', message: 'x' },
+						'NodeOperationError',
+					],
+					['a code without a name', { httpCode: 429, message: 'x' }, 'HTTP 429'],
+					[
+						'a code that is not three digits',
+						{ name: 'Error', httpCode: 'secret', message: 'x' },
+						'Error',
+					],
+				])('sends %s by default', async (_label, error, expected) => {
+					const { children } = await reportWith({
+						'AI Agent': [
+							task(0, 5, { executionStatus: 'error', error: error as never, data: undefined }),
+						],
+					});
+
+					expect(attributesOf(children[0])['langfuse.observation.status_message']).toBe(expected);
+				});
+
+				test('sends no status message for an error without text', async () => {
+					const { children } = await reportWith({
+						'AI Agent': [
+							task(0, 5, { executionStatus: 'error', error: {} as never, data: undefined }),
+						],
+					});
+
+					expect(attributesOf(children[0])['langfuse.observation.level']).toBe('ERROR');
+					expect(attributesOf(children[0])).not.toHaveProperty(
+						'langfuse.observation.status_message',
+					);
+					expect(children[0].status.code).toBe(2);
+				});
+			});
+
+			describe('estimated token usage', () => {
+				const estimateTask = (offsetMs: number) =>
+					task(offsetMs, 10, {
+						data: {
+							ai_languageModel: [
+								[
+									{
+										json: {
+											tokenUsageEstimate: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
+										},
+									},
+								],
+							],
+						},
+					});
+
+				test('flags usage_estimated in the observation metadata when the usage is an estimate', async () => {
+					const { children } = await reportWith({ 'Dynamic Model': [estimateTask(0)] });
+
+					expect(JSON.parse(attributesOf(children[0])['langfuse.observation.metadata'])).toEqual({
+						node_type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						node_type_version: 1.2,
+						run_index: 0,
+						usage_estimated: true,
+					});
+				});
+
+				test('does not flag measured usage, a node without usage or an estimate shadowed by real usage', async () => {
+					const { children } = await reportWith({
+						'AI Agent': [task(0, 10)],
+						'OpenAI Chat Model': [
+							modelTask(100, { promptTokens: 12, completionTokens: 5, totalTokens: 17 }),
+							task(200, 10, {
+								data: {
+									ai_languageModel: [
+										[
+											{
+												json: {
+													tokenUsage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+													tokenUsageEstimate: {
+														promptTokens: 9,
+														completionTokens: 9,
+														totalTokens: 18,
+													},
+												},
+											},
+										],
+									],
+								},
+							}),
+						],
+					});
+
+					expect(children).toHaveLength(3);
+					for (const span of children) {
+						expect(
+							JSON.parse(attributesOf(span)['langfuse.observation.metadata']),
+						).not.toHaveProperty('usage_estimated');
+					}
+				});
+			});
+
+			describe('unusable start times', () => {
+				const rootStart = String(BigInt(START) * 1_000_000n);
+
+				const orderOf = (children: OtlpSpan[]) =>
+					children.map((span) => {
+						const { run_index } = JSON.parse(attributesOf(span)['langfuse.observation.metadata']);
+						return `${span.name}#${run_index}`;
+					});
+
+				test.each([
+					[0],
+					[Number.NaN],
+					[undefined],
+					[-5],
+					[Infinity],
+					['soon' as unknown as number],
+				])(
+					'falls back to the root start when startTime is %s, keeping the duration',
+					async (startTime) => {
+						const { children } = await reportWith({
+							'AI Agent': [task(900, 40, { startTime: startTime as number })],
+						});
+
+						expect(children[0].startTimeUnixNano).toBe(rootStart);
+						expect(children[0].endTimeUnixNano).toBe(String(BigInt(START + 40) * 1_000_000n));
+					},
+				);
+
+				test('sorts NaN-safely and deterministically whatever the key order of the run data', async () => {
+					const entries = (): Array<[string, ITaskData[]]> => [
+						[
+							'AI Agent',
+							[task(500, 10), task(0, 10, { startTime: Number.NaN, executionIndex: 3 })],
+						],
+						[
+							'Evaluation Trigger',
+							[
+								task(0, 10, { startTime: 0, executionIndex: 1 }),
+								task(200, 10, { executionIndex: 2 }),
+							],
+						],
+						[
+							'OpenAI Chat Model',
+							[task(0, 10, { startTime: undefined as never, executionIndex: Number.NaN })],
+						],
+						['Dynamic Model', [task(100, 10)]],
+					];
+
+					const forward = await reportWith(Object.fromEntries(entries()));
+					requestMock.mockClear();
+					const reversed = await reportWith(Object.fromEntries(entries().reverse()));
+
+					expect(orderOf(reversed.children)).toEqual(orderOf(forward.children));
+					expect(orderOf(forward.children)).toEqual([
+						'Evaluation Trigger#0',
+						'AI Agent#1',
+						'OpenAI Chat Model#0',
+						'Dynamic Model#0',
+						'Evaluation Trigger#1',
+						'AI Agent#0',
+					]);
+					expect(forward.children[0].startTimeUnixNano).toBe(rootStart);
+				});
+
+				test('keeps the earliest usable runs when the cap applies and invalid times sort first', async () => {
+					const { children } = await reportWith({
+						'AI Agent': [
+							...Array.from({ length: 200 }, (_, index) => task(index + 1, 1)),
+							task(0, 1, { startTime: Number.NaN, executionIndex: 0 }),
+						],
+					});
+
+					expect(children).toHaveLength(200);
+					expect(children[0].startTimeUnixNano).toBe(rootStart);
+					expect(orderOf(children)[0]).toBe('AI Agent#200');
+				});
+			});
+
+			test('adds no child spans when the case has no execution data or run data', async () => {
+				const run = await startedRun();
+
+				await reportSuccess(run);
+				await reportSuccess(run, { executionData: { data: { resultData: {} } } });
+
+				expect(exportedSpans()).toHaveLength(2);
+			});
 		});
 
 		test('checks the pending cap before building spans', async () => {

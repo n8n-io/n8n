@@ -876,17 +876,48 @@ describe('Evaluation Trigger Node', () => {
 			expect(names).not.toContain('langfuseReporting');
 		});
 
-		test('reports runs by default and lists the reporting options', () => {
+		test('reports runs by default', () => {
 			const toggle = description.properties.find(({ name }) => name === 'reportToLangfuse');
-			const reporting = description.properties.find(({ name }) => name === 'langfuseReporting');
 
 			expect(toggle).toMatchObject({ type: 'boolean', default: true });
-			expect(((reporting?.options ?? []) as INodeProperties[]).map(({ name }) => name)).toEqual([
-				'environment',
-				'runDescription',
-				'runMetadata',
-				'runName',
-			]);
+		});
+
+		describe('langfuse reporting options', () => {
+			const reportingOptions = () => {
+				const reporting = description.properties.find(
+					(property) => property.name === 'langfuseReporting',
+				);
+				return (reporting?.options ?? []) as INodeProperties[];
+			};
+
+			test('offers node outputs as an opt-in boolean, off by default', () => {
+				const option = reportingOptions().find(({ name }) => name === 'includeNodeOutputs');
+
+				expect(option).toMatchObject({
+					displayName: 'Include Node Outputs',
+					type: 'boolean',
+					default: false,
+					description:
+						"Whether to include each node's first output item in its observation. This sends node data to Langfuse.",
+				});
+			});
+
+			test('keeps node spans on by default, independent from node outputs', () => {
+				const option = reportingOptions().find(({ name }) => name === 'includeNodeSpans');
+
+				expect(option).toMatchObject({ type: 'boolean', default: true });
+			});
+
+			test('lists the reporting options', () => {
+				expect(reportingOptions().map(({ name }) => name)).toEqual([
+					'environment',
+					'includeNodeOutputs',
+					'includeNodeSpans',
+					'runDescription',
+					'runMetadata',
+					'runName',
+				]);
+			});
 		});
 
 		test('offers the three sources on the trigger', () => {

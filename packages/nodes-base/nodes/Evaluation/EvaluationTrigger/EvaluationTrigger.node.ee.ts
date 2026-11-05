@@ -243,6 +243,22 @@ export class EvaluationTrigger implements INodeType {
 							'Langfuse environment for the experiment traces. Lowercase letters, digits, hyphens and underscores only, and it must not start with "langfuse".',
 					},
 					{
+						displayName: 'Include Node Outputs',
+						name: 'includeNodeOutputs',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to include each node's first output item in its observation. This sends node data to Langfuse.",
+					},
+					{
+						displayName: 'Include Node Spans',
+						name: 'includeNodeSpans',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to add one child observation per executed node, with LLM token usage',
+					},
+					{
 						displayName: 'Run Description',
 						name: 'runDescription',
 						type: 'string',
