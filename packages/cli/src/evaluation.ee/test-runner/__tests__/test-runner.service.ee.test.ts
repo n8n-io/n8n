@@ -2652,20 +2652,19 @@ describe('TestRunnerService', () => {
 			test('reports a TestCaseExecutionError with its own code', async () => {
 				setupHappyPathMocks(1);
 				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				const invalidMetricsExecution = {
+					data: {
+						resultData: {
+							runData: {
+								[METRICS_NODE_NAME]: [
+									{ data: { [NodeConnectionTypes.Main]: [[{ json: { score: 'abc' } }]] } },
+								],
+							},
+						},
+					},
+				} as unknown as IRun;
 				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) =>
-					executionId === 'dataset-exec'
-						? buildDatasetExecution(1)
-						: ({
-								data: {
-									resultData: {
-										runData: {
-											[METRICS_NODE_NAME]: [
-												{ data: { [NodeConnectionTypes.Main]: [[{ json: { score: 'abc' } }]] } },
-											],
-										},
-									},
-								},
-							} as unknown as IRun),
+					executionId === 'dataset-exec' ? buildDatasetExecution(1) : invalidMetricsExecution,
 				);
 
 				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
@@ -2677,6 +2676,52 @@ describe('TestRunnerService', () => {
 						status: 'error',
 						errorCode: TestCaseExecutionErrorCode.INVALID_METRICS,
 						executionId: 'case-exec-1',
+						executionData: invalidMetricsExecution,
+					}),
+				);
+			});
+
+			test('reports the execution data of a case that ran and then failed with an unknown error', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				const caseExecution = buildCaseExecution(0.5);
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) =>
+					executionId === 'dataset-exec' ? buildDatasetExecution(1) : caseExecution,
+				);
+				testCaseExecutionRepository.update.mockImplementationOnce(async () => {
+					throw new Error('db boom');
+				});
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(1);
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({
+						status: 'error',
+						errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
+						executionId: 'case-exec-1',
+						executionData: caseExecution,
+					}),
+				);
+			});
+
+			test('passes no execution data when the failure happens before the case ran', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+					if (executionId === 'dataset-exec') return buildDatasetExecution(1);
+					throw new Error('run boom');
+				});
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(1);
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({
+						errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
+						executionData: undefined,
 					}),
 				);
 			});

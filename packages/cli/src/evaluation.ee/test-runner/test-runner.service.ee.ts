@@ -987,6 +987,7 @@ export class TestRunnerService {
 								// Hoisted so the catch can link a failed case to its execution:
 								// metric-extraction errors happen after the execution ran.
 								let testCaseExecutionId: string | undefined;
+								let caseExecutionData: IRun | undefined;
 								const reportCase = (
 									params: Omit<
 										ReportCaseParams,
@@ -1028,6 +1029,7 @@ export class TestRunnerService {
 
 									const { executionData: testCaseExecution } = testCaseResult;
 									testCaseExecutionId = testCaseResult.executionId;
+									caseExecutionData = testCaseExecution;
 
 									assert(testCaseExecution);
 									assert(testCaseExecutionId);
@@ -1153,7 +1155,13 @@ export class TestRunnerService {
 											errorCode: e.code,
 											errorDetails: e.extra as IDataObject,
 										});
-										reportCase({ status: 'error', errorCode: e.code, runAt, completedAt });
+										reportCase({
+											status: 'error',
+											errorCode: e.code,
+											runAt,
+											completedAt,
+											executionData: caseExecutionData,
+										});
 									} else {
 										await this.testCaseExecutionRepository.update(seededCase.id, {
 											executionId: testCaseExecutionId,
@@ -1168,6 +1176,7 @@ export class TestRunnerService {
 												errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
 												runAt,
 												completedAt,
+												executionData: caseExecutionData,
 											});
 										}
 										this.errorReporter.error(e);

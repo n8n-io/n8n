@@ -5,16 +5,19 @@ import { Service } from '@n8n/di';
 import { createHash, randomBytes } from 'node:crypto';
 import {
 	assertCredentialAllowsUrl,
+	NodeConnectionTypes,
 	type IDataObject,
 	type INode,
 	type INodeExecutionData,
 	type IRun,
+	type ITaskData,
 	type IWorkflowBase,
 } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { N8N_VERSION } from '@/constants';
 import { CredentialsHelper } from '@/credentials-helper';
+import { extractTokenUsage } from '@/evaluation.ee/test-runner/utils.ee';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -22,9 +25,15 @@ const LANGFUSE_CREDENTIAL_TYPE = 'langfuseApi';
 const DEFAULT_HOST = 'https://cloud.langfuse.com';
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_ATTRIBUTE_BYTES = 100 * 1024;
+const MAX_RUN_METADATA_BYTES = 8 * 1024;
 const MAX_RESPONSE_BODY_BYTES = 1024 * 1024;
 const MAX_CONCURRENT_SENDS = 4;
 const MAX_PENDING_CASES = 1000;
+const MAX_CHILD_SPANS = 200;
+const MAX_TRACE_BYTES = 4 * 1024 * 1024;
+const MAX_NODE_ERROR_BYTES = 4 * 1024;
+const MAX_ERROR_NAME_LENGTH = 100;
+const NODE_ERROR_STATUS_MESSAGE = 'Node execution failed';
 const TRUNCATION_MARKER = '... [truncated by n8n]';
 const ENVIRONMENT_PATTERN = /^(?!langfuse)[a-z0-9-_]+$/;
 const MAX_ENVIRONMENT_LENGTH = 40;
@@ -34,6 +43,7 @@ const STATUS_CODE_ERROR = 2;
 const ROOT_SPAN_NAME = 'n8n-evaluation-item';
 const SCOPE_NAME = 'n8n-evaluation';
 const SUCCESS_RATE_METRIC = 'n8n_success_rate';
+const OBSERVATION_TYPE_GENERATION = 'generation';
 
 interface OtlpKeyValue {
 	key: string;
@@ -52,12 +62,26 @@ export interface OtlpSpan {
 	status: { code: number; message?: string };
 }
 
+interface TraceBudget {
+	usedBytes: number;
+	exceeded: boolean;
+}
+
+interface NodeSpanPlan {
+	nodeName: string;
+	task: ITaskData;
+	startMs: number;
+	attributes: OtlpKeyValue[];
+	errored: boolean;
+}
+
 export interface ChildSpanParent {
 	traceId: string;
 	spanId: string;
 	startTimeUnixNano: string;
 	endTimeUnixNano: string;
 	sharedAttributes: OtlpKeyValue[];
+	attributeBytes: number;
 }
 
 interface LangfuseScore {
@@ -92,9 +116,14 @@ export interface ReporterRun {
 	description?: string;
 	environment?: string;
 	metadata: IDataObject;
+	includeNodeSpans: boolean;
+	includeNodeOutputs: boolean;
+	nodesByName: Map<string, INode>;
 	pending: Set<Promise<void>>;
 	sendLimit: ReturnType<typeof pLimit>;
 	droppedCases: number;
+	cappedCases: number;
+	budgetExceededCases: number;
 }
 
 export interface StartRunParams {
@@ -135,11 +164,11 @@ const toJsonString = (value: unknown) => JSON.stringify(value) ?? 'null';
 
 const toNanos = (date: Date) => (BigInt(date.getTime()) * BigInt(1_000_000)).toString();
 
-const truncate = (value: string) => {
+const truncate = (value: string, limit = MAX_ATTRIBUTE_BYTES) => {
 	const bytes = Buffer.from(value);
-	if (bytes.length <= MAX_ATTRIBUTE_BYTES) return value;
+	if (bytes.length <= limit) return value;
 
-	let end = MAX_ATTRIBUTE_BYTES - Buffer.byteLength(TRUNCATION_MARKER);
+	let end = limit - Buffer.byteLength(TRUNCATION_MARKER);
 	while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
 	return `${bytes.subarray(0, end).toString('utf8')}${TRUNCATION_MARKER}`;
 };
@@ -149,8 +178,70 @@ const attribute = (key: string, value: string, { truncated = true } = {}): OtlpK
 	value: { stringValue: truncated ? truncate(value) : value },
 });
 
+const attributeBytes = (attributes: OtlpKeyValue[]) =>
+	attributes.reduce((total, entry) => total + Buffer.byteLength(JSON.stringify(entry)), 0);
+
 const withoutLangfuseContext = (value: IDataObject | undefined): IDataObject =>
 	Object.fromEntries(Object.entries(value ?? {}).filter(([key]) => key !== '_langfuse'));
+
+const msToNanos = (ms: number) => (BigInt(Math.trunc(ms)) * BigInt(1_000_000)).toString();
+
+const isUsableStartTime = (startTime: unknown): startTime is number =>
+	typeof startTime === 'number' && Number.isFinite(startTime) && startTime > 0;
+
+const finiteOr = (value: unknown, fallback: number) =>
+	typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const describeNodeError = (task: ITaskData, includeMessage: boolean) => {
+	const { error, redactedError } = task;
+	if (!error && !redactedError) return undefined;
+	if (!redactedError && includeMessage && error?.message) {
+		return truncate(error.message, MAX_NODE_ERROR_BYTES);
+	}
+
+	const { name, httpCode } = redactedError
+		? { name: redactedError.type, httpCode: redactedError.httpCode }
+		: (error as { name?: unknown; httpCode?: unknown });
+	const parts = [
+		typeof name === 'string' && name ? name.slice(0, MAX_ERROR_NAME_LENGTH) : undefined,
+		(typeof httpCode === 'string' || typeof httpCode === 'number') && /^\d{3}$/.test(`${httpCode}`)
+			? `HTTP ${httpCode}`
+			: undefined,
+	].filter((part) => part !== undefined);
+
+	return parts.length > 0 ? parts.join(' ') : undefined;
+};
+
+const wasUsageEstimated = (task: ITaskData) => {
+	const json = task.data?.[NodeConnectionTypes.AiLanguageModel]?.[0]?.[0]?.json;
+	return json?.tokenUsage === undefined || json.tokenUsage === null;
+};
+
+const readModelName = (node: INode | undefined): string | undefined => {
+	const parameters = node?.parameters;
+	if (!parameters) return undefined;
+
+	const options: IDataObject = isPlainObject(parameters.options)
+		? (parameters.options as IDataObject)
+		: {};
+	for (const candidate of [parameters.model, parameters.modelName, options.model]) {
+		const value = isPlainObject(candidate) ? candidate.value : candidate;
+		if (typeof value !== 'string') continue;
+
+		const name = value.trim();
+		if (name && !name.startsWith('=')) return name;
+	}
+	return undefined;
+};
+
+const firstOutputItem = (task: ITaskData): INodeExecutionData | undefined => {
+	const outputs = task.data ?? {};
+	for (const connection of [outputs.main, ...Object.values(outputs)]) {
+		const item = connection?.find((items) => items && items.length > 0)?.[0];
+		if (item) return item;
+	}
+	return undefined;
+};
 
 const isSuccess = (status: number) => status >= 200 && status < 300;
 
@@ -227,9 +318,14 @@ export class LangfuseExperimentReporter {
 				description,
 				environment: this.validateEnvironment(reporting.environment, testRun.id),
 				metadata,
+				includeNodeSpans: reporting.includeNodeSpans !== false,
+				includeNodeOutputs: reporting.includeNodeOutputs === true,
+				nodesByName: new Map(workflow.nodes.map((node) => [node.name, node])),
 				pending: new Set(),
 				sendLimit: pLimit(MAX_CONCURRENT_SENDS),
 				droppedCases: 0,
+				cappedCases: 0,
+				budgetExceededCases: 0,
 			};
 		} catch (error) {
 			this.logger.warn('Failed to start Langfuse experiment reporting', {
@@ -269,9 +365,10 @@ export class LangfuseExperimentReporter {
 				spanId,
 				startTimeUnixNano: rootSpan.startTimeUnixNano,
 				endTimeUnixNano: rootSpan.endTimeUnixNano,
-				sharedAttributes: this.buildSharedAttributes(run, itemContext.itemId, spanId),
+				sharedAttributes: this.buildLinkingAttributes(run, itemContext.itemId, spanId),
+				attributeBytes: attributeBytes(rootSpan.attributes),
 			};
-			const spans = [rootSpan, ...this.buildChildSpans(params.executionData, parent)];
+			const spans = [rootSpan, ...this.buildChildSpans(run, params.executionData, parent)];
 			const scores = this.buildItemScores(
 				run,
 				itemContext.itemId,
@@ -331,10 +428,188 @@ export class LangfuseExperimentReporter {
 	}
 
 	protected buildChildSpans(
-		_executionData: IRun | undefined,
-		_parent: ChildSpanParent,
+		run: ReporterRun,
+		executionData: IRun | undefined,
+		parent: ChildSpanParent,
 	): OtlpSpan[] {
-		return [];
+		const runData = executionData?.data?.resultData?.runData;
+		if (!run.includeNodeSpans || !runData) return [];
+
+		const rootStartMs = Number(BigInt(parent.startTimeUnixNano) / BigInt(1_000_000));
+
+		const nodeRuns = Object.entries(runData)
+			.flatMap(([nodeName, tasks]) =>
+				tasks.map((task, runIndex) => ({
+					nodeName,
+					task,
+					runIndex,
+					startMs: isUsableStartTime(task.startTime) ? task.startTime : rootStartMs,
+				})),
+			)
+			.sort(
+				(a, b) =>
+					a.startMs - b.startMs ||
+					finiteOr(a.task.executionIndex, Number.MAX_SAFE_INTEGER) -
+						finiteOr(b.task.executionIndex, Number.MAX_SAFE_INTEGER) ||
+					(a.nodeName < b.nodeName ? -1 : a.nodeName > b.nodeName ? 1 : 0) ||
+					a.runIndex - b.runIndex,
+			);
+
+		if (nodeRuns.length > MAX_CHILD_SPANS) {
+			if (run.cappedCases++ === 0) {
+				this.logger.warn('Langfuse node spans capped; dropping further node runs of a case', {
+					testRunId: run.testRunId,
+					limit: MAX_CHILD_SPANS,
+				});
+			}
+			nodeRuns.length = MAX_CHILD_SPANS;
+		}
+
+		const tokenUsage = extractTokenUsage(runData);
+		const budget: TraceBudget = { usedBytes: parent.attributeBytes, exceeded: false };
+
+		const nodeSpans: NodeSpanPlan[] = [];
+		for (const { nodeName, task, runIndex, startMs } of nodeRuns) {
+			const { attributes, errored } = this.buildNodeAttributes(
+				run,
+				parent,
+				nodeName,
+				task,
+				runIndex,
+				tokenUsage[`${nodeName}__${runIndex}`],
+			);
+			const bytes = attributeBytes(attributes);
+
+			if (budget.usedBytes + bytes > MAX_TRACE_BYTES) {
+				this.markBudgetExceeded(run, budget, 'spans');
+				break;
+			}
+
+			budget.usedBytes += bytes;
+			nodeSpans.push({ nodeName, task, startMs, attributes, errored });
+		}
+
+		return nodeSpans.map((plan) => this.buildNodeSpan(run, parent, budget, plan));
+	}
+
+	private buildNodeAttributes(
+		run: ReporterRun,
+		parent: ChildSpanParent,
+		nodeName: string,
+		task: ITaskData,
+		runIndex: number,
+		usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined,
+	): { attributes: OtlpKeyValue[]; errored: boolean } {
+		const node = run.nodesByName.get(nodeName);
+		const errored =
+			task.executionStatus === 'error' ||
+			task.error !== undefined ||
+			task.redactedError !== undefined;
+		const errorText = describeNodeError(task, run.includeNodeOutputs);
+		const model = usage ? readModelName(node) : undefined;
+
+		const attributes: OtlpKeyValue[] = [
+			...parent.sharedAttributes,
+			...(usage
+				? [
+						attribute('langfuse.observation.type', OBSERVATION_TYPE_GENERATION),
+						...(model ? [attribute('langfuse.observation.model.name', model)] : []),
+						attribute(
+							'langfuse.observation.usage_details',
+							toJsonString({
+								input: usage.promptTokens,
+								output: usage.completionTokens,
+								total: usage.totalTokens,
+							}),
+							{ truncated: false },
+						),
+					]
+				: []),
+			attribute(
+				'langfuse.observation.metadata',
+				toJsonString({
+					node_type: node?.type,
+					node_type_version: node?.typeVersion,
+					run_index: runIndex,
+					...(usage && wasUsageEstimated(task) ? { usage_estimated: true } : {}),
+				}),
+				{ truncated: false },
+			),
+			...(errored
+				? [
+						attribute('langfuse.observation.level', 'ERROR'),
+						...(errorText
+							? [
+									attribute('langfuse.observation.status_message', errorText, {
+										truncated: false,
+									}),
+								]
+							: []),
+					]
+				: []),
+		];
+
+		return { attributes, errored };
+	}
+
+	private buildNodeSpan(
+		run: ReporterRun,
+		parent: ChildSpanParent,
+		budget: TraceBudget,
+		{ nodeName, task, startMs, attributes, errored }: NodeSpanPlan,
+	): OtlpSpan {
+		const duration = Math.max(0, finiteOr(task.executionTime, 0));
+		const outputAttribute = this.buildNodeOutputAttribute(run, budget, task);
+
+		return {
+			traceId: parent.traceId,
+			spanId: randomBytes(8).toString('hex'),
+			parentSpanId: parent.spanId,
+			name: nodeName,
+			kind: SPAN_KIND_INTERNAL,
+			startTimeUnixNano: msToNanos(startMs),
+			endTimeUnixNano: msToNanos(startMs + duration),
+			attributes: outputAttribute ? [...attributes, outputAttribute] : attributes,
+			status: errored
+				? { code: STATUS_CODE_ERROR, message: NODE_ERROR_STATUS_MESSAGE }
+				: { code: STATUS_CODE_OK },
+		};
+	}
+
+	private buildNodeOutputAttribute(
+		run: ReporterRun,
+		budget: TraceBudget,
+		task: ITaskData,
+	): OtlpKeyValue | undefined {
+		if (!run.includeNodeOutputs || budget.exceeded) return undefined;
+
+		const output = firstOutputItem(task);
+		if (!output) return undefined;
+
+		const outputAttribute = attribute(
+			'langfuse.observation.output',
+			toJsonString(withoutLangfuseContext(output.json)),
+		);
+		const bytes = attributeBytes([outputAttribute]);
+		if (budget.usedBytes + bytes <= MAX_TRACE_BYTES) {
+			budget.usedBytes += bytes;
+			return outputAttribute;
+		}
+
+		this.markBudgetExceeded(run, budget, 'outputs');
+		return undefined;
+	}
+
+	private markBudgetExceeded(run: ReporterRun, budget: TraceBudget, dropped: 'spans' | 'outputs') {
+		if (budget.exceeded) return;
+
+		budget.exceeded = true;
+		if (run.budgetExceededCases++ === 0) {
+			this.logger.warn(`Langfuse node ${dropped} dropped; the trace exceeds its size budget`, {
+				testRunId: run.testRunId,
+				limitBytes: MAX_TRACE_BYTES,
+			});
+		}
 	}
 
 	private readRowContext(testCase: INodeExecutionData | undefined): LangfuseRowContext | undefined {
@@ -461,7 +736,7 @@ export class LangfuseExperimentReporter {
 		};
 		const metadata = { ...userMetadata, ...n8nMetadata };
 
-		if (Buffer.byteLength(toJsonString(metadata)) <= MAX_ATTRIBUTE_BYTES) return metadata;
+		if (Buffer.byteLength(toJsonString(metadata)) <= MAX_RUN_METADATA_BYTES) return metadata;
 
 		this.logger.warn('Dropping Langfuse run metadata: it exceeds the size limit', { testRunId });
 		return n8nMetadata;
@@ -491,7 +766,7 @@ export class LangfuseExperimentReporter {
 		return undefined;
 	}
 
-	private buildSharedAttributes(run: ReporterRun, itemId: string, spanId: string): OtlpKeyValue[] {
+	private buildLinkingAttributes(run: ReporterRun, itemId: string, spanId: string): OtlpKeyValue[] {
 		return [
 			attribute('langfuse.experiment.id', run.experimentId),
 			attribute('langfuse.experiment.name', run.runName),
@@ -530,7 +805,7 @@ export class LangfuseExperimentReporter {
 		};
 
 		const attributes: OtlpKeyValue[] = [
-			...this.buildSharedAttributes(run, itemContext.itemId as string, spanId),
+			...this.buildLinkingAttributes(run, itemContext.itemId as string, spanId),
 			...(itemVersion ? [attribute('langfuse.experiment.item.version', itemVersion)] : []),
 			...(itemContext.expectedOutput !== undefined && itemContext.expectedOutput !== null
 				? [
