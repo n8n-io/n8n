@@ -262,9 +262,7 @@ class RemoteDataTable implements IDataTableProjectService {
 		);
 	}
 
-	async deleteRows(
-		options: DeleteDataTableRowsOptions,
-	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]> {
+	async deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]> {
 		return await this.call(
 			{
 				kind: 'deleteRows',

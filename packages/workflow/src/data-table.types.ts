@@ -222,9 +222,7 @@ export interface IDataTableProjectService {
 		options: UpsertDataTableRowOptions,
 	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
 
-	deleteRows(
-		options: DeleteDataTableRowsOptions,
-	): Promise<DataTableRowReturn[] | DataTableRowReturnWithState[]>;
+	deleteRows(options: DeleteDataTableRowsOptions): Promise<DataTableRowReturn[]>;
 
 	clearRows(): Promise<{ deletedCount: number }>;
 }
