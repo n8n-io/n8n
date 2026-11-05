@@ -2,6 +2,7 @@ import type { AppResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 
+import type { AppVersions } from '../../composables/useAppVersions';
 import AppConfigure from './AppConfigure.vue';
 
 const app: AppResponse = {
@@ -18,7 +19,7 @@ const app: AppResponse = {
 };
 
 const renderComponent = createComponentRenderer(AppConfigure, {
-	props: { app },
+	props: { app, versions: {} as AppVersions },
 	global: {
 		stubs: {
 			AppConfigureGeneral: {

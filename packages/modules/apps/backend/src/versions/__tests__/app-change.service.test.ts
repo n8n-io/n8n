@@ -40,7 +40,9 @@ describe('AppChangeService', () => {
 			null,
 			undefined,
 		);
-		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version');
+		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+			changeSource: 'chat',
+		});
 	});
 
 	it.each([
@@ -121,7 +123,9 @@ describe('AppChangeService', () => {
 			null,
 			undefined,
 		);
-		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version');
+		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+			changeSource: 'initial',
+		});
 	});
 
 	describe('startRestore', () => {
@@ -133,8 +137,24 @@ describe('AppChangeService', () => {
 
 			expect(version.id).toBe('new-version');
 			expect(versions.restoreSource).toHaveBeenCalledWith('project', 'app', 'old-version', 'draft');
-			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version');
+			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+				changeSource: 'restore',
+			});
 			expect(builds.build).not.toHaveBeenCalled();
+		});
+
+		it('passes the actor to the restored version build', async () => {
+			const { service, versions, builds } = setup();
+			versions.restoreSource.mockResolvedValue(mock<AppVersion>({ id: 'new-version' }));
+
+			await service.startRestore('project', 'app', 'old-version', 'draft', {
+				userId: 'user-1',
+			});
+
+			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+				userId: 'user-1',
+				changeSource: 'restore',
+			});
 		});
 
 		it('keeps the restored version when its build cannot start', async () => {
@@ -176,14 +196,19 @@ describe('AppChangeService', () => {
 		it('copies a built draft with the new bindings and does not build', async () => {
 			const { service, versions, builds } = setup();
 			const copy = { id: 'copy', bindings } as AppVersion;
+			const previousBindings: AppBinding[] = [{ key: 'old', kind: 'workflow', workflowId: 'w0' }];
 			versions.getVersion.mockResolvedValue({
 				id: 'draft',
 				buildStatus: 'succeeded',
 				bundleArtifactId: 4,
+				bindings: previousBindings,
 			} as AppVersion);
 			versions.copyDraft.mockResolvedValue(copy);
 
-			expect(await service.saveBindings('project', 'app', 'draft', bindings)).toBe(copy);
+			expect(await service.saveBindings('project', 'app', 'draft', bindings)).toEqual({
+				version: copy,
+				previousBindings,
+			});
 			expect(versions.copyDraft).toHaveBeenCalledWith('project', 'app', 'draft', bindings);
 			expect(versions.saveSource).not.toHaveBeenCalled();
 			expect(builds.startBuild).not.toHaveBeenCalled();
@@ -201,7 +226,7 @@ describe('AppChangeService', () => {
 				} as AppVersion);
 				versions.readSource.mockResolvedValue(createAppScaffold());
 
-				const version = await service.saveBindings('project', 'app', 'draft', bindings);
+				const { version } = await service.saveBindings('project', 'app', 'draft', bindings);
 
 				expect(version.id).toBe('new-version');
 				expect(versions.saveSource).toHaveBeenCalledWith(
@@ -212,7 +237,9 @@ describe('AppChangeService', () => {
 					'Draft',
 					bindings,
 				);
-				expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version');
+				expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+					changeSource: 'bindings',
+				});
 				expect(versions.copyDraft).not.toHaveBeenCalled();
 			},
 		);
@@ -220,7 +247,12 @@ describe('AppChangeService', () => {
 		it('saves the first version of an app from the scaffold with the bindings', async () => {
 			const { service, versions, builds } = setup();
 
-			expect((await service.saveBindings('project', 'app', null, bindings)).id).toBe('new-version');
+			const result = await service.saveBindings('project', 'app', null, bindings, {
+				userId: 'user-1',
+			});
+
+			expect(result.version.id).toBe('new-version');
+			expect(result.previousBindings).toEqual([]);
 			expect(versions.getVersion).not.toHaveBeenCalled();
 			expect(versions.saveSource).toHaveBeenCalledWith(
 				'project',
@@ -230,7 +262,10 @@ describe('AppChangeService', () => {
 				null,
 				bindings,
 			);
-			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version');
+			expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version', false, {
+				userId: 'user-1',
+				changeSource: 'bindings',
+			});
 		});
 
 		it('keeps the saved bindings when the build cannot start', async () => {
@@ -239,7 +274,7 @@ describe('AppChangeService', () => {
 			versions.readSource.mockResolvedValue(createAppScaffold());
 			builds.startBuild.mockRejectedValue(new ConflictError('The app build is already running.'));
 
-			expect((await service.saveBindings('project', 'app', 'draft', bindings)).id).toBe(
+			expect((await service.saveBindings('project', 'app', 'draft', bindings)).version.id).toBe(
 				'new-version',
 			);
 		});

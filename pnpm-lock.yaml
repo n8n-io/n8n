@@ -344,19 +344,7 @@ catalogs:
     '@napi-rs/canvas':
       specifier: 1.0.11
       version: 1.0.11
-    '@napi-rs/canvas-linux-arm64-musl':
-      specifier: 1.0.11
-      version: 1.0.11
-    '@napi-rs/canvas-linux-x64-musl':
-      specifier: 1.0.11
-      version: 1.0.11
     '@napi-rs/image':
-      specifier: 1.15.0
-      version: 1.15.0
-    '@napi-rs/image-linux-arm64-musl':
-      specifier: 1.15.0
-      version: 1.15.0
-    '@napi-rs/image-linux-x64-musl':
       specifier: 1.15.0
       version: 1.15.0
     '@openrouter/ai-sdk-provider':
@@ -7208,6 +7196,9 @@ importers:
       '@n8n/stores':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/stores
+      '@n8n/telemetry':
+        specifier: workspace:*
+        version: link:../../../@n8n/telemetry
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -8473,19 +8464,7 @@ importers:
       '@napi-rs/canvas':
         specifier: 'catalog:'
         version: 1.0.11
-      '@napi-rs/canvas-linux-arm64-musl':
-        specifier: 'catalog:'
-        version: 1.0.11
-      '@napi-rs/canvas-linux-x64-musl':
-        specifier: 'catalog:'
-        version: 1.0.11
       '@napi-rs/image':
-        specifier: 'catalog:'
-        version: 1.15.0
-      '@napi-rs/image-linux-arm64-musl':
-        specifier: 'catalog:'
-        version: 1.15.0
-      '@napi-rs/image-linux-x64-musl':
         specifier: 'catalog:'
         version: 1.15.0
       '@smithy/node-http-handler':
@@ -29878,7 +29857,8 @@ snapshots:
   '@napi-rs/canvas-linux-arm64-gnu@1.0.11':
     optional: true
 
-  '@napi-rs/canvas-linux-arm64-musl@1.0.11': {}
+  '@napi-rs/canvas-linux-arm64-musl@1.0.11':
+    optional: true
 
   '@napi-rs/canvas-linux-riscv64-gnu@1.0.11':
     optional: true
@@ -29886,7 +29866,8 @@ snapshots:
   '@napi-rs/canvas-linux-x64-gnu@1.0.11':
     optional: true
 
-  '@napi-rs/canvas-linux-x64-musl@1.0.11': {}
+  '@napi-rs/canvas-linux-x64-musl@1.0.11':
+    optional: true
 
   '@napi-rs/canvas-win32-arm64-msvc@1.0.11':
     optional: true
@@ -29926,12 +29907,14 @@ snapshots:
   '@napi-rs/image-linux-arm64-gnu@1.15.0':
     optional: true
 
-  '@napi-rs/image-linux-arm64-musl@1.15.0': {}
+  '@napi-rs/image-linux-arm64-musl@1.15.0':
+    optional: true
 
   '@napi-rs/image-linux-x64-gnu@1.15.0':
     optional: true
 
-  '@napi-rs/image-linux-x64-musl@1.15.0': {}
+  '@napi-rs/image-linux-x64-musl@1.15.0':
+    optional: true
 
   '@napi-rs/image-win32-arm64-msvc@1.15.0':
     optional: true

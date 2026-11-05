@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { AppPreviewElement, AppResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref, watch } from 'vue';
 
 import { getApp } from '../apps.api';
@@ -32,6 +34,7 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const latestFetch = useLatestFetch();
+const telemetry = useTelemetry();
 
 const app = ref<AppResponse | null>(null);
 const loading = ref(true);
@@ -58,6 +61,13 @@ async function loadApp(keepView = false) {
 		const result = await getApp(rootStore.restApiContext, props.projectId, props.appId);
 		if (!isLatest()) return;
 		app.value = result;
+		if (!keepView) {
+			telemetry.track(TELEMETRY_EVENT.APPS.USER_OPENED_APP_BUILDER, {
+				app_id: result.id,
+				project_id: result.projectId,
+				is_published: result.publishedVersionId !== null,
+			});
+		}
 	} catch (error) {
 		if (!isLatest()) return;
 		if (error instanceof ResponseError && error.httpStatusCode === 404) {
@@ -127,7 +137,7 @@ defineExpose({ refresh });
 						:element-selected="elementSelected"
 						@element-selected="emit('element-selected', $event)"
 					/>
-					<AppConfigure v-else :app="app" @updated="app = $event" />
+					<AppConfigure v-else :app="app" :versions="versions" @updated="onAppUpdated" />
 				</template>
 			</main>
 			<AppVersionsPanel
