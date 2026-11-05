@@ -150,12 +150,10 @@ export class WebhookChannelService {
 			await this.authenticate(agent, channel, request.headers);
 			const conversation = await this.resolveConversation(agent.id, request.conversationId);
 			const decision = parseApprovalDecision(request.body);
-			const approval = await this.findPendingApproval(
-				agent.id,
-				conversation,
-				request.runId,
-				request.toolCallId,
-			);
+			const { runId, toolCallId } = request;
+			const pending = { agentId: agent.id, conversation, runId, toolCallId };
+			const approval = await this.findPendingApproval(pending);
+			if (!approval) throw approvalNotFound();
 			if (decision.scope === 'session' && approval.supportsSessionApproval !== true) {
 				throw new WebhookChannelError(
 					400,
@@ -167,8 +165,8 @@ export class WebhookChannelService {
 			const stream = this.orchestrator.resumeForChat({
 				agentId: agent.id,
 				projectId: agent.projectId,
-				runId: request.runId,
-				toolCallId: request.toolCallId,
+				runId,
+				toolCallId,
 				resumeData: decision,
 				integrationType: WEBHOOK_INTEGRATION_TYPE,
 				// The resume rejects a run of another conversation.
@@ -179,9 +177,12 @@ export class WebhookChannelService {
 			return {
 				agent,
 				conversation,
-				// The checkpoint can expire or be decided after the check above.
+				// The checkpoint can expire or be decided after the check above. Other
+				// errors, such as a runtime that cannot be built, stay agent errors.
 				stream: this.mapAdmissionError(stream, async (error) =>
-					error instanceof UserError && !(error instanceof AgentTurnAlreadyRunningError)
+					error instanceof UserError &&
+					!(error instanceof AgentTurnAlreadyRunningError) &&
+					!(await this.findPendingApproval(pending))
 						? approvalNotFound()
 						: undefined,
 				),
@@ -353,12 +354,17 @@ export class WebhookChannelService {
 	 * Returns the approval that waits at this URL. Only a standard approval of
 	 * this conversation qualifies, so the URL cannot resume other input.
 	 */
-	private async findPendingApproval(
-		agentId: string,
-		conversation: WebhookConversation,
-		runId: string,
-		toolCallId: string,
-	) {
+	private async findPendingApproval({
+		agentId,
+		conversation,
+		runId,
+		toolCallId,
+	}: {
+		agentId: string;
+		conversation: WebhookConversation;
+		runId: string;
+		toolCallId: string;
+	}) {
 		let checkpoint: SerializableAgentState | undefined;
 		try {
 			checkpoint = await this.checkpointStorage.load(runId, agentId);
@@ -366,13 +372,7 @@ export class WebhookChannelService {
 			// The run expired or was already handled.
 			if (!(error instanceof UserError)) throw error;
 		}
-		const approval = findPendingStandardApproval(checkpoint, {
-			runId,
-			toolCallId,
-			...conversation.memory,
-		});
-		if (!approval) throw approvalNotFound();
-		return approval;
+		return findPendingStandardApproval(checkpoint, { runId, toolCallId, ...conversation.memory });
 	}
 
 	/**

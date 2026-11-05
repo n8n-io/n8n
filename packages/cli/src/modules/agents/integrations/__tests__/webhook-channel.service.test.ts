@@ -617,7 +617,10 @@ describe('WebhookChannelService', () => {
 		});
 
 		it('returns 404 when the run is decided or expires after the check', async () => {
-			const { decide, orchestrator, logger } = makeDecideService();
+			const { decide, orchestrator, checkpointStorage, logger } = makeDecideService();
+			checkpointStorage.load
+				.mockResolvedValueOnce(pendingCheckpoint())
+				.mockRejectedValueOnce(new UserError('This action has already been handled'));
 			orchestrator.resumeForChat.mockImplementation(async function* () {
 				yield* [];
 				throw new UserError('Checkpoint run-1 is expired and cannot be resumed');
@@ -628,6 +631,19 @@ describe('WebhookChannelService', () => {
 				body: { error: { code: 'approval_not_found' } },
 			});
 			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('keeps an error that the resume throws while the approval still waits', async () => {
+			const { decide, orchestrator } = makeDecideService();
+			orchestrator.resumeForChat.mockImplementation(async function* () {
+				yield* [];
+				throw new UserError('Agent has no JSON config.');
+			});
+
+			await expect(decide()).resolves.toMatchObject({
+				status: 500,
+				body: { error: { code: 'agent_error' } },
+			});
 		});
 
 		it('keeps an error of the resumed run after its first chunk', async () => {
