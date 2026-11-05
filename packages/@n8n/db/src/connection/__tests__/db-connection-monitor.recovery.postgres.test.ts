@@ -26,6 +26,7 @@ class FreezableProxy {
 	private server!: net.Server;
 	private readonly sockets = new Set<net.Socket>();
 	private readonly frozen = new Set<net.Socket>();
+	private freezeNew = false;
 
 	constructor(
 		private readonly targetHost: string,
@@ -37,6 +38,7 @@ class FreezableProxy {
 			const upstream = net.connect({ host: this.targetHost, port: this.targetPort });
 			this.sockets.add(client);
 			this.sockets.add(upstream);
+			if (this.freezeNew) this.frozen.add(client);
 			client.on('data', (chunk) => {
 				if (!this.frozen.has(client)) upstream.write(chunk);
 			});
@@ -60,6 +62,17 @@ class FreezableProxy {
 
 	freezeExisting() {
 		for (const socket of this.sockets) this.frozen.add(socket);
+	}
+
+	/** Freeze every connection, current and future, as if the backend were unreachable. */
+	freezeAll() {
+		this.freezeExisting();
+		this.freezeNew = true;
+	}
+
+	/** Relay new connections again. Already frozen ones stay frozen. */
+	thawNew() {
+		this.freezeNew = false;
 	}
 
 	async close() {
@@ -325,14 +338,17 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			});
 			await dataSource.initialize();
 
-			const destroyTimeoutMs = 2_000;
+			// The frozen socket never self-drains, so any bound works. The log assertions below
+			// prove the path; the value only sets how long the test waits.
+			const destroyTimeoutMs = 50;
+			const logger = mock<Logger>();
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
 				buildDatabaseConfig({
 					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
 				}),
-				mock<Logger>(),
+				logger,
 				mock<ErrorReporter>(),
 				mock<DbConnectionMetrics>(),
 			);
@@ -347,15 +363,17 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			proxy.freezeExisting();
 
 			try {
-				const start = Date.now();
 				// Without the destroy timeout this never resolves (`destroy()` hangs at attempt 1).
 				await (monitor as unknown as MonitorInternals).recoverDataSource();
-				const elapsed = Date.now() - start;
 
-				// `destroy()` was bounded and the frozen client force-closed, so the pool rebuilt.
-				// The lower bound proves recovery went through the timeout path, not a self-drain.
-				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs);
-				expect(elapsed).toBeLessThan(destroyTimeoutMs + 15_000);
+				// `destroy()` hit the bound, the frozen client was force-closed, and that was enough:
+				// the drain settled inside the grace period, so the pool was not abandoned.
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining(`teardown exceeded ${destroyTimeoutMs}ms`),
+				);
+				expect(logger.error).not.toHaveBeenCalledWith(
+					expect.stringContaining('abandoning the pool'),
+				);
 				expect(dataSource.isInitialized).toBe(true);
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
 			} finally {
@@ -385,14 +403,17 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			);
 			await dataSource.initialize();
 
-			const destroyTimeoutMs = 2_000;
+			// The frozen socket never self-drains, so any bound works. The log assertions below
+			// prove the path; the value only sets how long the test waits.
+			const destroyTimeoutMs = 50;
+			const logger = mock<Logger>();
 			const monitor = new DbConnectionMonitor(
 				dataSource,
 				() => {},
 				buildDatabaseConfig({
 					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
 				}),
-				mock<Logger>(),
+				logger,
 				mock<ErrorReporter>(),
 				mock<DbConnectionMetrics>(),
 			);
@@ -413,14 +434,16 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			proxy.freezeExisting();
 
 			try {
-				const start = Date.now();
 				// Before the fix this never resolves: the post-force-close await was unbounded.
 				await (monitor as unknown as MonitorInternals).recoverDataSource();
-				const elapsed = Date.now() - start;
 
 				// Both bounds were traversed, then the teardown was abandoned and the pool rebuilt.
-				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS);
-				expect(elapsed).toBeLessThan(destroyTimeoutMs + FORCE_CLOSE_GRACE_MS + 15_000);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining(`teardown exceeded ${destroyTimeoutMs}ms`),
+				);
+				expect(logger.error).toHaveBeenCalledWith(
+					expect.stringContaining(`${FORCE_CLOSE_GRACE_MS}ms after force-closing sockets`),
+				);
 				expect(dataSource.isInitialized).toBe(true);
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
 			} finally {
@@ -495,6 +518,180 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				).resolves.toEqual([{ ok: 1 }]);
 			} finally {
 				pool.connect = originalConnect;
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'keeps the pool while the backend is unreachable and counts failures only once it answers again',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+
+			// Route the pool and the out-of-pool probe through the same proxy, so freezing it
+			// stands in for a backend that stalls or drops off the network.
+			const proxy = new FreezableProxy(connection.host, connection.port);
+			const proxyPort = await proxy.listen();
+			// pg-pool drops a connection it cannot establish within `connectionTimeoutMillis`, so
+			// the frozen connects from the outage do not keep the pool full after the thaw.
+			const dataSource = newDataSource(
+				{ ...connection, host: '127.0.0.1', port: proxyPort },
+				{ poolSize: 2, connectionTimeoutMillis: 500 },
+			);
+			await dataSource.initialize();
+
+			const logger = mock<Logger>();
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig({ pingTimeoutMs: 200, pingMaxFailuresBeforeRecovery: 1 }),
+				logger,
+				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
+			);
+			monitor.start();
+			const internals = monitor as unknown as MonitorInternals;
+			const recoverSpy = vi.spyOn(internals, 'recoverDataSource').mockResolvedValue(undefined);
+
+			try {
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+
+				proxy.freezeAll();
+				for (let i = 0; i < 3; i++) {
+					await internals.ping();
+				}
+
+				// Three timed-out pings, none counted: the probe could not reach the backend either.
+				expect(recoverSpy).not.toHaveBeenCalled();
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('Database ping failed (not counted, database unreachable, 0/1)'),
+				);
+				expect(logger.warn).not.toHaveBeenCalledWith(
+					expect.stringContaining('Triggering database connection recovery'),
+				);
+
+				// The backend is back. Let pg-pool drop the connects it could not establish.
+				proxy.thawNew();
+				await setTimeoutP(600);
+				await internals.ping();
+
+				// The pool rebuilt itself, no recovery was needed.
+				expect(recoverSpy).not.toHaveBeenCalled();
+				expect(logger.info).toHaveBeenCalledWith('Database connection recovered');
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+			} finally {
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
+				await proxy.close();
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'counts a ping failure when a connection outside the pool answers while the pooled one is frozen',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+
+			const proxy = new FreezableProxy(connection.host, connection.port);
+			const proxyPort = await proxy.listen();
+			const dataSource = newDataSource(
+				{ ...connection, host: '127.0.0.1', port: proxyPort },
+				{ poolSize: 2 },
+			);
+			await dataSource.initialize();
+
+			const logger = mock<Logger>();
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig({ pingTimeoutMs: 200, pingMaxFailuresBeforeRecovery: 1 }),
+				logger,
+				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
+			);
+			monitor.start();
+			const internals = monitor as unknown as MonitorInternals;
+			const recoverSpy = vi.spyOn(internals, 'recoverDataSource').mockResolvedValue(undefined);
+
+			try {
+				// Leaves one idle pooled connection, which is then frozen: the pooled ping hangs
+				// while the probe, a new connection through the proxy, still reaches the backend.
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+				proxy.freezeExisting();
+
+				await internals.ping();
+
+				// The probe proves the backend is fine and the pooled connection is the broken part.
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('Database ping failed (1/1)'),
+				);
+				expect(recoverSpy).toHaveBeenCalledTimes(1);
+			} finally {
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
+				await proxy.close();
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'does not count a ping that waits for a busy pool on a healthy backend',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+
+			// One pooled connection, held by a slow query for longer than the ping timeout.
+			const dataSource = newDataSource(connection, { poolSize: 1 });
+			await dataSource.initialize();
+
+			const logger = mock<Logger>();
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig({ pingTimeoutMs: 200, pingMaxFailuresBeforeRecovery: 1 }),
+				logger,
+				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
+			);
+			monitor.start();
+			const internals = monitor as unknown as MonitorInternals;
+			const recoverSpy = vi.spyOn(internals, 'recoverDataSource').mockResolvedValue(undefined);
+
+			try {
+				const slowQuery = dataSource.query('SELECT pg_sleep(1)');
+				await setTimeoutP(100); // let the slow query check the only connection out
+				await internals.ping();
+
+				// The ping waited for a free pooled connection and gave up. The backend answered
+				// the slow query all along, so no failure counts and no rebuild starts.
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining(
+						'Database ping failed (not counted, no pooled connection free, 0/1)',
+					),
+				);
+				expect(recoverSpy).not.toHaveBeenCalled();
+
+				await slowQuery;
+				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
+			} finally {
 				await monitor.stop();
 				if (dataSource.isInitialized) {
 					await dataSource.destroy();

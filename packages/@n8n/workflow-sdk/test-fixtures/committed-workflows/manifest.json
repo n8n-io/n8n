@@ -127,6 +127,39 @@
 			"name": "Lint: Python Code node network import",
 			"success": true,
 			"expectedLintIssues": [{ "code": "CODE_NODE_NETWORK_CALL" }]
+		},
+		{
+			"id": 14,
+			"name": "Structured Output Parser: JSON Schema pasted as the example",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_SCHEMA_IN_EXAMPLE_FIELD",
+					"nodeName": "Structured Output Parser"
+				}
+			]
+		},
+		{
+			"id": 15,
+			"name": "Structured Output Parser: object-valued example",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_EXAMPLE_NOT_STRING",
+					"nodeName": "Structured Output Parser"
+				}
+			]
+		},
+		{
+			"id": 16,
+			"name": "Structured Output Parser: example is not valid JSON",
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "STRUCTURED_OUTPUT_PARSER_EXAMPLE_INVALID",
+					"nodeName": "Structured Output Parser"
+				}
+			]
 		}
 	]
 }

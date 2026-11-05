@@ -1,6 +1,8 @@
-import { collectNodeTypeUsage, type NodeTypeUsage } from './node-type-usage';
+import { collectNodeTypeUsage, type NodeTypeUsage, type NodeTypeSource } from './node-type-usage';
 import type { PreparedWorkflow } from './workflow-import.types';
 import type { MissingNodeTypeMode } from '../../n8n-packages.types';
+import { getRequirementConsumerIds } from '../../spec/requirement-consumers';
+import type { PackageRequirementConsumer } from '../../spec/requirements.schema';
 
 /** A `(type, typeVersion)` pair the target instance cannot resolve. Field names align with the manifest requirements shape. */
 export type MissingNodeTypeRequirement = NodeTypeUsage;
@@ -12,13 +14,15 @@ export type MissingNodeTypeRequirement = NodeTypeUsage;
 export function collectMissingNodeTypes(
 	workflows: PreparedWorkflow[],
 	getSupportedVersions: (nodeType: string) => number[] | undefined,
+	agentSources: NodeTypeSource[] = [],
 ): MissingNodeTypeRequirement[] {
-	const usage = collectNodeTypeUsage(
-		workflows.map(({ entity, sourceWorkflowId }) => ({
+	const usage = collectNodeTypeUsage([
+		...workflows.map(({ entity, sourceWorkflowId }) => ({
 			workflowId: sourceWorkflowId,
 			nodes: entity.nodes,
 		})),
-	);
+		...agentSources,
+	]);
 
 	const supportedByType = new Map<string, number[] | undefined>();
 	return usage.filter(({ type, typeVersion }) => {
@@ -46,7 +50,10 @@ export function missingNodeTypeBlockingFailures(
 	return BLOCKING_FAILURES[mode](missing);
 }
 
-/** Package workflow ids that should not be published because they use missing node types. */
-export function workflowsWithMissingNodeTypes(missing: MissingNodeTypeRequirement[]): Set<string> {
-	return new Set(missing.flatMap(({ usedByWorkflows }) => usedByWorkflows));
+/** Package consumer IDs that use missing node types. */
+export function consumersWithMissingNodeTypes(
+	missing: MissingNodeTypeRequirement[],
+	kind: PackageRequirementConsumer['kind'],
+): Set<string> {
+	return new Set(missing.flatMap((requirement) => getRequirementConsumerIds(requirement, kind)));
 }

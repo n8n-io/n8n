@@ -1,16 +1,15 @@
 operationId: getExecutionTags
 tags:
-  - Execution
+  - Executions
 summary: Get execution tags
 description: Get annotation tags for an execution.
 x-required-scope: executionTags:list
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
-      type: string
+      type: integer
+      minimum: 1
     required: true
+    description: The ID of the execution.
     name: executionId
     in: path
 responses:
@@ -28,3 +27,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

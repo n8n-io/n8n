@@ -1,4 +1,4 @@
-import jsSHA from 'jssha';
+import { sha256 } from '@n8n/utils/sha256';
 
 import type {
 	IConnections,
@@ -67,9 +67,6 @@ function sortObjectKeys(value: unknown): unknown {
 /**
  * Calculates SHA-256 checksum of workflow content fields for conflict detection.
  * Excludes: id, versionId, timestamps, staticData, relations.
- *
- * Uses WebCrypto when available (e.g. browser in secure context), and falls back to a pure-JS SHA-256
- * implementation to also work in environments where WebCrypto is unavailable (e.g. HTTP/insecure contexts).
  */
 export async function calculateWorkflowChecksum(workflow: WorkflowSnapshot): Promise<string> {
 	const checksumPayload: Record<string, unknown> = {};
@@ -84,25 +81,5 @@ export async function calculateWorkflowChecksum(workflow: WorkflowSnapshot): Pro
 	const normalizedPayload = sortObjectKeys(checksumPayload);
 	const serializedPayload = JSON.stringify(normalizedPayload);
 
-	const subtle = globalThis.crypto?.subtle;
-	if (subtle) {
-		const data = new TextEncoder().encode(serializedPayload);
-		const hashBuffer = await subtle.digest('SHA-256', data);
-		return arrayBufferToHex(hashBuffer);
-	}
-
-	const shaObj = new jsSHA('SHA-256', 'TEXT', { encoding: 'UTF8' });
-	shaObj.update(serializedPayload);
-	return shaObj.getHash('HEX').toLowerCase();
-}
-
-function arrayBufferToHex(arrayBuffer: ArrayBuffer): string {
-	const bytes = new Uint8Array(arrayBuffer);
-	let hexString = '';
-
-	for (let index = 0; index < bytes.length; index++) {
-		hexString += bytes[index].toString(16).padStart(2, '0');
-	}
-
-	return hexString;
+	return await sha256(serializedPayload);
 }

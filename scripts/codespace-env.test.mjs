@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 
-import { codespaceEnv, codespaceName, forwardingDomain } from './codespace-env.mjs';
+import {
+	codespaceEnv,
+	codespaceName,
+	codespaceSecret,
+	forwardingDomain,
+} from './codespace-env.mjs';
 
 const NAME = 'psychic-umbrella-wqj9pvw9p939vp6';
 
@@ -75,5 +80,40 @@ describe('forwardingDomain', () => {
 	it('defaults to app.github.dev', () => {
 		process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN = '';
 		assert.equal(forwardingDomain(shared({})), 'app.github.dev');
+	});
+});
+
+describe('codespaceSecret', () => {
+	const b64 = (value) => Buffer.from(value, 'utf8').toString('base64');
+
+	it('decodes a base64 value', () => {
+		delete process.env.SANDBOX_KEY;
+		const dir = shared({ '.env-secrets': `SANDBOX_KEY=${b64('licence-abc')}\n` });
+		assert.equal(codespaceSecret('SANDBOX_KEY', dir), 'licence-abc');
+	});
+
+	it('prefers a value already in the environment', () => {
+		process.env.SANDBOX_KEY = 'from-env';
+		const dir = shared({ '.env-secrets': `SANDBOX_KEY=${b64('from-file')}\n` });
+		assert.equal(codespaceSecret('SANDBOX_KEY', dir), 'from-env');
+		delete process.env.SANDBOX_KEY;
+	});
+
+	// codespaces-env.sh lets a later line win, as a shell would.
+	it('takes the last line for a repeated key', () => {
+		delete process.env.SANDBOX_KEY;
+		const dir = shared({
+			'.env-secrets': `SANDBOX_KEY=${b64('old')}\nSANDBOX_KEY=${b64('new')}\n`,
+		});
+		assert.equal(codespaceSecret('SANDBOX_KEY', dir), 'new');
+	});
+
+	it('returns undefined for a missing key, a missing file, and a rejected name', () => {
+		delete process.env.SANDBOX_KEY;
+		const dir = shared({ '.env-secrets': `OTHER=${b64('x')}\n` });
+		assert.equal(codespaceSecret('SANDBOX_KEY', dir), undefined);
+		assert.equal(codespaceSecret('SANDBOX_KEY', shared({})), undefined);
+		// codespaces-env.sh skips a key with a character outside [A-Za-z0-9_].
+		assert.equal(codespaceSecret('BAD-KEY', dir), undefined);
 	});
 });

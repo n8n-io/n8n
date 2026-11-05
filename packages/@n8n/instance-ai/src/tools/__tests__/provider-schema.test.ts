@@ -1,7 +1,7 @@
 import type { BuiltTool } from '@n8n/agents';
 import { z } from 'zod';
 
-import { createAllTools, createOrchestrationTools, createOrchestratorDomainTools } from '..';
+import { createOrchestrationTools, createOrchestratorDomainTools } from '..';
 import type { InstanceAiContext, OrchestrationContext } from '../../types';
 
 function createCallableService() {
@@ -26,6 +26,7 @@ function createInstanceAiContext(): InstanceAiContext {
 		workspaceService: service,
 		evaluationConfigService: service,
 		mcpService: service,
+		activityService: service,
 		logger: {
 			debug: vi.fn(),
 			info: vi.fn(),
@@ -46,7 +47,6 @@ function createOrchestrationContext(): OrchestrationContext {
 		modelId: 'test-model',
 		eventBus: {},
 		logger: domainContext.logger,
-		domainTools: createAllTools(domainContext),
 		abortSignal: new AbortController().signal,
 		taskStorage: {},
 		workflowTaskService: {
@@ -54,8 +54,6 @@ function createOrchestrationContext(): OrchestrationContext {
 			getLatestBuildOutcomeForWorkflow: vi.fn(),
 		},
 		domainContext,
-		plannedTaskService: {},
-		schedulePlannedTasks: vi.fn(),
 	} as unknown as OrchestrationContext;
 }
 
@@ -78,7 +76,6 @@ describe('provider-facing tool schemas', () => {
 		const domainContext = createInstanceAiContext();
 		const orchestrationContext = createOrchestrationContext();
 		const toolSets = [
-			createAllTools(domainContext),
 			createOrchestratorDomainTools(domainContext),
 			createOrchestrationTools(orchestrationContext),
 		];

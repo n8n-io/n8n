@@ -12,7 +12,7 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';

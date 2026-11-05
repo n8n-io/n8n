@@ -2,7 +2,7 @@ import type { ScheduleDefinition } from '@n8n/constants';
 import type { CronExpression } from 'n8n-workflow';
 
 import { CorruptStorageRowError } from '../errors';
-import type { Schedule, ScheduledJob } from '../types';
+import type { Schedule, StoredSchedule } from '../types';
 import { resolveCron } from './kinds/cron';
 import { resolveInterval } from './kinds/interval';
 import { resolveOneOff } from './kinds/one-off';
@@ -21,7 +21,7 @@ import { resolveRecurringCron } from './kinds/recurring-cron';
  * @throws {CorruptStorageRowError} On a corrupt row: an unknown kind or a
  * missing column.
  */
-export function resolveSchedule(job: ScheduledJob, defaultTimezone: string): Schedule {
+export function resolveSchedule(job: StoredSchedule, defaultTimezone: string): Schedule {
 	switch (job.kind) {
 		case 'cron':
 			return resolveCron(job, defaultTimezone);

@@ -4,7 +4,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Middleware, Param, ProjectScope, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ExternalSecretsConfig } from './external-secrets.config';

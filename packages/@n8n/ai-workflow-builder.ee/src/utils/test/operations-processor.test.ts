@@ -1128,4 +1128,196 @@ describe('operations-processor', () => {
 			expect(result.workflowOperations).toBeNull();
 		});
 	});
+
+	describe('reserved connection keys', () => {
+		const plantedKeys = ['main', 'shell', 'ai_tool'];
+
+		afterEach(() => {
+			for (const key of plantedKeys) {
+				delete (Object.prototype as Record<string, unknown>)[key];
+			}
+		});
+
+		it('should build a fixture whose reserved key is an own property', () => {
+			// Guards the tests below: a plain object literal would set the prototype instead
+			// of adding the key, which would make the cases vacuous.
+			const connections = { ['__proto__']: { main: [[]] } } as unknown as IConnections;
+
+			expect(Object.prototype.hasOwnProperty.call(connections, '__proto__')).toBe(true);
+		});
+
+		describe('mergeConnections', () => {
+			it('should ignore a source key that is not a usable object key', () => {
+				const workflow = createWorkflow([createNode({ id: 'node1', name: 'Sink' })]);
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'mergeConnections',
+						connections: {
+							['__proto__']: { main: [[{ node: 'Sink', type: 'main', index: 0 }]] },
+						} as unknown as IConnections,
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				expect(({} as Record<string, unknown>).main).toBeUndefined();
+				expect(Object.keys(result.connections)).toEqual([]);
+			});
+
+			it('should ignore a connection type that is not a usable object key', () => {
+				const workflow: SimpleWorkflow = {
+					name: 'Test Workflow',
+					nodes: [createNode({ id: 'node1', name: 'Source' })],
+					connections: { Source: { main: [[]] } },
+				};
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'mergeConnections',
+						connections: {
+							Source: { ['__proto__']: [[{ node: 'Sink', type: 'main', index: 0 }]] },
+						} as unknown as IConnections,
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				// Object.keys alone cannot see this: the unguarded write lands on the entry's
+				// prototype, so assert the prototype itself is intact.
+				expect(Object.getPrototypeOf(result.connections.Source!)).toBe(Object.prototype);
+				expect(Object.keys(result.connections.Source!)).toEqual(['main']);
+			});
+
+			it('should still merge connections for usable keys', () => {
+				const workflow: SimpleWorkflow = {
+					name: 'Test Workflow',
+					nodes: [createNode({ id: 'node1', name: 'Source' })],
+					connections: { Source: { main: [[{ node: 'A', type: 'main', index: 0 }]] } },
+				};
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'mergeConnections',
+						connections: {
+							['__proto__']: { main: [[{ node: 'Ignored', type: 'main', index: 0 }]] },
+							Source: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+						} as unknown as IConnections,
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				expect(result.connections.Source?.main?.[0]).toEqual([
+					{ node: 'A', type: 'main', index: 0 },
+					{ node: 'B', type: 'main', index: 0 },
+				]);
+				expect(result.connections).not.toHaveProperty('Ignored');
+			});
+		});
+
+		it('mergeConnections should filter types on a first-time source entry', () => {
+			const workflow = createWorkflow([createNode({ id: 'node1', name: 'Source' })]);
+			const operations: WorkflowOperation[] = [
+				{
+					type: 'mergeConnections',
+					connections: JSON.parse(
+						'{"Source":{"__proto__":[[]],"main":[[{"node":"Sink","type":"main","index":0}]]}}',
+					) as IConnections,
+				},
+			];
+
+			const result = applyOperations(workflow, operations);
+
+			expect(Object.keys(result.connections.Source!)).toEqual(['main']);
+			expect(Object.getPrototypeOf(result.connections.Source!)).toBe(Object.prototype);
+		});
+
+		describe('removeNode', () => {
+			it('should not reparent the rebuilt connections map', () => {
+				const workflow: SimpleWorkflow = {
+					name: 'Test Workflow',
+					nodes: [createNode({ id: 'node1', name: 'Keep' }), createNode({ id: 'node2' })],
+					connections: JSON.parse(
+						'{"__proto__":{"shell":[[{"node":"Keep","type":"main","index":0}]]},"Keep":{"main":[[]]}}',
+					) as IConnections,
+				};
+				const operations: WorkflowOperation[] = [{ type: 'removeNode', nodeIds: ['node2'] }];
+
+				const result = applyOperations(workflow, operations);
+
+				expect(Object.getPrototypeOf(result.connections)).toBe(Object.prototype);
+				expect(Object.keys(result.connections)).toEqual(['Keep']);
+				expect(({} as Record<string, unknown>).shell).toBeUndefined();
+			});
+		});
+
+		describe('removeConnection', () => {
+			it('should not write through a reserved source node to a shared slot', () => {
+				// Start from a shared slot that already holds a connection-shaped value, so the
+				// unguarded lookup finds something to rewrite and then delete.
+				(Object.prototype as Record<string, unknown>).main = [
+					[{ node: 'Sink', type: 'main', index: 0 }],
+				];
+
+				const workflow = createWorkflow([createNode({ id: 'node1', name: 'Sink' })]);
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: '__proto__',
+						targetNode: 'Sink',
+						connectionType: 'main',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				expect(({} as Record<string, unknown>).main).toEqual([
+					[{ node: 'Sink', type: 'main', index: 0 }],
+				]);
+				expect(result.connections).toEqual({});
+			});
+
+			it('should leave the workflow unchanged for a reserved connection type', () => {
+				const workflow: SimpleWorkflow = {
+					name: 'Test Workflow',
+					nodes: [createNode({ id: 'node1', name: 'Source' })],
+					connections: { Source: { main: [[{ node: 'Sink', type: 'main', index: 0 }]] } },
+				};
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'removeConnection',
+						sourceNode: 'Source',
+						targetNode: 'Sink',
+						connectionType: 'constructor',
+						sourceOutputIndex: 0,
+						targetInputIndex: 0,
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				expect(result.connections.Source?.main?.[0]).toHaveLength(1);
+			});
+		});
+
+		describe('setConnections', () => {
+			it('should keep only entries whose keys are usable object keys', () => {
+				const workflow = createWorkflow([createNode({ id: 'node1', name: 'Source' })]);
+				const operations: WorkflowOperation[] = [
+					{
+						type: 'setConnections',
+						connections: JSON.parse(
+							'{"__proto__":{"ai_tool":[[]]},"Source":{"main":[[{"node":"Sink","type":"main","index":0}]],"constructor":[[]]}}',
+						) as IConnections,
+					},
+				];
+
+				const result = applyOperations(workflow, operations);
+
+				expect(Object.keys(result.connections)).toEqual(['Source']);
+				expect(Object.keys(result.connections.Source!)).toEqual(['main']);
+				expect(({} as Record<string, unknown>).ai_tool).toBeUndefined();
+			});
+		});
+	});
 });

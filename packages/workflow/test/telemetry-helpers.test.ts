@@ -2342,6 +2342,41 @@ describe('generateNodesGraph', () => {
 			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(250);
 		});
 
+		test('should skip missing runs when the run data array has holes', () => {
+			const workflow: Partial<IWorkflowBase> = {
+				nodes: [
+					{
+						parameters: { model: 'gpt-4o' },
+						id: 'lm-node-id',
+						name: 'LM Node',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [100, 100],
+					},
+				],
+				connections: {},
+				pinData: {},
+			};
+
+			const runs: IRunData[string] = [];
+			runs[1] = {
+				startTime: 0,
+				executionTime: 100,
+				executionIndex: 0,
+				executionStatus: 'success',
+				data: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[{ json: { tokenUsage: { promptTokens: 150, completionTokens: 80 } } }],
+					],
+				},
+				source: [],
+			};
+
+			const result = generateNodesGraph(workflow, nodeTypes, { runData: { 'LM Node': runs } });
+			expect(result.nodeGraph.nodes['0'].ai_input_tokens).toBe(150);
+			expect(result.nodeGraph.nodes['0'].ai_output_tokens).toBe(80);
+		});
+
 		test('should not set token fields when no runData is provided', () => {
 			const workflow: Partial<IWorkflowBase> = {
 				nodes: [

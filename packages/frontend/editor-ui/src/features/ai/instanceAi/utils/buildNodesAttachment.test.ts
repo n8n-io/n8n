@@ -6,9 +6,10 @@ import {
 	resolveSetCanvasGroup,
 	buildNodesAttachment,
 	mergeNodeSets,
+	countAttachedNodes,
 } from './buildNodesAttachment';
 import type { NodeContextWorkflow } from './buildNodesAttachment';
-import { instanceAiNodesAttachmentSchema } from '@n8n/api-types';
+import { instanceAiNodesAttachmentSchema, type InstanceAiAttachment } from '@n8n/api-types';
 
 function wf(over: Partial<NodeContextWorkflow> = {}): NodeContextWorkflow {
 	return {
@@ -190,6 +191,13 @@ describe('mergeNodeSets', () => {
 		expect(merged).toEqual([set('A'), set('B')]);
 	});
 
+	it('adds group metadata when an incoming mention matches an existing set', () => {
+		const grouped = { ...set('A'), canvasGroupId: 'g1', canvasGroupName: 'Fulfilment' };
+		const merged = mergeNodeSets([set('A')], [grouped]);
+
+		expect(merged).toEqual([grouped]);
+	});
+
 	it('caps the merged sets at the schema limit (50)', () => {
 		const existing = Array.from({ length: 40 }, (_, i) => set(`e${i}`));
 		const incoming = Array.from({ length: 40 }, (_, i) => set(`i${i}`));
@@ -199,5 +207,26 @@ describe('mergeNodeSets', () => {
 			instanceAiNodesAttachmentSchema.safeParse({ type: 'nodes', workflowId: 'w1', sets: merged })
 				.success,
 		).toBe(true);
+	});
+});
+
+describe('countAttachedNodes', () => {
+	const nodesAtt = (...counts: number[]): InstanceAiAttachment => ({
+		type: 'nodes',
+		workflowId: 'w1',
+		sets: counts.map((c) => ({
+			nodes: Array.from({ length: c }, (_, i) => ({ id: `n${i}`, name: `N${i}` })),
+		})),
+	});
+
+	it('is 0 for undefined or no node attachments', () => {
+		expect(countAttachedNodes()).toBe(0);
+		expect(
+			countAttachedNodes([{ type: 'file', data: 'x', mimeType: 'image/png', fileName: 'f.png' }]),
+		).toBe(0);
+	});
+
+	it('sums nodes across every set and every nodes-attachment', () => {
+		expect(countAttachedNodes([nodesAtt(2, 3), nodesAtt(1)])).toBe(6);
 	});
 });

@@ -6,14 +6,14 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { toPathSegment, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { toPathSegment } from '@utils/url';
+import { removeTrailingSlash } from '@utils/utilities';
 
 import type { Connector, ElasticSecurityApiCredentials } from './types';
 
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+export function buildDeleteCasesEndpoint(caseId: unknown): string {
+	return `/cases?ids=${encodeURIComponent(JSON.stringify([String(caseId)]))}`;
 }
 
 export async function elasticSecurityApiRequest(
@@ -26,7 +26,7 @@ export async function elasticSecurityApiRequest(
 	const { baseUrl: rawBaseUrl } =
 		await this.getCredentials<ElasticSecurityApiCredentials>('elasticSecurityApi');
 
-	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
+	const baseUrl = removeTrailingSlash(rawBaseUrl);
 
 	const options: IRequestOptions = {
 		method,

@@ -37,7 +37,9 @@ const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
 
 const createTestEgressFilter = (): NodeEgressFilter => ({
 	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
 	createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+	validateRedirectSync: vi.fn(),
 });
 
 const egressHelpers = <T extends { helpers: unknown }>(): Partial<T> =>
@@ -325,6 +327,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
 				fetch: expect.any(Function),
+				redirectPolicy: 'follow',
 			});
 
 			// Verify the eventSourceInit fetch injects auth headers and Accept header
@@ -381,6 +384,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
 				fetch: expect.any(Function),
+				redirectPolicy: 'follow',
 			});
 
 			// Verify the eventSourceInit fetch injects auth headers and Accept header

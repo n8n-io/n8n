@@ -297,6 +297,28 @@ describe('BaseSandbox', () => {
 			expect(result.stdout).toBe('ok\n');
 		});
 
+		it('escapes arguments with the shared shell helper', async () => {
+			const pm = makeStubProcessManager();
+			const sb = new TestSandbox('1', { processes: pm });
+
+			await sb._start();
+			await sb.executeCommand('echo', ['--user=a@b', "it's here"]);
+
+			expect((pm.spawnMock.mock.calls as unknown as string[][])[0][0]).toBe(
+				"echo --user=a@b 'it'\\''s here'",
+			);
+		});
+
+		it('spawns the bare command when there are no arguments', async () => {
+			const pm = makeStubProcessManager();
+			const sb = new TestSandbox('1', { processes: pm });
+
+			await sb._start();
+			await sb.executeCommand('ls');
+
+			expect((pm.spawnMock.mock.calls as unknown as string[][])[0][0]).toBe('ls');
+		});
+
 		it('auto-starts sandbox before executing', async () => {
 			const pm = makeStubProcessManager();
 			const sb = new TestSandbox('1', { processes: pm });

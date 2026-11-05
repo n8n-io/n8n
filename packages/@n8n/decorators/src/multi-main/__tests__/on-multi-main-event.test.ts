@@ -75,7 +75,7 @@ it('should throw an error if the decorated target is not a method', () => {
 		}
 
 		new TestService();
-	}).toThrowError(NonMethodError);
+	}).toThrow(NonMethodError);
 });
 
 it('should call decorated methods when events are emitted', async () => {

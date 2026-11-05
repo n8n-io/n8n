@@ -21,12 +21,14 @@ import {
 	fromAiValidator,
 	httpRequestValidator,
 	duplicateNodeIdValidator,
+	mockOutputEnvelopeValidator,
 	maxNodesValidator,
 	memorySessionKeyValidator,
 	mergeNodeValidator,
 	missingTriggerValidator,
 	noNodesValidator,
 	setNodeValidator,
+	structuredOutputParserValidator,
 	subnodeConnectionValidator,
 	toolNodeValidator,
 	unknownConfigKeysValidator,
@@ -54,6 +56,7 @@ const coreValidators: ValidatorPlugin[] = [
 	agentValidator,
 	chainLlmValidator,
 	httpRequestValidator,
+	structuredOutputParserValidator,
 	toolNodeValidator,
 	fromAiValidator,
 	memorySessionKeyValidator,
@@ -69,6 +72,7 @@ const coreValidators: ValidatorPlugin[] = [
 	expressionPrefixValidator,
 	dateMethodValidator,
 	expressionPathValidator, // Workflow-level validator
+	mockOutputEnvelopeValidator, // Mock items are raw $json, not runtime envelopes
 
 	// Structural validators (lowest priority)
 	disconnectedNodeValidator, // Workflow-level validator

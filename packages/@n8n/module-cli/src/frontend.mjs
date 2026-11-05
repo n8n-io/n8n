@@ -43,6 +43,7 @@ const files = (name) => [
 	['tsconfig.json.template', 'tsconfig.json'],
 	['vite.config.ts.template', 'vite.config.ts'],
 	['eslint.config.mjs.template', 'eslint.config.mjs'],
+	['stylelint.config.mjs.template', 'stylelint.config.mjs'],
 	['biome.jsonc.template', 'biome.jsonc'],
 	['README.md.template', 'README.md'],
 	['index.ts.template', 'src/index.ts'],
@@ -50,6 +51,7 @@ const files = (name) => [
 	['store.ts.template', `src/${name}.store.ts`],
 	['store.test.ts.template', `src/${name}.store.test.ts`],
 	['setup.ts.template', 'src/__tests__/setup.ts'],
+	['design-system-icons.test.ts.template', 'src/__tests__/design-system-icons.test.ts'],
 ];
 
 /**
@@ -58,8 +60,9 @@ const files = (name) => [
  *
  *   1. `@n8n/frontend-vite-config/index.ts` gets an entry in `modulePackages`. The shell then
  *      resolves the module to its `src`. The table is a hand-made list.
- *   2. `editor-ui/package.json` gets the dependency. pnpm then links the package, and a bare
- *      import of it also resolves outside Vite, for vue-tsc and for Node.
+ *   2. `editor-ui/package.json` gets the devDependency. pnpm then links the package, and a bare
+ *      import of it also resolves outside Vite, for vue-tsc and for Node. editor-ui bundles
+ *      everything it imports, so all of its dependencies are devDependencies.
  *   3. `editor-ui/tsconfig.json` gets the two `paths` entries. vue-tsc then reads the same source
  *      that Vite reads. `editor-ui/vite/aliases.test.ts` fails when 1 and 3 disagree.
  *   4. `editor-ui/src/app/modules.manifest.ts` gets the descriptor.
@@ -112,7 +115,7 @@ export const createFrontend = ({ name, packageDir, substitutions, root = repoRoo
 			if (lines.some((line) => line.includes(`"${packageName}"`))) return undefined;
 
 			const entry = `    "${packageName}": "workspace:*",`;
-			const start = lineIndex(lines, /^\s*"dependencies": \{/, 'editor-ui/package.json') + 1;
+			const start = lineIndex(lines, /^\s*"devDependencies": \{/, 'editor-ui/package.json') + 1;
 			let at = start;
 			while (at < lines.length && !/^\s*\},?\s*$/.test(lines[at])) {
 				const [, dependency] = /^\s*"([^"]+)":/.exec(lines[at]) ?? [];
@@ -124,7 +127,7 @@ export const createFrontend = ({ name, packageDir, substitutions, root = repoRoo
 			return lines;
 		})
 	) {
-		record(target.editorUiPackage, 'editor-ui/package.json (dependency)');
+		record(target.editorUiPackage, 'editor-ui/package.json (devDependency)');
 	}
 
 	// 3. The tsconfig paths. Keep them next to the SDK, which every module depends on.

@@ -164,6 +164,14 @@ const distanceStrategyField: INodeProperties = {
 	],
 };
 
+const skipInitializationCheckField: INodeProperties = {
+	displayName: 'Skip Table Initialization',
+	name: 'skipInitializationCheck',
+	type: 'boolean',
+	default: false,
+	description: 'Whether to skip creating the vector extension and tables when they already exist',
+};
+
 const insertFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -171,7 +179,7 @@ const insertFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [collectionField, columnNamesField],
+		options: [collectionField, columnNamesField, skipInitializationCheckField],
 	},
 ];
 
@@ -182,7 +190,13 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [distanceStrategyField, collectionField, columnNamesField, metadataFilterField],
+		options: [
+			distanceStrategyField,
+			collectionField,
+			columnNamesField,
+			metadataFilterField,
+			skipInitializationCheckField,
+		],
 	},
 ];
 
@@ -247,7 +261,15 @@ async function buildPgVectorStoreConfig(
 	const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 	const pool = pgConf.db.$pool as unknown as pg.Pool;
 
-	const config: PGVectorStoreArgs = { pool, tableName };
+	const config: PGVectorStoreArgs = {
+		pool,
+		tableName,
+		skipInitializationCheck: context.getNodeParameter(
+			'options.skipInitializationCheck',
+			itemIndex,
+			false,
+		) as boolean,
+	};
 
 	const collectionOptions = context.getNodeParameter(
 		'options.collection.values',

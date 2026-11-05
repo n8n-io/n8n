@@ -351,16 +351,8 @@ export class Chat implements INodeType {
 		}
 
 		const parameters = chatTrigger.parameters as {
-			mode?: 'hostedChat' | 'webhook';
 			options: { responseMode: 'lastNode' | 'responseNodes' | 'streaming' | 'responseNode' };
 		};
-
-		if (parameters.mode === 'webhook') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'"Embedded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
-			);
-		}
 
 		if (parameters.options.responseMode !== 'responseNodes') {
 			throw new NodeOperationError(

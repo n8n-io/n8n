@@ -4,6 +4,7 @@ import {
 	ProvisioningConfigPatchDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	RoleRepository,
@@ -24,11 +25,11 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
+import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { SsoAccessDeniedError } from './errors/sso-access-denied.error';
@@ -500,7 +501,13 @@ export class ProvisioningService {
 		return (await this.roleMappingRuleRepository.count({ where: { type } })) > 0;
 	}
 
+	/**
+	 * The provisioning settings stay when an admin turns SAML or OIDC sign-in
+	 * off, but then no sign-in applies the mapped roles. So the manual role
+	 * lock applies only while SAML or OIDC sign-in is on.
+	 */
 	async isInstanceRoleManaged(): Promise<boolean> {
+		if (!isSamlOrOidcLoginEnabled()) return false;
 		if (await this.isInstanceRoleProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) &&
@@ -509,6 +516,7 @@ export class ProvisioningService {
 	}
 
 	async isProjectRoleManaged(): Promise<boolean> {
+		if (!isSamlOrOidcLoginEnabled()) return false;
 		if (await this.isProjectRolesProvisioningEnabled()) return true;
 		return (
 			(await this.isExpressionMappingEnabled()) && (await this.hasRoleMappingRulesOfType('project'))
@@ -554,7 +562,7 @@ export class ProvisioningService {
 		};
 	}
 
-	private async applyExpressionMappedRoles(
+	async applyResolvedRoles(
 		user: User,
 		resolved: ResolvedRoles,
 		managed: { instanceRole: boolean; projectRoles: boolean },
@@ -814,7 +822,7 @@ export class ProvisioningService {
 			matchedProjectRuleIds: [...resolved.projectRoles.values()].map((r) => r.matchedRuleId),
 		});
 
-		await this.applyExpressionMappedRoles(user, resolved, {
+		await this.applyResolvedRoles(user, resolved, {
 			instanceRole: instanceRolesManaged,
 			projectRoles: projectRolesManaged,
 		});

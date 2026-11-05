@@ -19,16 +19,20 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { NodesConfig } from '@n8n/config';
 import type { ContentImportContext, PolicyViolation } from '@n8n/decorators';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { ImportService } from '@/services/import.service';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { createMember, createOwner } from './shared/db/users';
@@ -68,8 +72,8 @@ describe('ImportService', () => {
 		// The repository verifies the token, so it has to be a real one. With no backend
 		// registered the real service clears everything, which is what a default import does.
 		mockPolicyEnforcementService.enforceContentImport.mockImplementation(
-			async (context) =>
-				await Container.get(PolicyEnforcementService).enforceContentImport(context),
+			async (context, actor) =>
+				await Container.get(PolicyEnforcementService).enforceContentImport(context, actor),
 		);
 
 		importService = new ImportService(
@@ -85,6 +89,7 @@ describe('ImportService', () => {
 			mockPolicyEnforcementService,
 			sharedWorkflowRepository,
 			Container.get(WorkflowRepository),
+			mock(),
 		);
 	});
 
@@ -495,7 +500,10 @@ describe('ImportService', () => {
 
 	describe('content-import policy', () => {
 		const clearance = async (context: ContentImportContext) =>
-			await Container.get(PolicyEnforcementService).enforceContentImport(context);
+			await Container.get(PolicyEnforcementService).enforceContentImport(context, {
+				kind: 'system',
+				reason: 'cli-import',
+			});
 
 		beforeEach(() => {
 			mockPolicyEnforcementService.enforceContentImport.mockClear();
@@ -510,14 +518,22 @@ describe('ImportService', () => {
 			await importService.importWorkflows([first, second], ownerPersonalProject.id, owner.id, {});
 
 			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledTimes(2);
-			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-				workflow: { id: first.id, name: first.name, nodes: first.nodes },
-				projectId: ownerPersonalProject.id,
-			});
-			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-				workflow: { id: second.id, name: second.name, nodes: second.nodes },
-				projectId: ownerPersonalProject.id,
-			});
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+				{
+					workflow: { id: first.id, name: first.name, nodes: first.nodes },
+					projectId: ownerPersonalProject.id,
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'cli-import' },
+			);
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+				{
+					workflow: { id: second.id, name: second.name, nodes: second.nodes },
+					projectId: ownerPersonalProject.id,
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'cli-import' },
+			);
 		});
 
 		test('skips a blocked workflow, reports it, and still imports the rest of the batch', async () => {
@@ -529,7 +545,9 @@ describe('ImportService', () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
 			const flagged = newWorkflow({ id: uuid(), name: 'Flagged' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Flagged') throw new PolicyViolationError([violation]);
+				if ('workflow' in context && context.workflow.name === 'Flagged') {
+					throw new PolicyViolationError([violation]);
+				}
 				return await clearance(context);
 			});
 
@@ -587,14 +605,18 @@ describe('ImportService', () => {
 				{},
 			);
 
-			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith({
-				workflow: {
-					id: workflowToReimport.id,
-					name: workflowToReimport.name,
-					nodes: workflowToReimport.nodes,
+			expect(mockPolicyEnforcementService.enforceContentImport).toHaveBeenCalledWith(
+				{
+					workflow: {
+						id: workflowToReimport.id,
+						name: workflowToReimport.name,
+						nodes: workflowToReimport.nodes,
+					},
+					projectId: memberPersonalProject.id,
+					transport: 'cli',
 				},
-				projectId: memberPersonalProject.id,
-			});
+				{ kind: 'system', reason: 'cli-import' },
+			);
 		});
 
 		// A check that cannot answer is an infrastructure fault, not a property of one workflow.
@@ -603,7 +625,9 @@ describe('ImportService', () => {
 			const clean = newWorkflow({ id: uuid(), name: 'Clean' });
 			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				if ('workflow' in context && context.workflow.name === 'Broken') {
+					throw new Error('backend unavailable');
+				}
 				return await clearance(context);
 			});
 
@@ -621,7 +645,9 @@ describe('ImportService', () => {
 			const active = await createActiveWorkflow({ name: 'Active' });
 			const broken = newWorkflow({ id: uuid(), name: 'Broken' });
 			mockPolicyEnforcementService.enforceContentImport.mockImplementation(async (context) => {
-				if (context.workflow.name === 'Broken') throw new Error('backend unavailable');
+				if ('workflow' in context && context.workflow.name === 'Broken') {
+					throw new Error('backend unavailable');
+				}
 				return await clearance(context);
 			});
 
@@ -630,6 +656,100 @@ describe('ImportService', () => {
 			).rejects.toThrow('backend unavailable');
 
 			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deprecated nodes', () => {
+		let blockingImportService: ImportService;
+
+		const deprecatedNode: INode = {
+			id: uuid(),
+			name: 'Function',
+			type: 'n8n-nodes-base.function',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { functionCode: 'return items;' },
+		};
+
+		beforeAll(() => {
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockImplementation((type) =>
+				Object.assign(mock<INodeType>(), {
+					description: {
+						deprecated: type === deprecatedNode.type ? true : undefined,
+						properties: [
+							{ displayName: 'Code', name: 'functionCode', type: 'string', default: '' },
+						],
+					},
+				}),
+			);
+
+			blockingImportService = new ImportService(
+				mock(),
+				Container.get(CredentialsRepository),
+				tagRepository,
+				mock(),
+				mock(),
+				mockWorkflowIndexService,
+				mock(),
+				Container.get(UserRepository),
+				mockWorkflowService,
+				mockPolicyEnforcementService,
+				sharedWorkflowRepository,
+				workflowRepository,
+				new DeprecatedNodesValidationService(
+					mock(),
+					mock<NodesConfig>({ blockDeprecated: true }),
+					nodeTypes,
+				),
+			);
+		});
+
+		test('rejects a new workflow with a deprecated node and leaves active workflows running', async () => {
+			const active = await createActiveWorkflow({ name: 'Active' });
+			const withDeprecated = newWorkflow({ id: uuid(), nodes: [deprecatedNode] });
+
+			await expect(
+				blockingImportService.importWorkflows(
+					[active, withDeprecated],
+					ownerPersonalProject.id,
+					owner.id,
+					{},
+				),
+			).rejects.toThrow(DeprecatedNodesError);
+
+			await expect(getWorkflowById(withDeprecated.id)).resolves.toBeNull();
+			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('rejects re-importing a workflow whose deprecated node was edited', async () => {
+			const existing = await createWorkflow({ nodes: [deprecatedNode] });
+			const edited = {
+				...existing,
+				nodes: [{ ...deprecatedNode, parameters: { functionCode: 'return [];' } }],
+			};
+
+			await expect(
+				blockingImportService.importWorkflows([edited], ownerPersonalProject.id, owner.id, {}),
+			).rejects.toThrow(DeprecatedNodesError);
+
+			const dbWorkflow = await getWorkflowById(existing.id);
+			expect(dbWorkflow?.nodes).toEqual([deprecatedNode]);
+		});
+
+		test('allows re-importing a workflow whose deprecated node is unchanged', async () => {
+			const existing = await createWorkflow({ nodes: [deprecatedNode] });
+
+			await blockingImportService.importWorkflows(
+				[{ ...existing, name: 'Re-imported' }],
+				ownerPersonalProject.id,
+				owner.id,
+				{},
+			);
+
+			const dbWorkflow = await getWorkflowById(existing.id);
+			expect(dbWorkflow?.name).toBe('Re-imported');
+			expect(dbWorkflow?.nodes).toEqual([deprecatedNode]);
 		});
 	});
 });

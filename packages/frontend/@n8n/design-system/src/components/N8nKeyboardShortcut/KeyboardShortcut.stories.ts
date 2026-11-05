@@ -25,7 +25,4 @@ const template: StoryFn = (args, { argTypes }) => ({
 export const Default = template.bind({});
 Default.args = {
 	keys: ['s'],
-	altKey: true,
-	metaKey: true,
-	shiftKey: true,
 };

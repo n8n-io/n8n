@@ -1,16 +1,50 @@
 import { Time } from '@n8n/constants';
 
 import { Config, Env } from '../decorators';
+import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
+	/**
+	 * Whether the n8n Assistant is on when no admin has turned it on or off in Settings > Assistant.
+	 * When unset, it's off on the Enterprise plan and on for all other plans. A choice saved in
+	 * Settings > Assistant overrides this variable.
+	 */
+	@Env('N8N_INSTANCE_AI_ENABLED')
+	enabled?: boolean;
+
+	/**
+	 * Enable workflow suggestions, self-healing investigations, and result review.
+	 */
+	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
+	workflowSuggestionsEnabled: boolean = false;
+
+	/**
+	 * Whether n8n runs the n8n Assistant on the agents runtime as well. This is an
+	 * experimental preview for development and evaluation. Don't turn it on in
+	 * production.
+	 */
+	@Env('N8N_INSTANCE_AI_ASSISTANT_AGENT_ENABLED')
+	assistantAgentEnabled: boolean = false;
+
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-opus-4-8';
+	model: string = 'anthropic/claude-opus-5-5';
 
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
 	modelUrl: string = '';
+
+	/**
+	 * Add `x-n8n-*` request labels to the Assistant's model calls. When on, a directly
+	 * configured model provider gets `x-n8n-feature`, `x-n8n-version`, `x-n8n-run-id`,
+	 * `x-n8n-thread-id` and `x-n8n-function-id` (which part of the Assistant made the call),
+	 * and n8n's AI service also gets `x-n8n-function-id`. When off, a direct provider gets
+	 * no `x-n8n-*` headers, and n8n's AI service gets only the feature, version, run and
+	 * thread headers it always gets.
+	 */
+	@Env('N8N_INSTANCE_AI_MODEL_REQUEST_LABELS')
+	modelRequestLabels: boolean = false;
 
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
@@ -45,13 +79,25 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
 
+	/**
+	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
+	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
+	 * When unset, or when the main model can't switch models, n8n uses the main model.
+	 */
+	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
+	memoryModel: string = '';
+
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
 
-	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
-	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
-	localGatewayDisabled: boolean = false;
+	/**
+	 * Run the Observer inside a turn (at tool-loop boundaries). When false the
+	 * Observer runs only after the turn, which keeps the prompt prefix stable
+	 * within a turn and improves provider prompt-cache reuse.
+	 */
+	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
+	midRunObservation: boolean = false;
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
@@ -102,11 +148,19 @@ export class InstanceAiConfig {
 	sandboxNamePrefix: string = '';
 
 	/**
-	 * When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of
-	 * lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
+	 * When true, sandboxes are created ephemeral: the provider deletes them once idle instead
+	 * of leaving them stopped. Intended for throwaway eval instances so sandboxes don't accumulate.
 	 */
 	@Env('N8N_INSTANCE_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
+
+	/**
+	 * Set to true only on a throwaway instance that runs n8n Assistant evaluations. It turns on
+	 * the evaluation API routes and lets an evaluation reset Remove Duplicates history between
+	 * scenarios. Feature flags then come only from their defaults and environment overrides.
+	 */
+	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
+	evalInstance: boolean = false;
 
 	/**
 	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
@@ -149,15 +203,11 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
 
-	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
-	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
-	gatewayApiKey: string = '';
-
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 30;
 
-	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	/** Interval in milliseconds between scheduled pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
 	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
@@ -182,13 +232,6 @@ export class InstanceAiConfig {
 	thinkingEnabled: boolean = true;
 
 	/**
-	 * Let the assistant discover and connect MCP registry servers.
-	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
-	 */
-	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
-	mcpConnectionsEnabled: boolean = false;
-
-	/**
 	 * Force-enable canvas-selected-nodes chat context in Instance AI.
 	 * Acts as an operator-level override of the PostHog rollout flag
 	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
@@ -198,24 +241,82 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
-	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
-	 * the chat input replaces the suspending setup wizard. Env-settable so eval
-	 * lanes can exercise both paths; a managed rollout flag may layer on top
-	 * later behind the same accessors.
+	 * Pin every Instance AI run on this instance to one published prompt profile
+	 * (e.g. `concise@1`). Empty keeps the backend experiment assignment.
+	 *
+	 * Instance-wide on purpose, so the two system prompts never fragment the
+	 * prompt cache within one instance. A request-level `promptVersion` and a
+	 * value already selected for the thread both still win, so an eval keeps the
+	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
+	 * that resumes after you change it uses the new value. Profiles are keyed by
+	 * build mode, so pinning a `default`-mode profile also overrides a
+	 * progressive building assignment. An unknown version fails the run, and n8n
+	 * keeps serving everything else.
 	 */
-	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	instanceAiSetupPanelEnabled: boolean = false;
+	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
+	promptVersion: string = '';
 
 	/**
-	 * Activation-capped trial variant for n8n cloud experiment.
-	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
+	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
+	 * the `nodeTypes` filter on `list_workflows`.
+	 *
+	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
+	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than
+	 * with any other context surface, so a measurement can tell which one moved a result.
 	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
-	activationCapped: boolean = false;
+	@Env('N8N_INSTANCE_AI_NODE_USAGE_ENABLED')
+	nodeUsageEnabled: boolean = false;
 
 	/**
-	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
+	 * Force-enable folder exploration in Instance AI: folder attribution and
+	 * folder scoping on the workflows list tool. Overrides the
+	 * `110_instance_ai_folder_exploration` PostHog flag to on. `false` falls back
+	 * to PostHog.
 	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
-	activationLockMessageThreshold: number = 1;
+	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
+	folderExplorationEnabled: boolean = false;
+
+	/**
+	 * Max orchestrator runs executing concurrently on this process. A new user turn over
+	 * the cap is refused with HTTP 429; resumes and internal follow-up runs are always
+	 * admitted so an in-flight conversation is never stranded.
+	 *
+	 * `-1` (the default) means unlimited
+	 *
+	 * Size it against memory rather than throughput: measured peak is ~600MB
+	 * base plus ~20MB per concurrent run. The unit is the user turn, so sub-agents are
+	 * capped separately rather than counted here.
+	 *
+	 * Counts executing runs only. A suspended run keeps its agent in memory but releases
+	 * its slot, so leave headroom for threads that wait on an approval card.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS', concurrencyLimitSchema)
+	maxConcurrentRuns: number = -1;
+
+	/**
+	 * Max orchestrator runs one user may have executing at once, across all their threads.
+	 * Bounds credit overshoot: usage is only claimed when a run segment ends, so every run
+	 * a user can start in parallel is one more run's worth of spend that can land after
+	 * they cross quota.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * Counts executing runs only, a HITL-suspended run spends nothing while it waits,
+	 * and counting those would lock a user out for the whole confirmation timeout.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_RUNS_PER_USER', concurrencyLimitSchema)
+	maxConcurrentRunsPerUser: number = -1;
+
+	/**
+	 * Max background sub-agent tasks running concurrently on this process, across all
+	 * threads. Guards the fan-out case the per-thread limit misses: a handful of runs each
+	 * spawning their full complement of sub-agents. A spawn over the cap fails as a tool
+	 * error, which the orchestrator handles by doing the work inline or retrying later.
+	 *
+	 * `-1` (the default) means unlimited.
+	 *
+	 * The per-thread constant limit of MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD (5) applies regardless.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
+	maxConcurrentSubAgents: number = -1;
 }

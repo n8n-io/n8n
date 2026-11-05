@@ -37,7 +37,7 @@ const i18n = useI18n();
 
 .title {
 	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 	margin: 0 0 var(--spacing--sm) 0;
 	line-height: var(--line-height--lg);

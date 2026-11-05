@@ -77,6 +77,8 @@ const shortcutTooltipLabel = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .container {
 	display: inline-flex;
 	justify-content: center;
@@ -86,7 +88,7 @@ const shortcutTooltipLabel = computed(() => {
 .saved {
 	color: $custom-font-very-light;
 	font-size: 12px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 12px;
 	text-align: center;
 	padding: var(--spacing--2xs) var(--spacing--2xs);

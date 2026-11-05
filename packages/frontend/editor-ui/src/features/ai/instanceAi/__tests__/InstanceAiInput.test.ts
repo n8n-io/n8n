@@ -2,11 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, createPinia } from 'pinia';
-import { defineComponent, h, type Component, type PropType } from 'vue';
+import { defineComponent, h, ref, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
+import type { ContextChip } from '../instanceAi.contextChip';
 import {
 	INSTANCE_AI_EMPTY_STATE_SUGGESTIONS as suggestions,
 	isPromptSuggestion,
@@ -19,7 +21,6 @@ type InputTestProps = {
 	isStreaming: boolean;
 	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
-	isPlanEditMode: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -30,14 +31,14 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
-	contextChip?: { label: string; testId?: string } | null;
+	placeholder?: string;
+	contextChip?: ContextChip | null;
 };
 
 const defaultProps = (): InputTestProps => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
-	isPlanEditMode: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -92,6 +93,7 @@ const CustomInsertSuggestionsComponent = defineComponent({
 							suggestionId: 'custom-build-workflow',
 							suggestionKind: 'prompt',
 							position: 1,
+							prefillType: 'suggestion_catalog',
 						});
 					},
 				},
@@ -176,6 +178,7 @@ const CustomRawPromptSuggestionsComponent = defineComponent({
 								suggestionKind: 'prompt',
 								position: 1,
 								telemetryPayload: { suggestion_source: 'v2_top_used_fallback' },
+								prefillType: 'suggestion_catalog',
 							}),
 					},
 					'Insert raw suggestion',
@@ -214,6 +217,41 @@ const InputMenuStub = defineComponent({
 			);
 	},
 });
+
+const DirectSubmitHarness = defineComponent({
+	setup(_props, { emit }) {
+		const inputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
+		return () =>
+			h('div', [
+				h(InstanceAiInput, {
+					ref: (el: unknown) => {
+						inputRef.value = el as InstanceType<typeof InstanceAiInput> | null;
+					},
+					...defaultProps(),
+					currentThreadId: '',
+					onSubmit: (...args: unknown[]) => emit('submit', ...args),
+				}),
+				h(
+					'button',
+					{
+						'data-test-id': 'harness-direct-submit',
+						onClick: () =>
+							inputRef.value?.submitSuggestion({
+								prompt: 'Score my leads automatically',
+								suggestionId: 'score-my-leads',
+								suggestionKind: 'quick_example',
+								position: 1,
+								suggestionCatalogVersion: 'agent-templates-v1',
+								prefillType: 'suggestion_catalog',
+							}),
+					},
+					'Direct submit',
+				),
+			]);
+	},
+});
+
+const renderDirectSubmitHarness = createComponentRenderer(DirectSubmitHarness);
 
 const renderComponent = createComponentRenderer(InstanceAiInput, {
 	props: defaultProps(),
@@ -271,8 +309,47 @@ describe('InstanceAiInput', () => {
 
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
-			'Tell me what to build or ask a question – add context with +',
+			'Tell me what to build or ask a question',
 		);
+	});
+
+	it('prefers a caller-provided placeholder text over the placeholder key', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				placeholder: 'Ask Support Agent…',
+				placeholderKey: 'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Support Agent…');
+	});
+
+	it('uses the new agent placeholder when the caller passes its key', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				placeholderKey: 'instanceAi.input.newAgentPlaceholder',
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute(
+			'placeholder',
+			'Describe the agent you want to build',
+		);
+	});
+
+	it('uses the default placeholder for a saved agent artifact', () => {
+		const { getByRole } = renderComponent({
+			props: {
+				contextChip: {
+					type: 'agent-artifact',
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					label: 'Support Agent',
+				},
+			},
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('placeholder', 'Ask anything...');
 	});
 
 	it('disables the composer when the workflow builder is unavailable', () => {
@@ -342,6 +419,52 @@ describe('InstanceAiInput', () => {
 		await fireEvent.keyDown(getByRole('textbox'), { key: 'Enter' });
 
 		expect(emitted().submit).toBeUndefined();
+	});
+
+	it('does not submit when credits are exhausted', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				isOutOfCredits: true,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		expect(textbox).toBeDisabled();
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emitted().submit).toBeUndefined();
+	});
+
+	it('submits on Enter while credits remain', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: false,
+				isOutOfCredits: false,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Keep going');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Keep going');
+	});
+
+	it('keeps stop available while a run is streaming and credits are exhausted', async () => {
+		const { emitted, getByRole } = renderComponent({
+			props: {
+				isStreaming: true,
+				isOutOfCredits: true,
+				suggestions,
+			},
+		});
+
+		await userEvent.click(getByRole('button', { name: 'Stop' }));
+
+		expect(emitted().stop).toHaveLength(1);
 	});
 
 	it('does not change the placeholder when hovering the quick examples trigger', async () => {
@@ -443,6 +566,17 @@ describe('InstanceAiInput', () => {
 		expect(emitted().submit?.[0]).toEqual([
 			'I want to build a new agent. Help me figure out what to build. Ask me what the main purpose of the agent is, what should trigger it into action, what apps, tools, or knowledge it should have access to, and whether I have a preference for the AI model used.',
 			undefined,
+			expect.any(Function),
+			{
+				kind: 'prefill',
+				prefillType: 'v1_opener',
+				prefillId: 'build-agent',
+				promptModified: false,
+			},
+			expect.any(Number),
+			expect.any(Function),
+			EMPTY_ASSISTANT_MENTION_COUNTS,
+			[],
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -561,6 +695,165 @@ describe('InstanceAiInput', () => {
 		expect(submittedEvents).toHaveLength(0);
 	});
 
+	it('reports the pre-fill that filled the composer when an inserted suggestion is sent', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toEqual({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+			prefillId: 'custom-build-workflow',
+			promptModified: false,
+		});
+	});
+
+	it('reports the pre-fill as modified when the inserted prompt is edited before sending', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		await userEvent.type(getByRole('textbox'), ' Also handle errors.');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toMatchObject({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+			promptModified: true,
+		});
+	});
+
+	it('reports user authorship once a pre-filled prompt is cleared and replaced', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		const textbox = getByRole('textbox');
+		await userEvent.clear(textbox);
+		await userEvent.type(textbox, 'Build something unrelated from scratch');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toEqual({ kind: 'user_typed' });
+	});
+
+	// A refused send (a concurrency cap, a 429) puts the draft back. The retry has
+	// to stay attributed to the surface that wrote it, not read as user-typed.
+	it('keeps the pre-fill attribution when a refused send restores the draft', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				suggestionsComponent: CustomInsertSuggestionsComponent,
+				suggestionCatalogVersion: 'v2',
+				currentThreadId: '',
+			},
+		});
+
+		await userEvent.click(getByTestId('custom-suggestion-insert'));
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+
+		// The host refuses the send and hands the draft back.
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[1]).toBeDefined());
+
+		expect(emittedArgument(emitted().submit?.[1], 3)).toEqual({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+			prefillId: 'custom-build-workflow',
+			promptModified: false,
+		});
+	});
+
+	it('reports a Tab-accepted contextual follow-up as a pre-fill', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+				contextualSuggestion: 'Add error handling to the workflow',
+			},
+		});
+
+		getByRole('textbox').focus();
+		await userEvent.keyboard('{Tab}');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 0)).toBe('Add error handling to the workflow');
+		expect(emittedArgument(emitted().submit?.[0], 3)).toEqual({
+			kind: 'prefill',
+			prefillType: 'contextual_followup',
+			promptModified: false,
+		});
+	});
+
+	// The split empty state sends a row straight off, with no insert step, so the
+	// composer was already empty and `resetDraftComposer` does not change it --
+	// the watcher never fires. Anything the user types next must not inherit the
+	// pre-fill that was just sent.
+	it('attributes a direct suggestion submit to the payload catalog, not the home-screen catalog', async () => {
+		telemetryTrack.mockClear();
+		const { getByTestId } = renderDirectSubmitHarness();
+
+		await userEvent.click(getByTestId('harness-direct-submit'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI prompt suggestion submitted',
+			expect.objectContaining({
+				suggestion_catalog_version: 'agent-templates-v1',
+				suggestion_id: 'score-my-leads',
+				position: 1,
+			}),
+		);
+	});
+
+	it('does not attribute a later typed message to a directly submitted suggestion', async () => {
+		const { emitted, getByRole, getByTestId } = renderDirectSubmitHarness();
+
+		await userEvent.click(getByTestId('harness-direct-submit'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[0], 3)).toMatchObject({
+			kind: 'prefill',
+			prefillType: 'suggestion_catalog',
+		});
+
+		await userEvent.type(getByRole('textbox'), 'Something else entirely');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[1]).toBeDefined());
+		expect(emittedArgument(emitted().submit?.[1], 3)).toEqual({ kind: 'user_typed' });
+	});
+
 	it('submits typed text and attachments from the send button', async () => {
 		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -594,6 +887,11 @@ describe('InstanceAiInput', () => {
 					}),
 				],
 				expect.any(Function),
+				{ kind: 'user_typed' },
+				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -607,6 +905,25 @@ describe('InstanceAiInput', () => {
 			expect(textbox).toHaveValue('Please send this with context');
 			expect(getByTestId('chat-file')).toBeInTheDocument();
 		});
+	});
+
+	it('emits a draft recovery callback for a text-only message', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: { isStreaming: false },
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Build me an invoice workflow');
+		await userEvent.click(getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		expect(textbox).toHaveValue('');
+
+		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
+		expect(restoreDraft).toBeTypeOf('function');
+		if (typeof restoreDraft !== 'function') throw new Error('Expected a draft recovery callback');
+		expect(restoreDraft()).toBe(true);
+		await waitFor(() => expect(textbox).toHaveValue('Build me an invoice workflow'));
 	});
 
 	it('opens the hidden file picker from the input menu', async () => {
@@ -744,57 +1061,13 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
-	it('uses plan edit mode for focused plan feedback', async () => {
-		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
-			props: {
-				isPlanEditMode: true,
-				isStreaming: true,
-				suggestions,
-			},
-		});
-
-		const textbox = getByRole('textbox');
-		const planEditChip = getByTestId('instance-ai-plan-edit-context');
-
-		expect(planEditChip).toHaveTextContent('Ask for edits');
-		expect(planEditChip.querySelector('.n8n-tag')?.className).toContain('lg');
-		expect(planEditChip.querySelector('[data-icon="corner-down-right"]')).toBeInTheDocument();
-		expect(planEditChip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
-		expect(textbox).toHaveAttribute('placeholder', 'What should we change?');
-		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
-		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
-
-		await userEvent.type(textbox, 'Make the first workflow simpler');
-		await userEvent.click(getByTestId('instance-ai-send-button'));
-
-		expect(emitted().submit).toEqual([['Make the first workflow simpler', undefined]]);
-	});
-
-	it('emits cancel-plan-edit and clears the draft when the plan edit context is closed', async () => {
-		const { emitted, getByRole, getByTestId, rerender } = renderComponent({
-			props: {
-				isPlanEditMode: true,
-				isStreaming: true,
-			},
-		});
-
-		const textbox = getByRole('textbox');
-		await userEvent.type(textbox, 'Change the plan');
-		await userEvent.click(getByTestId('instance-ai-plan-edit-cancel'));
-
-		expect(emitted()['cancel-plan-edit']).toEqual([[]]);
-
-		await rerender(inputProps({ isPlanEditMode: false }));
-
-		expect(textbox).toHaveValue('');
-	});
-
 	it('renders a dismissible handoff context chip inside the input', async () => {
 		const { emitted, getByRole, getByTestId } = renderComponent({
 			props: {
 				contextChip: {
+					type: 'agent-preview-session',
+					agentId: 'agent-1',
+					threadId: 'preview-thread-1',
 					label: 'SEO Auditor session',
 				},
 			},
@@ -804,27 +1077,14 @@ describe('InstanceAiInput', () => {
 		const chip = getByTestId('instance-ai-handoff-context-chip');
 
 		expect(chip).toHaveTextContent('SEO Auditor session');
-		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
 		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
 		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
 
-		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+		const dismiss = getByTestId('instance-ai-handoff-context-chip-dismiss');
+		expect(dismiss).toHaveAccessibleName('Close');
+		await userEvent.click(dismiss);
 
 		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
-	});
-
-	it('keeps plan edit mode as the only visible chip when both plan edit and handoff context are present', () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				isPlanEditMode: true,
-				contextChip: {
-					label: 'SEO Auditor session',
-				},
-			},
-		});
-
-		expect(queryByTestId('instance-ai-plan-edit-context')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-handoff-context-chip')).not.toBeInTheDocument();
 	});
 
 	it('emits stop when the streaming stop button is clicked', async () => {

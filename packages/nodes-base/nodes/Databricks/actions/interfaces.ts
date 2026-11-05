@@ -46,3 +46,90 @@ export interface OpenAPISchema {
 		};
 	};
 }
+
+export type DatabricksRunNowResponse = {
+	run_id: number;
+	number_in_job?: number;
+};
+
+export type DatabricksJobRunStatus = {
+	state?: string;
+	termination_details?: {
+		code?: string;
+		type?: string;
+		message?: string;
+	};
+};
+
+export type DatabricksJobRunLegacyState = {
+	life_cycle_state?: string;
+	result_state?: string;
+	state_message?: string;
+};
+
+export type DatabricksJobRunTask = {
+	task_key?: string;
+	run_id?: number;
+	run_page_url?: string;
+	start_time?: number;
+	end_time?: number;
+	status?: DatabricksJobRunStatus;
+	/** @deprecated Jobs API 2.2 reports `status` instead */
+	state?: DatabricksJobRunLegacyState;
+};
+
+export type DatabricksJobRun = {
+	job_id?: number;
+	run_id?: number;
+	run_name?: string;
+	run_type?: string;
+	run_page_url?: string;
+	trigger?: string;
+	creator_user_name?: string;
+	start_time?: number;
+	end_time?: number;
+	queue_duration?: number;
+	run_duration?: number;
+	status?: DatabricksJobRunStatus;
+	state?: DatabricksJobRunLegacyState;
+	tasks?: DatabricksJobRunTask[];
+	has_more?: boolean;
+	next_page_token?: string;
+	job_parameters?: Array<{ name?: string; default?: string; value?: string }>;
+};
+
+export type DatabricksNotebookOutput = { result?: string; truncated?: boolean };
+
+export type DatabricksRunOutput = {
+	metadata?: DatabricksJobRun;
+	notebook_output?: DatabricksNotebookOutput;
+	sql_output?: Record<string, unknown>;
+	dbt_output?: Record<string, unknown>;
+	run_job_output?: { run_id?: number };
+	clean_rooms_notebook_output?: { notebook_output?: DatabricksNotebookOutput };
+	logs?: string;
+	logs_truncated?: boolean;
+	error?: string;
+	error_trace?: string;
+	info?: string;
+};
+
+export type DatabricksJobSettings = {
+	name?: string;
+	tasks?: Array<Record<string, unknown>>;
+	job_clusters?: Array<Record<string, unknown>>;
+	environments?: Array<Record<string, unknown>>;
+	parameters?: Array<Record<string, unknown>>;
+	[key: string]: unknown;
+};
+
+export type DatabricksJob = {
+	job_id?: number;
+	creator_user_name?: string;
+	run_as_user_name?: string;
+	created_time?: number;
+	settings?: DatabricksJobSettings;
+	trigger_state?: Record<string, unknown>;
+	has_more?: boolean;
+	next_page_token?: string;
+};

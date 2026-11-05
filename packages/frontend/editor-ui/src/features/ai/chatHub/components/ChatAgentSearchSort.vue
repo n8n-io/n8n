@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon, N8nInput, N8nSelect2 } from '@n8n/design-system';
+import type { SelectValue } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { refDebounced } from '@vueuse/core';
@@ -15,9 +16,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const sortOptions = computed(() => [
-	{ label: i18n.baseText('chatHub.agents.sort.updatedAt'), value: 'updatedAt' as const },
-	{ label: i18n.baseText('chatHub.agents.sort.createdAt'), value: 'createdAt' as const },
+const sortOptions = computed<Array<{ label: string; value: ChatAgentFilter['sortBy'] }>>(() => [
+	{ label: i18n.baseText('chatHub.agents.sort.updatedAt'), value: 'updatedAt' },
+	{ label: i18n.baseText('chatHub.agents.sort.createdAt'), value: 'createdAt' },
 ]);
 
 const localSearch = ref(props.modelValue.search);
@@ -40,8 +41,13 @@ watch(debouncedSearch, (newSearch) => {
 	}
 });
 
-function updateSortBy(value: 'updatedAt' | 'createdAt') {
-	emit('update:modelValue', { ...props.modelValue, sortBy: value });
+function updateSortBy(value: SelectValue | undefined) {
+	const selected = sortOptions.value.find((option) => option.value === value);
+	if (!selected) {
+		return;
+	}
+
+	emit('update:modelValue', { ...props.modelValue, sortBy: selected.value });
 }
 </script>
 

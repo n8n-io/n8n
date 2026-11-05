@@ -4,7 +4,7 @@
  * A build outcome freezes the execute-vs-simulate plan at build time. A node
  * that was simulated only because its credentials were mocked goes stale the
  * moment a real credential is assigned — via the setup flow, the
- * apply-workflow-credentials tool, or a manual selection in the editor — since
+ * workflow_builder_apply_workflow_credentials tool, or a manual selection in the editor — since
  * none of those paths rebuild the workflow. The same applies to AI roots
  * simulated because their language-model sub-node had no credentials. This
  * module re-derives the plan for exactly those nodes from the live workflow
@@ -17,10 +17,13 @@ import { classifyNodesForSimulation } from './classify-node-destructiveness.serv
 import { isAiGatewayManagedCredential } from './credential-utils';
 import {
 	CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+	DECLARED_OUTPUT_SIMULATION_REASON,
 	findCredentiallessAiRoots,
 	withWaitGateHaltVerdicts,
 } from './plan-verification-simulation';
 import type { CredentialMap } from './resolve-credentials';
+import type { FetchFn } from '@n8n/agents';
+
 import type { ModelConfig } from '../../types';
 import type {
 	NodeSimulationVerdict,
@@ -56,7 +59,7 @@ function nodeCredentials(
 	nodeName: string,
 ): Record<string, unknown> | undefined {
 	const node = (workflow.nodes ?? []).find((candidate) => candidate.name === nodeName);
-	return node?.credentials ? (node.credentials as Record<string, unknown>) : undefined;
+	return node?.credentials ?? undefined;
 }
 
 /**
@@ -79,8 +82,10 @@ export async function reconcileSimulationPlan(args: {
 	availableCredentials: CredentialMap;
 	/** Host-resolved model used when no eval model API key is configured in the environment. */
 	fallbackModelConfig?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
 }): Promise<SimulationPlanPatch | undefined> {
-	const { buildOutcome, workflow, availableCredentials, fallbackModelConfig } = args;
+	const { buildOutcome, workflow, availableCredentials, fallbackModelConfig, modelFetch } = args;
 
 	const mockedEntries = Object.entries(buildOutcome.mockedCredentialsByNode ?? {});
 	const satisfiedNames = new Set(
@@ -126,16 +131,12 @@ export async function reconcileSimulationPlan(args: {
 	// pass never re-judges the rest of the workflow.
 	let freshVerdictByName = new Map<string, NodeSimulationVerdict>();
 	if (satisfiedNames.size > 0) {
-		const scopedWorkflow: WorkflowJSON = {
-			...workflow,
-			nodes: (workflow.nodes ?? []).filter(
-				(node) => typeof node.name === 'string' && satisfiedNames.has(node.name),
-			),
-		};
 		const freshVerdicts = await classifyNodesForSimulation({
-			workflow: scopedWorkflow,
+			workflow,
+			nodeNames: satisfiedNames,
 			mockedNodeNames: remainingMockedNames,
 			fallbackModelConfig,
+			modelFetch,
 		});
 		freshVerdictByName = new Map(freshVerdicts.map((verdict) => [verdict.nodeName, verdict]));
 	}
@@ -145,6 +146,7 @@ export async function reconcileSimulationPlan(args: {
 	// simulation. Restored AI roots are deterministically safe by type, so
 	// flipping straight to execute matches what a rebuild would classify.
 	const reconciledPlan = buildOutcome.nodeSimulationPlan?.map((verdict) => {
+		if (verdict.reason === DECLARED_OUTPUT_SIMULATION_REASON) return verdict;
 		if (satisfiedNames.has(verdict.nodeName)) {
 			return freshVerdictByName.get(verdict.nodeName) ?? verdict;
 		}
@@ -164,7 +166,9 @@ export async function reconcileSimulationPlan(args: {
 
 	const retainedFixtureEntries = Object.entries(buildOutcome.simulationFixtures ?? {}).filter(
 		([nodeName]) =>
-			freshVerdictByName.get(nodeName)?.verdict !== 'execute' && !restoredAiRoots.has(nodeName),
+			nodeSimulationPlan?.some(
+				(verdict) => verdict.nodeName === nodeName && verdict.verdict === 'simulate',
+			),
 	);
 	const simulationFixtures =
 		retainedFixtureEntries.length > 0 ? Object.fromEntries(retainedFixtureEntries) : undefined;
@@ -192,8 +196,7 @@ export async function reconcileSimulationPlan(args: {
 		simulationFixtures,
 	};
 
-	// The mocked-credentials requirement is settled; complete-checkpoint
-	// re-analyzes the live workflow, so any other pending setup still blocks.
+	// The mocked-credentials requirement is settled; any other pending setup still blocks.
 	if (
 		!hasRemainingMocks &&
 		!buildOutcome.hasUnresolvedPlaceholders &&

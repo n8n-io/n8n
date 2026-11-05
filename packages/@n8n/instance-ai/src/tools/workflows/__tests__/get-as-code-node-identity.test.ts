@@ -1,8 +1,8 @@
+import { createWorkflowToolRouter } from '../../__tests__/workflow-tools-test-utils';
 import { parseWorkflowCodeToBuilder, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
-import { createWorkflowsTool } from '../../workflows.tool';
 
 /**
  * The regression behind INS-970 / INS-1120 / INS-1179 is a round trip, not agent behaviour:
@@ -63,13 +63,18 @@ function createContext(): InstanceAiContext {
 	} as unknown as InstanceAiContext;
 }
 
-/** Rebuild the way the sandbox does: run the source, then serialize. */
+/**
+ * Rebuild the way the sandbox does: run the source, then serialize. The sandbox
+ * compiles real TypeScript, so the import line get-as-code emits is fine there;
+ * the SDK parser used here rejects imports, so strip it first.
+ */
 function rebuild(code: string): WorkflowJSON {
-	return parseWorkflowCodeToBuilder(code).toJSON();
+	const body = code.replace(/^import\s[^\n]*\n+/gm, '');
+	return parseWorkflowCodeToBuilder(body).toJSON();
 }
 
 async function getAsCode(): Promise<string> {
-	const tool = createWorkflowsTool(createContext(), 'full');
+	const tool = createWorkflowToolRouter(createContext());
 	// A versionId keeps this a historical read, which skips the source-file binding refresh
 	// and its thread-metadata plumbing — irrelevant to the round trip under test.
 	const result = await executeTool<{ code: string; error?: string }>(

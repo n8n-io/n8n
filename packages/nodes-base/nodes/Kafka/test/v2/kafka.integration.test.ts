@@ -447,7 +447,7 @@ describe('version 1 and version 2 item parity', () => {
 		name: 'kafkaTrigger',
 		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['trigger'],
-		defaultVersion: 1.3,
+		defaultVersion: 2,
 		description: 'Consume messages from a Kafka topic',
 	};
 	/** The options that shape the item, applied identically to both versions. */

@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -40,6 +40,22 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 
 	async removePublishedVersion(workflowId: string): Promise<void> {
 		await this.delete({ workflowId });
+	}
+
+	/**
+	 * Which of these workflows still have a published version.
+	 *
+	 * @returns the subset of `workflowIds` that have one.
+	 */
+	async findPublishedWorkflowIds(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) {
+			return new Set();
+		}
+		const rows = await this.find({
+			where: { workflowId: In(workflowIds) },
+			select: ['workflowId'],
+		});
+		return new Set(rows.map((row) => row.workflowId));
 	}
 
 	/**
@@ -113,6 +129,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			id: workflow.id,
 			name: workflow.name,
 			description: workflow.description,
+			// oxlint-disable-next-line typescript/no-deprecated
 			active: workflow.active,
 			isArchived: workflow.isArchived,
 			createdAt: workflow.createdAt,

@@ -8,7 +8,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
 
-import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import type { DataTableResource } from '../types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -16,7 +16,8 @@ import { useDependencies } from '@/app/composables/useDependencies';
 
 type Props = {
 	dataTable: DataTableResource;
-	readOnly?: boolean;
+	/** Locks rename and delete, for example on a protected instance. */
+	schemaReadOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
 
@@ -27,7 +28,7 @@ const { hasDependencies } = useDependencies();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
-	readOnly: false,
+	schemaReadOnly: false,
 	showOwnershipBadge: false,
 });
 
@@ -46,11 +47,16 @@ const getDataTableSize = computed(() => {
 	return size;
 });
 
-const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id));
+const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id, 'dataTable'));
 </script>
 <template>
 	<div data-test-id="data-table-card">
-		<N8nLink :to="dataTableRoute" class="data-table-card" data-test-id="data-table-card-link">
+		<N8nLink
+			:to="dataTableRoute"
+			:underline="false"
+			class="data-table-card"
+			data-test-id="data-table-card-link"
+		>
 			<N8nCard :class="$style.card">
 				<template #prepend>
 					<N8nIcon
@@ -66,9 +72,6 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 						<N8nText tag="h2" bold data-test-id="data-table-card-name">
 							{{ props.dataTable.name }}
 						</N8nText>
-						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
-							{{ i18n.baseText('workflows.item.readonly') }}
-						</N8nBadge>
 					</div>
 				</template>
 				<template #footer>
@@ -137,7 +140,7 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 						/>
 						<DataTableActions
 							:data-table="props.dataTable"
-							:is-read-only="props.readOnly"
+							:schema-read-only="props.schemaReadOnly"
 							location="card"
 						/>
 					</div>
@@ -148,6 +151,8 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .card {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -200,7 +205,7 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 	background-color: var(--color--background--light-3);
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 	}

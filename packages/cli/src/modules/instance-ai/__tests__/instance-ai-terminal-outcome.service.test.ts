@@ -16,18 +16,8 @@ vi.mock('@n8n/instance-ai', () => ({
 			options: {
 				errorMessage?: string;
 				errorCode?: 'quota_exhausted';
-				suppressCompletedFallback?: boolean;
 			} = {},
 		) {
-			if (status === 'completed' && options.suppressCompletedFallback) {
-				return {
-					status,
-					visibilitySource: 'none',
-					action: 'none',
-					reason: 'completed-silent-suppressed',
-				};
-			}
-
 			if (status === 'errored') {
 				return {
 					status,
@@ -439,32 +429,6 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		);
 	});
 
-	it('does not report a completed run when silence is expected', async () => {
-		const { service, deps } = createService();
-
-		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
-			messageGroupId: 'group-1',
-			suppressCompletedFallback: true,
-		});
-
-		expect(deps.errorReporter.report).not.toHaveBeenCalled();
-	});
-
-	it('does not publish completed fallback output when silence is expected', async () => {
-		const { service, deps } = createService();
-
-		const decision = await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
-			messageGroupId: 'group-1',
-			suppressCompletedFallback: true,
-		});
-
-		expect(decision).toMatchObject({
-			action: 'none',
-			reason: 'completed-silent-suppressed',
-		});
-		expect(deps.eventBus.events).toEqual([]);
-	});
-
 	it('publishes fallback error before run-finish on a silent failed run', async () => {
 		const { service, deps } = createService();
 
@@ -502,11 +466,19 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		const finalization = await service.finishInvalidConfirmationRun({
 			threadId: 'thread-a',
 			runId: 'run-1',
+			promptVersion: 'progressive@1',
 			abortController,
 		});
 
 		expect(finalization.status).toBe('error');
 		expect(finalization.reason).toBe('invalid_confirmation_payload');
+		expect(deps.publishRunFinish).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'errored',
+			expect.any(String),
+			'progressive@1',
+		);
 		expect(deps.runState.cancelThread).toHaveBeenCalledWith('thread-a');
 		expect(deps.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith(
 			'thread-a',

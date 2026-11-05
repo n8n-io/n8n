@@ -29,9 +29,8 @@ vi.mock('n8n-core', async () => {
 import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
 
@@ -175,6 +174,68 @@ describe('DynamicNodeParametersService', () => {
 
 			expect(acquireSpy).toHaveBeenCalledTimes(1);
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should stringify a numeric pagination token returned by a listSearch method', async () => {
+			const listSearchMethod = vi
+				.fn()
+				.mockResolvedValue({ results: [{ name: 'r', value: 'v' }], paginationToken: 0 });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result.paginationToken).toBe('0');
+		});
+
+		it('should leave an absent pagination token absent', async () => {
+			const listSearchMethod = vi.fn().mockResolvedValue({ results: [{ name: 'r', value: 'v' }] });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('should not throw when a listSearch method returns nothing', async () => {
+			const listSearchMethod = vi.fn().mockResolvedValue(undefined);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result).toBeUndefined();
 		});
 
 		it('should acquire and release isolate around getResourceMappingFields', async () => {
@@ -597,6 +658,75 @@ describe('DynamicNodeParametersService', () => {
 			).rejects.toThrow(ForbiddenError);
 		});
 
+		it('should say nothing more than forbidden for a credential the user cannot read', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'Foreign OpenAI' } },
+				}),
+			).rejects.toMatchObject({ message: 'Forbidden' });
+			// The second lookup asks for plain read rights, see-only roles included.
+			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenLastCalledWith(
+				['cred-1'],
+				user,
+				['credential:read'],
+			);
+			expect(credentialsRepository.getManyByIds).not.toHaveBeenCalled();
+		});
+
+		it('should say nothing more than forbidden when one of many credentials is unreadable', async () => {
+			// cred-1 is readable but not usable, cred-2 is not even readable.
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids, _user, _scopes, options) =>
+					options?.excludeSeeOnlyRoles ? new Set() : new Set(ids.filter((id) => id === 'cred-1')),
+			);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: {
+						openAi: { id: 'cred-1', name: 'Shared OpenAI' },
+						openAi2: { id: 'cred-2', name: 'Foreign OpenAI' },
+					},
+				}),
+			).rejects.toMatchObject({ message: 'Forbidden' });
+			expect(credentialsRepository.getManyByIds).not.toHaveBeenCalled();
+		});
+
+		it('should name the missing right for a credential the user can read but not use', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids, _user, _scopes, options) =>
+					options?.excludeSeeOnlyRoles ? new Set() : new Set(ids),
+			);
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', isResolvable: false }),
+			]);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'Shared OpenAI' } },
+				}),
+			).rejects.toThrow('You need permission to use this credential');
+		});
+
+		it('should name the connect right for an end-user credential the user can read but not use', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids, _user, scopes, options) =>
+					options?.excludeSeeOnlyRoles || scopes[0] === 'credential:connect'
+						? new Set()
+						: new Set(ids),
+			);
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true }),
+			]);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'Shared OpenAI' } },
+				}),
+			).rejects.toThrow('permission to connect');
+		});
+
 		it('should not ask for connect scope when no credential is end-user', async () => {
 			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(
 				new Set(['cred-1']),
@@ -696,6 +826,7 @@ describe('DynamicNodeParametersService', () => {
 				['cred-1'],
 				user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 
@@ -712,6 +843,7 @@ describe('DynamicNodeParametersService', () => {
 				expect.any(Array),
 				user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 

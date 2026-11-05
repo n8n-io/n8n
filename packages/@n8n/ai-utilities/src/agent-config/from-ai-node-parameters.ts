@@ -4,6 +4,7 @@
  * stable dynamic selectors must be resolved with `get_resource_locator_options`,
  * not left as `$fromAI`.
  */
+import { isRecord } from '@n8n/utils/is-record';
 import type { INodeParameters } from 'n8n-workflow';
 
 import { extractFromAIParameters } from '../utils/fromai-helpers';
@@ -13,10 +14,6 @@ export type FromAiParameterReference = {
 	jsonPointer: string;
 	value: string;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function escapeJsonPointerPart(part: string): string {
 	return part.replaceAll('~', '~0').replaceAll('/', '~1');

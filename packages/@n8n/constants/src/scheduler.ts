@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 /**
  * The durable scheduler's shared vocabulary: schedule definitions, recurrence
  * kinds, misfire handling and the task lifecycle.
@@ -8,6 +7,8 @@
  * schema: column defaults, CHECK constraints) and `@n8n/decorators` (the
  * system task contract).
  */
+
+import { NODE_ID_MAX_LENGTH } from './nodes';
 
 /**
  * How a scheduled job decides when to fire:
@@ -117,10 +118,13 @@ export type ScheduledJobMisfirePolicy =
  * How late an occurrence may be before its schedule's misfire policy applies,
  * for a job provisioned without an explicit grace.
  *
- * Migrations pin their own copy of this value: a column's default at migration
- * time must stay fixed even if this constant changes later.
+ * Consumers that must freeze a historical default pin their own copy of this
+ * value: changing this constant only affects jobs provisioned from now on.
  */
 export const DEFAULT_MISFIRE_GRACE_SECONDS = 60;
+
+/** Longest delay, in seconds, a Node.js timer honors. Node fires a longer one after about 1 ms. */
+export const MAX_TIMER_DELAY_SECONDS = Math.floor((2 ** 31 - 1) / 1000);
 
 /**
  * Where a scheduled task is in its lifecycle, from waiting to run to a final outcome.
@@ -139,7 +143,7 @@ export type ScheduledTaskStatus = (typeof ScheduledTaskStatus)[keyof typeof Sche
 /** All statuses as a runtime list. */
 export const ScheduledTaskStatusList = Object.values(ScheduledTaskStatus);
 
-/** Statuses of finished work: the only rows retention may delete. */
+/** Statuses of finished work: the only tasks retention may delete. */
 export const TerminalTaskStatusList = [
 	ScheduledTaskStatus.Succeeded,
 	ScheduledTaskStatus.Failed,
@@ -148,3 +152,36 @@ export const TerminalTaskStatusList = [
 ] as const;
 
 export type TerminalTaskStatus = (typeof TerminalTaskStatusList)[number];
+
+/**
+ * Well-known owners of scheduled jobs. Every job names its owner
+ * (`ownerType` + `ownerId`), so the scheduler can tear a job down without
+ * knowing what the owner is.
+ *
+ * Deliberately not an exhaustive union: `ownerType` is a plain string, so a
+ * new part of the product can own jobs without an edit here. These are the
+ * ones that exist today.
+ */
+export const ScheduledJobOwnerType = {
+	/** A published workflow; `ownerId` is its id, `ownerMemberId` the trigger node's. */
+	Workflow: 'workflow',
+	/** An instance-level maintenance job, self-owned: `ownerId` is the job's own name. */
+	SystemTask: 'system-task',
+	/** A published agent. `ownerId` is the agent id, `ownerMemberId` is the scheduled task id. */
+	Agent: 'agent',
+} as const;
+
+/** Longest accepted job `name`. */
+export const SCHEDULED_JOB_NAME_MAX_LENGTH = 255;
+
+/** Longest accepted `ownerType`. */
+export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;
+
+/** Longest accepted `ownerId`. */
+export const SCHEDULED_JOB_OWNER_ID_MAX_LENGTH = 255;
+
+/** Longest accepted `ownerMemberId`:
+ * - a workflow node id (64 characters - see NODE_ID_MAX_LENGTH),
+ * - or an agent task id (32 characters - see AGENT_TASK_ID_MAX_LENGTH).
+ */
+export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = NODE_ID_MAX_LENGTH;

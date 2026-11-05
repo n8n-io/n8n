@@ -39,7 +39,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { SYSTEM_RESOLVER_ID } from '@/modules/dynamic-credentials.ee/constants';
 import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
@@ -52,7 +52,6 @@ import { loadNodesFromDist } from '../shared/utils/node-types-data';
 mockInstance(Telemetry);
 
 process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
-process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true';
 
 const testServer = setupTestServer({
 	endpointGroups: ['workflows', 'credentials'],
@@ -65,6 +64,7 @@ const CREDENTIAL_TYPE = 'googleSheetsOAuth2Api';
 const VENDOR_HOST = 'https://api.example.test';
 const VENDOR_PATH = '/ping';
 const PER_USER_ACCESS_TOKEN = 'builders-own-access-token';
+const CHAT_TRIGGER_NAME = 'When chat message received';
 
 /** Resolves the requested credential types (and everything they extend) out of `nodes-base/dist`. */
 function registerCredentialTypesFromDist(credentialTypeNames: string[]) {
@@ -131,7 +131,7 @@ let webhookTestEndpoint: string;
 
 const chatTriggerNode = (parameters: Record<string, unknown>): INode => ({
 	id: randomUUID(),
-	name: 'When chat message received',
+	name: CHAT_TRIGGER_NAME,
 	type: CHAT_TRIGGER_NODE_TYPE,
 	typeVersion: 1.3,
 	position: [0, 0],
@@ -227,7 +227,7 @@ const startListening = async (workflow: WorkflowEntity, chatSessionId: string) =
 	await testServer
 		.authAgentFor(builder)
 		.post(`/workflows/${workflow.id}/run`)
-		.send({ triggerToStartFrom: { name: 'When chat message received' }, chatSessionId });
+		.send({ triggerToStartFrom: { name: CHAT_TRIGGER_NAME }, chatSessionId });
 
 /** The chat panel sending a message to the test webhook it just registered. */
 const sendChatMessage = async (workflow: WorkflowEntity, chatSessionId: string) =>
@@ -298,7 +298,10 @@ describe('chat trigger test run with end-user credentials', () => {
 		const vendorScope = mockVendorCall();
 
 		const listening = await startListening(workflow, chatSessionId);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		const response = await sendChatMessage(workflow, chatSessionId);
 

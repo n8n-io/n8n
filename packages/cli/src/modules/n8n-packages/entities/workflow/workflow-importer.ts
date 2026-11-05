@@ -1,15 +1,20 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { ForbiddenError } from '@n8n/errors';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
 } from '@/workflows/workflow-creation.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { workflowReferences } from './references/workflow-references';
-import { decideWorkflowConflictAction } from './workflow-conflict-policy';
-import { decideWorkflowId } from './workflow-id-policy';
+import {
+	decideWorkflowArchiveTransition,
+	type WorkflowArchiveTransition,
+} from './workflow-archive-transition';
 import {
 	WorkflowImportMatchService,
 	type WorkflowIdConflict,
@@ -18,13 +23,16 @@ import type {
 	PersistedWorkflowOutcome,
 	PersistedWorkflowPlanItem,
 	PreparedWorkflow,
+	WorkflowArchiveForbidden,
 	WorkflowConflict,
 	WorkflowFolderConflict,
 	WorkflowImportContext,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
-	WorkflowPlannedAction,
+	WorkflowImportDecision,
 } from './workflow-import.types';
+import { decidePlannedPublishingAction } from './workflow-publishing-policy';
+import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
 	ImportContext,
@@ -33,6 +41,8 @@ import type {
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { decideImportConflictAction, type ImportDecision } from '../import-conflict-policy';
+import { decideImportId } from '../import-id-policy';
 
 export interface WorkflowImportResult {
 	outcomes: PersistedWorkflowOutcome[];
@@ -50,14 +60,19 @@ export class WorkflowImporter {
 		private readonly workflowImportMatchService: WorkflowImportMatchService,
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	async plan(
 		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
+		{
+			checkRootPlacement,
+			layoutConflictPolicy,
+		}: { checkRootPlacement: boolean; layoutConflictPolicy?: LayoutConflictPolicy },
 	): Promise<WorkflowImportPlan> {
-		const existingBySourceWorkflowId =
+		const { matches: existingBySourceWorkflowId, lineageConflicts } =
 			await this.workflowImportMatchService.findBySourceWorkflowIds(
 				context.projectId,
 				prepared.map(({ sourceWorkflowId }) => sourceWorkflowId),
@@ -70,19 +85,35 @@ export class WorkflowImporter {
 		// global id collision check below. Blocked creates are excluded: they
 		// already report a workflow-conflict for the same workflow.
 		const sourceCreateIds: string[] = [];
+		const archiveTransitionItems: ArchiveTransitionPlanItem[] = [];
+		const ambiguousSourceIds = new Set(
+			lineageConflicts.map(({ sourceWorkflowId }) => sourceWorkflowId),
+		);
 
 		for (const workflow of prepared) {
 			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
-			const { action, blocked } = decideWorkflowConflictAction(
-				options.workflowConflictPolicy,
-				existing,
+			if (existing && ambiguousSourceIds.has(workflow.sourceWorkflowId)) {
+				items.push({ action: 'skip', ...workflow, existing, publishingAction: 'noop' });
+				continue;
+			}
+			const { action, blocked } = decideImportConflictAction(
+				options.conflictPolicy,
+				existing !== null,
 			);
 
-			const item = toPlanItem(workflow, existing, action, options.workflowIdPolicy);
+			const decision = toPlanItem(workflow, existing, action, options.idPolicy);
+			const item: WorkflowPlanItem = {
+				...decision,
+				publishingAction: decidePlannedPublishingAction(options.publishingPolicy, decision),
+			};
 			items.push(item);
 
-			if (item.action === 'create' && options.workflowIdPolicy === 'source' && !blocked) {
+			if (item.action === 'create' && !blocked) {
 				sourceCreateIds.push(item.decidedId);
+			}
+
+			if (hasArchiveTransition(item)) {
+				archiveTransitionItems.push(item);
 			}
 
 			if (blocked && existing) {
@@ -93,24 +124,71 @@ export class WorkflowImporter {
 				});
 			}
 
+			// Only an update writes the workflow in place, so only an update can clash on location.
+			// A `null` target is the project root. It is a location only when the package sets the
+			// layout. Otherwise no location was asked for, and the update keeps the current folder.
 			const targetFolderId = workflow.parentFolderId ?? context.folderId;
-			if (targetFolderId && existing) {
-				const existingParentFolderId = existing.parentFolder?.id ?? null;
+			if (item.action === 'update' && (targetFolderId !== null || checkRootPlacement)) {
+				const existingParentFolderId = item.existing.parentFolder?.id ?? null;
 				if (existingParentFolderId !== targetFolderId) {
+					if (layoutConflictPolicy === LayoutConflictPolicy.FollowPackage) {
+						item.moveToFolderId = targetFolderId;
+						continue;
+					}
 					folderConflicts.push({
 						sourceWorkflowId: workflow.sourceWorkflowId,
-						existingWorkflowId: existing.id,
+						existingWorkflowId: item.existing.id,
 						existingParentFolderId,
 						targetFolderId,
-						name: existing.name,
+						name: item.existing.name,
 					});
 				}
 			}
 		}
 
-		const idConflicts = await this.collectIdConflicts(sourceCreateIds);
+		const [idConflicts, archiveForbidden] = await Promise.all([
+			this.collectIdConflicts(sourceCreateIds),
+			this.collectArchiveForbidden(context, archiveTransitionItems),
+		]);
 
-		return { items, conflicts, idConflicts, folderConflicts };
+		return {
+			items,
+			conflicts,
+			lineageConflicts,
+			idConflicts,
+			folderConflicts,
+			archiveForbidden,
+		};
+	}
+
+	/**
+	 * Archive changes need `workflow:delete`, which `update` does not check. Report the misses at
+	 * plan time so nothing is written first.
+	 */
+	private async collectArchiveForbidden(
+		context: ImportContext,
+		items: ArchiveTransitionPlanItem[],
+	): Promise<WorkflowArchiveForbidden[]> {
+		if (items.length === 0) return [];
+
+		const allowed = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			items.map(({ existing }) => existing.id),
+			context.user,
+			['workflow:delete'],
+		);
+
+		return items.flatMap(({ sourceWorkflowId, existing, archiveTransition }) => {
+			if (allowed.has(existing.id)) return [];
+			return [
+				{
+					sourceWorkflowId,
+					existingWorkflowId: existing.id,
+					name: existing.name,
+					projectId: context.projectId,
+					transition: archiveTransition,
+				},
+			];
+		});
 	}
 
 	/**
@@ -220,12 +298,62 @@ export class WorkflowImporter {
 		}
 
 		const entity = prepareEntityForPersist(item.entity, bindings);
-		return await this.workflowService.update(context.user, entity, item.existing.id, {
+
+		const updated = await this.workflowService.update(context.user, entity, item.existing.id, {
 			publicApi: true,
 			source: 'import',
+			allowArchivedUpdate: item.existing.isArchived,
+			...(item.moveToFolderId !== undefined
+				? { parentFolderId: item.moveToFolderId ?? PROJECT_ROOT }
+				: {}),
+			// `settings.errorWorkflow` is a package reference this importer rebinds. The
+			// handler it now points at can still be unwritten (later in this loop) and is
+			// unpublished until the package-wide sweep, so the write-time check on that
+			// reference cannot apply here.
+			allowUnresolvedErrorWorkflow: true,
 			...(tagIds !== undefined ? { tagIds } : {}),
 		});
+
+		if (item.archiveTransition !== null) {
+			return await this.transitionArchive(context, item, item.archiveTransition);
+		}
+
+		return updated;
 	}
+
+	private async transitionArchive(
+		context: WorkflowImportContext,
+		item: UpdatePlanItem,
+		transition: WorkflowArchiveTransition,
+	): Promise<WorkflowEntity> {
+		const workflow =
+			transition === 'archive'
+				? await this.workflowService.archive(context.user, item.existing.id, {
+						skipArchived: true,
+						publicApi: true,
+					})
+				: await this.workflowService.unarchive(context.user, item.existing.id, {
+						publicApi: true,
+					});
+
+		// The plan already checked `workflow:delete`; this only trips if access changed since.
+		if (!workflow) {
+			throw new ForbiddenError(
+				`You do not have permission to ${transition} workflow ${item.existing.id}.`,
+			);
+		}
+
+		return workflow;
+	}
+}
+
+type UpdatePlanItem = Extract<WorkflowPlanItem, { action: 'update' }>;
+type ArchiveTransitionPlanItem = UpdatePlanItem & {
+	archiveTransition: WorkflowArchiveTransition;
+};
+
+function hasArchiveTransition(item: WorkflowPlanItem): item is ArchiveTransitionPlanItem {
+	return item.action === 'update' && item.archiveTransition !== null;
 }
 
 function planItemTargetId(item: WorkflowPlanItem): string {
@@ -271,27 +399,36 @@ function applyCredentialBindingsInPlace(
 function toPlanItem(
 	prepared: PreparedWorkflow,
 	existing: WorkflowEntity | null,
-	action: WorkflowPlannedAction,
+	action: ImportDecision['action'],
 	idPolicy: WorkflowIdPolicy,
-): WorkflowPlanItem {
+): WorkflowImportDecision {
 	if (existing === null) {
 		return {
 			action: 'create',
-			decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+			decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 			...prepared,
 		};
 	}
 
 	switch (action) {
-		case 'update':
-			return { action, ...prepared, existing };
+		case 'update': {
+			return {
+				action,
+				...prepared,
+				existing,
+				archiveTransition: decideWorkflowArchiveTransition(
+					prepared.sourceArchived,
+					existing.isArchived,
+				),
+			};
+		}
 		case 'skip':
 			return { action, ...prepared, existing };
 		case 'create':
 			// Only `fail` reaches here with a match; it records a conflict the gate rejects first.
 			return {
 				action,
-				decidedId: decideWorkflowId(idPolicy, prepared.sourceWorkflowId),
+				decidedId: decideImportId(idPolicy, prepared.sourceWorkflowId),
 				...prepared,
 			};
 	}

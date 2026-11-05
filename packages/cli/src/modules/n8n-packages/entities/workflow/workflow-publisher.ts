@@ -4,8 +4,7 @@ import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -13,15 +12,14 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import { orderBySubWorkflowDependencies } from './sub-workflow-ordering';
 import type { PersistedWorkflowOutcome, PersistedWorkflowPlanItem } from './workflow-import.types';
-import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
 import {
 	WorkflowPublishingPolicy,
 	type PublishingAction,
 	type WorkflowPublishingBlockedReason,
-	type WorkflowPublishingContext,
 	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
+import { blockedPublishingOutcome } from '../publishing';
 
 export interface WorkflowPublishingResult {
 	workflow: WorkflowEntity;
@@ -65,7 +63,6 @@ export class WorkflowPublisher {
 	async applyToPackage({
 		user,
 		persisted,
-		policy,
 		subWorkflowRequirements,
 	}: PackagePublishingRequest): Promise<PackagePublishingResults> {
 		const results = new Map<string, WorkflowPublishingResult>();
@@ -74,13 +71,12 @@ export class WorkflowPublisher {
 		for (const outcome of orderBySubWorkflowDependencies(persisted, subWorkflowRequirements)) {
 			if (outcome.status === 'skipped') continue;
 
-			const webhookKeys = this.webhookKeysOnPublish(outcome, policy);
+			const webhookKeys = this.webhookKeysOnPublish(outcome);
 
 			const result = await this.apply(
 				user,
 				outcome.item,
 				outcome.workflow,
-				policy,
 				outcome.blockedFromPublish,
 				webhookKeys.some((key) => claimedPaths.has(key)),
 			);
@@ -109,14 +105,10 @@ export class WorkflowPublisher {
 	 */
 	private webhookKeysOnPublish(
 		outcome: Extract<PersistedWorkflowOutcome, { status: 'created' | 'updated' }>,
-		policy: WorkflowPublishingPolicy,
 	): string[] {
 		if (outcome.blockedFromPublish) return [];
 
-		const action = decideWorkflowPublishingAction(
-			policy,
-			toPublishingContext(outcome.item, outcome.workflow),
-		);
+		const action = outcome.item.publishingAction;
 		if (action !== 'publish') return [];
 
 		return this.webhookService.getStaticWebhookKeys(outcome.workflow.nodes);
@@ -166,32 +158,19 @@ export class WorkflowPublisher {
 		user: User,
 		item: PersistedWorkflowPlanItem,
 		workflow: WorkflowEntity,
-		policy: WorkflowPublishingPolicy,
 		blockedReason?: WorkflowPublishingBlockedReason,
 		webhookContested = false,
 	): Promise<WorkflowPublishingResult> {
-		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
+		const action = item.publishingAction;
 
 		if (action === 'noop') {
 			return { workflow, publishing: { state: 'unchanged' } };
 		}
 
 		if (action === 'publish' && blockedReason) {
-			// A prior published version may still be active after an update; report
-			// that the live publish state is unchanged rather than "blocked".
-			if (workflow.activeVersionId) {
-				return {
-					workflow,
-					publishing: {
-						state: 'unchanged',
-						skippedPublishReason: blockedReason,
-					},
-				};
-			}
-
 			return {
 				workflow,
-				publishing: { state: 'blocked', blockedReason },
+				publishing: blockedPublishingOutcome(blockedReason, Boolean(workflow.activeVersionId)),
 			};
 		}
 
@@ -238,16 +217,4 @@ export class WorkflowPublisher {
 		});
 		return { workflow, publishing: { state: 'failed', error } };
 	}
-}
-
-function toPublishingContext(
-	item: PersistedWorkflowPlanItem,
-	workflow: WorkflowEntity,
-): WorkflowPublishingContext {
-	return {
-		status: item.action === 'create' ? 'created' : 'updated',
-		sourcePublished: item.sourcePublished,
-		currentlyPublished: !!workflow.activeVersionId,
-		isArchived: workflow.isArchived,
-	};
 }

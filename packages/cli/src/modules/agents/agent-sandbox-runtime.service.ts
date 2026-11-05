@@ -1,4 +1,3 @@
-import { redactText } from '@n8n/agents';
 import {
 	createFilesystem,
 	createSandbox,
@@ -14,19 +13,17 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
-import { nanoid } from 'nanoid';
+import { OperationalError } from '@n8n/errors';
 import { v5 as uuidv5 } from 'uuid';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { AiService } from '@/services/ai.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
-import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { assertKnowledgePathSegment } from './agent-knowledge-storage';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import { AgentRepository } from './repositories/agent.repository';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 
 const WORKSPACE_SANDBOX_NAMESPACE = '38348f53-e947-42c7-8c04-83aa154be385';
 const KNOWLEDGE_SANDBOX_NAMESPACE = '51989c13-3ae7-4167-8e64-d874dd068795';
@@ -48,7 +45,8 @@ const KNOWLEDGE_AUTO_STOP_INTERVAL_MINUTES = 15;
 const KNOWLEDGE_AUTO_ARCHIVE_INTERVAL_MINUTES = 60;
 const KNOWLEDGE_AUTO_DELETE_INTERVAL_MINUTES = 7 * 24 * 60;
 
-type DaytonaSandboxLifecycle = Pick<
+/** `ephemeral` applies to every provider; the intervals are Daytona-only. */
+type SandboxLifecycle = Pick<
 	DaytonaSandboxConfig,
 	'ephemeral' | 'autoStopInterval' | 'autoArchiveInterval' | 'autoDeleteInterval'
 >;
@@ -129,7 +127,6 @@ export class AgentSandboxRuntimeService {
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
-		private readonly aiService: AiService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentRepository: AgentRepository,
 		private readonly sandboxSettingsService: SandboxSettingsService,
@@ -247,7 +244,7 @@ export class AgentSandboxRuntimeService {
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 		cacheKey: string,
-		daytonaLifecycle: DaytonaSandboxLifecycle,
+		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
@@ -261,7 +258,7 @@ export class AgentSandboxRuntimeService {
 				n8nSandboxId,
 				labels,
 				cacheKey,
-				daytonaLifecycle,
+				lifecycle,
 				startOptions,
 			).finally(() => {
 				this.pendingSandboxAcquisitions.delete(cacheKey);
@@ -349,18 +346,15 @@ export class AgentSandboxRuntimeService {
 		n8nSandboxId: string,
 		labels: Record<string, string>,
 		cacheKey: string,
-		daytonaLifecycle: DaytonaSandboxLifecycle,
+		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
 	): Promise<AgentSandboxRuntime> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const config =
 			provider === 'daytona'
-				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, daytonaLifecycle)
-				: await this.resolveN8nSandboxConfig(n8nSandboxId);
+				? await this.resolveDaytonaSandboxConfig(projectId, daytonaName, labels, lifecycle)
+				: await this.resolveN8nSandboxConfig(n8nSandboxId, lifecycle);
 		return await this.startSandbox(config, projectId, agentId, cacheKey, startOptions);
 	}
 
@@ -404,11 +398,14 @@ export class AgentSandboxRuntimeService {
 		projectId: string,
 		sandboxId: string,
 		labels: Record<string, string>,
-		lifecycle: DaytonaSandboxLifecycle = {},
+		lifecycle: SandboxLifecycle = {},
 	): Promise<DaytonaSandboxConfig> {
-		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
-		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
-		const baseConfig: DaytonaSandboxConfig = {
+		const connection = await this.sandboxSettingsService.resolveDaytonaSandboxConfig(projectId, {
+			image: this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE,
+			snapshot: this.agentsConfig.sandboxSnapshot,
+		});
+		return {
+			...connection,
 			enabled: true,
 			provider: 'daytona',
 			id: sandboxId,
@@ -418,42 +415,12 @@ export class AgentSandboxRuntimeService {
 			createTimeoutSeconds: Math.ceil(this.agentsConfig.sandboxTimeout / 1000),
 			...lifecycle,
 		};
-
-		if (!this.aiService.isProxyEnabled()) {
-			const daytona = await this.sandboxSettingsService.resolveDaytonaConfig();
-			return {
-				...baseConfig,
-				daytonaApiUrl: daytona.apiUrl,
-				daytonaApiKey: daytona.apiKey,
-				image: directImage,
-				snapshot,
-			};
-		}
-
-		const client = await this.aiService.getClient();
-		if (!snapshot) {
-			throw new OperationalError(
-				'Agent knowledge sandbox requires a snapshot when Daytona is reached through the AI service proxy. Set N8N_AGENTS_AI_SANDBOX_SNAPSHOT to a snapshot available to the instance.',
-			);
-		}
-
-		return {
-			...baseConfig,
-			daytonaApiUrl: client.getSandboxProxyBaseUrl(),
-			snapshot,
-			getAuthToken: async () => {
-				const token = await callAiServiceWithRetry(
-					'Agent knowledge sandbox proxy token mint',
-					async () =>
-						await client.getBuilderApiProxyToken({ id: projectId }, { userMessageId: nanoid() }),
-					this.logger,
-				);
-				return token.accessToken;
-			},
-		};
 	}
 
-	private async resolveN8nSandboxConfig(sandboxId: string): Promise<N8nSandboxConfig> {
+	private async resolveN8nSandboxConfig(
+		sandboxId: string,
+		lifecycle: Pick<SandboxLifecycle, 'ephemeral'> = {},
+	): Promise<N8nSandboxConfig> {
 		const { serviceUrl, apiKey } = await this.sandboxSettingsService.resolveN8nSandboxConfig();
 		const normalizedServiceUrl = serviceUrl?.trim();
 		if (!normalizedServiceUrl) {
@@ -469,6 +436,7 @@ export class AgentSandboxRuntimeService {
 			serviceUrl: normalizedServiceUrl,
 			apiKey,
 			timeout: this.agentsConfig.sandboxTimeout,
+			ephemeral: lifecycle.ephemeral,
 		};
 	}
 

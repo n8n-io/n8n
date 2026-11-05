@@ -13,7 +13,7 @@
 // Composite artifact shapes live here; ArtifactVerdict lives in ../../types to avoid a cycle.
 // ---------------------------------------------------------------------------
 
-import type { AgentSkill, EvaluationConfigDto, InstanceAiMessage } from '@n8n/api-types';
+import type { EvaluationConfigDto, InstanceAiMessage } from '@n8n/api-types';
 
 import type { BinaryCheck } from '../../binaryChecks/types';
 import type {
@@ -21,9 +21,9 @@ import type {
 	DataTableRowsResponse,
 	N8nClient,
 } from '../../clients/n8n-client';
-import type { ArtifactRef, ArtifactType } from '../../types';
+import type { AgentArtifact, ArtifactRef, ArtifactType } from '../../types';
 
-export type { ArtifactRef };
+export type { AgentArtifact, ArtifactRef };
 
 /**
  * Signals available to a handler's discover(). Non-workflow handlers read the
@@ -53,12 +53,6 @@ export interface ArtifactHandler<TArtifact = unknown> {
 	renderArtifact(artifact: TArtifact): string;
 	/** Type-scoped deterministic checks. Optional forward hook — unset for types that ship none. */
 	binaryChecks?: BinaryCheck[];
-}
-
-/** Agent artifact: sanitized JSON config (secrets stripped → typed `unknown`) + full skills map. */
-export interface AgentArtifact {
-	config: unknown;
-	skills: Record<string, AgentSkill>;
 }
 
 /**

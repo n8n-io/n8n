@@ -110,7 +110,7 @@ function copyUrl(url: string) {
 	background-color: var(--color--foreground--shade-2);
 	color: var(--color--foreground--tint-2);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-radius: var(--radius--sm);
 	padding: 0 var(--spacing--4xs);
 	line-height: var(--spacing--sm);

@@ -19,8 +19,8 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
@@ -159,7 +159,7 @@ function toResponse(
 		credentialId: connection.credentialId,
 		credentialName,
 		credentialType,
-		toolFilter: connection.toolFilter,
+		toolPermissions: connection.toolPermissions,
 		createdAt: connection.createdAt.toISOString(),
 		updatedAt: connection.updatedAt.toISOString(),
 	};

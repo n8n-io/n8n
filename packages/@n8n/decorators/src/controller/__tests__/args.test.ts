@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { z } from 'zod';
 
 import { Body, Query, Param } from '../args';
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
@@ -47,6 +48,56 @@ describe('Args Decorators', () => {
 		});
 	});
 
+	describe('@Body options', () => {
+		const resolve = (controllerClass: Controller) =>
+			controllerRegistryMetadata.getRouteMetadata(controllerClass, 'testMethod').args[0];
+
+		it('sets no `required` or `media` for the bare form', () => {
+			class TestController {
+				testMethod(@Body _body: unknown) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({ type: 'body' });
+		});
+
+		it('sets `required` without `media` for `@Body({ required: true })`', () => {
+			class TestController {
+				testMethod(@Body({ required: true }) _body: unknown) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({ type: 'body', required: true });
+		});
+
+		it('sets `media` for `@Body({ mediaType: "multipart/form-data", uploadLimits })`', () => {
+			const uploadLimits = () => ({ fileSize: 1024 });
+
+			class TestController {
+				testMethod(@Body({ mediaType: 'multipart/form-data', uploadLimits }) _body: unknown) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({
+				type: 'body',
+				media: { mediaType: 'multipart/form-data', uploadLimits },
+			});
+		});
+
+		it('combines `required` with a declared media type', () => {
+			const uploadLimits = () => ({});
+
+			class TestController {
+				testMethod(
+					@Body({ required: true, mediaType: 'multipart/form-data', uploadLimits }) _body: unknown,
+				) {}
+			}
+
+			expect(resolve(TestController as Controller)).toEqual({
+				type: 'body',
+				required: true,
+				media: { mediaType: 'multipart/form-data', uploadLimits },
+			});
+		});
+	});
+
 	describe('@Param decorator', () => {
 		it('should set param arg with key at correct parameter index', () => {
 			class TestController {
@@ -60,6 +111,34 @@ describe('Args Decorators', () => {
 			);
 
 			expect(routeMetadata.args[parameterIndex]).toEqual({ type: 'param', key: 'id' });
+		});
+
+		it('should attach an optional Zod schema to the param arg', () => {
+			const schema = z.string();
+
+			class TestController {
+				testMethod(@Param('id', schema) _id: string) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).toEqual({ type: 'param', key: 'id', schema });
+		});
+
+		it('should leave the schema unset when none is given', () => {
+			class TestController {
+				testMethod(@Param('id') _id: string) {}
+			}
+
+			const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
+				TestController as Controller,
+				'testMethod',
+			);
+
+			expect(routeMetadata.args[0]).not.toHaveProperty('schema');
 		});
 
 		it('should handle multiple Param decorators with different keys', () => {

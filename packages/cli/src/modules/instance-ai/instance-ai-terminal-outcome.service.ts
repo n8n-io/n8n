@@ -14,8 +14,9 @@ import {
 	type TerminalResponseStatus,
 	type WorkSummary,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -28,10 +29,6 @@ import type {
 } from './tracing/instance-ai-tracing.service';
 
 type InstanceAiErrorCode = NonNullable<InstanceAiErrorEvent['payload']['code']>;
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 function getBackgroundOutcomeResponseId(outcome: TerminalOutcome): string {
 	return `background-outcome:${outcome.id}`;
@@ -87,6 +84,7 @@ export interface InstanceAiTerminalOutcomeServiceOptions {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
+		promptVersion?: string,
 	) => void;
 }
 
@@ -152,7 +150,6 @@ export class InstanceAiTerminalOutcomeService {
 			workSummary?: WorkSummary;
 			errorMessage?: string;
 			errorCode?: InstanceAiErrorCode;
-			suppressCompletedFallback?: boolean;
 		} = {},
 	): Promise<TerminalResponseDecision | undefined> {
 		const guard = new InstanceAiTerminalResponseGuard({
@@ -168,7 +165,6 @@ export class InstanceAiTerminalOutcomeService {
 				workSummary: options.workSummary,
 				errorMessage: options.errorMessage,
 				errorCode: options.errorCode,
-				suppressCompletedFallback: options.suppressCompletedFallback,
 			},
 		);
 		this.handleTerminalResponseDecision(threadId, runId, decision, options.messageGroupId);
@@ -270,6 +266,7 @@ export class InstanceAiTerminalOutcomeService {
 	async finishInvalidConfirmationRun(args: {
 		threadId: string;
 		runId: string;
+		promptVersion?: string;
 		abortController: AbortController;
 		tracing?: InstanceAiTraceContext;
 	}): Promise<MessageTraceFinalization> {
@@ -285,6 +282,7 @@ export class InstanceAiTerminalOutcomeService {
 			args.runId,
 			'errored',
 			'I need your input to continue, but I could not display the prompt. Please try again.',
+			args.promptVersion,
 		);
 		return {
 			status: 'error',

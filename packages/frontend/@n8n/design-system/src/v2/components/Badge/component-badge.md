@@ -12,11 +12,12 @@ Displays short text or icons to represent status, categories, or counts. Badges 
 
 **Props**
 
-- `theme?: BadgeTheme` - Visual style variant for the badge. Values: `'default' | 'success' | 'warning' | 'danger' | 'primary' | 'secondary' | 'tertiary'`. Default: `'default'`
+- `theme?: BadgeTheme` - Visual style variant for the badge. Values: `'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'secondary' | 'tertiary'`. Default: `'default'`
   - `default`: Subtle border badge with neutral styling
   - `success`: Green indicator for positive states
   - `warning`: Yellow/orange indicator for cautionary states
-  - `danger`: Red indicator for error/critical states
+  - `danger`: Red indicator for error or critical states
+  - `info`: Blue indicator for informational states
   - `primary`: Filled badge with contrasting text (pill-shaped)
   - `secondary`: Filled badge with tinted background
   - `tertiary`: Minimal badge variant with reduced padding

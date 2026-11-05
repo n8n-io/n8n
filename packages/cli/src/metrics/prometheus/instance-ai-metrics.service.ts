@@ -1,8 +1,8 @@
+import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service';
 import { InstanceAiRunProbe } from '@/modules/instance-ai/instance-ai-run-probe';
 
 import type { PrometheusMetricsCollector } from './base';
@@ -64,6 +64,18 @@ export class PrometheusInstanceAiMetricsService implements PrometheusMetricsColl
 			help: 'Total estimated cost in USD of Instance AI runs (models.dev pricing).',
 		});
 		costTotal.inc(0);
+
+		const runsRefusedTotal = new promClient.Counter({
+			name: `${this.config.prefix}instance_ai_runs_refused_total`,
+			help: 'Instance AI runs refused by a concurrency cap, by reason.',
+			labelNames: ['reason'],
+		});
+		runsRefusedTotal.inc({ reason: 'user_run_limit' }, 0);
+		runsRefusedTotal.inc({ reason: 'instance_run_limit' }, 0);
+
+		this.eventService.on('instance-ai-run-refused', ({ reason }) => {
+			runsRefusedTotal.inc({ reason });
+		});
 
 		const runProbe = this.runProbe;
 		new promClient.Gauge({

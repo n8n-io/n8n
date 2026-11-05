@@ -8,7 +8,7 @@ import {
 
 function renderMarkdown(content: string): string {
 	const markdown = useChatHubMarkdownOptions('code-actions', 'table-container', null);
-	const renderer = new MarkdownIt();
+	const renderer = new MarkdownIt(markdown.options);
 
 	for (const plugin of markdown.plugins.value) {
 		renderer.use(plugin);
@@ -18,6 +18,12 @@ function renderMarkdown(content: string): string {
 }
 
 describe('useChatHubMarkdownOptions', () => {
+	it('makes plain URLs clickable while preserving code examples', () => {
+		const html = renderMarkdown('Open https://api.slack.com/apps or copy `https://example.test`.');
+		expect(html).toContain('href="https://api.slack.com/apps" target="_blank" rel="noopener"');
+		expect(html).toContain('<code>https://example.test</code>');
+	});
+
 	it('renders app-relative links without a new-tab target', () => {
 		const html = renderMarkdown('[Preview](/projects/project-1/agents/agent-1/preview)');
 
@@ -29,6 +35,14 @@ describe('useChatHubMarkdownOptions', () => {
 		const html = renderMarkdown('[Docs](https://docs.n8n.io)');
 
 		expect(html).toContain('href="https://docs.n8n.io"');
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain('rel="noopener"');
+	});
+
+	it('renders bare URLs as clickable links', () => {
+		const html = renderMarkdown('Open it: https://docs.n8n.io/some/page');
+
+		expect(html).toContain('href="https://docs.n8n.io/some/page"');
 		expect(html).toContain('target="_blank"');
 		expect(html).toContain('rel="noopener"');
 	});

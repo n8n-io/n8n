@@ -86,11 +86,13 @@ function resolveParameterValue(value: unknown): string | undefined {
 }
 
 function extractNodeTokenUsage(
-	nodeRunData: ITaskData[],
+	// Sub-node run data can be sparse, so `for...of` can yield `undefined`
+	nodeRunData: Array<ITaskData | undefined>,
 ): { input: number; output: number } | undefined {
 	let input = 0;
 	let output = 0;
 	for (const task of nodeRunData) {
+		if (!task) continue;
 		const lmOutputs = task.data?.[NodeConnectionTypes.AiLanguageModel];
 		if (lmOutputs) {
 			// LM sub-nodes (connected to Agent/Chain) — token data from N8nLlmTracing
@@ -682,7 +684,7 @@ export function generateNodesGraph(
 				const prompts: IDataObject = {};
 
 				if (node.parameters?.text) {
-					prompts.text = node.parameters.text as string;
+					prompts.text = node.parameters.text;
 				}
 				const nodeOptions = node.parameters?.options as IDataObject;
 
@@ -700,7 +702,7 @@ export function generateNodesGraph(
 
 					for (const key of optionalMessagesKeys) {
 						if (nodeOptions[key]) {
-							prompts[key] = nodeOptions[key] as string;
+							prompts[key] = nodeOptions[key];
 						}
 					}
 				}
@@ -719,7 +721,7 @@ export function generateNodesGraph(
 
 			if (LANGCHAIN_CUSTOM_TOOLS.includes(node.type)) {
 				nodeItem.prompts = {
-					description: (node.parameters?.description as string) ?? '',
+					description: node.parameters?.description ?? '',
 				};
 			}
 

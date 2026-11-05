@@ -8,6 +8,7 @@
  *
  * Also truncates oversized payloads (file uploads, bulk data) that don't help
  * the LLM generate a better mock response.
+ * This adapter deliberately keeps its own vocabulary so judge inputs remain byte-stable.
  */
 
 import { Logger } from '@n8n/backend-common';
@@ -139,4 +140,23 @@ export function isSecretKey(key: string): boolean {
 	if (SAFE_KEY_PATTERN.test(key)) return false;
 	if (SECRET_KEY_PATTERN.test(key)) return true;
 	return false;
+}
+
+/**
+ * Redact the values of secret-named query parameters in a URL path with its
+ * query (`/path?a=1`), by the same key rules as `redactSecretKeys`. Returned
+ * unchanged when no parameter is secret.
+ */
+export function redactSecretSearchParams(endpoint: string): string {
+	const queryStart = endpoint.indexOf('?');
+	if (queryStart === -1) return endpoint;
+	const params = [...new URLSearchParams(endpoint.slice(queryStart + 1))];
+	if (!params.some(([key]) => isSecretKey(key))) return endpoint;
+	const query = params
+		.map(([key, value]) => {
+			const shown = isSecretKey(key) ? REDACTED : encodeURIComponent(value);
+			return `${encodeURIComponent(key)}=${shown}`;
+		})
+		.join('&');
+	return `${endpoint.slice(0, queryStart)}?${query}`;
 }

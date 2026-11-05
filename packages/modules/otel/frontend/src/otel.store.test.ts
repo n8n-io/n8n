@@ -22,6 +22,7 @@ const testTraceMock = vi.mocked(otelApi.sendOtelTestTrace);
 
 const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettingsResponse => ({
 	enabled: false,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'http://localhost:4318',
 	exporterTracingPath: '/v1/traces',
 	exporterServiceName: 'n8n',
@@ -29,6 +30,8 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	tracesSampleRate: 1.0,
 	startupConnectivityTimeoutMs: 2000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 	envManagedFields: [],
@@ -287,6 +290,7 @@ describe('useOtelStore', () => {
 		it('sends only the connection fields from the current settings', async () => {
 			fetchMock.mockResolvedValueOnce(
 				makeSettings({
+					exporterProtocol: 'grpc',
 					exporterEndpoint: 'https://collector.io',
 					exporterTracingPath: '/custom',
 					exporterServiceName: 'n8n-prod',
@@ -301,6 +305,7 @@ describe('useOtelStore', () => {
 			await store.sendTestTrace();
 
 			expect(testTraceMock).toHaveBeenCalledWith(expect.anything(), {
+				exporterProtocol: 'grpc',
 				exporterEndpoint: 'https://collector.io',
 				exporterTracingPath: '/custom',
 				exporterServiceName: 'n8n-prod',

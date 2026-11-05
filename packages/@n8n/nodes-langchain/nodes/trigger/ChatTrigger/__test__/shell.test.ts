@@ -4,7 +4,6 @@ import {
 	buildChatRefreshUrl,
 	buildInnerFrameSrc,
 	clearChatOAuthToken,
-	isChatOAuth2Enabled,
 	isChatRefreshRequest,
 	isShellInnerRequest,
 	readChatOAuthToken,
@@ -21,22 +20,6 @@ const request = (overrides: Partial<Request> = {}) =>
 		protocol: 'http',
 		...overrides,
 	}) as unknown as Request;
-
-describe('isChatOAuth2Enabled', () => {
-	afterEach(() => {
-		vi.unstubAllEnvs();
-	});
-
-	it.each([
-		['true', true],
-		['false', false],
-		[undefined, false],
-	])('is %s for N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2=%s', (value, expected) => {
-		vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', value);
-
-		expect(isChatOAuth2Enabled()).toBe(expected);
-	});
-});
 
 describe('isShellInnerRequest', () => {
 	it('honors the flag for an iframe navigation', () => {

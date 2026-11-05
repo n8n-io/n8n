@@ -43,6 +43,19 @@ export function isInputTarget(value: unknown): value is InputTarget {
 }
 
 /**
+ * `.onError()` routes to one handler. An array reached the graph as a target with no
+ * name, so every handler in it was dropped without a word. Say so instead.
+ */
+export function assertSingleErrorHandler(handler: unknown): void {
+	if (!Array.isArray(handler)) return;
+	throw new TypeError(
+		'.onError() takes one handler, not an array. ' +
+			'Call it once for each handler — .onError(notify).onError(logFailure) — ' +
+			'or route to a chain: .onError(notify.to(logFailure)).',
+	);
+}
+
+/**
  * Type guard to check if a value is an OutputSelector
  */
 export function isOutputSelector(value: unknown): value is OutputSelector<string, string, unknown> {
@@ -181,7 +194,7 @@ export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
 	}
 
 	if (!normalizedCreds) return { ...config, id };
-	return { ...config, id, credentials: normalizedCreds } as NodeConfig;
+	return { ...config, id, credentials: normalizedCreds };
 }
 
 /**
@@ -372,8 +385,11 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
-		// Declaring an error route implies the error output port exists.
-		this.config.onError ??= 'continueErrorOutput';
+		assertSingleErrorHandler(handler);
+		// Declaring an error route implies the error output port exists. The other two
+		// values expose no error pin, so keeping one would serialize this route as a
+		// connection from an output the node does not have — the route wins.
+		this.config.onError = 'continueErrorOutput';
 		if (isInputTarget(handler)) {
 			this._connections.push({
 				target: handler.node,
@@ -401,6 +417,37 @@ class TriggerInstanceImpl<TType extends string, TVersion extends string, TOutput
 {
 	readonly isTrigger = true as const;
 }
+
+/**
+ * Retarget declared connections that point at a builder object onto its branching node.
+ *
+ * When a chain ends in a pre-existing builder (a.to(ifBuilder).onFalse(x)), the chain-internal
+ * edge declared by a targets the builder object, and it means "connect to the branching node".
+ * Rewrite it eagerly: a builder that also has a prefix chain resolves to the prefix head at
+ * materialization time, which would wire this feeder into the prefix chain instead.
+ * getConnections() returns a copied array of shared connection objects, so the rewrite
+ * reaches the declared connection.
+ */
+function retargetDeclaredConnections(
+	nodes: Array<NodeInstance<string, string, unknown>>,
+	from: unknown,
+	to: NodeInstance<string, string, unknown>,
+): void {
+	for (const node of nodes) {
+		if (!node || node === from || typeof node.getConnections !== 'function') continue;
+		for (const conn of node.getConnections()) {
+			if (conn.target === from) {
+				conn.target = to;
+			}
+		}
+	}
+}
+
+/** A node chain attached to a branching builder, as its inline prefix or as a feeder. */
+type BuilderChain = NodeChain<
+	NodeInstance<string, string, unknown>,
+	NodeInstance<string, string, unknown>
+>;
 
 /**
  * Internal NodeChain implementation
@@ -530,13 +577,30 @@ class NodeChainImpl<
 	output(index: number): OutputSelector<TTail['type'], TTail['version'], TTail['_outputType']> {
 		const compositeNode = getCompositeOutputNode(this.tail);
 		if (compositeNode) {
-			return compositeNode.output(index) as OutputSelector<
-				TTail['type'],
-				TTail['version'],
-				TTail['_outputType']
-			>;
+			return compositeNode.output(index);
 		}
 		return this.tail.output(index);
+	}
+
+	/**
+	 * Record how this chain relates to the builder returned by a chain-position
+	 * onTrue/onFalse/onCase call. A tail instance creates a fresh builder: this chain
+	 * is its inline prefix, and edges into the composite enter at the chain head. A
+	 * tail that already is a builder returns itself: this chain is one feeder of
+	 * possibly many into a shareable builder, so chain-internal edges that point at
+	 * the builder object are rewritten onto the branching node now.
+	 */
+	private claimBuilder(
+		tailIsBuilder: boolean,
+		builder: { prefixChain?: BuilderChain; feederChains: BuilderChain[] },
+		branchingNode: NodeInstance<string, string, unknown>,
+	): void {
+		if (tailIsBuilder) {
+			builder.feederChains.push(this);
+			retargetDeclaredConnections(this.allNodes, builder, branchingNode);
+		} else {
+			builder.prefixChain = this;
+		}
 	}
 
 	/**
@@ -547,7 +611,10 @@ class NodeChainImpl<
 		if (!this.tail.onTrue) {
 			throw new Error(`.onTrue() is only available on IF nodes (${NODE_TYPES.IF})`);
 		}
-		return this.tail.onTrue(target);
+		const builder = this.tail.onTrue(target);
+		const builderImpl = builder as IfElseBuilderImpl<TTail['_outputType']>;
+		this.claimBuilder(isIfElseBuilder(this.tail), builderImpl, builderImpl.ifNode);
+		return builder;
 	}
 
 	/**
@@ -558,7 +625,10 @@ class NodeChainImpl<
 		if (!this.tail.onFalse) {
 			throw new Error(`.onFalse() is only available on IF nodes (${NODE_TYPES.IF})`);
 		}
-		return this.tail.onFalse(target);
+		const builder = this.tail.onFalse(target);
+		const builderImpl = builder as IfElseBuilderImpl<TTail['_outputType']>;
+		this.claimBuilder(isIfElseBuilder(this.tail), builderImpl, builderImpl.ifNode);
+		return builder;
 	}
 
 	/**
@@ -570,8 +640,8 @@ class NodeChainImpl<
 			throw new Error(`.onCase() is only available on Switch nodes (${NODE_TYPES.SWITCH})`);
 		}
 		const builder = this.tail.onCase(index, target);
-		// Pass this chain to the builder so workflow-builder can add all chain nodes
-		(builder as SwitchCaseBuilderImpl<TTail['_outputType']>).sourceChain = this;
+		const builderImpl = builder as SwitchCaseBuilderImpl<TTail['_outputType']>;
+		this.claimBuilder(isSwitchCaseBuilder(this.tail), builderImpl, builderImpl.switchNode);
 		return builder;
 	}
 
@@ -756,6 +826,10 @@ class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
 	errorBranch?: IfElseTarget;
 	/** All nodes from both branches (for workflow-builder) */
 	_allBranchNodes: Array<NodeInstance<string, string, unknown>> = [];
+	/** Chain that created this builder inline (a.to(ifNode).onTrue(...)); edges into the composite enter at its head */
+	prefixChain?: BuilderChain;
+	/** Chains that feed this pre-existing builder (t.to(builder).onX(...)); edges into the builder enter at the IF node */
+	feederChains: BuilderChain[] = [];
 
 	constructor(ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>) {
 		this.ifNode = ifNode;
@@ -821,11 +895,10 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 	readonly caseMapping: Map<number, SwitchCaseTarget> = new Map();
 	/** All nodes from all cases (for workflow-builder) */
 	_allCaseNodes: Array<NodeInstance<string, string, unknown>> = [];
-	/** Source chain if created from NodeChain.onCase() (e.g., trigger.to(switch).onCase()) */
-	sourceChain?: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	>;
+	/** Chain that created this builder inline (a.to(switchNode).onCase(...)); edges into the composite enter at its head */
+	prefixChain?: BuilderChain;
+	/** Chains that feed this pre-existing builder (t.to(builder).onCase(...)); edges into the builder enter at the Switch node */
+	feederChains: BuilderChain[] = [];
 
 	constructor(switchNode: NodeInstance<'n8n-nodes-base.switch', string, TOutput>) {
 		this.switchNode = switchNode;
@@ -1157,6 +1230,27 @@ class StickyNoteInstance
 	getConnections(): DeclaredConnection[] {
 		return [];
 	}
+
+	/** Copy under a new ID while preserving the sticky's remapped anchors. */
+	cloneStickyNoteWithIdAndAnchors(
+		newId: string,
+		remappedAnchorIds: readonly string[],
+	): StickyNoteInstance {
+		const content = this.config.parameters?.content;
+		const clone = new StickyNoteInstance(
+			typeof content === 'string' ? content : '',
+			[],
+			{ name: this.name },
+			remappedAnchorIds,
+			newId,
+		);
+
+		// Preserve the complete sticky config, including fields added in the future.
+		Object.assign(clone.config, this.config);
+		clone.config.parameters = this.config.parameters ? { ...this.config.parameters } : undefined;
+
+		return clone;
+	}
 }
 
 /**
@@ -1296,7 +1390,16 @@ export function newCredential(name: string, id?: string): NewCredentialValue {
 export function cloneNodeWithId(
 	instance: NodeInstance<string, string, unknown>,
 	newId: string,
+	newIdByOldId: ReadonlyMap<string, string> = new Map(),
 ): NodeInstance<string, string, unknown> {
+	// A sticky must stay a sticky, and its anchors must follow the nodes to their new IDs.
+	if (instance instanceof StickyNoteInstance) {
+		const remappedAnchorIds = instance.stickyAnchorIds.map(
+			(anchorId) => newIdByOldId.get(anchorId) ?? anchorId,
+		);
+		return instance.cloneStickyNoteWithIdAndAnchors(newId, remappedAnchorIds);
+	}
+
 	const connections =
 		typeof instance.getConnections === 'function' ? instance.getConnections() : [];
 	const isTrigger = 'isTrigger' in instance && instance.isTrigger === true;

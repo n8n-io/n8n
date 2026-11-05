@@ -5,7 +5,11 @@ const stageNodeSets = vi.fn();
 const stash = vi.fn();
 const openThreadForDraft = vi.fn();
 const routerPush = vi.fn();
+const track = vi.fn();
 
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
 vi.mock('../../instanceAi.store', () => ({
 	useInstanceAiStore: () => ({ stageNodeSets }),
 }));
@@ -30,9 +34,13 @@ vi.mock('vue-router', () => ({
 import { useAddNodesToChat } from '../useAddNodesToChat';
 import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
 import type { NodeContextWorkflow } from '../../utils/buildNodesAttachment';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const wf: NodeContextWorkflow = {
-	nodes: [{ id: 'n1', name: 'A', type: 't' }],
+	nodes: [
+		{ id: 'n1', name: 'A', type: 't' },
+		{ id: 'n2', name: 'B', type: 't' },
+	],
 	connections: {},
 	groupsById: new Map(),
 	nodeIdToGroupId: new Map(),
@@ -45,6 +53,7 @@ describe('useAddNodesToChat', () => {
 		stash.mockClear();
 		openThreadForDraft.mockClear();
 		routerPush.mockClear();
+		track.mockClear();
 	});
 
 	it('Context A stages directly, does not stash/navigate', async () => {
@@ -106,5 +115,32 @@ describe('useAddNodesToChat', () => {
 			isInsideThread: true,
 		});
 		expect(stageNodeSets).not.toHaveBeenCalled();
+	});
+
+	it('tracks the add with source and the actually-attached node count', async () => {
+		const { addSelectedNodesToChat } = useAddNodesToChat();
+		await addSelectedNodesToChat({
+			workflowId: 'w1',
+			selectedNodeIds: ['n1', 'n2'],
+			workflow: wf,
+			isInsideThread: true,
+			source: 'selection_toolbar',
+		});
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_ADDED_NODES_TO_CHAT, {
+			source: 'selection_toolbar',
+			node_count: 2,
+		});
+	});
+
+	it('does not track when nothing is attached', async () => {
+		const { addSelectedNodesToChat } = useAddNodesToChat();
+		await addSelectedNodesToChat({
+			workflowId: 'w1',
+			selectedNodeIds: [],
+			workflow: wf,
+			isInsideThread: true,
+			source: 'node_toolbar',
+		});
+		expect(track).not.toHaveBeenCalled();
 	});
 });

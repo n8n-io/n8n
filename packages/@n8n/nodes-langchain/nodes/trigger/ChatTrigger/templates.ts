@@ -58,11 +58,31 @@ export function getSanitizedI18nConfig(config: Record<string, string>): Record<s
 
 	return sanitized;
 }
-export function getSanitizedCustomCss(customCss: string): string {
-	// Strip any sequence that could close the <style> context.
-	// Browsers treat </style followed by /, space, tab, or > as a closing tag,
-	// so we remove all </style variants (case-insensitive) to prevent breakout.
-	return customCss.replace(/<\/style/gi, '');
+
+/** Ties the empty element the page ships to the script that fills it. */
+const CUSTOM_CSS_ELEMENT_ID = 'n8n-chat-custom-css';
+
+/**
+ * Applies the user's custom CSS without ever placing it in an HTML context.
+ *
+ * Interpolating it into `<style>...</style>` put it one `</style` away from the HTML
+ * parser, and no amount of stripping closes that: removing an inner `</style` splices
+ * the text around it into a real closing tag, so the filter builds the sequence it is
+ * meant to remove. Assigning `textContent` parses no markup at all, so the CSS reaches
+ * the CSS parser byte for byte and cannot reach the HTML one.
+ *
+ * Escaping is the same `escapeForScriptContext` the rest of this page's values use. A
+ * classic script, so it runs before the body is parsed and the styles are never applied
+ * late. The element stays where the old `<style>` was, which keeps the cascade order.
+ */
+function buildCustomCssScript(customCss: string): string {
+	if (!customCss) return '';
+
+	return `
+			<script>
+				document.getElementById(${escapeForScriptContext(CUSTOM_CSS_ELEMENT_ID)}).textContent =
+					${escapeForScriptContext(customCss)};
+			</script>`;
 }
 
 /**
@@ -72,6 +92,185 @@ export function getSanitizedCustomCss(customCss: string): string {
  * The shell that passes the id in the fragment is `chat-shell.handlebars`.
  */
 const WIDGET_SESSION_ID_KEY = 'n8n-chat/sessionId';
+
+/**
+ * Handles the send-time credential gate's rejection, in the frame's own page rather
+ * than in `@n8n/chat`: this page ships with the instance, so the behaviour arrives on
+ * upgrade instead of waiting on the widget's npm publish. Mirrors the form page's
+ * `handleCredentialGate`.
+ *
+ * The widget looks `fetch` up globally on every send, and this classic script runs
+ * before its deferred module, so wrapping the global intercepts the rejection without
+ * the widget knowing.
+ *
+ * Two layers. The first refuses the submit while accounts are outstanding, so the
+ * common case never reaches the server at all. The second answers the gate's 428 for
+ * what the first cannot see: a page that was ready when it loaded and had a credential
+ * revoked under it, and the moments before the shell's first readiness signal arrives.
+ *
+ * On that second path the visitor's message stays in the transcript, because it really
+ * was sent - the server received it and declined to run the workflow. The reply says
+ * exactly that. Taking it back out of the transcript and into the input would need the
+ * widget's own state, which this page cannot reach.
+ */
+function buildCredentialGateScript(streaming: boolean) {
+	return `
+			<script>
+				(function () {
+					var STREAMING = ${!!streaming};
+					var NOTICE =
+						'Not all required accounts are connected, so your message could not be processed. Connect them below, then send it again.';
+					var nativeFetch = window.fetch.bind(window);
+
+					// Both the status and the discriminator must match. A 428 without this body
+					// belongs to something else - a proxy, or the webhook trigger's own gate.
+					function isGateBody(body) {
+						return (
+							!!body &&
+							body.status === 'credential_connections_required' &&
+							Array.isArray(body.credentials)
+						);
+					}
+
+					// The shell posts readiness in. The widget has its own listener for this
+					// message, but the published bundle the page loads does not carry it yet, so
+					// this page does the blocking itself. Accepted only from our own parent: the
+					// frame is sandboxed with no origin, so \`event.origin\` cannot be checked
+					// against an allowlist.
+					//
+					// Starts ready: until the shell says otherwise, nothing is blocked. That
+					// matches the widget, which also treats "no status yet" as no gate.
+					var ready = true;
+					window.addEventListener('message', function (event) {
+						if (window.parent === window || event.source !== window.parent) return;
+						var data = event.data;
+						if (!data || data.type !== 'n8n-chat:credential-status') return;
+						if (typeof data.ready === 'boolean') ready = data.ready;
+					});
+
+					// Refuse the submit before the widget sees it, so a message that cannot run is
+					// never sent and never appears in the transcript. Capture phase, ahead of the
+					// widget's own handlers. Test mode is blocked too: the server gate refuses
+					// builders as well, so letting it through only wastes a round trip.
+					function blockSubmit(event) {
+						event.preventDefault();
+						event.stopImmediatePropagation();
+						if (window.parent === window) return;
+						// Asks the shell to surface its connect panel. Never a provider popup from
+						// here - this frame's click doesn't hand the shell a usable gesture (it's
+						// an opaque origin, by design), so a popup opened off this message would
+						// just be blocked. The dialog's own Connect button is a real click there.
+						window.parent.postMessage({ type: 'n8n-chat-connect-requested' }, '*');
+					}
+
+					document.addEventListener(
+						'keydown',
+						function (event) {
+							if (ready) return;
+							if (event.key !== 'Enter' || event.shiftKey) return;
+							var target = event.target;
+							if (!target || String(target.tagName).toLowerCase() !== 'textarea') return;
+							blockSubmit(event);
+						},
+						true
+					);
+
+					document.addEventListener(
+						'click',
+						function (event) {
+							if (ready) return;
+							var target = event.target;
+							// The send button's class is part of the widget's published theming
+							// contract (\`--chat--input--send--button--*\`), so it is a safer hook than
+							// its markup.
+							if (!target || !target.closest || !target.closest('.chat-input-send-button')) {
+								return;
+							}
+							blockSubmit(event);
+						},
+						true
+					);
+
+					// Only a message send is ours to answer. \`loadPreviousSession\` goes down this
+					// same \`fetch\`, and replacing its reply with a chat notice would drop the
+					// restored conversation.
+					function isMessageSend(init) {
+						try {
+							var body = init && init.body;
+							if (!body) return false;
+							if (typeof FormData !== 'undefined' && body instanceof FormData) {
+								return body.get('action') === 'sendMessage';
+							}
+							if (typeof body === 'string') {
+								var parsed = JSON.parse(body);
+								return !!parsed && parsed.action === 'sendMessage';
+							}
+						} catch (error) {}
+						return false;
+					}
+
+					// Ids only: the shell must not have to trust a name or a URL from this frame.
+					// targetOrigin '*' because this frame is sandboxed without allow-same-origin
+					// and cannot know the parent's origin.
+					function tellShell(credentials) {
+						if (window.parent === window) return;
+						window.parent.postMessage(
+							{
+								type: 'n8n-chat-credentials-rejected',
+								// The body lists every required credential, connected ones included.
+								ids: credentials
+									.filter(function (credential) {
+										return credential.credentialStatus !== 'configured';
+									})
+									.map(function (credential) {
+										return credential.credentialId;
+									}),
+							},
+							'*'
+						);
+					}
+
+					// Answered in place of the rejection so the widget renders an ordinary bot
+					// message instead of the gate's JSON. The transport decides the shape:
+					// newline-delimited frames when streaming, a plain body otherwise.
+					function noticeResponse() {
+						var frame = { metadata: { nodeId: 'credential-gate' } };
+						var body = STREAMING
+							? JSON.stringify(Object.assign({ type: 'begin' }, frame)) +
+								'\\n' +
+								JSON.stringify(Object.assign({ type: 'item', content: NOTICE }, frame)) +
+								'\\n' +
+								JSON.stringify(Object.assign({ type: 'end' }, frame)) +
+								'\\n'
+							: JSON.stringify({ output: NOTICE });
+
+						return new Response(body, {
+							status: 200,
+							headers: { 'Content-Type': STREAMING ? 'text/plain' : 'application/json' },
+						});
+					}
+
+					window.fetch = function (input, init) {
+						return nativeFetch(input, init).then(function (response) {
+							if (response.status !== 428 || !isMessageSend(init)) return response;
+
+							return response
+								.clone()
+								.json()
+								.catch(function () {
+									return null;
+								})
+								.then(function (body) {
+									if (!isGateBody(body)) return response;
+
+									tellShell(body.credentials);
+									return noticeResponse();
+								});
+						});
+					};
+				})();
+			</script>`;
+}
 
 /**
  * Runs before the widget's module script (classic inline scripts aren't deferred). The
@@ -186,7 +385,7 @@ export function createPage({
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 	const sanitizedAllowFileUploads = !!allowFileUploads;
 	const sanitizedAllowedFilesMimeTypes = sanitizeUserInput(allowedFilesMimeTypes?.toString() ?? '');
-	const sanitizedCustomCss = getSanitizedCustomCss(customCss?.toString() ?? '');
+	const customCssScript = buildCustomCssScript(customCss?.toString() ?? '');
 
 	const sanitizedLoadPreviousSession = validLoadPreviousSessionOptions.includes(
 		loadPreviousSession as LoadPreviousSessionChatOption,
@@ -280,9 +479,9 @@ export function createPage({
 					height: 100%;
 				}
 			</style>
-			<style>${sanitizedCustomCss}</style>
+			<style id="${CUSTOM_CSS_ELEMENT_ID}"></style>${customCssScript}
 		</head>
-		<body>${shellInner ? innerBootstrapScript : ''}
+		<body>${shellInner ? innerBootstrapScript + buildCredentialGateScript(!!enableStreaming) : ''}
 			<script type="module">
 				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
 

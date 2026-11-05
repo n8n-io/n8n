@@ -6,11 +6,15 @@ import {
 	type SharedSecretTokenSpec,
 } from './shared-secret-token';
 
-/**
- * What an action token authorizes. Scoped, so a leaked token buys only what the
- * data plane can already do: report lifecycle events.
- */
-export type ActionScope = 'lifecycle-events:write';
+/** What an action token authorizes. Scoped, so a leaked token buys only one of them. */
+export const ACTION_SCOPES = [
+	'lifecycle-events:write',
+	'credentials:read',
+	'data-tables:use',
+	'sub-workflows:resolve',
+] as const;
+
+export type ActionScope = (typeof ACTION_SCOPES)[number];
 
 /**
  * Deliberately the mirror image of the identity token's spec. The swapped
@@ -18,7 +22,7 @@ export type ActionScope = 'lifecycle-events:write';
  * at a control plane endpoint, and vice versa, even though both are signed with
  * the same shared secret.
  */
-export const ACTION_TOKEN: SharedSecretTokenSpec = Object.freeze({
+export const ACTION_TOKEN_SPEC: SharedSecretTokenSpec = Object.freeze({
 	issuer: 'n8n-engine-dp',
 	audience: 'n8n-cp',
 	ttlSeconds: 60,
@@ -26,7 +30,7 @@ export const ACTION_TOKEN: SharedSecretTokenSpec = Object.freeze({
 });
 
 const actionClaimsSchema = z.object({
-	scope: z.enum(['lifecycle-events:write']),
+	scope: z.enum(ACTION_SCOPES),
 	iat: z.number().int(),
 	exp: z.number().int(),
 });
@@ -36,7 +40,7 @@ export class InvalidActionTokenError extends Error {}
 
 /** Signs an action token {@link verifyActionToken} accepts. The DP → CP direction. */
 export function mintActionToken(secret: string, scope: ActionScope): string {
-	return signSharedSecretToken(ACTION_TOKEN, secret, { scope });
+	return signSharedSecretToken(ACTION_TOKEN_SPEC, secret, { scope });
 }
 
 /**
@@ -44,6 +48,6 @@ export function mintActionToken(secret: string, scope: ActionScope): string {
  * is read per call, and an unset or under-length one rejects everything.
  */
 export function verifyActionToken(secret: string, token: string, requiredScope: ActionScope): void {
-	const claims = verifySharedSecretToken(ACTION_TOKEN, secret, token, actionClaimsSchema);
-	if (!claims || claims.scope !== requiredScope) throw new InvalidActionTokenError();
+	const claims = verifySharedSecretToken(ACTION_TOKEN_SPEC, secret, token, actionClaimsSchema);
+	if (claims?.scope !== requiredScope) throw new InvalidActionTokenError();
 }

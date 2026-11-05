@@ -1,4 +1,5 @@
 import { parseFlatted } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -17,13 +18,11 @@ import type {
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
+import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
-import {
-	createEmptyRunExecutionData,
-	migrateRunExecutionData,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { createEmptyRunExecutionData, migrateRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
@@ -35,14 +34,15 @@ import {
 	type BundleWorkflowSnapshot,
 	type ExecutionDataPayload,
 	type ExecutionRef,
-	type WorkflowSnapshot,
+	toWorkflowSnapshot,
 } from './execution-data/types';
 import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
-import { EventService } from '../events/event.service';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
+
+type InFlightExecutionOutcome = Pick<IExecutionResponse, 'status' | 'finished' | 'stoppedAt'>;
 
 type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
@@ -56,6 +56,7 @@ type UpdatableEntityColumns = Omit<
 	| 'createdAt'
 	| 'startedAt'
 	| 'customData'
+	| 'deletedAt'
 >;
 
 /**
@@ -98,26 +99,23 @@ export class ExecutionPersistence {
 	 */
 	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;
-		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
-		const workflowSnapshot: WorkflowSnapshot = {
-			connections,
-			nodes,
-			name,
-			settings,
-			id,
-			nodeGroups,
-		};
+		const { id } = workflowData;
+		const workflowSnapshot = toWorkflowSnapshot(workflowData);
 		const storedAt = this.storageConfig.modeTag;
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		let reclaimedTombstone: DeletionTarget | null = null;
+		const failedCreate: {
+			blobTarget: (ExecutionRef & { storedAt: BlobStorageLocation }) | null;
+		} = { blobTarget: null };
 		try {
 			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
+				if (storedAt !== 'db') failedCreate.blobTarget = { ...ref, storedAt };
 
 				const jsonSizeBytes = await this.trackWrite(storedAt, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
@@ -143,6 +141,19 @@ export class ExecutionPersistence {
 
 			return executionId;
 		} catch (error) {
+			const failedTarget = failedCreate.blobTarget;
+			if (failedTarget) {
+				try {
+					await this.jsonStore.delete([failedTarget]);
+				} catch (cleanupError) {
+					this.errorReporter.error(cleanupError, {
+						extra: {
+							executionId: failedTarget.executionId,
+							storedAt: failedTarget.storedAt,
+						},
+					});
+				}
+			}
 			if (executionEntity.deduplicationKey && this.isDuplicateExecutionError(error)) {
 				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
 			}
@@ -245,6 +256,7 @@ export class ExecutionPersistence {
 		const entity = await this.executionRepository.findOne({
 			where: this.buildEntityWhereCondition(executionId, conditions),
 			select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
+			withDeleted: conditions?.includeDeleted,
 		});
 
 		if (!entity) return false;
@@ -327,6 +339,32 @@ export class ExecutionPersistence {
 
 		if (!entity) return undefined;
 
+		return await this.readSingleExecution(entity, options);
+	}
+
+	/**
+	 * A finished manual execution that n8n did not save, with its run data, until pruning
+	 * hard-deletes it. The caller must check that the reader started it.
+	 */
+	async findUnsavedManualExecution(executionId: string): Promise<IExecutionResponse | undefined> {
+		const entity = await this.executionRepository.findUnsavedManualExecution(executionId);
+		if (!entity) return undefined;
+
+		return await this.readSingleExecution(entity, { includeData: true, unflattenData: true });
+	}
+
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { includeData: true; unflattenData: true; includeAnnotation?: boolean },
+	): Promise<IExecutionResponse | undefined>;
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean; maxDataSizeBytes?: number },
+	): Promise<FoundExecution | undefined>;
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean; maxDataSizeBytes?: number },
+	): Promise<FoundExecution | undefined> {
 		const max = this.maxDisplayDataSize(options);
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
 
@@ -415,22 +453,6 @@ export class ExecutionPersistence {
 
 		const { executions } = await this.readMultiple(queryParams, options);
 		return executions;
-	}
-
-	/**
-	 * Like {@link findMultipleExecutions}, but also returns the ids of executions whose data
-	 * bundle could not be read. The plain read drops those silently; callers that must act on
-	 * them (rather than skip them) use this.
-	 */
-	async findMultipleExecutionsWithUnreadable(
-		queryParams: FindManyOptions<ExecutionEntity>,
-	): Promise<{ executions: IExecutionResponse[]; unreadableIds: string[] }> {
-		const { executions, unreadableIds } = await this.readMultiple(queryParams, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		return { executions: executions as IExecutionResponse[], unreadableIds };
 	}
 
 	/**
@@ -594,6 +616,11 @@ export class ExecutionPersistence {
 		});
 	}
 
+	/** Statuses of the given executions in one read; ids that no longer exist are absent. */
+	async findStatusesByIds(ids: string[]): Promise<Array<{ id: string; status: ExecutionStatus }>> {
+		return await this.executionRepository.findStatusesByIds(ids);
+	}
+
 	/** Find executions scoped to the given workflows, with data per `storedAt`. */
 	async findManyInWorkflows(
 		workflowIds: string[],
@@ -633,16 +660,27 @@ export class ExecutionPersistence {
 	/**
 	 * Delete an in-flight execution that is not meant to be saved.
 	 *
-	 * - When pruning is enabled, soft-deletes with a backdated `deletedAt` so the
-	 * execution is immediately eligible for the next pruning hard-delete batch.
+	 * - When pruning is enabled, writes the final state and soft-deletes with a
+	 * backdated `deletedAt` so the execution is immediately eligible for the
+	 * next pruning hard-delete batch. A canceled execution keeps its status.
 	 * - When pruning is disabled, hard-deletes immediately so the execution
 	 * is not persisted indefinitely.
 	 */
-	async deleteInFlightExecution(target: DeletionTarget) {
+	async deleteInFlightExecution(target: DeletionTarget, outcome: InFlightExecutionOutcome) {
 		if (this.executionsConfig.pruneData) {
 			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 			const deletedAt = new Date(Date.now() - bufferMs);
-			await this.executionRepository.update(target.executionId, { deletedAt });
+			const { affected } = await this.executionRepository.update(
+				this.buildEntityWhereCondition(target.executionId, { requireNotCanceled: true }),
+				{
+					deletedAt,
+					status: outcome.status,
+					// oxlint-disable-next-line typescript/no-deprecated
+					finished: outcome.finished,
+					stoppedAt: outcome.stoppedAt,
+				},
+			);
+			if (!affected) await this.executionRepository.update(target.executionId, { deletedAt });
 		} else {
 			await this.hardDelete(target);
 		}
@@ -652,17 +690,40 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		await Promise.all([
-			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
-			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			this.jsonStore.delete(this.toBlobRefs(targets)),
-		]);
+		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
+		await this.binaryDataService.deleteMany(
+			targets.map((t) => ({ type: 'execution' as const, ...t })),
+		);
+		// Payload next. A failure leaves the rows, so the next run retries them.
+		await this.jsonStore.delete(this.toBlobRefs(targets));
+
+		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
+	}
+
+	/** Resolve and remove one execution together with every storage-backed payload it owns. */
+	async hardDeleteById(executionId: string) {
+		const execution = await this.executionRepository.findOne({
+			select: ['id', 'workflowId', 'storedAt'],
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		if (!execution) return;
+
+		await this.hardDelete({
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			storedAt: execution.storedAt,
+		});
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
-		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
+		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
 
-		await this.jsonStore.delete(this.toBlobRefs(refs));
+		// Batches keep each row delete under the SQLite expression-depth limit.
+		// Each batch deletes binaries, then the payload, then the rows.
+		for (const batch of chunk(refs, this.executionRepository.hardDeletionBatchSize)) {
+			await this.hardDelete(batch);
+		}
 	}
 
 	/**
@@ -679,32 +740,20 @@ export class ExecutionPersistence {
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {
-			const executions = await this.executionRepository.find({
-				select: ['id', 'workflowId', 'storedAt'],
-				where: { workflowId },
-				take: ExecutionPersistence.bulkDeletionBatchSize,
-				withDeleted: true, // sweep soft-deleted executions too, or they'd be left to the FK cascade
-			});
-
-			if (executions.length === 0) return;
-
-			await this.hardDelete(
-				executions.map((execution) => ({
-					executionId: execution.id,
-					workflowId: execution.workflowId,
-					storedAt: execution.storedAt,
-				})),
+			// Soft-deleted executions are swept too, or they'd be left to the FK cascade.
+			const targets = await this.executionRepository.findForDeletionByWorkflowId(
+				workflowId,
+				ExecutionPersistence.bulkDeletionBatchSize,
 			);
+
+			if (targets.length === 0) return;
+
+			await this.hardDelete(targets);
 		}
 
 		// The loop may have converged exactly on its last allowed batch - only
 		// fail if executions actually remain.
-		const remaining = await this.executionRepository.find({
-			select: ['id'],
-			where: { workflowId },
-			take: 1,
-			withDeleted: true,
-		});
+		const remaining = await this.executionRepository.findForDeletionByWorkflowId(workflowId, 1);
 		if (remaining.length === 0) return;
 
 		throw new UnexpectedError(
@@ -802,6 +851,7 @@ export class ExecutionPersistence {
 					where: whereCondition,
 					select: ['id'],
 					lock,
+					withDeleted: conditions.includeDeleted,
 				});
 				if (!matchingRow) return false;
 			}
@@ -811,7 +861,7 @@ export class ExecutionPersistence {
 				const jsonSizeBytes = await this.trackWrite(mode, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
 						data: stringify(data),
-						workflowData: this.toWorkflowSnapshot(workflowData),
+						workflowData: toWorkflowSnapshot(workflowData),
 						workflowVersionId,
 					};
 
@@ -851,7 +901,7 @@ export class ExecutionPersistence {
 
 				const bundle: ExecutionDataPayload = {
 					data: serializedData,
-					workflowData: workflowData ? this.toWorkflowSnapshot(workflowData) : stored.workflowData,
+					workflowData: workflowData ? toWorkflowSnapshot(workflowData) : stored.workflowData,
 					workflowVersionId: stored.workflowVersionId,
 				};
 
@@ -899,6 +949,9 @@ export class ExecutionPersistence {
 			customData: _customData,
 			jsonSizeBytes: _jsonSizeBytes,
 			binaryDataSizeBytes: _binaryDataSizeBytes,
+			// Only the delete paths set it. A caller that writes back an execution it read
+			// earlier must not restore a row that was deleted in the meantime.
+			deletedAt: _deletedAt,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
@@ -917,6 +970,7 @@ export class ExecutionPersistence {
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (conditions?.requireNotFinished) where.finished = false;
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;
@@ -992,13 +1046,6 @@ export class ExecutionPersistence {
 		if (mode !== 'db') return await this.jsonStore.read(ref, mode);
 
 		return tx ? await this.dbStore.read(ref, tx) : await this.dbStore.read(ref);
-	}
-
-	private toWorkflowSnapshot(
-		workflowData: NonNullable<IExecutionResponse['workflowData']>,
-	): WorkflowSnapshot {
-		const { id, name, nodes, connections, settings, nodeGroups } = workflowData;
-		return { id, name, nodes, connections, settings, nodeGroups };
 	}
 
 	private async assembleExecution(
