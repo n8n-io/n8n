@@ -85,6 +85,8 @@ export function useSetupPanelState(options: {
 		if (!id || !Object.hasOwn(thread.setupItemsByWorkflowId, id)) return [];
 		return thread.setupItemsByWorkflowId[id];
 	});
+	// Reads the agent tree, not the artifact turns: it compares `completedAt`,
+	// and only the current runtime mounts this panel.
 	const isAwaitingFirstBuild = computed(() => {
 		const id = toValue(options.workflowId);
 		let pending = false;

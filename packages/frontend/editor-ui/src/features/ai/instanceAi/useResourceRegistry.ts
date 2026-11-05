@@ -334,8 +334,7 @@ function extractFromToolCall(tc: ArtifactToolCall, col: Collections): void {
 	// agent_builder_build_agent (threads from before the builder ran inline):
 	// { agentId, agentName? } — produced. Follow-up calls may omit
 	// the name, so fall back to the existing entry before regressing to
-	// 'Untitled'. projectId is preserved from the agent-spawned entry by
-	// recordProduced's merge.
+	// 'Untitled'. recordProduced's merge keeps the projectId of an earlier entry.
 	if (
 		tc.toolName === AGENT_BUILDER_TOOL_NAMES.BUILD_AGENT &&
 		typeof result.agentId === 'string' &&
