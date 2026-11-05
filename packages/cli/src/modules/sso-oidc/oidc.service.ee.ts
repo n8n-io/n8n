@@ -842,15 +842,25 @@ export class OidcService {
 			this.oidcConfig.clientId !== this.cachedOidcConfiguration.clientId ||
 			this.oidcConfig.clientSecret !== this.cachedOidcConfiguration.clientSecret
 		) {
-			this.cachedOidcConfiguration = {
+			const configPromise = this.createProxyAwareConfiguration(
+				this.oidcConfig.discoveryEndpoint,
+				this.oidcConfig.clientId,
+				this.oidcConfig.clientSecret,
+			);
+
+			const cacheEntry = {
 				...this.oidcConfig,
-				configuration: this.createProxyAwareConfiguration(
-					this.oidcConfig.discoveryEndpoint,
-					this.oidcConfig.clientId,
-					this.oidcConfig.clientSecret,
-				),
+				configuration: configPromise,
 				validTill: new Date(Date.now() + 60 * 60 * 1000), // Cache for 1 hour
 			};
+
+			this.cachedOidcConfiguration = cacheEntry;
+
+			configPromise.catch(() => {
+				if (this.cachedOidcConfiguration === cacheEntry) {
+					this.cachedOidcConfiguration = undefined;
+				}
+			});
 		}
 
 		return await this.cachedOidcConfiguration.configuration;
