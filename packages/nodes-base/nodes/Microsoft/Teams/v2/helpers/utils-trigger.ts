@@ -106,20 +106,20 @@ export async function deleteSubscriptions(
 }
 
 /**
- * Sends one PATCH per id, in parallel. Pass each id once. Returns the ids that Graph answered
- * with 404. Pass only ids whose secret is proven. Never throws: every other failure is warned,
- * and that subscription keeps its expiry until its own `reauthorizationRequired` renews it.
+ * Renews every id once, all in parallel, and returns the ids that Graph answered with 404. Pass
+ * only ids whose secret is proven. Never throws: every other failure is warned, and that
+ * subscription keeps its expiry until its own `reauthorizationRequired` renews it.
  */
 export async function renewSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	ids: Iterable<string>,
 ): Promise<Set<string>> {
 	// POST, PUT, DELETE and PATCH share 500 requests per 20 s for an app in one tenant, 2000 across
-	// tenants. ponytail: the calls are not paced. An activation renews after its first creates, so
-	// a 429 here only warns. The PATCHes can still use up the budget of a later create: a re-create
-	// after a 404, or another activation's creates in the same 20 s. Pace the calls if that shows up.
+	// tenants. ponytail: the calls are not paced, and a 429 only warns. The PATCHes can still use up
+	// the budget of a create in the same 20 s: a re-create after a 404, or the creates of another
+	// activation. Pace the calls if that shows up.
 	const gone = await Promise.all(
-		[...ids].map(async (id) => {
+		[...new Set(ids)].map(async (id) => {
 			try {
 				await microsoftApiRequest.call(
 					this,
@@ -307,10 +307,9 @@ export function markPendingReconcile(webhookData: IDataObject, pending: boolean)
  * Applies the ownership rule to one own listing: one live subscription with the stored secret
  * per required resource stays, the uncovered resources are created with the stored secret, and
  * every other listed own subscription goes, except a stored one beside a keeper, which is
- * forgotten, and everything on a held resource. With `renewKeepers`, each keeper is renewed
- * after the creates, and the resource of a keeper that answers 404 is created again. Reads and
- * writes `subscriptionIds` itself, so the trust decision and the write share one source. Returns
- * the create errors, and whether the next lifecycle batch must reconcile again. Never throws.
+ * forgotten, and everything on a held resource. Reads and writes
+ * `subscriptionIds` itself, so the trust decision and the write share one source. Returns the
+ * create errors, and whether the next lifecycle batch must reconcile again. Never throws.
  */
 export async function reconcileSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
@@ -335,13 +334,13 @@ export async function reconcileSubscriptions(
 		 */
 		holdUnproven: boolean;
 		/**
-		 * Activation only: renews each keeper once, after the first creates, so the renewals cannot
-		 * make those creates answer 429. Skipped after a failed create: the activation throws. GET
-		 * by id first proves every live candidate, because a renewal must not extend a subscription
-		 * with another secret. The resource of a keeper that answers 404 is created again, after the
-		 * renewals.
+		 * Activation sets it, a lifecycle batch does not. Renews each keeper once, after the first
+		 * creates, so the renewals cannot make those creates answer 429. Skipped after a failed
+		 * create: the activation throws. GET by id first proves every live candidate, because a
+		 * renewal must not extend a subscription with another secret. The resource of a keeper that
+		 * answers 404 is created again, after the renewals.
 		 */
-		renewKeepers?: boolean;
+		renewKeepers: boolean;
 	},
 ): Promise<{ errors: Error[]; retry: boolean }> {
 	const {
@@ -351,7 +350,7 @@ export async function reconcileSubscriptions(
 		renewed = new Set(),
 		gone = new Set(),
 		holdUnproven,
-		renewKeepers = false,
+		renewKeepers,
 	} = input;
 	const webhookData = this.getWorkflowStaticData('node');
 	const storedIds = getStoredIds(webhookData);
@@ -372,14 +371,13 @@ export async function reconcileSubscriptions(
 		(Date.parse(b.expirationDateTime) || 0) - (Date.parse(a.expirationDateTime) || 0) ||
 		(a.id < b.id ? -1 : 1);
 
-	// A renewal in this request proves the secret: its lifecycle item passed verification.
 	// Earlier versions stored every own subscription, whatever its secret. So storage alone
-	// decides only on a lifecycle batch. There it decides only for a stored subscription that is
-	// the only live own one and the only stored one on its resource. `renewKeepers` explains why
-	// an activation reads every live one. Outside that shortcut, GET by id proves the live ones.
-	// A live listed subscription with the stored secret then goes only beside a keeper. At
-	// activation it also goes when it is not stored and its read failed. Stale, unlisted and no
-	// longer required ones go without a read.
+	// decides only on a lifecycle batch: there the reconcile renews no keeper. Even there it
+	// decides only for a stored subscription that is the only live own one and the only stored
+	// one on its resource. Outside that shortcut, GET by id proves the live ones. A live listed
+	// subscription with the stored secret then goes only beside a keeper. At activation it also
+	// goes when it is not stored and its read failed. Stale, unlisted and no longer required ones
+	// go without a read.
 	const keepers = new Map<string, string>();
 	const unproven: SubscriptionResponse[] = [];
 	for (const resource of required) {
@@ -498,7 +496,8 @@ export async function reconcileSubscriptions(
  * this URL. Returns `undefined` when they do not. Otherwise returns the ids to renew: for each
  * required resource, the one stored id whose answer shows the stored secret. Twins on one
  * resource both cover, which is safer than core's cleanup, but proven twins are not returned:
- * the marked next reconcile keeps one. An answer with another clientState covers nothing, and
+ * the marked next reconcile keeps one. Unlike the reconcile, a twin whose read fails does not
+ * stop the renewal of a proven one. An answer with another clientState covers nothing, and
  * one without a clientState covers but is not returned. Reads each stored id with GET by id,
  * which has its own budget: 2000 requests per 20 s for an app across all tenants, against 40
  * for the listing. Never throws.
@@ -723,6 +722,7 @@ export async function handleLifecycleNotifications(
 		renewed,
 		gone,
 		holdUnproven: true,
+		renewKeepers: false,
 	});
 	markPendingReconcile(webhookData, retry);
 }

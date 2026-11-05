@@ -16,6 +16,7 @@ import {
 	isSubscriptionResponse,
 	listOwnSubscriptions,
 	reconcileSubscriptions,
+	renewSubscriptions,
 	storedSubscriptionsCover,
 	verifyWebhook,
 } from '../../v2/helpers/utils-trigger';
@@ -850,9 +851,34 @@ describe('Microsoft Teams Helpers Functions', () => {
 			});
 		});
 
+		describe('renewSubscriptions', () => {
+			it('renews every id once and returns the ids that answered 404', async () => {
+				const { ctx } = arrange();
+				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (callCtx: unknown, method: string, path: string, body?: unknown) => {
+						if (method === 'PATCH' && path === '/v1.0/subscriptions/b') {
+							throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
+						}
+						return await baseline?.(callCtx, method, path, body);
+					},
+				);
+
+				await expect(renewSubscriptions.call(ctx, ['a', 'b', 'a'])).resolves.toEqual(
+					new Set(['b']),
+				);
+				expect(calls('PATCH').map((call) => call[2])).toEqual([
+					'/v1.0/subscriptions/a',
+					'/v1.0/subscriptions/b',
+				]);
+			});
+		});
+
 		describe('reconcileSubscriptions', () => {
 			const TEAM1 = '/teams/team1/channels';
 			const TEAM2 = '/teams/team2/channels';
+			// The input of a lifecycle batch. A case without it reconciles as an activation.
+			const LIFECYCLE = { holdUnproven: true, renewKeepers: false };
 			const reconcile = async (
 				ctx: ReturnType<typeof arrange>['ctx'],
 				input: Partial<Parameters<typeof reconcileSubscriptions>[0]> = {},
@@ -863,6 +889,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					requiredResources: ['/me/chats'],
 					subscriptions: [],
 					holdUnproven: false,
+					renewKeepers: true,
 					...input,
 				});
 			const deleted = () => calls('DELETE').map((call) => call[2]);
@@ -875,6 +902,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 
 				const result = await reconcile(ctx, {
+					...LIFECYCLE,
 					subscriptions: [
 						subscription('c', '/me/chats', minutes(90)),
 						subscription('a', '/me/chats', minutes(60)),
@@ -981,7 +1009,6 @@ describe('Microsoft Teams Helpers Functions', () => {
 						subscription('a', '/me/chats', minutes(60)),
 						subscription('b', '/me/chats', minutes(90)),
 					],
-					renewKeepers: true,
 				});
 
 				expect(patched()).toEqual(['/v1.0/subscriptions/b']);
@@ -1027,11 +1054,11 @@ describe('Microsoft Teams Helpers Functions', () => {
 					);
 
 					const result = await reconcile(ctx, {
+						...LIFECYCLE,
 						subscriptions: [
 							subscription('a', '/me/chats', minutes(60)),
 							subscription('b', '/me/chats', minutes(90)),
 						],
-						holdUnproven: true,
 					});
 
 					expect(deleted()).toEqual([]);
@@ -1059,11 +1086,11 @@ describe('Microsoft Teams Helpers Functions', () => {
 				);
 
 				const result = await reconcile(ctx, {
+					...LIFECYCLE,
 					subscriptions: [
 						subscription('a', '/me/chats', minutes(60)),
 						subscription('x', '/me/chats', minutes(60)),
 					],
-					holdUnproven: true,
 				});
 
 				expect(deleted()).toEqual([]);
@@ -1148,7 +1175,6 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				const result = await reconcile(ctx, {
 					subscriptions: [subscription('x', '/me/chats', minutes(60))],
-					renewKeepers: true,
 				});
 
 				expect(patched()).toEqual(['/v1.0/subscriptions/x']);
@@ -1158,17 +1184,17 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(staticData.subscriptionIds).toEqual(['x']);
 			});
 
-			it('reads and renews nothing on a lifecycle batch when the only own subscription on the resource is stored and live', async () => {
+			it('reads and renews nothing on a lifecycle batch when the only live own subscription on the resource is stored', async () => {
 				const { ctx } = arrange({
 					staticData: { subscriptionIds: ['a'], webhookSecret: 'secret' },
 				});
 
 				await reconcile(ctx, {
+					...LIFECYCLE,
 					subscriptions: [
 						subscription('a', '/me/chats', minutes(60)),
 						subscription('x', '/me/chats', minutes(2)),
 					],
-					holdUnproven: true,
 				});
 
 				expect(calls('GET')).toEqual([]);
@@ -1219,6 +1245,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 
 				const result = await reconcile(ctx, {
+					...LIFECYCLE,
 					requiredResources: [TEAM1, TEAM2],
 					subscriptions: [
 						subscription('a1', TEAM1, minutes(60)),
@@ -1246,6 +1273,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 
 					await reconcile(ctx, {
+						...LIFECYCLE,
 						subscriptions: [
 							subscription('a', '/me/chats', minutes(60)),
 							subscription('b', '/me/chats', minutes(90)),
@@ -1266,6 +1294,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 
 				await reconcile(ctx, {
+					...LIFECYCLE,
 					subscriptions: [
 						subscription('a', '/me/chats', minutes(60)),
 						subscription('b', '/me/chats', minutes(2)),
@@ -1282,6 +1311,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				const { ctx, staticData } = arrange();
 
 				const result = await reconcile(ctx, {
+					...LIFECYCLE,
 					subscriptions: [subscription('sub1', '/me/chats', -minutes(1))],
 					renewed: new Set(['sub1']),
 				});
@@ -1294,7 +1324,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			it('deletes an unlisted renewed id whose PATCH answer was unusable and re-creates its resource', async () => {
 				const { ctx, staticData } = arrange();
 
-				const result = await reconcile(ctx, { renewed: new Set(['sub1']) });
+				const result = await reconcile(ctx, { ...LIFECYCLE, renewed: new Set(['sub1']) });
 
 				expect(deleted()).toEqual(['/v1.0/subscriptions/sub1']);
 				expect(created()).toEqual(['/me/chats']);
@@ -1305,7 +1335,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			it('does not delete a stored id that Graph reported removed', async () => {
 				const { ctx, staticData } = arrange();
 
-				await reconcile(ctx, { gone: new Set(['sub1']) });
+				await reconcile(ctx, { ...LIFECYCLE, gone: new Set(['sub1']) });
 
 				expect(deleted()).toEqual([]);
 				expect(created()).toEqual(['/me/chats']);
@@ -1363,6 +1393,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 
 					await reconcile(ctx, {
+						...LIFECYCLE,
 						requiredResources: required,
 						subscriptions: [
 							subscription('a', TEAM1, minutes(60)),
@@ -1397,10 +1428,6 @@ describe('Microsoft Teams Helpers Functions', () => {
 					...subscription(id, resource, expiresInMs),
 					clientState: 'secret',
 				});
-				const activate = async (
-					ctx: ReturnType<typeof arrange>['ctx'],
-					input: Partial<Parameters<typeof reconcileSubscriptions>[0]> = {},
-				) => await reconcile(ctx, { renewKeepers: true, ...input });
 				const notFound = () =>
 					new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
 				// Answers as arranged, except that `method` on subscription `id` throws `error`.
@@ -1431,7 +1458,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 						answers: { a: proven('a') },
 					});
 
-					const result = await activate(ctx, {
+					const result = await reconcile(ctx, {
 						subscriptions: [subscription('a', '/me/chats', minutes(60))],
 					});
 
@@ -1458,7 +1485,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 							answers,
 						});
 
-						const result = await activate(ctx, {
+						const result = await reconcile(ctx, {
 							subscriptions: [subscription('a', '/me/chats', minutes(60))],
 						});
 
@@ -1489,7 +1516,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 						});
 						if (readError) refuse('GET', 'a', readError);
 
-						const result = await activate(ctx, {
+						const result = await reconcile(ctx, {
 							subscriptions: [subscription('a', '/me/chats', minutes(60))],
 						});
 
@@ -1509,7 +1536,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 					refuse('GET', 'b', new Error('Too many requests'));
 
-					const result = await activate(ctx, {
+					const result = await reconcile(ctx, {
 						requiredResources: [TEAM1, TEAM2],
 						subscriptions: [
 							subscription('a', TEAM1, minutes(60)),
@@ -1540,7 +1567,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 								: await baseline?.(callCtx, method, path, body),
 					);
 
-					const pending = activate(ctx, {
+					const pending = reconcile(ctx, {
 						requiredResources: [TEAM1, TEAM2],
 						subscriptions: [subscription('a', TEAM1, minutes(60))],
 					});
@@ -1562,7 +1589,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					const error = new Error('create failed');
 					failCreates(error);
 
-					const result = await activate(ctx, {
+					const result = await reconcile(ctx, {
 						requiredResources: [TEAM1, TEAM2],
 						subscriptions: [subscription('a', TEAM1, minutes(60))],
 					});
@@ -1580,7 +1607,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 					refuse('PATCH', 'b', notFound());
 
-					const result = await activate(ctx, {
+					const result = await reconcile(ctx, {
 						requiredResources: [TEAM1, TEAM2],
 						subscriptions: [
 							subscription('a', TEAM1, minutes(60)),
@@ -1618,7 +1645,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					refuse('PATCH', 'a', notFound());
 					failCreates(error);
 
-					const result = await activate(ctx, {
+					const result = await reconcile(ctx, {
 						subscriptions: [subscription('a', '/me/chats', minutes(60))],
 					});
 
@@ -1639,7 +1666,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 						new NodeApiError(mock<INode>(), { message: 'Forbidden', httpCode: '403' }),
 					);
 
-					const result = await activate(ctx, {
+					const result = await reconcile(ctx, {
 						subscriptions: [subscription('a', '/me/chats', minutes(60))],
 					});
 
@@ -1661,7 +1688,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 					refuse('PATCH', 'b', notFound());
 
-					const result = await activate(ctx, {
+					const result = await reconcile(ctx, {
 						subscriptions: [
 							subscription('a', '/me/chats', minutes(60)),
 							subscription('b', '/me/chats', minutes(90)),
@@ -1694,7 +1721,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 								: await baseline?.(callCtx, method, path, body),
 					);
 
-					const pending = activate(ctx, {
+					const pending = reconcile(ctx, {
 						requiredResources: [TEAM1, TEAM2],
 						subscriptions: [
 							subscription('a', TEAM1, minutes(60)),
