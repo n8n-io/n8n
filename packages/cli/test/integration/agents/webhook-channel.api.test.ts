@@ -163,7 +163,8 @@ describe('webhook channel HTTP route', () => {
 	});
 
 	describe('approval requests', () => {
-		const approvalResumeSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
+		// A stream chunk has no `null` resume schema.
+		const approvalResumeSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA) ?? undefined;
 		const suspendPayload = {
 			type: 'approval',
 			toolName: 'send_email',
