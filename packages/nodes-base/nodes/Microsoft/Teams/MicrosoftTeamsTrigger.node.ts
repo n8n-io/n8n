@@ -373,10 +373,11 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				// instance start fails, the legacy activation manager queues retries instead. So
 				// stored subscriptions that GET by id shows live stay: the listing allows only 40
 				// requests per 20 s for an app across all tenants, and the next listing reconciles.
-				// Where exactly one stored id on a resource shows the stored secret, that id is renewed,
-				// so it starts a full lifetime. ponytail: a 404 at that renewal sends the listing error to
-				// core, as above, even when another stored id still covers the resource. The 404 needs
-				// a removal between the read and the renewal. Keep the covering id if that shows up.
+				// Where exactly one stored id on a required resource shows the stored secret, the node
+				// tries to renew it. A failure other than a 404 only warns, and the subscription keeps
+				// its expiry. ponytail: a 404 sends the listing error to core, as above, even when
+				// another stored id still covers the resource. The 404 needs a removal between the read
+				// and the renewal. Keep the covering id if that shows up.
 				let subscriptions: SubscriptionResponse[];
 				try {
 					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);

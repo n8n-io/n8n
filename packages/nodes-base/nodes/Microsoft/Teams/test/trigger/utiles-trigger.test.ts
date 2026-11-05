@@ -935,6 +935,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 
 					const result = await reconcile(ctx, {
+						...LIFECYCLE,
 						subscriptions: [
 							subscription('a', '/me/chats', expiresInMs),
 							subscription('b', '/me/chats', minutes(90)),
@@ -959,6 +960,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 
 				const result = await reconcile(ctx, {
+					...LIFECYCLE,
 					subscriptions: [
 						subscription('a', '/me/chats', minutes(60)),
 						subscription('b', '/me/chats', minutes(2)),
@@ -1219,6 +1221,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 
 					await reconcile(ctx, {
+						...LIFECYCLE,
 						subscriptions: [
 							subscription('a', '/me/chats', minutes(60)),
 							subscription('x', '/me/chats', minutes(60)),
@@ -1422,7 +1425,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(staticData.subscriptionIds).toEqual(['new-team2']);
 			});
 
-			describe('with renewKeepers (activation)', () => {
+			describe('keeper renewal', () => {
 				const renewal = { expirationDateTime: new Date(NOW + 4318 * 60 * 1000).toISOString() };
 				const proven = (id: string, resource = '/me/chats', expiresInMs = minutes(60)) => ({
 					...subscription(id, resource, expiresInMs),

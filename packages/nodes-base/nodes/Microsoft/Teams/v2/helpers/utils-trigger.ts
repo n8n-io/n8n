@@ -374,10 +374,10 @@ export async function reconcileSubscriptions(
 	// Earlier versions stored every own subscription, whatever its secret. So storage alone
 	// decides only on a lifecycle batch: there the reconcile renews no keeper. Even there it
 	// decides only for a stored subscription that is the only live own one and the only stored
-	// one on its resource. Outside that shortcut, GET by id proves the live ones. A live listed
-	// subscription with the stored secret then goes only beside a keeper. At activation it also
-	// goes when it is not stored and its read failed. Stale, unlisted and no longer required ones
-	// go without a read.
+	// one on its resource. A resource whose keeper this request renewed needs no read either (see
+	// `renewed`). Elsewhere GET by id proves the live ones. A live listed subscription with the
+	// stored secret then goes only beside a keeper. At activation it also goes when it is not
+	// stored and its read failed. Stale, unlisted and no longer required ones go without a read.
 	const keepers = new Map<string, string>();
 	const unproven: SubscriptionResponse[] = [];
 	for (const resource of required) {
@@ -496,9 +496,9 @@ export async function reconcileSubscriptions(
  * this URL. Returns `undefined` when they do not. Otherwise returns the ids to renew: for each
  * required resource, the one stored id whose answer shows the stored secret. Twins on one
  * resource both cover, which is safer than core's cleanup, but proven twins are not returned:
- * the marked next reconcile keeps one. Unlike the reconcile, a twin whose read fails does not
- * stop the renewal of a proven one. An answer with another clientState covers nothing, and
- * one without a clientState covers but is not returned. Reads each stored id with GET by id,
+ * the marked next reconcile keeps one. Unlike the reconcile, a twin that GET by id cannot prove
+ * does not stop the renewal of a proven one. An answer with another clientState covers nothing,
+ * and one without a clientState covers but is not returned. Reads each stored id with GET by id,
  * which has its own budget: 2000 requests per 20 s for an app across all tenants, against 40
  * for the listing. Never throws.
  */
