@@ -104,6 +104,10 @@ function createCustomTemplateHostRequirements(hostname: string): TestRequirement
 				url: `https://${hostname}/api/templates/workflows/${TEMPLATE_ID}`,
 				response: workflowTemplate,
 			},
+			getTemplateWithoutCredentials: {
+				url: `https://${hostname}/api/workflows/templates/${TEMPLATE_WITHOUT_CREDENTIALS_ID}`,
+				response: templateWithoutCredentials.workflow,
+			},
 			getTemplateWithoutCredentialsPreview: {
 				url: `https://${hostname}/api/templates/workflows/${TEMPLATE_WITHOUT_CREDENTIALS_ID}`,
 				response: templateWithoutCredentials,
@@ -256,8 +260,15 @@ test.describe(
 			});
 
 			test('does not show node issue indicators on the template preview', async ({ n8n }) => {
-				await n8n.navigate.toTemplate(TEMPLATE_WITHOUT_CREDENTIALS_ID);
+				// Control: the editor flags the same nodes, so a hidden badge on the
+				// preview comes from the preview host and not from a missing issue.
+				await n8n.navigate.toTemplateImport(TEMPLATE_WITHOUT_CREDENTIALS_ID);
+				for (const nodeName of TEMPLATE_WITHOUT_CREDENTIALS_NODES) {
+					await expect(n8n.canvas.nodeIssuesBadge(nodeName)).toBeVisible();
+				}
 
+				await preventNavigation(n8n);
+				await n8n.navigate.toTemplate(TEMPLATE_WITHOUT_CREDENTIALS_ID);
 				for (const nodeName of TEMPLATE_WITHOUT_CREDENTIALS_NODES) {
 					await expect(n8n.canvas.nodeByName(nodeName)).toBeVisible();
 					await expect(n8n.canvas.nodeIssuesBadge(nodeName)).toBeHidden();
