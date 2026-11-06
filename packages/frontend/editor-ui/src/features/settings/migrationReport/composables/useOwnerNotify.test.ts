@@ -75,7 +75,13 @@ describe('useOwnerNotify', () => {
 			await onNotify(rows.value[0]);
 
 			expect(rows.value[0].status).toBe('open');
-			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'error',
+					message:
+						'The owner was notified less than a minute ago. Wait a minute before you send a reminder',
+				}),
+			);
 		});
 
 		it('should mark the row as notifying until the request ends', async () => {
@@ -99,12 +105,13 @@ describe('useOwnerNotify', () => {
 		it('should show an error when the request fails', async () => {
 			const error = new Error('Failed');
 			vi.mocked(breakingChangesApi.notifyFindingOwners).mockRejectedValue(error);
-			const { rows, onNotify } = setup();
+			const { rows, onNotify, notifyingWorkflowIds } = setup();
 
 			await onNotify(rows.value[0]);
 
 			expect(showError).toHaveBeenCalledWith(error, expect.any(String));
 			expect(rows.value[0].status).toBe('open');
+			expect(notifyingWorkflowIds.value.size).toBe(0);
 		});
 
 		it('should not notify a busy row', async () => {
@@ -147,7 +154,11 @@ describe('useOwnerNotify', () => {
 			expect(await notifyMany([rows.value[0], rows.value[2]])).toEqual(['workflow-1']);
 
 			expect(showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'warning', title: 'Notified owners of 1 of 2 workflows' }),
+				expect.objectContaining({
+					type: 'warning',
+					title: 'Notified owners of 1 of 2 workflows',
+					message: 'The workflow has no owner with an email address',
+				}),
 			);
 		});
 

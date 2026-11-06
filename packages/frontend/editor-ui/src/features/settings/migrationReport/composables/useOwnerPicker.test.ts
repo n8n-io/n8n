@@ -108,7 +108,8 @@ describe('useOwnerPicker', () => {
 	});
 
 	it('should clear the assignment and show the suggestion that comes back', async () => {
-		vi.mocked(breakingChangesApi.unassignWorkflowOwner).mockResolvedValue({ owner: null });
+		const suggestion = owner('grace', { firstName: 'Grace', source: 'suggested' });
+		vi.mocked(breakingChangesApi.unassignWorkflowOwner).mockResolvedValue({ owner: suggestion });
 		const { rows, onOwnerChange } = setup();
 
 		await onOwnerChange(rows.value[0], '');
@@ -117,6 +118,15 @@ describe('useOwnerPicker', () => {
 			expect.anything(),
 			'workflow-1',
 		);
+		expect(rows.value[0].owner).toEqual(suggestion);
+	});
+
+	it('should leave the row without an owner when no suggestion comes back', async () => {
+		vi.mocked(breakingChangesApi.unassignWorkflowOwner).mockResolvedValue({ owner: null });
+		const { rows, onOwnerChange } = setup();
+
+		await onOwnerChange(rows.value[0], '');
+
 		expect(rows.value[0].owner).toBeUndefined();
 	});
 
