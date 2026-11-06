@@ -10,8 +10,8 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
-	AgentKnowledgeUploadError,
-	type AgentKnowledgeUploadFailureReason,
+	KnowledgeUploadError,
+	type KnowledgeUploadFailureReason,
 } from '@/modules/knowledge/files/knowledge-upload.error';
 
 const allowedAgentFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
@@ -44,7 +44,7 @@ export function describeMulterError(error: multer.MulterError): string {
 export function multerFailureReason(
 	error: multer.MulterError,
 	filesFieldName: string,
-): AgentKnowledgeUploadFailureReason | undefined {
+): KnowledgeUploadFailureReason | undefined {
 	switch (error.code) {
 		case 'LIMIT_UNEXPECTED_FILE':
 			// Multer uses this code for a file part with another field name too.
@@ -79,7 +79,7 @@ export class AgentUploadMiddleware {
 		fileFilter: (_req, file, done) => {
 			if (!isAllowedAgentFile(file)) {
 				done(
-					new AgentKnowledgeUploadError(
+					new KnowledgeUploadError(
 						'Only CSV, PDF, Markdown, and TXT files are allowed',
 						'file_type',
 					),

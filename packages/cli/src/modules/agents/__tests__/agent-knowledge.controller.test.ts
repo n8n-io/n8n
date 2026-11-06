@@ -13,8 +13,8 @@ import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import {
-	AgentKnowledgeUploadError,
-	type AgentKnowledgeUploadFailureReason,
+	KnowledgeUploadError,
+	type KnowledgeUploadFailureReason,
 } from '@/modules/knowledge/files/knowledge-upload.error';
 
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
@@ -232,7 +232,7 @@ describe('AgentKnowledgeController upload telemetry', () => {
 		function expectFailureEvent(
 			telemetry: Mocked<Telemetry>,
 			fileCount: number,
-			reason: AgentKnowledgeUploadFailureReason | 'unknown',
+			reason: KnowledgeUploadFailureReason | 'unknown',
 		) {
 			expect(telemetry.track).toHaveBeenCalledTimes(1);
 			expect(telemetry.track).toHaveBeenCalledWith(
@@ -270,7 +270,7 @@ describe('AgentKnowledgeController upload telemetry', () => {
 
 		it('reports a rejected file type with its reason', async () => {
 			const { controller, telemetry } = makeController();
-			const fileUploadError = new AgentKnowledgeUploadError('Only CSV…', 'file_type');
+			const fileUploadError = new KnowledgeUploadError('Only CSV…', 'file_type');
 
 			await expect(
 				controller.uploadFiles(
@@ -302,7 +302,7 @@ describe('AgentKnowledgeController upload telemetry', () => {
 		it.each([
 			[
 				'a check of the service',
-				new AgentKnowledgeUploadError('exists', 'duplicate_name'),
+				new KnowledgeUploadError('exists', 'duplicate_name'),
 				'duplicate_name',
 			],
 			['an unexpected error', new Error('disk full'), 'unknown'],

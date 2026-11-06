@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentKnowledgeFileStore } from '../knowledge-file-store';
+import { KnowledgeFileStore } from '../knowledge-file-store';
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');
@@ -16,15 +16,15 @@ vi.unmock('node:fs/promises');
 const LEGACY_KEY =
 	'agents/agent-1/knowledge-files/file-1/binary_data/2f1b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
 
-describe('AgentKnowledgeFileStore', () => {
+describe('KnowledgeFileStore', () => {
 	let storagePath: string;
 	let binaryDataRepository: ReturnType<typeof mock<BinaryDataRepository>>;
 	let errorReporter: ReturnType<typeof mock<ErrorReporter>>;
 	let fsByteStore: FsByteStore;
-	let store: AgentKnowledgeFileStore;
+	let store: KnowledgeFileStore;
 
-	function makeStore(modeTag: 'db' | 'fs' | 's3' | 'az'): AgentKnowledgeFileStore {
-		return new AgentKnowledgeFileStore(
+	function makeStore(modeTag: 'db' | 'fs' | 's3' | 'az'): KnowledgeFileStore {
+		return new KnowledgeFileStore(
 			fsByteStore,
 			{ storagePath, modeTag } as StorageConfig,
 			binaryDataRepository,
@@ -33,7 +33,7 @@ describe('AgentKnowledgeFileStore', () => {
 	}
 
 	beforeAll(async () => {
-		storagePath = await mkdtemp(join(tmpdir(), 'n8n-agent-knowledge-file-store-'));
+		storagePath = await mkdtemp(join(tmpdir(), 'n8n-knowledge-file-store-'));
 	});
 
 	beforeEach(async () => {
