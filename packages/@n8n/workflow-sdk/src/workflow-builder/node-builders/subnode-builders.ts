@@ -48,6 +48,7 @@ import type {
 	DocumentLoaderInstance,
 	TextSplitterInstance,
 	RerankerInstance,
+	DecisionModelInstance,
 	DeclaredConnection,
 	NodeChain,
 	FromAIArgumentType,
@@ -463,6 +464,33 @@ export function reranker<TNode extends NodeInput>(
 	);
 }
 
+/**
+ * Create a decision model subnode instance.
+ *
+ * Use this for nodes that output the `ai_decisionModel` connection type,
+ * such as TypeSafe Jev Decision Model.
+ *
+ * @example
+ * ```typescript
+ * const jev = decisionModel({
+ *   type: '@n8n/n8n-nodes-langchain.decisionModelTypeSafe',
+ *   version: 1,
+ *   config: { parameters: { model: 'jev-latest' } }
+ * });
+ * ```
+ */
+export function decisionModel<TNode extends NodeInput>(
+	input: TNode,
+): DecisionModelInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	const versionStr = String(input.version) as `${TNode['version']}`;
+	return new SubnodeInstanceImpl<TNode['type'], `${TNode['version']}`, unknown, 'ai_decisionModel'>(
+		input.type,
+		versionStr,
+		input.config as NodeConfig,
+		'ai_decisionModel',
+	);
+}
+
 // =============================================================================
 // Type Exports for Factory Function Signatures
 // =============================================================================
@@ -477,6 +505,7 @@ export type RetrieverFn = typeof retriever;
 export type DocumentLoaderFn = typeof documentLoader;
 export type TextSplitterFn = typeof textSplitter;
 export type RerankerFn = typeof reranker;
+export type DecisionModelFn = typeof decisionModel;
 
 // =============================================================================
 // Aliases
