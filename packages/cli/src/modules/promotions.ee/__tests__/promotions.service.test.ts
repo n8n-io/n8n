@@ -1973,6 +1973,58 @@ describe('PromotionsService', () => {
 		});
 	});
 
+	describe('listMissingProjects', () => {
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForEnvironment.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('lists the package projects that do not exist on this instance, sorted by name', async () => {
+			const commitSha = 'a'.repeat(40);
+			gitService.listBranchTree.mockResolvedValue({ commitSha, lsTreeOutput: '' });
+			gitService.readTreeAtCommit.mockResolvedValue(
+				new Map([['projects/billing/project.json', Buffer.from('{}')]]),
+			);
+			inventoryReader.read.mockResolvedValue({
+				projects: [
+					{ id: 'p-support', name: 'Support', path: 'projects/support' },
+					{ id: 'p1', name: 'Exists here', path: 'projects/exists' },
+					{
+						id: 'p-billing',
+						name: 'Billing',
+						icon: { type: 'emoji', value: '💰' },
+						path: 'projects/billing',
+					},
+				],
+				workflows: [],
+				folders: [],
+				credentials: [],
+				variables: [],
+				dataTables: [],
+			});
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: { commitSha, branchName: 'dev' },
+				data: [
+					{ id: 'p-billing', name: 'Billing', icon: { type: 'emoji', value: '💰' } },
+					{ id: 'p-support', name: 'Support' },
+				],
+			});
+		});
+
+		it('lists no projects when the branch has no package yet', async () => {
+			gitService.listBranchTree.mockResolvedValue({ commitSha: null, lsTreeOutput: '' });
+
+			await expect(service.listMissingProjects(ENVIRONMENT_ID)).resolves.toEqual({
+				environmentId: ENVIRONMENT_ID,
+				git: null,
+				data: [],
+			});
+		});
+	});
+
 	describe('apply', () => {
 		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 

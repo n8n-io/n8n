@@ -1,7 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { z } from 'zod';
 import {
 	AiGatewayService,

@@ -7,13 +7,12 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import {
 	isTerminalExecutionStatus,
-	UnexpectedError,
-	UserError,
 	type IRun,
 	type IWorkflowBase,
 	type IWorkflowExecutionDataProcess,
 	type RelatedExecution,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';

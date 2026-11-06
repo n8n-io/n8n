@@ -47,6 +47,14 @@ import {
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
+import { matchesSinkPackage } from './core/global-triggers.js';
+import { parseTestRunArgs, runTestRun, spawnDryRun, spawnRun } from './core/test-run.js';
+import {
+	LOCKFILE,
+	formatLockfileImpact,
+	parseLockfileImpact,
+	readLockfileImpact,
+} from './core/read-lockfile-impact.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -668,10 +676,26 @@ function readPackageName(packageDir: string): string | undefined {
  * CHANGED_FILES. Never let a graph-analysis failure break scoping for every
  * package — degrade to "no signal" (skip on no local changes).
  */
-function resolveAffectedPackages(rootDir: string, changedFiles: string[] | null): string[] | null {
+/**
+ * Packages whose resolved dependencies a lockfile change touched, or null when
+ * unknown. With `--base`, read the lockfile diff; otherwise use the
+ * `LOCKFILE_IMPACTED_PACKAGES` value that CI computed once in install-and-build.
+ */
+function readLockfileSignal(options: CliOptions, changedFiles: string[] | null): string[] | null {
+	if (!changedFiles?.includes(LOCKFILE)) return null;
+	return options.baseRef
+		? readLockfileImpact(options.baseRef)
+		: parseLockfileImpact(process.env.LOCKFILE_IMPACTED_PACKAGES);
+}
+
+function resolveAffectedPackages(
+	rootDir: string,
+	changedFiles: string[] | null,
+	lockfileImpactedPackages: string[] | null = null,
+): string[] | null {
 	if (changedFiles === null) return null;
 	try {
-		return affectedPackages({ rootDir, changedFiles });
+		return affectedPackages({ rootDir, changedFiles, lockfileImpactedPackages });
 	} catch (error) {
 		console.warn(`[janitor] Could not compute affected packages: ${(error as Error).message}`);
 		return null;
@@ -679,23 +703,70 @@ function resolveAffectedPackages(rootDir: string, changedFiles: string[] | null)
 }
 
 function runAffectedPackages(options: CliOptions): void {
+	const changedFiles = readChangedFiles(options);
 	const result = affectedPackages({
 		rootDir: findWorkspaceRoot(process.cwd()),
-		changedFiles: readChangedFiles(options),
+		changedFiles,
+		lockfileImpactedPackages: readLockfileSignal(options, changedFiles),
 	});
 	console.log(result.join('\n'));
+}
+
+/** test-run: cached results first, then janitor scoping. See core/test-run.ts. */
+function runTestRunCmd(options: CliOptions): void {
+	const args = parseTestRunArgs(process.argv.slice(3));
+	const rootDir = findWorkspaceRoot(process.cwd());
+	const changedFiles = readChangedFiles(options);
+	const lockfileImpactedPackages = readLockfileSignal(options, changedFiles);
+	const affected = resolveAffectedPackages(rootDir, changedFiles, lockfileImpactedPackages);
+	const sinkAffected = resolveAffectedPackages(
+		rootDir,
+		changedFiles?.filter(matchesSinkPackage) ?? null,
+	);
+	const exitCode = runTestRun(args, {
+		dryRun: spawnDryRun(rootDir),
+		run: spawnRun(rootDir),
+		decide: (task) =>
+			computeScope({
+				packageDir: task.directory,
+				rootDir,
+				changedFiles,
+				packageName: task.package,
+				affectedPackages: affected,
+				sinkAffectedPackages: sinkAffected,
+				lockfileImpactedPackages,
+			}),
+		log: (message) => console.log(message),
+	});
+	process.exit(exitCode);
+}
+
+/** lockfile-impact: print the `LOCKFILE_IMPACTED_PACKAGES` value for test jobs. */
+function runLockfileImpact(options: CliOptions): void {
+	const changedFiles = readChangedFiles(options);
+	if (changedFiles && !changedFiles.includes(LOCKFILE)) {
+		console.log(formatLockfileImpact([]));
+		return;
+	}
+	console.log(formatLockfileImpact(options.baseRef ? readLockfileImpact(options.baseRef) : null));
 }
 
 function runTestScopedCmd(options: CliOptions): void {
 	const packageDir = options.packageDir ?? process.cwd();
 	const rootDir = findWorkspaceRoot(process.cwd());
 	const changedFiles = readChangedFiles(options);
+	const lockfileImpactedPackages = readLockfileSignal(options, changedFiles);
 	const exitCode = runTestScoped({
 		packageDir,
 		rootDir,
 		changedFiles,
 		packageName: readPackageName(packageDir),
-		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles, lockfileImpactedPackages),
+		lockfileImpactedPackages,
+		sinkAffectedPackages: resolveAffectedPackages(
+			rootDir,
+			changedFiles?.filter(matchesSinkPackage) ?? null,
+		),
 		passthroughArgs: options.passthroughArgs,
 		collectCoverage: process.env.COVERAGE_ENABLED === 'true',
 	});
@@ -706,12 +777,18 @@ function runScope(options: CliOptions): void {
 	const packageDir = options.packageDir ?? process.cwd();
 	const rootDir = findWorkspaceRoot(process.cwd());
 	const changedFiles = readChangedFiles(options);
+	const lockfileImpactedPackages = readLockfileSignal(options, changedFiles);
 	const result = computeScope({
 		packageDir,
 		changedFiles,
 		rootDir,
 		packageName: readPackageName(packageDir),
-		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles, lockfileImpactedPackages),
+		lockfileImpactedPackages,
+		sinkAffectedPackages: resolveAffectedPackages(
+			rootDir,
+			changedFiles?.filter(matchesSinkPackage) ?? null,
+		),
 	});
 	console.log(formatScope(result));
 }
@@ -852,6 +929,16 @@ async function main(): Promise<void> {
 	}
 
 	// Workspace-wide CI utilities: no config file required.
+	if (options.command === 'test-run') {
+		runTestRunCmd(options);
+		return;
+	}
+
+	if (options.command === 'lockfile-impact') {
+		runLockfileImpact(options);
+		return;
+	}
+
 	if (options.command === 'affected-packages') {
 		runAffectedPackages(options);
 		return;

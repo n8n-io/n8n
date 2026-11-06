@@ -149,6 +149,36 @@ describe('OAuthSigningKeyService (integration)', () => {
 		expect(payload.sub).toBe('user-1');
 	});
 
+	it('publishes the active key when retired keys cannot be read', async () => {
+		const insertUnreadable = async (id: string, retiredAt: Date) =>
+			await keyStore.insert({
+				id,
+				type: OAUTH_SIGNING_KEY_TYPE,
+				value: 'wrapped-under-another-instance-key',
+				algorithm: OAUTH_SIGNING_ALGORITHM,
+				status: 'inactive',
+				updatedAt: retiredAt,
+			});
+		await insertUnreadable('recently-retired', new Date(Date.now() - 60_000));
+		await insertUnreadable(
+			'long-retired',
+			new Date(Date.now() - RETIRED_SIGNING_KEY_GRACE_MS - 60_000),
+		);
+		const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+
+		const service = createProcess();
+		await service.initialize();
+
+		const [active] = await activeRows();
+		expect((await service.getPublicJwks()).map((k) => k.kid)).toEqual([active.id]);
+		// The expired row is never read, so only the one in its grace window is logged.
+		expect(warn).toHaveBeenCalledTimes(1);
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining('retired OAuth signing key'),
+			expect.objectContaining({ kid: 'recently-retired' }),
+		);
+	});
+
 	it('publishes a retired key only within the grace window', async () => {
 		const cipher = Container.get(Cipher);
 		const insertRetired = async (id: string, retiredAt: Date) => {
