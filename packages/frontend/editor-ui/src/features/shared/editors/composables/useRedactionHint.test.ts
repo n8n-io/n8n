@@ -1,5 +1,4 @@
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
-import { mockedStore } from '@/__tests__/utils';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useI18n } from '@n8n/i18n';
@@ -56,12 +55,13 @@ describe('useRedactionHint', () => {
 			key: 'expressionModalInput.redacted.noPermission',
 		},
 	])('shows $key for $reason with canReveal=$canReveal', ({ reason, canReveal, key }) => {
-		mockedStore(useWorkflowExecutionStateStore, createWorkflowDocumentId('')).activeExecution =
+		useWorkflowExecutionStateStore(createWorkflowDocumentId('')).setWorkflowExecutionData(
 			createTestWorkflowExecutionResponse({
 				data: createRunExecutionData({
 					redactionInfo: { isRedacted: true, reason, canReveal },
 				}),
-			});
+			}),
+		);
 
 		const { isRedacted, redactedHintText } = useRedactionHint();
 
