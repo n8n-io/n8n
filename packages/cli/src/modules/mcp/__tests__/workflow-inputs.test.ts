@@ -1,3 +1,4 @@
+import { shapeToStandardSchema } from '../tool-schema.util';
 import { workflowInputsSchema } from '../tools/workflow-inputs';
 
 describe('workflowInputsSchema', () => {
@@ -9,6 +10,26 @@ describe('workflowInputsSchema', () => {
 		expect(workflowInputsSchema.parse({ webhookData: { body: { x: 1 } } })).toEqual({
 			webhookData: { method: 'GET', body: { x: 1 } },
 		});
+	});
+
+	test('advertises inputs as one object instead of a union', () => {
+		const schema = shapeToStandardSchema({ inputs: workflowInputsSchema });
+		const json = schema['~standard'].jsonSchema.input({ target: 'draft-2020-12' });
+		const inputs = (json as { properties?: Record<string, unknown> }).properties?.inputs;
+
+		expect(inputs).toMatchObject({
+			type: 'object',
+			properties: {
+				chatInput: { type: 'string' },
+				formData: { type: 'object' },
+				webhookData: { type: 'object' },
+			},
+		});
+		expect(JSON.stringify(inputs)).not.toContain('anyOf');
+	});
+
+	test('requires exactly one payload key', () => {
+		expect(workflowInputsSchema.safeParse({}).success).toBe(false);
 	});
 
 	test('rejects leftover type', () => {
