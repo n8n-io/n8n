@@ -40,12 +40,14 @@ export const gpt52 = async (config: LLMProviderConfig) => {
 	});
 };
 
+// Anthropic retires claude-sonnet-4-5-20250929 on 2026-11-30. Sonnet 4.6 still accepts temperature 0;
+// Sonnet 5.x rejects non-default temperature and budget_tokens thinking with a 400.
 export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
 		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
-		model: 'claude-sonnet-4-5-20250929',
+		model: 'claude-sonnet-4-6',
 		apiKey: config.apiKey,
 		temperature: 0,
 		maxTokens: MAX_OUTPUT_TOKENS,
@@ -56,7 +58,7 @@ export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 		},
 	});
 
-	// Remove Langchain default topP parameter since Sonnet 4.5 doesn't allow setting both temperature and topP
+	// Remove Langchain default topP parameter since Claude 4.5+ models don't allow setting both temperature and topP
 	delete model.topP;
 
 	return model;
@@ -66,21 +68,18 @@ export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) =>
 		async () => await import('@langchain/anthropic'),
 	);
 	const model = new ChatAnthropic({
-		model: 'claude-sonnet-4-5-20250929',
+		model: 'claude-sonnet-4-6',
 		apiKey: config.apiKey,
 		maxTokens: MAX_OUTPUT_TOKENS,
 		anthropicApiUrl: config.baseUrl,
-		thinking: {
-			budget_tokens: 10000,
-			type: 'enabled',
-		},
+		thinking: { type: 'adaptive' },
 		clientOptions: {
 			defaultHeaders: config.headers,
 			fetch: config.fetch,
 		},
 	});
 
-	// Remove Langchain default topP parameter since Sonnet 4.5 doesn't allow setting both temperature and topP
+	// Remove Langchain default topP parameter since Claude 4.5+ models don't allow setting both temperature and topP
 	delete model.topP;
 	delete model.temperature;
 
