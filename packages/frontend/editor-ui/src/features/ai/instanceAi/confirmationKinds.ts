@@ -23,10 +23,12 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 	if (conf.credentialFlow) return false;
 	if (conf.channelConfig) return false;
 	if (conf.testListener) return false;
+	if (conf.appBlueprint) return false;
 
 	switch (conf.inputType) {
 		case 'text':
 		case 'continue':
+		case 'app-blueprint':
 			return false;
 		case 'resource-decision':
 			return isCloudBrowserResourceDecision(item);

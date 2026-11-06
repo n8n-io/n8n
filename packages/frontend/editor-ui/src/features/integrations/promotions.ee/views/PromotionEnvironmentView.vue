@@ -33,7 +33,7 @@ import PromotionGitHostSelect from '../components/PromotionGitHostSelect.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
-import { PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
+import { ENVIRONMENTS_PLAN_DOCS_URL, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	createPromotionEnvironment,
 	deleteProviderIfUnused,
@@ -318,7 +318,7 @@ onBeforeRouteLeave(() => {
 			:description="
 				direction ? i18n.baseText(`settings.promotions.environment.${direction}.description`) : ''
 			"
-			:show-docs-link="false"
+			:docs-url="ENVIRONMENTS_PLAN_DOCS_URL"
 		/>
 
 		<N8nLoading2 v-if="isLoading" :rows="3" :shrink-last="false" />

@@ -20,7 +20,7 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from '@n8n/mcp-browser';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 

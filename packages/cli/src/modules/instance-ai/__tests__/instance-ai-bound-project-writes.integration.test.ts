@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { LicenseState } from '@n8n/backend-common';
 import { CacheService } from '@n8n/backend-services';
 import {
@@ -19,8 +20,8 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import { DataTableRepository } from '@n8n/backend-module-data-table';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -51,7 +52,7 @@ describe('Instance AI writes outside the bound project (integration)', () => {
 	};
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], packagedModules);
 		await testDb.init();
 		mockDataTableSizeValidator();
 		Container.get(LicenseState).setLicenseProvider(Container.get(License));

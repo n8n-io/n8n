@@ -48,6 +48,7 @@ import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as BuilderMetricEventMod from './tracing/builder-metric-event';
+import type * as BuilderToolsMod from './tools/orchestration/builder-tools';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
 import type * as AgentTreeMod from './utils/agent-tree';
@@ -114,6 +115,9 @@ const loadAgentSnapshotEvent = lazyModule(
 );
 const loadBuilderMetricEvent = lazyModule(
 	() => require('./tracing/builder-metric-event') as typeof BuilderMetricEventMod,
+);
+const loadBuilderTools = lazyModule(
+	() => require('./tools/orchestration/builder-tools') as typeof BuilderToolsMod,
 );
 const loadAgentBuildMetrics = lazyModule(
 	() => require('./tools/orchestration/agent-build-metrics') as typeof AgentBuildMetricsMod,
@@ -288,6 +292,7 @@ export {
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
+	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
@@ -319,6 +324,10 @@ export type {
 	AgentSnapshotArtifact,
 	AgentSnapshotReason,
 } from './tracing/agent-snapshot-event';
+
+export const snapshotAgent: typeof BuilderToolsMod.snapshotAgent = lazyFunction(
+	() => loadBuilderTools().snapshotAgent,
+);
 
 export const emitBuilderMetric: typeof BuilderMetricEventMod.emitBuilderMetric = lazyFunction(
 	() => loadBuilderMetricEvent().emitBuilderMetric,
