@@ -12,7 +12,7 @@ import path from 'node:path';
 import {
 	AgentKnowledgeUploadError,
 	type AgentKnowledgeUploadFailureReason,
-} from './agent-knowledge-upload.error';
+} from '@/modules/knowledge/files/knowledge-upload.error';
 
 const allowedAgentFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 

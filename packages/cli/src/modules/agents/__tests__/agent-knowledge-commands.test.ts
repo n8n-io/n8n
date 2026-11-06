@@ -8,7 +8,7 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepOutput,
 } from '../agent-knowledge-commands';
-import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
+import { getAgentKnowledgePaths } from '@/modules/knowledge/files/storage-naming';
 import {
 	searchKnowledgeInputSchema,
 	type AgentKnowledgeFileReference,

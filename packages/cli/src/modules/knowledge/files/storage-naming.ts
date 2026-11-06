@@ -2,9 +2,8 @@ import type { AgentFileDto } from '@n8n/api-types';
 import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
 import path from 'node:path';
 
-import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
-
-import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
+import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import { AgentKnowledgeUploadError } from './knowledge-upload.error';
 
 export interface AgentKnowledgePaths {
 	filesDir: string;

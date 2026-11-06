@@ -9,6 +9,13 @@ import { nanoid } from 'nanoid';
 
 import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 
+import { AgentKnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import {
+	assertKnowledgePathSegment,
+	getAgentKnowledgePaths,
+	type AgentKnowledgePaths,
+	storageFileNameForOriginalFileName,
+} from '@/modules/knowledge/files/storage-naming';
 import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import {
@@ -24,7 +31,6 @@ import {
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
 } from './agent-knowledge-commands';
-import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -40,12 +46,6 @@ import {
 	type SearchKnowledgeRequest,
 	type SearchKnowledgeResult,
 } from './agent-knowledge-retrieval';
-import {
-	assertKnowledgePathSegment,
-	getAgentKnowledgePaths,
-	type AgentKnowledgePaths,
-	storageFileNameForOriginalFileName,
-} from './agent-knowledge-storage';
 import {
 	type AgentSandboxRuntime,
 	AgentSandboxRuntimeService,

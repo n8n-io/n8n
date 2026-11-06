@@ -15,10 +15,11 @@ import type { InstanceSettings } from 'n8n-core';
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
-import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
+import type { AgentKnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import { AgentKnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
+
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { createKnowledgeTelemetryHmac } from '../agent-knowledge-telemetry';
-import { AgentKnowledgeUploadError } from '../agent-knowledge-upload.error';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';

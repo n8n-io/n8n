@@ -7,10 +7,10 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import { AgentKnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { Telemetry } from '@/telemetry';
 
-import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
 import { AgentKnowledgeService, type UploadedKnowledgeFile } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import {

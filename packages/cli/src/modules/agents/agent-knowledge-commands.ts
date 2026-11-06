@@ -3,6 +3,11 @@ import { Buffer } from 'node:buffer';
 import { z } from 'zod';
 
 import {
+	assertKnowledgePathSegment,
+	type AgentKnowledgePaths,
+} from '@/modules/knowledge/files/storage-naming';
+
+import {
 	DEFAULT_SEARCH_TEXT_LIMIT,
 	MAX_OPERATION_OUTPUT_CHARS,
 	MAX_READ_LINE_CHARS,
@@ -16,7 +21,6 @@ import {
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
 } from './agent-knowledge-retrieval';
-import { assertKnowledgePathSegment, type AgentKnowledgePaths } from './agent-knowledge-storage';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
 export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
