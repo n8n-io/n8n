@@ -1,5 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
@@ -24,7 +24,6 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 // Declares the hook that the redaction module loads at startup.
 import '@/modules/redaction/redaction-context-hook';
 import { Push } from '@/push';
-import { Telemetry } from '@/telemetry';
 import { affixRoleToSaveCredential } from '@test-integration/db/credentials';
 import { LicenseMocker } from '@test-integration/license';
 import { createExecution } from '@test-integration/db/executions';
@@ -42,7 +41,7 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
  */
 describe('Instance AI execution redaction (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
-	mockInstance(Telemetry);
+	mockInstance(TelemetryProxy);
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 	const redactionFloor = mockInstance(InstanceRedactionEnforcementService);
 

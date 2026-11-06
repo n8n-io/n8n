@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
@@ -6,7 +7,6 @@ import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';
-import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
@@ -20,7 +20,7 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
  */
 describe('Instance AI folder-scoped workflow listing (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
-	mockInstance(Telemetry);
+	mockInstance(TelemetryProxy);
 	const license = mockInstance(License);
 
 	let owner: User;

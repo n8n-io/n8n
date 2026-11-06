@@ -1,4 +1,5 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type { INode, INodeParameters, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import {
@@ -15,7 +16,6 @@ import {
 	type AiGatewayEligibilityReason,
 } from '@/services/ai-gateway-eligibility';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 
 import { MCP_CREDENTIALS_AUTOASSIGN_EVENT } from '../../mcp.constants';
 
@@ -403,7 +403,7 @@ export async function autoPopulateNodeCredentials(
  *   Connect, `user` → BYOK).
  */
 export function trackAutoassignOutcomes(
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	userId: string,
 	toolName: 'create_workflow_from_code' | 'update_workflow',
 	outcomes: SlotOutcome[],

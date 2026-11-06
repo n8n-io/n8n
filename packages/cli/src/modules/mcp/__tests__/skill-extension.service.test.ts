@@ -6,6 +6,7 @@ import {
 	PROTOCOL_VERSION_META_KEY,
 } from '@modelcontextprotocol/server';
 import type { AgentSkill } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createHash } from 'node:crypto';
@@ -13,7 +14,6 @@ import { mock } from 'vitest-mock-extended';
 import { parse as parseYaml } from 'yaml';
 
 import type { McpSkillContent, SkillService } from '@/modules/skills';
-import type { Telemetry } from '@/telemetry';
 
 import {
 	McpSkillExtensionService,
@@ -166,7 +166,7 @@ describe('toSkillEntry', () => {
 
 describe('McpSkillExtensionService', () => {
 	const skillService = mock<SkillService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const client = connect(new McpSkillExtensionService(skillService, telemetry));
 
 	beforeEach(() => {

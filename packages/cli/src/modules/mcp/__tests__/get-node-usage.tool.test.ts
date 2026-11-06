@@ -1,8 +1,8 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createGetNodeUsageTool } from '../tools/get-node-usage.tool';
@@ -11,7 +11,7 @@ const user = mock<User>({ id: 'user-1' });
 
 function harness() {
 	const dependencies = mock<WorkflowDependencyQueryService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 
 	dependencies.getNodeTypeUsage.mockResolvedValue({ workflowsInScope: 0 });
 

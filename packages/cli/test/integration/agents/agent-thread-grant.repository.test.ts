@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { DbConnection, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,9 +11,8 @@ import { buildAgentConfigurationTelemetryFromConfig } from '@/modules/agents/age
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentThreadGrantRepository } from '@/modules/agents/repositories/agent-thread-grant.repository';
-import type { Telemetry } from '@/telemetry';
 
-const telemetry = mock<Telemetry>();
+const telemetry = mock<TelemetryProxy>();
 const configuration = buildAgentConfigurationTelemetryFromConfig(null);
 
 describe('Agent thread grants', () => {

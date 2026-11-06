@@ -1,11 +1,11 @@
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { UserCalledMCPToolEventPayload } from '../mcp.types';
 import { trackAndRethrowToolError, trackAndReturnToolError } from '../tools/tool-error.utils';
 
 describe('MCP tool errors', () => {
-	const telemetry = { track: vi.fn() } as unknown as Telemetry;
+	const telemetry = { track: vi.fn() } as unknown as TelemetryProxy;
 	let payload: UserCalledMCPToolEventPayload;
 
 	beforeEach(() => {

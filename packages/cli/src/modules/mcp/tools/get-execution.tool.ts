@@ -11,8 +11,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = z.object({
@@ -67,7 +66,7 @@ export const createGetExecutionTool = (
 	user: User,
 	executionRepository: ExecutionRepository,
 	workflowFinderService: WorkflowFinderService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_workflow_execution',

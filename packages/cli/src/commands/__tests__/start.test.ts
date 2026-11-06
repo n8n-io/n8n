@@ -33,9 +33,10 @@ import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService, RoleCacheService } from '@n8n/backend-services';
+import { JwtService, RoleCacheService, TelemetryProxy } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { Telemetry } from '@/telemetry';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
@@ -156,6 +157,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(PostHogClient, mockInstance(PostHogClient));
 		Container.set(OtelService, mockInstance(OtelService));
 		Container.set(TelemetryEventRelay, mockInstance(TelemetryEventRelay));
+		Container.set(Telemetry, mockInstance(Telemetry));
 		Container.set(ActivityEventRelay, mockInstance(ActivityEventRelay));
 		Container.set(
 			WorkflowFailureNotificationEventRelay,
@@ -233,6 +235,22 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(roleCacheService.refreshCache).toHaveBeenCalledTimes(1);
 			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
 				authRolesService.init.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should register telemetry on the telemetry proxy before the modules initialize', async () => {
+			setupInstanceSettings('main', false, false);
+			const telemetry = Container.get(Telemetry);
+			const telemetryProxy = mockInstance(TelemetryProxy);
+			const initModules = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected property for testing
+			start.moduleRegistry = { initModules };
+
+			await start.init();
+
+			expect(telemetryProxy.registerProvider).toHaveBeenCalledWith(telemetry);
+			expect(telemetryProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
 			);
 		});
 

@@ -1,7 +1,6 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import {
 	AgentKnowledgeUsageTracker,
@@ -14,7 +13,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('counts each kind of knowledge call of a run', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 
 		tracker.startToolCall('run-1', 'file_find')({ failed: false, contentChars: 0 });
 		tracker.startToolCall('run-1', 'file_search')({ failed: false, contentChars: 0 });
@@ -35,7 +34,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('sums the content characters of a run by kind', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 
 		tracker.startToolCall('run-1', 'file_find')({ failed: false, contentChars: 100 });
 		tracker.startToolCall('run-1', 'file_search')({ failed: false, contentChars: 250 });
@@ -50,7 +49,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('counts a failed call and adds no content characters', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 
 		tracker.startToolCall('run-1', 'file_read')({ failed: true });
 		tracker.startToolCall('run-1', 'file_read')({ failed: false, contentChars: 500 });
@@ -67,7 +66,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('counts a call that has not finished when its run ends', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 
 		tracker.startToolCall('run-1', 'file_read');
 
@@ -79,7 +78,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('drops the result of a call that finishes after its run ended', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 		const finishToolCall = tracker.startToolCall('run-1', 'file_read');
 		tracker.takeRunUsage('run-1');
 
@@ -89,7 +88,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('keeps a late result out of the next part of a run with the same run id', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 		const finishFirstPart = tracker.startToolCall('run-1', 'file_read');
 		tracker.takeRunUsage('run-1');
 		tracker.startToolCall('run-1', 'file_search')({ failed: false, contentChars: 100 });
@@ -104,7 +103,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('keeps concurrent runs apart', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 
 		tracker.startToolCall('run-1', 'file_search')({ failed: false, contentChars: 300 });
 		tracker.startToolCall('run-2', 'vector_store_search')({ failed: false, contentChars: 900 });
@@ -124,7 +123,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('forgets a run after its usage is taken', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 		tracker.startToolCall('run-1', 'file_read')({ failed: false, contentChars: 0 });
 
 		tracker.takeRunUsage('run-1');
@@ -133,13 +132,13 @@ describe('AgentKnowledgeUsageTracker', () => {
 	});
 
 	it('returns nothing for a run without knowledge calls', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 
 		expect(tracker.takeRunUsage('run-1')).toBeUndefined();
 	});
 
 	it('ignores a call without a run id', () => {
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 
 		tracker.startToolCall(undefined, 'file_search')({ failed: false, contentChars: 0 });
 
@@ -148,7 +147,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 	it('keeps a run that makes no knowledge calls for several hours', () => {
 		vi.useFakeTimers();
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 		tracker.startToolCall('long-run', 'file_search')({ failed: false, contentChars: 0 });
 
 		vi.advanceTimersByTime(6 * 60 * 60 * 1000);
@@ -159,7 +158,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 	it('drops a run without calls for more than a day', () => {
 		vi.useFakeTimers();
-		const tracker = new AgentKnowledgeUsageTracker(mock<Telemetry>());
+		const tracker = new AgentKnowledgeUsageTracker(mock<TelemetryProxy>());
 		tracker.startToolCall('stale-run', 'file_search')({ failed: false, contentChars: 0 });
 
 		vi.advanceTimersByTime(24 * 60 * 60 * 1000 + 1);
@@ -173,7 +172,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		const day = 24 * 60 * 60 * 1000;
 		const now = new Date('2026-10-26T12:00:00.000Z');
 
-		function sendRun(telemetry: Telemetry, results: KnowledgeToolCallResult[]) {
+		function sendRun(telemetry: TelemetryProxy, results: KnowledgeToolCallResult[]) {
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
 			for (const result of results) {
 				tracker.startToolCall('run-1', 'file_read')(result);
@@ -190,7 +189,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 		it('sends the age stats in full days of the files that the run read', () => {
 			vi.useFakeTimers({ now });
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 
 			sendRun(telemetry, [
 				readOf('file-a', 30.1),
@@ -213,7 +212,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 		it('counts a file read more than once as one file', () => {
 			vi.useFakeTimers({ now });
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 
 			sendRun(telemetry, [
 				readOf('file-a', 30),
@@ -234,7 +233,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 		it('lists the ages in the order the reads started, also when they end in another order', () => {
 			vi.useFakeTimers({ now });
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
 			const finishFirstRead = tracker.startToolCall('run-1', 'file_read');
 			const finishSecondRead = tracker.startToolCall('run-1', 'file_read');
@@ -251,7 +250,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 
 		it('lists the ages of the first 25 files only', () => {
 			vi.useFakeTimers({ now });
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 			const reads = Array.from({ length: 30 }, (_, index) => readOf(`file-${index}`, index));
 
 			sendRun(telemetry, reads);
@@ -264,7 +263,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		});
 
 		it('sends the search stats of each kind that the run searched', () => {
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
 			const fileSearch = (result: KnowledgeToolCallResult) =>
 				tracker.startToolCall('run-1', 'file_search')(result);
@@ -301,7 +300,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		});
 
 		it('sends no search stats for a kind that the run did not search', () => {
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
 			tracker.startToolCall('run-1', 'file_read')({ failed: false, contentChars: 10 });
 			tracker.startToolCall('run-1', 'file_find')({ failed: false, contentChars: 10 });
@@ -314,7 +313,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		});
 
 		it('sends no ages when the run read no file', () => {
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 
 			sendRun(telemetry, [{ failed: false, contentChars: 10 }, { failed: true }]);
 
@@ -325,7 +324,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		});
 
 		it('sends the counts of a run that used knowledge, then forgets the run', () => {
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
 			tracker.startToolCall('run-1', 'file_search')({ failed: false, contentChars: 300 });
 			tracker.startToolCall('run-1', 'vector_store_search')({ failed: false, contentChars: 900 });
@@ -358,7 +357,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		});
 
 		it('leaves out user_id for a run without a user', () => {
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
 			tracker.startToolCall('run-1', 'file_read')({ failed: false, contentChars: 0 });
 
@@ -371,7 +370,7 @@ describe('AgentKnowledgeUsageTracker', () => {
 		});
 
 		it('sends nothing for a run without knowledge calls', () => {
-			const telemetry = mock<Telemetry>();
+			const telemetry = mock<TelemetryProxy>();
 			const tracker = new AgentKnowledgeUsageTracker(telemetry);
 
 			tracker.sendRunUsage('run-1', { agentId: 'agent-1', runType: 'production' });

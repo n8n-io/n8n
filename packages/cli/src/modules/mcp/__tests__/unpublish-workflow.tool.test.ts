@@ -1,9 +1,9 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -14,13 +14,13 @@ describe('unpublish-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowService: WorkflowService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowService = mockInstance(WorkflowService);
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		collaborationService = mockInstance(CollaborationService, {

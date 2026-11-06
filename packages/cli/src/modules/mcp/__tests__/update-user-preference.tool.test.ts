@@ -5,8 +5,7 @@ import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
-import { AiPreferenceService, UrlService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { AiPreferenceService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createUpdateUserPreferenceTool } from '../tools/update-user-preference.tool';
@@ -47,7 +46,7 @@ const createMocks = () => {
 		updateContent: vi.fn().mockResolvedValue(dto()),
 		update: vi.fn().mockResolvedValue(dto()),
 	});
-	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+	const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	const urlService = mockInstance(UrlService, {
 		getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 	});

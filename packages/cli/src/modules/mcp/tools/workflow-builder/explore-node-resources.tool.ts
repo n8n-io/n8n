@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { truncate } from '@n8n/utils/string/truncate';
@@ -10,7 +11,6 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
 import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
-import type { Telemetry } from '@/telemetry';
 
 const inputSchema = {
 	nodeType: z
@@ -121,7 +121,7 @@ function toErrorOutput(error: unknown): Output {
 export const createExploreNodeResourcesTool = (
 	user: User,
 	nodeResourceExplorerService: NodeResourceExplorerService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_EXPLORE_NODE_RESOURCES_TOOL.toolName,
 	config: {

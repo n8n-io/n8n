@@ -11,12 +11,12 @@ import { OperationalError, UserError } from '@n8n/errors';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 import { SkillRuntimeService, SkillService } from '@/modules/skills';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
-import type { Telemetry } from '@/telemetry';
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -139,7 +139,7 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<AgentUsageTelemetryService>();
 	const knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();

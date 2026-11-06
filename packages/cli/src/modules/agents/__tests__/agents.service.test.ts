@@ -3,14 +3,13 @@ import type { AgentDefinitionService } from '@/modules/agents/agent-definition.s
 
 import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import type { Telemetry } from '@/telemetry';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
-import type { EventService, ProjectScopeService } from '@n8n/backend-services';
+import type { EventService, ProjectScopeService, TelemetryProxy } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	ProjectRelationRepository,
@@ -97,7 +96,7 @@ function makeService() {
 	const workflowRepository = mock<WorkflowRepository>();
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const broadcaster = mock<AgentUpdateBroadcaster>();
 	const saveCompletion = new AgentSaveCompletionService(
 		eventService,

@@ -3,7 +3,7 @@ import type { Workspace } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
+import { InstanceWriteAccessService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -36,7 +36,6 @@ import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { Telemetry } from '@/telemetry';
 import { resolveBrowserUseState } from '../browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
@@ -144,7 +143,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly aiService: AiService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,

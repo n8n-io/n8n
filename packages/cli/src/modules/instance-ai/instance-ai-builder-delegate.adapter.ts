@@ -1,4 +1,5 @@
 import type { CredentialProvider } from '@n8n/agents';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -12,7 +13,6 @@ import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import { runInBuilderTelemetrySession } from '@/modules/agents/builder/builder-session';
-import { Telemetry } from '@/telemetry';
 
 @Service()
 export class InstanceAiBuilderDelegateAdapterService {
@@ -20,7 +20,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		private readonly builder: AgentsBuilderService,
 		private readonly drafts: AgentDraftService,
 		private readonly context: AgentContextService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	createDelegate(

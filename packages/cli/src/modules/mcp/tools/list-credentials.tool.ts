@@ -2,13 +2,13 @@ import {
 	CREDENTIAL_DESCRIPTION_PREVIEW_MAX_LENGTH,
 	getCredentialDescriptionPreview,
 } from '@n8n/ai-utilities/credential-description';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { ListQueryDb, ScopesField, User } from '@n8n/db';
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ListQuery } from '@/requests';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 
 import { toN8nConnectCoverage } from '../mcp-ai-gateway.helper';
 import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -121,7 +121,7 @@ export type ListCredentialsResult = {
 export const createListCredentialsTool = (
 	user: User,
 	credentialsService: CredentialsService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	aiGatewayService: AiGatewayService,
 	descriptionsEnabled = false,
 ): ToolDefinition<typeof inputSchema> => ({

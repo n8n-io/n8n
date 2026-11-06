@@ -1,15 +1,15 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Telemetry } from '@/telemetry';
 
 import { createUpdateCredentialDescriptionTool } from '../tools/update-credential-description.tool';
 
 describe('update credential description MCP tool', () => {
 	const user = mock<User>({ id: 'user-1' });
 	const service = mock<CredentialsService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	beforeEach(() => vi.resetAllMocks());
 
 	it.each(['  Reporting  ', '', null])(

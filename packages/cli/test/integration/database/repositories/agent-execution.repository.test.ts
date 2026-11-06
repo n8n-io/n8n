@@ -27,7 +27,7 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
-import type { Telemetry } from '@/telemetry';
+import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-telemetry.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -213,7 +213,7 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			threads,
 			memory,
-			mock<Telemetry>(),
+			mock<AgentUsageTelemetryService>(),
 			attachmentService,
 			executionLogStore,
 			mock<StorageConfig>({ modeTag: 'db' }),
@@ -1531,7 +1531,7 @@ describe('AgentExecutionRepository', () => {
 				storage,
 				executionService,
 				turns,
-				mock<Telemetry>(),
+				mock<AgentUsageTelemetryService>(),
 				runtimeCache,
 				mock<IntegrationMessageContextService>(),
 				mock<AgentRunTracingService>(),

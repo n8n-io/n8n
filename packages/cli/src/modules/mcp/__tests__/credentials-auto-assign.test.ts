@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type {
 	INode,
@@ -9,7 +10,6 @@ import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 
 import {
 	autoPopulateNodeCredentials,
@@ -925,7 +925,7 @@ describe('autoPopulateNodeCredentials', () => {
 });
 
 describe('trackAutoassignOutcomes', () => {
-	const makeTelemetry = () => ({ track: vi.fn() }) as unknown as Telemetry;
+	const makeTelemetry = () => ({ track: vi.fn() }) as unknown as TelemetryProxy;
 
 	const gatewayOutcome: SlotOutcome = {
 		nodeName: 'Slack',

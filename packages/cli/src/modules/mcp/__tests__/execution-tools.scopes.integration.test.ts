@@ -10,8 +10,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import { ExecutionRedactionServiceProxy, type TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { createSuccessfulExecution } from '@test-integration/db/executions';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -52,7 +51,7 @@ const getExecution = async (user: User, includeData: boolean) =>
 		user,
 		Container.get(ExecutionRepository),
 		Container.get(WorkflowFinderService),
-		mock<Telemetry>(),
+		mock<TelemetryProxy>(),
 		Container.get(ExecutionRedactionServiceProxy),
 	).handler(
 		{
@@ -70,7 +69,7 @@ const searchExecutions = async (user: User, workflowId?: string) =>
 		user,
 		Container.get(ExecutionListService),
 		Container.get(WorkflowFinderService),
-		mock<Telemetry>(),
+		mock<TelemetryProxy>(),
 	).handler({ workflowId }, {} as never);
 
 describe('get_workflow_execution project role scopes', () => {

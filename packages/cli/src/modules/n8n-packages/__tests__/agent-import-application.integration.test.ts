@@ -1,6 +1,6 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -61,7 +61,6 @@ import { PolicyDecisionService } from '@/modules/policy-infrastructure/policy-de
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -119,11 +118,11 @@ class AgentDefinitionSaveCheck implements RegisteredPolicyCheck {
 
 const license = new LicenseMocker();
 mockInstance(ActiveWorkflowManager);
-mockInstance(Telemetry);
+mockInstance(TelemetryProxy);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
 const runtimes = mockInstance(AgentRuntimeCacheService);
 const broadcaster = mockInstance(AgentUpdateBroadcaster);
-const telemetry = mockInstance(Telemetry);
+const telemetry = mockInstance(TelemetryProxy);
 let owner: User;
 let project: Project;
 let agents: AgentRepository;

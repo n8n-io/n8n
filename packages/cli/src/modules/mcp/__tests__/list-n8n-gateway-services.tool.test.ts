@@ -1,10 +1,10 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import { Telemetry } from '@/telemetry';
 
 import { createListN8nGatewayServicesTool } from '../tools/list-n8n-gateway-services.tool';
 
@@ -35,7 +35,7 @@ function makeMocks(opts: { available?: boolean; config?: AiGatewayConfigDto } = 
 			config: opts.config ?? fullConfig,
 		});
 	}
-	const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+	const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	return { aiGatewayService, telemetry };
 }
 

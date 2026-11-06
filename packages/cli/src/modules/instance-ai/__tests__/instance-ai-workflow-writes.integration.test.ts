@@ -16,8 +16,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { License } from '@/license';
 import { Push } from '@/push';
-import { CacheService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { CacheService, TelemetryProxy } from '@n8n/backend-services';
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
@@ -28,7 +27,7 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
  */
 describe('Instance AI workflow writes (integration)', () => {
 	mockInstance(ActiveWorkflowManager);
-	mockInstance(Telemetry);
+	mockInstance(TelemetryProxy);
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));
 
 	const EDITOR_CLIENT_ID = 'editor-client-id';

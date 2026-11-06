@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	needsPinData,
@@ -12,7 +13,6 @@ import z from 'zod';
 
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -59,7 +59,7 @@ export const createPrepareTestPinDataTool = (
 	workflowFinderService: WorkflowFinderService,
 	executionService: ExecutionService,
 	nodeTypes: NodeTypes,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'prepare_workflow_pin_data',

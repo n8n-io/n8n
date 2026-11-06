@@ -1,4 +1,5 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
@@ -8,7 +9,6 @@ import { z } from 'zod';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import { Telemetry } from '@/telemetry';
 
 import { createListCredentialsTool, listCredentials } from '../tools/list-credentials.tool';
 
@@ -37,7 +37,7 @@ describe('list-credentials MCP tool', () => {
 				? vi.fn().mockRejectedValue(credentials)
 				: vi.fn().mockResolvedValue(credentials);
 		const credentialsService = mockInstance(CredentialsService, { getMany });
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 		return { credentialsService, telemetry };
 	};
 

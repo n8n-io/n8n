@@ -5,8 +5,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@n8n/backend-services';
-import type { Telemetry } from '@/telemetry';
+import type { EventService, TelemetryProxy } from '@n8n/backend-services';
 
 import { AgentModificationTelemetryService } from '@/modules/agents/agent-modification-telemetry.service';
 import { Agent } from '@/modules/agents/entities/agent.entity';
@@ -32,7 +31,7 @@ describe('AgentModificationTelemetryService Assistant activity', () => {
 		by: 'builder',
 		changedParts: ['instructions'],
 	} satisfies Parameters<AgentModificationTelemetryService['record']>[0];
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const activity = mock<EventService>();
 	const service = new AgentModificationTelemetryService(
 		telemetry,

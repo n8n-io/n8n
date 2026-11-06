@@ -10,9 +10,8 @@ import { Service } from '@n8n/di';
 import { orchestratorAgentId } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { AiPreferenceService } from '@n8n/backend-services';
+import { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
 import { secondsSinceSaved } from '@/services/ai-preference-write';
-import { Telemetry } from '@/telemetry';
 
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 
@@ -34,7 +33,7 @@ export class InstanceAiPreferenceCardService {
 	constructor(
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly eventBus: InProcessEventBus,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async undo(

@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import * as permissions from '@n8n/permissions';
 import type { Mocked } from 'vitest';
@@ -7,7 +8,6 @@ import type { CommunityNodeTypesService } from '@/modules/community-packages/com
 import type { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import type { NodeTypes } from '@/node-types';
-import type { Telemetry } from '@/telemetry';
 
 import { createInstallCommunityNodeTool } from '../tools/workflow-builder/install-community-node.tool';
 
@@ -47,7 +47,7 @@ describe('install_community_node MCP tool', () => {
 	let communityNodeTypesService: Mocked<CommunityNodeTypesService>;
 	let lifecycleService: Mocked<CommunityPackagesLifecycleService>;
 	let nodeTypes: Mocked<NodeTypes>;
-	let telemetry: Mocked<Telemetry>;
+	let telemetry: Mocked<TelemetryProxy>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -59,7 +59,7 @@ describe('install_community_node MCP tool', () => {
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('Unrecognized node type');
 		});
-		telemetry = mock<Telemetry>();
+		telemetry = mock<TelemetryProxy>();
 		// Default: official and not installed yet, so an install actually happens.
 		communityNodeTypesService.findVettedNodeType.mockResolvedValue(catalogEntry());
 		lifecycleService.install.mockResolvedValue(installedPackage());

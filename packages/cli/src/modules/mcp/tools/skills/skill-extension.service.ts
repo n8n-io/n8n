@@ -6,6 +6,7 @@ import {
 	ResourceTemplate,
 } from '@modelcontextprotocol/server';
 import { type AgentSkill, SKILLS_MAX_PAGE_SIZE } from '@n8n/api-types';
+import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -13,7 +14,6 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { SkillService } from '@/modules/skills';
-import { Telemetry } from '@/telemetry';
 
 const SKILLS_EXTENSION_ID = 'io.modelcontextprotocol/skills';
 
@@ -95,7 +95,7 @@ export function toSkillEntry(skillId: string, skill: AgentSkill) {
 export class McpSkillExtensionService {
 	constructor(
 		private readonly skillService: SkillService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	register(server: McpServer, user: User): void {

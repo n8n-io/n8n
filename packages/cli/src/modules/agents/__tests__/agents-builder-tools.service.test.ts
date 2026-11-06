@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
@@ -32,7 +33,6 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -101,7 +101,7 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const nodeTypes = mock<NodeTypes>();

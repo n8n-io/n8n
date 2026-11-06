@@ -94,7 +94,6 @@ const skillsModuleIsolation = {
 		// excluded folder, so `!@/permissions.ee` lets the last line re-include one file.
 		'@/*',
 		'!@/posthog',
-		'!@/telemetry',
 		'!@/permissions.ee',
 		'@/*/**',
 		'!@/permissions.ee/check-access',

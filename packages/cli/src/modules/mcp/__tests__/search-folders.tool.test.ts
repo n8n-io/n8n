@@ -1,9 +1,9 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { Telemetry } from '@/telemetry';
 
 import { createSearchFoldersTool } from '../tools/search-folders.tool';
 
@@ -34,7 +34,7 @@ describe('search-folders MCP tool', () => {
 				.mockResolvedValue(projectAccessible ? { id: 'proj-1', type: 'team' } : null),
 		});
 
-		const telemetry = mockInstance(Telemetry, {
+		const telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 
@@ -140,7 +140,7 @@ describe('search-folders MCP tool', () => {
 		const projectService = mockInstance(ProjectService, {
 			getProjectWithScope: vi.fn().mockResolvedValue({ id: 'proj-1', type: 'team' }),
 		});
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 
 		const tool = createSearchFoldersTool(user, folderService, projectService, telemetry);
 

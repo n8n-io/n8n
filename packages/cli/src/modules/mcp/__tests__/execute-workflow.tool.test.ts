@@ -20,16 +20,15 @@ import { WorkflowAccessError } from '../mcp.errors';
 import { createExecuteWorkflowTool, executeWorkflow } from '../tools/execute-workflow.tool';
 
 import { McpService } from '@/modules/mcp/mcp.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowPublishedDataService } from '@n8n/backend-services';
+import { WorkflowPublishedDataService, TelemetryProxy } from '@n8n/backend-services';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowRunner: WorkflowRunner;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 	let mcpService: McpService;
 	let workflowsConfig: WorkflowsConfig;
 	let workflowPublishedDataService: MockProxy<WorkflowPublishedDataService>;
@@ -37,7 +36,7 @@ describe('execute-workflow MCP tool', () => {
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowRunner = mockInstance(WorkflowRunner);
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 		mcpService = mockInstance(McpService, {
