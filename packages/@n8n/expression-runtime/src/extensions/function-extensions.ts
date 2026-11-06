@@ -6,10 +6,13 @@ const min = Math.min;
 const max = Math.max;
 
 const numberList = (start: number, end: number): number[] => {
-	const size = Math.abs(start - end) + 1;
+	if (!Number.isFinite(start) || !Number.isFinite(end)) {
+		throw new ExpressionExtensionError('numberList() requires finite numbers for start and end');
+	}
+	const size = Math.abs(Math.trunc(start) - Math.trunc(end)) + 1;
 	const arr = new Array<number>(size);
 
-	let curr = start;
+	let curr = Math.trunc(start);
 	for (let i = 0; i < size; i++) {
 		if (start < end) {
 			arr[i] = curr++;
