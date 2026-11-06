@@ -133,11 +133,15 @@ export class ActiveExecutions {
 					await capacityReservation.reserve({ mode, executionId });
 				}
 
-				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+				const execution: Pick<
+					IExecutionDb,
+					'id' | 'data' | 'waitTill' | 'status' | 'resumeAttempts'
+				> = {
 					id: executionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
+					resumeAttempts: 0,
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(

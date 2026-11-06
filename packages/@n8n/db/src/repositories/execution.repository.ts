@@ -90,6 +90,13 @@ export type CrashedExecution = {
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
+export type ResumableExecutionStatus = 'waiting' | 'new';
+
+export type ResumeAttemptClaim =
+	| { outcome: 'claimed'; attempts: number }
+	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }
+	| { outcome: 'conflict' };
+
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
 	requireNotFinished?: boolean;
@@ -438,11 +445,39 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
+	 * Set a `waiting` or `new` execution to `crashed`, which `markAsCrashed` skips on purpose.
+	 * With `expectedAttempts`, the row is left alone if its count changed since it was read.
+	 */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		{
+			expectedAttempts,
+			onTransitioned,
+		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
+	): Promise<CrashedExecution[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
+
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionToCrashed(where, [status]),
+		);
+
+		if (transitioned.length > 0) {
+			onTransitioned?.(transitioned);
+			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		}
+
+		return transitioned;
+	}
+
+	/**
 	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
 	 * candidates; the status guard and the identity of the written rows are added here.
 	 */
 	private async transitionToCrashed(
 		where: FindOptionsWhere<ExecutionEntity>,
+		fromStatuses: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES,
 	): Promise<CrashedExecution[]> {
 		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
 		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
@@ -455,7 +490,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
 			const updateResult = await tx.update(
 				ExecutionEntity,
-				{ ...where, status: In(CRASHABLE_EXECUTION_STATUSES) },
+				{ ...where, status: In(fromStatuses) },
 				{ status: 'crashed', stoppedAt, waitTill: null },
 			);
 
@@ -751,6 +786,61 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	async deleteByIds(executionIds: string[]) {
 		return await this.delete({ id: In(executionIds) });
+	}
+
+	/**
+	 * Count one resume attempt before the load, so a load that kills the process stays
+	 * counted. `conflict` means the row is no longer in `status`.
+	 */
+	async claimResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		maxAttempts: number,
+	): Promise<ResumeAttemptClaim> {
+		const execution = await this.findOne({
+			select: ['id', 'resumeAttempts', 'jsonSizeBytes'],
+			where: { id: executionId, status },
+		});
+		if (!execution) return { outcome: 'conflict' };
+
+		const { resumeAttempts: attempts, jsonSizeBytes } = execution;
+		if (attempts >= maxAttempts) return { outcome: 'exhausted', attempts, jsonSizeBytes };
+
+		// The count just read is part of the predicate, so two processes cannot take the same attempt.
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts + 1 },
+		);
+		if ((result.affected ?? 0) === 0) return { outcome: 'conflict' };
+
+		return { outcome: 'claimed', attempts: attempts + 1 };
+	}
+
+	/**
+	 * Give back an attempt. `attempts` is the count the claim returned, so a newer claim by
+	 * another process is not undone.
+	 */
+	async releaseResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		attempts: number,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts - 1 },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findEnqueuedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
+
+		return rows.map(({ id }) => id);
 	}
 
 	async getWaitingExecutions() {
