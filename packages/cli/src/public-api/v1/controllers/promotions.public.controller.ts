@@ -22,6 +22,7 @@ import {
 	PromotionEnvironmentProjectListPublicDto,
 	PromotionEnvironmentProjectPublicDto,
 	PromotionEnvironmentPublicDto,
+	PromotionMissingProjectListPublicDto,
 	PromotionProviderCreatedPublicDto,
 	PromotionProviderListPublicDto,
 	PromotionProviderPublicDto,
@@ -434,6 +435,29 @@ export class PromotionsPublicController {
 		promotionEnvironmentId: string,
 	): Promise<PromotionEnvironmentProjectListPublicDto> {
 		return await (await this.environmentsService()).listProjects(promotionEnvironmentId);
+	}
+
+	// No pagination. The list comes from one read of the Apply branch, so there is no second page to fetch.
+	@Get('/environments/:promotionEnvironmentId/missing-projects')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
+	@ApiKeyScope('promotions:read')
+	@GlobalScope('promotions:read')
+	@ApiSummary('List package projects that are missing on this instance')
+	@ApiDescription(
+		'Reads the package at the Apply branch tip and returns its team projects whose IDs do not exist on this instance. Projects are matched by ID, not by name. An ID that a personal project uses counts as existing. Create each project with `POST /projects`, using the returned id, name, icon, description, and customTelemetryTags. The new project is empty, and the caller becomes its project admin. Then use the project Apply flow to apply its resources. An empty `data` means that no setup is needed. `git` is null when the branch has no package yet. Requires a connected Apply environment with instance scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, PromotionMissingProjectListPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async getPromotionEnvironmentMissingProjects(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
+		promotionEnvironmentId: string,
+	): Promise<PromotionMissingProjectListPublicDto> {
+		return await (await this.promotionsService()).listMissingProjects(promotionEnvironmentId);
 	}
 
 	@Post('/environments/:promotionEnvironmentId/projects/:projectId')

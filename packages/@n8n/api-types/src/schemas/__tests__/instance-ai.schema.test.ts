@@ -10,6 +10,7 @@ import {
 	instanceAiFileAttachmentSchema,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	appBlueprintSchema,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
@@ -51,6 +52,60 @@ import {
 	type InstanceAiConfirmationRequestPayload,
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
+
+describe('app blueprint schema', () => {
+	const blueprint = {
+		name: 'Planner',
+		namespace: 'planner',
+		visibility: 'project',
+		description: 'Plan weekly tasks.',
+		theme: 'both',
+	} as const;
+
+	it('accepts existing and new planned bindings', () => {
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [
+					{
+						kind: 'dataTable',
+						name: 'Tasks',
+						description: 'Stores weekly tasks.',
+						status: 'existing',
+						resourceId: 'table-1',
+					},
+					{
+						kind: 'agent',
+						name: 'Planning agent',
+						description: 'Answers questions about tasks.',
+						status: 'new',
+					},
+				],
+			}).success,
+		).toBe(true);
+	});
+
+	it('requires a resource id only for existing bindings', () => {
+		const binding = {
+			kind: 'workflow',
+			name: 'Weekly summary',
+			description: 'Creates the weekly summary.',
+		};
+
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [{ ...binding, status: 'existing' }],
+			}).success,
+		).toBe(false);
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [{ ...binding, status: 'new', resourceId: 'workflow-1' }],
+			}).success,
+		).toBe(false);
+	});
+});
 
 describe('Instance AI prompt version requests', () => {
 	it('accepts an optional version pin and rejects empty or oversized pins', () => {
@@ -658,6 +713,21 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					inputType: 'app-blueprint',
+					appBlueprint: {
+						name: 'Planner',
+						namespace: 'planner',
+						visibility: 'project',
+						description: 'Plan weekly tasks.',
+						theme: 'both',
+					},
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -678,9 +748,10 @@ describe('isDisplayableConfirmationRequest', () => {
 			questions: true,
 			'resource-decision': true,
 			continue: true,
+			'app-blueprint': true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(5);
+		expect(Object.keys(handled)).toHaveLength(6);
 	});
 });
 

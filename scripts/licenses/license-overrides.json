@@ -28,6 +28,22 @@
     "pkg:npm/streamsearch@1.1.0": {
       "license": "MIT",
       "source": "compiled/node_modules/streamsearch/LICENSE — package.json uses legacy licenses[] array"
+    },
+    "pkg:npm/xmlhttprequest-ssl@2.1.2": {
+      "license": "MIT",
+      "source": "compiled/node_modules/xmlhttprequest-ssl/LICENSE — MIT text. package.json uses a legacy licenses[] array."
+    },
+    "pkg:npm/simple-lru-cache@0.0.2": {
+      "license": "MIT",
+      "source": "compiled/node_modules/simple-lru-cache/LICENSE — MIT text. package.json uses a legacy licenses[] array."
+    },
+    "pkg:npm/cohere-ai@7.14.0": {
+      "license": "MIT",
+      "source": "compiled/node_modules/cohere-ai/LICENSE — MIT text. The published package.json has no license field."
+    },
+    "pkg:npm/%40kafkajs/confluent-schema-registry@3.8.0": {
+      "license": "MIT",
+      "source": "compiled/node_modules/@kafkajs/confluent-schema-registry/LICENSE — MIT text. The published package.json has no license field."
     }
   },
   "byName": {

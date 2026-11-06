@@ -150,6 +150,19 @@ describe('Instance AI skills', () => {
 		]);
 	});
 
+	it('asks focused questions before proposing an unclear app', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain('`ask_user` to clarify it');
+		expect(skill?.instructions).not.toContain('additionalInstructions');
+	});
+
+	it('opens a newly created app before editing its files', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain('`action: "open"` and the returned `app.id`');
+	});
+
 	it('loads every reference file as a reference skill with a description', () => {
 		const source = loadInstanceAiSkills();
 		const referenceFiles = skillMarkdownFiles().filter((file) => file.includes('/references/'));

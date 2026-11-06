@@ -83,4 +83,12 @@ describe('readLineScopes', () => {
 
 		expect(readLineScopes([file], base, mapSha)).toEqual({});
 	});
+
+	it('replaces a changed import with the lines that use it', () => {
+		const withImport = `import { double } from './math';\n${SOURCE.replace('n * 2', 'double(n)')}`;
+		const mapSha = commit(withImport);
+		writeFileSync(join(dir, file), withImport.replace("'./math'", "'./math-v2'"));
+
+		expect(readLineScopes([file], mapSha, mapSha)[file].spans).toEqual([{ lo: 6, hi: 6 }]);
+	});
 });

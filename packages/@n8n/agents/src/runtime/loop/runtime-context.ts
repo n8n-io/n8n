@@ -7,6 +7,8 @@ import {
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
+import { isRuntimeSkillCatalog } from '../../sdk/message';
+import { renderDynamicSkillCatalog } from '../../skills/prompt';
 import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type {
 	AgentExecutionCounter,
@@ -177,6 +179,27 @@ export class RuntimeContextBuilder {
 		);
 	}
 
+	private synchronizeSkillCatalog(list: AgentMessageList): void {
+		const source = this.config.skillSource;
+		const dynamicIds = new Set(source?.dynamicCatalog?.skillIds);
+		const hasDynamicSkills = source?.registry.skills.some(
+			(skill) => !skill.parents && dynamicIds.has(skill.id),
+		);
+		// Empty catalogues only need a snapshot to clear earlier dynamic context.
+		if (
+			!hasDynamicSkills &&
+			!source?.dynamicCatalog?.notice &&
+			!list.messages().some(isRuntimeSkillCatalog)
+		)
+			return;
+		const content = renderDynamicSkillCatalog(source);
+		const previous = list.llmVisibleMessages().filter(isRuntimeSkillCatalog).at(-1);
+		if (previous?.data.content === content) return;
+		// Append changes to preserve cached history. Restore snapshots hidden by compaction.
+		// Runtime context is input, so generated answers must not include it.
+		list.addInput([{ type: 'custom', data: { type: 'n8n:runtime-skill-catalog', content } }]);
+	}
+
 	/** Build the current local tool view; deferred loads can change this between iterations. */
 	async buildToolLoopContext(
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
@@ -229,6 +252,7 @@ export class RuntimeContextBuilder {
 		hostVolatileInstructions: string | undefined;
 		activeSkills: ActiveSkills | undefined;
 	}) {
+		this.synchronizeSkillCatalog(list);
 		const combinedVolatileInstructions = [tools.volatileInstructions, hostVolatileInstructions]
 			.map((value) => value?.trim())
 			.filter((value): value is string => Boolean(value))
