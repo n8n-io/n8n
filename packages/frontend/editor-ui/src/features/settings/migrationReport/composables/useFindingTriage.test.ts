@@ -121,6 +121,30 @@ describe('useFindingTriage', () => {
 			expect(onRowWontFix).not.toHaveBeenCalled();
 		});
 
+		it('should drop the notified date on a bulk reopen', async () => {
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+			const { rows, changeFindingStatuses } = setup();
+
+			expect(await changeFindingStatuses([rows.value[0]], 'open')).toBe(true);
+
+			expect(rows.value[0]).toMatchObject({ status: 'open', notifiedAt: undefined });
+		});
+
+		it('should put back the notified date when a bulk reopen fails', async () => {
+			let fail = (_error: Error) => {};
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockImplementation(
+				async () => await new Promise<void>((_, reject) => (fail = reject)),
+			);
+			const { rows, changeFindingStatuses, notifiedAt } = setup();
+
+			const reopening = changeFindingStatuses([rows.value[0]], 'open');
+			expect(rows.value[0].notifiedAt).toBeUndefined();
+			fail(new Error('Failed'));
+
+			expect(await reopening).toBe(false);
+			expect(rows.value[0]).toMatchObject({ status: 'notified', notifiedAt });
+		});
+
 		it('should put all rows back and return false when the request fails', async () => {
 			vi.mocked(breakingChangesApi.updateFindingStatuses).mockRejectedValue(new Error('Failed'));
 			const { rows, changeFindingStatuses, savingWorkflowIds } = setup();
