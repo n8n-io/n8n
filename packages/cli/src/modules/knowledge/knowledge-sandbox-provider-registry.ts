@@ -14,7 +14,8 @@ import type {
  * the container creates before that registration still get a working instance.
  *
  * The module cannot mirror or search files without a sandbox, so a call before the
- * registration is a wiring mistake and throws instead of degrading.
+ * registration is a wiring mistake and throws instead of degrading. `destroy` is the
+ * exception: teardown never throws, and without a provider there is no sandbox to delete.
  */
 @Service()
 export class KnowledgeSandboxProviderRegistry implements KnowledgeSandboxProvider {
@@ -50,7 +51,9 @@ export class KnowledgeSandboxProviderRegistry implements KnowledgeSandboxProvide
 	}
 
 	async destroy(scope: KnowledgeConsumerScope): Promise<void> {
-		await this.registeredProvider().destroy(scope);
+		// Cleanup paths (agent and project deletion) call this and must never fail.
+		if (!this.provider) return;
+		await this.provider.destroy(scope);
 	}
 
 	private registeredProvider(): KnowledgeSandboxProvider {
