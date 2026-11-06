@@ -154,45 +154,57 @@ describe('Agent V3 Integration', () => {
 	});
 
 	describe('Legacy HTTP Request Tool', () => {
-		const testData: WorkflowTestData = {
-			description: 'should run the legacy HTTP Request Tool and pass its response to the model',
-			input: {
-				workflowData: testHarness.readWorkflowJSON('workflows/agent-v3-with-legacy-http-tool.json'),
-			},
-			output: {
-				nodeData: {
-					'AI Agent': [[{ json: { output: 'User 42 is Ada Lovelace.' } }]],
-				},
-			},
-			nock: {
-				baseUrl,
-				mocks: [
-					{
-						method: 'post',
-						path: '/v1/chat/completions',
-						statusCode: 200,
-						responseBody: toolCallResponse([
-							{ id: 'call_1', name: 'Get_User', arguments: JSON.stringify({ id: '42' }) },
-						]),
-					},
-					{
-						method: 'get',
-						path: '/users/42',
-						statusCode: 200,
-						responseBody: { name: 'Ada Lovelace' },
-					},
-					{
-						method: 'post',
-						path: '/v1/chat/completions',
-						requestBody: (body: object) => JSON.stringify(body).includes('Ada Lovelace'),
-						statusCode: 200,
-						responseBody: chatCompletionResponse('User 42 is Ada Lovelace.'),
-					},
-				],
-			},
-		};
+		const versions = [
+			{ typeVersion: 1.1, toolArguments: { id: '42' } },
+			{ typeVersion: 1, toolArguments: { input: JSON.stringify({ id: '42' }) } },
+		];
 
-		testHarness.setupTest(testData, { credentials });
+		for (const { typeVersion, toolArguments } of versions) {
+			const workflowData = testHarness.readWorkflowJSON(
+				'workflows/agent-v3-with-legacy-http-tool.json',
+			);
+			workflowData.nodes = workflowData.nodes.map((node) =>
+				node.name === 'Get User' ? { ...node, typeVersion } : node,
+			);
+
+			const testData: WorkflowTestData = {
+				description: `should run the legacy HTTP Request Tool ${typeVersion} and pass its response to the model`,
+				input: { workflowData },
+				output: {
+					nodeData: {
+						'AI Agent': [[{ json: { output: 'User 42 is Ada Lovelace.' } }]],
+					},
+				},
+				nock: {
+					baseUrl,
+					mocks: [
+						{
+							method: 'post',
+							path: '/v1/chat/completions',
+							statusCode: 200,
+							responseBody: toolCallResponse([
+								{ id: 'call_1', name: 'Get_User', arguments: JSON.stringify(toolArguments) },
+							]),
+						},
+						{
+							method: 'get',
+							path: '/users/42',
+							statusCode: 200,
+							responseBody: { name: 'Ada Lovelace' },
+						},
+						{
+							method: 'post',
+							path: '/v1/chat/completions',
+							requestBody: (body: object) => JSON.stringify(body).includes('Ada Lovelace'),
+							statusCode: 200,
+							responseBody: chatCompletionResponse('User 42 is Ada Lovelace.'),
+						},
+					],
+				},
+			};
+
+			testHarness.setupTest(testData, { credentials });
+		}
 	});
 
 	describe('Custom System Message', () => {
