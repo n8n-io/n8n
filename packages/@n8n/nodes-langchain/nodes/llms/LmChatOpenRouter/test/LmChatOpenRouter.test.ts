@@ -82,6 +82,33 @@ describe('LmChatOpenRouter', () => {
 			expect(node.description.outputs).toEqual(['ai_languageModel']);
 			expect(node.description.outputNames).toEqual(['Model']);
 		});
+
+		it('should offer the OpenRouter server tools in the options collection', () => {
+			// getConnectionHintNoticeField is auto-mocked and returns undefined
+			const optionsField = node.description.properties.find(
+				(property) => property?.name === 'options',
+			);
+			const serverToolsField = optionsField?.options?.find(
+				(option) => option.name === 'serverTools',
+			);
+
+			expect(serverToolsField).toMatchObject({
+				displayName: 'Server Tools',
+				type: 'multiOptions',
+				default: [],
+			});
+			expect(serverToolsField?.options?.map((option) => option.value)).toEqual([
+				'web_search',
+				'datetime',
+				'image_generation',
+				'web_fetch',
+				'fusion',
+				'advisor',
+				'subagent',
+				'experimental__search_models',
+				'files',
+			]);
+		});
 	});
 
 	describe('supplyData', () => {
@@ -521,6 +548,150 @@ describe('LmChatOpenRouter', () => {
 			expect(response.headers.get('content-type')).toBe('application/json');
 			// Stale metadata headers (content-length, etag, etc.) are not carried over
 			expect(response.headers.get('content-length')).toBeNull();
+		});
+	});
+
+	describe('server tools', () => {
+		const origFetch = globalThis.fetch;
+
+		afterEach(() => {
+			globalThis.fetch = origFetch;
+		});
+
+		/**
+		 * Captures the wrapper fetch with the given server tools selected and
+		 * returns the fetch mock that receives the outbound request.
+		 */
+		async function setupServerTools(serverTools?: string[]) {
+			const mockFetch = vi.fn().mockResolvedValue(
+				new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				}),
+			);
+			globalThis.fetch = mockFetch;
+
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
+				if (paramName === 'options') return serverTools ? { serverTools } : {};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+			const wrappedFetch = MockedChatOpenAI.mock.calls[0][0]?.configuration?.fetch as typeof fetch;
+			return { mockFetch, wrappedFetch };
+		}
+
+		it('should append selected server tools next to function tools', async () => {
+			const { mockFetch, wrappedFetch } = await setupServerTools(['web_search', 'datetime']);
+			const functionTool = { type: 'function', function: { name: 'get_weather', parameters: {} } };
+			const requestBody = {
+				model: 'anthropic/claude-sonnet-4-20250514',
+				messages: [{ role: 'user', content: 'What happened today?' }],
+				tools: [functionTool],
+			};
+
+			await wrappedFetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				body: JSON.stringify(requestBody),
+				headers: { 'content-type': 'application/json', 'content-length': '123' },
+			});
+
+			const [, init] = mockFetch.mock.calls[0];
+			const sentBody = JSON.parse(init.body as string);
+
+			expect(sentBody.tools).toEqual([
+				functionTool,
+				{ type: 'openrouter:web_search' },
+				{ type: 'openrouter:datetime' },
+			]);
+			expect(sentBody.messages).toEqual(requestBody.messages);
+		});
+
+		it('should create the tools array when the request has none', async () => {
+			const { mockFetch, wrappedFetch } = await setupServerTools(['web_search']);
+
+			await wrappedFetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				body: JSON.stringify({ messages: [{ role: 'user', content: 'Hi' }] }),
+			});
+
+			const [, init] = mockFetch.mock.calls[0];
+			expect(JSON.parse(init.body as string).tools).toEqual([{ type: 'openrouter:web_search' }]);
+		});
+
+		it('should drop the stale content-length header after rewriting the body', async () => {
+			const { mockFetch, wrappedFetch } = await setupServerTools(['web_search']);
+
+			await wrappedFetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				body: JSON.stringify({ messages: [] }),
+				headers: { 'content-type': 'application/json', 'content-length': '2' },
+			});
+
+			const [, init] = mockFetch.mock.calls[0];
+			const headers = new Headers(init.headers);
+			expect(headers.get('content-length')).toBeNull();
+			expect(headers.get('content-type')).toBe('application/json');
+		});
+
+		it('should not modify the request body when no server tools are selected', async () => {
+			const { mockFetch, wrappedFetch } = await setupServerTools();
+			const body = JSON.stringify({ messages: [{ role: 'user', content: 'Hi' }] });
+
+			await wrappedFetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				body,
+			});
+
+			const [, init] = mockFetch.mock.calls[0];
+			expect(init.body).toBe(body);
+		});
+
+		it('should send server tools in the request body built by the real ChatOpenAI', async () => {
+			const { mockFetch, wrappedFetch } = await setupServerTools(['web_search']);
+			mockFetch.mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						id: 'chatcmpl-1',
+						object: 'chat.completion',
+						created: 0,
+						model: 'anthropic/claude-sonnet-4-20250514',
+						choices: [
+							{ index: 0, message: { role: 'assistant', content: 'Hello' }, finish_reason: 'stop' },
+						],
+						usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } },
+				),
+			);
+
+			const actual = await vi.importActual<typeof import('@langchain/openai')>('@langchain/openai');
+			const constructorArgs = MockedChatOpenAI.mock.calls[0][0] as Record<string, any>;
+			const realModel = new actual.ChatOpenAI({
+				...constructorArgs,
+				configuration: { ...constructorArgs.configuration, fetch: wrappedFetch },
+			});
+
+			await realModel.invoke('What happened in the news today?');
+
+			const [url, init] = mockFetch.mock.calls[0];
+			expect(String(url)).toContain('/chat/completions');
+			expect(JSON.parse(init.body as string).tools).toEqual([{ type: 'openrouter:web_search' }]);
+		});
+
+		it('should not add a server tool that is already in the request', async () => {
+			const { mockFetch, wrappedFetch } = await setupServerTools(['web_search']);
+			const serverTool = { type: 'openrouter:web_search' };
+
+			await wrappedFetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				body: JSON.stringify({ messages: [], tools: [serverTool] }),
+			});
+
+			const [, init] = mockFetch.mock.calls[0];
+			expect(JSON.parse(init.body as string).tools).toEqual([serverTool]);
 		});
 	});
 });
