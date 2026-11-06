@@ -30,7 +30,7 @@ Old executions go away in two steps. A system task first marks them as deleted. 
 
 ## Binary data
 
-Files in items, such as a PDF that a node downloads, are **binary data**. An item holds only an id for the file. The file itself goes to the file system, the database, S3, or Azure. In queue mode the default is the database, because a worker and a main do not share a disk. S3 and Azure need a license.
+Files in items, such as a PDF that a node downloads, are **binary data**. An item holds only an ID for the file. The file itself goes to the file system, the database, S3, or Azure. In queue mode the default is the database, because a worker and a main do not share a disk. S3 and Azure need a license.
 
 ## Data tables
 

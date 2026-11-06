@@ -12,6 +12,7 @@ contact: guillaumejacquart
 
 ## Callers
 
+> [!WARNING]
 > **A route with `skipAuth` must check the caller in another way.** For example, the route for signed binary data checks a signature, and the routes that resolve a signup token check that token.
 
 | Caller | Proof |

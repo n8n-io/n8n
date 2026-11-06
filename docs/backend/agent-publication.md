@@ -54,7 +54,7 @@ The main starts the triggers of the published version, and then answers the edit
 | Trigger | Where it runs |
 |---|---|
 | Chat integration | On every main, or only on the leader if the integration polls or keeps a connection open |
-| Schedule | On the leader, or on any main if durable scheduling is on |
+| Schedule | On the leader |
 
 In your session from [Start here](README.md), your agent had no triggers, so the main started nothing.
 

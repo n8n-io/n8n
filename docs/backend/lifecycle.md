@@ -8,75 +8,97 @@ contact: ivov
 
 # Lifecycle
 
-[How n8n runs](how-n8n-runs.md) named the three process roles: main, worker, and webhook process. Every n8n process, from one main on a laptop to a worker in a cluster, starts the same way and builds its code from the same parts. This page explains how a process starts, which modules it starts, how it loads nodes, and how it stops.
+[How n8n runs](how-n8n-runs.md) named the three roles of an n8n process: main, worker, and webhook process. This page explains how a process starts, which modules it starts, how it loads nodes, and how it stops.
 
 ## Startup
 
-Every role uses the same `n8n` binary. The first argument selects the command: `start` for a main, `worker`, or `webhook`. Other commands, such as `export:workflow`, do one job and exit.
+Every role runs the `n8n` command, from the [`n8n` npm package](https://www.npmjs.com/package/n8n).
 
-All three roles start the same way, so that they agree on nodes, tables, and identity. Each one loads its configuration, then the modules, then connects to the database and runs the pending [migrations](how-to/write-a-database-migration.md#how-n8n-runs-migrations). Then it loads the nodes and credentials, and starts its role.
+Three subcommands start a role, and the process keeps running: `n8n start` for a main, `n8n worker`, and `n8n webhook`. Most other subcommands, e.g. `n8n export:workflow`, do one job and exit.
 
-A process builds its services with the container in `@n8n/di`, which creates one instance of each `@Service()` class. Most backend code also has a decorator from `@n8n/decorators`, such as `@RestController()` or `@SystemTask()`. A decorator only records metadata. n8n reads that metadata at startup and connects the code, so the code needs no explicit registration.
+Every role starts in this order:
 
-Configuration comes from env vars, through `@Config` classes in `@n8n/config`. The container creates each `@Config` class once, so a process reads its env vars only when it starts. Many features also have a setting that an admin saves in the database. An env var can give the default of that setting, but the saved value wins.
+1. Load configuration and modules.
+2. Load nodes and credential types.
+3. Connect to the database, and run pending [migrations](how-to/write-a-database-migration.md#how-n8n-runs-migrations).
+4. Start modules.
+5. Start the role, e.g. a main starts serving requests, and a worker dequeues jobs.
 
-Each process has a **host id** of its own. The **instance id** is the same for every process of one deployment.
+A process creates its services using the dependency injection container at `@n8n/di`. The container creates one instance of each `@Service()` class.
+
+Decorators from `@n8n/decorators`, e.g. `@RestController()` or `@SystemTask()`, only record metadata. At startup, n8n reads this metadata and registers routes and tasks. A new route or task therefore needs no registration code.
+
+Configuration comes from env vars, through `@Config` classes at `@n8n/config`. The container creates each `@Config` class once, at startup. Some settings also have a value in the database, which the owner or an admin saves in the UI.
+
+> [!IMPORTANT]
+> **A setting that an admin saves in the UI wins over its env var.** For example, the Assistant sandbox stays off after an admin turns off the sandbox, even when `N8N_INSTANCE_AI_SANDBOX_ENABLED` is `true`.
+
+Each process has a **host ID**, e.g. `main-6bf523178bc6`. A pubsub message names its sender by host ID. Do not confuse the host ID with the **instance ID**, which identifies the whole deployment. Telemetry and the license rely on the instance ID.
 
 ## Modules
 
-Most features are modules. n8n starts a module when all of these are true:
+A **module** is a feature that n8n starts or skips as one unit. n8n starts a module when all of these are true:
 
-1. The module is in the list of modules for the instance. That list is the default modules, plus `N8N_ENABLED_MODULES`, minus `N8N_DISABLED_MODULES`.
-2. The process type is in the `instanceTypes` of the module. A module without `instanceTypes` runs on every process type.
+1. The module is in the module list: default modules, plus `N8N_ENABLED_MODULES`, minus `N8N_DISABLED_MODULES`.
+2. The role of the process is in the `instanceTypes` of the module. A module without `instanceTypes` starts on every role.
 3. The license has the `licenseFlag` of the module, if the module sets one.
 
-n8n checks these only at startup. A module that does not start still has its tables, because n8n runs all migrations.
+n8n checks these conditions only at startup. A module that does not start still has its tables, because n8n runs all migrations. [Build a backend module](how-to/build-a-backend-module.md#set-license-and-instance-types) shows how to set `instanceTypes` and `licenseFlag`.
 
-A module that starts can still keep its feature off. The AI modules, for example, also check the license and a setting of the feature. A PostHog flag then turns on or off a part of an AI feature, never the whole feature. [Build a backend module](how-to/build-a-backend-module.md#set-license-and-instance-types) shows the options.
+A module that starts can still keep parts of its feature off, with a [license check on a route](licensing.md#license-checks) or a [PostHog flag](how-to/roll-out-a-change.md).
 
-## Node loading
+## Loading of node and credential types
 
-Nodes are classes in npm packages: `n8n-nodes-base`, `@n8n/n8n-nodes-langchain`, and community packages. A node type name has the package as a prefix, for example `n8n-nodes-base.webhook`. Every process loads the same packages.
+Node types and credential types are classes in npm packages:
 
-At startup, a process reads a list of the node types in each package. It loads the class of a node only when a workflow needs it. That keeps the startup fast with more than 600 node types.
+- `n8n-nodes-base`
+- `@n8n/n8n-nodes-langchain`
+- community packages
 
-A node can say that agents may use it as a tool. n8n then adds a tool version of that node type, which has no class of its own. An admin can install a community package from npm, and an install on one main reaches the other mains through pubsub.
+A node type name starts with the package name, e.g. `n8n-nodes-base.webhook`. A credential type name has no prefix, e.g. `slackApi`. Every process loads these packages.
 
-When a saved workflow names a node type that the process does not have, the backend throws `UnrecognizedNodeTypeError`. This happens after an operator excludes a node, or when a community package is missing.
+At startup, a process reads only the list of node types and credential types in each package. The process loads a class only when n8n first needs it.
+
+n8n has two ways to block a node type:
+
+- With `NODES_EXCLUDE`, no process loads the node type, so a workflow that uses the node fails.
+- With a [policy](permissions.md#policies), the node type stays loaded, and n8n refuses the action on the workflow. A policy can also block a credential type.
 
 ## Shutdown
 
-When a process stops, n8n calls the `@OnShutdown()` methods of its services in order of priority. A method without the decorator does not run at shutdown. A worker waits for its running jobs before it exits, up to a timeout.
+When a process stops, n8n calls only the `@OnShutdown()` methods of its services, by priority. Any cleanup therefore belongs in one of these methods.
+
+Before a worker exits, the worker waits for its running jobs, up to 30 seconds by default. With `N8N_WORKER_SUSPEND_EXECUTIONS_ON_SHUTDOWN=true`, the worker instead pauses each production execution at the next node, and another worker resumes the execution.
 
 ## Quiz
 
-1. You change an env var that a `@Config` class reads while the process runs. When does the new value apply?
-   - A. At once.
-   - B. At the next request.
-   - C. After a restart.
-   - D. Never.
-2. A worker starts after a release that adds a migration. What does it do before it takes jobs?
+1. A worker starts after a release that adds a migration. What does it do before it dequeues jobs?
    - A. Nothing. Only mains migrate.
    - B. It waits until a main has migrated.
-   - C. It runs the pending migrations itself.
+   - C. It runs pending migrations itself.
    - D. It reads the schema from Redis.
-3. You add a `shutdown()` method to a service, without a decorator. When does it run?
+2. `N8N_INSTANCE_AI_SANDBOX_ENABLED` is `true`, but an admin turned off the sandbox in the Assistant settings. Is the sandbox on?
+   - A. Yes. The env var wins.
+   - B. No. The saved value wins.
+   - C. It depends on the license.
+   - D. Only on mains.
+3. `N8N_DISABLED_MODULES` names a module. Does the database have the tables of the module?
+   - A. Yes. n8n runs all migrations.
+   - B. No. n8n skips the migrations of the module.
+   - C. Only after the module starts once.
+   - D. Only on the leader.
+4. You add a `shutdown()` method to a service, without a decorator. When does it run?
    - A. When the process stops.
    - B. Never.
    - C. When the container removes the service.
    - D. On the leader only.
-4. An admin saved a feature setting as off. Its environment variable says on. Is the feature on?
-   - A. Yes. The environment variable wins.
-   - B. No. The saved value wins.
-   - C. It depends on the license.
-   - D. Only on mains.
 
 <details>
 <summary>Answers</summary>
 
-1. C. A process reads its env vars when it starts.
-2. C. Every process runs the pending migrations at startup.
-3. B. n8n calls only the methods that `@OnShutdown()` marks.
-4. B. An environment variable gives only the default of a setting.
+1. C. Every process runs pending migrations at startup.
+2. B. The env var gives only the default. The value in the database wins.
+3. A. A module that does not start still has its tables.
+4. B. n8n calls only the methods that `@OnShutdown()` marks.
 
 </details>

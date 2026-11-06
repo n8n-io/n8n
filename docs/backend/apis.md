@@ -55,6 +55,7 @@ The backend also sends live data to the browser:
 | The response of an n8n Assistant run | One run of the Assistant | Missed events play again from a log |
 | A streaming webhook response | The output of a workflow while it runs | Lost |
 
+> [!WARNING]
 > **A push message is lost when the connection drops.** Send over push only the state that the editor can also fetch again.
 
 Push is one connection for each browser tab, over WebSocket by default. In multi-main, only one main holds a given tab, so a worker or another main relays a message for that tab over pubsub. A message to all tabs of a user reaches only the tabs on the current main. The relay drops node output that is too large for pubsub, and the editor loads that data when the execution ends. The types of all push messages live in `@n8n/api-types`.

@@ -16,6 +16,7 @@ contact: RicardoE105
 | Knowledge | Files and vector stores to search | `knowledge` module, and parts of the `agents` module |
 | MCP registry | Tools of external MCP servers, as nodes | `mcp-registry` module |
 
+> [!WARNING]
 > **The knowledge module never checks project membership.** The caller, such as the `agents` module, checks who owns the agent before it asks for knowledge.
 
 ## Skills

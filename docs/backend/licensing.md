@@ -78,6 +78,7 @@ A PostHog feature flag turns a part of a feature on or off during a rollout. [Ro
 
 ## Usage reporting
 
+> [!WARNING]
 > **Do not change the meaning of a usage count without the agreement of the owners of the license server.** The license server records these counts for each instance.
 
 Only the leader renews the license certificate, 72 hours before it expires. Each renewal sends these usage counts to the license server:

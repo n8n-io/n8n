@@ -16,7 +16,7 @@ A permission in n8n is a **scope**, a string such as `workflow:publish`. A **rol
 
 Workflows, agents, and credentials belong to a **project**, not to a user. Each user has a personal project, and team projects need a license. Membership in a project gives the user a project role, such as editor or viewer.
 
-Each route declares the scope that it needs, with `@GlobalScope` or `@ProjectScope`. For a project scope, n8n finds the resource id in the URL and the project of that resource. Then it checks the role of the user in that project. A list route cannot check each row through its URL. It asks for the projects where the user has the scope, and it filters the list on those projects.
+Each route declares the scope that it needs, with `@GlobalScope` or `@ProjectScope`. For a project scope, n8n finds the resource ID in the URL and the project of that resource. Then it checks the role of the user in that project. A list route cannot check each row through its URL. It asks for the projects where the user has the scope, and it filters the list on those projects.
 
 Roles and scopes are rows in the database, so an admin can create custom roles with `feat:customRoles`. The global admin role needs `feat:advancedPermissions`. `@n8n/permissions` defines every scope, and the editor uses the same package.
 

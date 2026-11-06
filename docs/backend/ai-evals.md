@@ -16,6 +16,7 @@ contact: CharlieKolb
 | Agent evals | Users | An agent | `agent-evals` module |
 | Assistant evals | n8n engineers | The n8n Assistant | `packages/@n8n/instance-ai/evaluations/` |
 
+> [!IMPORTANT]
 > **An eval run does not continue after a restart.** At startup, n8n marks each unfinished run as failed. A user must start the run again.
 
 ## Workflow evals

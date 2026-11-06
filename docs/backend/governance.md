@@ -41,7 +41,7 @@ Both features copy entities field by field. A change to an entity can therefore 
 - Each package serializer gives every entity key a decision: `copy`, `transform`, or `exclude`. A new key without a decision fails the build.
 - The package schema lists the fields of a node by hand. Export drops a new node field without an error until you add it there.
 
-`packages/cli/src/modules/n8n-packages/CLAUDE.md` explains how to change the package code.
+The [n8n-packages guide](../../packages/cli/src/modules/n8n-packages/CLAUDE.md) explains how to change the package code.
 
 ## Quiz
 

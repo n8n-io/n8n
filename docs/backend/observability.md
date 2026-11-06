@@ -29,6 +29,7 @@ The event bus behind log streaming is also a recovery log. Each process writes e
 
 Product telemetry shows the product team how people use n8n. The backend sends these events through the `Telemetry` service in `packages/cli/src/telemetry/`, from the telemetry relay or with a direct `Telemetry.track()` call. An instance with diagnostics off sends none.
 
+> [!WARNING]
 > **Never rename a telemetry event.** The data warehouse keeps one table for each event name, so a rename cuts the history of the event. Add new properties, and do not change the type of a property.
 
 `@n8n/telemetry` holds a registry of events, with the name, a description, and a zod schema of the properties of each event. Pass the registry entry to `track()`, so that a wrong property fails the typecheck. `pnpm --filter @n8n/telemetry catalog` lists the registered events. Not all events are in the registry yet, so search the `track()` calls when the catalog has no match.

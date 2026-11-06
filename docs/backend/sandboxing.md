@@ -12,6 +12,7 @@ Users write JavaScript in two places: expressions in node parameters, such as `{
 
 ## Expressions
 
+> [!IMPORTANT]
 > **Expression helpers exist in two copies.** A helper such as `.toDateTime()` has one copy for the old engine, and one in the code that the isolate loads. A change to one copy needs the same change in the other.
 
 `n8n-workflow` evaluates expressions. It evaluates an expression only when a node reads the parameter, and then once for each item. That is why one parameter can give a different value for each item.

@@ -16,8 +16,10 @@ contact: Cadiac
 | Workflow builder | Uses the older AI builder in the editor | `workflow-builder` module, `@n8n/ai-workflow-builder.ee` |
 | MCP server | Connects an external AI client, such as a desktop app, to build and run workflows | `mcp` module |
 
+> [!IMPORTANT]
 > **The Assistant builds workflows only in a sandbox.** Without a sandbox, the Assistant cannot build workflows.
 
+> [!IMPORTANT]
 > **An MCP client sees only the workflows that its user can access and that have MCP access turned on.**
 
 ## n8n Assistant
