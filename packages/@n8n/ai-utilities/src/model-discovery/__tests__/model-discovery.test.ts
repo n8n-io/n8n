@@ -316,6 +316,16 @@ describe('model-discovery', () => {
 		});
 	});
 
+	describe('openrouter', () => {
+		it('attributes requests to n8n in OpenRouter app rankings', async () => {
+			const fetch = mockFetch({ data: [{ id: 'model-a' }] });
+
+			await listModelsForProvider('openrouter', { apiKey: 'key', fetch });
+
+			expect(calledHeaders(fetch)['HTTP-Referer']).toBe('https://n8n.io/');
+		});
+	});
+
 	describe('alibaba', () => {
 		it("appends the compatible-mode path to a credential's bare-host baseURL", async () => {
 			const fetch = mockFetch({ data: [{ id: 'model-a' }] });

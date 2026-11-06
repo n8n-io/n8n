@@ -83,12 +83,17 @@ export function idsToModels(items: IdItem[]): ProviderModel[] {
 /**
  * The most common provider shape: `GET <base>/models` with bearer auth
  * returning `{ data: [{ id }] }`, listed by id ascending.
+ * `extraHeaders` adds provider-specific headers, e.g. app attribution.
  */
-export function makeBearerDataListing(provider: string, defaultBaseUrl: string): ListModelsFn {
+export function makeBearerDataListing(
+	provider: string,
+	defaultBaseUrl: string,
+	extraHeaders: Record<string, string> = {},
+): ListModelsFn {
 	return async (options) => {
 		const data = (await getJson(
 			`${baseUrl(options, defaultBaseUrl)}/models`,
-			bearerHeaders(options),
+			{ ...bearerHeaders(options), ...extraHeaders },
 			options,
 			provider,
 		)) as { data?: IdItem[] };

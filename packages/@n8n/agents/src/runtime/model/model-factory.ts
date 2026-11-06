@@ -490,7 +490,12 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { createOpenRouter } =
 				require('@openrouter/ai-sdk-provider') as typeof import('@openrouter/ai-sdk-provider');
 			return wrapOpenRouterModel(
-				createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model),
+				createOpenRouter({
+					apiKey: creds.apiKey,
+					baseURL: creds.baseURL,
+					fetch,
+					headers: { 'HTTP-Referer': 'https://n8n.io/' },
+				})(model),
 			);
 		},
 	},
