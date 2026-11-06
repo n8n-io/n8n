@@ -446,5 +446,20 @@ describe('ToolWorkflowV1', () => {
 
 			await expect(node.execute.call(ctx)).rejects.toThrow('Workflow execution failed');
 		});
+
+		it('should report the index of the item whose sub-workflow failed', async () => {
+			const ctx = createExecuteContext([
+				{ json: { input: 'first' } },
+				{ json: { input: 'second' } },
+			]);
+			ctx.executeWorkflow
+				.mockResolvedValueOnce({ data: [[{ json: { result: 'one' } }]], executionId: 'sub-1' })
+				.mockRejectedValueOnce(new Error('Workflow execution failed'));
+
+			await expect(node.execute.call(ctx)).rejects.toMatchObject({
+				message: 'Workflow execution failed',
+				context: { itemIndex: 1 },
+			});
+		});
 	});
 });
