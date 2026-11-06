@@ -53,7 +53,7 @@ const CURRENCY_REGEXP =
   (?:#[^\s]*)?$/i;            							// Match optional hash fragment
 */
 const DOMAIN_EXTRACT_REGEXP =
-	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?(?:[^\s@\/?#]+@)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 /*
 	Matches domain names without the protocol or optional subdomains
@@ -92,6 +92,13 @@ const DOMAIN_REGEXP =
 */
 const EMAIL_REGEXP =
 	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
+
+// The whole string has to be the address: an address inside a URL (`https://medium.com/@jane.doe`)
+// or after other text (`x,me@example.com`) is not an email.
+const EMAIL_REGEXP_EXACT = new RegExp(`^(?:${EMAIL_REGEXP.source})$`);
+
+// A mailto: link is read up to its first recipient: `mailto:a@b.com?subject=Hi` has the address `a@b.com`.
+const MAILTO_ADDRESS_REGEXP = /^mailto:([^?#,]*)/i;
 
 /*
 	Matches URLs with strict beginning and end of the string checks
@@ -324,7 +331,7 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	const result = EMAIL_REGEXP.test(value);
+	const result = EMAIL_REGEXP_EXACT.test(value);
 
 	// email regex is loose so check manually for now
 	if (result && value.includes(' ')) {
@@ -381,8 +388,10 @@ function extractEmail(value: string) {
 }
 
 function extractDomain(value: string) {
-	if (isEmail(value)) {
-		const matched = EMAIL_REGEXP.exec(value);
+	const mailto = MAILTO_ADDRESS_REGEXP.exec(value);
+	const address = mailto ? mailto[1] : value;
+	if (isEmail(address)) {
+		const matched = EMAIL_REGEXP.exec(address);
 		// This shouldn't happen
 		if (!matched) {
 			return undefined;
