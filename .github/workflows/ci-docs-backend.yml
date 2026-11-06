@@ -1,0 +1,62 @@
+name: 'CI: Backend docs'
+
+# Keeps docs/backend correct: text lint (Vale, ASD-STE100 rules), link check
+# (Lychee), and a check that the files, symbols, and environment variables that
+# the pages name still exist. Runs on changes to the folder, and once a week so
+# that code moves elsewhere show up without blocking other teams' PRs.
+
+on:
+  pull_request:
+    paths:
+      - 'docs/backend/**'
+      - 'scripts/backend-docs-check.mjs'
+      - '.github/workflows/ci-docs-backend.yml'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vale:
+    name: Vale
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: errata-ai/vale-action@518a9136acc6e6668ce7c00d367051e0941e87ff # v3.0.0
+        with:
+          files: docs/backend
+          vale_flags: '--config=docs/backend/.vale.ini --minAlertLevel=warning'
+          fail_on_error: true
+          reporter: github-pr-check
+
+  links:
+    name: Lychee
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: --config docs/backend/lychee.toml docs/backend
+          fail: true
+
+  code-names:
+    name: Code names resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # The check only uses node built-ins and git, so no dependency install is needed.
+      - run: node scripts/backend-docs-check.mjs

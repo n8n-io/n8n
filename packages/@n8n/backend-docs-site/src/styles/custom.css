@@ -1,0 +1,1064 @@
+/* The theme follows docs.n8n.io: the n8n pink, warm grays, a filled sidebar card.
+   The body font is Inter and code uses the system mono font, as on lisette.run. Titles stay in Geist. */
+:root {
+	--sl-font: 'Inter';
+	--n8n-font-title: 'Geist', var(--__sl-font);
+	--sl-line-height: 1.625;
+	--sl-text-h1: 2.25rem;
+	--sl-text-h2: 1.875rem;
+	--sl-text-h3: 1.5rem;
+	--sl-text-h4: 1.25rem;
+	/* One column for text, code, diagrams, and tables, as on docs.n8n.io. At 16px it holds
+	   about 90 characters of text. Paths and symbols in table cells wrap. */
+	--sl-content-width: 42rem;
+}
+
+:root,
+::backdrop {
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #ededed;
+	--sl-color-gray-2: #e3e1e1;
+	--sl-color-gray-3: #a8a1a2;
+	--sl-color-gray-4: #7a7273;
+	--sl-color-gray-5: #3b3939;
+	--sl-color-gray-6: #2c2c2c;
+	--sl-color-black: #1a1a1a;
+	--sl-color-accent-low: #4a2431;
+	--sl-color-accent: #ff91ac;
+	--sl-color-accent-high: #ff91ac;
+	--sl-color-text-invert: #1d1d1d;
+	--sl-color-bg-nav: rgb(26 26 26 / 0.88);
+	--sl-color-bg-sidebar: var(--sl-color-black);
+	--sl-color-hairline: var(--sl-color-gray-5);
+	--sl-color-hairline-light: var(--sl-color-gray-5);
+	--sl-color-hairline-shade: var(--sl-color-gray-5);
+	--n8n-panel: #232222;
+	--n8n-current-link: #ffa3b9;
+	--n8n-current-bg: rgb(255 163 185 / 0.08);
+	--n8n-muted-link: rgb(255 255 255 / 0.64);
+	--n8n-hover: rgb(255 255 255 / 0.06);
+	--n8n-logo: var(--sl-color-accent);
+}
+
+:root[data-theme='light'],
+[data-theme='light'] ::backdrop {
+	--sl-color-white: #1d1d1d;
+	--sl-color-gray-1: #1f1c1d;
+	--sl-color-gray-2: #1f1c1d;
+	--sl-color-gray-3: #786a6d;
+	--sl-color-gray-4: #a3979a;
+	--sl-color-gray-5: #e1d6d8;
+	--sl-color-gray-6: #ece3e4;
+	--sl-color-gray-7: #fbf9fa;
+	--sl-color-black: #ffffff;
+	--sl-color-accent-low: #fde4ed;
+	--sl-color-accent: #ef3a7a;
+	--sl-color-accent-high: #b8215a;
+	--sl-color-text-accent: var(--sl-color-accent);
+	--sl-color-text-invert: #ffffff;
+	--sl-color-bg-nav: rgb(255 255 255 / 0.88);
+	--sl-color-bg-sidebar: var(--sl-color-black);
+	--sl-color-hairline: var(--sl-color-gray-6);
+	--sl-color-hairline-light: var(--sl-color-gray-6);
+	--sl-color-hairline-shade: var(--sl-color-gray-6);
+	--n8n-panel: #fbf9fa;
+	--n8n-current-link: var(--sl-color-accent-high);
+	--n8n-current-bg: color-mix(in srgb, var(--sl-color-accent) 8%, transparent);
+	--n8n-muted-link: rgb(31 28 29 / 0.64);
+	--n8n-hover: rgb(31 28 29 / 0.04);
+	--n8n-logo: var(--sl-color-white);
+}
+
+/* Header: translucent over the page. The hairline below it shows only after the page
+   scrolls, when text moves under the header. A script in Head.astro sets the flag. */
+.header {
+	backdrop-filter: blur(8px);
+}
+
+.page > header.header {
+	border-bottom-color: transparent;
+	transition: border-bottom-color 0.15s;
+}
+
+:root[data-scrolled] .page > header.header {
+	border-bottom-color: var(--sl-color-hairline-shade);
+}
+
+/* Reading progress: the hairline fills with a faint accent from left to right. */
+.page > header.header::after {
+	content: '';
+	position: absolute;
+	inset-inline: 0;
+	bottom: -1px;
+	height: 1px;
+	background: color-mix(in srgb, var(--sl-color-accent) 55%, transparent);
+	transform: scaleX(var(--n8n-read-progress, 0));
+	transform-origin: left;
+	opacity: 0;
+	transition: opacity 0.15s;
+	pointer-events: none;
+}
+
+:root[data-scrolled] .page > header.header::after {
+	opacity: 1;
+}
+
+/* Sidebar: a rounded tinted card inside the pane, with no rule between pane and content. */
+@media (min-width: 50rem) {
+	.sidebar-pane {
+		border-inline-end: 0;
+	}
+	.sidebar-content {
+		margin: 0.75rem;
+		padding: 1rem 0.75rem;
+		border-radius: 1rem;
+		background: var(--n8n-panel);
+	}
+}
+
+.sidebar-content .large {
+	font-size: var(--sl-text-sm);
+	font-weight: 600;
+	color: var(--sl-color-white);
+}
+
+.sidebar-content a {
+	font-size: var(--sl-text-sm);
+	color: var(--n8n-muted-link);
+	padding: 0.375rem 0.375rem 0.375rem 0.75rem;
+	border-radius: 0.375rem;
+}
+
+.sidebar-content a:hover,
+.sidebar-content a:focus {
+	color: var(--sl-color-white);
+	background: var(--n8n-hover);
+}
+
+.sidebar-content [aria-current='page'],
+.sidebar-content [aria-current='page']:hover,
+.sidebar-content [aria-current='page']:focus {
+	font-weight: 600;
+	color: var(--n8n-current-link);
+	background: var(--n8n-current-bg);
+	border-radius: 0.25rem;
+}
+
+/* A finished page gets a small, muted green tick after its name. */
+.sidebar-content a.is-read > span::after {
+	content: '\2713';
+	margin-inline-start: 0.5rem;
+	font-size: 0.75em;
+	font-weight: 400;
+	/* The smaller glyph sits on the baseline. Raise it to the middle of the text. */
+	vertical-align: 0.15em;
+	color: color-mix(in srgb, var(--sl-color-green) 50%, var(--sl-color-bg-sidebar));
+}
+
+/* Right column: a plain label, compact link rows, and nested headings set in behind a
+   hairline and muted. */
+.right-sidebar {
+	border-inline-start: 0;
+}
+
+starlight-toc h2,
+mobile-starlight-toc .toggle {
+	font-size: var(--sl-text-sm);
+	font-weight: 600;
+	color: var(--sl-color-white);
+}
+
+starlight-toc h2 {
+	margin-bottom: 0.625rem;
+}
+
+/* The page title already marks the top of the page, so the "Overview" entry adds nothing. */
+starlight-toc li:has(> a[href='#_top']) {
+	display: none;
+}
+
+starlight-toc a {
+	padding: 0.1875rem 0.75rem;
+	border-radius: 0.375rem;
+	font-size: var(--sl-text-sm);
+	line-height: 1.25rem;
+	color: var(--sl-color-gray-2);
+}
+
+starlight-toc nav > ul > li + li {
+	margin-top: 0.125rem;
+}
+
+starlight-toc ul ul a {
+	color: var(--n8n-muted-link);
+	margin-inline-start: 0.75rem;
+	border-inline-start: 1px solid var(--sl-color-gray-5);
+	border-radius: 0 0.375rem 0.375rem 0;
+}
+
+starlight-toc a:hover {
+	color: var(--sl-color-white);
+}
+
+starlight-toc a[aria-current='true'],
+starlight-toc a[aria-current='true']:hover {
+	color: var(--sl-color-accent);
+}
+
+/* At the top of the page the hidden "Overview" entry is current. Mark the first heading instead. */
+starlight-toc nav > ul:has(> li > a[href='#_top'][aria-current='true']) > li:nth-child(2) > a {
+	color: var(--sl-color-accent);
+}
+
+starlight-toc ul ul a[aria-current='true'] {
+	border-inline-start-color: var(--sl-color-accent);
+}
+
+/* No rule between the title block and the page body. */
+.content-panel + .content-panel {
+	border-top: 0;
+}
+
+/* Content. */
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4,
+h1#_top {
+	color: var(--sl-color-white);
+	line-height: 1.25;
+}
+
+h1#_top {
+	font-family: var(--n8n-font-title);
+	font-weight: 700;
+	letter-spacing: -0.025em;
+}
+
+.sl-markdown-content h2 {
+	font-weight: 600;
+	letter-spacing: -0.0125em;
+}
+
+.sl-markdown-content h3,
+.sl-markdown-content h4 {
+	font-weight: 600;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+	color: var(--sl-color-accent);
+	text-decoration-color: color-mix(in srgb, var(--sl-color-accent) 40%, transparent);
+	text-underline-offset: 2px;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)):hover {
+	text-decoration-color: var(--sl-color-accent);
+}
+
+.sl-markdown-content :not(pre) > code {
+	font-size: 0.8125em;
+	padding: 0.0625rem 0.375rem;
+	/* Inline code follows the code blocks: a panel and a hairline in the text colour, one step
+	   closer to the text colour so that the chip shows on the page. */
+	border: 1px solid color-mix(in srgb, var(--sl-color-hairline), var(--sl-color-white) 8%);
+	color: inherit;
+	border-radius: 0.25rem;
+	background: color-mix(in srgb, var(--n8n-panel), var(--sl-color-white) 4%);
+	/* A chip that wraps keeps its border, padding, and corners on each line. */
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+
+.sl-markdown-content blockquote {
+	margin-inline: 0;
+	padding: 0.75rem 1rem;
+	border: 0;
+	border-radius: 0.375rem;
+	background: var(--n8n-panel);
+}
+
+/* Tables: a rounded hairline frame, a tinted header row, and column rules. */
+.sl-markdown-content table {
+	font-size: var(--sl-text-sm);
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.75rem;
+	/* Starlight shows tables as blocks, so a narrow table left empty space inside its frame. */
+	width: fit-content;
+	max-width: 100%;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--sl-color-gray-5) transparent;
+}
+
+.sl-markdown-content :is(th, td) {
+	padding: 0.5rem 0.75rem;
+	line-height: 1.45;
+	border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+.sl-markdown-content :is(th, td) + :is(th, td) {
+	border-inline-start: 1px solid var(--sl-color-hairline);
+}
+
+.sl-markdown-content tr:last-child td {
+	border-bottom: 0;
+}
+
+.sl-markdown-content th {
+	font-weight: 500;
+	color: var(--sl-color-white);
+	background: var(--n8n-panel);
+}
+
+.sl-markdown-content th:first-child {
+	border-start-start-radius: 0.75rem;
+}
+
+.sl-markdown-content th:last-child {
+	border-start-end-radius: 0.75rem;
+}
+
+/* Step numbers in sequence diagrams. Mermaid draws a small grey circle under 12px text in a
+   thin weight, so the digits are hard to read. A larger, lighter circle with bold digits fixes that. */
+pre.mermaid marker[id$='sequencenumber'] circle {
+	r: 7px;
+	fill: var(--sl-color-gray-2);
+}
+
+pre.mermaid .sequenceNumber {
+	font-size: 11px;
+	font-weight: 700;
+	fill: var(--sl-color-black);
+}
+
+/* The self-check answers fold like a GitBook expandable block. */
+.sl-markdown-content details {
+	padding: 0.75rem 1rem;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.75rem;
+}
+
+.sl-markdown-content summary {
+	font-weight: 600;
+	color: var(--sl-color-white);
+	cursor: pointer;
+}
+
+pre.mermaid {
+	background: transparent;
+	border: 0;
+	display: flex;
+	justify-content: safe center;
+	overflow-x: auto;
+	cursor: zoom-in;
+}
+
+/* Rounded boxes, as the cards elsewhere on the site. */
+pre.mermaid .node rect,
+pre.mermaid .cluster rect,
+pre.mermaid rect.actor,
+pre.mermaid rect.note,
+pre.mermaid rect.labelBox {
+	rx: 6px;
+	ry: 6px;
+}
+
+/* Edge labels sit on the page color, so they read as text on the line, not as a box. */
+pre.mermaid .edgeLabel,
+pre.mermaid .edgeLabel rect,
+pre.mermaid .labelBkg {
+	background-color: var(--sl-color-black) !important;
+	fill: var(--sl-color-black) !important;
+	color: var(--sl-color-gray-3);
+}
+
+/* Zoomed state. The script moves the diagram into this overlay on <body>, where the SVG can
+   grow up to its natural size or the window width, whichever is smaller. */
+.mermaid-zoom {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	overflow: auto;
+	padding: 2rem;
+	background: var(--sl-color-bg);
+	cursor: zoom-out;
+}
+
+.mermaid-zoom pre.mermaid {
+	margin: 0;
+	min-height: 100%;
+	align-items: center;
+}
+
+/* Paths wrap after a slash (the remark plugin adds the break points). A long symbol
+   breaks inside a name only when it does not fit the cell. `anywhere`, unlike
+   `break-word`, also lowers the minimum cell width, so the table does not scroll. */
+.sl-markdown-content td code {
+	overflow-wrap: anywhere;
+}
+
+/* A symbol (code without path break points) breaks only when it is wider than the table,
+   so the column grows to fit a short name such as `PostHogClient`. */
+.sl-markdown-content td code:not(:has(wbr)) {
+	overflow-wrap: break-word;
+}
+
+/* A path in the first column names the row, so it stays on one line. */
+.sl-markdown-content td:first-child code:has(wbr) {
+	white-space: nowrap;
+}
+
+/* Code blocks: Shiki writes both themes as CSS variables. Pick the one for the active theme. */
+.sl-markdown-content pre.astro-code {
+	padding: 0.875rem 1rem;
+	font-size: 0.875rem;
+	line-height: 1.6;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.75rem;
+	background: var(--n8n-panel);
+	color: var(--shiki-dark);
+	overflow-x: auto;
+}
+
+.sl-markdown-content pre.astro-code span {
+	color: var(--shiki-dark);
+}
+
+:root[data-theme='light'] .sl-markdown-content pre.astro-code,
+:root[data-theme='light'] .sl-markdown-content pre.astro-code span {
+	color: var(--shiki-light);
+}
+
+/* An icon before each top-level group label: Day 1, Week 1, Month 1, How to. Each icon is
+   a mask, so it takes the text color in both themes. */
+.sidebar-content .top-level > li > details > summary .large {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.sidebar-content .top-level > li > details > summary .large::before {
+	content: '';
+	flex-shrink: 0;
+	width: 0.875rem;
+	height: 0.875rem;
+	background-color: currentColor;
+	mask: var(--group-icon) center / contain no-repeat;
+}
+
+/* Day 1: a sparkle */
+.sidebar-content .top-level > li:nth-child(1) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.75c.4 3.4 2.85 5.85 6.25 6.25-3.4.4-5.85 2.85-6.25 6.25-.4-3.4-2.85-5.85-6.25-6.25C5.15 7.6 7.6 5.15 8 1.75z'/%3E%3C/svg%3E");
+}
+
+/* Week 1: a map */
+.sidebar-content .top-level > li:nth-child(2) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.75 4 5.75 2.25l4.5 1.75 4-1.75V12l-4 1.75-4.5-1.75-4 1.75zM5.75 2.25V12M10.25 4v9.75'/%3E%3C/svg%3E");
+}
+
+/* Month 1: a package */
+.sidebar-content .top-level > li:nth-child(3) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.75 14 4.75v6.5L8 14.25 2 11.25v-6.5zM2 4.75l6 3 6-3M8 7.75v6.5'/%3E%3C/svg%3E");
+}
+
+/* How to: a bookmark */
+.sidebar-content .top-level > li:nth-child(4) > details > summary .large {
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 1.75h8v12.5L8 11l-4 3.25z'/%3E%3C/svg%3E");
+}
+
+/* Top alignment, as on docs.n8n.io: the sidebar card starts 24px below the header. The
+   capitals of the "On this page" label and of the page title sit on one line. */
+@media (min-width: 50rem) {
+	.sidebar-content {
+		margin-top: 1.125rem;
+		/* The middle of the first label lines up with the middle of the page title. */
+		padding-top: 1.25rem;
+		/* Starlight sets height: 100%. The card ends with its links instead, and a long list
+		   grows it, so the links never run past its bottom edge. */
+		height: fit-content;
+		/* The last link has its own padding, so less padding here puts the same space below
+		   the last label as above the first label. */
+		padding-bottom: 1rem;
+	}
+	/* Starlight adds an empty last child, which the flex gap turns into 17px of space. */
+	.sidebar-content::after {
+		display: none;
+	}
+	.sidebar-pane {
+		/* Starlight reserves a scrollbar gutter, which makes the card narrower. */
+		scrollbar-gutter: auto;
+		scrollbar-width: thin;
+		scrollbar-color: var(--sl-color-gray-5) transparent;
+	}
+	main > .content-panel:first-child {
+		padding-top: 0.8125rem;
+	}
+}
+
+.right-sidebar-panel {
+	padding-top: 2.75rem;
+}
+
+/* As on docs.n8n.io, the layout stays in a centered frame of at most 90rem. On a wider
+   window, the space outside the frame (--n8n-edge) goes to both sides equally. */
+:root {
+	--n8n-edge: max(0px, (100vw - 90rem) / 2);
+}
+
+@media (min-width: 50rem) {
+	/* The sidebar card is 284px wide and the logo sits 2rem in, as on docs.n8n.io. */
+	:root {
+		--sl-sidebar-width: 19.25rem;
+		--sl-nav-pad-x: 2rem;
+	}
+	header.header {
+		padding-inline: calc(var(--n8n-edge) + var(--sl-nav-pad-x));
+	}
+	:root[data-has-sidebar] {
+		--sl-content-inline-start: calc(var(--sl-sidebar-width) + var(--n8n-edge));
+	}
+	.sidebar-pane {
+		width: var(--sl-content-inline-start);
+		padding-inline-start: var(--n8n-edge);
+	}
+}
+
+/* Starlight gives half of the free space to the right of the TOC, so the gaps differ.
+   Keep the TOC column at the right edge of the frame and center the text between the
+   two sidebars. */
+@media (min-width: 72rem) {
+	.right-sidebar-container {
+		width: calc(var(--sl-sidebar-width) + var(--n8n-edge));
+	}
+	[data-has-sidebar][data-has-toc] .main-pane {
+		--sl-content-margin-inline: auto;
+		width: calc(100% - var(--sl-sidebar-width) - var(--n8n-edge));
+	}
+	/* Match the space between the sidebar card and the edge of its pane. */
+	.right-sidebar-panel {
+		padding-inline: 0.75rem calc(var(--sl-sidebar-pad-x) + var(--n8n-edge));
+	}
+}
+
+/* A nested group label (a Month 1 topic) looks like a link, as on docs.n8n.io. */
+.sidebar-content ul ul summary .group-label span {
+	font-size: var(--sl-text-sm);
+	font-weight: 400;
+	color: var(--n8n-muted-link);
+}
+
+.sidebar-content ul ul summary:hover .group-label span {
+	color: var(--sl-color-white);
+}
+
+/* The same padding and hover as a link, so the label text lines up with the links. */
+.sidebar-content ul ul summary {
+	padding: 0.375rem 0.375rem 0.375rem 0.75rem;
+	line-height: 1.25rem;
+	border-radius: 0.375rem;
+}
+
+.sidebar-content ul ul summary:hover {
+	background-color: var(--n8n-hover);
+}
+
+/* Small, faint chevrons, as on docs.n8n.io. */
+.sidebar-content .caret {
+	width: 0.875rem;
+	height: 0.875rem;
+	color: var(--sl-color-gray-3);
+	opacity: 0.7;
+}
+
+/* Header: the search box sits at the right, next to the theme menu. The site has no social
+   links, so their slot and its divider line are hidden. */
+@media (min-width: 50rem) {
+	.header > div:nth-child(2) {
+		justify-content: flex-end;
+	}
+}
+
+.header .social-icons {
+	display: none;
+}
+
+/* A compact search button, as on the Lisette site. */
+@media (min-width: 50rem) {
+	site-search button[data-open-modal] {
+		width: 14.5rem;
+		height: 2.25rem;
+	}
+}
+
+/* With the right sidebar visible, the header controls and the TOC share one column. The TOC
+   ends where the theme button ends. The search icon starts where the "On this page" label
+   starts, so the box reaches 0.8125rem (its padding and border) to the left of the label.
+   The theme button (2.25rem) and the 1.5rem gap fill the rest. */
+@media (min-width: 72rem) {
+	:root {
+		--n8n-toc-width: calc(var(--sl-sidebar-width) - 0.75rem - var(--sl-nav-pad-x));
+	}
+	.right-sidebar-panel .sl-container {
+		width: var(--n8n-toc-width);
+		max-width: none;
+	}
+	site-search button[data-open-modal] {
+		width: calc(var(--n8n-toc-width) - 3.75rem + 0.8125rem);
+	}
+}
+
+/* Previous and next links at the page bottom: small titles and a muted label, as on
+   docs.n8n.io. */
+.pagination-links a {
+	gap: 1rem;
+	padding: 0.875rem 1.25rem;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.75rem;
+	box-shadow: none;
+	font-size: var(--sl-text-sm);
+	color: var(--sl-color-gray-3);
+	transition: border-color 0.15s;
+}
+
+.pagination-links a:hover {
+	border-color: var(--sl-color-accent);
+}
+
+.pagination-links .link-title {
+	display: inline-block;
+	margin-top: 0.125rem;
+	font-size: var(--sl-text-base);
+	font-weight: 500;
+	line-height: 1.375;
+	color: var(--sl-color-white);
+}
+
+.pagination-links a:hover .link-title {
+	color: var(--sl-color-accent);
+}
+
+.pagination-links svg {
+	width: 1rem;
+	height: 1rem;
+	color: var(--sl-color-gray-3);
+}
+
+/* The title and the body are two panels. Reduce the space between the byline and the
+   first paragraph. */
+main > .content-panel:first-child {
+	padding-bottom: 0.5rem;
+}
+
+/* Search dialog: the frame of the site cards, and no browser focus ring on the dialog. */
+site-search dialog {
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.75rem;
+	outline: none;
+	background-color: var(--n8n-panel);
+}
+
+/* Pagefind already draws a pink border on the focused input. */
+site-search input:focus {
+	outline: none;
+}
+
+site-search dialog::backdrop {
+	backdrop-filter: blur(4px);
+}
+
+site-search mark {
+	background: transparent;
+	color: var(--sl-color-accent);
+}
+
+/* Phone header: the menu button looks like the theme button, not a white disc. */
+starlight-menu-button button {
+	background-color: transparent;
+	color: var(--sl-color-gray-2);
+	box-shadow: none;
+}
+
+starlight-menu-button button:hover,
+starlight-menu-button[aria-expanded='true'] button {
+	background-color: var(--n8n-hover);
+}
+
+:root[data-theme='light'] starlight-menu-button button {
+	background-color: transparent;
+	color: var(--sl-color-gray-2);
+}
+
+:root[data-theme='light'] starlight-menu-button[aria-expanded='true'] button {
+	background-color: var(--n8n-hover);
+}
+
+/* The phone TOC hides Overview, as the desktop TOC does. At the top of the page the bar
+   shows only its label. */
+mobile-starlight-toc li:has(> a[href='#_top']) {
+	display: none;
+}
+
+mobile-starlight-toc:has(a[href='#_top'][aria-current='true']) .display-current {
+	visibility: hidden;
+}
+
+/* The phone TOC bar uses the same see-through color as the header, so it needs the same blur. */
+mobile-starlight-toc nav {
+	backdrop-filter: blur(8px);
+}
+
+/* One card takes half of the row, as when both cards show. A lone Next card stays right. */
+@media (min-width: 50rem) {
+	.pagination-links {
+		grid-template-columns: 1fr 1fr;
+	}
+	.pagination-links > [rel='next']:only-child {
+		grid-column: 2;
+	}
+}
+
+/* Quiz. The remark plugin builds it from a multiple choice self-check, and Head.astro adds
+   the buttons. */
+.sl-markdown-content .quiz-question + .quiz-question {
+	margin-top: 1.5rem;
+}
+
+.sl-markdown-content .quiz-options {
+	display: grid;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+	padding: 0;
+	list-style: none;
+}
+
+/* A and B share a row, and C and D share the next. Phones keep one column. */
+@media (min-width: 50rem) {
+	.sl-markdown-content .quiz-options {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.sl-markdown-content .quiz-options > li {
+	display: flex;
+	margin: 0;
+}
+
+.sl-markdown-content .quiz-option {
+	display: block;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0.625rem 0.875rem;
+	border: 1px solid var(--sl-color-hairline);
+	border-radius: 0.5rem;
+	background: transparent;
+	font: inherit;
+	font-size: var(--sl-text-sm);
+	line-height: 1.5;
+	color: var(--sl-color-gray-2);
+	text-align: start;
+	cursor: pointer;
+}
+
+.sl-markdown-content .quiz-option > p {
+	margin: 0;
+}
+
+.sl-markdown-content .quiz-option:not(:disabled):hover {
+	border-color: var(--sl-color-gray-4);
+	background: var(--n8n-hover);
+}
+
+.sl-markdown-content .quiz-option:disabled {
+	cursor: default;
+}
+
+.sl-markdown-content .quiz-option:disabled:not([data-result]) {
+	opacity: 0.6;
+}
+
+.sl-markdown-content .quiz-option[data-result='right'] {
+	border-color: var(--n8n-right);
+	background: color-mix(in srgb, var(--n8n-right) 12%, transparent);
+	color: var(--sl-color-white);
+}
+
+.sl-markdown-content .quiz-option[data-result='wrong'] {
+	border-color: var(--n8n-wrong);
+	background: color-mix(in srgb, var(--n8n-wrong) 12%, transparent);
+	color: var(--sl-color-white);
+}
+
+/* The feedback panel takes the color of the result and starts with a verdict. */
+.sl-markdown-content .quiz-explanation {
+	margin-top: 0.75rem;
+	padding: 0.75rem 0.875rem;
+	border: 1px solid var(--quiz-color);
+	border-radius: 0.5rem;
+	background: color-mix(in srgb, var(--quiz-color) 8%, transparent);
+	font-size: var(--sl-text-sm);
+	color: var(--sl-color-gray-2);
+}
+
+.sl-markdown-content .quiz-question[data-result='right'] {
+	--quiz-color: var(--n8n-right);
+}
+
+.sl-markdown-content .quiz-question[data-result='wrong'] {
+	--quiz-color: var(--n8n-wrong);
+}
+
+.sl-markdown-content .quiz-explanation > p {
+	margin: 0;
+}
+
+/* A mark at the end of the right and the wrong option, so the result does not depend on
+   color alone. */
+.sl-markdown-content .quiz-option[data-result] {
+	position: relative;
+	padding-inline-end: 2.5rem;
+}
+
+.sl-markdown-content .quiz-option[data-result]::after {
+	position: absolute;
+	inset-inline-end: 0.875rem;
+	top: 0.625rem;
+	font-weight: 600;
+}
+
+.sl-markdown-content .quiz-option[data-result='right']::after {
+	content: '\2713';
+	color: var(--n8n-right);
+}
+
+.sl-markdown-content .quiz-option[data-result='wrong']::after {
+	content: '\2717';
+	color: var(--n8n-wrong);
+}
+
+.sl-markdown-content .quiz-feedback-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.625rem;
+}
+
+.sl-markdown-content .quiz-explanation .quiz-verdict {
+	font-weight: 600;
+	color: var(--quiz-color);
+}
+
+.sl-markdown-content .quiz-retry {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	margin: 0;
+	padding: 0.125rem 0.375rem;
+	border: 0;
+	border-radius: 0.25rem;
+	background: none;
+	font: inherit;
+	font-size: var(--sl-text-xs);
+	line-height: 1.25rem;
+	color: var(--sl-color-gray-4);
+	cursor: pointer;
+}
+
+.sl-markdown-content .quiz-retry:hover {
+	background: var(--n8n-hover);
+	color: var(--sl-color-gray-2);
+}
+
+.sl-markdown-content .quiz-retry svg {
+	width: 0.75rem;
+	height: 0.75rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+:root {
+	--n8n-right: #3fb68b;
+	--n8n-wrong: #f0616d;
+}
+
+:root[data-theme='light'] {
+	--n8n-right: #1f8f63;
+	--n8n-wrong: #d6334a;
+}
+
+/* Quiz questions are numbered Q1, Q2, and so on. */
+.sl-markdown-content ol.quiz {
+	list-style: none;
+	counter-reset: quiz;
+	/* The same indent as other numbered lists, so the question text lines up with theirs. */
+	padding-inline-start: 2.5rem;
+}
+
+.sl-markdown-content .quiz-question {
+	position: relative;
+	counter-increment: quiz;
+}
+
+.sl-markdown-content .quiz-question::before {
+	content: 'Q' counter(quiz);
+	position: absolute;
+	inset-inline-start: -2.5rem;
+	font-weight: 600;
+	color: var(--sl-color-gray-3);
+}
+
+/* The option letter looks like the question number: bold and muted. It sits in its own
+   column, so a wrapped option lines up under its text. */
+.sl-markdown-content .quiz-option {
+	position: relative;
+	padding-inline-start: 2.375rem;
+}
+
+.sl-markdown-content .quiz-letter {
+	position: absolute;
+	inset-inline-start: 0.875rem;
+	font-weight: 600;
+	color: var(--sl-color-gray-3);
+}
+
+/* Asides come from GitHub alerts in the Markdown. A tinted panel with an icon, as on docs.n8n.io. */
+:root {
+	--n8n-note: #6ea8fe;
+	--n8n-tip: #b18cf5;
+	--n8n-caution: #f2a25c;
+}
+
+:root[data-theme='light'] {
+	--n8n-note: #2f6fd1;
+	--n8n-tip: #7450d6;
+	--n8n-caution: #c26414;
+}
+
+.sl-markdown-content .n8n-aside {
+	--aside-color: var(--n8n-note);
+	display: flex;
+	gap: 0.75rem;
+	padding: 0.875rem 1rem;
+	border-radius: 0.5rem;
+	background: color-mix(in srgb, var(--aside-color) 10%, var(--sl-color-black));
+	font-size: var(--sl-text-sm);
+	color: var(--sl-color-white);
+}
+
+.sl-markdown-content .n8n-aside--tip {
+	--aside-color: var(--n8n-tip);
+}
+
+.sl-markdown-content .n8n-aside--caution {
+	--aside-color: var(--n8n-caution);
+}
+
+.n8n-aside__icon {
+	flex-shrink: 0;
+	width: 1.125rem;
+	height: 1.125rem;
+	/* Centers the icon on the first line of text. */
+	margin-top: calc((var(--sl-line-height) * 1em - 1.125rem) / 2);
+	fill: none;
+	stroke: var(--aside-color);
+	stroke-width: 1.4;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+/* Starlight puts a top margin on each block that follows another, here the icon. */
+.sl-markdown-content .n8n-aside > .n8n-aside__content {
+	min-width: 0;
+	margin-top: 0;
+}
+
+.sl-markdown-content .n8n-aside__content > * {
+	margin-top: 0;
+}
+
+.sl-markdown-content .n8n-aside__content > * + * {
+	margin-top: 0.5rem;
+}
+
+/* Steps: a numbered accent dot for each step, joined by a vertical line, as on docs.n8n.io. */
+.sl-markdown-content ol.n8n-steps {
+	--bullet: 1.75rem;
+	list-style: none;
+	counter-reset: step;
+	padding-inline-start: 0;
+}
+
+.sl-markdown-content ol.n8n-steps > li {
+	counter-increment: step;
+	position: relative;
+	margin: 0;
+	padding-inline-start: calc(var(--bullet) + 1.25rem);
+	padding-bottom: 1.25rem;
+	min-height: calc(var(--bullet) + 0.5rem);
+}
+
+.sl-markdown-content ol.n8n-steps > li:last-child {
+	padding-bottom: 0;
+}
+
+.sl-markdown-content ol.n8n-steps > li::before {
+	content: counter(step);
+	position: absolute;
+	/* Center the dot on the first line of the step title, which is larger than body text. */
+	top: calc((var(--sl-line-height) * var(--sl-text-lg) - var(--bullet)) / 2);
+	inset-inline-start: 0;
+	width: var(--bullet);
+	height: var(--bullet);
+	border-radius: 999px;
+	background: var(--sl-color-accent);
+	color: var(--sl-color-text-invert);
+	font-size: var(--sl-text-xs);
+	font-weight: 600;
+	line-height: var(--bullet);
+	text-align: center;
+}
+
+.sl-markdown-content ol.n8n-steps > li::after {
+	content: '';
+	position: absolute;
+	top: calc(var(--bullet) + 0.5rem);
+	bottom: 0.5rem;
+	inset-inline-start: calc(var(--bullet) / 2 - 0.5px);
+	width: 1px;
+	background: var(--sl-color-hairline);
+}
+
+.sl-markdown-content ol.n8n-steps > li:last-child::after {
+	display: none;
+}
+
+.sl-markdown-content ol.n8n-steps > li > :first-child {
+	margin-top: 0;
+}
+
+.sl-markdown-content .n8n-step-title {
+	font-family: var(--n8n-font-title);
+	font-size: var(--sl-text-lg);
+	font-weight: 600;
+	color: var(--sl-color-white);
+}
+
+.sl-markdown-content .n8n-step-title + * {
+	margin-top: 0.375rem;
+}
+
+.sl-markdown-content kbd {
+	padding: 0.0625rem 0.375rem;
+	border: 1px solid var(--sl-color-gray-5);
+	border-bottom-width: 2px;
+	border-radius: 0.25rem;
+	background-color: var(--sl-color-gray-6);
+	font-family: var(--__sl-font-mono);
+	font-size: 0.85em;
+}

@@ -1,0 +1,16 @@
+extends: substitution
+message: "Use '%s' instead of '%s'."
+link: https://github.com/n8n-io/n8n/blob/master/AGENTS.md
+level: warning
+ignorecase: false
+swap:
+  'N8n': 'n8n'
+  'N8N': 'n8n'
+  'Github': 'GitHub'
+  'Postgresql': 'PostgreSQL'
+  'Sqlite': 'SQLite'
+  'Typescript': 'TypeScript'
+  'Javascript': 'JavaScript'
+  'Typeorm': 'TypeORM'
+  'Oauth2': 'OAuth2'
+  'oauth2': 'OAuth2'

@@ -1,0 +1,33 @@
+# Lychee link checker configuration for docs/backend.
+#
+# Run from the repo root: `lychee --config docs/backend/lychee.toml docs/backend`.
+# CI runs the same in ci-docs-backend.yml on changes to this folder.
+
+verbose = "warn"
+no_progress = true
+format = "markdown"
+
+# No cache file: the run is short and a cache would need to be ignored by git.
+cache = false
+
+threads = 4
+max_redirects = 5
+timeout = 20
+max_retries = 2
+
+# Accept the usual success codes plus 429 (rate limited) so a busy host does
+# not fail the build.
+accept = ["200..=204", "429"]
+
+# Notion and Linear require a session and always answer 200 or a redirect to
+# a login page, so a check proves nothing. Slack permalinks are private.
+exclude = [
+  "^https://app\\.notion\\.com/",
+  "^https://www\\.notion\\.so/",
+  "^https://linear\\.app/",
+  "^https://n8nio\\.slack\\.com/",
+  "^http://localhost",
+  "^https://localhost",
+]
+
+exclude_all_private = true

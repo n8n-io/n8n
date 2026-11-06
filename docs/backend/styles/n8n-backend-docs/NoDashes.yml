@@ -1,0 +1,9 @@
+extends: existence
+message: "Do not use an en dash or an em dash. Use a comma, a colon, or parentheses."
+link: https://github.com/n8n-io/n8n/blob/master/AGENTS.md
+level: error
+nonword: true
+tokens:
+  - '—'
+  - '–'
+  - ' -- '
