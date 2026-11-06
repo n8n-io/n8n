@@ -81,7 +81,7 @@ test.describe(
 				expect(violations).toEqual([]);
 
 				await n8n.instanceAi.selectMentionWithKeyboard(workflow.name);
-				await expect(input).toHaveValue(`"${workflow.name}"`);
+				await expect(input).toHaveValue('');
 				await expect(n8n.instanceAi.getComposerWorkflowChip(workflow.name)).toBeVisible();
 				expect(n8n.instanceAi.getCurrentPath()).toBe('/assistant');
 				await expect(n8n.instanceAi.getPreviewTabByName(workflow.name)).toBeHidden();
