@@ -88,6 +88,25 @@
 	border-bottom-color: var(--sl-color-hairline-shade);
 }
 
+/* Reading progress: the hairline fills with a faint accent from left to right. */
+.page > header.header::after {
+	content: '';
+	position: absolute;
+	inset-inline: 0;
+	bottom: -1px;
+	height: 1px;
+	background: color-mix(in srgb, var(--sl-color-accent) 55%, transparent);
+	transform: scaleX(var(--n8n-read-progress, 0));
+	transform-origin: left;
+	opacity: 0;
+	transition: opacity 0.15s;
+	pointer-events: none;
+}
+
+:root[data-scrolled] .page > header.header::after {
+	opacity: 1;
+}
+
 /* Sidebar: a rounded tinted card inside the pane, with no rule between pane and content. */
 @media (min-width: 50rem) {
 	.sidebar-pane {
@@ -285,6 +304,19 @@ h1#_top {
 	border-start-end-radius: 0.75rem;
 }
 
+/* Step numbers in sequence diagrams. Mermaid draws a small grey circle under 12px text in a
+   thin weight, so the digits are hard to read. A larger, lighter circle with bold digits fixes that. */
+pre.mermaid marker[id$='sequencenumber'] circle {
+	r: 7px;
+	fill: var(--sl-color-gray-2);
+}
+
+pre.mermaid .sequenceNumber {
+	font-size: 11px;
+	font-weight: 700;
+	fill: var(--sl-color-black);
+}
+
 /* The self-check answers fold like a GitBook expandable block. */
 .sl-markdown-content details {
 	padding: 0.75rem 1rem;
@@ -389,9 +421,9 @@ pre.mermaid .labelBkg {
 	mask: var(--group-icon) center / contain no-repeat;
 }
 
-/* Day 1: a flag */
+/* Day 1: a sparkle */
 .sidebar-content .top-level > li:nth-child(1) > details > summary .large {
-	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 14.5V1.75M3.5 2.5h8.75l-2 3 2 3H3.5'/%3E%3C/svg%3E");
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.75c.4 3.4 2.85 5.85 6.25 6.25-3.4.4-5.85 2.85-6.25 6.25-.4-3.4-2.85-5.85-6.25-6.25C5.15 7.6 7.6 5.15 8 1.75z'/%3E%3C/svg%3E");
 }
 
 /* Week 1: a map */
@@ -399,14 +431,14 @@ pre.mermaid .labelBkg {
 	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.75 4 5.75 2.25l4.5 1.75 4-1.75V12l-4 1.75-4.5-1.75-4 1.75zM5.75 2.25V12M10.25 4v9.75'/%3E%3C/svg%3E");
 }
 
-/* Month 1: layers */
+/* Month 1: a package */
 .sidebar-content .top-level > li:nth-child(3) > details > summary .large {
-	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.75 14.25 5 8 8.25 1.75 5zM1.75 8 8 11.25 14.25 8M1.75 11 8 14.25 14.25 11'/%3E%3C/svg%3E");
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 1.75 14 4.75v6.5L8 14.25 2 11.25v-6.5zM2 4.75l6 3 6-3M8 7.75v6.5'/%3E%3C/svg%3E");
 }
 
-/* How to: a wrench */
+/* How to: a bookmark */
 .sidebar-content .top-level > li:nth-child(4) > details > summary .large {
-	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.75 1.75a3.5 3.5 0 0 0-3.4 4.4l-5.1 5.1a1.6 1.6 0 0 0 2.25 2.25l5.1-5.1a3.5 3.5 0 0 0 4.4-4.4l-2.05 2.05-1.85-.4-.4-1.85z'/%3E%3C/svg%3E");
+	--group-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 1.75h8v12.5L8 11l-4 3.25z'/%3E%3C/svg%3E");
 }
 
 /* Top alignment, as on docs.n8n.io: the sidebar card starts 24px below the header. The

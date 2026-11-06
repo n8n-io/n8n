@@ -5,25 +5,28 @@ import { readdirSync } from 'node:fs';
 import { remarkBackendDocs } from './plugins/remark-backend-docs.mjs';
 
 // The reading order from docs/backend/README.md. Pages missing here are appended alphabetically.
-const DAY_ONE = ['index', 'patterns'];
+const DAY_ONE = ['index', 'how-n8n-runs'];
 const TIER_TWO = [
-	'life-of-a-workflow-publish',
-	'life-of-a-webhook-execution',
-	'legacy-and-new',
-	'cloud-coupling',
-	'enterprise-gating',
+	'workflow-publication',
+	'workflow-execution',
+	'agent-turn',
 ];
-// Month 1 pages, nested by topic as in the docs.n8n.io sidebar.
-const SUBSYSTEM_GROUPS = [
-	{ label: 'Processes and scale', slugs: ['startup-and-processes', 'scaling-and-multi-main', 'task-runners'] },
-	{
-		label: 'Running workflows',
-		slugs: ['workflow-model', 'execution-engine', 'manual-executions', 'expressions', 'nodes-loading', 'engine-2'],
-	},
-	{ label: 'Triggers and realtime', slugs: ['scheduling-and-waiting', 'webhooks-push-and-concurrency', 'realtime'] },
-	{ label: 'Storage and data', slugs: ['persistence', 'data-and-packages'] },
-	{ label: 'Identity and access', slugs: ['authentication', 'sso-and-provisioning', 'authorization', 'credentials'] },
-	{ label: 'Platform', slugs: ['lifecycle-and-governance', 'public-api', 'observability', 'ai-platform'] },
+// Month 1 pages in reading order: workflows, agents, processes, state, then the product around them.
+const SUBSYSTEMS = [
+	'engine',
+	'triggers',
+	'user-code',
+	'ai-features',
+	'clusters',
+	'live-updates',
+	'data',
+	'observability',
+	'access',
+	'licensing',
+	'cloud',
+	'public-api',
+	'product-features',
+	'engine-2',
 ];
 
 const DOCS_DIR = new URL('../../../docs/backend/', import.meta.url);
@@ -36,20 +39,6 @@ function pages(known, folder = '') {
 		.sort();
 	const ordered = [...known.filter((slug) => found.includes(slug)), ...found.filter((slug) => !known.includes(slug))];
 	return ordered.map((slug) => ({ slug: `${folder}${slug}` }));
-}
-
-/** Nests the Month 1 pages by topic. A new page that no topic lists goes into "More". */
-function subsystemGroups() {
-	const all = pages([], 'subsystems/').map((item) => item.slug);
-	const listed = new Set(SUBSYSTEM_GROUPS.flatMap((group) => group.slugs.map((slug) => `subsystems/${slug}`)));
-	const groups = SUBSYSTEM_GROUPS.map((group) => ({
-		label: group.label,
-		collapsed: true,
-		items: group.slugs.map((slug) => `subsystems/${slug}`).filter((slug) => all.includes(slug)),
-	}));
-	const rest = all.filter((slug) => !listed.has(slug));
-	if (rest.length > 0) groups.push({ label: 'More', collapsed: true, items: rest });
-	return groups.filter((group) => group.items.length > 0);
 }
 
 export default defineConfig({
@@ -83,7 +72,7 @@ export default defineConfig({
 					label: 'Week 1',
 					items: pages(TIER_TWO).filter((item) => !DAY_ONE.includes(item.slug)),
 				},
-				{ label: 'Month 1', collapsed: true, items: subsystemGroups() },
+				{ label: 'Month 1', collapsed: true, items: pages(SUBSYSTEMS, 'subsystems/') },
 				{ label: 'How to', items: pages(['run-queue-mode-locally', 'build-a-backend-module', 'write-a-database-migration', 'roll-out-a-change'], 'how-to/') },
 			],
 		}),

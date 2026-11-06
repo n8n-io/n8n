@@ -1,52 +1,52 @@
 ---
-title: The public API
+title: Public API
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-05
 contact: SamWooler
 ---
 
-# The public API
+# Public API
 
-Read this when you add or change an endpoint under `/api/v1`, or when you need to know how it differs from the internal REST API.
+The editor talks to the backend through the REST API under `/rest`. Scripts, CI pipelines, and other tools use a second API, the public API under `/api/v1`. This page explains how the two differ. Read it before you add or change a public endpoint.
 
-## What it is
+The REST API under `/rest` belongs to the editor, and the two change together. The public API is a contract with code outside n8n. A change must not break callers that already exist, also when the code behind an endpoint changes.
 
-The public API is the versioned REST surface at `/api/v1` for scripts, CI, and external tools. It is separate from the internal API at `/rest` that the editor uses. Callers authenticate with an API key or another token. The public API ships its own OpenAPI document, a Swagger UI, and cursor-based pagination. Every endpoint is a method on a `@PublicApiController` class. `@n8n/cli` is a separate client that talks only to this API.
+Most callers sign in with an API key. A key has its own scopes, a smaller set than the scopes of users. A key never has a scope that the role of its owner lacks.
 
-## Why it has this shape
+Each endpoint is a method on a `@PublicApiController` class. The build generates the OpenAPI document from these methods and from the request and response types in `@n8n/api-types`, so a new endpoint describes itself. A lint rule keeps repositories out of public API controllers, so they call services. List endpoints page with cursors, not with page numbers.
 
-- **A public contract.** External code depends on these endpoints, so a change must not break callers. When an endpoint moves to a new implementation, its public contract must stay the same.
-- **Decorators, not handler modules.** Until October 2026, part of the API ran as handler modules that an OpenAPI validator dispatched. The migration to `@PublicApiController` classes is complete, and the validator stack is gone. The `v1/handlers/` folders still hold YAML schema files and a few helpers. Each controller needs a side-effect import in `packages/cli/src/public-api/v1/controllers/index.ts`.
-- **The spec comes from code.** At build time, a generator reads the DTOs from `@n8n/api-types` and the `@Api*` decorators. It writes `openapi.decorator-routes.generated.yml`, and the build merges it into `openapi.yml`. New endpoints therefore describe themselves.
-- **One middleware order.** The registry adds the middlewares of each route in a fixed order. The order is: deprecation notice, authentication, rate limits, `@ApiKeyScope`, `@GlobalScope` or `@ProjectScope`, `@Licensed`, the body parser, and idempotency. The scope check uses the same `userHasScopes` as the internal API.
-- **Two scope vocabularies.** API key scopes are a smaller set than user scopes. A key can never carry a scope that its owner's role lacks.
-- **Pluggable authentication.** Authentication goes through `AuthStrategyRegistry`. It accepts an API key, a session cookie, a scoped JWT from token exchange, or an OAuth token from a trusted source.
-- **Lint rules guard the direction.** Handlers and controllers must not use repositories (`no-repository-in-public-api-handler`). Developers cannot turn these rules off inline.
+`@n8n/cli` is a command line client that uses only the public API. `.agents/skills/public-api/SKILL.md` gives the steps for a new endpoint.
 
-## Where it lives
+## Quiz
 
-| Part | File | Symbol |
-|---|---|---|
-| Router per version | `packages/cli/src/public-api/index.ts` | `loadPublicApiVersions` |
-| Route registry and middleware order | `packages/cli/src/public-api/public-api-controller.registry.ts` | `PublicApiControllerRegistry.activate` |
-| Spec generator | `packages/cli/src/public-api/v1/openapi-gen/generate.ts` | `getDecoratorGeneratedOperations` |
-| Cursor pagination | `packages/cli/src/public-api/v1/shared/services/pagination.service.ts` | `encodeNextCursor` |
-| Rate limits | `packages/cli/src/public-api/public-api-rate-limit.service.ts` | `PublicApiRateLimitService` |
-| Idempotency keys | `packages/cli/src/public-api/idempotency-key.service.ts` | `IdempotencyKeyService` |
-| Controller decorator | `packages/@n8n/decorators/src/controller/public-api-controller.ts` | `PublicApiController` |
-| API key scopes per role | `packages/@n8n/permissions/src/public-api-permissions.ee.ts` | `getApiKeyScopesForRole` |
-| API key auth switch | `packages/cli/src/public-api/index.ts` | `isApiKeyAuthEnabled` |
+1. Which API can change together with the editor?
+   - A. The REST API under `/rest`.
+   - B. The public API under `/api/v1`.
+   - C. Both.
+   - D. Neither.
+2. Can an API key have a scope that the role of its owner does not have?
+   - A. Yes, if an admin creates the key.
+   - B. Yes, for read scopes.
+   - C. Only on Cloud.
+   - D. No.
+3. How do list endpoints of the public API page?
+   - A. With page numbers.
+   - B. With offsets and limits.
+   - C. With cursors.
+   - D. They return all rows.
+4. A public API controller needs data. What does it call?
+   - A. A repository.
+   - B. A service.
+   - C. A TypeORM query.
+   - D. The REST controller.
 
-API key authentication is off when the public API is disabled in configuration, or when the license excludes the API.
+<details>
+<summary>Answers</summary>
 
-## What is moving
+1. A. The REST API under `/rest`. The public API is a contract with callers outside n8n. A change must not break them.
+2. D. No. A key has its own scopes, a smaller set than the scopes of users.
+3. C. With cursors. List endpoints page with cursors, not with page numbers.
+4. B. A service. A lint rule keeps repositories out of public API controllers.
 
-The public API grows new operational features: per-route rate limits with a settings API, and `Idempotency-Key` support on `POST` requests.
-
-## Read more
-
-- `.agents/skills/public-api/SKILL.md` and its reference, the how-to and the rules
-- `packages/@n8n/cli/docs/`
-- [Authentication and sessions](authentication.md) for the strategy chain
-- docs.n8n.io: the API reference
+</details>

@@ -23,6 +23,7 @@ export function contactFor(login: string): Contact {
 		login,
 		name: shared ? fullName : firstName(fullName),
 		url: `https://github.com/${login}`,
-		avatar: `https://github.com/${login}.png?size=40`,
+		// The avatar host answers at once. `github.com/<login>.png` redirects there first.
+		avatar: `https://avatars.githubusercontent.com/${login}?s=40`,
 	};
 }

@@ -1,71 +1,73 @@
 ---
-title: Observability and audit
+title: Observability
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-05
 contact: looorent
 ---
 
-# Observability and audit
+# Observability
 
-Read this when you add an event or a metric. Also read it when you touch log streaming, telemetry, tracing, redaction, the security audit, or insights.
+When something happens in the backend, such as a publication or the end of an execution, several parts of n8n want to know. This page explains how one event reaches all of them, which executions count, and the metrics, logs, and traces of a process. Read it before you add an event or a metric.
 
-## What it is
+## Events
 
-This area covers every path by which n8n reports on itself. `EventService` is the one typed emitter for backend events. Relays pass its events on to other consumers. The `MessageEventBus` serves licensed **log streaming**. RudderStack and PostHog receive **product telemetry**. One relay sends an email on the first production failure, and one writes the `activity_event` table. Next to this sit the Prometheus `/metrics` endpoint, the OpenTelemetry tracing module, execution data **redaction**, and the `n8n audit` security report. **Insights** turns execution counts into period rows for the dashboard.
+A service emits a typed event through `EventService`. It does not know who listens. **Relays** listen and pass each event to one consumer:
 
-```mermaid
-flowchart LR
-    S["a service<br/>eventService.emit(...)"] --> E["EventService<br/>typed emitter"]
-    E --> L["LogStreamingEventRelay"] --> B["MessageEventBus<br/>event log on disk"]
-    E --> T["TelemetryEventRelay"] --> RS["RudderStack and PostHog"]
-    E --> F["WorkflowFailureNotificationEventRelay"] --> M["email"]
-    E --> A["ActivityEventRelay"] --> AE["activity_event table"]
-    B --> D["log streaming destinations"]
-```
+| Consumer | Receives |
+|---|---|
+| Log streaming | Events for external log destinations of the customer. This needs a license |
+| Product telemetry | Usage events for PostHog and RudderStack. An instance with diagnostics off sends none |
+| The activity log | Rows in the table `activity_event` |
+| The failure email | The first failure of a production workflow |
 
-*One emit, several consumers. To add an event, add its payload type to an event map, emit it, and handle it in the relays that need it.*
+To add an event, add its payload type to the event map, emit it, and handle it in the relays that need it. Log streaming users filter on event names such as `n8n.workflow.success`, so those names are a contract. `pnpm --filter @n8n/telemetry catalog` lists the telemetry events that have a definition.
 
-## Why it has this shape
+The event bus behind log streaming is also a recovery log. Each process writes each event to a file on disk before it sends the event on. At startup, the process reads the file and marks executions without a final event as crashed.
 
-- **The service is shared, the payloads are not.** `EventService` lives in `@n8n/backend-services` with an empty `EventMap`. Each owner adds payload types through module augmentation. The CLI does this in `packages/cli/src/events/event-map.ts`, so the shared package does not depend on CLI code.
-- **The event bus is also the crash recovery log.** `MessageEventBus.send` writes each message to a rotating log on disk before it emits to destinations. At startup, the bus reads the log and marks executions with no final event as crashed, or recovers them. When no destination listens, the bus confirms each message at once, so that the log does not grow without limit. For this reason the bus stays in core, while the destinations live in the `log-streaming` module.
-- **Event names are a public contract.** Log streaming destinations outside n8n filter on names such as `n8n.workflow.*` and `n8n.audit.*`. A rename breaks those filters.
-- **Telemetry events have a registry.** `@n8n/telemetry` holds typed event definitions. `Telemetry.track` validates the properties when it gets a definition, and logs a warning on a mismatch. Adoption is gradual. The `n8n:telemetry` skill covers new events.
-- **One place decides which runs count.** `packages/@n8n/backend-services/src/executions/counting-rules.ts` defines which runs count for billing, insights, time saved, and execution limits. Insights collection asks `isInsightsProduction` instead of its own mode list.
-- **Redaction through a proxy.** Execution code depends on `ExecutionRedactionServiceProxy`. The `redaction` module supplies the handler. The policy is captured when an execution starts and applied when someone reads the data.
+## Execution counts
 
-## Where it lives
+Billing, insights, and execution limits all count executions. One file decides which runs count for each of them: `packages/@n8n/backend-services/src/executions/counting-rules.ts`. A new execution mode needs an entry there. Do not write a list of modes of your own.
 
-| Part | File | Symbol |
-|---|---|---|
-| Typed emitter | `packages/@n8n/backend-services/src/events/event.service.ts` | `EventService` |
-| CLI event payloads | `packages/cli/src/events/event-map.ts` | `EventMap` |
-| Relay base class | `packages/cli/src/events/relays/event-relay.ts` | `EventRelay.setupListeners` |
-| Event bus and its log | `packages/cli/src/eventbus/message-event-bus/message-event-bus.ts` | `MessageEventBus.send` |
-| Log streaming destinations | `packages/cli/src/modules/log-streaming.ee/log-streaming-destination.service.ts` | `LogStreamingDestinationService` |
-| Product telemetry | `packages/cli/src/telemetry/index.ts` | `Telemetry.track` |
-| Prometheus metrics | `packages/cli/src/metrics/prometheus/prometheus.service.ts` | `PrometheusMetricsService` |
-| Tracing | `packages/cli/src/modules/otel/otel.service.ts` | `OtelService` |
-| Redaction proxy | `packages/@n8n/backend-services/src/executions/execution-redaction-proxy.service.ts` | `ExecutionRedactionServiceProxy` |
-| Which runs count | `packages/@n8n/backend-services/src/executions/counting-rules.ts` | `isInsightsProduction` |
-| Insights collection | `packages/modules/insights/backend/src/insights-collection.service.ts` | `InsightsCollectionService` |
-| Security audit | `packages/cli/src/security-audit/security-audit.service.ts` | `SecurityAuditService.run` |
+## Signals
 
-Run `pnpm --filter @n8n/telemetry catalog` to list the registered telemetry events.
+With `N8N_METRICS=true`, each process serves Prometheus metrics at `/metrics`. Most groups of metrics have their own `N8N_METRICS_INCLUDE_*` flag.
 
-## Per process
+`N8N_LOG_LEVEL` sets the log level. `N8N_LOG_SCOPES` shows only the lines of the scopes that it names, so a line without a scope disappears. Give the logger of your service a scope.
 
-The event bus and the log streaming relay run on every process type, each with its own log file. Tracing runs on mains, workers, and webhook processes. Insights collects on mains and webhook processes. Compaction is a cluster system task.
+The `otel` module sends OpenTelemetry traces of workflow and node executions.
 
-## What is moving
+## Quiz
 
-Insights is a separate package under `packages/modules/insights`, with a backend and a frontend part. Most Prometheus metrics are services in `packages/cli/src/metrics/prometheus/`, each with its own `N8N_METRICS_INCLUDE_*` flag. The version, active workflow count, and leader role metrics have no flag of their own.
+1. You add a new execution mode. What must you also change?
+   - A. Add an entry for it in `counting-rules.ts`.
+   - B. Add a list of counted modes to your service.
+   - C. Nothing. All modes count by default.
+   - D. Add a telemetry event for the mode.
+2. You rename the event `n8n.workflow.success`. Who notices?
+   - A. Nobody. Event names are internal.
+   - B. Only PostHog.
+   - C. Only the failure email.
+   - D. Log streaming users, because they filter on event names.
+3. An operator sets `N8N_LOG_SCOPES=scaling`. Your service logs without a scope. What does the operator see?
+   - A. All of your lines.
+   - B. Only your error lines.
+   - C. None of your lines.
+   - D. Your lines, with the scope `scaling`.
+4. A process starts after a crash. What does the event log do?
+   - A. Nothing. The event log is only for log streaming.
+   - B. The process reads the file and marks executions without a final event as crashed.
+   - C. It sends the old events to PostHog.
+   - D. It runs the executions again.
 
-## Read more
+<details>
+<summary>Answers</summary>
 
-- [Roll out a change](../how-to/roll-out-a-change.md) for the metrics flags, health endpoints, log settings, and the event log file
-- `packages/cli/src/modules/log-streaming.ee/README.md`, `packages/cli/src/modules/otel/README.md`
-- `packages/@n8n/telemetry/README.md`
-- [Patterns](../patterns.md#events-and-relays)
-- docs.n8n.io: logging, log streaming, monitoring, and insights pages
+1. A. Add an entry for it in `counting-rules.ts`. Billing, insights, and execution limits all use that one file. Do not write a list of modes of your own.
+2. D. Log streaming users, because they filter on event names. Log streaming event names are a contract.
+3. C. None of your lines. The scope filter hides every line that has no scope. Give the logger of your service a scope.
+4. B. The process reads the file and marks executions without a final event as crashed. The event bus writes each event to a file before it sends it on, so the file is also a recovery log.
+
+</details>
+
+[Roll out a change](../how-to/roll-out-a-change.md) shows how to use these signals during a rollout.

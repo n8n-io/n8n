@@ -10,7 +10,7 @@ contact: ivov
 
 A migration is a class that changes the database schema or its data. n8n runs pending migrations at startup on every instance, with no person present. The instance does not start until the migrations finish. After a release, you cannot change a migration. A mistake in a migration therefore reaches every instance and stays there.
 
-The schema is the migrations. TypeORM runs with `synchronize: false`, so an entity class alone creates no table. [Persistence](../subsystems/persistence.md) explains the data layer around the migrations.
+The schema is the migrations. TypeORM runs with `synchronize: false`, so an entity class alone creates no table. [Data](../subsystems/data.md) explains the data layer around the migrations.
 
 > [!TIP]
 > In Claude Code, the `n8n:db-migrations` skill loads the full rule set from `.agents/skills/db-migrations/SKILL.md`. Use it when you write a migration. This page covers the steps and the rules that cause the most incidents.
@@ -159,7 +159,7 @@ During a rolling deploy, old and new code run against the same schema. A rollbac
 1. **Stop all writes in one release.** The code stops using the column, and the column stays.
 2. **Drop the column in a later release.** No running code uses it now.
 
-The same rule applies to a table. [Cloud coupling points](../cloud-coupling.md) explains the rollback in Cloud.
+The same rule applies to a table. [n8n Cloud](../subsystems/cloud.md#control-plane) explains upgrades and rollbacks in Cloud.
 
 ## Update the entity
 
@@ -235,29 +235,38 @@ A SQLite migration can set `transaction = false as const` for a very large chang
 - **Every process migrates.** Main, worker, and webhook processes run pending migrations at startup.
 - **PostgreSQL migrates one instance at a time.** Each instance waits for an advisory lock before it runs the migrations.
 - **Old code ignores new migrations.** After a downgrade, n8n does not undo migrations that it does not know. `n8n db:revert` also refuses to run without the code of the last migration. To undo a migration, run `db:revert` before the downgrade.
-- **Cloud copies some SQLite tables by name.** A rename of such a table breaks the backups. [Cloud coupling points](../cloud-coupling.md) lists the tables.
+- **Cloud copies some SQLite tables by name.** A rename of such a table breaks the backups. [n8n Cloud](../subsystems/cloud.md#contracts) lists the tables.
 - **Engine v2 has its own migrations.** They are in `packages/@n8n/engine/src/database/migrations/` and target a separate database. This page does not cover them.
 
-## Self-check
+## Quiz
 
-1. You add a nullable column to a table. Another table points at it with `ON DELETE CASCADE`. Which method is safe on SQLite?
-   - A. `addColumns` with `{ recreatesOnSqlite: true }`.
-   - B. A raw `ALTER TABLE ... ADD COLUMN`.
-   - C. `dropColumns`, then `addColumns`.
-2. Your release stops all writes to a column. When can a migration drop the column?
-   - A. In the same release.
-   - B. In a later release.
-   - C. Never.
-3. Three migrations are pending on PostgreSQL, and the third one fails. What is the state of the schema?
-   - A. The first two migrations are applied.
-   - B. No migration is applied.
-   - C. Only the third migration is rolled back, and n8n starts.
+1. You want to remove a column. How many releases does it take?
+   - A. One. The migration drops the column and the code stops using it.
+   - B. One, if the migration has a `down()`.
+   - C. Three, one for each database and one for the entity.
+   - D. Two. One release stops all writes, and a later release drops the column.
+2. On SQLite, you call `addColumns` on a table that another table points at with `ON DELETE CASCADE`. What can happen?
+   - A. Nothing. SQLite alters the table in place.
+   - B. The migration fails at once.
+   - C. The rebuild of the table deletes the rows of the other table.
+   - D. The foreign key is removed.
+3. On PostgreSQL, the third of five pending migrations fails. What is the state of the schema?
+   - A. The first two migrations stay applied.
+   - B. As it was before the upgrade. All pending migrations share one transaction.
+   - C. All five are marked as applied.
+   - D. The failed migration is skipped, and the others run.
+4. Why does a migration test insert its fixtures with raw SQL?
+   - A. A repository uses the entity of today, not the schema at the time of the migration.
+   - B. Repositories are too slow for tests.
+   - C. Raw SQL works only on SQLite.
+   - D. The migration review team requires it.
 
 <details>
 <summary>Answers</summary>
 
-1. B. `addColumns` rebuilds the table on SQLite, and the rebuild deletes the rows of the child table through the cascade.
-2. B. The old code must still run against the new schema during a rolling deploy or a rollback.
-3. B. On PostgreSQL, all pending migrations run in one transaction, so a failure rolls back all of them.
+1. D. Two. One release stops all writes, and a later release drops the column. During a rolling deploy or a rollback, old code runs against the new schema.
+2. C. The rebuild of the table deletes the rows of the other table. SQLite copies the table to a new one for this call. Use a raw `ALTER TABLE ... ADD COLUMN` for a nullable column.
+3. B. As it was before the upgrade. All pending migrations share one transaction. On SQLite, each migration has its own transaction, so the earlier ones stay applied.
+4. A. A repository uses the entity of today, not the schema at the time of the migration. The test runs at an earlier schema, and today's entity can differ from it.
 
 </details>

@@ -5,6 +5,7 @@ import Default from '@astrojs/starlight/components/Head.astro';
 <Default />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://avatars.githubusercontent.com" />
 <link
 	rel="stylesheet"
 	href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400..700&family=Geist+Mono:wght@400;500&display=swap"
@@ -80,6 +81,12 @@ import Default from '@astrojs/starlight/components/Head.astro';
 				const svg = block.querySelector('svg');
 				const naturalWidth = svg?.viewBox.baseVal.width;
 				if (svg && naturalWidth) svg.style.minWidth = `${Math.round(naturalWidth * MIN_SCALE)}px`;
+				// The step circles of a sequence diagram are larger than Mermaid expects, so the last
+				// circle would stick out below the drawing. Extra room at the bottom keeps it whole.
+				if (svg?.querySelector('.sequenceNumber')) {
+					const box = svg.viewBox.baseVal;
+					svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.width} ${box.height + 12}`);
+				}
 			}
 		};
 		await render();
@@ -124,10 +131,95 @@ import Default from '@astrojs/starlight/components/Head.astro';
 </script>
 
 <script>
-	// The header shows its bottom line only when the page is not at the top.
-	const markScrolled = () => document.documentElement.toggleAttribute('data-scrolled', window.scrollY > 0);
+	// The header shows its bottom line only when the page is not at the top. The line also
+	// shows how far the reader is through the page.
+	const root = document.documentElement;
+	const markScrolled = () => {
+		root.toggleAttribute('data-scrolled', window.scrollY > 0);
+		const scrollable = root.scrollHeight - window.innerHeight;
+		const progress = scrollable > 0 ? Math.min(window.scrollY / scrollable, 1) : 0;
+		root.style.setProperty('--n8n-read-progress', String(progress));
+	};
 	markScrolled();
 	window.addEventListener('scroll', markScrolled, { passive: true });
+	window.addEventListener('resize', markScrolled, { passive: true });
+</script>
+
+<script>
+	// Starlight marks the heading at the top of the window in "On this page". The last headings
+	// of a page never reach the top, so at the end of the page the last heading gets the mark.
+	const tocLinks = () =>
+		Array.from(document.querySelectorAll<HTMLAnchorElement>('starlight-toc a[href^="#"], mobile-starlight-toc a[href^="#"]'));
+	let pending = false;
+	const markAtEnd = () => {
+		const root = document.documentElement;
+		if (window.scrollY + window.innerHeight < root.scrollHeight - 4) return;
+		const links = tocLinks();
+		const lastHref = links.at(-1)?.getAttribute('href');
+		if (!lastHref) return;
+		for (const link of links) {
+			if (link.getAttribute('href') === lastHref) link.setAttribute('aria-current', 'true');
+			else link.removeAttribute('aria-current');
+		}
+	};
+	window.addEventListener(
+		'scroll',
+		() => {
+			if (pending) return;
+			pending = true;
+			// Run after the Starlight observer, so that this mark is the last one.
+			requestAnimationFrame(() => {
+				pending = false;
+				markAtEnd();
+			});
+		},
+		{ passive: true },
+	);
+</script>
+
+<script>
+	// A page counts as read when the reader scrolls to its end, or at once when it fits on the
+	// screen. The list stays in this browser only, and the page works without it.
+	const STORAGE_KEY = 'n8n-backend-docs:read-pages';
+	const normalize = (path: string) => path.replace(/\/+$/, '') || '/';
+
+	const loadRead = (): Set<string> => {
+		try {
+			const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+			return new Set(Array.isArray(stored) ? stored.filter((item) => typeof item === 'string') : []);
+		} catch {
+			return new Set();
+		}
+	};
+
+	const read = loadRead();
+	const current = normalize(location.pathname);
+
+	// The title area of a finished page shows "Completed".
+	const showRead = () => {
+		const badge = document.querySelector<HTMLElement>('.doc-meta .doc-read');
+		if (badge) badge.hidden = !read.has(current);
+	};
+
+	const markRead = () => {
+		if (read.has(current)) return;
+		read.add(current);
+		try {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify([...read]));
+		} catch {
+			// Storage can be blocked. The badge then shows only until the next page load.
+		}
+		showRead();
+	};
+
+	const checkEnd = () => {
+		const root = document.documentElement;
+		if (window.scrollY + window.innerHeight >= root.scrollHeight - 48) markRead();
+	};
+
+	showRead();
+	checkEnd();
+	window.addEventListener('scroll', checkEnd, { passive: true });
 </script>
 
 <script>

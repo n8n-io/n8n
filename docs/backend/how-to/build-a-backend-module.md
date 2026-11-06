@@ -10,7 +10,7 @@ contact: ivov
 
 A backend module is one optional feature of the backend in its own folder. The module holds the routes, services, tables, settings, and startup work of that feature. n8n loads the code of a module only when the module is enabled, licensed, and right for the instance type.
 
-[Recurring patterns](../patterns.md#backend-modules) explains why modules exist and how `ModuleRegistry` runs them. This page tells you how to build one.
+This page tells you how to build a module.
 
 > [!NOTE]
 > Modules are for features of the core team. They are not an extension point for external contributors.
@@ -159,7 +159,7 @@ Each method is optional. `ModuleInterface` in `packages/@n8n/decorators/src/modu
 
 Under `module: NodeNext`, a packaged module writes the `.js` extension in each dynamic import, as the insights module does.
 
-## Gate the module
+## Choose where the module starts
 
 `@BackendModule` takes three options:
 
@@ -182,21 +182,21 @@ When only some routes need a license, do not set `licenseFlag`. Put `@Licensed()
 ```
 
 > [!CAUTION]
-> **n8n checks the license only at startup.** `initModules` runs once, from the `start`, `webhook`, and `worker` commands. A license that changes later does not start or stop a module. Read [Enterprise gating](../enterprise-gating.md) before you choose between `licenseFlag` and `@Licensed()`.
+> **n8n checks the license only at startup.** `initModules` runs once, from the `start`, `webhook`, and `worker` commands. A license that changes later does not start or stop a module. Read [Licensing](../subsystems/licensing.md#checks) before you choose between `licenseFlag` and `@Licensed()`.
 
 ## Add the parts of the feature
 
-Each part follows a pattern on the [Recurring patterns](../patterns.md) page. This section tells you how to connect each part to the module.
+This section tells you how to connect each part to the module.
 
 <!-- steps -->
 
 1. **Routes**
 
-   Write a `@RestController()` class, and import its file in `init()`. The import runs the decorators, and the server then mounts the routes. Keep the controller small. It parses the request and calls a service. See [Controllers and routes](../patterns.md#controllers-and-routes), [Authorization and licensing on routes](../patterns.md#authorization-and-licensing-on-routes), and [Request validation with DTOs](../patterns.md#request-validation-with-dtos).
+   Write a `@RestController()` class, and import its file in `init()`. The import runs the decorators, and the server then mounts the routes. Keep the controller small. It parses the request and calls a service. Give every authenticated route a scope decorator: `@ProjectScope` when the URL has a project or resource id, `@GlobalScope` when it has none. Type each body as a DTO class from `@n8n/api-types`. The server validates a body only when its type is a DTO class.
 
 2. **Services**
 
-   Write `@Service()` classes for the business logic. Start them from `init()` with `Container.get()`. A service can use `@OnLifecycleEvent()`, `@OnPubSubEvent()`, and `@OnShutdown()`. See [Lifecycle hooks](../patterns.md#lifecycle-hooks) and [Pubsub across processes](../patterns.md#pubsub-across-processes).
+   Write `@Service()` classes for the business logic. Start them from `init()` with `Container.get()`. A service can use `@OnLifecycleEvent()`, `@OnPubSubEvent()`, and `@OnShutdown()`. Do not write `import type` for a class that a constructor injects, because the container then injects `undefined`.
 
 3. **Periodic work**
 
@@ -204,7 +204,7 @@ Each part follows a pattern on the [Recurring patterns](../patterns.md) page. Th
 
 4. **Tables**
 
-   Write the entities, and return them from `entities()`. Write a repository that composes a file-private `BaseRepository` table. See [Services, repositories, and the TypeORM boundary](../patterns.md#services-repositories-and-the-typeorm-boundary) and [Transactions](../patterns.md#transactions). Name an entity class without the `Entity` suffix, for example `InsightsRaw`.
+   Write the entities, and return them from `entities()`. Write a repository that composes a file-private `BaseRepository` table. The root `AGENTS.md` section "Persistence layer & the TypeORM boundary" has the rules and a worked example. Name an entity class without the `Entity` suffix, for example `InsightsRaw`.
 
 5. **Migrations**
 
@@ -212,7 +212,7 @@ Each part follows a pattern on the [Recurring patterns](../patterns.md) page. Th
 
 6. **Configuration**
 
-   Write a `@Config` class with `@Env()` properties in `<name>.config.ts`. See [Configuration](../patterns.md#configuration).
+   Write a `@Config` class with `@Env()` properties in `<name>.config.ts`. Give each property a type annotation and a default. The annotation, for example `: boolean`, tells n8n how to parse the value.
 
 7. **CLI commands**
 
@@ -289,26 +289,29 @@ The scaffolded `vitest.config.ts` uses `createVitestConfigWithDecorators`. A pac
 
 Run `pnpm watch` in the module package, and `pnpm dev` in `packages/cli`. The package watch rebuilds `dist` of the module. `packages/cli/nodemon.json` restarts n8n only when `packages/cli/dist` changes. Restart n8n after a change to the module.
 
-## Self-check
+## Quiz
 
-1. Your entrypoint stops a timer in `shutdown()`, but the timer still runs after n8n stops. What is the most likely cause?
-   - A. The module is not in `defaultModules`.
-   - B. `shutdown()` has no `@OnShutdown()` decorator.
-   - C. The module has no `licenseFlag`.
-2. An admin adds a license with your feature while n8n runs. Your module has `licenseFlag` set. When does the module start?
-   - A. At once, when the license reloads.
-   - B. At the next system task run.
-   - C. At the next startup of the instance.
-3. Where does the migration for a new module table go?
-   - A. In `packages/modules/<name>/backend/src/migrations`.
-   - B. In `packages/@n8n/db/src/migrations`.
-   - C. In the `entities()` method of the module.
+1. Your module has a `shutdown()` method without `@OnShutdown()`. When does it run?
+   - A. When the process stops.
+   - B. When an admin turns the module off.
+   - C. Never.
+   - D. Only in tests.
+2. Why must the entrypoint of a module have no constructor parameters?
+   - A. The decorator does not support constructors.
+   - B. They load their classes when the entrypoint loads, also for a disabled module.
+   - C. Constructors run on every request.
+   - D. The module would start twice.
+3. An instance gets a new license while it runs. Does a module with `licenseFlag` start?
+   - A. Not until the process restarts.
+   - B. Yes, at once.
+   - C. Yes, after the next request.
+   - D. Only on the leader.
 
 <details>
 <summary>Answers</summary>
 
-1. B. `ShutdownService` calls only methods with `@OnShutdown()`. No production code calls `ModuleRegistry.shutdownModule`.
-2. C. `initModules` runs only at startup. A license change at runtime does not start a module.
-3. B. Migrations stay central. n8n runs them also for a disabled module.
+1. C. Never. `ShutdownService` calls only methods with `@OnShutdown()`, and no production code calls `ModuleRegistry.shutdownModule`.
+2. B. They load their classes when the entrypoint loads, also for a disabled module. Use `Container.get()` in the methods, and import files with `await import()`.
+3. A. Not until the process restarts. n8n checks the license of modules only at startup.
 
 </details>

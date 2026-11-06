@@ -10,11 +10,11 @@ contact: ivov
 
 A change that passes CI can still fail on real workflows, under real load. This page shows the signals that a running n8n gives you, and a procedure to turn a change on step by step. It also lists what a revert leaves behind.
 
-[Observability and audit](../subsystems/observability.md) explains the event and metric code. [Cloud coupling points](../cloud-coupling.md#the-toggle-systems) explains the toggle systems in more detail.
+[Observability](../subsystems/observability.md) explains the event and metric code.
 
 ## Turn on the signals
 
-Most signals are off by default. To try the commands on this page, start the local cluster from [Run queue mode locally](run-queue-mode-locally.md).
+Most signals are off by default. To try the commands on this page, start n8n as in [Run queue mode locally](run-queue-mode-locally.md).
 
 ### Metrics
 
@@ -61,14 +61,14 @@ A main does not check Redis for readiness, even in queue mode. A worker serves b
 
 `LOG_SCOPES` in the `@n8n/config` package lists all scopes. The scope filter works only at `N8N_LOG_LEVEL=debug` or with `N8N_LOG_FORMAT=json`. It also hides every line that has no scope. For example, the worker startup recovery logs its warning with no scope, so a filter for `scaling` does not show it.
 
-### The event log
+### Event log
 
-Each process writes its events to a file in the n8n folder, for example `~/.n8n/n8nEventLog.log` on a main and `~/.n8n/n8nEventLog-worker.log` on a worker. Each line is one JSON message, for example `n8n.node.started`. The file exists with or without a license. A license is necessary only to send events to log streaming destinations.
+Each process writes its events to a file in its n8n folder: `n8nEventLog.log` on a main and `n8nEventLog-worker.log` on a worker. Each line is one JSON message, for example `n8n.node.started`. The file exists with or without a license. A license is necessary only to send events to log streaming destinations.
 
 Follow the file to see events as they happen:
 
 ```bash
-docker exec drills-n8n-main-1 sh -c 'tail -f ~/.n8n/n8nEventLog.log'
+tail -f $HOME/.n8n-queue/.n8n/n8nEventLog.log
 ```
 
 ### Traces and errors
@@ -87,6 +87,7 @@ Each toggle system changes at its own speed. Know the speed before you plan the 
 | `N8N_ENV_FEAT_*` variable | At the next restart | Unset the variable and restart |
 | License flag `feat:*` or `quota:*` | At once on each process, after a `reload-license` pubsub command | Change the license |
 | Module enablement | At the next restart | Change `N8N_ENABLED_MODULES` or `N8N_DISABLED_MODULES` and restart |
+| Cloud instance flag | When Cloud rebuilds the configuration of the instance | Change the flag in the control plane |
 
 Three PostHog facts affect a rollout:
 
@@ -136,31 +137,40 @@ A revert does not undo everything. Before you ship, check each item below agains
 - **Telemetry events and browser storage stay.** For example, a dismissed banner stays dismissed.
 - **External effects stay.** An identity provider, a webhook caller, or a third-party API can see the change and react to it.
 
-Next to each new gate, write one comment that says what turning it off does. The SCIM opt-in in `packages/cli/src/modules/scim/scim-opt-in.ts` is a good example.
+Next to each new flag check, write one comment that says what turning it off does. The SCIM opt-in in `packages/cli/src/modules/scim/scim-opt-in.ts` is a good example.
 
 When the rollout reaches 100%, remove the flag. Create the removal ticket when you create the flag.
 
-## Self-check
+## Quiz
 
-1. You turn off a PostHog flag. When does a main stop using the new code?
-   - A. At once.
-   - B. Within about 10 min.
+1. You turn off a PostHog flag. When does the backend see the change?
+   - A. After up to 10 minutes, because each process caches flags.
+   - B. At once.
    - C. At the next restart.
-2. A self-hosted instance has `N8N_DIAGNOSTICS_ENABLED=false`. Your PostHog rollout is at 100%. Does the instance get the change?
-   - A. Yes.
-   - B. No, unless an env override turns it on.
-   - C. Only for the owner.
-3. Your change adds a migration and writes rows in a new format. You revert the code. What stays?
-   - A. Nothing.
-   - B. The migration and the rows.
-   - C. Only the rows.
+   - D. At the next release.
+2. An instance sets `N8N_DIAGNOSTICS_ENABLED=false`. Which flag values does it get?
+   - A. The PostHog values, as other instances do.
+   - B. All flags on.
+   - C. The values from its license.
+   - D. Only the env overrides. It never gets PostHog flags.
+3. Your change fails on 20% of the instances in a 5% group. What does the total error rate show?
+   - A. About 20%.
+   - B. About 5%.
+   - C. About 1%, so compare the group against a control group.
+   - D. Nothing, because PostHog filters failures.
+4. Your change writes rows in a new format. What happens to those rows after a revert?
+   - A. The revert deletes them.
+   - B. They stay, so the old code must already read them. Ship the reader one release before the writer.
+   - C. A migration converts them back.
+   - D. n8n ignores them.
 
 <details>
 <summary>Answers</summary>
 
-1. B. Each process caches flags for 10 min for each user.
-2. B. With diagnostics off, n8n does not call PostHog, and only the env overrides apply.
-3. B. Old code does not undo migrations, and the rows stay in the new format.
+1. A. After up to 10 minutes, because each process caches flags. For up to 10 minutes after a change, a main and a worker can disagree.
+2. D. Only the env overrides. It never gets PostHog flags. PostHog needs diagnostics, so only the overrides apply there.
+3. C. About 1%, so compare the group against a control group. An aggregate hides a small group. Set an absolute limit next to each relative one too.
+4. B. They stay, so the old code must already read them. Ship the reader one release before the writer. A revert does not undo data that the new code wrote.
 
 </details>
 
