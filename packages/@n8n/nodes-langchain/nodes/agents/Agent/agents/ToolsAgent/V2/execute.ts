@@ -19,7 +19,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { loadMemory } from '@utils/agent-execution';
+import { loadMemory, saveToMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getFailureType,
@@ -95,9 +95,10 @@ export function createAgentExecutor(
 
 	return AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
-		memory,
+		// No memory here: AgentExecutor would save only input and output and drop the tool
+		// messages. The caller saves memory with saveToMemory, which needs the steps.
 		tools,
-		returnIntermediateSteps: options.returnIntermediateSteps === true,
+		returnIntermediateSteps: true,
 		maxIterations: options.maxIterations ?? 10,
 	});
 }
@@ -126,6 +127,7 @@ function applyAgentTracingMetadata(
 		streamingEnabled: boolean;
 		failureType?: string;
 		memoryLoads?: number;
+		memorySaves?: number;
 	},
 ): void {
 	if (!isExecuteFunctions(context)) return;
@@ -137,7 +139,7 @@ function applyAgentTracingMetadata(
 		'ai.agent.items.failed': stats.failedItems,
 		'ai.agent.tool_calls.total': stats.toolCalls,
 		'ai.agent.memory.loads': stats.memoryLoads ?? 0,
-		'ai.agent.memory.saves': 0,
+		'ai.agent.memory.saves': stats.memorySaves ?? 0,
 		'ai.agent.execution.succeeded': stats.failureType === undefined,
 	};
 	if (stats.failureType !== undefined) {
@@ -219,9 +221,14 @@ async function processEventStream(
 				// Capture tool execution results and match with action
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
 					const toolData = event.data as any;
-					// Find the matching intermediate step for this tool call
+					// Find the matching intermediate step for this tool call. Parallel calls can
+					// use the same tool, so match the call id when the output has one.
+					const outputToolCallId = toolData.output?.tool_call_id as string | undefined;
 					const matchingStep = agentResult.intermediateSteps!.find(
-						(step) => !step.observation && step.action.tool === event.name,
+						(step) =>
+							!step.observation &&
+							step.action.tool === event.name &&
+							(outputToolCallId === undefined || step.action.toolCallId === outputToolCallId),
 					);
 					if (matchingStep) {
 						matchingStep.observation = toolData.output;
@@ -235,6 +242,22 @@ async function processEventStream(
 	ctx.sendChunk('end', itemIndex);
 
 	return agentResult;
+}
+
+// Stream events can return a ToolMessage instead of a string as the tool result
+function toObservationText(observation: unknown): string {
+	if (typeof observation === 'string') return observation;
+	if (
+		typeof observation === 'object' &&
+		observation !== null &&
+		'content' in observation &&
+		typeof observation.content === 'string'
+	) {
+		return observation.content;
+	}
+	// JSON.stringify returns undefined for undefined. Use placeholder text instead,
+	// so the saved turn still answers every tool call it declares.
+	return JSON.stringify(observation) ?? 'The tool did not return a result.';
 }
 
 function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
@@ -271,6 +294,7 @@ export async function toolsAgentExecute(
 	let enableStreaming = true;
 	let failureType: string | undefined;
 	let memoryLoads = 0;
+	let memorySaves = 0;
 
 	try {
 		const version = this.getNode().typeVersion;
@@ -388,17 +412,18 @@ export async function toolsAgentExecute(
 				// Check if streaming is actually available
 				const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
 
+				// Respect the context window length configured in the memory node
+				const chatHistory = memory ? await loadMemory(memory, model) : undefined;
+				if (memory) {
+					memoryLoads++;
+				}
+
 				if (
 					'isStreaming' in this &&
 					enableStreaming &&
 					isStreamingAvailable &&
 					this.getNode().typeVersion >= 2.1
 				) {
-					// Get chat history respecting the context window length configured in memory
-					const chatHistory = memory ? await loadMemory(memory, model) : undefined;
-					if (memory) {
-						memoryLoads++;
-					}
 					const eventStream = executorWithTracing.streamEvents(
 						{
 							...invokeParams,
@@ -410,16 +435,45 @@ export async function toolsAgentExecute(
 						},
 					);
 
-					const response = await processEventStream(
-						this,
-						eventStream,
-						itemIndex,
-						options.returnIntermediateSteps,
-					);
+					const response = await processEventStream(this, eventStream, itemIndex, true);
+					if (memory) {
+						await saveToMemory(
+							input,
+							response.output,
+							memory,
+							// Keep steps without a result too. The shared AIMessage declares every
+							// call, so each one needs a matching tool message in memory.
+							response.intermediateSteps?.map((step) => ({
+								...step,
+								observation: toObservationText(step.observation),
+							})),
+							0,
+						);
+						memorySaves++;
+					}
+					if (!options.returnIntermediateSteps) {
+						delete response.intermediateSteps;
+					}
 					return { response, toolCallsCounted: toolCounter.count };
 				} else {
 					// Handle regular execution
-					const response = await executorWithTracing.invoke(invokeParams, executeOptions);
+					const response = await executorWithTracing.invoke(
+						{ ...invokeParams, chat_history: chatHistory ?? undefined },
+						executeOptions,
+					);
+					if (memory) {
+						await saveToMemory(
+							input,
+							response.output as string,
+							memory,
+							response.intermediateSteps,
+							0,
+						);
+						memorySaves++;
+					}
+					if (!options.returnIntermediateSteps) {
+						delete response.intermediateSteps;
+					}
 					return { response, toolCallsCounted: toolCounter.count };
 				}
 			};
@@ -510,6 +564,7 @@ export async function toolsAgentExecute(
 			streamingEnabled: enableStreaming,
 			failureType,
 			memoryLoads,
+			memorySaves,
 		});
 	}
 }

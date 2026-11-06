@@ -1,7 +1,7 @@
 import { AgentExecutor } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
+import { AIMessage, AIMessageChunk, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -809,6 +809,97 @@ describe('toolsAgentExecute', () => {
 		expect(getOptionalOutputParserSpy).toHaveBeenNthCalledWith(6, mockContext, 0);
 	});
 
+	it('should load and save memory with tool calls when a memory node is connected', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const addMessages = vi.fn();
+		const loadMemoryVariables = vi.fn().mockResolvedValue({ chat_history: [] });
+		vi.spyOn(commonModule, 'getOptionalMemory').mockResolvedValue({
+			loadMemoryVariables,
+			chatHistory: { addMessages },
+		} as any);
+
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		const toolCallMessage = new AIMessage({
+			content: 'Checking the weather',
+			tool_calls: [{ id: 'call-1', name: 'weather', args: { city: 'Berlin' }, type: 'tool_call' }],
+		});
+		const mockExecutor = {
+			invoke: vi.fn().mockResolvedValue({
+				output: 'It is sunny.',
+				intermediateSteps: [
+					{
+						action: {
+							tool: 'weather',
+							toolInput: { city: 'Berlin' },
+							log: 'Checking the weather',
+							messageLog: [toolCallMessage],
+							toolCallId: 'call-1',
+							type: 'tool_call',
+						},
+						observation: 'sunny',
+					},
+				],
+			}),
+		};
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		const result = await toolsAgentExecute.call(mockContext);
+
+		// The stored history goes into the model call
+		expect(loadMemoryVariables).toHaveBeenCalledTimes(1);
+		expect(mockExecutor.invoke).toHaveBeenCalledWith(
+			expect.objectContaining({ chat_history: [] }),
+			expect.anything(),
+		);
+
+		// The whole turn lands in memory, tool call and result included
+		expect(addMessages).toHaveBeenCalledTimes(1);
+		const saved = addMessages.mock.calls[0][0];
+		expect(saved).toHaveLength(4);
+		expect(saved[0]).toBeInstanceOf(HumanMessage);
+		expect(saved[1]).toBe(toolCallMessage);
+		expect(saved[2]).toBeInstanceOf(ToolMessage);
+		expect(saved[2].tool_call_id).toBe('call-1');
+		expect(saved[2].content).toBe('sunny');
+		expect(saved[3]).toBeInstanceOf(AIMessage);
+		expect(saved[3].content).toBe('It is sunny.');
+
+		// Steps feed the memory save but stay out of the node output
+		expect(result[0][0].json).not.toHaveProperty('intermediateSteps');
+		expect(mockContext.setMetadata).toHaveBeenCalledWith({
+			tracing: expect.objectContaining({
+				'ai.agent.memory.loads': 1,
+				'ai.agent.memory.saves': 1,
+			}),
+		});
+	});
+
 	describe('streaming', () => {
 		let mockNode: INode;
 		let mockModel: BaseChatModel;
@@ -1177,6 +1268,75 @@ describe('toolsAgentExecute', () => {
 				}),
 				expect.any(Object),
 			);
+		});
+
+		it('should save tool calls to memory and keep a tool message for calls without a result', async () => {
+			const addMessages = vi.fn();
+			vi.spyOn(commonModule, 'getOptionalMemory').mockResolvedValue({
+				loadMemoryVariables: vi.fn().mockResolvedValue({ chat_history: [] }),
+				chatHistory: { addMessages },
+			} as any);
+			vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+			vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(undefined);
+			mockContext.isStreaming.mockReturnValue(true);
+
+			const toolCallMessage = new AIMessage({
+				content: 'Calling both tools',
+				tool_calls: [
+					{ id: 'call-1', name: 'ToolA', args: {}, type: 'tool_call' },
+					{ id: 'call-2', name: 'ToolB', args: {}, type: 'tool_call' },
+				],
+			});
+
+			const mockStreamEvents = async function* () {
+				yield { event: 'on_chat_model_end', data: { output: toolCallMessage } };
+				// Only ToolA reports back, and it reports a ToolMessage instead of a string
+				yield {
+					event: 'on_tool_end',
+					name: 'ToolA',
+					data: { output: new ToolMessage({ content: 'result A', tool_call_id: 'call-1' }) },
+				};
+				yield {
+					event: 'on_chat_model_stream',
+					data: { chunk: new AIMessageChunk({ content: 'Final answer' }) },
+				};
+				yield {
+					event: 'on_chat_model_end',
+					data: { output: new AIMessage({ content: 'Final answer' }) },
+				};
+			};
+			const mockExecutor = {
+				streamEvents: vi.fn().mockReturnValue(mockStreamEvents()),
+			};
+			vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+				ensureWithConfig(mockExecutor) as any,
+			);
+
+			const result = await toolsAgentExecute.call(mockContext);
+
+			// The saved turn answers both declared calls, with placeholder text for the silent one
+			expect(addMessages).toHaveBeenCalledTimes(1);
+			const saved = addMessages.mock.calls[0][0];
+			expect(saved).toHaveLength(5);
+			expect(saved[0]).toBeInstanceOf(HumanMessage);
+			expect(saved[1]).toBe(toolCallMessage);
+			expect(saved[2]).toBeInstanceOf(ToolMessage);
+			expect(saved[2].tool_call_id).toBe('call-1');
+			expect(saved[2].content).toBe('result A');
+			expect(saved[3]).toBeInstanceOf(ToolMessage);
+			expect(saved[3].tool_call_id).toBe('call-2');
+			expect(saved[3].content).toBe('The tool did not return a result.');
+			expect(saved[4]).toBeInstanceOf(AIMessage);
+			expect(saved[4].content).toBe('Final answer');
+
+			// Steps feed the memory save but stay out of the node output
+			expect(result[0][0].json).not.toHaveProperty('intermediateSteps');
+			expect(mockContext.setMetadata).toHaveBeenCalledWith({
+				tracing: expect.objectContaining({
+					'ai.agent.memory.loads': 1,
+					'ai.agent.memory.saves': 1,
+				}),
+			});
 		});
 
 		it('should handle mixed message content types in streaming', async () => {
