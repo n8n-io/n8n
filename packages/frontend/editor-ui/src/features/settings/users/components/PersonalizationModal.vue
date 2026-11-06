@@ -619,7 +619,7 @@ const onSubmit = async (values: object) => {
 
 		posthogStore.setMetadata(completedSurvey, 'user');
 	} catch (e) {
-		showError(e, 'Error while submitting results');
+		showError(e, i18n.baseText('personalizationModal.errorWhileSubmittingResults'));
 	} finally {
 		isSaving.value = false;
 		closeDialog();
