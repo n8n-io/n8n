@@ -1067,7 +1067,7 @@ it('reverts and reapplies the configuration schema', async () => {
 		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
 	);
 	const subWorkflows = findMigration(
-		'AddIncludeSubWorkflowsToSelfHealingConfiguration1793629699000',
+		'AddIncludeSubWorkflowsToSelfHealingConfiguration1793691671000',
 	);
 	const activityIndex = findMigration('IndexSelfHealingInvestigationActivity1793700906582');
 	const runner = db.createQueryRunner();
@@ -1124,7 +1124,7 @@ describe('sub-workflows', () => {
 			.send({ ...input, includeSubWorkflows: true })
 			.expect(200);
 		const migration = findMigration(
-			'AddIncludeSubWorkflowsToSelfHealingConfiguration1793629699000',
+			'AddIncludeSubWorkflowsToSelfHealingConfiguration1793691671000',
 		);
 		const runner = Container.get(DataSource).createQueryRunner();
 		try {

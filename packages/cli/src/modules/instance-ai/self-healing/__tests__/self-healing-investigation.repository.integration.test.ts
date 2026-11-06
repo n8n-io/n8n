@@ -103,8 +103,8 @@ it('reverts and reapplies the investigation schemas', async () => {
 		'CreateSelfHealingConfigurations1792742505678',
 		'ReplaceSelfHealingInvestigationBaseline1792750863544',
 		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
-		'AddIncludeSubWorkflowsToSelfHealingConfiguration1793629699000',
-		'LinkWorkflowSuggestionsToSelfHealingResult1793629700000',
+		'AddIncludeSubWorkflowsToSelfHealingConfiguration1793691671000',
+		'LinkWorkflowSuggestionsToSelfHealingResult1793691672000',
 		'IndexSelfHealingInvestigationActivity1793700906582',
 	].map((name) => {
 		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
