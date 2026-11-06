@@ -6,7 +6,7 @@ import { OperationalError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';

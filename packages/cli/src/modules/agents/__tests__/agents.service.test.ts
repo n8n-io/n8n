@@ -27,7 +27,7 @@ import type { AgentsSettingsService } from '../agents-settings.service';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';

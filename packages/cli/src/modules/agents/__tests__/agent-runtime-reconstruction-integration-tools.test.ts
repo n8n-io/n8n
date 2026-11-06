@@ -50,7 +50,7 @@ import type { AgentChatExecutionService } from '../agent-chat-execution.service'
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentRunTracingService } from '../agent-run-tracing.service';

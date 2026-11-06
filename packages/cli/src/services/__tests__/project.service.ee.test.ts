@@ -36,7 +36,7 @@ import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-att
 import { AgentProjectCleanupService } from '@/modules/agents/agent-project-cleanup.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentTestChatService } from '@/modules/agents/agent-test-chat.service';
-import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
+import type { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import type { UserManagementMailer } from '@/user-management/email';

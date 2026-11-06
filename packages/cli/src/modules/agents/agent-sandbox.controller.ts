@@ -7,7 +7,7 @@ import { NotFoundError } from '@n8n/errors';
 
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 
-import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentSandboxController {

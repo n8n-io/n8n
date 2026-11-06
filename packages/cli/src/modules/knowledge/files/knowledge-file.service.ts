@@ -19,28 +19,19 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
-import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
-import {
-	KnowledgeFileStore,
-	type StoredKnowledgeFile,
-} from '@/modules/knowledge/files/knowledge-file-store';
-import {
-	KnowledgeUploadError,
-	type KnowledgeUploadFailureReason,
-} from '@/modules/knowledge/files/knowledge-upload.error';
-import {
-	storageFileNameForOriginalFileName,
-	toAgentFileDto,
-} from '@/modules/knowledge/files/storage-naming';
-import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+import { AgentKnowledgeMirrorService } from '@/modules/agents/agent-knowledge-mirror.service';
+import { createKnowledgeTelemetryHmac } from '@/modules/agents/agent-knowledge-telemetry';
+import { AgentSandboxRuntimeService } from '@/modules/agents/agent-sandbox-runtime.service';
+import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { getAgentOrThrow } from '@/modules/agents/utils/get-agent-or-throw';
 
-import { getAgentOrThrow } from './utils/get-agent-or-throw';
-import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
-import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
-import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
-import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
-import { AgentRepository } from './repositories/agent.repository';
+import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import { KnowledgeAvailabilityService } from '../knowledge-availability.service';
+import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeFileStore, type StoredKnowledgeFile } from './knowledge-file-store';
+import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
+import { storageFileNameForOriginalFileName, toAgentFileDto } from './storage-naming';
 
 const MAX_AGENT_FILE_METADATA_LENGTH = 255;
 

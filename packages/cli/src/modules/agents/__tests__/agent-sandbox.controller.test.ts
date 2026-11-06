@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
-import type { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 import { AgentSandboxController } from '../agent-sandbox.controller';
 
 describe('AgentSandboxController', () => {

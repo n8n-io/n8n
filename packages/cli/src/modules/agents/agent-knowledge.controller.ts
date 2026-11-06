@@ -8,17 +8,20 @@ import multer from 'multer';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { KnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
-import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-import { Telemetry } from '@/telemetry';
-
-import { AgentKnowledgeService, type UploadedKnowledgeFile } from './agent-knowledge.service';
-import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import {
 	AgentUploadMiddleware,
 	cleanupUploadedTempFiles,
 	describeMulterError,
 	multerFailureReason,
-} from './agent-upload.middleware';
+} from '@/modules/knowledge/files/knowledge-upload.middleware';
+import {
+	AgentKnowledgeService,
+	type UploadedKnowledgeFile,
+} from '@/modules/knowledge/files/knowledge-file.service';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { Telemetry } from '@/telemetry';
+
+import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 const KNOWLEDGE_FILES_FIELD = 'files';
