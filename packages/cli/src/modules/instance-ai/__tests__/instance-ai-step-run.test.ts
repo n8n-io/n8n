@@ -7,7 +7,14 @@ import {
 	handleCycles,
 	rewireGraph,
 } from 'n8n-core';
-import type { IConnections, INode, IRunData, ITaskData, NodeConnectionType } from 'n8n-workflow';
+import type {
+	IConnections,
+	INode,
+	IPinData,
+	IRunData,
+	ITaskData,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import {
@@ -390,6 +397,7 @@ describe('planStepRun', () => {
 			graphNodes: INode[],
 			graphConnections: IConnections,
 			runData: IRunData,
+			pinData: IPinData = {},
 		) {
 			const graph = DirectedGraph.fromNodesAndConnections(graphNodes, graphConnections);
 			const byName = graph.getNodes();
@@ -403,7 +411,7 @@ describe('planStepRun', () => {
 				trigger,
 				destination,
 				runData: cleaned,
-				pinData: {},
+				pinData,
 			});
 			return [...handleCycles(subgraph, startNodes, trigger)].map((startNode) => startNode.name);
 		}
@@ -441,6 +449,30 @@ describe('planStepRun', () => {
 			});
 
 			expect(plan.unhonoredInput?.upstreamNodeNames).toEqual(['Fetch']);
+		});
+
+		it('follows only the first output of a pinned node, because the engine sends pinned data only there', () => {
+			const branching = [node('Trigger'), node('IF'), node('Side'), node('Target')];
+			const branchConnections = connect(
+				['Trigger', 'IF'],
+				['IF:0', 'Target'],
+				['IF:1', 'Side'],
+				['Side', 'Target'],
+			);
+			const priorRunData: IRunData = { Trigger: [taskData([{ json: {} }])] };
+
+			const plan = planStepRun({
+				nodes: branching,
+				connections: branchConnections,
+				targetName: 'Target',
+				priorRunData,
+				pinnedNodeNames: ['IF'],
+			});
+
+			expect(plan.inputMode).toBe('reused-execution');
+			expect(
+				engineStartNodes(branching, branchConnections, priorRunData, { IF: [{ json: {} }] }),
+			).toEqual(['Target']);
 		});
 
 		describe('a Loop Over Items node above the target', () => {
