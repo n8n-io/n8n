@@ -189,11 +189,20 @@ export class CustomModelEndpoint implements INodeType {
 		 */
 		const runOptions = this.getNodeParameter('options', 0, {}) as Options;
 		const sendContextHeaders = this.getNodeParameter('sendContextHeaders', 0, true) as boolean;
+		const contextHeaders = sendContextHeaders ? n8nContextHeaders(this) : {};
+
+		/**
+		 * The transport resolves this record per request, so rewriting it between items
+		 * gives each item its own headers without a second client. It also puts them in
+		 * the layer that wins over the credential's gateway headers, which is where the
+		 * sub-node puts them. Safe because the loop below is sequential.
+		 */
+		const requestHeaders: Record<string, string> = { ...contextHeaders };
 
 		const { configuration } = createCustomModelEndpointConfig(this, credential, {
 			credentialType,
 			timeout: runOptions.timeout,
-			requestHeaders: sendContextHeaders ? n8nContextHeaders(this) : {},
+			requestHeaders,
 		});
 
 		const client = new OpenAI({
@@ -229,8 +238,11 @@ export class CustomModelEndpoint implements INodeType {
 					...(hasExtraBody ? parseExtraBody(this, extraBody, itemIndex) : {}),
 				};
 
-				const response = await client.chat.completions.create(body, {
-					headers: toHeaderRecord(
+				for (const key of Object.keys(requestHeaders)) delete requestHeaders[key];
+				Object.assign(
+					requestHeaders,
+					contextHeaders,
+					toHeaderRecord(
 						Object.fromEntries(
 							headerRows.flatMap(({ name, value }) => {
 								const headerName = String(name ?? '').trim();
@@ -238,6 +250,9 @@ export class CustomModelEndpoint implements INodeType {
 							}),
 						),
 					),
+				);
+
+				const response = await client.chat.completions.create(body, {
 					signal: this.getExecutionCancelSignal(),
 				});
 

@@ -153,7 +153,7 @@ describe('CustomModelEndpoint', () => {
 		expect(sentBody().tools).toEqual([{ type: 'function' }]);
 	});
 
-	it('puts per-request headers on the request, not on the transport', async () => {
+	it('puts per-request headers in the layer that beats the credential, as the sub-node does', async () => {
 		await run({
 			'headers.header': [
 				{ name: 'x-tenant', value: 'acme' },
@@ -161,7 +161,10 @@ describe('CustomModelEndpoint', () => {
 			],
 		});
 
-		expect(sentOptions().headers).toEqual({ 'x-tenant': 'acme' });
+		// Resolved per request by the transport, so they override a gateway header
+		// of the same name rather than losing to it
+		expect(transportHeaders()).toEqual({ 'x-tenant': 'acme' });
+		expect(sentOptions().headers).toBeUndefined();
 	});
 
 	it('sends the n8n context headers on the transport when the switch is on', async () => {
@@ -226,6 +229,30 @@ describe('CustomModelEndpoint', () => {
 		await run();
 
 		expect(accumulateTokenUsage).not.toHaveBeenCalled();
+	});
+
+	it('gives each item its own headers despite sharing one client', async () => {
+		// The transport reads this record per request, so snapshot it as each call lands
+		const seen: Array<Record<string, string>> = [];
+		create.mockImplementation(async () => {
+			seen.push({ ...(transportHeaders() ?? {}) });
+			return answer();
+		});
+		const ctx = contextWith({}, 2);
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockImplementation((name: string, i: number, fallback: unknown) => {
+				if (name === 'headers.header') return [{ name: 'x-item', value: `v${i}` }];
+				if (name === 'model') return 'gpt-4o';
+				if (name === 'messages.message') return [{ role: 'user', content: 'hi' }];
+				if (name === 'sendContextHeaders') return false;
+				if (name === 'options') return {};
+				return fallback;
+			});
+
+		await new CustomModelEndpoint().execute.call(ctx);
+
+		expect(seen).toEqual([{ 'x-item': 'v0' }, { 'x-item': 'v1' }]);
 	});
 
 	it('builds one client for the whole run so connections are reused', async () => {
