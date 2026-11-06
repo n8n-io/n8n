@@ -1,4 +1,5 @@
 export { App } from './app.entity';
+export type { AppActor, AppEventMap } from './app-events';
 export { AppVersion } from './versions/app-version.entity';
 export { AppArtifact, type AppArtifactRef } from './storage/app-artifact.entity';
 export { AppRepository } from './app.repository';
