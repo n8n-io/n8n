@@ -54,8 +54,10 @@ describe('Google Docs document input and errors', () => {
 	describe.each(['get', 'update'])('%s', (operation) => {
 		it.each([
 			['Google Docs URL', `https://docs.google.com/document/d/${documentId}/edit`],
+			['Google Docs URL without a suffix', `https://docs.google.com/document/d/${documentId}`],
 			['bare ID', documentId],
 			['Drive file URL', `https://drive.google.com/file/d/${documentId}/view?usp=sharing`],
+			['Drive file URL without a suffix', `https://drive.google.com/file/d/${documentId}`],
 			['Drive open URL', `https://drive.google.com/open?id=${documentId}`],
 		])('should use the document ID from a %s', async (_label, documentURL) => {
 			const context = setup(operation, documentURL);
@@ -78,45 +80,44 @@ describe('Google Docs document input and errors', () => {
 			);
 			expect(result).toEqual([[{ json: response, pairedItem: { item: 0 } }]]);
 		});
-	});
 
-	// NODE-6259: Use synthetic HTML because the report has no captured response body.
-	it.each([
-		['German', 'de', 'Dieses Dokument kann nicht geöffnet werden.'],
-		['French', 'fr', 'Impossible d’ouvrir ce document.'],
-	])(
-		'should omit raw HTML from a %s error and retain its HTTP status',
-		async (_locale, lang, text) => {
-			const context = setup('get', documentId);
-			const html = `<!DOCTYPE html><html lang="${lang}"><head><title>Google Docs</title></head><body><p>${text}</p></body></html>`;
+		it.each([
+			`https://drive.google.com/file/d/${documentId}/view?usp=sharing`,
+			`https://drive.google.com/open?id=${documentId}`,
+		])('should retain the API error for an unsupported Drive file: %s', async (documentURL) => {
+			const context = setup(operation, documentURL);
+			const message = 'This operation is not supported for this document';
+			const error = {
+				error: { code: 400, message, status: 'FAILED_PRECONDITION' },
+			};
 			context.helpers.requestOAuth2.mockRejectedValue(
-				Object.assign(new Error(`400 - ${JSON.stringify(html)}`), {
+				Object.assign(new Error(`400 - ${JSON.stringify(error)}`), {
 					statusCode: 400,
-					error: html,
+					error,
 					response: {
 						statusCode: 400,
-						headers: { 'content-type': 'text/html; charset=UTF-8' },
-						body: html,
+						headers: { 'content-type': 'application/json; charset=UTF-8' },
+						body: error,
 					},
 				}),
 			);
 
-			const execution = node.execute.call(context);
-
-			await expect(execution).rejects.toMatchObject({
+			await expect(node.execute.call(context)).rejects.toMatchObject({
 				httpCode: '400',
-				message: expect.not.stringMatching(/<!doctype|<\/?(?:html|head|title|body|p)\b/i),
-				description: expect.not.stringMatching(/<!doctype|<\/?(?:html|head|title|body|p)\b/i),
+				message: 'Bad request - please check your parameters',
+				description: message,
 			});
 			expect(context.helpers.requestOAuth2).toHaveBeenCalledWith(
 				'googleDocsOAuth2Api',
 				expect.objectContaining({
-					method: 'GET',
-					uri: `https://docs.googleapis.com/v1/documents/${documentId}`,
+					method: operation === 'get' ? 'GET' : 'POST',
+					uri: `https://docs.googleapis.com/v1/documents/${documentId}${
+						operation === 'update' ? ':batchUpdate' : ''
+					}`,
 				}),
 			);
-		},
-	);
+		});
+	});
 
 	it.each([
 		'Invalid user <name@example.com>',
@@ -137,39 +138,6 @@ describe('Google Docs document input and errors', () => {
 	});
 
 	it.each([
-		['doctype', '<!DOCTYPE html><body>Document error</body>'],
-		['HTML root', '<HTML lang="en"><body>Document error</body></HTML>'],
-		['content type', '<body>Document error</body>'],
-	])('should recognize HTML from the %s', async (source, html) => {
-		const context = setup('get', documentId);
-		context.helpers.requestOAuth2.mockRejectedValue({
-			statusCode: 400,
-			error: html,
-			response: {
-				headers: source === 'content type' ? { 'content-type': 'text/html; charset=UTF-8' } : {},
-			},
-		});
-
-		await expect(node.execute.call(context)).rejects.toMatchObject({
-			httpCode: '400',
-			message: 'Google Docs could not process the request (HTTP 400)',
-			description: expect.stringContaining('Save as Google Docs'),
-		});
-	});
-
-	it('should provide document guidance for an HTML error without an HTTP status', async () => {
-		const context = setup('get', documentId);
-		const html = '<!DOCTYPE html><html><body>Document error</body></html>';
-		context.helpers.requestOAuth2.mockRejectedValue(new Error(html));
-
-		await expect(node.execute.call(context)).rejects.toMatchObject({
-			httpCode: null,
-			message: 'Google Docs could not process the request',
-			description: expect.stringContaining('Save as Google Docs'),
-		});
-	});
-
-	it.each([
 		[401, 'Authorization failed - please check your credentials'],
 		[403, 'Forbidden - perhaps check your credentials?'],
 		[404, 'The resource you are requesting could not be found'],
@@ -181,24 +149,17 @@ describe('Google Docs document input and errors', () => {
 			'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
 		],
 		[504, 'Gateway timed out - perhaps try again later?'],
-	])('should retain status guidance for an HTML %s error', async (statusCode, message) => {
+	])('should retain status guidance for an API %s error', async (statusCode, message) => {
 		const context = setup('get', documentId);
-		const html = '<!DOCTYPE html><html><body>Request failed</body></html>';
-		context.helpers.requestOAuth2.mockRejectedValue(
-			Object.assign(new Error(`${statusCode} - ${JSON.stringify(html)}`), {
-				statusCode,
-				error: html,
-				response: { headers: { 'content-type': 'text/html' } },
-			}),
-		);
-		const execution = node.execute.call(context);
+		context.helpers.requestOAuth2.mockRejectedValue({
+			statusCode,
+			error: { error: { code: statusCode, message: 'Request failed' } },
+		});
 
-		await expect(execution).rejects.toMatchObject({
+		await expect(node.execute.call(context)).rejects.toMatchObject({
 			httpCode: String(statusCode),
 			message,
-			description: undefined,
+			description: 'Request failed',
 		});
-		const error: unknown = await execution.catch((error: unknown) => error);
-		expect(JSON.stringify(error)).not.toMatch(/<!doctype|<\/?(?:html|body)\b/i);
 	});
 });

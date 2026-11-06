@@ -1,4 +1,3 @@
-import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -51,36 +50,7 @@ export async function googleApiRequest(
 			return await this.helpers.requestOAuth2.call(this, 'googleDocsOAuth2Api', options);
 		}
 	} catch (error) {
-		const apiError = new NodeApiError(this.getNode(), error as JsonObject);
-		const response = isRecord(error) && isRecord(error.response) ? error.response : undefined;
-		const headers = isRecord(response?.headers) ? response.headers : undefined;
-		const contentType = headers?.['content-type'];
-		const hasHtmlContentType =
-			typeof contentType === 'string' && contentType.toLowerCase().includes('text/html');
-		const hasHtmlMessage = [apiError.message, apiError.description].some(
-			(value) => typeof value === 'string' && /<!doctype\s+html(?:\s|>)|<html(?:\s|>)/i.test(value),
-		);
-
-		if (hasHtmlContentType || hasHtmlMessage) {
-			if (apiError.httpCode && apiError.httpCode !== '400') {
-				apiError.description = undefined;
-				apiError.cause = undefined;
-				throw apiError;
-			}
-
-			throw new NodeApiError(
-				this.getNode(),
-				{},
-				{
-					httpCode: apiError.httpCode ?? undefined,
-					message: `Google Docs could not process the request${apiError.httpCode ? ` (HTTP ${apiError.httpCode})` : ''}`,
-					description:
-						'The Google Docs node only supports native Google Docs. If this is an Office document, open it with Google Docs. Select "File > Save as Google Docs". Use the new Google Docs URL. Otherwise, check the document URL and access permissions.',
-				},
-			);
-		}
-
-		throw apiError;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
