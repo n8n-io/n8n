@@ -154,6 +154,16 @@ describe('WorkflowSharingService', () => {
 			});
 			expect(result).toEqual(['owner-1']);
 		});
+		it('resolves the roles for the given scope', async () => {
+			sharedWorkflowRepository.findProjectIdsByRole.mockResolvedValue([]);
+			userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue([]);
+
+			await service.getUserIdsWithAccessToWorkflow('workflow-1', 'workflow:update');
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:update']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('global', ['workflow:update']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:update']);
+		});
 	});
 
 	describe('getUserIdsWithAccessToWorkflowSafe', () => {
