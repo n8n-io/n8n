@@ -55,12 +55,6 @@ const contact = typeof data.contact === 'string' ? contactFor(data.contact) : un
 					</a>
 				</li>
 			)}
-			<li class="doc-read" title="Chapter completed" hidden>
-				<svg viewBox="0 0 16 16" aria-hidden="true">
-					<path d="M2.75 8.5l3.5 3.5 7-7.5" />
-				</svg>
-				<span>Completed</span>
-			</li>
 		</ul>
 	)
 }
@@ -85,9 +79,6 @@ const contact = typeof data.contact === 'string' ? contactFor(data.contact) : un
 		font-size: var(--sl-text-xs);
 		line-height: 1.25rem;
 		color: var(--sl-color-gray-3);
-	}
-	.doc-meta .doc-read {
-		margin-inline-start: auto;
 	}
 	.doc-meta li[hidden] {
 		display: none;

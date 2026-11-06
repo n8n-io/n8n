@@ -252,10 +252,11 @@ import Default from '@astrojs/starlight/components/Head.astro';
 	const read = loadRead();
 	const current = normalize(location.pathname);
 
-	// The title area of a finished page shows "Completed".
+	// The sidebar shows a tick after the name of each finished page.
 	const showRead = () => {
-		const badge = document.querySelector<HTMLElement>('.doc-meta .doc-read');
-		if (badge) badge.hidden = !read.has(current);
+		for (const link of document.querySelectorAll<HTMLAnchorElement>('.sidebar-content a[href]')) {
+			link.classList.toggle('is-read', read.has(normalize(new URL(link.href).pathname)));
+		}
 	};
 
 	const markRead = () => {
@@ -264,7 +265,7 @@ import Default from '@astrojs/starlight/components/Head.astro';
 		try {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify([...read]));
 		} catch {
-			// Storage can be blocked. The badge then shows only until the next page load.
+			// Storage can be blocked. The tick then shows only until the next page load.
 		}
 		showRead();
 	};

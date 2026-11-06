@@ -33,10 +33,6 @@
 	--sl-color-hairline-light: var(--sl-color-gray-5);
 	--sl-color-hairline-shade: var(--sl-color-gray-5);
 	--n8n-panel: #232222;
-	/* Inline code is a chip in a dark variant of the accent, as on lisette.run. */
-	--n8n-inline-code: color-mix(in srgb, var(--sl-color-accent) 22%, var(--sl-color-black));
-	--n8n-inline-code-border: color-mix(in srgb, var(--sl-color-accent) 32%, var(--sl-color-black));
-	--n8n-inline-code-ink: #ffd3de;
 	--n8n-muted-link: rgb(255 255 255 / 0.64);
 	--n8n-hover: rgb(255 255 255 / 0.06);
 	--n8n-logo: var(--sl-color-accent);
@@ -64,9 +60,6 @@
 	--sl-color-hairline-light: var(--sl-color-gray-6);
 	--sl-color-hairline-shade: var(--sl-color-gray-6);
 	--n8n-panel: #fbf9fa;
-	--n8n-inline-code: color-mix(in srgb, var(--sl-color-accent) 9%, var(--sl-color-black));
-	--n8n-inline-code-border: color-mix(in srgb, var(--sl-color-accent) 20%, var(--sl-color-black));
-	--n8n-inline-code-ink: #a3184d;
 	--n8n-muted-link: rgb(31 28 29 / 0.64);
 	--n8n-hover: rgb(31 28 29 / 0.04);
 	--n8n-logo: var(--sl-color-white);
@@ -144,6 +137,17 @@
 	font-weight: 600;
 	color: var(--sl-color-accent);
 	background: transparent;
+}
+
+/* A finished page gets a small, muted green tick after its name. */
+.sidebar-content a.is-read > span::after {
+	content: '\2713';
+	margin-inline-start: 0.5rem;
+	font-size: 0.75em;
+	font-weight: 400;
+	/* The smaller glyph sits on the baseline. Raise it to the middle of the text. */
+	vertical-align: 0.15em;
+	color: color-mix(in srgb, var(--sl-color-green) 50%, var(--sl-color-bg-sidebar));
 }
 
 /* Right column: a plain label, compact link rows, and nested headings set in behind a
@@ -249,10 +253,15 @@ h1#_top {
 .sl-markdown-content :not(pre) > code {
 	font-size: 0.8125em;
 	padding: 0.0625rem 0.375rem;
-	border: 1px solid var(--n8n-inline-code-border);
-	color: var(--n8n-inline-code-ink);
+	/* Inline code follows the code blocks: a panel and a hairline in the text colour, one step
+	   closer to the text colour so that the chip shows on the page. */
+	border: 1px solid color-mix(in srgb, var(--sl-color-hairline), var(--sl-color-white) 8%);
+	color: inherit;
 	border-radius: 0.25rem;
-	background: var(--n8n-inline-code);
+	background: color-mix(in srgb, var(--n8n-panel), var(--sl-color-white) 4%);
+	/* A chip that wraps keeps its border, padding, and corners on each line. */
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
 }
 
 .sl-markdown-content blockquote {
