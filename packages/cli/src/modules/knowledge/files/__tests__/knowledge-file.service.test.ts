@@ -8,6 +8,7 @@ import { Readable } from 'node:stream';
 import { MAX_AGENT_FILE_SIZE_BYTES, MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import type { OperationContext, Transaction } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
@@ -156,7 +157,7 @@ class InMemoryAgentFileRepository {
 }
 
 /** The consumer's fence is the facade's job; here the row write runs as it is. */
-const reserveRow = vi.fn<KnowledgeWriteRunner>(async (write) => await write({}));
+const reserveRow: KnowledgeWriteRunner = async (write) => await write({});
 
 describe('KnowledgeFileService', () => {
 	let agentFileRepository: InMemoryAgentFileRepository;
@@ -265,8 +266,12 @@ describe('KnowledgeFileService', () => {
 
 	it('reserves each row through the consumer write runner and passes its context to the repository', async () => {
 		const saveUploadedFile = vi.spyOn(agentFileRepository, 'saveUploadedFile');
-		const ctx = { trx: mock() };
-		const reserveRowWithContext = vi.fn<KnowledgeWriteRunner>(async (write) => await write(ctx));
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		const reservations = vi.fn();
+		const reserveRowWithContext: KnowledgeWriteRunner = async (write) => {
+			reservations();
+			return await write(ctx);
+		};
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 		try {
 			const files = ['first.txt', 'second.txt'].map((fileName) => ({
@@ -283,7 +288,7 @@ describe('KnowledgeFileService', () => {
 				reserveRowWithContext,
 			);
 
-			expect(reserveRowWithContext).toHaveBeenCalledTimes(2);
+			expect(reservations).toHaveBeenCalledTimes(2);
 			expect(saveUploadedFile).toHaveBeenCalledTimes(2);
 			expect(saveUploadedFile).toHaveBeenCalledWith(expect.objectContaining({ agentId }), ctx);
 		} finally {
