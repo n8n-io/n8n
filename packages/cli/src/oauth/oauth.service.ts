@@ -21,13 +21,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import {
-	jsonParse,
-	MANAGED_VERSION_KEY,
-	OperationalError,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { jsonParse, MANAGED_VERSION_KEY } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -35,7 +29,14 @@ import {
 } from '@/constants';
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
+import {
+	AuthError,
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { OAuthRequest } from '@/requests';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
@@ -53,6 +54,7 @@ import {
 import {
 	oAuthAuthorizationServerMetadataSchema,
 	dynamicClientRegistrationResponseSchema,
+	type OAuthAuthorizationServerMetadata,
 } from '@/controllers/oauth/oauth2-dynamic-client-registration.schema';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
@@ -1183,7 +1185,7 @@ export class OauthService {
 		}
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			await this.performDynamicClientRegistration(
+			await this.registerClient(
 				oauthCredentials,
 				authorizationServerUrl!,
 				toUpdate,
@@ -1239,7 +1241,11 @@ export class OauthService {
 		return returnUri.toString();
 	}
 
-	private async performDynamicClientRegistration(
+	/**
+	 * Registers n8n as a client of the authorization server. Uses a client ID metadata
+	 * document (CIMD) when possible, else dynamic client registration (DCR).
+	 */
+	private async registerClient(
 		oauthCredentials: OAuth2CredentialData,
 		authorizationServerUrl: string,
 		toUpdate: ICredentialDataDecryptedObject,
@@ -1304,8 +1310,9 @@ export class OauthService {
 			);
 		}
 
+		const metadata = metadataValidation.data;
 		const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
-			metadataValidation.data;
+			metadata;
 		// Prefer the scopes advertised by the protected resource (RFC 9728) over the
 		// authorization server's scopes_supported (RFC 8414). Some servers only
 		// advertise the required scopes on the protected resource document.
@@ -1318,10 +1325,31 @@ export class OauthService {
 			toUpdate.scope = scope;
 		}
 
+		const clientMetadataUrl = this.selectClientMetadataUrl(metadata, oauthCredentials);
+		if (clientMetadataUrl) {
+			// With CIMD the metadata document URL is the client ID, so no registration request is sent.
+			this.applyDcrManagedFields(oauthCredentials, toUpdate, toDelete, {
+				authUrl: authorization_endpoint,
+				accessTokenUrl: token_endpoint,
+				grantType: 'pkce',
+				authentication: undefined,
+				usePkce: true,
+				clientId: clientMetadataUrl,
+				clientSecret: undefined,
+			});
+			return;
+		}
+
+		if (!registration_endpoint) {
+			throw new BadRequestError(
+				'The OAuth2 server does not support automatic client registration. Turn off "Register Client Automatically" and enter a client ID.',
+			);
+		}
+
 		const { grantType, authentication, usePkce } = this.selectGrantTypeAndAuthenticationMethod(
-			metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
-			metadataValidation.data.token_endpoint_auth_methods_supported ?? [],
-			metadataValidation.data.code_challenge_methods_supported ?? [],
+			metadata.grant_types_supported ?? ['authorization_code', 'implicit'],
+			metadata.token_endpoint_auth_methods_supported ?? [],
+			metadata.code_challenge_methods_supported ?? [],
 		);
 		const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
 			grantType,
@@ -1367,6 +1395,66 @@ export class OauthService {
 			clientId: client_id,
 			clientSecret: authentication ? client_secret : undefined,
 		});
+	}
+
+	/**
+	 * Returns the client metadata document URL to use as the client ID, or `undefined`
+	 * when CIMD is off or not possible. CIMD needs server support, `S256` PKCE and public
+	 * clients. Credentials with JWE need DCR to register their keys.
+	 */
+	private selectClientMetadataUrl(
+		metadata: OAuthAuthorizationServerMetadata,
+		oauthCredentials: OAuth2CredentialData,
+	): string | undefined {
+		if (!this.globalConfig.auth.oauthCimdEnabled || oauthCredentials.jweEnabled === true) return;
+
+		const authMethods = metadata.token_endpoint_auth_methods_supported ?? [];
+		const isSupported =
+			metadata.client_id_metadata_document_supported === true &&
+			(metadata.code_challenge_methods_supported ?? []).includes('S256') &&
+			(authMethods.length === 0 || authMethods.includes('none')) &&
+			(metadata.grant_types_supported ?? ['authorization_code']).includes('authorization_code');
+		if (!isSupported) return;
+
+		const clientMetadataUrl = this.getClientMetadataUrl();
+		// The spec requires an HTTPS URL with a path. Fall back to DCR, for example on a local instance.
+		const url = URL.canParse(clientMetadataUrl) ? new URL(clientMetadataUrl) : undefined;
+		if (url?.protocol !== 'https:' || url.pathname === '/') {
+			this.logger.warn(
+				'Client ID metadata document URL is not an HTTPS URL with a path, using DCR instead',
+				{
+					clientMetadataUrl,
+				},
+			);
+			return;
+		}
+
+		return clientMetadataUrl;
+	}
+
+	/** URL of the client ID metadata document that n8n sends as its client ID. */
+	private getClientMetadataUrl(): string {
+		return (
+			this.globalConfig.auth.oauthClientMetadataUrl ||
+			`${this.getBaseUrl(OauthVersion.V2)}/client-metadata.json`
+		);
+	}
+
+	/** Client ID metadata document that this instance serves. */
+	getClientMetadataDocument() {
+		if (!this.globalConfig.auth.oauthCimdEnabled) {
+			throw new NotFoundError('Client ID metadata document is not enabled');
+		}
+		const baseUrl = this.getBaseUrl(OauthVersion.V2);
+		return {
+			client_id: `${baseUrl}/client-metadata.json`,
+			client_name: 'n8n',
+			client_uri: 'https://n8n.io/',
+			redirect_uris: [`${baseUrl}/callback`],
+			grant_types: ['authorization_code', 'refresh_token'],
+			response_types: ['code'],
+			token_endpoint_auth_method: 'none',
+		};
 	}
 
 	/** Clears the fields the authorization server did not grant. */
@@ -1556,7 +1644,12 @@ export class OauthService {
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
-			scopes: split(credential.scope ?? 'openid', ','),
+			// With automatic registration the scope comes from discovery. When the server
+			// advertises none, the MCP spec omits the parameter.
+			scopes:
+				credential.useDynamicClientRegistration && !credential.scope
+					? undefined
+					: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,

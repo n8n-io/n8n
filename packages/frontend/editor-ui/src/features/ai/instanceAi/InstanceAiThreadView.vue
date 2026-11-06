@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nIconButton,
 	N8nResizeWrapper,
@@ -21,6 +21,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
+	getAppTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getThreadDisplayTitle,
@@ -29,6 +30,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
+import { INSTANCE_AI_APP_ID_QUERY } from './constants';
 import type { AgentTestHandoffParams } from './composables/useInstanceAiAgentTestHandoff';
 import {
 	MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
@@ -46,6 +48,7 @@ import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.v
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiTestAgentPreviewPanel from './components/InstanceAiTestAgentPreviewPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import InstanceAiResourcePicker from './components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from './components/InstanceAiConversation.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -77,6 +80,7 @@ const thread = provideThread(props.threadId);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
@@ -240,11 +244,21 @@ watch(
 );
 
 // --- Canvas / data table preview ---
+const appTargets = computed(() =>
+	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
+);
+const requestedAppId = computed(() => {
+	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
+	return typeof appId === 'string' && appTargets.value.some((target) => target.appId === appId)
+		? appId
+		: undefined;
+});
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
+	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		load: async () => (await fetchThreadTabs(rootStore.restApiContext, props.threadId)).state,
 		save: async (state) => {
@@ -252,6 +266,13 @@ const preview = useCanvasPreview({
 		},
 	},
 });
+watch(
+	[requestedAppId, () => preview.tabsLoaded.value],
+	([appId, tabsLoaded]) => {
+		if (appId && tabsLoaded) preview.openAppPreview(appId);
+	},
+	{ immediate: true },
+);
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
@@ -338,6 +359,10 @@ provide(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
+// Wait for the stored tabs: a resource opened before they load replaces them.
+const showOpenResourcePicker = computed(
+	() => preview.tabsLoaded.value && !preview.isPreviewVisible.value && !hasPreviewTabs.value,
+);
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
 });
@@ -784,7 +809,35 @@ function handleNewThreadClick() {
 								/>
 							</Transition>
 						</N8nTooltip>
+						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
+						<InstanceAiResourcePicker
+							v-if="showOpenResourcePicker && thread.projectId"
+							:project-id="thread.projectId"
+							:excluded-tabs="preview.openTabs.value"
+							placement="bottom-end"
+							content-test-id="instance-ai-open-resource-picker"
+							@select="preview.openTab"
+						>
+							<template #trigger>
+								<N8nTooltip
+									:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+									as-child
+								>
+									<N8nIconButton
+										icon="square-plus"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-open-resource"
+										:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+									/>
+								</N8nTooltip>
+							</template>
+						</InstanceAiResourcePicker>
 						<N8nTooltip
+							v-else
 							:content="artifactsPreviewToggleLabel"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"

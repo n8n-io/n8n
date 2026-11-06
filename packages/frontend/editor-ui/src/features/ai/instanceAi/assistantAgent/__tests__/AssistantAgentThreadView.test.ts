@@ -1,4 +1,9 @@
-import { WORKFLOW_BUILDER_TOOL_NAMES, type InstanceAiNodesAttachment } from '@n8n/api-types';
+import {
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	type AssistantThreadTabsState,
+	type InstanceAiElementAttachment,
+	type InstanceAiNodesAttachment,
+} from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -11,18 +16,32 @@ import type { AgentChatComposerAttachment } from '@/features/agents/utils/compos
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import type { ArtifactThread } from '../../artifactThread';
+import type { WorkflowFailuresReport } from '../../components/InstanceAiWorkflowPreview.vue';
 import { INSTANCE_AI_VIEW } from '../../constants';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
-import { stashPendingAssistantAgentMessage } from '../assistantAgentThreads';
+import {
+	getPendingComposerDraft,
+	getPendingWorkflowAttachment,
+	stashPendingDraftAttachment,
+	stashPendingComposerDraft,
+	stashPendingFirstMessage,
+	stashPendingWorkflowAttachment,
+} from '../../composables/useInstanceAiHandoff';
+import {
+	getAssistantAgentLaunch,
+	stashAssistantAgentLaunch,
+	stashPendingAssistantAgentMessage,
+} from '../assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgentThreads.store';
 import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
 const {
 	panelProps,
+	panelSlots,
 	sendMessageFromOutside,
 	telemetryTrack,
 	previewProps,
@@ -30,8 +49,12 @@ const {
 	appPreviewProps,
 	routerPush,
 	focusInput,
+	openFilePicker,
+	composerBlocked,
+	setDraft,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
+	panelSlots: { current: [] as string[] },
 	sendMessageFromOutside: vi.fn(),
 	telemetryTrack: vi.fn(),
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
@@ -39,6 +62,18 @@ const {
 	appPreviewProps: { current: undefined as Record<string, unknown> | undefined },
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
+	openFilePicker: vi.fn(),
+	composerBlocked: { current: false },
+	setDraft: vi.fn(),
+}));
+
+const { fetchTabs, saveTabs } = vi.hoisted(() => ({
+	fetchTabs: vi.fn(),
+	saveTabs: vi.fn(),
+}));
+vi.mock('../assistantAgentTabs.api', () => ({
+	fetchAssistantAgentThreadTabs: fetchTabs,
+	saveAssistantAgentThreadTabs: saveTabs,
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -60,6 +95,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 // The chat state that the stub panel exposes, as the real panel does.
 const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
+const isBusy = ref(false);
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
@@ -82,17 +118,23 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			expose({
 				sendMessageFromOutside,
 				focusInput,
+				openFilePicker,
+				setDraft,
 				addComposerAttachment,
 				removeComposerAttachment,
 				composerAttachments,
 				messages: chatMessages,
 				isStreaming: ref(false),
+				isBusy,
 				isLoadingHistory,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
+				panelSlots.current = Object.keys(slots);
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
+					slots['inline-offers']?.(),
 					slots['composer-attachments']?.(),
+					slots['footer-start']?.({ disabled: composerBlocked.current }),
 				]);
 			};
 		},
@@ -115,6 +157,32 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 		}),
 	};
 });
+
+// Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
+vi.mock('../../components/InstanceAiResourcePicker.vue', () => ({
+	default: defineComponent({
+		props: {
+			projectId: { type: String, required: true },
+			contentTestId: { type: String, default: 'instance-ai-tab-picker' },
+		},
+		emits: ['select'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h('button', {
+					'data-test-id': props.contentTestId,
+					'data-project-id': props.projectId,
+					onClick: () =>
+						emit('select', {
+							type: 'workflow',
+							id: 'wf-picked',
+							name: 'Picked workflow',
+							icon: 'workflow',
+							projectId: props.projectId,
+						}),
+				}),
+	}),
+}));
 
 vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	default: defineComponent({
@@ -143,6 +211,22 @@ vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 					onClick: () => emit('toggleExpanded'),
 				}),
 			],
+	}),
+}));
+
+// The real menu reads the MCP and browser use stores, which have their own tests.
+vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
+	default: defineComponent({
+		props: { disabled: { type: Boolean, default: false } },
+		emits: ['attachFiles'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h('button', {
+					'data-test-id': 'input-menu-attach',
+					disabled: props.disabled,
+					onClick: () => emit('attachFiles'),
+				}),
 	}),
 }));
 
@@ -237,10 +321,18 @@ describe('AssistantAgentThreadView', () => {
 		appPreviewProps.current = undefined;
 		routerPush.mockReset();
 		focusInput.mockReset();
+		openFilePicker.mockReset();
+		composerBlocked.current = false;
+		setDraft.mockReset();
+		localStorage.clear();
 		composerAttachments.value = [];
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
+		isBusy.value = false;
+		panelSlots.current = [];
 		if (threadArea.width) threadArea.width.value = 0;
+		fetchTabs.mockReset().mockResolvedValue({ state: null });
+		saveTabs.mockReset().mockResolvedValue({ state: null });
 	});
 
 	it('opens the chat of the Assistant agent on the system channel', async () => {
@@ -256,8 +348,29 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_instance_context' }),
+			expect.objectContaining({ key: 'assistant_status' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
+	});
+
+	it('replaces the attach button with the Assistant "+" menu, which opens the file picker', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(panelProps.current['show-attach-button']).toBe(false);
+
+		await userEvent.click(getByTestId('input-menu-attach'));
+
+		expect(openFilePicker).toHaveBeenCalledTimes(1);
+	});
+
+	it('disables the "+" menu while the composer takes no input', async () => {
+		composerBlocked.current = true;
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach')).toBeDisabled();
 	});
 
 	it('adds a thread opened by URL to the lists right away', async () => {
@@ -418,6 +531,45 @@ describe('AssistantAgentThreadView', () => {
 		expect(previewProps.current).toBeUndefined();
 	});
 
+	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		// The history can open tabs for past builds, so the picker waits for it.
+		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-open-resource-picker')).toHaveAttribute(
+			'data-project-id',
+			'project-1',
+		);
+		expect(queryByTestId('assistant-agent-preview-toggle')).toBeNull();
+
+		await fireEvent.click(getByTestId('assistant-agent-open-resource-picker'));
+
+		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-picked' });
+	});
+
+	it('shows the preview toggle, not the picker, while tabs are open', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+		chatMessages.value = [buildMessage('tc-1')];
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
+
+		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+		expect(getByTestId('assistant-agent-preview-toggle')).toBeEnabled();
+	});
+
 	it('sends a question from a preview with its context for that message only', async () => {
 		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
@@ -435,6 +587,102 @@ describe('AssistantAgentThreadView', () => {
 		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', [], { context });
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		expect(clientContext()).not.toHaveProperty('context');
+	});
+
+	describe('fix with AI', () => {
+		const failureReport: WorkflowFailuresReport = {
+			workflowId: 'wf-1',
+			executionId: 'exec-1',
+			errors: [{ nodeName: 'Extract Emails', errorMessage: 'Intentional break' }],
+		};
+
+		async function renderWithFailedRun(report = failureReport) {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			chatMessages.value = [buildMessage('tc-1')];
+			await flushPromises();
+
+			await reportFailure(report);
+			return result;
+		}
+
+		async function reportFailure(report: WorkflowFailuresReport) {
+			const onWorkflowFailures = previewProps.current?.onWorkflowFailures as (
+				report: WorkflowFailuresReport,
+			) => void;
+			onWorkflowFailures(report);
+			await flushPromises();
+		}
+
+		async function reportSuccess(workflowId: string) {
+			const onWorkflowSucceeded = previewProps.current?.onWorkflowSucceeded as (
+				workflowId: string,
+			) => void;
+			onWorkflowSucceeded(workflowId);
+			await flushPromises();
+		}
+
+		it('passes no offers to the chat without a failed run', async () => {
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(panelSlots.current).not.toContain('inline-offers');
+		});
+
+		it('offers a fix when a preview run fails', async () => {
+			const { getByTestId } = await renderWithFailedRun();
+
+			expect(getByTestId('instance-ai-fix-with-ai-panel')).toHaveTextContent('Extract Emails');
+		});
+
+		it('sends the fix prompt with the failed execution through the chat, and hides the offer', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = await renderWithFailedRun();
+
+			await user.click(getByTestId('instance-ai-fix-with-ai-button'));
+
+			expect(sendMessageFromOutside).toHaveBeenCalledOnce();
+			const [prompt, files, clientContext] = sendMessageFromOutside.mock.calls[0];
+			expect(prompt).toContain('Extract Emails');
+			expect(prompt).toContain('Intentional break');
+			expect(files).toEqual([]);
+			expect(clientContext).toEqual({
+				attachments: [{ type: 'workflow', id: 'wf-1', name: 'Untitled', executionId: 'exec-1' }],
+			});
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
+
+		it('hides the offer after dismiss until another run fails', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = await renderWithFailedRun();
+
+			await user.click(getByTestId('instance-ai-fix-with-ai-dismiss'));
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+
+			await reportFailure({ ...failureReport, executionId: 'exec-2' });
+			expect(getByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+		});
+
+		it('hides the offer while the chat is busy', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+
+			isBusy.value = true;
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
+
+		it('clears the offer when a later run of the same workflow succeeds', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+
+			await reportSuccess('wf-other');
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+
+			await reportSuccess('wf-1');
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
 	});
 
 	it('shows the stored title of the thread in the header', async () => {
@@ -468,6 +716,116 @@ describe('AssistantAgentThreadView', () => {
 		await fireEvent.click(getByTestId('assistant-agent-new-thread'));
 
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	describe('trace export', () => {
+		afterEach(() => {
+			localStorage.removeItem('instanceAi.debugMode');
+		});
+
+		it('hides the trace menu without the debug flag', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-trace-button')).not.toBeInTheDocument();
+		});
+
+		it('shows the trace menu and listens to the chat stream with the debug flag', async () => {
+			localStorage.setItem('instanceAi.debugMode', 'true');
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-trace-button')).toBeInTheDocument();
+			expect(panelProps.current.onStreamEvent).toEqual(expect.any(Function));
+		});
+	});
+
+	describe('stored tabs', () => {
+		const storedState: AssistantThreadTabsState = {
+			tabs: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+			closedTabs: [],
+			activeTab: { type: 'workflow', id: 'wf-9' },
+			previewOpen: true,
+		};
+
+		afterEach(() => {
+			sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
+		});
+
+		it('shows the stored tabs and the open preview of a thread opened by URL', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			expect(fetchTabs).toHaveBeenCalledWith(expect.anything(), 'thread-1');
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-9' });
+		});
+
+		it('does not load stored tabs for a new thread', async () => {
+			stashPendingAssistantAgentMessage({
+				threadId: 'thread-new',
+				text: 'Build a digest',
+				files: [],
+				references: [],
+			});
+
+			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(fetchTabs).not.toHaveBeenCalled();
+		});
+
+		it('stores the tabs when the user closes the preview', async () => {
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
+			fetchTabs.mockResolvedValue({ state: storedState });
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(saveTabs).toHaveBeenLastCalledWith(expect.anything(), 'thread-1', {
+				...storedState,
+				previewOpen: false,
+			});
+		});
+
+		it('sends the open tabs to the Assistant with each message', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+				activeId: 'wf-9',
+			});
+		});
+
+		it('sends no tabs until the stored tabs load', async () => {
+			fetchTabs.mockReturnValue(new Promise(() => {}));
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext()).not.toHaveProperty('threadArtifacts');
+		});
 	});
 
 	describe('artifacts panel', () => {
@@ -666,6 +1024,244 @@ describe('AssistantAgentThreadView', () => {
 				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES,
 				{ node_count: 2, runtime: 'agents' },
 			);
+		});
+	});
+	describe('picked app element', () => {
+		const element = (overrides: Partial<InstanceAiElementAttachment> = {}) =>
+			({
+				type: 'element',
+				appId: 'app-1',
+				tagName: 'button',
+				text: 'Save',
+				...overrides,
+			}) satisfies InstanceAiElementAttachment;
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+		});
+
+		async function renderThread() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			return result;
+		}
+
+		it('moves the element that the preview adds to the chat into one composer chip', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+
+			store.stageElement(element());
+			await flushPromises();
+
+			expect(store.pendingComposerAttachments).toEqual([]);
+			expect(composerAttachments.value).toEqual([
+				{
+					chip: { id: 'element', label: 'button: "Save"', icon: 'mouse-pointer' },
+					clientContextPatch: { attachments: [element()] },
+				},
+			]);
+		});
+
+		it('replaces the earlier element of the app when another one is picked', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+			store.stageElement(element());
+			await flushPromises();
+
+			store.stageElement(element({ tagName: 'h1', text: 'Title' }));
+			await flushPromises();
+
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual(['h1: "Title"']);
+		});
+
+		it('keeps the element next to staged canvas nodes', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+
+			store.stageNodeSets('wf-1', [nodeSet('Webhook')]);
+			store.stageElement(element());
+			await flushPromises();
+
+			expect(composerAttachments.value.map(({ chip }) => chip.id)).toEqual([
+				'nodes:wf-1',
+				'element',
+			]);
+		});
+
+		it('keeps one element, and follows it to the app of the latest pick', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+			store.stageElement(element());
+			await flushPromises();
+
+			store.stageElement(element({ appId: 'app-2', tagName: 'h1', text: 'Title' }));
+			await flushPromises();
+
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual(['h1: "Title"']);
+			expect(store.hasComposerElementFor('app-1')).toBe(false);
+			expect(store.hasComposerElementFor('app-2')).toBe(true);
+		});
+
+		it('tells the store which app has an element in the composer, until the chip is gone', async () => {
+			await renderThread();
+			const store = useInstanceAiStore();
+			expect(store.hasComposerElementFor('app-1')).toBe(false);
+
+			store.stageElement(element());
+			await flushPromises();
+			expect(store.hasComposerElementFor('app-1')).toBe(true);
+
+			composerAttachments.value = [];
+			await flushPromises();
+			expect(store.hasComposerElementFor('app-1')).toBe(false);
+		});
+	});
+
+	describe('hand-offs from other pages', () => {
+		const credentialContext = {
+			source: 'credential-modal' as const,
+			credential: { credentialType: 'slackApi', displayName: 'Slack API' },
+		};
+
+		beforeEach(() => {
+			// The store moves the staged nodes for real.
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'website-template',
+				origin: 'external',
+				templateId: '42',
+			});
+		});
+
+		async function renderNewThread() {
+			const result = renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			return result;
+		}
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens a launched thread as a new session that the server does not know yet', async () => {
+			await renderNewThread();
+
+			expect(panelProps.current['new-session']).toBe(true);
+			expect(useAssistantAgentThreadsStore().loadThread).not.toHaveBeenCalled();
+			expect(fetchTabs).not.toHaveBeenCalled();
+		});
+
+		it('sends the opening message with its references and context until it is accepted', async () => {
+			const reference = { type: 'workflow' as const, id: 'wf-1', name: 'Digest' };
+			stashPendingFirstMessage('thread-new', {
+				message: 'Where do I find the Slack token?',
+				attachments: [reference],
+				context: credentialContext,
+				authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			});
+
+			await renderNewThread();
+
+			expect(sendMessageFromOutside).toHaveBeenCalledWith('Where do I find the Slack token?', []);
+			expect(clientContext()).toMatchObject({
+				attachments: [reference],
+				context: credentialContext,
+			});
+
+			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
+			onMessageAccepted({ clientContext: clientContext() });
+			expect(clientContext()).not.toHaveProperty('attachments');
+			expect(clientContext()).not.toHaveProperty('context');
+		});
+
+		it('opens the handed-off workflow and sends it with the first message', async () => {
+			stashPendingWorkflowAttachment('thread-new', {
+				type: 'workflow',
+				id: 'wf-7',
+				name: 'Handed off',
+			});
+
+			const { getByTestId } = await renderNewThread();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-7' });
+			expect(clientContext()).toMatchObject({
+				attachments: [{ type: 'workflow', id: 'wf-7', name: 'Handed off' }],
+			});
+		});
+
+		it('puts a handed-off draft into the composer without sending it', async () => {
+			stashPendingComposerDraft('thread-new', {
+				text: 'Suggest my preferences',
+				prefillType: 'preferences_suggestion',
+			});
+
+			await renderNewThread();
+
+			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+		});
+
+		it('adds handed-off canvas nodes to the composer', async () => {
+			stashPendingDraftAttachment('thread-new', [nodeSet('Webhook')], 'wf-1');
+
+			await renderNewThread();
+
+			expect(stagedNodes()).toEqual([
+				{
+					id: 'nodes:wf-1',
+					attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
+				},
+			]);
+		});
+
+		it('sends a handed-off opening message once', async () => {
+			stashPendingFirstMessage('thread-new', {
+				message: 'Adjust template 42',
+				authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
+			});
+			const { unmount } = await renderNewThread();
+			expect(sendMessageFromOutside).toHaveBeenCalledWith('Adjust template 42', []);
+			unmount();
+			sendMessageFromOutside.mockReset();
+
+			await renderNewThread();
+
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+		});
+
+		it('keeps a handed-off workflow and draft until the server accepts the first message', async () => {
+			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
+			stashPendingComposerDraft('thread-new', {
+				text: 'Suggest my preferences',
+				prefillType: 'preferences_suggestion',
+			});
+			const { unmount } = await renderNewThread();
+			unmount();
+			setDraft.mockReset();
+
+			await renderNewThread();
+			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
+			expect(clientContext()).toMatchObject({ attachments: [{ type: 'workflow', id: 'wf-7' }] });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
+			expect(getPendingComposerDraft('thread-new')).toBeNull();
+		});
+
+		it('drops the launch marker once the server accepts the first message', async () => {
+			await renderNewThread();
+			expect(getAssistantAgentLaunch('thread-new')).toEqual({ projectId: 'project-1' });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+
+			expect(getAssistantAgentLaunch('thread-new')).toBeUndefined();
 		});
 	});
 });

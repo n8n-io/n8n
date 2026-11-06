@@ -8,6 +8,7 @@ import {
 	type StoredWorkflowGraph,
 	type WorkflowGraph,
 } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
@@ -39,6 +40,8 @@ export interface StartExecutionRequest {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. Defaults to 'none' */
 	responseExpectation?: ResponseExpectation;
+	/** Which lifecycle events the caller subscribes to. Missing means none. */
+	lifecycleEventSubscription?: LifecycleEventSubscription;
 	/**
 	 * Caller-minted, so the caller can record state against the run before it
 	 * starts. The engine never mints one.
@@ -52,11 +55,7 @@ export interface StartExecutionResult {
 	executionId: string;
 }
 
-/**
- * The parent link names an execution or a step that cannot have asked for
- * this one. The engine builds the link from rows it holds, so this is a bug
- * in the caller, not a request to refuse politely.
- */
+/** The parent link names a missing row, or a row that cannot start a sub-execution now. */
 export class InvalidParentLinkError extends Error {
 	constructor(
 		readonly reason: InvalidParentLinkReason,
@@ -69,7 +68,7 @@ export class InvalidParentLinkError extends Error {
 
 export type InvalidParentLinkReason =
 	| 'execution-not-found'
-	| 'execution-ended'
+	| 'execution-not-live'
 	| 'step-not-found'
 	| 'step-of-another-execution'
 	| 'step-not-waiting'
@@ -113,6 +112,7 @@ export class StartExecutionService {
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 			parent: request.parent ?? null,
+			lifecycleEventSubscription: request.lifecycleEventSubscription,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a
@@ -134,14 +134,14 @@ export class StartExecutionService {
 	 * running when it does not. A step starts nothing once it has settled.
 	 */
 	private async validateParent(parent: ParentLink): Promise<void> {
-		const [execution, step] = await Promise.all([
-			this.executionStore.loadExecution(parent.executionId).catch(absentAsInvalid),
+		const [status, step] = await Promise.all([
+			this.executionStore.loadExecutionStatus(parent.executionId).catch(absentAsInvalid),
 			this.stepStore.loadStep(parent.stepId).catch(absentAsInvalid),
 		]);
-		if (!isLiveExecutionStatus(execution.status)) {
+		if (!isLiveExecutionStatus(status)) {
 			throw new InvalidParentLinkError(
-				'execution-ended',
-				`execution ${parent.executionId} is ${execution.status}`,
+				'execution-not-live',
+				`execution ${parent.executionId} is ${status}`,
 			);
 		}
 		if (step.executionId !== parent.executionId) {

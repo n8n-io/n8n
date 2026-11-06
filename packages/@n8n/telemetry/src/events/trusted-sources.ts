@@ -64,6 +64,17 @@ export const TRUSTED_SOURCES_TELEMETRY = defineTelemetryEvents({
 			source_id: z.string(),
 		}),
 	},
+	TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST: {
+		name: 'Trusted source authenticated first request',
+		description:
+			'An admin-managed trusted source verified a token and resolved a user for the first time since it was created. Fires once per source, from the instance that handled the request. The seeded system source does not report.',
+		properties: z.object({
+			source_id: z.string(),
+			surface: z
+				.enum(['public-api', 'instance-mcp', 'trigger', 'apps'])
+				.describe('The surface the first authenticated request arrived on'),
+		}),
+	},
 	TRUSTED_SOURCE_BECAME_HEALTHY: {
 		name: 'Trusted source became healthy',
 		description:

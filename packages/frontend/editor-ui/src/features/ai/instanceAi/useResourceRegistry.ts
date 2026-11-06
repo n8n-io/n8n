@@ -1,10 +1,12 @@
 import { reactive, watch } from 'vue';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	DATA_TABLE_TOOL_NAMES,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
+	getDataTableCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -13,6 +15,7 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 	InstanceAiWorkflowAttachment,
+	InstanceAiAppTarget,
 } from '@n8n/api-types';
 
 import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
@@ -172,7 +175,7 @@ const ARTIFACT_TOOLS = new Set<string>([
 	...WORKFLOW_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS,
-	SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
+	...DATA_TABLE_TOOL_NAMES,
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -191,16 +194,18 @@ const WORKFLOW_READ_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.VALIDATE_WORKFLOW,
 	WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOW_VERSIONS,
 ]);
-const DATA_TABLE_READ_ACTIONS = new Set(['schema', 'query']);
+const DATA_TABLE_READ_ACTIONS = new Set<string>(['schema', 'query']);
+
+function isDataTableReadCall(tc: InstanceAiToolCallState): boolean {
+	const action = getDataTableCallAction(tc.toolName, tc.args?.action);
+	return action !== undefined && DATA_TABLE_READ_ACTIONS.has(action);
+}
 
 /** Origin for whatever a tool call registers, judged by what the call did, not by its result shape. */
 function toolCallOrigin(tc: InstanceAiToolCallState): ArtifactOrigin {
 	if (WORKFLOW_READ_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action)))
 		return 'fetched';
-	const action = optionalString(tc.args?.action);
-	if (!action) return 'built';
-	if (tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES && DATA_TABLE_READ_ACTIONS.has(action))
-		return 'fetched';
+	if (isDataTableReadCall(tc)) return 'fetched';
 	return 'built';
 }
 function entryFromAgentBuilderTarget(
@@ -421,11 +426,7 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			optionalString(result.dataTableName) ??
 			existing?.name ??
 			result.dataTableId;
-		const dataTableAction = optionalString(tc.args?.action);
-		const isReadOnlyLookup =
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
-			dataTableAction !== undefined &&
-			DATA_TABLE_READ_ACTIONS.has(dataTableAction);
+		const isReadOnlyLookup = isDataTableReadCall(tc);
 		recordProduced(
 			col,
 			{
@@ -590,6 +591,23 @@ function enrichWorkflowFromPendingAttachment(
 	);
 }
 
+function enrichAppsFromTargets(col: Collections, targets: readonly InstanceAiAppTarget[]): void {
+	for (const target of targets) {
+		const existing = col.produced.get(target.appId);
+		if (existing && existing.type !== 'app') continue;
+		recordProduced(
+			col,
+			{
+				type: 'app',
+				id: target.appId,
+				name: existing?.name ?? target.name ?? 'App',
+				projectId: target.projectId,
+			},
+			{ linkable: existing !== undefined },
+		);
+	}
+}
+
 function enrichWorkflowsFromTransientReferences(
 	col: Collections,
 	references: readonly TransientWorkflowArtifactReference[],
@@ -645,6 +663,18 @@ function enrichAgentFromPendingTarget(
 // Composable
 // ---------------------------------------------------------------------------
 
+/** Thread state besides the messages that adds or enriches registry entries. */
+export interface ResourceRegistrySources {
+	workflowNameLookup?: (id: string) => string | undefined;
+	archivedWorkflowIds?: () => ReadonlySet<string>;
+	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined;
+	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined;
+	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined;
+	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[];
+	agentBuilderTargets?: () => AgentBuilderTargetMetadata[];
+	appTargets?: () => readonly InstanceAiAppTarget[];
+}
+
 /**
  * Scans tool-call results in the conversation and returns two collections:
  *
@@ -669,13 +699,16 @@ function enrichAgentFromPendingTarget(
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
-	workflowNameLookup?: (id: string) => string | undefined,
-	archivedWorkflowIds?: () => ReadonlySet<string>,
-	agentBuilderTarget?: () => AgentBuilderTargetMetadata | undefined,
-	pendingAgentTarget?: () => PendingAgentTargetMetadata | undefined,
-	pendingWorkflowAttachment?: () => InstanceAiWorkflowAttachment | undefined,
-	transientWorkflowReferences?: () => readonly TransientWorkflowArtifactReference[],
-	agentBuilderTargets?: () => AgentBuilderTargetMetadata[],
+	{
+		workflowNameLookup,
+		archivedWorkflowIds,
+		agentBuilderTarget,
+		pendingAgentTarget,
+		pendingWorkflowAttachment,
+		transientWorkflowReferences,
+		agentBuilderTargets,
+		appTargets,
+	}: ResourceRegistrySources = {},
 ) {
 	// Long-lived reactive maps, reconciled in place: rebuilds that change
 	// nothing trigger nothing.
@@ -718,6 +751,7 @@ export function useResourceRegistry(
 			}
 			enrichAgentFromPendingTarget(col, pendingAgentTarget?.(), boundTarget);
 			enrichWorkflowFromPendingAttachment(col, pendingWorkflowAttachment?.());
+			enrichAppsFromTargets(col, appTargets?.() ?? []);
 			col.intake = 'mentioned';
 			enrichWorkflowsFromTransientReferences(col, transientWorkflowReferences?.() ?? []);
 

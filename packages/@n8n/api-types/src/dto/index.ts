@@ -4,6 +4,8 @@ export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ListAppsQueryDto } from './app/list-apps-query.dto';
 export { PublishAppDto } from './app/publish-app.dto';
+export { RestoreAppVersionDto } from './app/restore-app-version.dto';
+export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
@@ -43,7 +45,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
-export { InstanceAiThreadTabsRequestDto } from './instance-ai/instance-ai-thread-tabs-request.dto';
+export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
@@ -238,6 +240,7 @@ export { UpdateWorkflowDto } from './workflows/update-workflow.dto';
 export {
 	ManualRunDto,
 	type ManualRunPayload,
+	type ManualRunResponse,
 	type FullManualExecutionFromKnownTriggerPayload,
 	type FullManualExecutionFromUnknownTriggerPayload,
 	type PartialManualExecutionToDestinationPayload,
@@ -813,6 +816,7 @@ export {
 	PromotionEnvironmentProjectListPublicDto,
 	PromotionEnvironmentProjectPublicDto,
 	PromotionEnvironmentPublicDto,
+	PromotionMissingProjectListPublicDto,
 	UpdatePromotionEnvironmentDto,
 	promotionEnvironmentRemoteSchema,
 	promotionDirectionSchema,

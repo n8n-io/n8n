@@ -61,5 +61,5 @@ export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 		tools.push(createKillProcessTool(workspace.sandbox.processes));
 	}
 
-	return tools;
+	return tools.map((tool) => ({ ...tool, requiresWorkspace: true }));
 }

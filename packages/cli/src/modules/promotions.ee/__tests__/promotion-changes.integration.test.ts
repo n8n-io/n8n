@@ -34,8 +34,8 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import {
 	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingDataTables,
@@ -1333,6 +1333,37 @@ describe('resources in the preview', () => {
 			.expect(200);
 		expect(body.data.details).toEqual([expect.objectContaining({ key })]);
 		expect(body.data.missingKeys).toEqual([draftKey]);
+	}, 30_000);
+
+	it('returns both sides of a project whose id has a colon', async () => {
+		const owner = await createOwner();
+		const projects = Container.get(ProjectRepository);
+		const project = await projects.save(
+			projects.create({ id: 'Finance:EU', name: 'Finance', type: 'team', creatorId: owner.id }),
+		);
+		await linkUserToProject(owner, project, 'project:admin');
+		await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments();
+		await exportPreviewBaseline(environments.promote, owner);
+		await projects.update(project.id, { name: 'Finance EU' });
+		const agent = server.authAgentFor(owner);
+		const endpoint = `/promotions/${project.id}/changes/promote`;
+		const key = `project:${project.id}`;
+		const summary = (await agent.get(endpoint).expect(200)).body.data;
+
+		const { body } = await agent
+			.post(`${endpoint}/details`)
+			.send({ commitSha: summary.commitSha, keys: [key] })
+			.expect(200);
+
+		expect(body.data.details).toEqual([
+			expect.objectContaining({
+				key,
+				before: expect.objectContaining({ name: 'Finance' }),
+				after: expect.objectContaining({ name: 'Finance EU' }),
+			}),
+		]);
+		expect(body.data.missingKeys).toEqual([]);
 	}, 30_000);
 
 	it('loads details before the first promotion when the repository holds only a README', async () => {

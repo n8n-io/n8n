@@ -698,6 +698,34 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 		});
 	});
 
+	it('leaves the title to the agent runtime when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			titledByRuntime: true,
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({ metadata: { [OPENED_METADATA_KEY]: true } });
+	});
+
+	it('titles from the message when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({
+			title: 'Send me a daily digest of new GitHub issues',
+			metadata: { [OPENED_METADATA_KEY]: true },
+		});
+	});
+
 	it('does not open an untitled thread again after its opening turn', async () => {
 		const memory = createMemory({ metadata: { [OPENED_METADATA_KEY]: true } });
 

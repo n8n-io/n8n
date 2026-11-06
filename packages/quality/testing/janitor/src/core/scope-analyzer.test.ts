@@ -169,6 +169,62 @@ describe('computeScope', () => {
 			expect(result.kind).toBe('full');
 		});
 
+		it('a sink change forces full for a dependent that has its own changes', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const result = computeScope({
+				packageDir: 'packages/cli',
+				rootDir,
+				changedFiles: ['packages/@n8n/db/src/entities/user.entity.ts', 'packages/cli/src/a.ts'],
+				packageName: 'n8n',
+				sinkAffectedPackages: ['@n8n/db', 'n8n'],
+			});
+			expect(result).toMatchObject({
+				kind: 'full',
+				trigger: 'packages/@n8n/db/src/entities/user.entity.ts',
+			});
+		});
+
+		it('a sink change does not force full for a package that does not depend on it', () => {
+			const rootDir = makePackageDir('packages/frontend/editor-ui');
+			const changedFiles = ['packages/@n8n/db/src/entities/user.entity.ts'];
+			const options = {
+				packageDir: 'packages/frontend/editor-ui',
+				rootDir,
+				packageName: 'n8n-editor-ui',
+				sinkAffectedPackages: ['@n8n/db', 'n8n'],
+			};
+			expect(computeScope({ ...options, changedFiles }).kind).toBe('skip');
+			expect(
+				computeScope({
+					...options,
+					changedFiles: [...changedFiles, 'packages/frontend/editor-ui/src/a.ts'],
+				}),
+			).toEqual({ kind: 'scoped', files: ['packages/frontend/editor-ui/src/a.ts'] });
+		});
+
+		it('a lockfile change forces full only in the packages whose dependencies it changed', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const options = {
+				packageDir: 'packages/cli',
+				rootDir,
+				packageName: 'n8n',
+				changedFiles: ['pnpm-lock.yaml', 'packages/cli/src/a.ts'],
+			};
+			expect(computeScope({ ...options, lockfileImpactedPackages: ['n8n'] })).toMatchObject({
+				kind: 'full',
+				trigger: 'pnpm-lock.yaml',
+			});
+			expect(computeScope({ ...options, lockfileImpactedPackages: ['other'] })).toEqual({
+				kind: 'scoped',
+				files: ['packages/cli/src/a.ts'],
+			});
+			expect(computeScope({ ...options, lockfileImpactedPackages: null }).kind).toBe('full');
+			expect(
+				computeScope({ ...options, packageName: undefined, lockfileImpactedPackages: ['other'] })
+					.kind,
+			).toBe('full');
+		});
+
 		it('does NOT treat a per-package package.json as a global trigger', () => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({

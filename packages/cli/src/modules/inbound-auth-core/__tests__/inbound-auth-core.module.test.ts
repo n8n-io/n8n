@@ -10,7 +10,7 @@ import {
 	TrustedSourceStore,
 } from '@n8n/inbound-auth';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';

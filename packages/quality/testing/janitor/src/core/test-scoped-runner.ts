@@ -12,6 +12,8 @@ export interface TestScopedOptions {
 	changedFiles: string[] | null;
 	packageName?: string;
 	affectedPackages?: string[] | null;
+	sinkAffectedPackages?: string[] | null;
+	lockfileImpactedPackages?: string[] | null;
 	passthroughArgs: string[];
 	/** True when the run collects coverage (`COVERAGE_ENABLED=true`). */
 	collectCoverage?: boolean;
@@ -73,6 +75,8 @@ export function runTestScoped(options: TestScopedOptions): number {
 		changedFiles: options.changedFiles,
 		packageName: options.packageName,
 		affectedPackages: options.affectedPackages,
+		sinkAffectedPackages: options.sinkAffectedPackages,
+		lockfileImpactedPackages: options.lockfileImpactedPackages,
 	});
 
 	if (scope.kind === 'skip') {

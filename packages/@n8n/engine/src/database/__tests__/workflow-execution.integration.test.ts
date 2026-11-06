@@ -117,6 +117,7 @@ describe('workflow_execution table (integration)', () => {
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
+			lifecycleEventSubscription: { kind: 'all' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -134,9 +135,38 @@ describe('workflow_execution table (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
 			parent: null,
+			lifecycleEventSubscription: { kind: 'all' },
 			finishedAt: null,
 		});
 	});
+
+	it.each([
+		['the subscription it was given', { kind: 'all' as const }, { kind: 'all' }],
+		['null when it was given none', undefined, null],
+	])(
+		'TypeOrmExecutionStore round-trips the lifecycle event subscription: %s',
+		async (_name, lifecycleEventSubscription, expected) => {
+			const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+			const id = generateId();
+			await store.createExecution({
+				id,
+				workflowId: 'wf-6',
+				status: 'queued',
+				mode: 'manual',
+				graph: { nodes: [], edges: [], seeded: [] },
+				workflow: sampleWorkflow,
+				triggerOutputs: null,
+				callerContext: { hostMode: 'manual' },
+				responseExpectation: { kind: 'none' },
+				parent: null,
+				lifecycleEventSubscription,
+			});
+
+			const record = await store.loadExecution(id);
+
+			expect(record.lifecycleEventSubscription).toEqual(expected);
+		},
+	);
 
 	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
 		'TypeOrmExecutionViewStore.%s throws for an unknown id',
@@ -189,6 +219,17 @@ describe('workflow_execution table (integration)', () => {
 		});
 
 		expect(runningForWf2).toBe(1);
+	});
+
+	it('TypeOrmExecutionStore.loadExecutionStatus reads the status, and throws for an unknown id', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const id = generateId();
+		await store.createExecution(newRecord(id));
+
+		expect(await store.loadExecutionStatus(id)).toBe('queued');
+		await expect(store.loadExecutionStatus(generateId())).rejects.toBeInstanceOf(
+			ExecutionNotFoundError,
+		);
 	});
 
 	it('TypeOrmExecutionStore.finishExecution ends a waiting execution', async () => {
@@ -398,55 +439,33 @@ describe('workflow_execution table (integration)', () => {
 		expect(remaining).toBe(0);
 	});
 
-	it('TypeOrmExecutionStore.createExecution stores the parent link, and both stores read it back', async () => {
-		const repo = dataSource.getRepository(WorkflowExecution);
-		const store = new TypeOrmExecutionStore(repo);
-		const viewStore = new TypeOrmExecutionViewStore(
-			repo,
-			dataSource.getRepository(WorkflowStepExecution),
-		);
+	it('TypeOrmExecutionStore.createExecution stores the parent link, and loadExecution reads it back', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
 		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
 		const id = generateId();
 
 		await store.createExecution({ ...newRecord(id), parent });
 
 		expect((await store.loadExecution(id)).parent).toEqual(parent);
-		expect((await viewStore.loadExecutionView(id)).parent).toEqual(parent);
-		expect((await viewStore.loadExecutionWithStepsView(id)).parent).toEqual(parent);
 	});
 
-	it('TypeOrmExecutionViewStore.listExecutionViews filters by parent execution id', async () => {
-		const repo = dataSource.getRepository(WorkflowExecution);
-		const store = new TypeOrmExecutionStore(repo);
-		const viewStore = new TypeOrmExecutionViewStore(
-			repo,
-			dataSource.getRepository(WorkflowStepExecution),
+	it('carries the parent CHECK and the partial parent index in the schema', async () => {
+		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
+			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",
 		);
-		const parentId = generateId();
-		const awaited = { executionId: parentId, stepId: generateId(), awaited: true };
-		const detached = { executionId: parentId, stepId: generateId(), awaited: false };
-		const [awaitedId, detachedId, topLevelId] = [generateId(), generateId(), generateId()];
-		await store.createExecution({ ...newRecord(awaitedId), parent: awaited });
-		await store.createExecution({ ...newRecord(detachedId), parent: detached });
-		await store.createExecution(newRecord(topLevelId));
+		const byName = Object.fromEntries(indexes.map((row) => [row.indexname, row.indexdef]));
+		expect(byName.idx_workflow_execution_parent_execution_id).toContain('(parent_execution_id)');
+		expect(byName.idx_workflow_execution_parent_execution_id).toContain(
+			'WHERE (parent_execution_id IS NOT NULL)',
+		);
 
-		const subExecutions = await viewStore.listExecutionViews({
-			workflowIds: 'all',
-			parentExecutionId: parentId,
-			limit: 10,
-		});
-
-		expect(subExecutions.map((row) => [row.id, row.parent])).toEqual([
-			[detachedId, detached],
-			[awaitedId, awaited],
-		]);
-		expect(
-			await viewStore.countExecutionViews({
-				workflowIds: 'all',
-				parentExecutionId: parentId,
-				limit: 10,
-			}),
-		).toBe(2);
+		const [check]: Array<{ definition: string }> = await dataSource.query(
+			`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+				 WHERE conname = 'chk_workflow_execution_parent'`,
+		);
+		expect(check.definition).toBe(
+			'CHECK ((((parent_execution_id IS NULL) AND (parent_step_id IS NULL) AND (parent_awaited IS NULL)) OR ((parent_execution_id IS NOT NULL) AND (parent_step_id IS NOT NULL) AND (parent_awaited IS NOT NULL))))',
+		);
 	});
 });
 

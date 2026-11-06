@@ -4,7 +4,8 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ExecutionResponseSender } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
-import { Expression, UserError } from 'n8n-workflow';
+import { Expression } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';

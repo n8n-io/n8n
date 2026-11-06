@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UserError } from '@n8n/errors';
 import {
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
@@ -15,7 +15,7 @@ import {
 } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import type { TrustedSourceEntity } from './database/entities/trusted-source.entity';
@@ -110,6 +110,27 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	/** Uncached: the status as the database holds it now, for a run that holds the lease. */
 	async getStatus(id: string): Promise<TrustedSourceStatus | undefined> {
 		return (await this.trustedSourceRepository.findById(id, {}))?.status;
+	}
+
+	/**
+	 * `true` for the one caller that stamps the row; the database decides between instances. A
+	 * snapshot that already carries the stamp skips the write, so the steady state costs no query.
+	 * A snapshot cached before the column existed has no stamp either way, hence the truthy check.
+	 */
+	async recordFirstAuthentication(source: TrustedSource): Promise<boolean> {
+		if (source.firstAuthenticatedAt) return false;
+		const first = await this.trustedSourceRepository.markFirstAuthenticated(source.id, {});
+		// Win or loss, the snapshot is stale: the next read must carry the stamp to short-circuit.
+		// The stamp is committed; a failed invalidation must not hide the win from the caller.
+		try {
+			await this.invalidateCache(source);
+		} catch (error) {
+			this.logger.warn('First authentication stamped but the cache could not be invalidated', {
+				id: source.id,
+				error,
+			});
+		}
+		return first;
 	}
 
 	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
@@ -372,6 +393,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			status: row.status,
 			lastError: row.lastError,
 			lastCheckedAt: row.lastCheckedAt?.toISOString() ?? null,
+			firstAuthenticatedAt: row.firstAuthenticatedAt?.toISOString() ?? null,
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			config,

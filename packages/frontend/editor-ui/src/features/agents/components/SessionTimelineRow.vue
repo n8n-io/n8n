@@ -93,8 +93,18 @@ const timelineItemProps = computed(function getTimelineItemProps() {
 			projectId: props.projectId,
 			agentId: props.agentId,
 			senderName: props.item.authorName ?? fallbackSenderName,
+			threadId: props.threadId,
 			messageMarkdown: props.item.content ?? '',
 			personalisation: props.personalisation,
+		};
+	}
+
+	if (componentByKind[kind] === SessionCapabilityItem) {
+		return {
+			...baseProps,
+			projectId: props.projectId,
+			agentId: props.agentId,
+			threadId: props.threadId,
 		};
 	}
 

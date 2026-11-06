@@ -8,7 +8,8 @@ import { Container, Service } from '@n8n/di';
 import { decodeBufferBody, ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
@@ -631,6 +632,7 @@ export class ScalingService {
 									lastNodeExecuted: msg.lastNodeExecuted,
 									usedDynamicCredentials: msg.usedDynamicCredentials,
 									metadata: msg.metadata,
+									...(msg.failedBeforeStart && { failedBeforeStart: true }),
 									startedAt: new Date(msg.startedAt),
 									stoppedAt: new Date(msg.stoppedAt),
 									// Dropping `waitTill` here makes main mistake a waiting execution

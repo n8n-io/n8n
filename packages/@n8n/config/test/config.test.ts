@@ -60,6 +60,8 @@ describe('GlobalConfig', () => {
 				secure: true,
 			},
 			oauthBrowserBinding: false,
+			oauthCimdEnabled: false,
+			oauthClientMetadataUrl: '',
 		},
 		defaultLocale: 'en',
 		hideUsagePage: false,
@@ -359,7 +361,7 @@ describe('GlobalConfig', () => {
 		instanceAi: {
 			workflowSuggestionsEnabled: false,
 			assistantAgentEnabled: false,
-			model: 'anthropic/claude-opus-4-8',
+			model: 'anthropic/claude-opus-5-5',
 			modelUrl: '',
 			modelRequestLabels: false,
 			modelApiKey: '',
@@ -596,6 +598,7 @@ describe('GlobalConfig', () => {
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
+				maxResumeAttempts: 2,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',

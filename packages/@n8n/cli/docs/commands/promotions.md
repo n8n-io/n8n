@@ -255,6 +255,8 @@ n8n-cli promotion-environment delete env-1
 `update` takes `name`, `providerId`, `remote`, `settings`, or a combination. The
 direction and the scope cannot change. `settings` replaces the whole saved
 settings and must match the direction, so send every setting you want to keep.
+A new provider type or repository closes the open promotion reviews of the
+environment in n8n. Their merge requests stay open on the Git host.
 
 ```bash
 echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true}}' \
@@ -262,7 +264,8 @@ echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnProm
 ```
 
 `delete` also removes the project links and the local checkout. The provider
-stays. Nothing in Git changes.
+stays. Nothing in the Git repository changes. The open promotion reviews of the
+environment close in n8n. Their merge requests stay open on the Git host.
 
 ## `promotion-environment connect` / `disconnect`
 
@@ -502,6 +505,31 @@ changes: removed or retyped columns. The values in those columns are removed.
 Rows and other columns are kept. The flag applies all such changes when the
 command runs. This includes changes that the blocked Apply did not report.
 Without the flag, a destructive change blocks the command, and it exits `4`.
+
+## `promotion-environment list-missing-projects` / `create-missing-projects`
+
+Create the team projects of the Apply package that do not exist on this
+instance yet. The project Apply flow only works for a project that exists here
+with the same ID.
+
+```bash
+n8n-cli promotion-environment list-missing-projects env-2
+n8n-cli promotion-environment create-missing-projects env-2
+n8n-cli promotion-environment create-missing-projects env-2 -p proj-abc -p proj-def
+n8n-cli promotion-environment create-missing-projects env-2 --admin proj-abc=user-123
+```
+
+Projects are matched by ID, not by name. Each project is created empty, with the
+ID, name, icon, description, and telemetry tags from the package. You become its
+project admin. Use `--admin <projectId>=<userId>` to add another user as project
+admin of a new project. Nothing else is imported. Then apply changes to each project with
+`apply-selection`.
+
+Without `-p`, the command creates every missing project. Each result has the
+status `created`, `already-exists`, `failed`, or `admin-failed`. For
+`admin-failed`, the project exists, but the admin was not assigned. Assign the
+admin with `project add-member`. The command exits `1` when a project could not
+be created or its admin could not be assigned.
 
 ## `promotion-environment list-projects` / `add-project` / `remove-project`
 

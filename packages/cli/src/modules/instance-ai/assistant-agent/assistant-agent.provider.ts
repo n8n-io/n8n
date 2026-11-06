@@ -5,6 +5,7 @@ import {
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -16,7 +17,10 @@ import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	modelConfigId,
+	patchThread,
+	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
+	withAttachedAgentTarget,
 	type ModelConfig,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
@@ -56,6 +60,7 @@ import {
 import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
 import { AssistantEventSink } from './assistant-event-sink';
 import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
+import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
 import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
 	ASSISTANT_AGENT_ID,
@@ -86,9 +91,11 @@ function contextAttachmentsOf(
 		): attachment is
 			| InstanceAiWorkflowAttachment
 			| InstanceAiAgentAttachment
-			| InstanceAiNodesAttachment =>
+			| InstanceAiNodesAttachment
+			| InstanceAiElementAttachment =>
 			attachment.type === 'workflow' ||
 			attachment.type === 'agent' ||
+			attachment.type === 'element' ||
 			(attachment.type === 'nodes' && nodeContextEnabled),
 	);
 }
@@ -119,6 +126,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly turnInput: AssistantTurnInputBuilder,
 		private readonly agentFactory: AssistantAgentFactory,
 		private readonly tracer: AssistantTurnTracer,
+		private readonly threadTabs: AssistantThreadTabsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -234,6 +242,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
+			await this.bindAttachedAgent(turn, request.attachments);
 			const buildInput = async () =>
 				await this.turnInput.buildInput(environment, runtime, {
 					user,
@@ -264,6 +273,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			generateTitle: true,
 			...(trace ? { tracing: trace.context } : {}),
 		});
+		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
@@ -359,6 +369,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			},
 			sessionGrants: turn.sessionGrants,
 			onDomainAccessTracker: () => {},
+			// The chat shows the tab of a changed artifact only while a browser shows the
+			// turn. Storing it here also covers a closed browser tab.
+			onArtifactChanged: async (artifact) => {
+				try {
+					await this.threadTabs.showArtifactTab(turn.memory, turn.thread.id, artifact);
+				} catch (error) {
+					this.logger.warn('Failed to show an Assistant artifact tab', {
+						threadId: turn.thread.id,
+						error: getErrorMessage(error),
+					});
+				}
+			},
 			readSetupItemsSnapshots: async () => [],
 			sandbox: {
 				resolveConfig: async () =>
@@ -370,6 +392,51 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					lease ? await this.workspace.getWorkspace(lease, context) : undefined,
 			},
 		};
+	}
+
+	/**
+	 * Binds the agent that the Agent Builder panel attached, like the editor binds
+	 * a thread on the current runtime before its first message. The builder tools
+	 * then edit that agent, and the panel lists the thread under it.
+	 */
+	private async bindAttachedAgent(
+		turn: SystemAgentStartTurn<AssistantSandboxLease>,
+		attachments: InstanceAiAttachment[] | undefined,
+	): Promise<void> {
+		const attached = attachments?.find(
+			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+		);
+		if (!attached || attached.projectId !== turn.thread.projectId) return;
+		// A patch replaces the metadata, so binding a saved agent drops its pending marker.
+		// `saveThread` merges, and a leftover marker makes a later build adopt this agent.
+		const patched = await patchThread(turn.memory, {
+			threadId: turn.thread.id,
+			update: ({ metadata }) => {
+				const next = withAttachedAgentTarget(metadata ?? {}, attached);
+				return next ? { metadata: next } : null;
+			},
+		});
+		if (patched) return;
+		// The first turn saves its messages after this, so the thread row can be missing here.
+		const metadata = withAttachedAgentTarget({}, attached);
+		if (!metadata) return;
+		await turn.memory.saveThread({ id: turn.thread.id, resourceId: turn.resourceId, metadata });
+	}
+
+	/** Records each attached agent as the turn opens on it. The builder never sees a
+	 *  turn that only asks about the agent, so nothing else records this state. */
+	private async snapshotAttachedAgents(
+		environment: AssistantTurnEnvironment,
+		attachments: InstanceAiResourceAttachment[],
+	): Promise<void> {
+		const context = environment.orchestrationContext;
+		const delegate = context.domainContext?.builderDelegate;
+		if (!delegate) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			const target = { agentId: attachment.id, projectId: attachment.projectId };
+			await snapshotAgent(context, delegate, target, 'attached');
+		}
 	}
 
 	/** The content of the turn's files, for the file tools of the turn. */

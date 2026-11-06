@@ -249,7 +249,12 @@ describe('AppPreviewService', () => {
 			const { req, next } = await authenticate(ctx);
 
 			expect(next).toHaveBeenCalledOnce();
-			expect(req.appContext).toEqual({ app: ctx.app, versionId, preview: true });
+			expect(req.appContext).toEqual({
+				app: ctx.app,
+				versionId,
+				preview: true,
+				previewUserId: 'user-1',
+			});
 			expect(ctx.res.cookie).not.toHaveBeenCalled();
 		});
 
