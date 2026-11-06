@@ -1,8 +1,13 @@
-import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
+import {
+	LoginRequestDto,
+	ResolveSignupTokenQueryDto,
+	SSO_LOGIN_REQUIRED_ERROR_CODE,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
-import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE, PersonRepository } from '@n8n/db';
 import {
 	Body,
 	createBodyKeyedRateLimiter,
@@ -17,11 +22,7 @@ import { Response } from 'express';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
+import { AuthError, BadRequestError, ForbiddenError, InternalServerError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
@@ -44,6 +45,7 @@ export class AuthController {
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly eventService: EventService,
 		private readonly authHandlerRegistry: AuthHandlerRegistry,
 		private readonly postHog?: PostHogClient,
@@ -124,7 +126,7 @@ export class AuthController {
 				userEmail,
 				reason: 'SSO is enabled, please log in with SSO',
 			});
-			throw new AuthError('SSO is enabled, please log in with SSO');
+			throw new AuthError('SSO is enabled, please log in with SSO', SSO_LOGIN_REQUIRED_ERROR_CODE);
 		}
 	}
 
@@ -225,6 +227,7 @@ export class AuthController {
 			payload.token,
 		);
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (!isWithinUsersLimit) {
@@ -235,11 +238,21 @@ export class AuthController {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId], {
-			includeRole: true,
-		});
+		if (inviterId === inviteeId) {
+			this.logger.debug(
+				'Request to resolve signup token failed because the inviter and the invitee are the same',
+				{ inviterId, inviteeId },
+			);
+			throw new BadRequestError('Invalid invite URL');
+		}
 
-		if (users.length !== 2) {
+		// Only a person can be invited. The inviter can be any account.
+		const [inviter, invitee] = await Promise.all([
+			this.userRepository.findByIdWithRole(inviterId),
+			this.personRepository.findByIdWithRole(inviteeId),
+		]);
+
+		if (!inviter || !invitee) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
 				{ inviterId, inviteeId },
@@ -247,8 +260,7 @@ export class AuthController {
 			throw new BadRequestError('Invalid invite URL');
 		}
 
-		const invitee = users.find((user) => user.id === inviteeId);
-		if (!invitee || invitee.password) {
+		if (invitee.password) {
 			this.logger.error('Invalid invite URL - invitee already setup', {
 				inviterId,
 				inviteeId,
@@ -256,12 +268,11 @@ export class AuthController {
 			throw new BadRequestError('The invitation was likely either deleted or already claimed');
 		}
 
-		const inviter = users.find((user) => user.id === inviterId);
-		if (!inviter?.email) {
+		if (!inviter.email) {
 			this.logger.error(
 				'Request to resolve signup token failed because inviter does not exist or is not set up',
 				{
-					inviterId: inviter?.id,
+					inviterId: inviter.id,
 				},
 			);
 			throw new BadRequestError('Invalid request');

@@ -80,8 +80,7 @@ describe('Memory builder — episodic memory', () => {
 		});
 		expect(runtimeConfig.episodicMemory).not.toHaveProperty('halfLifeDays');
 		expect(runtimeConfig.episodicMemory).not.toHaveProperty('maxEntryLength');
-		expect(typeof runtimeConfig.episodicMemory?.extract).toBe('function');
-		expect(typeof runtimeConfig.episodicMemory?.reflect).toBe('function');
+		expect(typeof runtimeConfig.episodicMemory?.consolidate).toBe('function');
 		expect(embedder.provider).toBe('openai');
 		expect(embedder.modelId).toBe('text-embedding-3-small');
 		expect(embedder.apiKey).toBe('embedding-key');
@@ -94,18 +93,13 @@ describe('Memory builder — episodic memory', () => {
 			modelId: 'embedding',
 			specificationVersion: 'v2',
 		} as unknown as NonNullable<EpisodicMemoryConfig['embedder']>;
-		const extract: NonNullable<EpisodicMemoryConfig['extract']> = async () =>
-			await Promise.resolve({ entries: [] });
-		const reflect: NonNullable<EpisodicMemoryConfig['reflect']> = async () =>
-			await Promise.resolve({
-				drop: [],
-				merge: [],
-			});
+		const consolidate: NonNullable<EpisodicMemoryConfig['consolidate']> = async () =>
+			await Promise.resolve({ consolidation: { facts: [] }, model: 'custom/model' });
 		const prompts = {
-			extraction: 'extract prompt',
-			reflection: 'reflect prompt',
+			consolidation: 'consolidation prompt',
 			recallToolInstruction: 'recall prompt',
 		};
+		const guidance = { include: ['timezone'], exclude: ['passwords'] };
 
 		const resolved = resolveEpisodicMemoryConfig(
 			{
@@ -115,9 +109,9 @@ describe('Memory builder — episodic memory', () => {
 				maxEntryLength: 400,
 				embedder,
 				embeddingModel: 'custom/model',
-				extract,
-				reflect,
+				consolidate,
 				prompts,
+				guidance,
 			} as unknown as EpisodicMemoryConfig,
 			{ defaultModel: 'openai/gpt-4o-mini' },
 		);
@@ -127,12 +121,12 @@ describe('Memory builder — episodic memory', () => {
 			maxEntriesPerRun: 2,
 			embeddingModel: 'custom/model',
 			prompts,
+			guidance,
 		});
 		expect(resolved).not.toHaveProperty('halfLifeDays');
 		expect(resolved).not.toHaveProperty('maxEntryLength');
 		expect(resolved.embedder).toBe(embedder);
-		expect(resolved.extract).toBe(extract);
-		expect(resolved.reflect).toBe(reflect);
+		expect(resolved.consolidate).toBe(consolidate);
 	});
 
 	it('constructs the default embedder without provider options', () => {
@@ -151,7 +145,6 @@ describe('Memory builder — episodic memory', () => {
 				memory: minimalBackend,
 				episodicMemory: {
 					embedder: { specificationVersion: 'v2' } as never,
-					extract: async () => await Promise.resolve({ entries: [] }),
 				},
 			}),
 		).toThrow(/BuiltEpisodicMemoryStore/);

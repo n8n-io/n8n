@@ -6,12 +6,16 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
+	N8nLoading,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
-import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import { useArtifactThread } from '../artifactThread';
+import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import { appHref, skillsHubHref } from '../canvasPreview.utils';
 import {
 	agentPreviewContextIcon,
 	formatAgentPreviewContextLabel,
@@ -24,8 +28,11 @@ const projectsStore = useProjectsStore();
 const store = useInstanceAiStore();
 
 const i18n = useI18n();
-const thread = useThread();
+const thread = useArtifactThread();
 const project = computed(() => {
+	// The project id arrives with thread hydration. Until then the lookup is
+	// pending, not unknown, so the template shows a skeleton instead.
+	if (!thread.projectId && thread.hydrationStatus !== 'ready') return undefined;
 	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
 	if (!match)
 		return {
@@ -38,7 +45,7 @@ const project = computed(() => {
 		: { type: 'icon' as const, value: 'layers' as const };
 	return {
 		name: isPersonal ? i18n.baseText('instanceAi.artifactsPanel.personalSpace') : match.name,
-		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
+		icon: isPersonal ? { type: 'icon' as const, value: 'user' as const } : icon,
 	};
 });
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
@@ -50,6 +57,8 @@ const openAgentPreview = inject<((id: string, projectId: string) => void) | unde
 	'openAgentPreview',
 	undefined,
 );
+const openSkillPreview = inject<((id: string) => void) | undefined>('openSkillPreview', undefined);
+const openAppPreview = inject<((id: string) => void) | undefined>('openAppPreview', undefined);
 const pendingComposerContext = inject<Readonly<Ref<InstanceAiHandoffContext | null>> | undefined>(
 	'pendingComposerContext',
 	undefined,
@@ -82,6 +91,16 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openAgentPreview) return;
 		e.preventDefault();
 		openAgentPreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'skill' && artifact.id) {
+		if (!openSkillPreview) return;
+		// Always prevent: this row has no target="_blank", so the browser would
+		// navigate the chat tab away even when the skill tab is already active.
+		e.preventDefault();
+		openSkillPreview(artifact.id);
+	} else if (artifact.type === 'app' && artifact.id) {
+		if (!openAppPreview) return;
+		e.preventDefault();
+		openAppPreview(artifact.id);
 	}
 }
 
@@ -102,10 +121,18 @@ const statusIconMap: Record<
 };
 
 // --- Artifacts ---
+const buildingArtifactIds = useBuildingArtifactIds();
+
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+		if (
+			entry.type === 'workflow' ||
+			entry.type === 'data-table' ||
+			entry.type === 'agent' ||
+			entry.type === 'skill' ||
+			entry.type === 'app'
+		) {
 			result.push(entry);
 		}
 	}
@@ -116,6 +143,8 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	skill: 'book-open',
+	app: 'layout-template',
 };
 
 function artifactHref(artifact: ResourceEntry) {
@@ -131,6 +160,10 @@ function artifactHref(artifact: ResourceEntry) {
 			? `/projects/${artifact.projectId}/agents/${artifact.id}`
 			: '/home/agents';
 	}
+	if (artifact.type === 'skill') return skillsHubHref(artifact.id);
+	if (artifact.type === 'app' && artifact.projectId) {
+		return appHref(artifact.projectId, artifact.id);
+	}
 	return '#';
 }
 
@@ -138,8 +171,11 @@ function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
 
-function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
+function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry | undefined {
 	const key = handoffContextKey(context);
+
+	// A control signal, not user-added context — no sidebar entry.
+	if (context.source === 'setup-panel-execute') return undefined;
 
 	if (context.source === 'agent-preview') {
 		return {
@@ -170,10 +206,10 @@ const contextEntries = computed<ContextEntry[]>(() => {
 	// Pending handoff (preview "Send to Assistant") lives on the composer until
 	// the first send — include it so the sidebar matches the input chip.
 	const pending = pendingComposerContext?.value;
-	if (pending) {
-		const key = handoffContextKey(pending);
-		seen.add(key);
-		entries.push(contextEntryFor(pending));
+	const pendingEntry = pending ? contextEntryFor(pending) : undefined;
+	if (pendingEntry) {
+		seen.add(pendingEntry.key);
+		entries.push(pendingEntry);
 	}
 
 	for (const message of [...thread.messages].reverse()) {
@@ -181,8 +217,10 @@ const contextEntries = computed<ContextEntry[]>(() => {
 
 		const key = handoffContextKey(message.context);
 		if (seen.has(key) || dismissedKeys.has(key)) continue;
+		const entry = contextEntryFor(message.context);
+		if (!entry) continue;
 		seen.add(key);
-		entries.push(contextEntryFor(message.context));
+		entries.push(entry);
 	}
 
 	return entries;
@@ -214,11 +252,23 @@ async function dismissContext(key: string) {
 				</div>
 
 				<div :class="$style.artifactList">
-					<div :class="[$style.artifactRow]">
+					<div v-if="project" :class="[$style.artifactRow]">
 						<span :class="$style.artifactIconWrap">
 							<ProjectIcon :icon="project.icon" size="small" border-less />
 						</span>
 						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+					<div
+						v-else
+						:class="$style.artifactRow"
+						data-test-id="instance-ai-artifacts-project-loading"
+					>
+						<span :class="[$style.artifactIconWrap, $style.iconSkeleton]">
+							<N8nLoading variant="custom" />
+						</span>
+						<span :class="$style.nameSkeleton">
+							<N8nLoading variant="custom" />
+						</span>
 					</div>
 				</div>
 			</div>
@@ -279,6 +329,15 @@ async function dismissContext(key: string) {
 					>
 						<span :class="$style.artifactIconWrap">
 							<N8nIcon
+								v-if="buildingArtifactIds.has(artifact.id)"
+								icon="spinner"
+								spin
+								size="large"
+								:class="$style.artifactIcon"
+								data-test-id="instance-ai-artifact-building-spinner"
+							/>
+							<N8nIcon
+								v-else
 								:icon="artifactIconMap[artifact.type] ?? 'file'"
 								size="large"
 								:class="$style.artifactIcon"
@@ -289,6 +348,21 @@ async function dismissContext(key: string) {
 							{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
 						</span>
 					</a>
+				</div>
+
+				<div
+					v-else-if="thread.hydrationStatus !== 'ready'"
+					:class="$style.artifactList"
+					data-test-id="instance-ai-artifacts-list-loading"
+				>
+					<div :class="[$style.artifactRow, $style.artifactRowSkeleton]">
+						<span :class="[$style.artifactIconWrap, $style.artifactIconSkeleton]">
+							<N8nLoading variant="custom" />
+						</span>
+						<span :class="$style.nameSkeleton">
+							<N8nLoading variant="custom" />
+						</span>
+					</div>
 				</div>
 
 				<div v-else :class="$style.emptyState">
@@ -480,6 +554,28 @@ async function dismissContext(key: string) {
 	white-space: nowrap;
 	flex: 1;
 	min-width: 0;
+}
+
+/* Same footprint as the resolved project row (small ProjectIcon + one text line) */
+.iconSkeleton {
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+}
+
+.nameSkeleton {
+	flex: 1;
+	max-width: 50%;
+	height: var(--font-size--sm);
+}
+
+/* Artifact rows are shorter: one text line at its line height, plus the row padding (border-box) */
+.artifactRowSkeleton {
+	min-height: calc(var(--font-size--sm) * var(--line-height--lg) + 2 * var(--spacing--2xs));
+}
+
+.artifactIconSkeleton {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 
 .artifactRowArchived {

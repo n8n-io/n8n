@@ -1,42 +1,50 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
-	EntityManager,
+	OperationContext,
+	TransactionRunner,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
-import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import type { WorkflowSharingService } from '@n8n/backend-services';
 
 describe('PublicationStatusReporter', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
 	const errorReporter = mock<ErrorReporter>();
-	const outboxRepository = mock<WorkflowPublicationOutboxRepository>({
-		manager: mock<EntityManager>(),
-	});
+	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
+	const retryStateRepository = mock<WorkflowPublicationRetryStateRepository>();
+	const transactionRunner = mock<TransactionRunner>();
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const push = mock<Push>();
 	const publisher = mock<Publisher>();
 	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
-	const entityManager = mock<EntityManager>();
+	const operationContext: OperationContext = {};
+	const workflowSharingService = mock<WorkflowSharingService>();
+	const workflowPushNotifier = new WorkflowPushNotifier(push, workflowSharingService);
 
 	const reporter = new PublicationStatusReporter(
 		logger,
 		errorReporter,
 		outboxRepository,
+		retryStateRepository,
+		transactionRunner,
 		activationErrorsService,
-		push,
 		publisher,
 		triggerStatusRepository,
+		workflowPushNotifier,
 	);
 
 	function makeRecord(
@@ -54,18 +62,22 @@ describe('PublicationStatusReporter', () => {
 		} as WorkflowPublicationOutbox;
 	}
 
+	const userIds = ['user-1', 'user-2'];
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		outboxRepository.markCompleted.mockResolvedValue(undefined);
 		outboxRepository.markFailed.mockResolvedValue(undefined);
 		outboxRepository.markPartialSuccess.mockResolvedValue(undefined);
+		retryStateRepository.suppressRetry.mockResolvedValue(undefined);
+		retryStateRepository.clearRetrySuppression.mockResolvedValue(undefined);
 		activationErrorsService.deregister.mockResolvedValue(undefined);
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
 		publisher.publishCommand.mockResolvedValue(undefined);
-		(outboxRepository.manager.transaction as unknown as Mock).mockImplementation(
-			async (runInTransaction: (trx: EntityManager) => Promise<unknown>) =>
-				await runInTransaction(entityManager),
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValue(userIds);
+		transactionRunner.run.mockImplementation(
+			async (_context, runInTransaction) => await runInTransaction(operationContext),
 		);
 	});
 
@@ -96,15 +108,23 @@ describe('PublicationStatusReporter', () => {
 					errorMessage: null,
 				},
 			],
-			entityManager,
+			operationContext,
 		);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
+		);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowActivated',
-			data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
-		});
+		expect(workflowSharingService.getUserIdsWithAccessToWorkflowSafe).toHaveBeenCalledWith('wf-1');
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: {
@@ -122,14 +142,17 @@ describe('PublicationStatusReporter', () => {
 
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
 				1,
-				entityManager,
+				operationContext,
 				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
 			);
 			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-			expect(push.broadcast).toHaveBeenCalledWith({
-				type: 'workflowDeactivated',
-				data: { workflowId: 'wf-1' },
-			});
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowDeactivated',
+					data: { workflowId: 'wf-1' },
+				},
+				userIds,
+			);
 		});
 
 		test('unpublished reports the abandoned deregistrations once, at error level', async () => {
@@ -193,7 +216,12 @@ describe('PublicationStatusReporter', () => {
 			expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 				1,
 				'registration failed',
-				entityManager,
+				operationContext,
+			);
+			expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+				operationContext,
 			);
 		});
 
@@ -208,14 +236,17 @@ describe('PublicationStatusReporter', () => {
 
 			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(
 				1,
-				entityManager,
+				operationContext,
 				'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
 			);
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-			expect(push.broadcast).toHaveBeenCalledWith({
-				type: 'workflowActivated',
-				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
-			});
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowActivated',
+					data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+				},
+				userIds,
+			);
 		});
 	});
 
@@ -225,15 +256,22 @@ describe('PublicationStatusReporter', () => {
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
 			'wf-1',
 			[],
-			entityManager,
+			operationContext,
 		);
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
+		);
 		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowDeactivated',
-			data: { workflowId: 'wf-1' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowDeactivated',
+				data: { workflowId: 'wf-1' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
@@ -249,10 +287,14 @@ describe('PublicationStatusReporter', () => {
 		async ({ reason, message }) => {
 			await reporter.report(makeRecord(), { type: 'skipped', reason });
 
-			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
+			expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+				'wf-1',
+				operationContext,
+			);
 			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
 			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-			expect(push.broadcast).not.toHaveBeenCalled();
+			expect(push.sendToUsers).not.toHaveBeenCalled();
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining(message),
@@ -264,13 +306,25 @@ describe('PublicationStatusReporter', () => {
 	test('version-missing marks the record failed without reporting an error', async () => {
 		await reporter.report(makeRecord(), { type: 'version-missing' });
 
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, 'Published version not found');
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+			1,
+			'Published version not found',
+			operationContext,
+		);
 		expect(errorReporter.error).not.toHaveBeenCalled();
 		expect(activationErrorsService.deregister).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowFailedToActivate',
-			data: { workflowId: 'wf-1', errorMessage: 'Published version not found' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'Published version not found' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: {
@@ -290,13 +344,21 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 			1,
 			'registration failed',
-			entityManager,
+			operationContext,
+		);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
 		);
 		expect(outboxRepository.markCompleted).not.toHaveBeenCalled();
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowFailedToActivate',
-			data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: {
@@ -316,11 +378,19 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), { type: 'failed', error });
 
 		expect(errorReporter.error).not.toHaveBeenCalled();
-		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, entityManager);
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowFailedToActivate',
-			data: { workflowId: 'wf-1', errorMessage: error.message },
-		});
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, operationContext);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
+			userIds,
+		);
 	});
 
 	test('failed with triggerStatuses writes rows before marking failed', async () => {
@@ -359,12 +429,140 @@ describe('PublicationStatusReporter', () => {
 					errorMessage: 'cron unavailable',
 				},
 			],
-			entityManager,
+			operationContext,
 		);
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 			1,
 			'partial registration failed',
-			entityManager,
+			operationContext,
+		);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'partial registration failed', nodeId: 'b' },
+			},
+			userIds,
+		);
+	});
+
+	test('failed with several failed triggers pushes no nodeId', async () => {
+		const errorMessage =
+			'Triggers failed to activate: "Schedule": cron unavailable; "Cron": bad cron';
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error: new Error(errorMessage),
+			triggerStatuses: [
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'cron unavailable',
+				},
+				{
+					nodeId: 'c',
+					nodeName: 'Cron',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: 'bad cron',
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'workflowFailedToActivate', data: { workflowId: 'wf-1', errorMessage } },
+			userIds,
+		);
+	});
+
+	test('failed for one oversized trigger pushes that trigger node id', async () => {
+		const error = new TriggerNodeIdTooLongError([{ id: 'too-long', name: 'Long' }]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{
+					nodeId: 'fitting',
+					nodeName: 'Fitting',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message, nodeId: 'too-long' },
+			},
+			userIds,
+		);
+	});
+
+	test('failed for several oversized triggers pushes no node id', async () => {
+		const error = new TriggerNodeIdTooLongError([
+			{ id: 'first-long', name: 'First' },
+			{ id: 'second-long', name: 'Second' },
+		]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{
+					nodeId: 'fitting',
+					nodeName: 'Fitting',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
+			userIds,
+		);
+	});
+
+	// A policy refusal marks every trigger failed with the policy error, so the
+	// one failed row is not the node whose own error this is.
+	test('failed by policy with one failed row pushes no nodeId', async () => {
+		const error = new PolicyViolationError([
+			{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+		]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerStatuses: [
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
+			userIds,
 		);
 	});
 
@@ -396,7 +594,11 @@ describe('PublicationStatusReporter', () => {
 		expect(outboxRepository.markPartialSuccess).toHaveBeenCalledWith(
 			1,
 			expectedMessage,
-			entityManager,
+			operationContext,
+		);
+		expect(retryStateRepository.clearRetrySuppression).toHaveBeenCalledWith(
+			'wf-1',
+			operationContext,
 		);
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
 			'wf-1',
@@ -423,7 +625,7 @@ describe('PublicationStatusReporter', () => {
 					errorMessage: 'broker down',
 				},
 			],
-			entityManager,
+			operationContext,
 		);
 		// CAT-3432: partial path must NOT register activation errors
 		expect(activationErrorsService.register).not.toHaveBeenCalled();
@@ -439,7 +641,7 @@ describe('PublicationStatusReporter', () => {
 				],
 			},
 		};
-		expect(push.broadcast).toHaveBeenCalledWith(expectedPushMsg);
+		expect(push.sendToUsers).toHaveBeenCalledWith(expectedPushMsg, userIds);
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'display-workflow-publication-status',
 			payload: expectedPushMsg,
@@ -454,26 +656,62 @@ describe('PublicationStatusReporter', () => {
 
 		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).resolves.toBeUndefined();
 
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowDeactivated',
-			data: { workflowId: 'wf-1' },
-		});
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager, undefined);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowDeactivated',
+				data: { workflowId: 'wf-1' },
+			},
+			userIds,
+		);
+		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, operationContext, undefined);
 		// The rejection is handled asynchronously; flush the microtask queue.
 		await new Promise(process.nextTick);
 		expect(errorReporter.error).toHaveBeenCalledWith(publishError, { shouldBeLogged: true });
 	});
 
-	test('a relayed publication status is broadcast to local clients', () => {
-		reporter.handleDisplayWorkflowPublicationStatus({
+	test('a failed recipient lookup does not suppress the pubsub relay', async () => {
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockResolvedValueOnce([]);
+
+		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).resolves.toBeUndefined();
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+			[],
+		);
+	});
+
+	test('the pubsub relay still fires even if the recipient lookup itself throws', async () => {
+		workflowSharingService.getUserIdsWithAccessToWorkflowSafe.mockRejectedValueOnce(
+			new Error('db unavailable'),
+		);
+
+		await expect(reporter.report(makeRecord(), { type: 'unpublished' })).rejects.toThrow(
+			'db unavailable',
+		);
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'display-workflow-publication-status',
+			payload: { type: 'workflowDeactivated', data: { workflowId: 'wf-1' } },
+		});
+	});
+
+	test('a relayed publication status is delivered to clients with access', async () => {
+		await reporter.handleDisplayWorkflowPublicationStatus({
 			type: 'workflowActivated',
 			data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
 		});
 
-		expect(push.broadcast).toHaveBeenCalledWith({
-			type: 'workflowActivated',
-			data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
-		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowActivated',
+				data: { workflowId: 'wf-1', activeVersionId: 'v-2' },
+			},
+			userIds,
+		);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 });

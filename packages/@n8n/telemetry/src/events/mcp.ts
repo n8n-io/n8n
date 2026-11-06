@@ -8,13 +8,97 @@ import { defineTelemetryEvents } from '../define';
  * dialog's client slug is. Null when the name matches no known brand.
  */
 const clientBrand = z
-	.enum(['claude', 'cursor', 'vscode', 'openai'])
+	.enum(['claude', 'cursor', 'vscode', 'openai', 'mistral'])
 	.nullable()
 	.describe('Client brand, mirroring MCP_CLIENT_BRAND_MATCHERS in @n8n/api-types');
 
 const clientType = z.enum(['cli', 'ide', 'editor', 'assistant']).nullable();
 
+/** Which JSON action opened the MCP nudge modal. */
+const nudgeSurface = z
+	.enum(['export', 'import_file', 'import_url', 'copy', 'paste'])
+	.describe(
+		'The action that opened the nudge: the Export JSON menu item, Import from file, Import from URL, copying nodes, or pasting workflow JSON onto the canvas',
+	);
+
 export const MCP_TELEMETRY = defineTelemetryEvents({
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	DISCOVERY_EXPOSED: {
+		name: 'User entered MCP discovery experiment',
+		description:
+			'A user passed the durable personal eligibility check and received a live PostHog variant. Includes control and treatment, independently of clicks.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			eligible_at: z
+				.number()
+				.optional()
+				.describe(
+					'The user first login plus the configured delay. Eligibility can be saved later.',
+				),
+			concurrent_experiments: z.record(z.string(), z.string()),
+		}),
+	},
+	DISCOVERY_ENTRY_VIEWED: {
+		name: 'User viewed MCP discovery entry point',
+		description:
+			'A treatment entry point became visible on screen. Recorded once per placement per editor session.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
+		}),
+	},
+	DISCOVERY_ENTRY_CLICKED: {
+		name: 'User clicked MCP discovery entry point',
+		description:
+			'A user clicked an experiment entry point to open MCP settings or a new Claude browser tab.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
+		}),
+	},
+	// EOF Experiment cleanup
+	MCP_NUDGE_VIEWED: {
+		name: 'User viewed MCP nudge',
+		description:
+			'The MCP nudge modal opened after the user exported a workflow as JSON, imported one from a file or URL, copied nodes, or pasted workflow JSON onto the canvas. Fires only when the modal opens, so a trigger that the flag, the two-impression cap, an opt-out, or instance-level MCP access suppresses emits nothing. Each fire consumes one impression.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_CONNECT_CLICKED: {
+		name: 'User clicked connect in MCP nudge',
+		description:
+			'The user clicked "Connect n8n" in the MCP nudge. The app navigates to the MCP settings page and abandons the export or import that opened the nudge. Kept separate from the skip and dismiss events so the connect-to-export click ratio stays computable.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_SKIPPED: {
+		name: 'User skipped MCP nudge',
+		description:
+			'The user clicked "Skip" in the MCP nudge. The export or import that opened the nudge completes unchanged. Closing with × or Escape is "User dismissed MCP nudge" instead.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_DISMISSED: {
+		name: 'User dismissed MCP nudge',
+		description:
+			'The user closed the MCP nudge with × or Escape without choosing an action. The export or import that opened the nudge completes unchanged.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
+	MCP_NUDGE_OPTED_OUT: {
+		name: 'User opted out of MCP nudge',
+		description:
+			'The user checked "Don\'t show this again" in the MCP nudge. Fires when the checkbox is checked, independent of which button later closes the modal. The nudge never shows again for this user.',
+		properties: z.object({
+			surface: nudgeSurface,
+		}),
+	},
 	USER_GAVE_MCP_ACCESS_TO_WORKFLOW: {
 		name: 'User gave MCP access to workflow',
 		description: 'A workflow was exposed over MCP.',
@@ -68,7 +152,7 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 	AUTO_EXPOSE_NEW_WORKFLOWS_TOGGLED: {
 		name: 'User toggled auto-expose new workflows to MCP',
 		description:
-			'An admin turned the "Auto-expose new workflows" MCP setting on or off. Reports the resulting state so enabling and disabling are distinguishable.',
+			'An admin turned the "MCP access for new workflows" setting on or off. Reports the resulting state so enabling and disabling are distinguishable.',
 		properties: z.object({
 			enabled: z.boolean().describe('Resulting state of the setting, not the prior one'),
 			source: z

@@ -48,6 +48,7 @@ function buildPayload(
 		suggestionId: example.id,
 		suggestionKind: 'quick_example',
 		position: index + 1,
+		prefillType: 'suggestion_catalog',
 	};
 }
 

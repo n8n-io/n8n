@@ -1,16 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import {
-	STARTING_NODES,
-	TRIGGER_COUNT_EXCLUDED_NODES,
-	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-} from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
 import {
 	ActiveWorkflowTriggers,
@@ -29,37 +24,44 @@ import type {
 	INodeType,
 	WorkflowId,
 } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
-	UnexpectedError,
 	IsolateError,
 	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import {
+	STARTING_NODES,
+	TRIGGER_COUNT_EXCLUDED_NODES,
+	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+} from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
+import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 interface QueuedActivation {
@@ -87,11 +89,11 @@ export class ActiveWorkflowManager {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
-		private readonly push: Push,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly eventBus: MessageEventBus,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly ownershipService: OwnershipService,
 	) {
@@ -429,6 +431,12 @@ export class ActiveWorkflowManager {
 		const dbWorkflow = await this.workflowRepository.findById(workflowId);
 		if (!dbWorkflow) return;
 
+		// With the default batch size of 1, this is the last line before a crash during registration
+		this.logger.info(`Activating workflow ${formatWorkflow(dbWorkflow)}`, {
+			workflowName: dbWorkflow.name,
+			workflowId: dbWorkflow.id,
+		});
+
 		try {
 			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
 				shouldPublish: false,
@@ -539,7 +547,10 @@ export class ActiveWorkflowManager {
 		workflowId: WorkflowId,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
-		{ shouldPublish } = { shouldPublish: true },
+		{
+			shouldPublish = true,
+			actor = { kind: 'system', reason: 'activation' },
+		}: { shouldPublish?: boolean; actor?: PolicyActor } = {},
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -553,21 +564,6 @@ export class ActiveWorkflowManager {
 
 		if (dbWorkflow.isArchived) {
 			this.logger.debug('Cannot publish archived Workflow', { workflowId: dbWorkflow.id });
-			return added;
-		}
-
-		if (this.instanceSettings.isMultiMain && shouldPublish) {
-			if (!dbWorkflow?.activeVersionId) {
-				throw new UnexpectedError('Active version ID not found for workflow', {
-					extra: { workflowId },
-				});
-			}
-
-			void this.publisher.publishCommand({
-				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
-			});
-
 			return added;
 		}
 
@@ -600,13 +596,26 @@ export class ActiveWorkflowManager {
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.
-			if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
-				const project = await this.ownershipService.getWorkflowProjectCached(dbWorkflow.id);
+			await enforceWorkflowPublishPolicy(
+				this.policyEnforcementService,
+				this.ownershipService,
+				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
+				actor,
+			);
 
-				await this.policyEnforcementService.enforceWorkflowPublish({
-					workflow: { id: dbWorkflow.id, name: dbWorkflow.name, nodes },
-					projectId: project.id,
+			// This check answers the caller. The leader checks again as `system` before it
+			// registers, so a check that depends on the actor can still refuse there.
+			if (this.instanceSettings.isMultiMain && shouldPublish) {
+				void this.publisher.publishCommand({
+					command: 'add-webhooks-triggers-and-pollers',
+					payload: {
+						workflowId,
+						activeVersionId: dbWorkflow.activeVersion.versionId,
+						activationMode,
+					},
 				});
+
+				return added;
 			}
 
 			workflow = new Workflow({
@@ -633,6 +642,9 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// Carries no user: a registration outlives any number of republishes, so
+			// the publishing user is resolved at emit instead, next to the fresh
+			// workflow data the run actually uses.
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
 				workflowSettings: dbWorkflow.settings,
@@ -699,20 +711,26 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
-	handleDisplayWorkflowActivation({
+	async handleDisplayWorkflowActivation({
 		workflowId,
 		activeVersionId,
 	}: PubSubCommandMap['display-workflow-activation']) {
-		this.push.broadcast({ type: 'workflowActivated', data: { workflowId, activeVersionId } });
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowActivated',
+			data: { workflowId, activeVersionId },
+		});
 	}
 
 	@OnPubSubEvent('display-workflow-deactivation', { instanceType: 'main' })
-	handleDisplayWorkflowDeactivation({ workflowId }: { workflowId: string }) {
-		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
+	async handleDisplayWorkflowDeactivation({ workflowId }: { workflowId: string }) {
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowDeactivated',
+			data: { workflowId },
+		});
 	}
 
 	@OnPubSubEvent('display-workflow-activation-error', { instanceType: 'main' })
-	handleDisplayWorkflowActivationError({
+	async handleDisplayWorkflowActivationError({
 		workflowId,
 		errorMessage,
 		errorDescription,
@@ -723,7 +741,7 @@ export class ActiveWorkflowManager {
 		errorDescription?: string;
 		nodeId?: string;
 	}) {
-		this.push.broadcast({
+		await this.workflowPushNotifier.notify(workflowId, {
 			type: 'workflowFailedToActivate',
 			data: { workflowId, errorMessage, errorDescription, nodeId },
 		});
@@ -742,13 +760,6 @@ export class ActiveWorkflowManager {
 			await this.add(workflowId, activationMode, undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
 			});
-
-			this.push.broadcast({ type: 'workflowActivated', data: { workflowId, activeVersionId } });
-
-			await this.publisher.publishCommand({
-				command: 'display-workflow-activation',
-				payload: { workflowId, activeVersionId },
-			}); // instruct followers to show activation in UI
 		} catch (e) {
 			const error = ensureError(e);
 			const { message } = error;
@@ -811,7 +822,7 @@ export class ActiveWorkflowManager {
 				}
 			}
 
-			this.push.broadcast({
+			await this.workflowPushNotifier.notify(workflowId, {
 				type: 'workflowFailedToActivate',
 				data: { workflowId, errorMessage: message, nodeId, errorDescription },
 			});
@@ -820,7 +831,24 @@ export class ActiveWorkflowManager {
 				command: 'display-workflow-activation-error',
 				payload: { workflowId, errorMessage: message, nodeId, errorDescription },
 			}); // instruct followers to show activation error in UI
+
+			return;
 		}
+
+		// Activation already succeeded above; notifying about it happens
+		// outside the try/catch so it can't be mistaken for an activation failure.
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowActivated',
+			data: { workflowId, activeVersionId },
+		});
+
+		// Not awaited: a relay failure must not fail this pubsub handler.
+		void this.publisher
+			.publishCommand({
+				command: 'display-workflow-activation',
+				payload: { workflowId, activeVersionId },
+			}) // instruct followers to show activation in UI
+			.catch((error) => this.errorReporter.error(ensureError(error), { shouldBeLogged: true }));
 	}
 
 	/**
@@ -1010,7 +1038,10 @@ export class ActiveWorkflowManager {
 		await this.removeActivationError(workflowId);
 		await this.removeNonWebhookTriggers(workflowId);
 
-		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
+		await this.workflowPushNotifier.notify(workflowId, {
+			type: 'workflowDeactivated',
+			data: { workflowId },
+		});
 
 		// instruct followers to show workflow deactivation in UI
 		await this.publisher.publishCommand({

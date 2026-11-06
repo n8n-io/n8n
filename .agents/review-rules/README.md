@@ -13,11 +13,11 @@ clear, when to stay silent, what never to say — lives once in
 
 | Directory   | Agent    | Scope                                               |
 |-------------|----------|-----------------------------------------------------|
-| `security/` | Security | backend packages + nodes                            |
+| `security/` | Security | backend packages, nodes, and the frontend render surface |
 | `backend/`  | Backend  | `cli`, `@n8n/db`, `core`, `workflow`, node packages |
 | `db-migrations/` | DB migrations | `@n8n/db` migrations + their tests in `cli` |
 | `frontend/` | Frontend | `packages/frontend`                                 |
-| `qa-dx/`    | QA & DX  | `.github`, `docker`, `scripts`, `patches`, `packages/testing`, the lint/test/TS config packages, baselines |
+| `qa-dx/`    | QA & DX  | `.github`, `docker`, `scripts`, `patches`, `packages/quality`, the lint/test/TS config packages, baselines |
 | `testing/`  | Backend + Frontend | any package with a test suite            |
 
 A directory maps to one agent unless, like `testing/`, the policy is identical
@@ -27,7 +27,7 @@ never a copy per directory. Security and QA & DX deliberately don't link
 agents shouldn't be able to produce.
 
 All five slots are used, so a new domain now merges into an existing agent. QA &
-DX covers the build, test, and CI surface — the same paths `.github/OWNERS`
+DX covers the build, test, and CI surface — the same paths `OWNERS`
 assigns to `@n8n-io/qa-dx`. Code-quality rules that happen to apply broadly
 (error classes, `any`, lazy imports) are backend rules, not QA & DX ones. DB
 migrations is split out of Backend because a migration is permanent and runs
@@ -59,6 +59,9 @@ enforces them in CI:
    files — a backend PR still loads the node rules, since include globs are
    per-agent.
 3. Add its path to every `file_paths` that should load it in `cubic.yaml`.
+   Keep each agent's list ordered by how often the class it covers actually
+   shows up — the ceiling truncates from the end, so the last file listed is the
+   one that silently disappears first.
 4. Run `pnpm check:cubic-config`. It validates `cubic.yaml` against cubic's
    published JSON schema, then fails on a missing path, an over-budget agent, or
    a rule file nobody links, and warns at 80% of the ceiling.

@@ -1,4 +1,11 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -6,13 +13,28 @@ import { MicrosoftTeamsTrigger } from '../../../MicrosoftTeamsTrigger.node';
 import {
 	getBuckets,
 	getChannels,
+	getChatMembers,
 	getChats,
 	getGroups,
 	getMembers,
 	getPlans,
 	getTeams,
+	getUsers,
 } from '../../methods/listSearch';
-import { joinedTeamsEndpoint, SERVICE_PRINCIPAL_AUTH } from '../../transport/index';
+import {
+	CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
+	CHANNEL_SUBSCRIPTION_FORBIDDEN,
+	CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
+	CHAT_SUBSCRIPTION_FORBIDDEN,
+	SUBSCRIPTION_LIMIT_FORBIDDEN,
+	TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
+	TEAMS_FORBIDDEN_HINTS,
+} from '../../transport/forbiddenHints';
+import {
+	joinedTeamsEndpoint,
+	microsoftApiRequest,
+	SERVICE_PRINCIPAL_AUTH,
+} from '../../transport/index';
 
 describe('Microsoft Teams Transport', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
@@ -211,6 +233,22 @@ describe('Microsoft Teams Transport', () => {
 			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
 		});
 
+		// `getUsers` is the first Teams path handing a client-supplied string to the
+		// transport's `uri` argument: an unparseable token must surface as a node error rather
+		// than a bare TypeError from `new URL`, and a parseable one must still stay on the
+		// credential's Graph host.
+		it.each(['not-a-url', 'http', 'https://evil.example/users'])(
+			'getUsers rejects the pagination token %j before any request',
+			async (paginationToken) => {
+				mockLoadOptions.getNodeParameter.mockReturnValue(undefined);
+
+				await expect(getUsers.call(mockLoadOptions, undefined, paginationToken)).rejects.toThrow(
+					'Refusing to send credentials to an unexpected host',
+				);
+				expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+			},
+		);
+
 		// MAJOR B hard gate: every SP-reachable listSearch method that interpolates an id
 		// must reject a malformed id via buildTeamsPath, before any request.
 		describe('SP id validation gate (enumerated)', () => {
@@ -251,6 +289,13 @@ describe('Microsoft Teams Transport', () => {
 				await expect(getMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
 				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
 			});
+
+			it('getChatMembers rejects a malformed chatId', async () => {
+				mockLoadOptions.getCurrentNodeParameter.mockReturnValue(malformedId);
+
+				await expect(getChatMembers.call(mockLoadOptions)).rejects.toThrow('The ID is not valid');
+				expect(loadOptionsRequestWithAuthentication).not.toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -266,6 +311,7 @@ describe('Microsoft Teams Transport', () => {
 			mockHookFunctions.helpers.requestOAuth2 = hookRequestOAuth2;
 			mockHookFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 			mockHookFunctions.getNode.mockReturnValue(mockNode);
+			mockHookFunctions.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
 			mockHookFunctions.getWorkflowStaticData.mockReturnValue({ subscriptionIds: ['sub-1'] });
 		});
 
@@ -297,6 +343,295 @@ describe('Microsoft Teams Transport', () => {
 				'microsoftTeamsOAuth2Api',
 				expect.objectContaining({ method: 'DELETE' }),
 			);
+		});
+
+		// The trigger counts a 404 as already removed, which needs the status on the error that the
+		// delegated request path rejects with.
+		it('counts a raw Graph 404 on a subscription delete as already removed', async () => {
+			mockHookFunctions.getNodeParameter.mockReturnValue(undefined);
+			const body = { error: { code: 'ResourceNotFound', message: 'The object was not found.' } };
+			const notFound = Object.assign(new Error(`404 - ${JSON.stringify(body)}`), {
+				statusCode: 404,
+				error: body,
+			});
+			hookRequestOAuth2.mockImplementation(async (_type: string, options: { method: string }) => {
+				if (options.method === 'DELETE') throw notFound;
+				return { value: [] };
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
+				mockHookFunctions,
+			);
+
+			expect(result).toBe(true);
+			expect(mockHookFunctions.logger.warn).not.toHaveBeenCalled();
+		});
+	});
+
+	// Drives the real facade with the literal Graph 403 texts of a refused Trigger subscription.
+	// Each fixture spells out its own resource path and never derives it from `hint.match`, so a
+	// narrowed or permission-name `match` fails here.
+	describe('subscription 403 hints (POST /v1.0/subscriptions)', () => {
+		const TEAM_ID = '3b2d1c0a-1111-2222-3333-444444444444';
+		const CHANNEL_ID = '19:abc123def456@thread.tacv2';
+		const CHAT_ID = '19:0123456789abcdef0123456789abcdef@thread.v2';
+		const USER_ID = '7f1e2d3c-5555-6666-7777-888888888888';
+		const GENERIC_APP_ONLY_403 =
+			'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
+		const refused = (resource: string) =>
+			`Operation: Create; Exception: [Status Code: Forbidden; Reason: Caller does not have access to '${resource}' resource]`;
+
+		// Every shape below was seen live on the QA tenant on 2026-10-19 (n8n 2.44.0, delegated and
+		// app-only), with these ids replaced. Graph renders the posted slash-form path back in key form
+		// and upper-cases the user id in the `/users(...)` shape.
+		const MEMBERS_403 = refused(`/teams('${TEAM_ID}')/members`);
+		const CHANNELS_403 = refused(`/teams('${TEAM_ID}')/channels`);
+		const CHANNEL_MESSAGES_403 = refused(`/teams('${TEAM_ID}')/channels('${CHANNEL_ID}')/messages`);
+		const CHAT_MESSAGES_403 = refused(`/chats('${CHAT_ID}')/messages`);
+		const USER_CHATS_403 = refused(`/users('${USER_ID.toUpperCase()}')/chats`);
+		// `/me/chats/getAllMessages` has its own renderer without a path
+		const CHAT_ALL_MESSAGES_403 =
+			"Operation: Create; Exception: [Status Code: Forbidden; Reason: Required permissions to access user-scoped chat message subscription ('Chat.Read, Chat.ReadWrite') are missing.]";
+		// Same renderer, a resource no hint covers: an over-broad match such as `' resource` would fire
+		const MAIL_403 = refused(`/users('${USER_ID}')/mailFolders('inbox')/messages`);
+		// Seen live on the QA tenant for a second `/teams/{id}/channels` subscription of one user, with
+		// the resource token in upper case. The app-subject form follows a Microsoft Q&A report.
+		const LIMIT_403 = `Operation: Create; Exception: [Status Code: Forbidden; Reason: User '${USER_ID}' has reached its limit of '1' 'TEAMS/${TEAM_ID.toUpperCase()}/CHANNELS' subscription on tenant '${USER_ID}'.]`;
+		const APP_LIMIT_403 = LIMIT_403.replace(`User '${USER_ID}'`, `App '${USER_ID}'`);
+		// Modeled on LIMIT_403 for the documented quota of ten chat subscriptions per user, not seen live
+		const LIMIT_OF_TEN_403 = `Operation: Create; Exception: [Status Code: Forbidden; Reason: User '${USER_ID}' has reached its limit of '10' 'ME/CHATS' subscription on tenant '${USER_ID}'.]`;
+		// Names the hinted permissions only as granted roles (a listing 403 on GET /v1.0/subscriptions
+		// has this shape too): no hint may fire on it
+		const GRANTED_403 =
+			"Missing role permissions on the request. API requires one of 'Subscription.Read.All'. Roles on the request 'TeamMember.Read.All, Channel.ReadBasic.All, ChannelMessage.Read.All, Chat.Read.All'. Resource specific consent grants on the request ''.";
+
+		// Raw request-library shape: `<status> - <json body>` message, `statusCode`, and the
+		// Graph body under `error`. Same construction as the kernel tests.
+		const graphError = (message: string) =>
+			Object.assign(
+				new Error(`403 - ${JSON.stringify({ error: { code: 'ExtensionError', message } })}`),
+				{ statusCode: 403, error: { error: { code: 'ExtensionError', message } } },
+			);
+		// `requestWithAuthentication` wraps the raw error in a NodeApiError before the kernel sees it
+		const wrapped = (message: string) =>
+			new NodeApiError(mockNode, graphError(message) as unknown as JsonObject);
+		const post = async (resource = '/v1.0/subscriptions') =>
+			(await microsoftApiRequest
+				.call(mockExecuteFunctions, 'POST', resource, {})
+				.catch((e: Error) => e)) as NodeApiError;
+		// The kernel rebuilds the app-only error from static copy; pin that every surface the editor
+		// renders (message, description, messages, serialized form) carries no Graph id, in any case.
+		const expectNoGraphIds = (error: NodeApiError) => {
+			const rendered = [error.message, error.description, ...error.messages, JSON.stringify(error)]
+				.join('\n')
+				.toLowerCase();
+			for (const id of [TEAM_ID, CHANNEL_ID, CHAT_ID, USER_ID]) {
+				expect(rendered).not.toContain(id.toLowerCase());
+			}
+		};
+
+		const teamRows = [
+			{
+				label: 'team member',
+				hint: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,
+				graphText: MEMBERS_403,
+				permission: 'TeamMember.Read.All',
+			},
+			{
+				label: 'new channel',
+				hint: CHANNEL_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHANNELS_403,
+				permission: 'Channel.ReadBasic.All',
+			},
+			{
+				label: 'channel message',
+				hint: CHANNEL_MESSAGE_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHANNEL_MESSAGES_403,
+				permission: 'ChannelMessage.Read.All',
+			},
+		];
+		const chatRows = [
+			{
+				label: 'chat message',
+				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHAT_MESSAGES_403,
+				permission: 'Chat.Read',
+			},
+			{
+				label: 'user chats',
+				hint: CHAT_SUBSCRIPTION_FORBIDDEN,
+				graphText: USER_CHATS_403,
+				permission: 'Chat.Read',
+			},
+			{
+				label: 'all chat messages',
+				hint: CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN,
+				graphText: CHAT_ALL_MESSAGES_403,
+				permission: 'Chat.Read',
+			},
+		];
+		const unhintedRows: Array<{ when: string; graphText: string; resource?: string }> = [
+			{ when: 'the hinted permissions appear only as granted roles', graphText: GRANTED_403 },
+			{ when: 'the refused resource has no hint', graphText: MAIL_403 },
+			{ when: 'the subscription quota is not one', graphText: LIMIT_OF_TEN_403 },
+			// The endpoint gate: the members text on a path other than /subscriptions stays unhinted
+			{
+				when: 'the refused members path is not a subscription',
+				graphText: MEMBERS_403,
+				resource: `/v1.0/teams/${TEAM_ID}/members`,
+			},
+		];
+
+		beforeEach(() => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+		});
+
+		const limitRows = [
+			{ label: 'user limit', hint: SUBSCRIPTION_LIMIT_FORBIDDEN, graphText: LIMIT_403 },
+			{ label: 'app limit', hint: SUBSCRIPTION_LIMIT_FORBIDDEN, graphText: APP_LIMIT_403 },
+		];
+
+		// Pins the hint-table comment: each text matches exactly one hint, so order does not matter
+		it.each([...teamRows, ...chatRows, ...limitRows])(
+			'matches exactly one hint for a $label text',
+			({ hint, graphText }) => {
+				expect(TEAMS_FORBIDDEN_HINTS.filter((h) => graphText.includes(h.match))).toEqual([hint]);
+			},
+		);
+
+		describe('under the Service Principal credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
+			});
+
+			it.each(teamRows)(
+				'names the $permission application permission for a $label subscription',
+				async ({ hint, graphText, permission }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+					const error = await post();
+
+					expect(error).toBeInstanceOf(NodeApiError);
+					expect(error.httpCode).toBe('403');
+					expect(error.message).toBe(hint.message);
+					expect(error.description).toBe(hint.description);
+					expect(error.message).toContain(`${permission} application permission`);
+					expect(error.description).toContain(permission);
+					expectNoGraphIds(error);
+				},
+			);
+
+			// The trigger's guard throws this copy before any request under SP; the hint carries
+			// the same copy for the kernel path.
+			it.each(chatRows)(
+				'keeps the chat-trigger guard copy for a $label subscription',
+				async ({ hint, graphText }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+					const error = await post();
+
+					expect(error.message).toBe(hint.message);
+					expect(error.description).toBe(hint.description);
+					expectNoGraphIds(error);
+				},
+			);
+
+			it.each(unhintedRows)(
+				'keeps the generic copy when $when',
+				async ({ graphText, resource }) => {
+					mockRequestWithAuthentication.mockRejectedValue(wrapped(graphText));
+
+					const error = await post(resource);
+
+					expect(error.message).toBe(GENERIC_APP_ONLY_403);
+					expect(error.description).toBeUndefined();
+					// The static copy is all that reaches the error details
+					expect(error.messages).toEqual([GENERIC_APP_ONLY_403]);
+				},
+			);
+
+			it('explains the quota of one for an app limit text', async () => {
+				mockRequestWithAuthentication.mockRejectedValue(wrapped(APP_LIMIT_403));
+
+				const error = await post();
+
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.message);
+				expect(error.description).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.description);
+				expectNoGraphIds(error);
+			});
+		});
+
+		describe('under a delegated OAuth2 credential', () => {
+			beforeEach(() => {
+				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
+			});
+
+			it.each([...teamRows, ...chatRows])(
+				'names the $permission permission for a $label subscription',
+				async ({ hint, graphText, permission }) => {
+					mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+
+					const error = await post();
+
+					expect(error).toBeInstanceOf(NodeApiError);
+					expect(error.httpCode).toBe('403');
+					expect(error.message).toBe(hint.delegated.message);
+					expect(error.description).toBe(hint.delegated.description);
+					expect(error.message).toContain(`the ${permission} permission`);
+					expect(error.description).toContain(permission);
+					// The raw Graph text stays in the error details
+					expect(error.messages).toContain(graphText);
+				},
+			);
+
+			it.each(unhintedRows)(
+				'passes the raw text through when $when',
+				async ({ graphText, resource }) => {
+					mockRequestOAuth2.mockRejectedValue(graphError(graphText));
+
+					const error = await post(resource);
+
+					expect(error.message).toBe(graphText);
+				},
+			);
+
+			it('explains the quota of one for a user limit text', async () => {
+				mockRequestOAuth2.mockRejectedValue(graphError(LIMIT_403));
+
+				const error = await post();
+
+				expect(error.httpCode).toBe('403');
+				expect(error.message).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.message);
+				expect(error.description).toBe(SUBSCRIPTION_LIMIT_FORBIDDEN.delegated.description);
+				// The raw Graph text stays in the error details
+				expect(error.messages).toContain(LIMIT_403);
+			});
+
+			// The create hook has no catch of its own. Pin that the hint copy reaches the publish
+			// surface unchanged through the real hook.
+			it('surfaces the hint copy through the Trigger create hook', async () => {
+				const hooks: Mocked<IHookFunctions> = mockDeep<IHookFunctions>();
+				hooks.helpers.requestOAuth2 = vi.fn().mockRejectedValue(graphError(MEMBERS_403));
+				hooks.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+				hooks.getNode.mockReturnValue(mockNode);
+				hooks.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
+				hooks.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/teams');
+				hooks.getWorkflowStaticData.mockReturnValue({});
+				const parameters: Partial<Record<string, string>> = {
+					authentication: 'microsoftTeamsOAuth2Api',
+					event: 'newTeamMember',
+					teamId: TEAM_ID,
+				};
+				hooks.getNodeParameter.mockImplementation((name) => parameters[name] ?? false);
+
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.create.call(hooks),
+				).rejects.toMatchObject({
+					message: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN.delegated.message,
+					description: TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN.delegated.description,
+				});
+			});
 		});
 	});
 });

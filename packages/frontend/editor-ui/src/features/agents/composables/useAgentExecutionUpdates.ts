@@ -1,5 +1,5 @@
 import { onScopeDispose, type Ref } from 'vue';
-import type { PushMessage } from '@n8n/api-types';
+import type { PushMessage, PushPayload } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
@@ -11,8 +11,8 @@ interface AgentExecutionUpdatesTarget {
 }
 
 /**
- * Call `onUpdate` when the backend records a turn for this agent. The push is an
- * invalidation signal, not the data, so the callback has to re-read.
+ * Refresh saved execution data after a push. Apply live usage in
+ * `onInvalidate` before the refresh.
  *
  * Connects the shared push client but never disconnects it — the editor has one
  * connection, and tearing it down here would cut off everything else on it.
@@ -20,10 +20,13 @@ interface AgentExecutionUpdatesTarget {
 export function useAgentExecutionUpdates(
 	target: AgentExecutionUpdatesTarget,
 	onUpdate: () => void | Promise<void>,
-): void {
+	onInvalidate?: (update: PushPayload<'agentExecutionUpdated'>) => void,
+): () => void {
 	const pushStore = usePushConnectionStore();
 
-	function matches(event: PushMessage): boolean {
+	function matches(
+		event: PushMessage,
+	): event is Extract<PushMessage, { type: 'agentExecutionUpdated' }> {
 		if (event.type !== 'agentExecutionUpdated') return false;
 		if (event.data.projectId !== target.projectId.value) return false;
 		if (event.data.agentId !== target.agentId.value) return false;
@@ -31,21 +34,22 @@ export function useAgentExecutionUpdates(
 		return !threadId || event.data.threadId === threadId;
 	}
 
-	// Updates are broadcast per execution record and again on finalize, for every
-	// surface of the agent — so bursts are normal. Coalesce them into one trailing
-	// run instead of firing a fetch per message.
+	// Combine push notifications into one active refresh and one queued refresh.
 	let inFlight: Promise<void> | undefined;
 	let queued = false;
+	let disposed = false;
 
 	function run(): void {
+		if (disposed) return;
 		if (inFlight) {
 			queued = true;
 			return;
 		}
-		// `.then(onUpdate)` rather than `Promise.resolve(onUpdate())` so a callback that
-		// throws synchronously is caught here instead of escaping into push dispatch.
+		// Run the callback in a promise so synchronous errors do not escape push dispatch.
 		inFlight = Promise.resolve()
-			.then(onUpdate)
+			.then(async () => {
+				if (!disposed) await onUpdate();
+			})
 			.catch(() => {})
 			.finally(() => {
 				inFlight = undefined;
@@ -56,10 +60,18 @@ export function useAgentExecutionUpdates(
 			});
 	}
 
-	pushStore.pushConnect();
 	const removeListener = pushStore.addEventListener((event) => {
-		if (matches(event)) run();
+		if (matches(event)) {
+			onInvalidate?.(event.data);
+			run();
+		}
 	});
+	pushStore.pushConnect();
 
-	onScopeDispose(() => removeListener());
+	// Remove this listener and stop queued refreshes without disconnecting the shared connection.
+	onScopeDispose(() => {
+		disposed = true;
+		removeListener();
+	});
+	return run;
 }

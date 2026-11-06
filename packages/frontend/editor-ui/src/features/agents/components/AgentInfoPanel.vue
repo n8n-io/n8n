@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import AgentPanel from './AgentPanel.vue';
 /**
  * Combined editor for the core agent fields: name, model, and instructions.
  * Credential selection is handled inside the model picker — no separate
  * credential field.
  */
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { N8nCallout, N8nIconButton, N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,7 +16,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@n8n/stores/users.store';
 import shared from '../styles/agent-panel.module.scss';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, getModelPromptCachingCapability } from '@n8n/api-types';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
@@ -33,7 +34,6 @@ import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
 import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import { normalizeReasoningForModelChange } from '../utils/reasoning';
 import AgentModelSelector from './AgentModelSelector.vue';
-import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -41,8 +41,6 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
-		/** Cap for the instructions editor — compact hosts (NDV) pass a smaller value. */
-		instructionsMaxHeight?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
 		/**
@@ -55,16 +53,18 @@ const props = withDefaults(
 	{
 		disabled: false,
 		embedded: false,
-		instructionsMaxHeight: '360px',
 		showModel: true,
 		showInstructions: true,
-		showInstructionsToolbar: false,
 		immediateUpdates: false,
 	},
 );
-const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
+const emit = defineEmits<{
+	'update:config': [changes: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	'draft:config': [];
+}>();
 
 const i18n = useI18n();
+const instructionsEditorId = useId();
 const usersStore = useUsersStore();
 const { showError } = useToast();
 const { catalog, ensureLoaded, getModelsForPicker, getDefaultModelForPicker, isLoading } =
@@ -136,12 +136,6 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 	};
 });
 
-const panelTestId = computed(() => {
-	if (props.showModel && !props.showInstructions) return 'agent-model-panel';
-	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
-	return 'agent-info-panel';
-});
-
 function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' = 'user') {
 	const credentialId = effectiveCredentials.value?.[selection.provider];
 	if (!credentialId) {
@@ -159,7 +153,7 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 		'config' in webSearchChanges ? webSearchChanges.config : props.config?.config;
 	const promptCachingChanges = normalizePromptCachingForModelChange(
 		webSearchConfig,
-		capabilities?.promptCaching ?? false,
+		getModelPromptCachingCapability(model),
 	);
 	const normalizedConfig =
 		'config' in promptCachingChanges ? promptCachingChanges.config : webSearchConfig;
@@ -170,13 +164,19 @@ function onModelChange(selection: AgentModelSelection, source: 'user' | 'auto' =
 	// A default applied by the resolver surfaces a hint so the user knows they
 	// can change it; any explicit user pick clears the hint.
 	defaultModelHint.value = source === 'auto';
-	emit('update:config', {
-		model,
-		credential: credentialId,
-		...webSearchChanges,
-		...promptCachingChanges,
-		...reasoningChanges,
-	});
+	emit(
+		'update:config',
+		{
+			model,
+			credential: credentialId,
+			...webSearchChanges,
+			...promptCachingChanges,
+			...reasoningChanges,
+		},
+		// A pending agent must not be persisted just because a default model was
+		// auto-applied — let the host apply it to the draft without autosaving.
+		source === 'auto' ? { source: 'auto' } : undefined,
+	);
 }
 
 watch(
@@ -235,6 +235,8 @@ function onSelectCredential(provider: AgentModelProvider, credentialId: string |
 }
 
 const instructions = ref(props.config?.instructions ?? '');
+const instructionsEditor = ref<InstanceType<typeof N8nMarkdownEditor>>();
+const modelSelector = ref<InstanceType<typeof AgentModelSelector>>();
 
 // Keep the local editor stable while external config updates arrive.
 watch(
@@ -248,95 +250,134 @@ const emitInstructionsDebounced = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
+function focusInstructions() {
+	instructionsEditor.value?.focus();
+}
+
+function focusModel() {
+	modelSelector.value?.open();
+}
+
 function onInstructionsInput(value: string) {
 	instructions.value = value;
+	emit('draft:config');
 	if (props.immediateUpdates) {
 		emit('update:config', { instructions: value });
 		return;
 	}
 	void emitInstructionsDebounced();
 }
+defineExpose({ focusInstructions, focusModel });
 </script>
 
 <template>
-	<div :class="$style.panel" :data-testid="panelTestId">
-		<AgentPanelHeader
-			v-if="!props.embedded"
-			:title="i18n.baseText('agents.builder.agent.title')"
-			:description="i18n.baseText('agents.builder.agent.description')"
-		/>
-
-		<div v-if="props.showModel" :class="[$style.field]">
-			<label :class="[$style.label, props.disabled && shared.disabled]"
-				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-					i18n.baseText('agents.builder.agent.model.label')
-				}}</N8nText></label
-			>
-			<AgentModelSelector
-				:disabled="props.disabled"
-				:selected-model="selectedAgent"
-				:credentials="effectiveCredentials"
-				:models-by-provider="filteredAgents"
-				:is-loading="isLoading"
-				:project-id="projectId"
-				:warn-missing-credentials="true"
-				:bound-credential-id="props.config?.credential ?? null"
-				data-testid="agent-model-selector"
-				@change="onModelChange"
-				@select-credential="onSelectCredential"
-			/>
-			<N8nCallout
-				v-if="defaultModelHint && !props.disabled"
-				theme="info"
-				slim
-				:class="$style.defaultHint"
-				data-testid="agent-default-model-hint"
-			>
-				<div :class="$style.defaultHintBody">
-					<span :class="$style.defaultHintText">
-						<strong>{{ i18n.baseText('agents.builder.agent.model.defaultSelected.title') }}</strong>
-						{{ i18n.baseText('agents.builder.agent.model.defaultSelected.description') }}
-					</span>
-					<N8nIconButton
-						icon="x"
-						variant="ghost"
-						size="small"
-						:title="i18n.baseText('agents.builder.agent.model.defaultSelected.dismiss')"
-						data-testid="agent-default-model-hint-dismiss"
-						@click="defaultModelHint = false"
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.agent.title')"
+		header-visibility="visually-hidden"
+		data-testid="agent-info-panel"
+	>
+		<div :class="$style.panels">
+			<div v-if="props.showModel" data-testid="agent-model-panel">
+				<div :class="$style.field">
+					<div :class="[$style.label, props.disabled && shared.disabled]">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">
+							{{ i18n.baseText('agents.builder.agent.model.label') }}
+							<N8nText step="sm" bold color="danger">*</N8nText>
+						</N8nText>
+						<N8nText step="sm" color="text-light">
+							{{ i18n.baseText('agents.builder.agent.model.description') }}
+						</N8nText>
+					</div>
+					<AgentModelSelector
+						ref="modelSelector"
+						:disabled="props.disabled"
+						:selected-model="selectedAgent"
+						:credentials="effectiveCredentials"
+						:models-by-provider="filteredAgents"
+						:is-loading="isLoading"
+						:project-id="projectId"
+						:warn-missing-credentials="true"
+						:bound-credential-id="props.config?.credential ?? null"
+						data-testid="agent-model-selector"
+						@change="onModelChange"
+						@select-credential="onSelectCredential"
 					/>
+					<N8nCallout
+						v-if="defaultModelHint && !props.disabled"
+						theme="info"
+						slim
+						:class="$style.defaultHint"
+						data-testid="agent-default-model-hint"
+					>
+						<div :class="$style.defaultHintBody">
+							<span :class="$style.defaultHintText">
+								<strong>{{
+									i18n.baseText('agents.builder.agent.model.defaultSelected.title')
+								}}</strong>
+								{{ i18n.baseText('agents.builder.agent.model.defaultSelected.description') }}
+							</span>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="small"
+								:title="i18n.baseText('agents.builder.agent.model.defaultSelected.dismiss')"
+								data-testid="agent-default-model-hint-dismiss"
+								@click="defaultModelHint = false"
+							/>
+						</div>
+					</N8nCallout>
 				</div>
-			</N8nCallout>
+			</div>
+			<div
+				v-if="props.showModel && props.showInstructions"
+				:class="$style.divider"
+				aria-hidden="true"
+			></div>
+			<div
+				v-if="props.showInstructions"
+				:class="$style.field"
+				data-testid="agent-instructions-panel"
+			>
+				<div :class="[$style.label, props.disabled && shared.disabled]">
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">
+						{{ i18n.baseText('agents.builder.agent.instructions.label') }}
+						<N8nText step="sm" bold color="danger">*</N8nText>
+					</N8nText>
+					<N8nText step="sm" color="text-light">
+						{{ i18n.baseText('agents.builder.agent.instructions.description') }}
+					</N8nText>
+				</div>
+				<N8nMarkdownEditor
+					ref="instructionsEditor"
+					:id="instructionsEditorId"
+					:class="$style.instructionsDocument"
+					:model-value="instructions"
+					:disabled="props.disabled"
+					:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
+					show-toolbar="floating"
+					expandedViewToolbarMode="always"
+					variant="contained"
+					allowExpandedView
+					data-testid="agent-instructions-document"
+					@update:model-value="onInstructionsInput"
+				/>
+			</div>
 		</div>
-
-		<div v-if="props.showInstructions" :class="[$style.field]">
-			<label :class="[$style.label, props.disabled && shared.disabled]">
-				<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-					i18n.baseText('agents.builder.agent.instructions.label')
-				}}</N8nText>
-			</label>
-			<N8nMarkdownEditor
-				:class="$style.instructionsDocument"
-				:model-value="instructions"
-				:disabled="props.disabled"
-				:max-height="props.instructionsMaxHeight"
-				show-toolbar="floating"
-				variant="contained"
-				data-testid="agent-instructions-document"
-				@update:model-value="onInstructionsInput"
-			/>
-		</div>
-	</div>
+	</AgentPanel>
 </template>
 
 <style module>
-.panel {
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
+.panels {
 	display: flex;
+	align-items: stretch;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--lg);
 	width: 100%;
+}
+
+.panels > * {
+	flex: 1;
+	min-width: 0;
 }
 
 .instructionsDocument {
@@ -346,13 +387,7 @@ function onInstructionsInput(value: string) {
 
 .instructionsDocument:disabled {
 	opacity: 0.5;
-}
-
-/* Follow the editor's configured max-height and scroll within the cap. */
-.instructionsDocument :global(.n8n-markdown) {
-	max-height: var(--markdown-editor-max-height);
-	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
-	overflow-y: auto;
+	pointer-events: none;
 }
 
 .field {
@@ -362,7 +397,10 @@ function onInstructionsInput(value: string) {
 }
 
 .label {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	user-select: none;
 }
 
 .defaultHint {
@@ -379,5 +417,12 @@ function onInstructionsInput(value: string) {
 .defaultHintText {
 	flex: 1;
 	min-width: 0;
+}
+
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--sm) * -1);
 }
 </style>

@@ -1,0 +1,133 @@
+import { defineComponent } from 'vue';
+
+export const AgentModalTestStub = defineComponent({
+	name: 'AgentModal',
+	inheritAttrs: false,
+	props: {
+		open: { type: Boolean, default: true },
+		title: { type: String, default: '' },
+		editableTitle: { type: Boolean, default: false },
+		titleError: { type: String, default: '' },
+		showBack: { type: Boolean, default: false },
+		showFooter: { type: Boolean, default: undefined },
+		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
+		bodyFlush: { type: Boolean, default: false },
+		stableHeight: { type: Boolean, default: false },
+		fixedSize: { type: Boolean, default: false },
+		headerDividerTone: { type: String, default: 'default' },
+		busy: { type: Boolean, default: false },
+		size: { type: String, default: '2xlarge' },
+		trapFocus: { type: Boolean, default: true },
+		disableOutsidePointerEvents: { type: Boolean, default: true },
+	},
+	emits: ['update:open', 'update:title', 'back', 'interactOutside'],
+	template: `
+		<section
+			v-if="open"
+			v-bind="$attrs"
+			role="dialog"
+			:data-busy="busy"
+			:data-size="size"
+			:data-trap-focus="trapFocus"
+			:data-disable-outside-pointer-events="disableOutsidePointerEvents"
+			:data-body-flush="bodyFlush"
+			:data-fixed-size="fixedSize"
+			:data-header-divider-tone="headerDividerTone"
+		>
+			<header>
+				<button
+					v-if="showBack"
+					data-testid="agent-modal-back"
+					:disabled="busy"
+					@click="$emit('back')"
+				/>
+				<slot name="titlePrefix" />
+				<input
+					v-if="editableTitle"
+					:value="title"
+					:disabled="busy"
+					data-testid="agent-modal-title-input"
+					@input="$emit('update:title', $event.target.value)"
+				/>
+				<h2 v-else>{{ title }}</h2>
+				<span v-if="titleError" data-testid="agent-modal-title-error">{{ titleError }}</span>
+				<slot name="titleSuffix" />
+				<slot name="headerActions" />
+				<button
+					data-testid="dialog-close-button"
+					:disabled="busy"
+					@click="$emit('update:open', false)"
+				/>
+			</header>
+			<div v-if="!trapFocus" data-testid="nested-credential-focus-scope" />
+			<main><slot /></main>
+			<aside v-if="$slots.sidePanel" data-testid="agent-modal-side-panel"><slot name="sidePanel" /></aside>
+			<footer
+				v-if="
+					showFooter === true ||
+					(showFooter !== false &&
+						($slots.footerLeft ||
+							$slots.footerBeforeCancel ||
+							$slots.footerActions ||
+							$slots.footer))
+				"
+			>
+				<slot name="footer">
+					<slot name="footerLeft" />
+					<div data-testid="agent-modal-footer-actions">
+						<slot name="footerBeforeCancel" />
+						<button
+							v-if="showCancel"
+							data-testid="agent-modal-cancel"
+							:disabled="busy"
+							@click="$emit('update:open', false)"
+						>{{ cancelLabel ?? 'Cancel' }}</button>
+						<slot name="footerActions" />
+					</div>
+				</slot>
+			</footer>
+		</section>
+	`,
+});
+
+export const AgentModalMultiStepTestStub = defineComponent({
+	name: 'AgentModalMultiStep',
+	inheritAttrs: false,
+	components: { AgentModalTestStub },
+	props: {
+		open: { type: Boolean, default: true },
+		title: { type: String, default: '' },
+		editableTitle: { type: Boolean, default: false },
+		showBack: { type: Boolean, default: false },
+		showFooter: { type: Boolean, default: undefined },
+		showCancel: { type: Boolean, default: true },
+		cancelLabel: { type: String, default: undefined },
+		bodyFlush: { type: Boolean, default: false },
+		stableHeight: { type: Boolean, default: false },
+		busy: { type: Boolean, default: false },
+		size: { type: String, default: '2xlarge' },
+		trapFocus: { type: Boolean, default: true },
+		disableOutsidePointerEvents: { type: Boolean, default: true },
+	},
+	emits: ['update:open', 'update:title', 'back', 'interactOutside'],
+	template: `
+		<AgentModalTestStub
+			v-bind="$props"
+			v-bind="$attrs"
+			@update:open="$emit('update:open', $event)"
+			@update:title="$emit('update:title', $event)"
+			@back="$emit('back')"
+		>
+			<template #titlePrefix><slot name="titlePrefix" /></template>
+			<template #titleSuffix><slot name="titleSuffix" /></template>
+			<template #headerActions><slot name="headerActions" /></template>
+			<template v-if="$slots.sidePanel" #sidePanel><slot name="sidePanel" /></template>
+			<slot />
+			<template #footerLeft><slot name="footerLeft" /></template>
+			<template #footerBeforeCancel><slot name="footerBeforeCancel" /></template>
+			<template #footerActions><slot name="footerActions" /></template>
+			<template #footer><slot name="footer" /></template>
+		</AgentModalTestStub>
+	`,
+});

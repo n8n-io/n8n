@@ -11,18 +11,35 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_PATH_SUFFIX, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
+import request from 'supertest';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { pendingFlowFrom } from './oauth-flow-test-utils';
+
+import { AuthService } from '@/auth/auth.service';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
+
+/** Root-level (no `/rest` prefix) agent authenticated as `user` — `authAgentFor` always
+ * prefixes `/rest`, which 404s against root-level routes like `/oauth/authorize`. */
+const rootAgentFor = (user: User) => {
+	const agent = request.agent(testServer.app);
+	const token = Container.get(AuthService).issueJWT(user, user.mfaEnabled);
+	agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
+	return agent;
+};
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -43,6 +60,7 @@ const chatTriggerNode = ({
 	authentication = 'n8nUserAuth',
 	disabled = false,
 	requireExecuteAccess,
+	trustedSource,
 }: {
 	name?: string;
 	// `null` drops the key entirely, so the "parameter stripped at its default" shape the
@@ -52,6 +70,7 @@ const chatTriggerNode = ({
 	authentication?: string | null;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	trustedSource?: string;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -65,6 +84,7 @@ const chatTriggerNode = ({
 		...(mode === null ? {} : { mode }),
 		...(authentication === null ? {} : { authentication }),
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(trustedSource === undefined ? {} : { trustedSource }),
 	},
 });
 
@@ -93,14 +113,9 @@ const resolveResource = async (path: string) =>
 	await Container.get(ProtectedResourceRegistry).getByResourcePath(`/${webhookEndpoint}/${path}`);
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true'; // gates the chat-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	webhookEndpoint = Container.get(GlobalConfig).endpoints.webhook;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -110,6 +125,7 @@ afterEach(async () => {
 		'RefreshToken',
 		'AuthorizationCode',
 		'OAuthClient',
+		'UserConsent',
 		'WebhookEntity',
 		'SharedWorkflow',
 		'WorkflowEntity',
@@ -198,20 +214,6 @@ describe('protected resource metadata for chat triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(path));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const path = chatPath();
-		await createPublishedChatWorkflow(path, chatTriggerNode());
-
-		delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
-		try {
-			// Also proves the generic webhook resolver does not pick a chat path up itself.
-			const response = await testServer.restlessAgent.get(prmPathFor(path));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true';
-		}
 	});
 
 	test('should not resolve when public chat is disabled instance-wide', async () => {
@@ -305,6 +307,24 @@ describe('protected resource metadata for chat triggers', () => {
 });
 
 describe('authorize gate (workflow:execute)', () => {
+	test("accepts only the instance's own OAuth2 server when the node has no trustedSource", async () => {
+		const path = chatPath();
+		await createPublishedChatWorkflow(path, chatTriggerNode());
+
+		const resource = await resolveResource(path);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['n8n-internal']);
+	});
+
+	test('accepts only the trusted source the node selected', async () => {
+		const path = chatPath();
+		await createPublishedChatWorkflow(path, chatTriggerNode({ trustedSource: 'customer-idp' }));
+
+		const resource = await resolveResource(path);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['customer-idp']);
+	});
+
 	test('authorizes the owner but denies a visitor without execute access', async () => {
 		const path = chatPath();
 		await createPublishedChatWorkflow(path, chatTriggerNode({ requireExecuteAccess: true }));
@@ -422,5 +442,115 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 		);
 
 		expect(result.user?.id).toBe(member.id);
+	});
+});
+
+describe('consent reuse on a second visit', () => {
+	const pkce = async () => {
+		const { createHash, randomBytes } = await import('node:crypto');
+		const codeVerifier = randomBytes(32).toString('base64url');
+		const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+		return { codeVerifier, codeChallenge };
+	};
+
+	const authorizeQuery = (resourceUrl: string, codeChallenge: string, state: string) => ({
+		client_id: resourceUrl,
+		redirect_uri: resourceUrl,
+		response_type: 'code',
+		code_challenge: codeChallenge,
+		code_challenge_method: 'S256',
+		resource: resourceUrl,
+		state,
+	});
+
+	test('a second visit reuses consent when the visitor is already logged in', async () => {
+		// Control case: confirms tryAutoApproveConsent/tryReuseConsent themselves work when
+		// the n8n-auth cookie is already present on the very first /oauth/authorize hit.
+		const path = chatPath();
+		await createPublishedChatWorkflow(path, chatTriggerNode());
+		const resourceUrl = resourceUrlFor(path);
+
+		const authAgent = rootAgentFor(owner);
+
+		const { codeChallenge: cc1 } = await pkce();
+		const first = await authAgent
+			.get('/oauth/authorize')
+			.query(authorizeQuery(resourceUrl, cc1, 'state-1'));
+		expect(first.statusCode).toBe(302);
+		expect(first.headers.location).toContain('/oauth/consent');
+
+		const { flowId, cookie: sessionCookie } = pendingFlowFrom(first);
+		expect(sessionCookie).toBeDefined();
+
+		// `/consent/approve` lives under the `/rest` prefix, unlike the root-level
+		// `/oauth/*` routes — a separate, `/rest`-prefixed agent for the same user,
+		// carrying the session cookie the authorize step just set.
+		const consentAgent = testServer.authAgentFor(owner);
+		consentAgent.jar.setCookie(sessionCookie ?? '');
+
+		const approve = await consentAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: [], flow: flowId });
+		expect(approve.statusCode).toBe(200);
+
+		const { codeChallenge: cc2 } = await pkce();
+		const second = await authAgent
+			.get('/oauth/authorize')
+			.query(authorizeQuery(resourceUrl, cc2, 'state-2'));
+
+		expect(second.statusCode).toBe(302);
+		expect(second.headers.location).not.toContain('/oauth/consent');
+		expect(second.headers.location).toContain(resourceUrl);
+	});
+
+	test('a visitor who already consented is auto-approved after authenticating mid-flow', async () => {
+		// The visitor already has a UserConsent row from a prior visit (e.g. the local grant
+		// cookie was cleared/expired), but their n8n-auth cookie is gone too — so the very
+		// first /oauth/authorize hit has no cookie to check
+		// and tryAutoApproveConsent is skipped. They then log in as part of reaching the
+		// (auth-gated) consent page. GET /consent/details now retries the reuse check once
+		// the user is authenticated, instead of unconditionally returning the manual picker.
+		const path = chatPath();
+		await createPublishedChatWorkflow(path, chatTriggerNode());
+		const resourceUrl = resourceUrlFor(path);
+
+		// Seed a prior consent for this exact (clientId, user) pair, as a previous visit
+		// would have left behind.
+		await Container.get(OAuthClientRepository).upsert(
+			{
+				id: resourceUrl,
+				name: 'chat trigger',
+				redirectUris: [resourceUrl],
+				grantTypes: ['authorization_code', 'refresh_token'],
+				tokenEndpointAuthMethod: 'none',
+			},
+			['id'],
+		);
+		await Container.get(UserConsentRepository).upsert(
+			{ userId: owner.id, clientId: resourceUrl, grantedAt: Date.now(), scope: [] },
+			['userId', 'clientId'],
+		);
+
+		// Not authenticated yet on this first hit — the browser has no n8n-auth cookie.
+		const { codeChallenge } = await pkce();
+		const first = await testServer.restlessAgent
+			.get('/oauth/authorize')
+			.query(authorizeQuery(resourceUrl, codeChallenge, 'state-1'));
+		expect(first.statusCode).toBe(302);
+		expect(first.headers.location).toContain('/oauth/consent');
+
+		const { flowId, cookie: sessionCookie } = pendingFlowFrom(first);
+		expect(sessionCookie).toBeDefined();
+
+		// The visitor now logs in (this is the "just logged in" step from the ticket),
+		// carrying the same in-flight OAuth session cookie into the authenticated request.
+		const consentAgent = testServer.authAgentFor(owner);
+		consentAgent.jar.setCookie(sessionCookie ?? '');
+
+		const details = await consentAgent.get(`/consent/details?flow=${flowId}`);
+
+		// Desired: already consented, so this should signal auto-approval instead of
+		// requiring another manual click.
+		expect(details.body.data?.autoApproved ?? false).toBe(true);
 	});
 });

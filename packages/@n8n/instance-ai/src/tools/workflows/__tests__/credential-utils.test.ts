@@ -3,6 +3,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { InstanceAiContext } from '../../../types';
 import {
 	extractServiceHost,
+	extractServiceOrigin,
 	resolveCredentialForApply,
 	serviceHostsMatch,
 } from '../credential-utils';
@@ -14,6 +15,7 @@ function makeContext(
 		credentialService: {
 			list: vi.fn(),
 			get: vi.fn().mockResolvedValue({ id: 'cred-1', name: 'My Cred' }),
+			updateDescription: vi.fn(),
 			delete: vi.fn(),
 			test: vi.fn(),
 			...(isAiGatewayCredentialType ? { isAiGatewayCredentialType } : {}),
@@ -93,6 +95,19 @@ describe('extractServiceHost', () => {
 			expect(extractServiceHost(url)).toBeUndefined();
 		},
 	);
+});
+
+describe('extractServiceOrigin', () => {
+	it.each([
+		['https://api.pexels.com/v1/search?query=x', 'https://api.pexels.com'],
+		['=https://queue.fal.run:8443/jobs/{{ $json.id }}', 'https://queue.fal.run:8443'],
+	])('derives the origin of %s', (url, origin) => {
+		expect(extractServiceOrigin(url)).toBe(origin);
+	});
+
+	it.each([['={{ $json.url }}'], ['not a url'], [undefined]])('returns undefined for %s', (url) => {
+		expect(extractServiceOrigin(url)).toBeUndefined();
+	});
 });
 
 describe('serviceHostsMatch', () => {

@@ -5,31 +5,102 @@ import type {
 	DeepPartial,
 	EntityManager,
 	FindOptionsWhere,
+	Repository,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
-import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
-import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { BaseRepository } from './base-repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
+import { ApiKey, AuthIdentity, Project, ProjectRelation, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
+export type EligibleAccountsQuery = {
+	projectId: string;
+	projectRoleSlugs: string[];
+	globalRoleSlugs: string[];
+	userIds?: string[];
+};
+
+/**
+ * The `where` of `findEligibleByProjectOrGlobalRoles` in `UserRepository` and
+ * `PersonRepository`, or `null` when no account can match.
+ */
+export function eligibleAccountsWhere({
+	projectId,
+	projectRoleSlugs,
+	globalRoleSlugs,
+	userIds,
+}: EligibleAccountsQuery): Array<FindOptionsWhere<User>> | null {
+	if (userIds?.length === 0) return null;
+
+	const requestedUsers = userIds ? { id: In(userIds) } : {};
+	const where: Array<FindOptionsWhere<User>> = [];
+	if (globalRoleSlugs.length > 0) {
+		where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
+	}
+	if (projectRoleSlugs.length > 0) {
+		where.push({
+			...requestedUsers,
+			disabled: false,
+			projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
+		});
+	}
+	return where.length > 0 ? where : null;
+}
+
+/**
+ * SQL condition for a user in the `deactivated` status of the users list.
+ * Open question Q21 (IAM-1552) decides if the status covers every disabled
+ * user or only the users that SCIM manages. Change the scope only here: the
+ * status filter and the status counts both use this condition.
+ */
+const DEACTIVATED_USER_CONDITION = 'user.disabled = :userListDeactivated';
+const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
+
+/**
+ * Loads accounts of both kinds. A full row comes back as the child entity that
+ * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
+ * `ServiceAccountRepository` when only one kind can appear.
+ *
+ * The query methods below predate service accounts. They stay here until their
+ * callers move to `PersonRepository`, so that a caller sees no change.
+ */
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
+	}
+
+	async deleteAccount(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		await manager.delete(AuthIdentity, { userId });
+		await manager.delete(Project, { id: personalProjectId });
+		await manager.delete(User, { id: userId });
 	}
 
 	async findManyByIds(
 		userIds: string[],
 		options?: {
 			includeRole?: boolean;
+			includeAuthIdentities?: boolean;
 			offset?: number;
 			limit?: number;
 		},
 	) {
+		const relations = [
+			...(options?.includeRole ? ['role'] : []),
+			...(options?.includeAuthIdentities ? ['authIdentities'] : []),
+		];
 		return await this.find({
 			where: { id: In(userIds) },
 			skip: options?.offset,
 			take: options?.limit,
-			relations: options?.includeRole ? ['role'] : undefined,
+			relations: relations.length > 0 ? relations : undefined,
 			order: { id: 'ASC' },
 		});
 	}
@@ -43,8 +114,21 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	async findByIdWithRole(id: string): Promise<User | null> {
-		return await this.findOne({
+	/**
+	 * Every user with the relations `isPending` needs: the role and the auth
+	 * identities. Without the identities, a user who signs in through SSO or LDAP
+	 * and so has no password would read as pending.
+	 */
+	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
+		return await this.find({
+			relations: ['role', 'authIdentities'],
+			order: { id: 'ASC' },
+			loadEagerRelations: false,
+		});
+	}
+
+	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
 			where: { id },
 			relations: ['role'],
 		});
@@ -57,8 +141,9 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
-		return await this.findOneByOrFail({
+	/** A member of the project, or null when the project has no members. */
+	async findOneByProjectId(projectId: string): Promise<User | null> {
+		return await this.findOneBy({
 			projectRelations: { projectId },
 		});
 	}
@@ -91,6 +176,22 @@ export class UserRepository extends Repository<User> {
 		return await super.update(...args);
 	}
 
+	/**
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
+	 */
+	async hasClaimedInstanceOwner(): Promise<boolean> {
+		return await this.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
+		});
+	}
+
 	async deleteAllExcept(user: User) {
 		await this.delete({ id: Not(user.id) });
 	}
@@ -110,16 +211,6 @@ export class UserRepository extends Repository<User> {
 		return await this.delete({ id: In(userIds) });
 	}
 
-	async findNonShellUser(email: string) {
-		return await this.findOne({
-			where: {
-				email,
-				password: Not(IsNull()),
-			},
-			relations: ['authIdentities', 'role'],
-		});
-	}
-
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
 	async countUsersByRole() {
 		const escapedRoleSlug = this.manager.connection.driver.escape('roleSlug');
@@ -134,16 +225,6 @@ export class UserRepository extends Repository<User> {
 			},
 			{} as Record<string, number>,
 		);
-	}
-
-	/**
-	 * Get emails of users who have completed setup, by user IDs.
-	 */
-	async getEmailsByIds(userIds: string[]) {
-		return await this.find({
-			select: ['id', 'email'],
-			where: { id: In(userIds), password: Not(IsNull()) },
-		});
 	}
 
 	async createUserWithProject(
@@ -197,33 +278,43 @@ export class UserRepository extends Repository<User> {
 	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
 	 * wrongly drop SSO/LDAP users).
 	 */
-	async findEligibleByProjectOrGlobalRoles({
-		projectId,
-		projectRoleSlugs,
-		globalRoleSlugs,
-	}: {
-		projectId: string;
-		projectRoleSlugs: string[];
-		globalRoleSlugs: string[];
-	}): Promise<User[]> {
-		const where: Array<FindOptionsWhere<User>> = [];
-		if (globalRoleSlugs.length > 0) {
-			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
-		}
-		if (projectRoleSlugs.length > 0) {
-			where.push({
-				disabled: false,
-				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
-			});
-		}
-		if (where.length === 0) {
-			return [];
-		}
+	async findEligibleByProjectOrGlobalRoles(query: EligibleAccountsQuery): Promise<User[]> {
+		const where = eligibleAccountsWhere(query);
+		if (!where) return [];
 
 		return await this.find({
 			where,
 			relations: { role: true, authIdentities: true },
 		});
+	}
+
+	/**
+	 * IDs of enabled users who either hold one of `globalRoleSlugs` globally,
+	 * or hold one of `projectRoleSlugs` in one of `projectIds`.
+	 */
+	async findIdsWithGlobalOrProjectRoles({
+		projectIds,
+		projectRoleSlugs,
+		globalRoleSlugs,
+	}: {
+		projectIds: string[];
+		projectRoleSlugs: string[];
+		globalRoleSlugs: string[];
+	}): Promise<string[]> {
+		const where: Array<FindOptionsWhere<User>> = [];
+		if (globalRoleSlugs.length > 0) {
+			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+		}
+		if (projectIds.length > 0 && projectRoleSlugs.length > 0) {
+			where.push({
+				disabled: false,
+				projectRelations: { projectId: In(projectIds), role: { slug: In(projectRoleSlugs) } },
+			});
+		}
+		if (where.length === 0) return [];
+
+		const users = await this.find({ where, select: ['id'] });
+		return [...new Set(users.map(({ id }) => id))];
 	}
 
 	/**
@@ -252,8 +343,11 @@ export class UserRepository extends Repository<User> {
 	 *
 	 * Returns null if the project does not exist or is not a personal project.
 	 */
-	async findPersonalOwnerForProject(projectId: string): Promise<User | null> {
-		return await this.findOne({
+	async findPersonalOwnerForProject(
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
 			where: {
 				projectRelations: {
 					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
@@ -281,7 +375,16 @@ export class UserRepository extends Repository<User> {
 	private applyUserListFilter(
 		queryBuilder: SelectQueryBuilder<User>,
 		filter: UsersListFilterDto['filter'],
+		roleSlugs?: string[],
 	): SelectQueryBuilder<User> {
+		if (roleSlugs !== undefined) {
+			if (roleSlugs.length === 0) {
+				queryBuilder.andWhere('1 = 0');
+			} else {
+				queryBuilder.andWhere('user.role IN (:...roleSlugs)', { roleSlugs });
+			}
+		}
+
 		if (filter?.email !== undefined) {
 			queryBuilder.andWhere('user.email = :email', {
 				email: filter.email,
@@ -360,7 +463,43 @@ export class UserRepository extends Repository<User> {
 			);
 		}
 
+		if (filter?.status !== undefined) {
+			queryBuilder.andWhere(
+				filter.status === 'deactivated'
+					? DEACTIVATED_USER_CONDITION
+					: `NOT (${DEACTIVATED_USER_CONDITION})`,
+				DEACTIVATED_USER_PARAMETERS,
+			);
+		}
+
 		return queryBuilder;
+	}
+
+	/**
+	 * Number of users in each status of the users list. The counts use every
+	 * list filter except the status filter, so the tab labels of the list do
+	 * not change when the client switches tabs.
+	 */
+	async countUsersListStatuses(
+		filter: UsersListFilterDto['filter'],
+		roleSlugs?: string[],
+	): Promise<{ all: number; active: number; deactivated: number }> {
+		const queryBuilder = this.createQueryBuilder('user')
+			.select('COUNT(*)', 'total')
+			.addSelect(`SUM(CASE WHEN ${DEACTIVATED_USER_CONDITION} THEN 1 ELSE 0 END)`, 'deactivated')
+			.setParameters(DEACTIVATED_USER_PARAMETERS);
+		this.applyUserListFilter(queryBuilder, filter && { ...filter, status: undefined }, roleSlugs);
+
+		const counts = await queryBuilder.getRawOne<{
+			total: number | string;
+			deactivated: number | string | null;
+		}>();
+
+		// PostgreSQL returns COUNT and SUM as strings, and SUM of no rows as null.
+		const all = Number(counts?.total ?? 0);
+		const deactivated = Number(counts?.deactivated ?? 0);
+
+		return { all, active: all - deactivated, deactivated };
 	}
 
 	private applyUserListExpand(
@@ -415,7 +554,10 @@ export class UserRepository extends Repository<User> {
 		return queryBuilder;
 	}
 
-	buildUserQuery(listQueryOptions?: UsersListFilterDto): SelectQueryBuilder<User> {
+	buildUserQuery(
+		listQueryOptions?: UsersListFilterDto,
+		roleSlugs?: string[],
+	): SelectQueryBuilder<User> {
 		const queryBuilder = this.createQueryBuilder('user');
 
 		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
@@ -425,8 +567,8 @@ export class UserRepository extends Repository<User> {
 		}
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
-		this.applyUserListSelect(queryBuilder, select as Array<keyof User>);
-		this.applyUserListFilter(queryBuilder, filter);
+		this.applyUserListSelect(queryBuilder, select);
+		this.applyUserListFilter(queryBuilder, filter, roleSlugs);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);

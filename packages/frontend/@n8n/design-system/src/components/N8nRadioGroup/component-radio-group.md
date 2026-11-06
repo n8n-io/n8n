@@ -41,7 +41,8 @@ Presents a list of mutually exclusive options where the user can select exactly 
 
 **RadioGroupItem slots**
 
-- `label`: `{ label?: string, description?: string }` - Custom content for the label
+- `label`: `{ label?: string, description?: string }` - Custom content for the label. Keep this to the option name. Do not put other controls here
+- `content` - Fields that belong to the selected option. Rendered under the label and outside it, so they stay out of the radio name
 
 
 ### Template usage example
@@ -90,6 +91,25 @@ const agreement = ref('')
     <N8nRadioGroupItem value="terms">
       <template #label>
         I accept the <a href="/terms">terms and conditions</a>
+      </template>
+    </N8nRadioGroupItem>
+  </N8nRadioGroup>
+</template>
+```
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const operation = ref('delete')
+</script>
+
+<template>
+  <N8nRadioGroup v-model="operation">
+    <N8nRadioGroupItem value="delete" label="Delete everything">
+      <template #content>
+        <label for="confirm-field">Type to confirm</label>
+        <input id="confirm-field" />
       </template>
     </N8nRadioGroupItem>
   </N8nRadioGroup>

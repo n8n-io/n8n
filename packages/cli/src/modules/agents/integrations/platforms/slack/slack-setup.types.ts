@@ -1,6 +1,14 @@
 import { isRecord } from '@n8n/utils/is-record';
 
+import { BadRequestError } from '@n8n/errors';
+
+import { stringProperty } from '../../integration-helpers';
+
 const SLACK_APP_SETUP_CACHE_PREFIX = 'agents:slack-app-setup:';
+const SLACK_MANAGED_APP_CACHE_PREFIX = 'agents:slack-managed-app:';
+
+export const SLACK_APP_SETUP_TTL_MS = 60 * 60 * 1000;
+export const SLACK_CREDENTIAL_TYPE = 'slackApi';
 
 export const SLACK_BOT_SCOPES = [
 	'app_mentions:read',
@@ -38,8 +46,33 @@ export interface SlackAppSetupSession {
 	teamName?: string;
 }
 
+export function hasSessionShape(value: unknown): value is SlackAppSetupSession {
+	const keys: Array<keyof SlackAppSetupSession> = [
+		'projectId',
+		'agentId',
+		'userId',
+		'appId',
+		'clientId',
+		'clientSecret',
+		'signingSecret',
+		'redirectUrl',
+	];
+	return isRecord(value) && keys.every((key) => typeof value[key] === 'string');
+}
+
 export function slackSetupCacheKey(state: string): string {
 	return `${SLACK_APP_SETUP_CACHE_PREFIX}${state}`;
+}
+
+/** Both Slack setup services read and write this entry, so the key must stay identical. */
+export function managedSlackAppCacheKey(options: {
+	projectId: string;
+	agentId: string;
+	managerCredentialId: string;
+	workspaceId: string;
+	userId: string;
+}): string {
+	return `${SLACK_MANAGED_APP_CACHE_PREFIX}${options.projectId}:${options.agentId}:${options.managerCredentialId}:${options.workspaceId}:${options.userId}`;
 }
 
 export function childRecord(
@@ -48,4 +81,17 @@ export function childRecord(
 ): Record<string, unknown> | undefined {
 	const child = record[key];
 	return isRecord(child) ? child : undefined;
+}
+
+export function parseSlackAppSetupResponse(response: Record<string, unknown>) {
+	const credentials = childRecord(response, 'credentials');
+	const appId = stringProperty(response, 'app_id');
+	const clientId = stringProperty(credentials, 'client_id');
+	const clientSecret = stringProperty(credentials, 'client_secret');
+	const signingSecret = stringProperty(credentials, 'signing_secret');
+	const oauthAuthorizeUrl = stringProperty(response, 'oauth_authorize_url');
+	if (!appId || !clientId || !clientSecret || !signingSecret || !oauthAuthorizeUrl) {
+		throw new BadRequestError('Slack returned an incomplete app setup response');
+	}
+	return { appId, clientId, clientSecret, signingSecret, oauthAuthorizeUrl };
 }

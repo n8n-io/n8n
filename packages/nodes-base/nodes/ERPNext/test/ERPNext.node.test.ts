@@ -1,117 +1,137 @@
-import { NodeOperationError } from 'n8n-workflow';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
-import * as GenericFunctions from '../GenericFunctions';
-import type * as _importType0 from '../GenericFunctions';
 import { ERPNext } from '../ERPNext.node';
+import * as GenericFunctions from '../GenericFunctions';
 
-vi.mock('../GenericFunctions', async () => ({
-	...(await vi.importActual<typeof _importType0>('../GenericFunctions')),
-	erpNextApiRequest: vi.fn(),
-	erpNextApiRequestAllItems: vi.fn(),
-}));
+describe('ERPNext > document: getAll', () => {
+	let node: ERPNext;
+	let mockExecuteFunctions: ReturnType<typeof mockDeep<IExecuteFunctions>>;
 
-const erpNextApiRequestMock = GenericFunctions.erpNextApiRequest as Mock;
+	const mockParameters = (options: IDataObject | ((itemIndex: number) => IDataObject)) => {
+		mockExecuteFunctions.getNodeParameter.mockImplementation((parameter, itemIndex) => {
+			switch (parameter) {
+				case 'resource':
+					return 'document';
+				case 'operation':
+					return 'getAll';
+				case 'docType':
+					return 'Customer';
+				case 'options':
+					return typeof options === 'function' ? options(itemIndex) : options;
+				case 'returnAll':
+					return false;
+				case 'limit':
+					return 10;
+				default:
+					return undefined;
+			}
+		});
+	};
 
-type ParamMap = Record<string, unknown>;
-
-/** Builds a mocked IExecuteFunctions for the Document resource, given operation and per-item params. */
-function createMockExecuteFunctions(operation: string, items: ParamMap[]) {
-	return {
-		getInputData: vi.fn().mockReturnValue(items.map((json) => ({ json }))),
-		getNodeParameter: vi
-			.fn()
-			.mockImplementation((name: string, itemIndex: number, fallback?: unknown) => {
-				if (name === 'resource') return 'document';
-				if (name === 'operation') return operation;
-				const value = items[itemIndex]?.[name];
-				return value === undefined ? fallback : value;
-			}),
-		getNode: vi.fn().mockReturnValue({ name: 'ERPNext' }),
-		helpers: {
-			returnJsonArray: vi
-				.fn()
-				.mockImplementation((data: IDataObject | IDataObject[]) =>
-					(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
-				),
-			constructExecutionMetaData: vi.fn().mockImplementation((data: unknown[]) => data),
-		},
-	} as any;
-}
-
-describe('ERPNext Node', () => {
 	beforeEach(() => {
-		erpNextApiRequestMock.mockReset();
+		node = new ERPNext();
+		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation(
+			(data: IDataObject | IDataObject[]) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+		);
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
+			(data: INodeExecutionData[]) => data,
+		);
+		vi.spyOn(GenericFunctions, 'erpNextApiRequest').mockResolvedValue({
+			data: [{ name: 'Customer A' }],
+		});
 	});
 
-	describe.each([
-		{
-			operation: 'create',
-			method: 'POST',
-			message: 'Please enter at least one property for the document to create.',
-		},
-		{
-			operation: 'update',
-			method: 'PUT',
-			message: 'Please enter at least one property for the document to update.',
-		},
-	])('Document: $operation operation', ({ operation, method, message }) => {
-		it('throws a NodeOperationError, not a raw TypeError, when Properties was never touched', async () => {
-			// The Properties fixedCollection's own default (DocumentDescription.ts) is {},
-			// not { customProperty: [] }, whenever the user never adds a row — the same
-			// default-shape trap as the Filters field on Get Many.
-			const mockThis = createMockExecuteFunctions(operation, [
-				{ properties: {}, docType: 'Customer', documentName: 'CUST-0001' },
-			]);
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
 
-			await expect(new ERPNext().execute.call(mockThis)).rejects.toBeInstanceOf(NodeOperationError);
-			expect(erpNextApiRequestMock).not.toHaveBeenCalled();
+	it('should not send filters when the Filters collection is left empty', async () => {
+		mockParameters({ fields: ['name'], filters: {} });
+
+		const result = await node.execute.call(mockExecuteFunctions);
+
+		expect(result[0]).toEqual([{ json: { name: 'Customer A' } }]);
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ fields: JSON.stringify(['name']), limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not send fields or filters when both collections are left empty', async () => {
+		mockParameters({ fields: [], filters: { customProperty: [] } });
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not carry query options over from a previous item', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParameters((itemIndex) => (itemIndex === 0 ? { fields: ['name'] } : {}));
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ fields: JSON.stringify(['name']), limit_page_length: 10, limit_start: 0 },
+		);
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should not carry filters over from a previous item', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+		mockParameters((itemIndex) =>
+			itemIndex === 0
+				? { filters: { customProperty: [{ field: 'first_name', operator: 'is', value: 'Jane' }] } }
+				: {},
+		);
+
+		await node.execute.call(mockExecuteFunctions);
+
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/api/resource/Customer',
+			{},
+			{ limit_page_length: 10, limit_start: 0 },
+		);
+	});
+
+	it('should send filters when the Filters collection has entries', async () => {
+		mockParameters({
+			filters: { customProperty: [{ field: 'first_name', operator: 'is', value: 'Jane' }] },
 		});
 
-		it('still throws the same friendly error when customProperty is explicitly an empty array', async () => {
-			// Locks in the pre-existing, intended behaviour: the guard must keep working
-			// for the case it was originally written for.
-			const mockThis = createMockExecuteFunctions(operation, [
-				{ properties: { customProperty: [] }, docType: 'Customer', documentName: 'CUST-0001' },
-			]);
+		await node.execute.call(mockExecuteFunctions);
 
-			let caught: unknown;
-			try {
-				await new ERPNext().execute.call(mockThis);
-			} catch (e) {
-				caught = e;
-			}
-
-			expect(caught).toBeInstanceOf(NodeOperationError);
-			expect((caught as NodeOperationError).message).toContain(message);
-			expect(erpNextApiRequestMock).not.toHaveBeenCalled();
-		});
-
-		it('proceeds normally and sends the property values when a row is present', async () => {
-			erpNextApiRequestMock.mockResolvedValue({
-				data: { name: 'CUST-0001', customer_name: 'Acme' },
-			});
-
-			const mockThis = createMockExecuteFunctions(operation, [
-				{
-					properties: { customProperty: [{ field: 'customer_name', value: 'Acme' }] },
-					docType: 'Customer',
-					documentName: 'CUST-0001',
-				},
-			]);
-
-			const result = await new ERPNext().execute.call(mockThis);
-
-			expect(result[0]).toHaveLength(1);
-			expect(erpNextApiRequestMock).toHaveBeenCalledTimes(1);
-
-			const [calledMethod, calledResource, calledBody] = erpNextApiRequestMock.mock.calls[0];
-			expect(calledMethod).toBe(method);
-			expect(calledResource).toBe(
-				operation === 'create' ? '/api/resource/Customer' : '/api/resource/Customer/CUST-0001',
-			);
-			expect(calledBody).toEqual({ customer_name: 'Acme' });
-		});
+		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/api/resource/Customer',
+			{},
+			expect.objectContaining({
+				filters: JSON.stringify([['Customer', 'first_name', '=', 'Jane']]),
+			}),
+		);
 	});
 });

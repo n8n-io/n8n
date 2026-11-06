@@ -9,7 +9,8 @@ export function createAgentExecutionCounter(
 		agentId,
 		userId,
 		runType,
-	}: { agentId: string; userId?: string; runType: AgentRunTelemetryType },
+		source,
+	}: { agentId: string; userId?: string; runType: AgentRunTelemetryType; source?: string },
 ): AgentExecutionCounter {
 	const attribution = userId ? { user_id: userId } : {};
 	return {
@@ -18,6 +19,7 @@ export function createAgentExecutionCounter(
 				agent_id: agentId,
 				...attribution,
 				run_type: runType,
+				source,
 				message_count: 1,
 			}),
 		incrementTokenCount: (tokenCount) =>
@@ -25,6 +27,7 @@ export function createAgentExecutionCounter(
 				agent_id: agentId,
 				...attribution,
 				run_type: runType,
+				source,
 				token_count: tokenCount,
 			}),
 		incrementToolCallCount: () =>
@@ -32,6 +35,7 @@ export function createAgentExecutionCounter(
 				agent_id: agentId,
 				...attribution,
 				run_type: runType,
+				source,
 				tool_call_count: 1,
 			}),
 	};

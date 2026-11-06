@@ -18,6 +18,9 @@ describe('GithubTriggerHelpers', () => {
 	let mockWebhookFunctions: {
 		getWorkflowStaticData: Mock;
 		getRequestObject: Mock;
+		getNode: Mock;
+		getWorkflow: Mock;
+		logger: { warn: Mock };
 	};
 	const testWebhookSecret = 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2';
 	const testBody =
@@ -30,6 +33,9 @@ describe('GithubTriggerHelpers', () => {
 		mockWebhookFunctions = {
 			getWorkflowStaticData: vi.fn(),
 			getRequestObject: vi.fn(),
+			getNode: vi.fn().mockReturnValue({ name: 'Github Trigger' }),
+			getWorkflow: vi.fn().mockReturnValue({ id: 'wf-1' }),
+			logger: { warn: vi.fn() },
 		};
 
 		// Default mock return values
@@ -47,13 +53,18 @@ describe('GithubTriggerHelpers', () => {
 	});
 
 	describe('verifySignature', () => {
-		it('should return true when no webhook secret is stored (backwards compatibility)', () => {
+		it('should return false when no webhook secret is stored', () => {
 			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({});
 
 			const result = verifySignature.call(mockWebhookFunctions as never);
 
-			expect(result).toBe(true);
+			expect(result).toBe(false);
 			expect(mockWebhookFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
+			// Without this the rejection is indistinguishable from a bad signature.
+			expect(mockWebhookFunctions.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('no webhook secret is stored'),
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
 		});
 
 		it('should return false when signature header is missing', () => {

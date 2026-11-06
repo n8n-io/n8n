@@ -12,7 +12,11 @@ import {
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { AgentSlackIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
+import type {
+	AgentIntegrationSettings,
+	AgentSlackIntegrationSettings,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { getSlackAgentAppManifest } from '../channels/slack/api';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
@@ -36,6 +40,7 @@ const props = withDefaults(
 		errorIsConflict?: boolean;
 		forceNewCredential?: boolean;
 		setupMode?: 'simple' | 'advanced';
+		savedSettings?: AgentIntegrationSettings;
 	}>(),
 	{
 		connected: false,
@@ -52,6 +57,7 @@ const props = withDefaults(
 		errorMessage: '',
 		errorIsConflict: false,
 		forceNewCredential: false,
+		savedSettings: undefined,
 	},
 );
 
@@ -73,9 +79,12 @@ const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
 const manifestError = shallowRef(false);
 const manifestCopied = shallowRef(false);
-const currentSettings = computed<AgentSlackIntegrationSettings>(() => ({
-	messagingExperience: 'agent',
-}));
+// A draft channel keeps its saved settings. A new channel uses the agent experience.
+const currentSettings = computed<AgentSlackIntegrationSettings>(() =>
+	props.savedSettings && 'messagingExperience' in props.savedSettings
+		? props.savedSettings
+		: { messagingExperience: 'agent' },
+);
 
 const steps = computed(() => [
 	{
@@ -191,7 +200,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, loading: se
 							<N8nButton
 								href="https://api.slack.com/apps"
 								target="_blank"
-								variant="subtle"
+								variant="outline"
 								size="medium"
 								icon="slack"
 								data-testid="slack-app-configuration-token-link"
@@ -245,7 +254,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, loading: se
 					</div>
 					<template v-else-if="step.id === 'install-app'">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							:loading="setupLoading"
 							:disabled="!canInstallApp"
@@ -378,7 +387,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, loading: se
 .setupDescriptionContainer {
 	display: flex;
 	align-items: center;
-	height: var(--height--xs);
+	min-height: var(--height--xs);
 }
 
 .setupDescription {

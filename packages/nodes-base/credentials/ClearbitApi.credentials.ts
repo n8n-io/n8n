@@ -18,6 +18,7 @@ export class ClearbitApi implements ICredentialType {
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
+			required: true,
 			default: '',
 		},
 	];

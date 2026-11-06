@@ -10,15 +10,18 @@ import type {
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
+	UnexpectedError,
+	UserError,
 	assertParamIsBoolean,
 	assertParamIsString,
 } from 'n8n-workflow';
 import { randomBytes } from 'node:crypto';
 import { mkdir, rename, rm } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, resolve } from 'path';
+import { tmpdir } from 'node:os';
+import { basename, dirname, isAbsolute, join, resolve, sep } from 'path';
 import type { ConfigListSummary, LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
-import simpleGit from 'simple-git';
-import { URL, fileURLToPath } from 'url';
+import { simpleGit } from 'simple-git';
+import { URL } from 'url';
 
 import {
 	addConfigFields,
@@ -34,15 +37,108 @@ import {
 } from './descriptions';
 import {
 	type ConfiguredRemoteRepositories,
+	type GitRepositoryLayout,
 	getConfiguredRemoteRepositories,
+	getGitRepositoryLayout,
 	findBlacklistedKeys,
 	getRepositoryTypeForRemoteConfigKey,
+	isWithinPath,
 	mapGitConfigList,
+	ownerOfGitDir,
 	validateGitReference,
+	validateGitRemoteName,
 	validateGitTag,
 } from './GenericFunctions';
 
 const REMOTE_HELPER_TRANSPORT = /^[a-zA-Z][a-zA-Z0-9+.-]*::/;
+
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+
+// Decode `%XX` runs to bytes like git does; throw on invalid UTF-8 or NUL so a path that
+// cannot be compared to git's byte-for-byte is denied, not checked against a lossy `U+FFFD`.
+const decodeGitPercentEscapes = (segment: string): string =>
+	segment.replace(/(?:%[0-9a-fA-F]{2})+/g, (run) => {
+		const decoded = utf8Decoder.decode(
+			Uint8Array.from(run.match(/%[0-9a-fA-F]{2}/g)!.map((pair) => parseInt(pair.slice(1), 16))),
+		);
+		if (decoded.includes('\0')) {
+			throw new UserError('Repository reference contains a NUL byte');
+		}
+		return decoded;
+	});
+
+// Reconstruct the path git's file transport opens, without the normalisation `URL` applies:
+// `URL` splits off `?`/`#` and collapses `..` lexically; git keeps them and lets the kernel
+// resolve `..` after symlinks. Validate what git opens, not a URL-normalised derivative.
+export const fileUrlToGitPath = (reference: string): string => {
+	const hasAuthority = /^file:\/\//i.test(reference);
+	// Decode before splitting: git decodes first, so a `%2F` in the authority shifts the boundary.
+	let path = decodeGitPercentEscapes(reference.replace(/^file:(\/\/)?/i, ''));
+	if (hasAuthority) {
+		const pathStart = path.indexOf('/');
+		const authority = pathStart === -1 ? path : path.slice(0, pathStart);
+		// `file://C:/repo` puts a Windows drive, not a host, in the authority slot; keep it as
+		// the path. On POSIX git reads `C:` as a named authority and opens the path after it,
+		// so the drive-letter case only holds on Windows. A real named authority is not a local
+		// path (the OS can read it as a UNC share on Windows), so refuse anything but an empty
+		// host or `localhost` rather than guess which side wins.
+		if (process.platform === 'win32' && /^[a-zA-Z]:$/.test(authority)) {
+			return path;
+		}
+		if (authority !== '' && authority.toLowerCase() !== 'localhost') {
+			throw new UserError('Repository reference has an unsupported file authority');
+		}
+		path = pathStart === -1 ? '' : path.slice(pathStart);
+	}
+	// `file:///C:/repo` -> `C:/repo`: drop the slash git strips before a Windows drive letter.
+	if (process.platform === 'win32' && /^\/[a-zA-Z]:[\\/]/.test(path)) {
+		path = path.slice(1);
+	}
+	return path;
+};
+
+// Ask git which git directory a candidate resolves to, so the gitfile (`gitdir: <path>`) is
+// parsed exactly as git parses it at clone time, not by a reimplementation that drifts from
+// git's byte semantics. Runs with the command-bearing config pinned and a clean env, like the
+// operation itself, so resolution cannot invoke an external program.
+const resolveGitDirWithGit = async (candidate: string): Promise<string | undefined> => {
+	const config = ['core.hooksPath=/dev/null'];
+	const unsafe: NonNullable<SimpleGitOptions['unsafe']> = { allowUnsafeHooksPath: true };
+	for (const [key, value, unsafeFlag] of COMMAND_CONFIG_KEYS) {
+		config.push(`${key}=${value}`);
+		unsafe[unsafeFlag] = true;
+	}
+	const env = Object.create(null) as Record<string, string>;
+	env.GIT_TERMINAL_PROMPT = '0';
+	try {
+		// `--resolve-git-dir` takes an absolute path, so git's cwd does not steer resolution.
+		const resolver = simpleGit({
+			baseDir: tmpdir(),
+			config,
+			unsafe,
+			allowEnvironment: ['GIT_TERMINAL_PROMPT'],
+		}).env(env);
+		const output = await resolver.raw(['rev-parse', '--resolve-git-dir', candidate]);
+		// git prints the path and a single terminator. Strip only that terminator: a trailing
+		// space, or an embedded newline, is a real byte of a POSIX directory name. Windows
+		// forbids `\r`/`\n` in a name, so there the terminator can include `\r`.
+		return process.platform === 'win32' ? output.replace(/\r?\n$/, '') : output.replace(/\n$/, '');
+	} catch {
+		// git could not resolve a git directory from this candidate. The clone runs the same
+		// git, so a candidate git cannot resolve here is one git cannot open there either.
+		return undefined;
+	}
+};
+
+// Deliberately distinct from the `repositoryPath` message so the two guards can be told apart.
+const REPOSITORY_OUT_OF_BOUNDS_MESSAGE =
+	'The git repository containing this path is outside the allowed file paths';
+
+const REPOSITORY_OUT_OF_BOUNDS_DESCRIPTION =
+	"The working tree or the git directory of this repository is outside the allowed file paths, matched by the blocked file patterns, or inside n8n's own directories";
+
+const WORKTREE_GIT_DIR_OUT_OF_BOUNDS_DESCRIPTION =
+	'The git directory of this worktree is not inside the repository it belongs to';
 
 // These git config keys select external programs git may invoke. Pin them to fixed
 // defaults that take precedence over any values in the repository's own `.git/config`
@@ -253,10 +349,26 @@ export class Git implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
+		// The directory git resolves relative repository references from. Assigned per item,
+		// from the discovered repository layout, before any reference is validated. Shared
+		// across items, so the per-item reset below only holds while the loop stays sequential.
+		let gitBaseDir: ResolvedFilePath | undefined;
+
+		const requireGitBaseDir = (): ResolvedFilePath => {
+			if (gitBaseDir === undefined) {
+				throw new UnexpectedError(
+					'Git base directory was not resolved before validating a repository reference',
+				);
+			}
+			return gitBaseDir;
+		};
+
 		const prepareRepository = async (repositoryPath: string): Promise<string> => {
 			const authentication = this.getNodeParameter('authentication', 0) as string;
 
-			if (authentication === 'gitPassword') {
+			// Skip `file:` refs: they carry no credentials, and `new URL` would collapse `..`
+			// and diverge from the path the allowed-path check validated.
+			if (authentication === 'gitPassword' && !/^file:/i.test(repositoryPath.trim())) {
 				const gitCredentials = await this.getCredentials('gitPassword');
 
 				const url = new URL(repositoryPath);
@@ -292,6 +404,9 @@ export class Git implements INodeType {
 			} = options;
 
 			validateGitReference(branchName, this.getNode());
+			if (setUpstream) {
+				validateGitRemoteName(remoteName, this.getNode());
+			}
 
 			try {
 				if (force) {
@@ -345,12 +460,14 @@ export class Git implements INodeType {
 		const assertLocalRepositoryPathAllowed = async (
 			repositoryPath: string,
 			repositoryType: 'source' | 'target',
-			baseDir: string,
 		): Promise<void> => {
+			// Concatenate rather than `resolve`, which would collapse `..` before the filesystem
+			// gets to follow a symlink standing in front of it.
+			const base = requireGitBaseDir();
 			const absoluteLocalRepositoryPath = isAbsolute(repositoryPath)
 				? repositoryPath
-				: resolve(baseDir, repositoryPath);
-			const resolvedLocalRepositoryPath = await this.helpers.resolvePath(
+				: `${base}${base.endsWith(sep) ? '' : sep}${repositoryPath}`;
+			const resolvedLocalRepositoryPath = await resolvePathAllowingMissingParents(
 				absoluteLocalRepositoryPath,
 			);
 
@@ -360,14 +477,54 @@ export class Git implements INodeType {
 					`Access to the ${repositoryType} repository path is not allowed`,
 				);
 			}
+
+			await assertGitLinkTargetAllowed(resolvedLocalRepositoryPath, repositoryType);
+		};
+
+		// git discovers a repository through a `.git` gitfile (`gitdir: <path>`), which can point
+		// the real git directory anywhere, including outside the allowed paths. Resolve the
+		// pointer with git and bound-check the directory git would open.
+		const assertGitLinkTargetAllowed = async (
+			resolvedRepositoryPath: ResolvedFilePath,
+			repositoryType: 'source' | 'target',
+		): Promise<void> => {
+			// The same locations git appends to a local source, built like git does: a bare path
+			// and a `.git` suffix with no separator, so `<path>.git` and `<path>.git/.git` are
+			// siblings of the source, not children.
+			const candidates = [
+				resolvedRepositoryPath,
+				join(resolvedRepositoryPath, '.git'),
+				`${resolvedRepositoryPath}.git`,
+				`${resolvedRepositoryPath}.git${sep}.git`,
+			];
+			for (const candidate of candidates) {
+				const gitDir = await resolveGitDirWithGit(candidate);
+				if (gitDir === undefined) {
+					continue;
+				}
+				const resolvedGitDir = await resolvePathAllowingMissingParents(gitDir);
+				if (this.helpers.isFilePathBlocked(ownerOfGitDir(resolvedGitDir))) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`Access to the ${repositoryType} repository path is not allowed`,
+					);
+				}
+			}
 		};
 
 		const assertRepositoryReferenceAllowed = async (
 			repository: string,
 			repositoryType: 'source' | 'target',
-			baseDir: string,
 		) => {
 			const trimmedRepository = repository.trim();
+			// git clones the raw value, so surrounding whitespace would make it open a path this
+			// check never saw. Refuse it instead of validating a trimmed stand-in.
+			if (repository !== trimmedRepository) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${repositoryType === 'source' ? 'Source' : 'Target'} repository cannot have leading or trailing whitespace`,
+				);
+			}
 			if (trimmedRepository.startsWith('-')) {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -376,7 +533,7 @@ export class Git implements INodeType {
 			}
 
 			if (/^[a-zA-Z]:[\\/]/.test(trimmedRepository)) {
-				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType, baseDir);
+				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType);
 				return;
 			}
 
@@ -388,32 +545,30 @@ export class Git implements INodeType {
 			}
 
 			if (hasUrlScheme(trimmedRepository)) {
-				let repositoryUrl: URL | undefined;
-				try {
-					repositoryUrl = new URL(trimmedRepository);
-				} catch {
-					repositoryUrl = undefined;
-				}
-
-				if (repositoryUrl?.protocol === 'file:') {
-					await assertLocalRepositoryPathAllowed(
-						fileURLToPath(repositoryUrl),
-						repositoryType,
-						baseDir,
-					);
+				// git uses its local transport for any `file:` scheme, even one `new URL` rejects.
+				if (/^file:/i.test(trimmedRepository)) {
+					let gitPath: string;
+					try {
+						gitPath = fileUrlToGitPath(trimmedRepository);
+					} catch {
+						throw new NodeOperationError(
+							this.getNode(),
+							`Access to the ${repositoryType} repository path is not allowed`,
+						);
+					}
+					await assertLocalRepositoryPathAllowed(gitPath, repositoryType);
 				}
 
 				return;
 			}
 
 			if (!isSshRepositoryPath(trimmedRepository)) {
-				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType, baseDir);
+				await assertLocalRepositoryPathAllowed(trimmedRepository, repositoryType);
 			}
 		};
 
 		const validateConfiguredRemoteRepositories = async (
 			repositoryType: 'source' | 'target',
-			baseDir: string,
 			config: ConfigListSummary,
 		): Promise<ConfiguredRemoteRepositories> => {
 			const remoteRepositories = getConfiguredRemoteRepositories(config.values, this.getNode());
@@ -423,7 +578,7 @@ export class Git implements INodeType {
 					: remoteRepositories.targetValidationTargets;
 
 			for (const repository of validationTargets) {
-				await assertRepositoryReferenceAllowed(repository, repositoryType, baseDir);
+				await assertRepositoryReferenceAllowed(repository, repositoryType);
 			}
 
 			return remoteRepositories;
@@ -450,10 +605,78 @@ export class Git implements INodeType {
 			}
 		};
 
+		/**
+		 * Discovers the repository git is about to operate on, checks it lies inside the allowed
+		 * file paths, and returns the directory git resolves relative references from.
+		 * @param cwd the directory git is spawned in (simple-git's baseDir), which is where it
+		 * resolves relative references unless it walked up to a top level
+		 */
+		const resolveGitBaseDir = async (
+			git: SimpleGit,
+			cwd: ResolvedFilePath,
+		): Promise<ResolvedFilePath> => {
+			let layout: GitRepositoryLayout;
+			let topLevel: ResolvedFilePath | undefined;
+			try {
+				layout = await getGitRepositoryLayout(git);
+				topLevel =
+					layout.topLevel === undefined
+						? undefined
+						: await this.helpers.resolvePath(layout.topLevel);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error, {
+					message: 'Could not determine the git repository for this path',
+					description: error instanceof Error ? error.message : undefined,
+				});
+			}
+
+			const outOfBounds = (description = REPOSITORY_OUT_OF_BOUNDS_DESCRIPTION) =>
+				new NodeOperationError(this.getNode(), REPOSITORY_OUT_OF_BOUNDS_MESSAGE, { description });
+
+			// git only chdirs to the top level when it discovered the repository by walking up from
+			// its cwd, which makes the top level an ancestor of that cwd. Anything else (no work
+			// tree, or a configured one) leaves git resolving from the directory it was started in.
+			const baseDir = topLevel !== undefined && isWithinPath(topLevel, cwd) ? topLevel : cwd;
+
+			if (this.helpers.isFilePathBlocked(baseDir)) {
+				throw outOfBounds();
+			}
+
+			// The work tree is where the operation reads and writes files, so it has to be in
+			// bounds even when git resolves references from somewhere else.
+			if (
+				topLevel !== undefined &&
+				topLevel !== baseDir &&
+				this.helpers.isFilePathBlocked(topLevel)
+			) {
+				throw outOfBounds();
+			}
+
+			// `--git-common-dir` is printed relative to git's cwd.
+			const commonDir = await this.helpers.resolvePath(resolve(cwd, layout.commonDir));
+			// The allowed-path patterns reject every path with a `.git` component, so check
+			// the directory that owns the git dir instead: `<top>` for both `<top>/.git` and
+			// `<top>/.git/modules/<name>`.
+			const commonDirOwner = ownerOfGitDir(commonDir);
+			if (commonDirOwner !== baseDir && this.helpers.isFilePathBlocked(commonDirOwner)) {
+				throw outOfBounds();
+			}
+
+			// A linked worktree's git dir lives under the common dir; anywhere else means the
+			// per-worktree state (index, HEAD, reflogs) goes somewhere unchecked.
+			const gitDir = await this.helpers.resolvePath(layout.gitDir);
+			if (!isWithinPath(commonDir, gitDir)) {
+				throw outOfBounds(WORKTREE_GIT_DIR_OUT_OF_BOUNDS_DESCRIPTION);
+			}
+
+			return baseDir;
+		};
+
 		const operation = this.getNodeParameter('operation', 0);
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				gitBaseDir = undefined;
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
 				const resolvedRepositoryPath =
 					operation === 'clone'
@@ -471,33 +694,22 @@ export class Git implements INodeType {
 				const options = this.getNodeParameter('options', itemIndex, {});
 
 				let sourceRepository = '';
-				if (operation === 'clone') {
-					sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
-					await assertRepositoryReferenceAllowed(
-						sourceRepository,
-						'source',
-						dirname(resolvedRepositoryPath),
-					);
-					sourceRepository = await prepareRepository(sourceRepository);
-				}
-
 				let customTargetRepository = '';
-				if (operation === 'push' && options.repository) {
-					customTargetRepository = options.targetRepository as string;
-					await assertRepositoryReferenceAllowed(
-						customTargetRepository,
-						'target',
-						resolvedRepositoryPath,
-					);
-				}
-
 				let cloneStagingBase = '';
 				let cloneStagingPath = '';
 				if (operation === 'clone') {
 					// Clone into an unguessable staging directory under a fixed base, then
 					// move the result into place, so the git subprocess only ever resolves
 					// paths under a directory n8n controls.
-					cloneStagingBase = await this.helpers.resolveStagingBaseForTarget(resolvedRepositoryPath);
+					gitBaseDir = await this.helpers.resolveStagingBaseForTarget(resolvedRepositoryPath);
+					cloneStagingBase = gitBaseDir;
+
+					// Validate before `prepareRepository`, which round-trips the value through
+					// `new URL()` when credentials are configured.
+					sourceRepository = this.getNodeParameter('sourceRepository', itemIndex, '') as string;
+					await assertRepositoryReferenceAllowed(sourceRepository, 'source');
+					sourceRepository = await prepareRepository(sourceRepository);
+
 					cloneStagingPath = join(
 						cloneStagingBase,
 						`.n8n-clone-${randomBytes(12).toString('hex')}`,
@@ -537,6 +749,8 @@ export class Git implements INodeType {
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: operation === 'clone' ? cloneStagingBase : resolvedRepositoryPath,
 					config: gitConfig,
+					// simple-git rejects GIT_* variables set with `.env()` unless they are listed here.
+					allowEnvironment: ['GIT_TERMINAL_PROMPT', 'GIT_ALLOW_PROTOCOL'],
 					...(Object.keys(unsafe).length > 0 && { unsafe }),
 				};
 
@@ -549,6 +763,17 @@ export class Git implements INodeType {
 				cleanEnv['GIT_ALLOW_PROTOCOL'] =
 					isWriteOperation && !enableHooks ? 'git:http:https:ssh' : 'file:git:http:https:ssh';
 				const git: SimpleGit = simpleGit(gitOptions).env(cleanEnv);
+
+				if (operation !== 'clone') {
+					gitBaseDir = await resolveGitBaseDir(git, resolvedRepositoryPath);
+				}
+
+				// Validate here rather than next to `git.push`, which would let a refused target
+				// first read the repository config and write upstream-tracking config.
+				if (operation === 'push' && options.repository) {
+					customTargetRepository = options.targetRepository as string;
+					await assertRepositoryReferenceAllowed(customTargetRepository, 'target');
+				}
 
 				const validateGitConfig = async (): Promise<ConfigListSummary> => {
 					const repositoryConfig = await git.listConfig();
@@ -611,7 +836,7 @@ export class Git implements INodeType {
 
 					const repositoryType = getRepositoryTypeForRemoteConfigKey(key);
 					if (repositoryType) {
-						await assertRepositoryReferenceAllowed(value, repositoryType, resolvedRepositoryPath);
+						await assertRepositoryReferenceAllowed(value, repositoryType);
 					}
 
 					if (options.mode === 'append') {
@@ -716,11 +941,7 @@ export class Git implements INodeType {
 					//         fetch
 					// ----------------------------------
 					const repositoryConfig = await validateGitConfig();
-					await validateConfiguredRemoteRepositories(
-						'source',
-						resolvedRepositoryPath,
-						repositoryConfig,
-					);
+					await validateConfiguredRemoteRepositories('source', repositoryConfig);
 					await git.fetch();
 					returnItems.push({
 						json: {
@@ -745,6 +966,7 @@ export class Git implements INodeType {
 						logOptions.file = options.file as string;
 					}
 
+					await validateGitConfig();
 					const log = await git.log(logOptions);
 
 					returnItems.push(
@@ -762,11 +984,7 @@ export class Git implements INodeType {
 					// ----------------------------------
 
 					const repositoryConfig = await validateGitConfig();
-					await validateConfiguredRemoteRepositories(
-						'source',
-						resolvedRepositoryPath,
-						repositoryConfig,
-					);
+					await validateConfiguredRemoteRepositories('source', repositoryConfig);
 					await git.pull();
 					returnItems.push({
 						json: {
@@ -802,7 +1020,6 @@ export class Git implements INodeType {
 						const authentication = this.getNodeParameter('authentication', 0) as string;
 						const { pushTarget } = await validateConfiguredRemoteRepositories(
 							'target',
-							resolvedRepositoryPath,
 							repositoryConfig,
 						);
 
@@ -831,11 +1048,7 @@ export class Git implements INodeType {
 					//         pushTags
 					// ----------------------------------
 					const repositoryConfig = await validateGitConfig();
-					await validateConfiguredRemoteRepositories(
-						'target',
-						resolvedRepositoryPath,
-						repositoryConfig,
-					);
+					await validateConfiguredRemoteRepositories('target', repositoryConfig);
 					await git.pushTags();
 					returnItems.push({
 						json: {
@@ -860,6 +1073,7 @@ export class Git implements INodeType {
 						reference = options.reference;
 					}
 
+					await validateGitConfig();
 					const reflogResult = await git.raw(['reflog', reference]);
 
 					const reflogEntries = reflogResult
@@ -1013,7 +1227,7 @@ export class Git implements INodeType {
 					continue;
 				}
 
-				throw error;
+				throw new NodeOperationError(this.getNode(), error, { itemIndex });
 			}
 		}
 

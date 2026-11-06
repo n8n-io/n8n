@@ -8,7 +8,7 @@ import {
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import type { FilterOption } from '../session-timeline.types';
-import { swatchBackground } from '../session-timeline.styles';
+import { timelineColors } from '../session-timeline.styles';
 
 const props = defineProps<{
 	available: FilterOption[];
@@ -73,14 +73,9 @@ function toMenuItem(option: FilterOption): FilterMenuItem {
 function optionColor(option: FilterOption): string {
 	if (option.presentation === 'swatch') return option.color;
 
-	switch (option.key) {
-		case 'approved':
-			return 'var(--color--green-600)';
-		case 'error':
-			return 'var(--color--red-600)';
-		default:
-			return 'var(--color--neutral-600)';
-	}
+	return timelineColors(
+		option.key === 'approved' || option.key === 'error' ? option.key : 'declined',
+	).chart;
 }
 
 function handleSelect(key: string): void {
@@ -99,17 +94,22 @@ function handleSelect(key: string): void {
 <template>
 	<N8nDropdownMenu :items="menuItems" placement="bottom-end" @select="handleSelect">
 		<template #trigger>
-			<N8nTooltip :content="i18n.baseText('agentSessions.timeline.events')" placement="top">
-				<span :class="$style.trigger">
-					<N8nButton
-						variant="outline"
-						icon="funnel"
-						icon-only
-						:aria-label="i18n.baseText('agentSessions.timeline.events')"
-						data-test-id="filter-trigger"
-					/>
+			<N8nTooltip
+				as-child
+				:content="i18n.baseText('agentSessions.timeline.events')"
+				placement="top"
+			>
+				<N8nButton
+					variant="outline"
+					icon="funnel"
+					size="large"
+					icon-only
+					:aria-label="i18n.baseText('agentSessions.timeline.events')"
+					:class="$style.trigger"
+					data-test-id="filter-trigger"
+				>
 					<span v-if="props.selected.size > 0" :class="$style.activeIndicator" aria-hidden="true" />
-				</span>
+				</N8nButton>
 			</N8nTooltip>
 		</template>
 
@@ -117,7 +117,7 @@ function handleSelect(key: string): void {
 			<span
 				v-if="item.data?.option"
 				:class="[$style.swatch, ui.class]"
-				:style="{ backgroundColor: swatchBackground(optionColor(item.data.option)) }"
+				:style="{ backgroundColor: optionColor(item.data.option) }"
 			/>
 		</template>
 

@@ -4,7 +4,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ChatStreamStateService } from '@/modules/chat-hub/chat-stream-state.service';
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 describe('ChatStreamStateService', () => {
 	const logger = mock<Logger>();

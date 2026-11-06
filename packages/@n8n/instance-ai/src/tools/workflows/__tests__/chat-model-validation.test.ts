@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceAiContext } from '../../../types';
 import {
 	buildChatModelFailureGuidance,
-	classifyChatModelFailure,
 	collectChatModelRecoveryContext,
 	collectChatModelRelatedNodeNames,
 	computeChatModelValidationIssues,
@@ -54,55 +53,12 @@ describe('chat-model-validation', () => {
 		).toEqual({ key: 'model', modelId: 'gpt-5-mini' });
 	});
 
-	it('classifies invalid model and unsupported parameter failures', () => {
-		// Invalid model patterns
-		expect(classifyChatModelFailure('The model "gpt-6" was not found')).toBe('invalid_model');
-		expect(
-			classifyChatModelFailure(
-				'models/gemini-2.5-flash is not found for API version v1beta, or is not supported for generateContent',
-			),
-		).toBe('invalid_model');
-		expect(classifyChatModelFailure('Resource "models/gemini-2.5-flash" was not found')).toBe(
-			'invalid_model',
-		);
-		expect(
-			classifyChatModelFailure(
-				"The model 'gpt-4o-unknown' does not exist or you do not have access to it.",
-			),
-		).toBe('invalid_model');
-		expect(classifyChatModelFailure('{"error":{"code":"model_not_found"}}')).toBe('invalid_model');
-
-		// Unsupported parameter patterns
-		expect(
-			classifyChatModelFailure(
-				'Unsupported parameter: temperature is not supported with this model',
-			),
-		).toBe('unsupported_parameter');
-		expect(
-			classifyChatModelFailure('temperature cannot be set when reasoning_effort is enabled'),
-		).toBe('unsupported_parameter');
-		expect(classifyChatModelFailure('Model does not support top_p')).toBe('unsupported_parameter');
-
-		// Capability mismatch patterns
-		expect(classifyChatModelFailure('The selected model is not a chat model')).toBe(
-			'capability_mismatch',
-		);
-		expect(classifyChatModelFailure('Model does not support tools or function calling')).toBe(
-			'capability_mismatch',
-		);
-
-		// Negative / non-model failures should NOT be classified
-		expect(classifyChatModelFailure('User was not found in Slack channel')).toBeUndefined();
-		expect(classifyChatModelFailure('Table "customers" does not exist')).toBeUndefined();
-		expect(classifyChatModelFailure('Resource not found: /api/v1/tickets/123')).toBeUndefined();
-	});
-
 	it('builds model-specific remediation guidance without hardcoded model names', () => {
 		const guidance = buildChatModelFailureGuidance(
 			'invalid_model',
 			'The model "gpt-6" was not found',
 		);
-		expect(guidance).toContain('explore-resources');
+		expect(guidance).toContain('get_node_parameter_options');
 		expect(guidance).toContain('Do not guess another model ID');
 		expect(guidance).not.toMatch(/gpt-5/);
 	});
@@ -189,7 +145,7 @@ describe('chat-model-validation', () => {
 			},
 		});
 
-		const context = createMockContext();
+		const context = { ...createMockContext(), modelFetch: vi.fn<typeof fetch>() };
 		const openAiIssues = await computeChatModelValidationIssues(context, {
 			name: 'OpenAI Model',
 			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -197,6 +153,7 @@ describe('chat-model-validation', () => {
 				model: { __rl: true, mode: 'id', value: 'gpt-4o-mini' },
 			},
 		} as unknown as NodeJSON);
+		expect(getCachedCatalogMock).toHaveBeenCalledWith({ fetch: context.modelFetch });
 		expect(openAiIssues.model?.[0]).toContain('deprecated');
 		expect(openAiIssues.model?.[0]).toContain('gpt-5-mini');
 
@@ -266,7 +223,7 @@ describe('chat-model-validation', () => {
 			{ id: '__AI_GATEWAY_MANAGED__', name: 'Gateway credits' },
 		);
 
-		expect(issues.model?.[0]).toContain('explore-resources');
+		expect(issues.model?.[0]).toContain('get_node_parameter_options');
 		expect(issues.model?.[0]).toContain('Gateway credits');
 	});
 

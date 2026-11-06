@@ -47,6 +47,20 @@ export const userOperations: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName:
+			"Creating and deleting users requires the <code>manage:jira-configuration</code> scope. A service account's scopes are fixed when its OAuth 2.0 credential is created — if this one lacks the scope, create a new credential that includes it.",
+		name: 'userManagementServiceAccountScopeNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['create', 'delete'],
+				jiraVersion: ['cloudServiceAccount'],
+			},
+		},
+	},
 ];
 
 export const userFields: INodeProperties[] = [

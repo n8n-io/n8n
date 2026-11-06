@@ -18,6 +18,15 @@ export interface ProviderQuirks {
 	providerOptionsNamespace?: string;
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
 	reasoningReplayKeys?: string[];
+	/** Provider merges adjacent assistant messages into one; replayable reasoning may only survive on the last of them. */
+	mergesAdjacentAssistantMessages?: boolean;
+	/**
+	 * Provider replays reasoning from the part's text itself, with no
+	 * providerMetadata involved — keep reasoning blocks that carry no replayable
+	 * metadata on the current tool chain (after the last user message). Older
+	 * turns still drop them.
+	 */
+	replayReasoningText?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -98,6 +107,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// exposes them in providerMetadata, not providerOptions. Shim until the
 		// provider copies them itself on replay.
 		reasoningReplayKeys: ['signature', 'redactedData'],
+		// QUIRK(anthropic): the provider merges adjacent assistant messages into
+		// one API message. Thinking blocks are only valid inside the response
+		// that produced them, so a merged message with signed reasoning from two
+		// responses is rejected with "thinking blocks ... cannot be modified".
+		mergesAdjacentAssistantMessages: true,
 		// QUIRK(anthropic): defaults every function tool to eager_input_streaming,
 		// which forwards the model's raw argument tokens without server-side JSON
 		// validation — malformed inputs (e.g. unquoted string values) then reach
@@ -167,7 +181,16 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	// custom/*: only forward an explicit effort — no provider-level default.
-	custom: reasoningEffortQuirk('custom'),
+	custom: {
+		...reasoningEffortQuirk('custom'),
+		// QUIRK(custom): OpenAI-compatible vendors return chain-of-thought as
+		// `reasoning_content` and expect it back within a tool-call chain
+		// (DeepSeek's thinking mode rejects the request without it).
+		// @ai-sdk/openai-compatible re-emits `reasoning_content` from replayed
+		// reasoning parts on its own, but attaches no providerMetadata to them, so
+		// the runtime keeps the parts by text alone, on the current tool chain only.
+		replayReasoningText: true,
+	},
 	moonshotai: reasoningEffortQuirk('moonshotai'),
 };
 
@@ -175,12 +198,9 @@ export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
 }
 
-export function providerIdFromModelId(modelId: string): string {
-	return modelId.split('/')[0];
-}
-
 /**
- * Default completion-token cap for reasoning-heavy Kimi K3 models.
+ * Default completion-token cap for reasoning-heavy models whose providers
+ * otherwise apply a much lower fallback.
  * Context windows are often 131072 shared input+output; requesting the full
  * window as max_tokens overflows once any prompt tokens are present.
  */
@@ -192,7 +212,8 @@ export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
  * before emitting text or tool calls.
  */
 export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
-	if (modelId.toLowerCase().includes('kimi-k3')) {
+	const normalizedModelId = modelId.toLowerCase();
+	if (normalizedModelId.includes('kimi-k3') || normalizedModelId.startsWith('minimax/')) {
 		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
 	}
 	return undefined;

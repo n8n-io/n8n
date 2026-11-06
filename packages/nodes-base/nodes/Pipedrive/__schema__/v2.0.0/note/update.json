@@ -1,0 +1,96 @@
+{
+	"properties": {
+		"active_flag": {
+			"type": "boolean"
+		},
+		"add_time": {
+			"type": "string"
+		},
+		"content": {
+			"type": "string"
+		},
+		"deal": {
+			"properties": {
+				"title": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"deal_id": {
+			"type": "number"
+		},
+		"id": {
+			"type": "number"
+		},
+		"last_update_user_id": {
+			"type": "number"
+		},
+		"lead": {},
+		"lead_id": {},
+		"org_id": {
+			"type": "number"
+		},
+		"organization": {
+			"properties": {
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"person": {
+			"properties": {
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"pinned_to_deal_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_lead_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_organization_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_person_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_project_flag": {
+			"type": "boolean"
+		},
+		"pinned_to_task_flag": {
+			"type": "boolean"
+		},
+		"project_id": {},
+		"task_id": {},
+		"update_time": {
+			"type": "string"
+		},
+		"user": {
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"icon_url": {},
+				"is_you": {
+					"type": "boolean"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"user_id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

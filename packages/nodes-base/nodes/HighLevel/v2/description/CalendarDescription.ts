@@ -29,7 +29,7 @@ export const calendarOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/calendars/{{$parameter.calendarId}}/free-slots',
+						url: '=/calendars/{{toPathSegment($parameter.calendarId)}}/free-slots',
 					},
 				},
 			},

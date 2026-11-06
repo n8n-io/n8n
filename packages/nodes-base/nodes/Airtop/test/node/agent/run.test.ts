@@ -1,11 +1,11 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import * as run from '../../../actions/agent/run.operation';
 import { ERROR_MESSAGES, BASE_URL_V2, AIRTOP_HOOKS_BASE_URL } from '../../../constants';
 import * as methods from '../../../methods';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
-import type { Mock } from 'vitest';
 
 const AGENTS_ENDPOINT = `${BASE_URL_V2}/agents`;
 const AGENTS_HOOKS_ENDPOINT = `${AIRTOP_HOOKS_BASE_URL}/agents`;
@@ -221,6 +221,7 @@ describe('Test Airtop, agent run operation', () => {
 			'POST',
 			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
+			{},
 		);
 
 		expect(result).toEqual([
@@ -276,6 +277,7 @@ describe('Test Airtop, agent run operation', () => {
 			'POST',
 			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
 			{ configVars: {} },
+			{},
 		);
 
 		// Third and fourth calls should be status checks
@@ -406,6 +408,7 @@ describe('Test Airtop, agent run operation', () => {
 					maxResults: 10,
 				},
 			},
+			{},
 		);
 	});
 
@@ -456,5 +459,141 @@ describe('Test Airtop, agent run operation', () => {
 				},
 			},
 		]);
+	});
+
+	it('should send the selected browser profile as a profileId query param', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: 'my-profile',
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{ profileId: 'my-profile' },
+		);
+	});
+
+	it('should trim the browser profile before sending it', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: '  my-profile  ',
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{ profileId: 'my-profile' },
+		);
+	});
+
+	it('should not send a profileId query param when no browser profile is set', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{},
+		);
+	});
+
+	it('should treat a null browser profile (e.g. from an expression) as empty', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: null,
+		};
+
+		// A null value must not throw; it is normalized to empty and no profileId is sent.
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{},
+		);
+	});
+
+	it('should accept a UUID-style browser profile id', async () => {
+		const apiRequestMock = transport.apiRequest as Mock;
+		apiRequestMock.mockResolvedValueOnce(mockAgentDetailsResponse);
+		apiRequestMock.mockResolvedValueOnce(mockInvocationResponse);
+
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			awaitExecution: false,
+			profileName: 'a13c6f73-bd89-4a76-ab32-5a6c422e8224',
+		};
+
+		await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
+
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			`${AGENTS_HOOKS_ENDPOINT}/test-agent-123/webhooks/test-webhook`,
+			{ configVars: {} },
+			{ profileId: 'a13c6f73-bd89-4a76-ab32-5a6c422e8224' },
+		);
+	});
+
+	it('should throw an error referencing the item when the browser profile contains invalid characters', async () => {
+		const nodeParameters = {
+			...baseNodeParameters,
+			agentId: { mode: 'id', value: 'test-agent-123' },
+			agentParameters: { mappingMode: 'defineBelow', value: {}, schema: [] },
+			profileName: 'invalid profile!',
+		};
+
+		await expect(
+			run.execute.call(createMockExecuteFunction(nodeParameters), 1),
+		).rejects.toMatchObject({
+			message: ERROR_MESSAGES.PROFILE_NAME_INVALID,
+			context: { itemIndex: 1 },
+		});
 	});
 });

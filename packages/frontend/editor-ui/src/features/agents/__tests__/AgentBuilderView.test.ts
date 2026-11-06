@@ -1,9 +1,22 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, ref, computed, reactive } from 'vue';
+import { nextTick, ref, computed, reactive, type Component } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
+import {
+	MAX_AGENT_FILE_SIZE_BYTES,
+	MAX_AGENT_FILES_PER_UPLOAD,
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	type PushMessage,
+} from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { N8nToggle } from '@n8n/design-system';
+import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
+import {
+	forgetAssistantAgentThread,
+	rememberAssistantAgentThread,
+} from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads';
 import type {
 	AgentJsonConfig,
 	AgentJsonSkillRef,
@@ -12,23 +25,62 @@ import type {
 	CustomToolEntry,
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
-import { agentsEventBus } from '../agents.eventBus';
+import { agentsEventBus, type AgentCredentialHelpRequest } from '../agents.eventBus';
+import AgentMarkdownChunk from '../components/AgentMarkdownChunk.vue';
+import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
+import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
+import {
+	AGENT_CONFIG_WRITE_KEY,
+	type AgentConfigWrite,
+} from '../components/agentBuilderInjectionKeys';
+import {
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	NEW_SESSION_PARAM,
+	OPEN_PREVIEW_PARAM,
+	AGENT_TOOL_CONFIG_MODAL_KEY,
+	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+} from '../constants';
 
+const builderExperimentMock = reactive({
+	layout: { chatWidth: 'current', testChat: 'dock' },
+	enrollment: undefined,
+});
+const trackExperimentExposure = vi.fn();
+vi.mock('@/experiments/agentBuilder/stores/agentBuilder.store', () => ({
+	useAgentBuilderExperimentStore: () => ({
+		...builderExperimentMock,
+		trackExposure: trackExperimentExposure,
+	}),
+}));
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
-const routerResolve = vi.fn((to: { name?: string; params?: Record<string, string> }) => ({
-	href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
-}));
 const routeQuery = reactive<Record<string, string | undefined>>({});
 const routeParams = reactive({ projectId: 'p1', agentId: 'a1' });
-let routeName = 'AgentBuilderView';
+// A single reactive `route` (rather than a fresh plain object per `useRoute()`
+// call) so mutating `.name` — e.g. to the standalone preview route — reacts
+// like `params`/`query` mutations already do.
+const routeState = reactive({
+	name: AGENT_BUILDER_VIEW as string,
+	params: routeParams,
+	query: routeQuery,
+});
 type RouteGuard = (to: { params: Record<string, string> }) => void | Promise<void>;
 const routeGuards: { leave?: RouteGuard; update?: RouteGuard } = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
+const modalsByIdMock: Record<string, { open: boolean }> = {};
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
-const sendPreviewSessionToInstanceAiMock = vi.fn();
+const pushConnectMock = vi.fn();
+const pushSendMock = vi.fn();
+const pushListeners = new Set<(event: PushMessage) => void>();
+const handoffMock = vi.fn();
+const setPrefillMock = vi.fn();
+const submitSuggestionMock = vi.fn();
+const clearBudgetStopsMock = vi.fn();
+const trackMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -36,15 +88,18 @@ const {
 	fetchUsableCredentialsMock,
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
+	loadNodeTypesIfNotLoadedMock,
 	setCredentialsMock,
 	agentPermissionsMock,
 } = vi.hoisted(() => ({
+	loadNodeTypesIfNotLoadedMock: vi.fn(),
 	fetchUsableCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
 	setCredentialsMock: vi.fn(),
 	agentPermissionsMock: {
 		canCreate: { value: true },
+		canExecute: { value: true },
 		canUpdate: { value: true },
 		canDelete: { value: false },
 		canPublish: { value: true },
@@ -55,13 +110,9 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		push: routerPush,
 		replace: routerReplace,
-		resolve: routerResolve,
+		resolve: () => ({ href: '#' }),
 	}),
-	useRoute: () => ({
-		name: routeName,
-		params: routeParams,
-		query: routeQuery,
-	}),
+	useRoute: () => routeState,
 	onBeforeRouteLeave: (guard: RouteGuard) => {
 		routeGuards.leave = guard;
 	},
@@ -71,8 +122,22 @@ vi.mock('vue-router', () => ({
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
+const rootStoreMock = {
+	restApiContext: { baseUrl: 'http://localhost:5678' },
+	pushRef: 'tab-1' as string,
+};
+
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
+	useRootStore: () => rootStoreMock,
+}));
+
+const usersStoreMock = {
+	currentUserId: 'user-1' as string,
+	usersById: {} as Record<string, unknown>,
+};
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => usersStoreMock,
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
@@ -87,6 +152,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [],
 		getCredentialsByType: () => [],
+		getUsableCredentialByType: () => [],
 		fetchAllCredentials: fetchAllCredentialsMock,
 		fetchUsableCredentials: fetchUsableCredentialsMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,
@@ -95,14 +161,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: vi.fn() }),
-}));
-
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
-	useInstanceAiAgentPreviewHandoff: () => ({
-		canSendPreviewToInstanceAi: ref(true),
-		sendPreviewSessionToInstanceAi: sendPreviewSessionToInstanceAiMock,
-	}),
+	useTelemetry: () => ({ track: trackMock }),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -117,12 +176,27 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
 		openModalWithData: openModalWithDataMock,
 		closeModal: closeModalMock,
+		modalsById: modalsByIdMock,
+	}),
+}));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: pushConnectMock,
+		pushDisconnect: vi.fn(),
+		send: pushSendMock,
+		clearQueue: vi.fn(),
+		addEventListener: (listener: (event: PushMessage) => void) => {
+			pushListeners.add(listener);
+			return () => pushListeners.delete(listener);
+		},
 	}),
 }));
 
 const updateAgentMock = vi.fn();
 const updateAgentSkillMock = vi.fn();
 const createAgentSkillMock = vi.fn();
+const createAgentTaskMock = vi.fn().mockResolvedValue({ id: 'task-1' });
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
@@ -135,8 +209,12 @@ const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
 const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
+const getAgentWriteLockMock = vi.fn().mockResolvedValue(null);
 interface SessionThread {
 	id: string;
+	projectId?: string;
+	agentId?: string;
+	canContinueInPreview?: boolean;
 	updatedAt: string;
 	title?: string | null;
 	firstMessage?: string | null;
@@ -144,17 +222,43 @@ interface SessionThread {
 }
 const sessionThreads = reactive<SessionThread[]>([]);
 const fetchedSessionThreads: SessionThread[] = [];
-const fetchSessionThreadsMock = vi.fn().mockImplementation(async () => {
-	sessionThreads.splice(0, sessionThreads.length, ...fetchedSessionThreads);
-});
-const getSessionThreadDetailMock = vi.fn().mockResolvedValue({ executions: [] });
+const previewSessionThreads = reactive<SessionThread[]>([]);
+const fetchedPreviewThreads: SessionThread[] = [];
+const previewSessionsLoading = ref(false);
+
+async function fetchSessionThreads(projectId: string, agentId: string) {
+	const normalize = (thread: SessionThread) => ({
+		projectId,
+		agentId,
+		canContinueInPreview: true,
+		...thread,
+	});
+	const history = fetchedSessionThreads.map(normalize);
+	sessionThreads.splice(0, sessionThreads.length, ...history);
+	const preview = fetchedPreviewThreads.length
+		? fetchedPreviewThreads.map(normalize)
+		: history.filter((thread) => thread.canContinueInPreview);
+	previewSessionThreads.splice(0, previewSessionThreads.length, ...preview);
+}
+const fetchSessionThreadsMock = vi.fn(fetchSessionThreads);
+const getSessionThreadDetailMock = vi.fn().mockRejectedValue({ httpStatusCode: 404 });
 const upsertSessionThreadMock = vi.fn((thread: (typeof sessionThreads)[number]) => {
 	const index = sessionThreads.findIndex(({ id }) => id === thread.id);
 	if (index === -1) sessionThreads.push(thread);
 	else sessionThreads.splice(index, 1, thread);
+	previewSessionThreads.splice(
+		0,
+		previewSessionThreads.length,
+		...previewSessionThreads.filter(({ id }) => id !== thread.id),
+	);
+	if (thread.canContinueInPreview) {
+		previewSessionThreads.push(thread);
+		previewSessionThreads.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+	}
 });
 const resetSessionStoreMock = vi.fn(() => {
 	sessionThreads.length = 0;
+	previewSessionThreads.length = 0;
 });
 const startSessionAutoRefreshMock = vi.fn();
 const stopSessionAutoRefreshMock = vi.fn();
@@ -162,6 +266,7 @@ const stopSessionAutoRefreshMock = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	createAgent: createAgentMock,
+	createAgentTask: createAgentTaskMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
@@ -174,6 +279,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
 	getAgentConfigValidation: getAgentConfigValidationMock,
+	getAgentWriteLock: getAgentWriteLockMock,
 }));
 
 const generateDraftCasesMock = vi.fn();
@@ -191,12 +297,21 @@ vi.mock('@/features/ai/evaluation.ee/composables/useAgentEvalsFlag', () => ({
 	}),
 }));
 
+const n8nChatFlag = vi.hoisted(() => ({ value: false }));
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => n8nChatFlag,
+}));
+
 const builderTelemetryMock = vi.hoisted(() => ({
 	fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
 	trackTriggerAdded: vi.fn(),
 	trackOpenedToolFromList: vi.fn(),
 	trackOpenedSkillFromList: vi.fn(),
 	trackOpenedAddSkillModal: vi.fn(),
+	trackOpenedKnowledgeTab: vi.fn(),
+	trackStartedFileUpload: vi.fn(),
+	trackStartedVectorStoreSetup: vi.fn(),
+	trackRejectedFileUpload: vi.fn(),
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -228,6 +343,7 @@ interface TestAgentConfig {
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
 	personalisation?: AgentJsonConfig['personalisation'];
+	config?: AgentJsonConfig['config'];
 }
 
 const defaultLlmConfig = {
@@ -258,6 +374,7 @@ const mockConfig = ref<TestAgentConfig | null>(
 		instructions: 'You are a helpful assistant.',
 	}),
 );
+const mockConfigHash = ref<string | null | undefined>('hash-1');
 // Stash the "desired config" separately so the fetchConfig mock can restore
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
@@ -271,9 +388,11 @@ let intendedConfig: TestAgentConfig | null = {
 function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	return {
 		id: 'a1',
+		projectId: 'p1',
 		name: 'Agent One',
 		tools: {},
 		skills: {},
+		skillHashes: {},
 		updatedAt: '2026-01-01T00:00:00Z',
 		activeVersionId: null,
 		activeVersion: null,
@@ -283,22 +402,46 @@ function makeAgentResponse(overrides: Record<string, unknown> = {}) {
 	};
 }
 
+function makeCreationResponse(config?: TestAgentConfig, overrides: Record<string, unknown> = {}) {
+	return {
+		...makeAgentResponse(),
+		config: config ?? withDefaultLlm({ name: 'Agent One', instructions: '' }),
+		configHash: 'hash-1',
+		adopted: false,
+		...overrides,
+	};
+}
+
 vi.mock('../composables/useAgentConfig', () => ({
 	useAgentConfig: () => ({
 		config: mockConfig,
+		configHash: mockConfigHash,
 		fetchConfig: fetchConfigMock.mockImplementation(async () => {
 			// Mimic the real composable: re-publish the fetched config by touching
 			// the ref, which triggers watchers even when the shape is unchanged.
 			mockConfig.value = withDefaultLlm(intendedConfig);
+			mockConfigHash.value = 'hash-1';
 		}),
 		updateConfig: updateConfigMock,
 		repoint: repointConfigMock,
+		acceptCreation: (
+			_projectId: string,
+			_agentId: string,
+			created: { configHash: string | null },
+		) => {
+			mockConfigHash.value = created.configHash;
+			return false;
+		},
 	}),
 }));
 
 vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: sessionThreads,
+		previewThreads: previewSessionThreads,
+		get previewLoading() {
+			return previewSessionsLoading.value;
+		},
 		loading: false,
 		fetchThreads: fetchSessionThreadsMock,
 		getThreadDetail: getSessionThreadDetailMock,
@@ -327,30 +470,56 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 }));
 
 const instanceAiAvailableRef = ref(true);
+const instanceAiReadyRef = ref(true);
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => ({
 	useInstanceAiAvailable: () => computed(() => instanceAiAvailableRef.value),
+	useInstanceAiReady: () => computed(() => instanceAiReadyRef.value),
 }));
 
-const startInstanceAiThread = vi.fn();
-const openAgentArtifactThread = vi.fn();
-vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
-	useInstanceAiHandoff: () => ({
-		startThread: startInstanceAiThread,
-		openAgentArtifactThread,
-	}),
+const persistPendingAgentMock = vi.fn();
+vi.mock('@/features/ai/instanceAi/instanceAi.memory.api', () => ({
+	persistPendingAgent: (...args: unknown[]) => persistPendingAgentMock(...args),
 }));
 
-const baseTextFn = (key: string, options?: { interpolate?: Record<string, string | number> }) => {
+const baseTextFn = (
+	key: string,
+	options?: { adjustToNumber?: number; interpolate?: Record<string, string | number> },
+) => {
 	const map: Record<string, string> = {
-		'agents.builder.preview.button': 'Preview',
-		'agents.builder.preview.close.ariaLabel': 'Close preview',
+		'agents.builder.preview.button': 'Test agent',
+		'agents.builder.preview.close.ariaLabel': 'Hide test',
 		'projects.menu.personal': 'Personal',
+		'agents.new.defaultName': 'New Agent',
+		'agents.builder.templates.morningNewsBrief.label': 'Morning news brief',
+		'agents.builder.templates.processIncomingEmails.label': 'Process incoming emails',
+		'agents.builder.templates.qualifyNewLeads.label': 'Qualify new leads',
+		'agents.builder.templates.proposeMeetingTimes.label': 'Propose meeting times',
+		'agents.builder.templates.morningNewsBrief.description':
+			"Sends a daily summary of today's top headlines.",
+		'agents.builder.templates.processIncomingEmails.description':
+			'Reads new emails and updates your calendar or sheet.',
+		'agents.builder.templates.qualifyNewLeads.description':
+			'Scores and routes new leads from your CRM.',
+		'agents.builder.templates.proposeMeetingTimes.description':
+			'Finds open calendar slots and suggests meeting times.',
 	};
+	if (key === 'agents.builder.externalUpdate.time') {
+		const minutes = options?.adjustToNumber ?? 0;
+		if (minutes === 0) return 'just now';
+		if (minutes === 1) return '1 minute ago';
+		return `${minutes} minutes ago`;
+	}
+	if (key.startsWith('agents.builder.externalUpdate.') && options?.interpolate?.time) {
+		return `${key} ${String(options.interpolate.time)}`;
+	}
 	if (key === 'agents.builder.preview.fixWithAssistantPrompt.template') {
 		return `Review these failed tool calls, identify the root cause, fix the agent, and verify the change.
 
 ${String(options?.interpolate?.diagnostics ?? '')}
 `;
+	}
+	if (key === 'agents.builder.templates.prompt') {
+		return `Build ${String(options?.interpolate?.name ?? '')} agent to ${String(options?.interpolate?.description ?? '')}`;
 	}
 	return map[key] ?? key;
 };
@@ -360,26 +529,21 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: baseTextFn },
 }));
 
-// The first test in this file pays the one-time SFC transform cost for
-// AgentBuilderView.vue and its dependencies. A generous timeout gives that
-// first render enough headroom; subsequent tests hit the cached module and
-// finish well under the default budget.
-vi.setConfig({ testTimeout: 30_000 });
-
 /** Shared stubs used by both mount helpers. */
 async function renderView({
 	knowledgeBaseEnabled = false,
 	waitForAsyncSetup = true,
 	props,
 	seedStores,
+	stubs,
 }: {
 	knowledgeBaseEnabled?: boolean;
 	waitForAsyncSetup?: boolean;
 	props?: Record<string, unknown>;
 	/** Runs against the fresh pinia before mount, for state the view reads on setup. */
 	seedStores?: () => void;
+	stubs?: Record<string, Component>;
 } = {}) {
-	const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
 	const pinia = createPinia();
 	setActivePinia(pinia);
 	const { useSettingsStore } = await import('@n8n/stores/settings.store');
@@ -392,12 +556,15 @@ async function renderView({
 			proxyEnabled: false,
 		},
 	};
+	const { useNodeTypesStore } = await import('@/app/stores/nodeTypes.store');
+	loadNodeTypesIfNotLoadedMock.mockResolvedValue(undefined);
+	useNodeTypesStore().loadNodeTypesIfNotLoaded = loadNodeTypesIfNotLoadedMock;
 	seedStores?.();
 	const wrapper = mount(AgentBuilderView, {
-		props,
+		props: { builderLayout: { chatWidth: 'current', testChat: 'dock' }, ...props },
 		global: {
 			plugins: [pinia],
-			stubs: commonStubs,
+			stubs: { ...commonStubs, ...stubs },
 		},
 	});
 	mountedWrappers.push(wrapper);
@@ -416,6 +583,12 @@ afterEach(async () => {
 	for (const wrapper of mountedWrappers.splice(0)) {
 		wrapper.unmount();
 	}
+	const fixCalloutKeys: string[] = [];
+	for (let index = 0; index < sessionStorage.length; index++) {
+		const key = sessionStorage.key(index);
+		if (key?.startsWith('N8N_AGENT_PREVIEW_FIX_CALLOUT:')) fixCalloutKeys.push(key);
+	}
+	for (const key of fixCalloutKeys) sessionStorage.removeItem(key);
 	await flushPromises();
 });
 
@@ -428,7 +601,7 @@ async function startArtifactPreviewSend(
 	).openArtifactPreview(sessionId);
 	await nextTick();
 	const beforeSend = wrapper
-		.findComponent({ name: 'AgentPreviewDock' })
+		.findComponent({ name: 'AgentTestDock' })
 		.props('beforeSend') as () => Promise<void>;
 	return { pending: beforeSend() };
 }
@@ -475,59 +648,45 @@ const commonStubs = {
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
-			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)"></div>',
+			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)" :data-save-status="String(saveStatus)"><button data-testid="stub-switch-agent" @click="$emit(\'switch-agent\', \'a2\')" /></div>',
 		props: [
 			'agent',
 			'projectId',
 			'agentId',
 			'projectName',
+			'projectIcon',
 			'headerActions',
 			'beforeRevertToPublished',
+			'isUnsaved',
 			'artifactMode',
-			'isPreviewOpen',
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
+			'tasks',
 		],
 		emits: [
 			'header-action',
-			'open-preview',
-			'close-preview',
+			'publish-ready',
 			'published',
 			'unpublished',
 			'reverted',
 			'switch-agent',
-			'toggle-version-history',
+			'open-publish-timeline',
+			'toggle-instance-ai',
 		],
 	},
-	AgentPreviewHeader: {
-		name: 'AgentPreviewHeader',
-		template: '<header data-testid="stub-agent-preview-header" />',
-		props: ['agentName', 'agentHref', 'sessionTitle', 'sessionOptions', 'hasTrace'],
-		emits: ['back', 'new-session', 'session-select', 'view-trace'],
-	},
-	AgentPreviewChatPage: {
-		name: 'AgentPreviewChatPage',
-		template: '<main data-testid="stub-agent-preview-chat-page" />',
-		props: [
-			'initialized',
-			'projectId',
-			'agentId',
-			'agent',
-			'localConfig',
-			'connectedTriggers',
-			'effectiveSessionId',
-			'canSendToAssistant',
-			'beforeSend',
-		],
-		emits: ['continue-loaded', 'send-to-assistant'],
-	},
-	AgentPreviewDock: {
-		name: 'AgentPreviewDock',
-		template: '<aside data-testid="stub-agent-preview-dock" />',
+	AgentTestDock: {
+		name: 'AgentTestDock',
+		template:
+			'<aside data-testid="stub-agent-preview-dock"><slot name="composer-start" /><slot name="composer-footer" /></aside>',
 		props: [
 			'isOpen',
+			'overlay',
+			'inline',
+			'closable',
+			'placeholder',
 			'sessionTitle',
+			'sessionOptions',
 			'hasSession',
 			'initialized',
 			'projectId',
@@ -538,7 +697,11 @@ const commonStubs = {
 			'effectiveSessionId',
 			'initialPrompt',
 			'canSendToAssistant',
+			'dismissedFixToolCallIds',
 			'beforeSend',
+			'canDeleteSession',
+			'isDeletingSession',
+			'increaseBudget',
 		],
 		emits: [
 			'view-trace',
@@ -547,11 +710,53 @@ const commonStubs = {
 			'continue-loaded',
 			'open-build',
 			'send-to-assistant',
+			'initial-consumed',
 		],
+		// Stands in for the real `defineExpose`d `clearBudgetStops` — the view
+		// calls it through a template ref, not a prop or emit.
+		methods: {
+			clearBudgetStops: clearBudgetStopsMock,
+		},
 	},
 	AgentVersionHistoryPanel: {
 		name: 'AgentVersionHistoryPanel',
 		template: '<aside />',
+		props: ['activeTab', 'beforePublish'],
+		emits: ['update:activeTab', 'close'],
+	},
+	InstanceAiChatPanel: {
+		name: 'InstanceAiChatPanel',
+		template:
+			'<div data-testid="stub-ai-chat-panel" :data-subject-id="subject?.id" :data-thread-id="threadId">' +
+			'<button data-testid="ai-panel-emit-thread-id" @click="$emit(\'update:threadId\', \'thread-99\')" />' +
+			'<button data-testid="ai-panel-emit-building" @click="$emit(\'update:building\', true)" />' +
+			'<button data-testid="ai-panel-stop-building" @click="$emit(\'update:building\', false)" />' +
+			'<button data-testid="ai-panel-emit-close" @click="$emit(\'close\')" />' +
+			'<slot name="empty" /><slot name="composer-start" /><slot name="composer-footer" />' +
+			'</div>',
+		props: [
+			'subject',
+			'launch',
+			'threadId',
+			'beforeNewThread',
+			'beforeSend',
+			'visible',
+			'closable',
+			'showOpenFullAssistant',
+			'placeholder',
+		],
+		emits: ['update:threadId', 'update:building', 'update:working', 'close', 'message-sent'],
+		// Stands in for the real `defineExpose`d `handoff`, `setPrefill` and `submitSuggestion` — the
+		// view calls these through a template ref, not a prop or emit.
+		methods: {
+			handoff: handoffMock,
+			setPrefill: setPrefillMock,
+			submitSuggestion: submitSuggestionMock,
+		},
+	},
+	AgentBuildingIndicator: {
+		name: 'AgentBuildingIndicator',
+		template: '<div data-testid="stub-agent-building-indicator" />',
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, credentials, sessions list)
@@ -561,7 +766,7 @@ const commonStubs = {
 		name: 'AgentInfoPanel',
 		template: '<div data-testid="stub-agent-info-panel" />',
 		props: ['config', 'disabled'],
-		emits: ['update:config'],
+		emits: ['update:config', 'draft:config'],
 	},
 	AgentAdvancedPanel: {
 		name: 'AgentAdvancedPanel',
@@ -575,10 +780,10 @@ const commonStubs = {
 		props: ['config', 'disabled'],
 		emits: ['update:config'],
 	},
-	AgentSkillsListPanel: {
-		name: 'AgentSkillsListPanel',
-		template: '<div data-testid="stub-agent-skills-list-panel" />',
-		props: ['skills', 'disabled'],
+	AgentSkillsSection: {
+		name: 'AgentSkillsSection',
+		template: '<div data-testid="stub-agent-skills-section" />',
+		props: ['skills', 'disabled', 'showLabel', 'validationIssues'],
 		emits: ['open-skill', 'add-skill', 'remove-skill'],
 	},
 	AgentSubAgentsPanel: {
@@ -603,6 +808,15 @@ const commonStubs = {
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
 		emits: ['click'],
 	},
+	N8nCallout: {
+		template:
+			'<div data-testid="stub-n8n-callout" :data-theme="theme"><slot /><slot name="actions" /><slot name="trailingContent" /></div>',
+		props: ['theme', 'iconTooltip', 'roundCorners'],
+	},
+	N8nUserStack: {
+		template: '<div data-testid="stub-n8n-user-stack" />',
+		props: ['users', 'currentUserEmail'],
+	},
 	N8nAssistantIcon: { template: '<i data-testid="stub-assistant-icon" />', props: ['size'] },
 	N8nTooltip: {
 		template: '<span data-testid="stub-tooltip"><slot /></span>',
@@ -613,6 +827,10 @@ const commonStubs = {
 		props: ['icon', 'size', 'spin'],
 	},
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
+	N8nHeading: {
+		template: '<component :is="tag"><slot/></component>',
+		props: ['tag', 'size', 'bold'],
+	},
 	N8nActionDropdown: { template: '<div />' },
 	Transition: { template: '<div><slot/></div>' },
 };
@@ -620,37 +838,68 @@ const commonStubs = {
 // Common reset shared by every describe block below. Each describe's own
 // beforeEach calls this first, then applies its own divergent setup
 // (permission defaults, spy restoration, or mocks it alone exercises).
+function notFoundError() {
+	return Object.assign(new Error('Agent not found'), { httpStatusCode: 404 });
+}
+
+/**
+ * Model the server for client-minted ids: a pending artifact's id has no row
+ * behind it until this view creates one, so the hydration probe 404s first and
+ * resolves afterwards. Without this a pending test silently exercises the
+ * already-persisted path instead.
+ */
+function mockPendingAgentRow(...pendingIds: string[]) {
+	const absent = new Set(pendingIds);
+	getAgentMock.mockImplementation(async (_context, projectId: string, id: string) => {
+		const created = createAgentMock.mock.calls.some(
+			(call) => (call[3] as { id?: string } | undefined)?.id === id,
+		);
+		if (absent.has(id) && !created) throw notFoundError();
+		return makeAgentResponse({ id, projectId });
+	});
+}
+
 function resetViewMocks() {
 	vi.clearAllMocks();
 	for (let index = localStorage.length - 1; index >= 0; index--) {
 		const key = localStorage.key(index);
-		if (key?.startsWith('N8N_AGENT_PREVIEW_OPEN')) localStorage.removeItem(key);
+		if (
+			key?.startsWith('N8N_AGENT_PREVIEW_OPEN') ||
+			key?.startsWith('N8N_AGENT_AI_PANEL_OPEN') ||
+			key === 'N8N_AGENT_AI_PANEL_WIDTH' ||
+			key?.startsWith('N8N_AGENT_BUILDER_')
+		) {
+			localStorage.removeItem(key);
+		}
 	}
 	routerPush.mockReset();
 	routerReplace.mockReset();
-	routerResolve.mockClear();
 	fetchSessionThreadsMock.mockReset();
-	fetchSessionThreadsMock.mockImplementation(async () => {
-		sessionThreads.splice(0, sessionThreads.length, ...fetchedSessionThreads);
-	});
+	fetchSessionThreadsMock.mockImplementation(fetchSessionThreads);
 	getSessionThreadDetailMock.mockReset();
-	getSessionThreadDetailMock.mockResolvedValue({ executions: [] });
+	getSessionThreadDetailMock.mockRejectedValue({ httpStatusCode: 404 });
+	upsertSessionThreadMock.mockClear();
 	resetSessionStoreMock.mockClear();
 	startSessionAutoRefreshMock.mockReset();
 	stopSessionAutoRefreshMock.mockReset();
 	openModalWithDataMock.mockReset();
 	closeModalMock.mockReset();
-	routeName = 'AgentBuilderView';
+	for (const key of Object.keys(modalsByIdMock)) delete modalsByIdMock[key];
 	routeParams.projectId = 'p1';
 	routeParams.agentId = 'a1';
+	routeState.name = AGENT_BUILDER_VIEW;
 	routeGuards.leave = undefined;
 	routeGuards.update = undefined;
 	agentEvalsFlagMock.enabled = false;
+	n8nChatFlag.value = false;
 	generateDraftCasesMock.mockReset();
 	generateDraftCasesMock.mockResolvedValue({ cases: [] });
 	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 	sessionThreads.length = 0;
 	fetchedSessionThreads.length = 0;
+	previewSessionThreads.length = 0;
+	fetchedPreviewThreads.length = 0;
+	previewSessionsLoading.value = false;
 	history.replaceState({}, '');
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 	// Reset to a built agent; tests that need an unbuilt agent override locally.
@@ -659,31 +908,69 @@ function resetViewMocks() {
 		instructions: 'You are a helpful assistant.',
 	};
 	mockConfig.value = withDefaultLlm(intendedConfig);
+	mockConfigHash.value = 'hash-1';
 	updateConfigMock.mockReset();
-	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
+	updateConfigMock.mockImplementation(
+		async (_projectId: string, _agentId: string, data: TestAgentConfig) => ({
+			config: data,
+			versionId: 'v1',
+			stale: false,
+		}),
+	);
 	repointConfigMock.mockReset();
-	getAgentMock.mockResolvedValue(makeAgentResponse());
+	repointConfigMock.mockImplementation(() => {
+		mockConfig.value = null;
+		mockConfigHash.value = undefined;
+	});
+	// Clear unused one-shot responses before another test can consume them.
+	getAgentMock.mockReset();
+	getAgentMock.mockImplementation(async () => makeAgentResponse());
+	createAgentSkillMock.mockReset();
+	updateAgentSkillMock.mockReset();
 	createAgentMock.mockReset();
-	createAgentMock.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' }));
+	createAgentMock.mockImplementation(async (_context, _projectId, name, options) =>
+		makeCreationResponse(options?.config, { id: options?.id, name }),
+	);
+	persistPendingAgentMock.mockReset();
+	persistPendingAgentMock.mockImplementation(async (_context, threadId, request) => ({
+		agent: makeCreationResponse(request.config, { id: request.agentId, name: request.name }),
+		thread: { id: threadId },
+	}));
 	getIntegrationStatusMock.mockResolvedValue({ status: 'connected', integrations: [] });
 	getAgentConfigValidationMock.mockReset();
 	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
+	getAgentWriteLockMock.mockResolvedValue(null);
+	// No lock is held by default, so the tab is editable and the first edit
+	// requests the (lazy) write lock — the same state as a fresh builder tab.
+	rootStoreMock.pushRef = 'tab-1';
+	usersStoreMock.currentUserId = 'user-1';
+	usersStoreMock.usersById = {};
 	listAgentFilesMock.mockReset();
 	listAgentFilesMock.mockResolvedValue([]);
 	uploadAgentFilesMock.mockReset();
 	uploadAgentFilesMock.mockResolvedValue([]);
 	showErrorMock.mockReset();
-	fetchConfigMock.mockClear();
+	showMessageMock.mockReset();
+	handoffMock.mockReset();
+	setPrefillMock.mockReset();
+	submitSuggestionMock.mockReset();
+	createAgentTaskMock.mockReset();
+	createAgentTaskMock.mockResolvedValue({ id: 'task-1' });
+	pushConnectMock.mockReset();
+	pushSendMock.mockReset();
+	pushListeners.clear();
+	fetchConfigMock.mockReset();
 	builderTelemetryMock.fetchInitialTriggersBaseline.mockResolvedValue(null);
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
 	instanceAiAvailableRef.value = true;
-	startInstanceAiThread.mockReset();
-	openAgentArtifactThread.mockReset();
+	instanceAiReadyRef.value = true;
 }
 
-// First Vite transform of this SFC + design-system deps can exceed the default
-// 5s test timeout; Provide a hefty timeout for this block to evade flakes due to pressure on machine
-describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
+// Load the view after the shared mocks exist. Module loading must finish before
+// tests start, so a cold transform cannot outlive a test and mount in the next one.
+const { default: AgentBuilderView } = await import('../views/AgentBuilderView.vue');
+
+describe('AgentBuilderView — preview routing', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
@@ -717,7 +1004,6 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('persists a route-backed agent only after its first configuration change', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
-		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
@@ -727,15 +1013,332 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(editor.props('agentUnsaved')).toBe(true);
 
 		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
-		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 		expect(createAgentMock).toHaveBeenCalledOnce();
 		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
 			id: 'a1',
+			config: expect.objectContaining({ instructions: 'Answer support mail' }),
 		});
 		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
 		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
+		expect(updateConfigMock).not.toHaveBeenCalled();
 		expect(fetchSessionThreadsMock).toHaveBeenCalledWith('p1', 'a1');
+	});
+
+	it('does not persist a pending agent for an auto-applied default model', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'thread-abc';
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
+		await flushPromises();
+
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(editor.props('localConfig')).toEqual(
+			expect.objectContaining({ model: 'openai/gpt-5-mini' }),
+		);
+
+		editor.vm.$emit('update:config', { instructions: 'x' });
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
+
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(persistPendingAgentMock).toHaveBeenCalledOnce();
+		expect(persistPendingAgentMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-abc',
+			expect.objectContaining({
+				config: expect.objectContaining({ model: 'openai/gpt-5-mini', instructions: 'x' }),
+			}),
+		);
+		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('creates a pending agent itself when the panel thread runs on the Assistant agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'assistant-agent-thread';
+		rememberAssistantAgentThread('assistant-agent-thread', 'p1');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'x' });
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
+
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		forgetAssistantAgentThread('assistant-agent-thread');
+	});
+
+	it('uses the agent the Assistant agent already created under the pending id', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'assistant-agent-thread';
+		rememberAssistantAgentThread('assistant-agent-thread', 'p1');
+		createAgentMock.mockRejectedValueOnce(
+			new ResponseError('An agent with this id already exists', { httpStatusCode: 409 }),
+		);
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() =>
+			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+		);
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(editor.props('agentUnsaved')).toBe(false);
+		forgetAssistantAgentThread('assistant-agent-thread');
+	});
+
+	it('merges a later auto-applied default model into an already-queued autosave snapshot', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		// A real edit queues an autosave snapshot for the still-unsaved agent...
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		// ...then the seeded default model arrives before that snapshot has fired.
+		// Without a reschedule the queued snapshot — already deep-copied — would
+		// save without the model.
+		editor.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
+
+		await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+			config: expect.objectContaining({
+				instructions: 'Answer support mail',
+				model: 'openai/gpt-5-mini',
+			}),
+		});
+		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('starts a new agent available in n8n Chat when the flag is on', async () => {
+		n8nChatFlag.value = true;
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(editor.props('connectedTriggers')).toEqual(['n8n_chat']);
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+			config: expect.objectContaining({
+				integrations: [{ type: 'n8n_chat', credentialId: '' }],
+			}),
+		});
+	});
+
+	it('starts a new agent without channels when the flag is off', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('connectedTriggers'),
+		).toEqual([]);
+	});
+
+	it('chains a second save carrying a later auto-applied default model behind an in-flight save', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const pendingCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		createAgentMock.mockReturnValueOnce(pendingCreate.promise);
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		// A real edit fires the first autosave, which stalls on the pending-agent
+		// create — the agent is still unsaved while this is in flight.
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		// The seeded default model arrives while that save is still in flight —
+		// with no snapshot queued (it's already sent), the "rides along with the
+		// draft" guard must still chain a second save rather than drop the model.
+		editor.vm.$emit('update:config', { model: 'openai/gpt-5-mini' }, { source: 'auto' });
+		await flushPromises();
+
+		pendingCreate.resolve(
+			makeCreationResponse(createAgentMock.mock.calls[0]?.[3].config, {
+				id: 'a1',
+				configHash: 'created-hash',
+			}),
+		);
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalledOnce());
+
+		expect(updateConfigMock).toHaveBeenLastCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({
+				instructions: 'Answer support mail',
+				model: 'openai/gpt-5-mini',
+			}),
+			'created-hash',
+		);
+	});
+
+	it('adopts the agent through its bound assistant thread instead of a strict create', async () => {
+		// A thread is already bound (the embedded assistant panel minted one) —
+		// persist through it so a race with the assistant's own create converges
+		// on one row instead of failing with a conflict.
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'thread-abc';
+		persistPendingAgentMock.mockResolvedValueOnce({
+			agent: makeCreationResponse(
+				{ name: 'Built by assistant', instructions: 'Keep this configuration' },
+				{ adopted: true },
+			),
+			thread: { id: 'thread-abc' },
+		});
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() =>
+			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+		);
+
+		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-abc', {
+			projectId: 'p1',
+			agentId: 'a1',
+			name: expect.any(String),
+			config: expect.objectContaining({ instructions: 'Answer support mail' }),
+		});
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+	});
+
+	describe('applying an eval suggestion', () => {
+		// The evals tab reaches the builder through this injected hook.
+		async function renderWithConfigWrite() {
+			const wrapper = await renderView();
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const { provides } = editor.vm.$ as unknown as { provides: Record<symbol, unknown> };
+			const runConfigWrite = provides[AGENT_CONFIG_WRITE_KEY as symbol] as AgentConfigWrite;
+			fetchConfigMock.mockClear();
+			return { editor, runConfigWrite };
+		}
+
+		it('locks editing while the write runs, then reloads the config', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+			expect(editor.props('canEditAgent')).toBe(true);
+			const gate = Promise.withResolvers<string>();
+
+			const run = runConfigWrite(async () => await gate.promise);
+			await flushPromises();
+
+			expect(editor.props('canEditAgent')).toBe(false);
+			expect(fetchConfigMock).not.toHaveBeenCalled();
+
+			gate.resolve('done');
+			await expect(run).resolves.toBe('done');
+
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
+
+		it('still reloads the config and unlocks when the write throws after the server saved', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+
+			await expect(
+				runConfigWrite(async () => {
+					throw new Error('rerun failed');
+				}),
+			).rejects.toThrow('rerun failed');
+
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
+
+		it('unlocks even when reloading the config fails', async () => {
+			const { editor, runConfigWrite } = await renderWithConfigWrite();
+			fetchConfigMock.mockRejectedValueOnce(new Error('offline'));
+
+			await expect(runConfigWrite(async () => 'ok')).resolves.toBe('ok');
+
+			expect(editor.props('canEditAgent')).toBe(true);
+		});
+	});
+
+	it('marks a route-pending agent persisted once the embedded assistant builds it externally', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('agentUnsaved')).toBe(true);
+
+		// The assistant created the agent under our minted id — the refetch this
+		// triggers must confirm the row now exists and clear the pending marker,
+		// the same as `ensureAgentPersisted` does for a local edit.
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'instance-ai' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1');
+		expect(editor.props('agentUnsaved')).toBe(false);
+		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+		expect(createAgentMock).not.toHaveBeenCalled();
+	});
+
+	it('discards a stale external refresh instead of marking a different pending agent persisted', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
+			true,
+		);
+
+		// Stall the refetch this refresh triggers, so the target can change while
+		// it is still in flight.
+		const pendingGetAgent = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		getAgentMock.mockReturnValueOnce(pendingGetAgent.promise);
+
+		vi.useFakeTimers();
+		try {
+			// Agent A's assistant-triggered refresh is scheduled and fires...
+			agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'instance-ai' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		// ...but before it resolves the user switches to a different, still-pending
+		// agent B (its own history-state marker, same as a fresh mount would read).
+		(wrapper.vm as unknown as { routePendingAgentId: string | null }).routePendingAgentId = 'a2';
+		history.replaceState({ instanceAiPendingAgentId: 'a2' }, '');
+		routeParams.agentId = 'a2';
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
+			true,
+		);
+
+		pendingGetAgent.resolve(makeAgentResponse({ id: 'a1' }));
+		await flushPromises();
+
+		// A's refresh continuation must not mark agent B persisted.
+		const editorB = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editorB.props('agentUnsaved')).toBe(true);
+		expect(history.state.instanceAiPendingAgentId).toBe('a2');
+
+		editorB.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalled());
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a2',
+			config: expect.objectContaining({ instructions: 'Answer support mail' }),
+		});
 	});
 
 	it('settles a route-backed create before switching agents', async () => {
@@ -756,7 +1359,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		});
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
 
-		pendingCreate.resolve(makeAgentResponse({ id: 'a1' }));
+		pendingCreate.resolve(makeCreationResponse(undefined, { id: 'a1' }));
 		await navigation;
 		await flushPromises();
 
@@ -779,11 +1382,55 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(editor.props('agentUnsaved')).toBe(false);
 	});
 
+	it('flushes a queued edit for an already-saved agent on an in-place switch to another agent', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+		expect(routeGuards.update).toBeDefined();
+
+		await routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } });
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Answer support mail' }),
+			'hash-1',
+		);
+	});
+
+	it('cancels an in-place switch when flushing the queued edit fails', async () => {
+		instanceAiAvailableRef.value = false;
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		updateConfigMock.mockRejectedValueOnce(new Error('save failed'));
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+
+		await expect(
+			routeGuards.update?.({ params: { projectId: 'p1', agentId: 'a2' } }),
+		).rejects.toThrow('save failed');
+	});
+
+	it('loads node types when the page opens', async () => {
+		loadNodeTypesIfNotLoadedMock.mockClear();
+
+		await renderView();
+
+		expect(loadNodeTypesIfNotLoadedMock).toHaveBeenCalled();
+	});
+
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {
 		await renderView();
 
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
-		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({ projectId: 'p1' });
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			forAgent: true,
+		});
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 
@@ -809,7 +1456,77 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 					gradient: expectedGradient,
 				},
 			}),
+			'hash-1',
 		);
+	});
+
+	it('flushes a pending autosave and prevents browser save with Cmd/Ctrl+S', async () => {
+		const wrapper = await renderView();
+		updateConfigMock.mockClear();
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('update:config', { name: 'Renamed agent' });
+			await nextTick();
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			const event = new KeyboardEvent('keydown', {
+				key: 's',
+				code: 'KeyS',
+				metaKey: true,
+				ctrlKey: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(event);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(event.defaultPrevented).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ name: 'Renamed agent' }),
+				'hash-1',
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('opens the preview dock with a new session when requested by the route', async () => {
+		localStorage.removeItem('N8N_AGENT_PREVIEW_OPEN:p1:a1');
+		routeQuery[NEW_SESSION_PARAM] = 'true';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+
+		expect(preview.props('isOpen')).toBe(true);
+		expect(preview.props('effectiveSessionId')).toEqual(expect.any(String));
+		expect(preview.props('effectiveSessionId')).not.toBe('thread-1');
+	});
+
+	it('selects the latest private session behind a full page of shared history', async () => {
+		routeQuery[OPEN_PREVIEW_PARAM] = 'true';
+		fetchedSessionThreads.push(
+			...Array.from({ length: 20 }, (_, index) => ({
+				id: `shared-${index}`,
+				updatedAt: '2026-02-01T00:00:00Z',
+				canContinueInPreview: false,
+			})),
+		);
+		fetchedPreviewThreads.push({ id: 'thread-latest', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+
+		expect(preview.props()).toEqual(
+			expect.objectContaining({ isOpen: true, effectiveSessionId: 'thread-latest' }),
+		);
+		expect(preview.props('sessionOptions')).toEqual([
+			expect.objectContaining({ id: 'thread-latest' }),
+		]);
 	});
 
 	it('does not persist generated personalisation gradients for read-only agents', async () => {
@@ -825,6 +1542,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 
 		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('canDeleteSession')).toBe(false);
 	});
 
 	it('reloads task bodies after reverting to a published version', async () => {
@@ -841,96 +1559,6 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('tasksReloadKey'),
 		).toBe(1);
-	});
-
-	it('renders the standalone preview on the direct preview route', async () => {
-		routeName = 'AgentPreviewView';
-		routeQuery.continueSessionId = 'thread-1';
-		const wrapper = await renderView();
-		sessionThreads.push({
-			id: 'thread-1',
-			title: 'Support session',
-			updatedAt: '2026-01-01T00:00:00Z',
-		});
-		await nextTick();
-		const header = wrapper.findComponent({ name: 'AgentPreviewHeader' });
-		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
-
-		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).exists()).toBe(false);
-		expect(header.props()).toEqual(
-			expect.objectContaining({
-				agentName: 'Agent One',
-				agentHref: '/AgentBuilderView/p1/a1',
-				sessionTitle: 'Support session',
-				hasTrace: true,
-			}),
-		);
-		expect(preview.props()).toEqual(
-			expect.objectContaining({
-				effectiveSessionId: 'thread-1',
-				projectId: 'p1',
-				agentId: 'a1',
-			}),
-		);
-		expect(wrapper.emitted('preview-open-change')).toEqual([[false]]);
-	});
-
-	it('returns to the builder when leaving preview opened from Sessions', async () => {
-		routeName = 'AgentPreviewView';
-		routeQuery.continueSessionId = 'thread-1';
-		routeQuery.section = '__executions';
-
-		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentPreviewHeader' }).vm.$emit('back');
-		await flushPromises();
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/AgentBuilderView/p1/a1');
-	});
-
-	it('returns to the plain builder when closing preview without a sessions section', async () => {
-		routeName = 'AgentPreviewView';
-		routeQuery.continueSessionId = 'thread-1';
-
-		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentPreviewHeader' }).vm.$emit('back');
-		await flushPromises();
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/AgentBuilderView/p1/a1');
-	});
-
-	it('opens the persisted Preview session trace in the full-page trace view', async () => {
-		routeName = 'AgentPreviewView';
-		routeQuery.continueSessionId = 'thread-1';
-		const wrapper = await renderView();
-		sessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
-		await nextTick();
-		const header = wrapper.findComponent({ name: 'AgentPreviewHeader' });
-		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
-		preview.vm.$emit('continue-loaded', { sessionId: 'thread-1', count: 1 });
-		await flushPromises();
-		routerPush.mockClear();
-		routerReplace.mockClear();
-
-		header.vm.$emit('view-trace');
-		await flushPromises();
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1' },
-		});
-		expect(routerReplace).not.toHaveBeenCalled();
-	});
-
-	it('does not mount editor panels on the standalone preview route', async () => {
-		routeName = 'AgentPreviewView';
-		const wrapper = await renderView();
-
-		expect(wrapper.findComponent({ name: 'AgentPreviewChatPage' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).exists()).toBe(false);
 	});
 
 	const fixEvent: AgentFixWithAssistantEvent = {
@@ -954,51 +1582,301 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	it.each([
 		{ label: 'without execution context', event: undefined },
 		{ label: 'with execution context', event: fixEvent },
-	])('sends the active preview session to Instance AI $label', async ({ event }) => {
-		routeName = 'AgentPreviewView';
+	])(
+		'opens the embedded assistant panel and hands it the active preview session $label',
+		async ({ event }) => {
+			handoffMock.mockReturnValueOnce(true);
+			localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+			routeQuery.continueSessionId = 'thread-1';
+			fetchedSessionThreads.push({
+				id: 'thread-1',
+				updatedAt: '2026-01-01T00:00:00Z',
+				title: 'Failed order lookup',
+				sessionNumber: 7,
+			});
+
+			const wrapper = await renderView();
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+
+			expect(preview.props('canSendToAssistant')).toBe(true);
+			preview.vm.$emit('send-to-assistant', event);
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(handoffMock).toHaveBeenCalledWith(
+				{
+					source: 'agent-preview',
+					agentId: 'a1',
+					threadId: 'thread-1',
+					agentName: 'Agent One',
+					agentIcon: 'bot',
+					sessionTitle: 'Failed order lookup',
+					...(event ? { executionId: event.executionId } : {}),
+				},
+				event
+					? {
+							text: expect.any(String),
+							prefillType: 'handoff_agent_change_request',
+						}
+					: undefined,
+			);
+
+			if (event) {
+				const initialDraft = handoffMock.mock.calls[0]?.[1]?.text as string | undefined;
+				expect(initialDraft).toContain(
+					'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+				);
+				expect(initialDraft).toContain('Agent One');
+				expect(initialDraft).toContain('Failed order lookup');
+				expect(initialDraft).toContain('thread-1');
+				expect(initialDraft).toContain('exec-turn-1');
+				expect(initialDraft).toContain('Get rows from Data Table');
+				expect(initialDraft).toContain('Update row in Data Table');
+				expect(initialDraft?.match(/Column \\"status\\" does not exist/g)).toHaveLength(1);
+			}
+		},
+	);
+
+	it.each([
+		['closes the preview once the panel accepts the hand-off', true, 'false'],
+		['leaves the preview open when the panel refuses the hand-off', false, 'true'],
+	])('%s', async (_label, handed, expectedStored) => {
+		handoffMock.mockReturnValueOnce(handed);
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe(expectedStored);
+	});
+
+	it('keeps the user in the Agent UI when Assistant setup is incomplete', async () => {
+		instanceAiReadyRef.value = false;
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('canSendToAssistant')).toBe(
+			false,
+		);
+		expect(routerPush).not.toHaveBeenCalled();
+		expect(handoffMock).not.toHaveBeenCalled();
+		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe('true');
+	});
+
+	it.each([true, false])(
+		'hands credential help to the left panel (accepted: %s)',
+		async (accepted) => {
+			handoffMock.mockReturnValueOnce(accepted);
+			modalsByIdMock[AGENT_TOOL_CONFIG_MODAL_KEY] = { open: true };
+			const wrapper = await renderView();
+			const request: AgentCredentialHelpRequest = {
+				projectId: 'p1',
+				agentId: 'a1',
+				credential: {
+					credentialType: 'googleDriveOAuth2Api',
+					displayName: 'Google Drive',
+					id: 'cred-1',
+					nodeName: 'Find files',
+					documentationUrl: 'https://docs.n8n.io/integrations/builtin/credentials/google/',
+				},
+			};
+			agentsEventBus.emit('credentialHelpRequested', request);
+			expect(await request.handle?.()).toBe(accepted);
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(handoffMock).toHaveBeenCalledWith(
+				{ source: 'credential-modal', credential: request.credential },
+				{
+					text: expect.stringContaining('Google Drive'),
+					prefillType: 'handoff_credential_setup',
+				},
+			);
+			expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).props('subject')).toMatchObject(
+				{
+					id: 'a1',
+				},
+			);
+			expect(closeModalMock).toHaveBeenCalledTimes(accepted ? 1 : 0);
+			if (accepted) expect(closeModalMock).toHaveBeenCalledWith(AGENT_TOOL_CONFIG_MODAL_KEY);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([true, false])(
+		'waits for queued credential help before closing configuration dialogs (accepted: %s)',
+		async (accepted) => {
+			routeState.name = AGENT_PREVIEW_VIEW;
+			handoffMock.mockReturnValueOnce(accepted);
+			modalsByIdMock[AGENT_TOOL_CONFIG_MODAL_KEY] = { open: true };
+			const wrapper = await renderView();
+			const request: AgentCredentialHelpRequest = {
+				projectId: 'p1',
+				agentId: 'a1',
+				credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+			};
+			agentsEventBus.emit('credentialHelpRequested', request);
+			const result = request.handle?.();
+			const settled = vi.fn();
+			void result?.then(settled);
+			await flushPromises();
+
+			expect(routerPush).toHaveBeenCalledWith(
+				expect.objectContaining({ name: AGENT_BUILDER_VIEW }),
+			);
+			expect(handoffMock).not.toHaveBeenCalled();
+			expect(closeModalMock).not.toHaveBeenCalled();
+			expect(settled).not.toHaveBeenCalled();
+
+			routeState.name = AGENT_BUILDER_VIEW;
+			await flushPromises();
+
+			expect(await result).toBe(accepted);
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(handoffMock).toHaveBeenCalledOnce();
+			expect(closeModalMock).toHaveBeenCalledTimes(accepted ? 1 : 0);
+			if (accepted) expect(closeModalMock).toHaveBeenCalledWith(AGENT_TOOL_CONFIG_MODAL_KEY);
+		},
+	);
+
+	it('refuses queued credential help when its builder unmounts', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		const wrapper = await renderView();
+		const request: AgentCredentialHelpRequest = {
+			projectId: 'p1',
+			agentId: 'a1',
+			credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+		};
+		agentsEventBus.emit('credentialHelpRequested', request);
+		const result = request.handle?.();
+		await flushPromises();
+		wrapper.unmount();
+
+		expect(await result).toBe(false);
+		expect(handoffMock).not.toHaveBeenCalled();
+		expect(closeModalMock).not.toHaveBeenCalled();
+	});
+
+	it('ignores credential help for another Agent and after the builder unmounts', async () => {
+		const wrapper = await renderView();
+		const request: AgentCredentialHelpRequest = {
+			projectId: 'p1',
+			agentId: 'a2',
+			credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+		};
+		agentsEventBus.emit('credentialHelpRequested', request);
+		expect(request.handle).toBeUndefined();
+		wrapper.unmount();
+		request.agentId = 'a1';
+		agentsEventBus.emit('credentialHelpRequested', request);
+		expect(request.handle).toBeUndefined();
+		expect(handoffMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps Agent artifacts out of the standalone credential handoff', async () => {
+		await renderView({
+			props: { artifactMode: true, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+		});
+		const request: AgentCredentialHelpRequest = {
+			projectId: 'p1',
+			agentId: 'a1',
+			credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+		};
+		agentsEventBus.emit('credentialHelpRequested', request);
+		expect(request.handle).toBeUndefined();
+		expect(handoffMock).not.toHaveBeenCalled();
+	});
+
+	it('queues a hand-off requested from the standalone preview route and applies it once the assistant panel mounts', async () => {
+		// The AI dock isn't rendered on the standalone preview route, so
+		// `aiPanelRef` never resolves there — the hand-off must wait for the
+		// panel to mount once the dock close navigates back to the builder.
+		routeState.name = AGENT_PREVIEW_VIEW;
+		handoffMock.mockReturnValueOnce(true);
 		routeQuery.continueSessionId = 'thread-1';
 		fetchedSessionThreads.push({
 			id: 'thread-1',
 			updatedAt: '2026-01-01T00:00:00Z',
 			title: 'Failed order lookup',
-			sessionNumber: 7,
 		});
 
 		const wrapper = await renderView();
-		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 
-		expect(preview.props('canSendToAssistant')).toBe(true);
-		preview.vm.$emit('send-to-assistant', event);
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('send-to-assistant');
 		await flushPromises();
 
-		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
-			projectId: 'p1',
-			agentId: 'a1',
-			threadId: 'thread-1',
-			agentName: 'Agent One',
-			agentIcon: 'bot',
-			sessionTitle: 'Failed order lookup',
-			...(event
-				? {
-						executionId: event.executionId,
-						initialDraft: expect.any(String),
-					}
-				: {}),
-		});
+		expect(routerPush).toHaveBeenCalledWith(expect.objectContaining({ name: AGENT_BUILDER_VIEW }));
+		expect(handoffMock).not.toHaveBeenCalled();
 
-		if (event) {
-			const initialDraft = sendPreviewSessionToInstanceAiMock.mock.calls[0]?.[0]?.initialDraft;
-			expect(initialDraft).toContain(
-				'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
-			);
-			expect(initialDraft).toContain('Agent One');
-			expect(initialDraft).toContain('Failed order lookup');
-			expect(initialDraft).toContain('thread-1');
-			expect(initialDraft).toContain('exec-turn-1');
-			expect(initialDraft).toContain('Get rows from Data Table');
-			expect(initialDraft).toContain('Update row in Data Table');
-			expect(initialDraft?.match(/Column \\"status\\" does not exist/g)).toHaveLength(1);
-		}
+		// Simulate that navigation landing: the builder route renders the panel,
+		// and the queued watcher applies the hand-off once it mounts.
+		routeState.name = AGENT_BUILDER_VIEW;
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(handoffMock).toHaveBeenCalledWith(
+			{
+				source: 'agent-preview',
+				agentId: 'a1',
+				threadId: 'thread-1',
+				agentName: 'Agent One',
+				agentIcon: 'bot',
+				sessionTitle: 'Failed order lookup',
+			},
+			undefined,
+		);
+	});
+
+	it('dismisses handed-off tool calls after the assistant writes the agent', async () => {
+		handoffMock.mockReturnValueOnce(true);
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00.000Z' });
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+		expect(preview.props('dismissedFixToolCallIds')).toEqual([]);
+
+		preview.vm.$emit('send-to-assistant', fixEvent);
+		await flushPromises();
+		expect(
+			wrapper.findComponent({ name: 'AgentTestDock' }).props('dismissedFixToolCallIds'),
+		).toEqual([]);
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'instance-ai' });
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentTestDock' }).props('dismissedFixToolCallIds'),
+		).toEqual(['call-1', 'call-2']);
+	});
+
+	it('keeps handed-off tool calls when the assistant refuses the hand-off', async () => {
+		handoffMock.mockReturnValueOnce(false);
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'thread-1';
+		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00.000Z' });
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('send-to-assistant', fixEvent);
+		await flushPromises();
+		expect(handoffMock).toHaveBeenCalled();
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'instance-ai' });
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentTestDock' }).props('dismissedFixToolCallIds'),
+		).toEqual([]);
 	});
 
 	it('keeps an artifact on the selected preview session and stages the handoff in its Assistant thread', async () => {
@@ -1023,13 +1901,13 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				artifactPreviewSessionId: 'thread-1',
 			},
 		});
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 
 		expect(preview.props('effectiveSessionId')).toBe('thread-1');
 		preview.vm.$emit('send-to-assistant', fixEvent);
 		await flushPromises();
 
-		expect(sendPreviewSessionToInstanceAiMock).not.toHaveBeenCalled();
+		expect(handoffMock).not.toHaveBeenCalled();
 		expect(wrapper.emitted('assistant-handoff')).toEqual([
 			[
 				expect.objectContaining({
@@ -1038,9 +1916,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 					threadId: 'thread-1',
 					sessionTitle: 'Failed order lookup',
 					executionId: 'exec-turn-1',
-					initialDraft: expect.stringContaining(
-						'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
-					),
+					initialDraft: {
+						text: expect.stringContaining(
+							'Review these failed tool calls, identify the root cause, fix the agent, and verify the change.',
+						),
+						prefillType: 'handoff_agent_change_request',
+					},
 				}),
 			],
 		]);
@@ -1063,7 +1944,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await wrapper.setProps({ artifactPreviewSessionId: 'thread-1' });
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 			'thread-1',
 		);
 	});
@@ -1081,7 +1962,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		});
 
 		await vi.waitFor(() =>
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 				'thread-latest',
 			),
 		);
@@ -1091,12 +1972,16 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	it('keeps a valid persisted artifact preview session outside the first page', async () => {
 		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
 		const olderThread = {
+			projectId: 'p2',
+			agentId: 'a2',
+			canContinueInPreview: true,
 			id: 'thread-older-than-first-page',
 			updatedAt: '2025-12-01T00:00:00Z',
 			title: 'Older debugging session',
 			sessionNumber: 42,
 		};
-		getSessionThreadDetailMock.mockResolvedValueOnce({ thread: olderThread, executions: [] });
+		const detail = Promise.withResolvers<{ thread: SessionThread; executions: [] }>();
+		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1106,8 +1991,16 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			},
 		});
 
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(false);
+		previewSessionsLoading.value = true;
+		await nextTick();
+		previewSessionsLoading.value = false;
+		await nextTick();
+		expect(getSessionThreadDetailMock).toHaveBeenCalledTimes(1);
+		detail.resolve({ thread: olderThread, executions: [] });
 		await vi.waitFor(() => expect(upsertSessionThreadMock).toHaveBeenCalledWith(olderThread));
-		const preview = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+		expect(preview.props('initialized')).toBe(true);
 		expect(preview.props('effectiveSessionId')).toBe('thread-older-than-first-page');
 		expect(preview.props('sessionTitle')).toBe('Older debugging session');
 		expect(preview.props('hasSession')).toBe(true);
@@ -1116,17 +2009,64 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			'a2',
 			'thread-older-than-first-page',
 		);
+		// A poll can replace both pages while this older session is still open.
+		sessionThreads.length = 0;
+		previewSessionThreads.length = 0;
+		await nextTick();
+		expect(preview.props('initialized')).toBe(true);
+		expect(preview.props('sessionTitle')).toBe('Older debugging session');
 
 		preview.vm.$emit('send-to-assistant', fixEvent);
 		await nextTick();
 		expect(wrapper.emitted('assistant-handoff')).toEqual([
 			[
 				expect.objectContaining({
-					initialDraft: expect.stringContaining('"sessionNumber": 42'),
+					initialDraft: {
+						text: expect.stringContaining('"sessionNumber": 42'),
+						prefillType: 'handoff_agent_change_request',
+					},
 				}),
 			],
 		]);
 	});
+
+	it.each(['route', 'artifact'])(
+		'opens a read-only target from a %s in the timeline',
+		async (target) => {
+			const thread = {
+				id: 'read-only-thread',
+				projectId: 'p1',
+				agentId: 'a1',
+				canContinueInPreview: false,
+				updatedAt: '2026-01-01T00:00:00Z',
+			};
+			if (target === 'route') {
+				routeQuery[OPEN_PREVIEW_PARAM] = 'true';
+				routeQuery.continueSessionId = thread.id;
+				fetchedSessionThreads.push(thread);
+			} else {
+				getSessionThreadDetailMock.mockResolvedValueOnce({ thread, executions: [] });
+			}
+
+			const wrapper = await renderView({
+				props:
+					target === 'artifact'
+						? {
+								artifactMode: true,
+								artifactProjectId: 'p1',
+								artifactAgentId: 'a1',
+								artifactPreviewSessionId: thread.id,
+							}
+						: {},
+			});
+
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(false);
+			expect(routerReplace).toHaveBeenCalledWith({
+				name: AGENT_SESSION_DETAIL_VIEW,
+				params: { projectId: 'p1', agentId: 'a1', threadId: thread.id },
+			});
+		},
+	);
 
 	it('does not update the shared session store when validation resolves after unmount', async () => {
 		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
@@ -1188,6 +2128,138 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			expect.any(Error),
 			'agents.builder.files.uploadTotalTooLarge.title',
 		);
+		expect(builderTelemetryMock.trackStartedFileUpload).toHaveBeenCalledWith(1);
+		expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith('total_limit', 1);
+	});
+
+	describe('knowledge funnel telemetry', () => {
+		function emitFromEditorColumn(
+			wrapper: Awaited<ReturnType<typeof renderView>>,
+			event: string,
+			...args: unknown[]
+		) {
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit(event, ...args);
+		}
+
+		function textFile(name: string, size?: number) {
+			const file = new File(['x'], name, { type: 'text/plain' });
+			if (size !== undefined) {
+				Object.defineProperty(file, 'size', { value: size });
+			}
+
+			return file;
+		}
+
+		it('reports the knowledge tab once when the page opens on it', async () => {
+			routeQuery.section = 'knowledge';
+			await renderView({ knowledgeBaseEnabled: true });
+
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the knowledge tab again when the user switches agents on it', async () => {
+			routeQuery.section = 'knowledge';
+			await renderView({ knowledgeBaseEnabled: true });
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
+
+			routeParams.agentId = 'a2';
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports the knowledge tab when the user switches to it', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).not.toHaveBeenCalled();
+
+			emitFromEditorColumn(wrapper, 'update:activeMainTab', 'knowledge');
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackOpenedKnowledgeTab).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the start of an upload and nothing else when the files pass the checks', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+			emitFromEditorColumn(wrapper, 'upload-files', [textFile('a.txt'), textFile('b.txt')]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackStartedFileUpload).toHaveBeenCalledWith(2);
+			expect(builderTelemetryMock.trackRejectedFileUpload).not.toHaveBeenCalled();
+		});
+
+		it('reports the oversized files and still uploads the others', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			const smallFile = textFile('small.txt');
+
+			emitFromEditorColumn(wrapper, 'upload-files', [
+				textFile('big.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+				smallFile,
+			]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith('file_size', 1);
+			expect(uploadAgentFilesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', [smallFile]);
+		});
+
+		it('reports the oversized files when no file is small enough', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+			emitFromEditorColumn(wrapper, 'upload-files', [
+				textFile('big-1.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+				textFile('big-2.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+			]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledTimes(1);
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith('file_size', 2);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('reports only the later rejection when oversized files come with too many files', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			const files = Array.from({ length: MAX_AGENT_FILES_PER_UPLOAD + 1 }, (_, index) =>
+				textFile(`file-${index}.txt`),
+			);
+
+			emitFromEditorColumn(wrapper, 'upload-files', [
+				textFile('big.txt', MAX_AGENT_FILE_SIZE_BYTES + 1),
+				...files,
+			]);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledTimes(1);
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith(
+				'too_many_files',
+				MAX_AGENT_FILES_PER_UPLOAD + 1,
+			);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('reports an upload with too many files', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+			const files = Array.from({ length: MAX_AGENT_FILES_PER_UPLOAD + 1 }, (_, index) =>
+				textFile(`file-${index}.txt`),
+			);
+
+			emitFromEditorColumn(wrapper, 'upload-files', files);
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackRejectedFileUpload).toHaveBeenCalledWith(
+				'too_many_files',
+				MAX_AGENT_FILES_PER_UPLOAD + 1,
+			);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('reports the start of a vector store setup', async () => {
+			const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+			emitFromEditorColumn(wrapper, 'add-vector-store');
+			await flushPromises();
+
+			expect(builderTelemetryMock.trackStartedVectorStoreSetup).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it('generates eval cases and confirms the result with a toast', async () => {
@@ -1355,15 +2427,163 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 	});
 
-	it('opens the preview dock from the header preview action', async () => {
+	it.each([
+		{ component: 'AgentBuilderEditorColumn', source: 'primary' },
+		{ component: 'AgentBuilderEditorColumn', source: 'icon' },
+	])('attributes the preview action from $component to $source', async ({ component, source }) => {
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		trackMock.mockClear();
 
-		header.vm.$emit('open-preview');
+		wrapper.findComponent({ name: component }).vm.$emit('open-preview', source);
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
 		expect(routerPush).not.toHaveBeenCalled();
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
+			{ agent_id: 'a1', source },
+		);
+	});
+
+	it('renders the artifact test chat in the Assistant column without reserving editor space', async () => {
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		try {
+			const wrapper = await renderView({
+				props: {
+					artifactMode: true,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+					artifactPreviewOpen: true,
+					artifactPreviewChatTarget: target,
+				},
+			});
+			const dock = wrapper.findComponent({ name: 'AgentTestDock' });
+			expect(target.contains(dock.element)).toBe(true);
+			expect(dock.props('overlay')).toBe(true);
+			expect(dock.props('isOpen')).toBe(true);
+			expect(wrapper.get('[data-testid="agent-builder-container"]').classes()).not.toContain(
+				'previewOpen',
+			);
+			const previewWrapper = wrapper
+				.findAllComponents({ name: 'ResizeWrapper' })
+				.find((component) => component.element.contains(dock.element));
+			expect(previewWrapper?.props('isResizingEnabled')).toBe(false);
+			dock.vm.$emit('close');
+			await flushPromises();
+			expect(wrapper.emitted('preview-open-change')?.at(-1)).toEqual([false]);
+		} finally {
+			target.remove();
+		}
+	});
+
+	it('uses the full editor area for the building indicator when the test chat has a host', async () => {
+		const wrapper = await renderView();
+		wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview', 'primary');
+		await flushPromises();
+		wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:building', true);
+		await nextTick();
+		const indicator = wrapper.getComponent({ name: 'AgentBuildingIndicator' });
+		expect(indicator.element.parentElement?.style.right).not.toBe('');
+
+		const target = document.createElement('div');
+		document.body.appendChild(target);
+		try {
+			await wrapper.setProps({ artifactPreviewChatTarget: target });
+			expect(indicator.element.parentElement?.style.right).toBe('');
+		} finally {
+			target.remove();
+		}
+	});
+
+	it('disables legacy Test entries while the embedded Assistant works', async () => {
+		const wrapper = await renderView();
+		async function setWorking(working: boolean) {
+			if (!wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()) {
+				await wrapper.get('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+			}
+			wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm.$emit('update:working', working);
+			await nextTick();
+		}
+		await setWorking(true);
+		const editor = wrapper.getComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('previewDisabledReason')).toBe('agents.builder.chatMode.building');
+		const trigger = wrapper.get('[data-testid="agent-triggers-preview-chat-button"]');
+		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(true);
+		const primary = wrapper.get('[data-testid="agent-header-preview-btn"]');
+		expect(primary.attributes('disabled')).toBeDefined();
+		editor.vm.$emit('open-preview');
+		await trigger.trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		await setWorking(false);
+		expect(editor.props('previewDisabledReason')).toBeUndefined();
+		expect(primary.attributes('disabled')).toBeUndefined();
+		expect(wrapper.getComponent(N8nToggle).props('disabled')).toBe(false);
+		await trigger.trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+	});
+
+	it('closes an artifact Preview while editing is locked', async () => {
+		const wrapper = await renderView({
+			props: { artifactMode: true, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+		});
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('open-preview', 'primary');
+		await flushPromises();
+		expect(editor.props('isPreviewOpen')).toBe(true);
+
+		await wrapper.setProps({ artifactEditingLocked: true });
+		expect(
+			wrapper.get('[data-testid="agent-header-preview-btn"]').attributes('disabled'),
+		).toBeUndefined();
+		await wrapper.get('[data-testid="agent-header-preview-btn"]').trigger('click');
+		await flushPromises();
+		expect(editor.props('isPreviewOpen')).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+	});
+
+	it('opens Preview with the selected task instructions', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		trackMock.mockClear();
+
+		editor.vm.$emit('preview-task', 'Test these instructions');
+		await flushPromises();
+
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+		expect(preview.props()).toEqual(
+			expect.objectContaining({
+				isOpen: true,
+				initialPrompt: 'Test these instructions',
+			}),
+		);
+		expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+			TELEMETRY_EVENT.AGENTS.USER_OPENED_AGENT_PREVIEW,
+			{ agent_id: 'a1' },
+		);
+
+		preview.vm.$emit('initial-consumed');
+		await nextTick();
+
+		expect(preview.props('initialPrompt')).toBeUndefined();
+	});
+
+	it('clears selected task instructions when the active agent changes', async () => {
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('preview-task', 'Test these instructions');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toBe(
+			'Test these instructions',
+		);
+
+		routeParams.agentId = 'a2';
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialPrompt')).toBeUndefined();
 	});
 
 	it('opens the preview dock with the latest thread when prior sessions exist', async () => {
@@ -1373,12 +2593,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		header.vm.$emit('open-preview');
+		editor.vm.$emit('open-preview');
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props()).toEqual(
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props()).toEqual(
 			expect.objectContaining({ isOpen: true, effectiveSessionId: 'thread-latest' }),
 		);
 		expect(routerPush).not.toHaveBeenCalled();
@@ -1394,12 +2614,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				artifactAgentId: 'a2',
 			},
 		});
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		header.vm.$emit('open-preview');
+		editor.vm.$emit('open-preview');
 		await flushPromises();
 
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(dock.props('effectiveSessionId')).toBe('thread-1');
 		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).exists()).toBe(true);
 
@@ -1413,39 +2633,93 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(routeQuery).toEqual({});
 	});
 
-	it('navigates to an artifact Preview trace without changing the dock session', async () => {
-		fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
-		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
+	it('opens and closes the artifact chat from the Instance AI preview state', async () => {
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
 				artifactProjectId: 'p2',
 				artifactAgentId: 'a2',
+				artifactPreviewOpen: false,
 			},
 		});
-		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('open-preview');
-		await flushPromises();
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
-		routerPush.mockClear();
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 
-		dock.vm.$emit('view-trace');
-		await nextTick();
+		expect(dock.props('isOpen')).toBe(false);
 
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentSessionDetailView',
-			params: {
-				projectId: 'p2',
-				agentId: 'a2',
-				threadId: 'thread-1',
-			},
-		});
-		expect(windowOpen).not.toHaveBeenCalled();
-		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
-			'thread-1',
-		);
+		await wrapper.setProps({ artifactPreviewOpen: true });
+		expect(dock.props('isOpen')).toBe(true);
+
+		await wrapper.setProps({ artifactPreviewOpen: false });
+		expect(dock.props('isOpen')).toBe(false);
 	});
 
+	it('keeps controlled artifact chat open when the target agent changes', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactPreviewOpen: true,
+			},
+		});
+
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+
+		await wrapper.setProps({ artifactProjectId: 'p3', artifactAgentId: 'a3' });
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+	});
+
+	it.each([
+		{ artifactMode: false, projectId: 'p1', agentId: 'a1' },
+		{ artifactMode: true, projectId: 'p2', agentId: 'a2' },
+	])(
+		'records a trace-details click with artifact mode $artifactMode',
+		async ({ artifactMode, projectId, agentId }) => {
+			fetchedSessionThreads.push({ id: 'thread-1', updatedAt: '2026-01-01T00:00:00Z' });
+			const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: projectId,
+					artifactAgentId: agentId,
+				},
+			});
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview');
+			await flushPromises();
+			const dock = wrapper.findComponent({ name: 'AgentTestDock' });
+			routerPush.mockClear();
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+				expect.anything(),
+			);
+			trackMock.mockClear();
+
+			dock.vm.$emit('view-trace');
+			await nextTick();
+
+			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+				name: 'AgentSessionDetailView',
+				params: {
+					projectId,
+					agentId,
+					threadId: 'thread-1',
+				},
+			});
+			expect(windowOpen).not.toHaveBeenCalled();
+			expect(trackMock).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
+				{ agent_id: agentId, push_ref: 'tab-1' },
+			);
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
+				'thread-1',
+			);
+		},
+	);
+
 	it('flushes edits and persists an unsaved artifact before a Preview message', async () => {
+		mockPendingAgentRow('a2');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1461,7 +2735,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		).openArtifactPreview('ephemeral-thread');
 		await nextTick();
 		const beforeSend = wrapper
-			.findComponent({ name: 'AgentPreviewDock' })
+			.findComponent({ name: 'AgentTestDock' })
 			.props('beforeSend') as () => Promise<void>;
 
 		await beforeSend();
@@ -1470,17 +2744,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			{ baseUrl: 'http://localhost:5678' },
 			'p2',
 			'Ready to chat',
-			{ id: 'a2' },
+			{ id: 'a2', config: expect.objectContaining({ name: 'Ready to chat' }) },
 		);
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p2',
-			'a2',
-			expect.objectContaining({ name: 'Ready to chat' }),
-		);
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('shows an error when an unsaved artifact cannot be prepared for Preview', async () => {
 		const error = new Error('create failed');
+		mockPendingAgentRow('a2');
 		createAgentMock.mockRejectedValueOnce(error);
 		const wrapper = await renderView({
 			props: {
@@ -1508,10 +2779,11 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		});
 		(
 			wrapper.vm as unknown as { openArtifactPreview: (sessionId?: string) => void }
-		).openArtifactPreview('ephemeral-thread');
+		).openArtifactPreview();
 		await nextTick();
-		const dock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
 		const dockVm = dock.vm;
+		const sessionId = dock.props('effectiveSessionId') as string;
 		const beforeSend = dock.props('beforeSend') as () => Promise<void>;
 		await beforeSend();
 		const resetCount = resetSessionStoreMock.mock.calls.length;
@@ -1519,10 +2791,11 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await wrapper.setProps({ artifactAgentPending: false });
 		await flushPromises();
 
-		const mountedDock = wrapper.findComponent({ name: 'AgentPreviewDock' });
+		const mountedDock = wrapper.findComponent({ name: 'AgentTestDock' });
 		expect(mountedDock.vm).toBe(dockVm);
-		expect(mountedDock.props('effectiveSessionId')).toBe('ephemeral-thread');
+		expect(mountedDock.props('effectiveSessionId')).toBe(sessionId);
 		expect(mountedDock.props('initialized')).toBe(true);
+		expect(getSessionThreadDetailMock).not.toHaveBeenCalled();
 		expect(resetSessionStoreMock).toHaveBeenCalledTimes(resetCount);
 	});
 
@@ -1549,18 +2822,19 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 					artifactAgentId: 'a2',
 				},
 			});
-			wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('open-preview');
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('open-preview');
 			await flushPromises();
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('effectiveSessionId')).toBe(
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
 				'previous-agent-thread',
 			);
 
 			routerPush.mockClear();
 			routerReplace.mockClear();
+			mockPendingAgentRow(nextProps.artifactAgentId ?? 'a2');
 			await wrapper.setProps(nextProps);
 			await flushPromises();
 
-			expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('isOpen')).toBe(false);
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
 			expect(wrapper.emitted('preview-open-change')).toEqual([[false], [true], [false]]);
 			expect(routerPush).not.toHaveBeenCalled();
 			expect(routerReplace).not.toHaveBeenCalled();
@@ -1575,6 +2849,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		createAgentMock
 			.mockReturnValueOnce(firstCreate.promise)
 			.mockReturnValueOnce(secondCreate.promise);
+		mockPendingAgentRow('a2', 'a3');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1583,6 +2858,8 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				artifactAgentPending: true,
 			},
 		});
+		const unsaved = () =>
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved');
 		const firstSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2')).pending;
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledTimes(1));
 
@@ -1593,13 +2870,14 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(createAgentMock.mock.calls[0]?.[3]).toEqual({ id: 'a2' });
 		expect(createAgentMock.mock.calls[1]?.[3]).toEqual({ id: 'a3' });
 
-		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
+		firstCreate.resolve(makeCreationResponse(undefined, { id: 'a2' }));
 		await firstSend;
-		expect(wrapper.emitted('persisted')).toBeUndefined();
+		// a2's create landing must not mark the a3 artifact saved.
+		expect(unsaved()).toBe(true);
 
-		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
+		secondCreate.resolve(makeCreationResponse(undefined, { id: 'a3' }));
 		await secondSend;
-		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a3' })]]);
+		expect(unsaved()).toBe(false);
 	});
 
 	it('reuses an unresolved persistence flight when returning to its artifact target', async () => {
@@ -1608,6 +2886,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		createAgentMock
 			.mockReturnValueOnce(firstCreate.promise)
 			.mockReturnValueOnce(secondCreate.promise);
+		mockPendingAgentRow('a2', 'a3');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1628,15 +2907,20 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		const returnedSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2-return')).pending;
 
 		expect(createAgentMock).toHaveBeenCalledTimes(2);
-		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
-		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
+		firstCreate.resolve(makeCreationResponse(undefined, { id: 'a2' }));
+		secondCreate.resolve(makeCreationResponse(undefined, { id: 'a3' }));
 		await Promise.all([firstSend, secondSend, returnedSend]);
-		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a2' })]]);
+		// The returning send joined a2's existing flight instead of starting a third.
+		expect(createAgentMock).toHaveBeenCalledTimes(2);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
+			false,
+		);
 	});
 
 	it('reuses a successfully created resource when returning to its pending artifact target', async () => {
 		const firstCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
 		createAgentMock.mockReturnValueOnce(firstCreate.promise);
+		mockPendingAgentRow('a2', 'a3');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1645,22 +2929,25 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				artifactAgentPending: true,
 			},
 		});
+		const unsaved = () =>
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved');
 
 		const firstSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2')).pending;
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
 		await wrapper.setProps({ artifactAgentId: 'a3' });
 		await flushPromises();
-		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
+		firstCreate.resolve(makeCreationResponse(undefined, { id: 'a2' }));
 		await firstSend;
-		expect(wrapper.emitted('persisted')).toBeUndefined();
+		expect(unsaved()).toBe(true);
 
 		await wrapper.setProps({ artifactAgentId: 'a2' });
 		await flushPromises();
 		const returnedSend = await startArtifactPreviewSend(wrapper, 'ephemeral-a2-return');
 		await returnedSend.pending;
 
+		// a2 was already created — returning to it reuses that row.
 		expect(createAgentMock).toHaveBeenCalledOnce();
-		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a2' })]]);
+		expect(unsaved()).toBe(false);
 	});
 
 	it('restarts an in-flight draft initialization when the host reports external persistence', async () => {
@@ -1676,7 +2963,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			updatedIds: string[];
 			unchangedIds: string[];
 		}>();
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
@@ -1708,13 +2995,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		);
 	});
 
-	it('mints a fresh preview session when landing with no prior threads', async () => {
-		routeName = 'AgentPreviewView';
+	it('creates a private chat when history contains only shared sessions', async () => {
+		routeQuery[OPEN_PREVIEW_PARAM] = 'true';
+		fetchedSessionThreads.push({
+			id: 'shared-thread',
+			updatedAt: '2026-01-01T00:00:00Z',
+			canContinueInPreview: false,
+		});
 
 		const wrapper = await renderView();
 		await flushPromises();
 		const effectiveSessionId = wrapper
-			.findComponent({ name: 'AgentPreviewChatPage' })
+			.findComponent({ name: 'AgentTestDock' })
 			.props('effectiveSessionId') as string;
 
 		expect(routerReplace).toHaveBeenCalledWith(
@@ -1723,24 +3015,26 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			}),
 		);
 		expect(effectiveSessionId).toEqual(expect.any(String));
+		expect(effectiveSessionId).not.toBe('shared-thread');
+		expect(getSessionThreadDetailMock).not.toHaveBeenCalled();
 	});
 
 	it('does not open preview when the agent is not runnable', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		expect(header.props('agent')).toEqual(expect.objectContaining({ isRunnable: false }));
+		expect(editor.props('agent')).toEqual(expect.objectContaining({ isRunnable: false }));
 
-		header.vm.$emit('open-preview');
+		editor.vm.$emit('open-preview');
 		await flushPromises();
 
 		expect(routerPush).not.toHaveBeenCalled();
 	});
 
 	it('keeps a known continued session selected even when it has no persisted messages', async () => {
-		routeName = 'AgentPreviewView';
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		routeQuery.continueSessionId = 'faulty-thread';
 		fetchedSessionThreads.push({ id: 'faulty-thread', updatedAt: '2026-01-01T00:00:00Z' });
 
@@ -1756,24 +3050,18 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await flushPromises();
 
 		expect(routerReplace).not.toHaveBeenCalled();
-		expect(
-			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
-		).toBe('faulty-thread');
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
+			'faulty-thread',
+		);
 	});
 
 	it('replaces an unknown continued session with a fresh chat when there is no history', async () => {
-		routeName = 'AgentPreviewView';
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		routeQuery.continueSessionId = 'stale-missing-thread';
 
 		const wrapper = await renderView();
-		routerReplace.mockClear();
-
-		(
-			wrapper.vm as unknown as {
-				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
-			}
-		).onContinueLoaded({ sessionId: 'stale-missing-thread', count: 0 });
-		await flushPromises();
+		expect(getSessionThreadDetailMock).toHaveBeenCalledWith('p1', 'a1', 'stale-missing-thread');
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(true);
 
 		expect(routerReplace).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -1784,44 +3072,54 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			continueSessionId: string;
 		};
 		expect(replaceQuery.continueSessionId).not.toBe('stale-missing-thread');
+		const dock = wrapper.findComponent({ name: 'AgentTestDock' });
+		expect(dock.props('hasSession')).toBe(false);
+		trackMock.mockClear();
+		routerPush.mockClear();
+
+		dock.vm.$emit('view-trace');
+		await nextTick();
+
+		expect(trackMock).not.toHaveBeenCalled();
+		expect(routerPush).not.toHaveBeenCalled();
 	});
 
 	it('rebinds an unknown session introduced by an in-place route change', async () => {
-		routeName = 'AgentPreviewView';
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		fetchedSessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-01T00:00:00Z' });
 		const wrapper = await renderView();
 		routerReplace.mockClear();
+		const detail = Promise.withResolvers<never>();
+		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
 
 		routeQuery.continueSessionId = 'stale-route-thread';
 		await nextTick();
-		expect(
-			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
-		).toBe('stale-route-thread');
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
+			'stale-route-thread',
+		);
 
-		(
-			wrapper.vm as unknown as {
-				onContinueLoaded: (event: { sessionId: string; count: number }) => void;
-			}
-		).onContinueLoaded({ sessionId: 'stale-route-thread', count: 0 });
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('initialized')).toBe(false);
+		detail.reject({ httpStatusCode: 404 });
 		await flushPromises();
 
 		expect(routerReplace).toHaveBeenCalledWith({
 			query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
 		});
-		expect(
-			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
-		).toBe('thread-latest');
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('effectiveSessionId')).toBe(
+			'thread-latest',
+		);
 	});
 
-	it('ignores stale continue-loaded events after New session takes ownership', async () => {
-		routeName = 'AgentPreviewView';
+	it('ignores stale validation and history responses after New session takes ownership', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		routeQuery.continueSessionId = 'stale-route-thread';
+		const detail = Promise.withResolvers<{ thread: SessionThread; executions: [] }>();
+		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentPreviewHeader' });
-		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 		routerReplace.mockClear();
 
-		header.vm.$emit('new-session');
+		preview.vm.$emit('new-session');
 		await nextTick();
 		const newSessionId = preview.props('effectiveSessionId') as string;
 		expect(newSessionId).not.toBe('stale-route-thread');
@@ -1829,6 +3127,10 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			query: expect.objectContaining({ continueSessionId: newSessionId }),
 		});
 		routerReplace.mockClear();
+		detail.resolve({
+			thread: { id: 'stale-route-thread', canContinueInPreview: false, updatedAt: '' },
+			executions: [],
+		});
 
 		(
 			wrapper.vm as unknown as {
@@ -1841,8 +3143,29 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(preview.props('effectiveSessionId')).toBe(newSessionId);
 	});
 
+	it('ignores session validation after Preview closes', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		routeQuery.continueSessionId = 'stale-route-thread';
+		const detail = Promise.withResolvers<{ thread: SessionThread; executions: [] }>();
+		getSessionThreadDetailMock.mockReturnValueOnce(detail.promise);
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+		routerReplace.mockClear();
+
+		preview.vm.$emit('close');
+		await nextTick();
+		detail.resolve({
+			thread: { id: 'stale-route-thread', canContinueInPreview: false, updatedAt: '' },
+			executions: [],
+		});
+		await flushPromises();
+
+		expect(preview.props('isOpen')).toBe(false);
+		expect(routerReplace).not.toHaveBeenCalled();
+	});
+
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
-		routeName = 'AgentPreviewView';
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 
 		const wrapper = await renderView({ knowledgeBaseEnabled: true });
@@ -1854,7 +3177,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			'a1',
 		);
 
-		wrapper.findComponent({ name: 'AgentPreviewHeader' }).vm.$emit('new-session');
+		wrapper.findComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
 		await nextTick();
 		await flushPromises();
 
@@ -1875,47 +3198,57 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	});
 
 	it('refreshes runnable state from the backend after saving manual config edits', async () => {
+		const workflowTool: AgentJsonToolRef = {
+			type: 'workflow',
+			workflow: 'Test workflow',
+			inputs: {
+				constructor: { mode: 'ai' as const, description: 'Use the label.' },
+				hasOwnProperty: { mode: 'fixed' as const, value: '=literal' },
+			},
+		};
+		intendedConfig!.tools = [workflowTool];
 		getAgentMock
 			.mockResolvedValueOnce(makeAgentResponse({ isRunnable: false }))
 			.mockResolvedValueOnce(makeAgentResponse({ isRunnable: true, versionId: 'v2' }));
-		updateConfigMock.mockResolvedValueOnce({ versionId: 'v2', stale: false });
+		updateConfigMock.mockResolvedValueOnce({
+			config: withDefaultLlm({ name: 'Agent One', instructions: 'You are a helpful assistant.' }),
+			versionId: 'v2',
+			stale: false,
+		});
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			isBuilt: boolean;
-			saveConfig: (snapshot: {
-				type: 'config';
-				projectId: string;
-				agentId: string;
-				config: TestAgentConfig;
-			}) => Promise<void>;
+			setupTasks: SetupTask[];
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
 		};
 
 		expect(vm.isBuilt).toBe(false);
+		expect(vm.setupTasks.find((task) => task.id === 'test-agent')?.visible).toBe(false);
 
-		await vm.saveConfig({
-			type: 'config',
-			projectId: 'p1',
-			agentId: 'a1',
-			config: withDefaultLlm({
-				name: 'Agent One',
-				instructions: 'You are a helpful assistant.',
-			})!,
-		});
+		vm.onConfigFieldUpdate({ instructions: 'Updated instructions' });
+		await vm.flushAutosave();
 		await nextTick();
 
-		expect(updateConfigMock).toHaveBeenCalled();
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ tools: [workflowTool] }),
+			'hash-1',
+		);
 		expect(getAgentMock).toHaveBeenLastCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
 		expect(vm.isBuilt).toBe(true);
+		expect(vm.setupTasks.find((task) => task.id === 'test-agent')?.visible).toBe(true);
 	});
 
 	it('refreshes full config after channel connection changes the agent', async () => {
 		const wrapper = await renderView();
-		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
+		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
 
 		fetchConfigMock.mockClear();
 		getAgentMock.mockClear();
-		channels.vm.$emit('agent-changed');
+		triggers.vm.$emit('agent-changed');
 		await nextTick();
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
@@ -1958,6 +3291,183 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
 	});
 
+	it('shows setup tasks after the assistant finishes building an agent artifact', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+				artifactEditingLocked: true,
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('tasks')).toBeUndefined();
+
+		await wrapper.setProps({ artifactEditingLocked: false });
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+		);
+
+		await wrapper.setProps({ artifactEditingLocked: true });
+		expect(header.props('tasks')).toBeUndefined();
+	});
+
+	it.each([false, true])(
+		'shows the test setup task only when the header can open preview (isRunnable: %s)',
+		async (isRunnable) => {
+			getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable }));
+			intendedConfig = {
+				name: 'Agent One',
+				...defaultLlmConfig,
+				instructions: 'Help the user',
+				tools: [{ type: 'custom', id: 'custom_tool' }],
+			};
+
+			const wrapper = await renderView();
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
+			const vm = wrapper.vm as unknown as { setupTasks: SetupTask[] };
+			const testTask = vm.setupTasks.find((task) => task.id === 'test-agent');
+
+			expect(header.props('agent').isRunnable).toBe(isRunnable);
+			expect(preview.props('isOpen')).toBe(false);
+
+			header.vm.$emit('setup-task-action', testTask);
+			await flushPromises();
+
+			expect(preview.props('isOpen')).toBe(isRunnable);
+			expect(testTask).toEqual(expect.objectContaining({ state: 'todo', visible: isRunnable }));
+			const visibleTasks: SetupTask[] = header.props('tasks') ?? [];
+			expect(visibleTasks.some((task) => task.id === 'test-agent' && task.visible)).toBe(
+				isRunnable,
+			);
+		},
+	);
+
+	it.each([false, true])(
+		'hides setup tasks for a published agent with artifact mode %s',
+		async (artifactMode) => {
+			getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1', versionId: 'v2' }));
+			const wrapper = await renderView({
+				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			});
+
+			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+		},
+	);
+
+	it('hides setup tasks when the agent is published', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		expect(header.props('tasks')).toBeDefined();
+
+		header.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
+		await flushPromises();
+
+		expect(header.props('tasks')).toBeUndefined();
+	});
+
+	it('hides setup tasks while the embedded assistant builds the agent', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		expect(header.props('tasks')).toBeDefined();
+
+		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
+		expect(header.props('tasks')).toBeUndefined();
+
+		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+		);
+	});
+
+	it.each([false, true])(
+		'hides setup tasks before an agent exists with artifact mode %s',
+		async (artifactMode) => {
+			mockPendingAgentRow('a1');
+			if (!artifactMode) history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+					artifactAgentPending: artifactMode,
+				},
+			});
+
+			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+			expect(createAgentMock).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['tool', 'MCP server', 'both'])(
+		'completes the add-tool setup task when adding %s',
+		async (kind) => {
+			const wrapper = await renderView();
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const vm = wrapper.vm as unknown as {
+				onConfigFieldUpdate: (updates: Partial<AgentJsonConfig>) => void;
+			};
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+			);
+
+			vm.onConfigFieldUpdate({
+				tools: kind === 'MCP server' ? [] : [{ type: 'custom', id: 'custom_tool' }],
+				mcpServers:
+					kind === 'tool'
+						? []
+						: [
+								{
+									name: 'Example MCP',
+									url: 'https://mcp.example.com',
+									authentication: 'none',
+									transport: 'streamableHttp',
+								},
+							],
+			});
+			await nextTick();
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'complete' })]),
+			);
+
+			vm.onConfigFieldUpdate({ tools: [], mcpServers: [] });
+			await nextTick();
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+			);
+		},
+	);
+
+	it('shows the publish setup task for a tested agent only when the publish button is ready', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
+
+		header.vm.$emit('publish-ready', true);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: true })]),
+		);
+
+		header.vm.$emit('publish-ready', false);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
+	});
+
 	it('flushes a pending config edit when the builder unmounts', async () => {
 		const wrapper = await renderView();
 		updateConfigMock.mockClear();
@@ -1974,7 +3484,184 @@ describe('AgentBuilderView — configuration validation', () => {
 			'p1',
 			'a1',
 			expect.objectContaining({ name: 'Renamed agent' }),
+			'hash-1',
 		);
+	});
+
+	it('saves a config edit against the hash it was made on, not a hash loaded later', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+
+		vm.onConfigFieldUpdate({ instructions: 'Edited before the refresh landed' });
+		// A refresh lands before the debounced save fires (e.g. after another
+		// tab's write pushed an update); the queued edit must not borrow its hash.
+		mockConfigHash.value = 'hash-2';
+		await vm.flushAutosave();
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Edited before the refresh landed' }),
+			'hash-1',
+		);
+	});
+
+	it('applies the server config when no newer draft edit exists', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+		updateConfigMock.mockResolvedValueOnce({
+			config: withDefaultLlm({ name: 'Server name', instructions: 'Cris.' }),
+			versionId: 'v2',
+			stale: false,
+		});
+
+		vm.onConfigFieldUpdate({ instructions: 'Cris' });
+		await vm.flushAutosave();
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+		).toEqual(expect.objectContaining({ name: 'Server name', instructions: 'Cris.' }));
+		expect(wrapper.emitted('name-saved')).toContainEqual(['Server name']);
+	});
+
+	it('keeps a new instructions draft when an older save response lands', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+		let finishSave!: (result: {
+			config: TestAgentConfig | null;
+			versionId: string;
+			stale: boolean;
+		}) => void;
+		updateConfigMock.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finishSave = resolve;
+				}),
+		);
+
+		vm.onConfigFieldUpdate({ instructions: 'Cris' });
+		const save = vm.flushAutosave();
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalledTimes(1));
+		wrapper.findComponent({ name: 'AgentInfoPanel' }).vm.$emit('draft:config');
+		finishSave({
+			config: withDefaultLlm({ name: 'Agent One', instructions: 'Cris' }),
+			versionId: 'v2',
+			stale: false,
+		});
+		await save;
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+		).toEqual(expect.objectContaining({ instructions: 'Cris' }));
+		expect(
+			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-save-status'),
+		).toBe('idle');
+		expect(
+			wrapper
+				.find('[data-testid="stub-agent-builder-header"]')
+				.attributes('data-config-validation-status'),
+		).toBe('null');
+
+		vm.onConfigFieldUpdate({ instructions: 'Crisp.' });
+		await vm.flushAutosave();
+		expect(updateConfigMock).toHaveBeenLastCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ instructions: 'Crisp.' }),
+			'hash-1',
+		);
+	});
+
+	it('keeps a rejected draft for the next save', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+		updateConfigMock.mockRejectedValueOnce(new Error('save rejected'));
+
+		vm.onConfigFieldUpdate({ instructions: 'Cris' });
+		await expect(vm.flushAutosave()).rejects.toThrow('save rejected');
+		await nextTick();
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+		).toEqual(expect.objectContaining({ instructions: 'Cris' }));
+		expect(mockConfig.value?.instructions).toBe('You are a helpful assistant.');
+		expect(
+			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-save-status'),
+		).toBe('idle');
+		expect(showErrorMock).toHaveBeenCalled();
+
+		vm.onConfigFieldUpdate({ instructions: 'Crisp.' });
+		await vm.flushAutosave();
+		await nextTick();
+		expect(
+			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-save-status'),
+		).toBe('saved');
+	});
+
+	it('keeps the saved status without a save error when a refresh fails after the write', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+		const refreshError = new Error('refresh failed');
+		getAgentMock.mockRejectedValueOnce(refreshError);
+
+		vm.onConfigFieldUpdate({ instructions: 'Cris' });
+		await vm.flushAutosave();
+		await nextTick();
+
+		expect(
+			wrapper.find('[data-testid="stub-agent-builder-header"]').attributes('data-save-status'),
+		).toBe('saved');
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('reloads the latest agent and drops an autosave rejected as stale', async () => {
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'Newer instructions from another tab',
+		};
+		updateConfigMock.mockRejectedValueOnce(
+			new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+		);
+
+		vm.onConfigFieldUpdate({ instructions: 'Stale local edit' });
+		await vm.flushAutosave();
+		await flushPromises();
+
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+		).toEqual(expect.objectContaining({ instructions: 'Newer instructions from another tab' }));
+		expect(showMessageMock).toHaveBeenCalledWith({
+			title: 'agents.builder.remoteChange.title',
+			message: 'agents.builder.remoteChange.message',
+			type: 'warning',
+		});
+
+		await vm.flushAutosave();
+		expect(updateConfigMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('refreshes validation after a successful config autosave lands', async () => {
@@ -1985,35 +3672,168 @@ describe('AgentBuilderView — configuration validation', () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
 			configValidation: { status: 'valid' | 'invalid' } | null;
-			saveConfig: (snapshot: {
-				type: 'config';
-				projectId: string;
-				agentId: string;
-				config: TestAgentConfig;
-			}) => Promise<void>;
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			flushAutosave: () => Promise<void>;
 		};
 
 		expect(vm.configValidation?.status).toBe('invalid');
 
-		await vm.saveConfig({
-			type: 'config',
-			projectId: 'p1',
-			agentId: 'a1',
-			config: withDefaultLlm({
-				name: 'Agent One',
-				instructions: 'You are a helpful assistant.',
-			})!,
-		});
+		vm.onConfigFieldUpdate({ instructions: 'Updated instructions' });
+		await vm.flushAutosave();
 		await nextTick();
 
 		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
 		expect(vm.configValidation?.status).toBe('valid');
 	});
 
+	it.each([false, true])(
+		'recovers a skipped save before history publication with intervening edits=%s',
+		async (changedRemotely) => {
+			const wrapper = await renderView();
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			wrapper
+				.getComponent({ name: 'AgentBuilderHeader' })
+				.vm.$emit('header-action', 'version-history');
+			await nextTick();
+			const beforePublish = wrapper
+				.getComponent({ name: 'AgentVersionHistoryPanel' })
+				.props('beforePublish') as () => Promise<boolean>;
+			const vm = wrapper.vm as unknown as {
+				onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+				flushAutosave: () => Promise<string | undefined>;
+			};
+			vm.onConfigFieldUpdate({ instructions: 'Local edit' });
+			const saving = vm.flushAutosave();
+			assistant.vm.$emit('update:building', true);
+			await expect(saving).resolves.toBe('skipped');
+			await expect(beforePublish()).resolves.toBe(false);
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			if (changedRemotely) {
+				intendedConfig = { name: 'Agent One', ...defaultLlmConfig, instructions: 'Remote edit' };
+				updateConfigMock.mockRejectedValueOnce(
+					new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+				);
+			}
+			assistant.vm.$emit('update:building', false);
+			await nextTick();
+
+			await expect(beforePublish()).resolves.toBe(!changedRemotely);
+			expect(updateConfigMock).toHaveBeenCalledExactlyOnceWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ instructions: 'Local edit' }),
+				'hash-1',
+			);
+			expect(
+				wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).toMatchObject({ instructions: changedRemotely ? 'Remote edit' : 'Local edit' });
+			await expect(beforePublish()).resolves.toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it('surfaces unpublished workflow tools in a modal and aborts the publish', async () => {
+		const notPublished = {
+			code: 'incompatible_reference',
+			reason: 'not_published',
+			path: 'tools.0.workflowId',
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Daily lookup', index: 0 },
+		};
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockResolvedValueOnce({ status: 'invalid', issues: [notPublished] });
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'workflow', workflow: 'Daily lookup', workflowId: 'wf_1', name: 'lookup' }],
+		};
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		await expect(vm.refreshValidationBeforePublish()).resolves.toBe(false);
+		expect(openModalWithDataMock).toHaveBeenCalledWith({
+			name: AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
+			data: { workflows: [{ name: 'Daily lookup', workflowId: 'wf_1' }] },
+		});
+	});
+
+	it('proceeds to publish when revalidation finds no unpublished workflow tools', async () => {
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockResolvedValueOnce({ status: 'valid', issues: [] });
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		await expect(vm.refreshValidationBeforePublish()).resolves.toBe(true);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+	});
+
+	it('aborts the publish without opening a modal when the target goes stale mid-flight', async () => {
+		const notPublished = {
+			code: 'incompatible_reference',
+			reason: 'not_published',
+			path: 'tools.0.workflowId',
+			capability: { kind: 'tool', toolType: 'workflow', id: 'Daily lookup', index: 0 },
+		};
+		const pendingValidation = Promise.withResolvers<{
+			status: 'valid' | 'invalid';
+			issues: (typeof notPublished)[];
+		}>();
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockReturnValueOnce(pendingValidation.promise);
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		const publishResult = vm.refreshValidationBeforePublish();
+		// Let the flush and the validation request start before navigating away.
+		await flushPromises();
+
+		routeParams.agentId = 'a2';
+		pendingValidation.resolve({ status: 'invalid', issues: [notPublished] });
+		await flushPromises();
+
+		await expect(publishResult).resolves.toBe(false);
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])(
+		'flushes history edits without blocking on an invalid current draft (save fails: %s)',
+		async (saveFails) => {
+			const wrapper = await renderView();
+			getAgentConfigValidationMock.mockResolvedValue({
+				status: 'invalid',
+				issues: [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }],
+			});
+			const vm = wrapper.vm as unknown as {
+				flushBeforePublish: () => Promise<boolean>;
+				onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+			};
+			if (saveFails) updateConfigMock.mockRejectedValueOnce(new Error('Save failed'));
+			vm.onConfigFieldUpdate({ instructions: 'New draft instructions' });
+			await expect(vm.flushBeforePublish()).resolves.toBe(!saveFails);
+			expect(updateConfigMock).toHaveBeenCalled();
+		},
+	);
+
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })
-			.mockResolvedValueOnce({ status: 'invalid', issues: [] });
+			.mockResolvedValueOnce({
+				status: 'invalid',
+				issues: [{ code: 'missing_required', path: 'model', capability: { kind: 'agent' } }],
+			});
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
@@ -2029,11 +3849,69 @@ describe('AgentBuilderView — configuration validation', () => {
 });
 
 describe('AgentBuilderView — three-column shell', () => {
+	const externalUpdateSelector = '[data-testid="agent-builder-external-update"]';
+
 	beforeEach(() => {
 		resetViewMocks();
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
+	});
+
+	it('opens the requested history tab from either header menu', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const historyAction = header
+			.props('headerActions')
+			.find((item: { id: string }) => item.id === 'version-history');
+		expect(historyAction).toMatchObject({ label: 'menuActions.versionHistory', disabled: false });
+		expect(historyAction.checked).toBeUndefined();
+
+		header.vm.$emit('open-publish-timeline');
+		await flushPromises();
+		const panel = wrapper.getComponent({ name: 'AgentVersionHistoryPanel' });
+		expect(panel.props('activeTab')).toBe('timeline');
+
+		header.vm.$emit('header-action', 'version-history');
+		await flushPromises();
+		expect(panel.props('activeTab')).toBe('versions');
+		header.vm.$emit('header-action', 'version-history');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(true);
+
+		header.vm.$emit('open-publish-timeline');
+		await flushPromises();
+		expect(panel.props('activeTab')).toBe('timeline');
+		panel.vm.$emit('close');
+		await flushPromises();
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
+	});
+
+	it('blocks both history entry points until the Agent is persisted', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const header = wrapper.getComponent({ name: 'AgentBuilderHeader' });
+		const historyAction = () =>
+			header.props('headerActions').find((item: { id: string }) => item.id === 'version-history');
+		expect(header.props('isUnsaved')).toBe(true);
+		expect(historyAction().disabled).toBe(true);
+		for (const [event, action] of [
+			['header-action', 'version-history'],
+			['open-publish-timeline', undefined],
+		]) {
+			header.vm.$emit(event!, action);
+			await nextTick();
+			expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(false);
+		}
+
+		wrapper
+			.getComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(header.props('isUnsaved')).toBe(false));
+		expect(historyAction().disabled).toBe(false);
+		header.vm.$emit('header-action', 'version-history');
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentVersionHistoryPanel' }).exists()).toBe(true);
 	});
 
 	it('renders only the manual editor without build chat controls', async () => {
@@ -2067,12 +3945,671 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').exists()).toBe(true);
 	});
 
-	it('renders the floating Instance AI button in builder mode', async () => {
+	it('opens the embedded AI panel by default for a pending agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+	});
+
+	it('keeps the AI panel open after a pending agent persists', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalled());
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
+	it('keeps the AI panel open after the assistant builds a pending agent', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+
+		vi.useFakeTimers();
+		try {
+			agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'instance-ai' });
+			await vi.advanceTimersByTimeAsync(400);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
+	it('shows the template intro for a blank pending agent and hides it for a saved one', async () => {
+		// Pending agent: intro should appear.
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		await vi.waitFor(() =>
+			expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(true),
+		);
+		expect(wrapper.find('[data-test-id="agent-template-morning-news-brief"]').exists()).toBe(true);
+
+		// Saved (non-pending) agent: intro must not appear even with the panel open.
+		history.replaceState({}, '');
+		const savedWrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				savedWrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		expect(savedWrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(savedWrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
+	});
+
+	it('applies a template, sends the prompt to the assistant and hides the intro', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief'),
+		);
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'Morning News Brief', {
+			id: 'a1',
+			config: expect.objectContaining({
+				name: 'Morning News Brief',
+				instructions: expect.stringContaining('news brief'),
+			}),
+		});
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('connectedTriggers')).toEqual([]);
+		// Tasks change the server config hash. The prompt waits until that
+		// config is reloaded, and reports a one-based catalog position.
+		await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(submitSuggestionMock).toHaveBeenCalled());
+		expect(createAgentTaskMock.mock.invocationCallOrder[0]).toBeLessThan(
+			submitSuggestionMock.mock.invocationCallOrder[0] ?? 0,
+		);
+		const configFetchesAfterTask = fetchConfigMock.mock.invocationCallOrder.filter(
+			(order) => order > (createAgentTaskMock.mock.invocationCallOrder[0] ?? 0),
+		);
+		expect(configFetchesAfterTask.length).toBeGreaterThan(0);
+		expect(configFetchesAfterTask[0]).toBeLessThan(
+			submitSuggestionMock.mock.invocationCallOrder[0] ?? 0,
+		);
+		expect(submitSuggestionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				prefillType: 'template_adjustment',
+				suggestionId: 'morning-news-brief',
+				prompt: expect.stringContaining('Morning news brief'),
+				position: AGENT_TEMPLATES.findIndex((template) => template.id === 'morning-news-brief') + 1,
+				suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+			}),
+		);
+		expect(createAgentTaskMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			expect.objectContaining({
+				name: 'Morning news brief',
+				cronExpression: '0 9 * * *',
+				enabled: true,
+			}),
+		);
+		await flushPromises();
+		await vi.waitFor(() =>
+			expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false),
+		);
+	});
+
+	it('stashes a list-view prompt as the assistant first message', async () => {
+		history.replaceState(
+			{
+				instanceAiPendingAgentId: 'a1',
+				instanceAiPendingAgentStarter: { kind: 'prompt', text: 'Summarize my inbox' },
+			},
+			'',
+		);
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true),
+		);
+		await flushPromises();
+
+		await wrapper.get('[data-testid="ai-panel-emit-thread-id"]').trigger('click');
+
+		const raw = localStorage.getItem('n8n-instance-ai-first-message:thread-99');
+		expect(JSON.parse(raw ?? '')).toEqual({
+			message: 'Summarize my inbox',
+			authorship: { kind: 'user_typed' },
+		});
+		expect(history.state.instanceAiPendingAgentStarter).toBeUndefined();
+		localStorage.removeItem('n8n-instance-ai-first-message:thread-99');
+	});
+
+	it('applies a list-view template before the assistant thread is minted and stashes the prompt', async () => {
+		let releaseCreate: (value: ReturnType<typeof makeAgentResponse>) => void = () => {};
+		createAgentMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					releaseCreate = resolve;
+				}),
+		);
+		history.replaceState(
+			{
+				instanceAiPendingAgentId: 'a1',
+				instanceAiPendingAgentStarter: {
+					kind: 'template',
+					templateId: 'qualify-new-leads',
+				},
+			},
+			'',
+		);
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(createAgentMock).toHaveBeenCalled();
+		});
+
+		let settled = false;
+		const beforeNewThread = wrapper
+			.findComponent({ name: 'InstanceAiChatPanel' })
+			.props('beforeNewThread') as () => Promise<void>;
+		const pending = beforeNewThread().then(() => {
+			settled = true;
+		});
+		await flushPromises();
+		expect(settled).toBe(false);
+		expect(submitSuggestionMock).not.toHaveBeenCalled();
+
+		releaseCreate(makeCreationResponse(createAgentMock.mock.calls[0]?.[3].config));
+		await pending;
+		expect(settled).toBe(true);
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+			config: expect.objectContaining({
+				instructions: expect.stringContaining('lead qualification'),
+			}),
+		});
+		expect(updateConfigMock).not.toHaveBeenCalled();
+
+		await wrapper.get('[data-testid="ai-panel-emit-thread-id"]').trigger('click');
+		const stashed = JSON.parse(
+			localStorage.getItem('n8n-instance-ai-first-message:thread-99') ?? '',
+		) as { message: string; authorship: { kind: string; prefillType: string; prefillId: string } };
+		expect(stashed.message).toContain('Qualify new leads');
+		expect(stashed.authorship).toEqual({
+			kind: 'prefill',
+			prefillType: 'template_adjustment',
+			prefillId: 'qualify-new-leads',
+		});
+		expect(history.state.instanceAiPendingAgentStarter).toBeUndefined();
+		localStorage.removeItem('n8n-instance-ai-first-message:thread-99');
+	});
+
+	it('reports a non-first template position as one-based', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		const template = AGENT_TEMPLATES.find((entry) => entry.id === 'process-incoming-emails');
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(template);
+		await vi.waitFor(() => expect(submitSuggestionMock).toHaveBeenCalled());
+
+		const position =
+			AGENT_TEMPLATES.findIndex((entry) => entry.id === 'process-incoming-emails') + 1;
+		expect(position).toBeGreaterThan(1);
+		expect(submitSuggestionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				suggestionId: 'process-incoming-emails',
+				position,
+				suggestionCatalogVersion: AGENT_TEMPLATE_SUGGESTIONS_VERSION,
+			}),
+		);
+	});
+
+	it('does not send the template prompt when the config refresh fails', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const fetchImpl = fetchConfigMock.getMockImplementation();
+		createAgentTaskMock.mockImplementation(async () => {
+			fetchConfigMock.mockRejectedValue(new Error('refresh failed'));
+			return { id: 'task-1' };
+		});
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		try {
+			(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+				AGENT_TEMPLATES.find((entry) => entry.id === 'morning-news-brief'),
+			);
+			await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalled());
+			await vi.waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(submitSuggestionMock).not.toHaveBeenCalled();
+		} finally {
+			if (fetchImpl) fetchConfigMock.mockImplementation(fetchImpl);
+		}
+	});
+
+	it('does not send the template prompt after the user switches agents', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		let release: (value: { id: string }) => void = () => {};
+		createAgentTaskMock.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES.find((entry) => entry.id === 'morning-news-brief'),
+		);
+		await vi.waitFor(() => expect(createAgentTaskMock).toHaveBeenCalled());
+		routeParams.agentId = 'a2';
+		release({ id: 'task-1' });
+		await flushPromises();
+
+		expect(submitSuggestionMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps a renamed agent name when applying a template', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		// Rename the agent before applying a template; the template must keep it.
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('update:config', { name: 'Ops bot' });
+		await flushPromises();
+
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES.find((t) => t.id === 'morning-news-brief'),
+		);
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalled());
+
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'Ops bot', {
+			id: 'a1',
+			config: expect.objectContaining({ name: 'Ops bot' }),
+		});
+	});
+
+	it('refuses a template once the agent has content', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		intendedConfig = { name: 'New Agent', instructions: '' };
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		const wrapper = await renderView();
+		await vi.waitFor(() =>
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('localConfig'),
+			).not.toBeNull(),
+		);
+		await flushPromises();
+
+		// Type instructions first — the intro disappears.
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		editor.vm.$emit('update:config', { instructions: 'x' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="instance-ai-agent-intro"]').exists()).toBe(false);
+
+		// Calling onApplyTemplate directly (the intro is gone, so no row to click).
+		(wrapper.vm as unknown as { onApplyTemplate: (t: unknown) => void }).onApplyTemplate(
+			AGENT_TEMPLATES[0],
+		);
+		await flushPromises();
+
+		expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		expect(submitSuggestionMock).not.toHaveBeenCalled();
+	});
+
+	it.each([null, 'false', 'true'])(
+		'opens the AI panel for an unpublished agent with saved preference %s',
+		async (savedPreference) => {
+			if (savedPreference !== null) {
+				localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', savedPreference);
+			}
+			const wrapper = await renderView();
+
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe(savedPreference);
+		},
+	);
+
+	it.each([null, 'false', 'true'])(
+		'uses saved AI panel preference %s for an unpublished agent without edit permission',
+		async (savedPreference) => {
+			const canUpdate = agentPermissionsMock.canUpdate.value;
+			agentPermissionsMock.canUpdate.value = false;
+			try {
+				if (savedPreference !== null) {
+					localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', savedPreference);
+				}
+				const wrapper = await renderView();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(
+					savedPreference === 'true',
+				);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe(savedPreference);
+			} finally {
+				agentPermissionsMock.canUpdate.value = canUpdate;
+			}
+		},
+	);
+
+	it('lets an unpublished agent close the AI panel until the next visit', async () => {
+		const wrapper = await renderView();
+		await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe('false');
+		wrapper.unmount();
+
+		const reopened = await renderView();
+		expect(reopened.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
+	it('keeps the AI panel closed after an unpublished agent saves', async () => {
+		const wrapper = await renderView();
+		await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+		wrapper
+			.getComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Updated instructions' });
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<unknown> }).flushAutosave();
+		await flushPromises();
+
+		expect(updateConfigMock).toHaveBeenCalled();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it.each(['agentId', 'projectId'] as const)(
+		'applies the AI panel default on each visit when %s changes',
+		async (field) => {
+			getAgentMock.mockImplementation(async (_context, projectId: string, id: string) =>
+				makeAgentResponse({
+					id,
+					projectId,
+					activeVersionId: id === 'a2' || projectId === 'p2' ? null : 'v1',
+				}),
+			);
+			const wrapper = await renderView();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+
+			routeParams[field] = field === 'agentId' ? 'a2' : 'p2';
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+
+			routeParams[field] = field === 'agentId' ? 'a1' : 'p1';
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+
+			routeParams[field] = field === 'agentId' ? 'a2' : 'p2';
+			await flushPromises();
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		},
+	);
+
+	it.each([true, false])('keeps the AI panel state %s when an agent is published', async (open) => {
+		const wrapper = await renderView();
+		if (!open) await wrapper.get('[data-testid="ai-panel-emit-close"]').trigger('click');
+
+		wrapper
+			.getComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(open);
+	});
+
+	it('keeps the embedded AI panel closed by default for a published agent', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
 	});
 
-	it('hides the floating Instance AI button in artifact mode', async () => {
+	it.each(['true', 'false'])('uses saved preference %s for a published agent', async (saved) => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', saved);
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(saved === 'true');
+	});
+
+	it('keeps the AI panel closed for an unpublished agent when Instance AI is not ready', async () => {
+		instanceAiReadyRef.value = false;
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+	});
+
+	it('keeps the embedded AI panel closed by default for a pending agent when Instance AI is not ready, and writes nothing to storage', async () => {
+		instanceAiReadyRef.value = false;
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+	});
+
+	it('persists an explicit toggle of the AI panel', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBe('true');
+	});
+
+	describe('AI panel shortcut', function () {
+		afterEach(function restoreUserAgent() {
+			vi.restoreAllMocks();
+		});
+
+		const platforms = [
+			{ userAgent: 'Windows', modifier: 'ctrlKey' },
+			{ userAgent: 'Macintosh', modifier: 'metaKey' },
+		] as const;
+
+		function pressToggle(modifier: 'ctrlKey' | 'metaKey') {
+			const event = new KeyboardEvent('keydown', {
+				key: 'j',
+				code: 'KeyJ',
+				[modifier]: true,
+				bubbles: true,
+				cancelable: true,
+			});
+			document.dispatchEvent(event);
+			return event;
+		}
+
+		it.each(platforms)(
+			'toggles with $modifier and tracks only opening',
+			async function ({ userAgent, modifier }) {
+				getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+				const wrapper = await renderView();
+				trackMock.mockClear();
+
+				expect(pressToggle(modifier).defaultPrevented).toBe(true);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+				expect(trackMock).toHaveBeenCalledExactlyOnceWith('Instance AI opened from editor', {
+					source: 'agent_builder_page',
+					agent_id: 'a1',
+					workflow_id: null,
+					execution_id: null,
+				});
+
+				pressToggle(modifier);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(trackMock).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each(platforms)(
+			'disables $modifier when availability changes',
+			async function ({ userAgent, modifier }) {
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+				const wrapper = await renderView();
+				instanceAiAvailableRef.value = false;
+				instanceAiReadyRef.value = false;
+				await nextTick();
+				trackMock.mockClear();
+
+				expect(pressToggle(modifier).defaultPrevented).toBe(false);
+				await nextTick();
+
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+				expect(routerPush).not.toHaveBeenCalled();
+				expect(trackMock).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(platforms)(
+			'routes $modifier to unfinished setup without opening',
+			async function ({ userAgent, modifier }) {
+				vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+				instanceAiReadyRef.value = false;
+				const wrapper = await renderView();
+				trackMock.mockClear();
+
+				pressToggle(modifier);
+				await nextTick();
+
+				expect(routerPush).toHaveBeenCalledExactlyOnceWith({ name: 'InstanceAi' });
+				expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+				expect(localStorage.getItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1')).toBeNull();
+				expect(trackMock).not.toHaveBeenCalled();
+			},
+		);
+	});
+
+	it.each([
+		{ savedWidth: null, expectedWidth: 480 },
+		{ savedWidth: '560', expectedWidth: 560 },
+		{ savedWidth: '900', expectedWidth: 720 },
+	])(
+		'starts the AI resize wrapper at $expectedWidth with saved width $savedWidth',
+		async function ({ savedWidth, expectedWidth }) {
+			if (savedWidth !== null) localStorage.setItem('N8N_AGENT_AI_PANEL_WIDTH', savedWidth);
+			const wrapper = await renderView();
+			const dock = wrapper.get('[data-testid="agent-ai-dock"]');
+			const resizer = dock.getComponent({ name: 'ResizeWrapper' });
+
+			expect(resizer.props('width')).toBe(expectedWidth);
+			expect(dock.element.parentElement?.style.getPropertyValue('--agent-ai-panel-width')).toBe(
+				`${expectedWidth}px`,
+			);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe(savedWidth);
+
+			await resizer.get('[data-dir="right"]').trigger('dblclick');
+			await flushPromises();
+
+			expect(resizer.props('width')).toBe(480);
+			expect(dock.element.parentElement?.style.getPropertyValue('--agent-ai-panel-width')).toBe(
+				'480px',
+			);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('480');
+		},
+	);
+
+	it('closes the AI panel by default after switching to a published agent', async () => {
+		// `useStorage`'s default is captured once and reused for every later key
+		// this computed storage key produces — a non-constant default would leak
+		// "open" from the pending agent onto every agent visited afterward.
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		getAgentMock.mockResolvedValue(makeAgentResponse({ id: 'a2', activeVersionId: 'v1' }));
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+
+		routeParams.agentId = 'a2';
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it('opens the AI panel and skips the fetch when the switcher hands off a pending agent in place', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		getAgentMock.mockClear();
+
+		// "New agent" from the switcher (`useCreateAgent`) writes the new pending
+		// marker to `history.state` and changes `agentId` in place — the same
+		// component instance keeps running, so `routePendingAgentId` (read once
+		// at setup) must be refreshed from the now-current `history.state`.
+		history.replaceState({ instanceAiPendingAgentId: 'b' }, '');
+		routeParams.agentId = 'b';
+		await flushPromises();
+
+		expect(getAgentMock).not.toHaveBeenCalledWith(expect.anything(), 'p1', 'b');
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
+			true,
+		);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+	});
+
+	it('hides the embedded AI panel dock in artifact mode', async () => {
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -2081,34 +4618,441 @@ describe('AgentBuilderView — three-column shell', () => {
 			},
 		});
 
-		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 	});
 
-	it('hides the floating Instance AI button when Instance AI is unavailable', async () => {
+	it('reports Instance AI availability through the panel toggle', async () => {
 		instanceAiAvailableRef.value = false;
 		const wrapper = await renderView();
+
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 	});
 
-	it('opens the agent artifact without sending an opening message', async () => {
+	it.each([
+		[false, 'mcp', 'mcp'],
+		[false, 'builder', null],
+		[false, 'user', null],
+		[false, undefined, null],
+		[false, 'future-source', null],
+		[true, 'mcp', 'mcp'],
+		[true, 'builder', null],
+		[true, 'user', null],
+		[true, undefined, null],
+		[true, 'future-source', null],
+	] as const)(
+		'shows only MCP notices (artifact: %s, source: %s)',
+		async (artifactMode, source, label) => {
+			instanceAiAvailableRef.value = false;
+			if (!artifactMode) routeQuery[OPEN_PREVIEW_PARAM] = 'true';
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: 'p1',
+					artifactAgentId: 'a1',
+				},
+			});
+			if (!artifactMode) {
+				expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+			}
+			expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+
+			for (const listener of pushListeners) {
+				listener({
+					type: 'agentUpdated',
+					data: { projectId: 'p1', agentId: 'a1', source },
+				} as PushMessage);
+			}
+			await nextTick();
+
+			if (label) {
+				expect(wrapper.get(externalUpdateSelector).text()).toBe(
+					'agents.builder.externalUpdate.mcp just now',
+				);
+				expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite');
+			} else {
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+			}
+			expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		},
+	);
+
+	it('keeps the latest MCP notice for five minutes and ignores other sources', async () => {
 		const wrapper = await renderView();
+		vi.useFakeTimers();
+		try {
+			for (const listener of pushListeners) {
+				listener({
+					type: 'agentUpdated',
+					data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
+				} as PushMessage);
+			}
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.mcp 1 minute ago',
+			);
+			await vi.advanceTimersByTimeAsync(239_000);
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.mcp 4 minutes ago',
+			);
+
+			for (const listener of pushListeners) {
+				listener({
+					type: 'agentUpdated',
+					data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
+				} as PushMessage);
+			}
+			await nextTick();
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.mcp just now',
+			);
+			await vi.advanceTimersByTimeAsync(60_000);
+			for (const source of ['builder', 'user', undefined, 'future-source']) {
+				for (const listener of pushListeners) {
+					listener({
+						type: 'agentUpdated',
+						data: { projectId: 'p1', agentId: 'a1', source },
+					} as PushMessage);
+				}
+				await nextTick();
+				expect(wrapper.get(externalUpdateSelector).text()).toBe(
+					'agents.builder.externalUpdate.mcp 1 minute ago',
+				);
+			}
+			await vi.advanceTimersByTimeAsync(239_999);
+			expect(wrapper.findAll(externalUpdateSelector)).toHaveLength(1);
+			expect(wrapper.get(externalUpdateSelector).text()).toBe(
+				'agents.builder.externalUpdate.mcp 4 minutes ago',
+			);
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+		} finally {
+			wrapper.unmount();
+			vi.useRealTimers();
+		}
+	});
+
+	it('dismisses the notice with a close button and shows the next update', async () => {
+		const wrapper = await renderView();
+		for (const listener of pushListeners) {
+			listener({
+				type: 'agentUpdated',
+				data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
+			});
+		}
+		await nextTick();
+
+		const dismiss = wrapper.get('[data-testid="agent-builder-external-update-dismiss"]');
+		expect(dismiss.attributes('aria-label')).toBe('generic.dismiss');
+		await dismiss.trigger('click');
+		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+
+		for (const listener of pushListeners) {
+			listener({
+				type: 'agentUpdated',
+				data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
+			});
+		}
+		await nextTick();
+		expect(wrapper.get(externalUpdateSelector).text()).toBe(
+			'agents.builder.externalUpdate.mcp just now',
+		);
+	});
+
+	it.each(['agentId', 'projectId'] as const)(
+		'clears the notice when %s changes and on unmount',
+		async (field) => {
+			const wrapper = await renderView();
+			vi.useFakeTimers();
+			try {
+				for (const listener of pushListeners) {
+					listener({
+						type: 'agentUpdated',
+						data: { projectId: 'p1', agentId: 'a1', source: 'mcp' },
+					});
+				}
+				await vi.advanceTimersByTimeAsync(400);
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(true);
+
+				routeParams[field] = 'new-target';
+				await flushPromises();
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+
+				for (const listener of pushListeners) {
+					listener({ type: 'agentUpdated', data: { ...routeParams, source: 'mcp' } });
+				}
+				await vi.advanceTimersByTimeAsync(400);
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(true);
+				wrapper.unmount();
+				// onBeforeUnmount is async (drains autosave before releasing the
+				// lock). With lazy acquisition the tab is writable, so flushAutosave
+				// does real work — advance timers to let it settle before asserting.
+				await vi.advanceTimersByTimeAsync(0);
+				await flushPromises();
+				expect(pushListeners.size).toBe(0);
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				wrapper.unmount();
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it('ignores other agents, projects, executions, and local saves for activity feedback', async () => {
+		const wrapper = await renderView();
+		const unrelatedUpdates: PushMessage[] = [
+			{ type: 'agentUpdated', data: { projectId: 'p1', agentId: 'a2', source: 'mcp' } },
+			{ type: 'agentUpdated', data: { projectId: 'p2', agentId: 'a1', source: 'mcp' } },
+			{
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 't1', executionId: 'e1' },
+			},
+		];
+		for (const event of unrelatedUpdates) {
+			for (const listener of pushListeners) listener(event);
+		}
+		agentsEventBus.emit('agentUpdated', { agentId: 'a1', source: 'agent-builder' });
+		await nextTick();
+
+		expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+	});
+
+	it('hides the AI panel button while open and restores it after closing', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+
 		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="ai-panel-emit-close"]').trigger('click');
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+	});
+
+	it.each([
+		{ containerWidth: 800, expectedWidth: 320 },
+		{ containerWidth: 1600, expectedWidth: 480 },
+		{ containerWidth: 2400, expectedWidth: 720 },
+	])(
+		'uses responsive defaults at $containerWidth px',
+		async ({ containerWidth, expectedWidth }) => {
+			const wrapper = await renderView();
+			const vm = wrapper.vm as unknown as { builderContainerWidth: number };
+			vm.builderContainerWidth = containerWidth;
+			await nextTick();
+			const aiResizer = wrapper
+				.get('[data-testid="agent-ai-dock"]')
+				.getComponent({ name: 'ResizeWrapper' });
+			const previewResizer = wrapper
+				.findAllComponents({ name: 'ResizeWrapper' })
+				.find((resizer) => resizer.props('supportedDirections').includes('left'));
+
+			expect(aiResizer.props('width')).toBe(expectedWidth);
+			expect(aiResizer.props('defaultWidth')).toBe(expectedWidth);
+			expect(previewResizer?.props('defaultWidth')).toBe(expectedWidth);
+			expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBeNull();
+		},
+	);
+
+	it('hides the preview resize handle when the preview is closed', async () => {
+		const wrapper = await renderView();
+		const resizer = wrapper
+			.findAllComponents({ name: 'ResizeWrapper' })
+			.find((component) => component.props('supportedDirections').includes('left'));
+
+		expect(resizer?.classes()).toContain('previewResizeWrapper');
+		expect(resizer?.classes()).not.toContain('previewResizeOpen');
+		expect(resizer?.find('[data-dir="left"]').exists()).toBe(false);
+	});
+
+	it('keeps saved AI widths during automatic layout changes', async () => {
+		localStorage.setItem('N8N_AGENT_AI_PANEL_WIDTH', '680');
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as { builderContainerWidth: number };
+		vm.builderContainerWidth = 1200;
+		await nextTick();
+		const resizer = wrapper
+			.get('[data-testid="agent-ai-dock"]')
+			.getComponent({ name: 'ResizeWrapper' });
+
+		expect(resizer.props('width')).toBeLessThan(680);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('680');
+		vm.builderContainerWidth = 2400;
+		await nextTick();
+		expect(resizer.props('width')).toBe(680);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBe('680');
+	});
+
+	it('resets the preview to the current responsive default', async () => {
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			onPreviewDockResize: (data: { width: number }) => void;
+		};
+		vm.builderContainerWidth = 1600;
+		vm.onPreviewDockResize({ width: 640 });
+		await nextTick();
+		const resizer = wrapper
+			.findAllComponents({ name: 'ResizeWrapper' })
+			.find((component) => component.props('supportedDirections').includes('left'));
+		expect(resizer?.props('width')).toBe(640);
+		expect(resizer?.classes()).toContain('previewResizeWrapper');
+		expect(resizer?.classes()).toContain('previewResizeOpen');
+		await resizer?.get('[data-dir="left"]').trigger('mousedown');
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await nextTick();
+		await resizer?.get('[data-dir="left"]').trigger('mousedown');
+		window.dispatchEvent(new MouseEvent('mouseup'));
+		await nextTick();
+		await resizer?.get('[data-dir="left"]').trigger('dblclick');
+		await flushPromises();
+		expect(resizer?.props('width')).toBe(480);
+		expect(localStorage.getItem('N8N_AGENT_AI_PANEL_WIDTH')).toBeNull();
+	});
+
+	it('closes the preview when opening the AI panel would make the editor too narrow', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1100;
+		await nextTick();
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+
+		vm.toggleAiPanel();
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+	});
+
+	it('closes the AI panel when opening the preview would make the editor too narrow', async () => {
+		localStorage.setItem('N8N_AGENT_AI_PANEL_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1100;
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+
+		await (wrapper.vm as unknown as { onOpenPreview: () => Promise<boolean> }).onOpenPreview();
 		await flushPromises();
 
-		expect(openAgentArtifactThread).toHaveBeenCalledWith(
-			{
-				type: 'agent',
-				id: 'a1',
-				name: 'Agent One',
-				projectId: 'p1',
-			},
-			{
-				source: 'agent_builder_page',
-				origin: 'internal',
-				sourceContext: { agentId: 'a1' },
-			},
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it('shrinks both side panels before closing either one', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			builderContainerWidth: number;
+			toggleAiPanel: () => void;
+		};
+		vm.builderContainerWidth = 1200;
+		await nextTick();
+
+		vm.toggleAiPanel();
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+		const builder = wrapper.get('[data-testid="agent-builder-container"]').element as HTMLElement;
+		const aiWidth = Number.parseFloat(builder.style.getPropertyValue('--agent-ai-panel-width'));
+		const previewWidth = Number.parseFloat(
+			builder.style.getPropertyValue('--agent-preview-chat-column-width'),
 		);
-		expect(startInstanceAiThread).not.toHaveBeenCalled();
+		expect(aiWidth).toBeGreaterThanOrEqual(320);
+		expect(previewWidth).toBeGreaterThanOrEqual(320);
+		expect(aiWidth + previewWidth).toBeCloseTo(720);
+	});
+
+	it('routes to the assistant setup instead of opening the panel when setup is unfinished', async () => {
+		instanceAiReadyRef.value = false;
+		const wrapper = await renderView();
+
+		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
+
+		expect(routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
+	});
+
+	it('keys the embedded AI panel by agent id so an in-place switch remounts it', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const panel = wrapper.findComponent({ name: 'InstanceAiChatPanel' });
+
+		expect((panel.vm as unknown as { $: { vnode: { key: string | null } } }).$.vnode.key).toBe(
+			'a1',
+		);
+	});
+
+	it('passes a flushAutosave guard as before-send to the embedded AI panel', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const panel = wrapper.findComponent({ name: 'InstanceAiChatPanel' });
+
+		expect(panel.props('beforeSend')).toBe(
+			(wrapper.vm as unknown as { flushAutosaveIgnoringResult: () => Promise<void> })
+				.flushAutosaveIgnoringResult,
+		);
+	});
+
+	it('shows the building indicator and locks editing while the embedded assistant builds', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('canEditAgent')).toBe(true);
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(false);
+
+		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(true);
+		expect(editor.props('canEditAgent')).toBe(false);
+
+		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
+		expect(wrapper.find('[data-testid="stub-agent-building-indicator"]').exists()).toBe(false);
+		expect(editor.props('canEditAgent')).toBe(true);
+	});
+
+	it('writes the panel thread id to the assistantThread query param', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView();
+
+		await wrapper.find('[data-testid="ai-panel-emit-thread-id"]').trigger('click');
+
+		expect(routerReplace).toHaveBeenCalledWith({
+			query: expect.objectContaining({ assistantThread: 'thread-99' }),
+		});
+	});
+
+	it('drops the assistantThread query param when switching to another agent', async () => {
+		routeQuery.assistantThread = 'thread-99';
+		routeQuery.section = 'knowledge';
+		const wrapper = await renderView();
+
+		await wrapper.find('[data-testid="stub-switch-agent"]').trigger('click');
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				params: { projectId: 'p1', agentId: 'a2' },
+				query: { section: 'knowledge' },
+			}),
+		);
+	});
+
+	it('closes the AI panel when the embedded panel emits close', async () => {
+		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+
+		await wrapper.find('[data-testid="ai-panel-emit-close"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(false);
 	});
 
 	it('renders artifact mode with the editor and without the build chat', async () => {
@@ -2157,6 +5101,84 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
+	it('drops a queued MCP toggle when the artifact lock engages instead of persisting it', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactEditingLocked: false,
+			},
+		});
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
+		const toggleAgentMcpAccess = vi
+			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
+			.mockResolvedValue({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
+
+		// See the sibling MCP test below: a failed initialize() drops the toggle
+		// silently, so guard the mount before emitting.
+		const editorColumn = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editorColumn.props('agent')).toBeTruthy();
+
+		vi.useFakeTimers();
+		try {
+			editorColumn.vm.$emit('toggle-mcp-access', true);
+
+			await wrapper.setProps({ artifactEditingLocked: true });
+			await vi.advanceTimersByTimeAsync(500);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		expect(toggleAgentMcpAccess).not.toHaveBeenCalled();
+	});
+
+	it('resets the optimistic MCP override when a queued toggle is dropped by the artifact lock', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactEditingLocked: false,
+			},
+		});
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
+		vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockResolvedValue({
+			updatedCount: 1,
+			updatedIds: ['a2'],
+			unchangedIds: [],
+		});
+
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentAvailableInMcp'),
+		).toBe(false);
+
+		vi.useFakeTimers();
+		try {
+			wrapper
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.vm.$emit('toggle-mcp-access', true);
+			await nextTick();
+			// The optimistic toggle shows immediately, before the lock drops it.
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentAvailableInMcp'),
+			).toBe(true);
+
+			await wrapper.setProps({ artifactEditingLocked: true });
+			await vi.advanceTimersByTimeAsync(500);
+		} finally {
+			vi.useRealTimers();
+		}
+		await flushPromises();
+
+		// The queued save was dropped — the override must not keep showing an
+		// unsaved value after the lock releases.
+		expect(
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentAvailableInMcp'),
+		).toBe(false);
+	});
+
 	it('flushes a pending MCP toggle before switching agents', async () => {
 		const wrapper = await renderView({
 			props: {
@@ -2165,7 +5187,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactAgentId: 'a1',
 			},
 		});
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockResolvedValue({
 			updatedCount: 1,
 			updatedIds: ['a1'],
@@ -2240,7 +5262,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			},
 		});
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(new Error('mcp save failed'));
 
 		vi.useFakeTimers();
@@ -2445,6 +5467,63 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.unmount();
 	});
 
+	it.each([false, true])(
+		'reloads an idle agent from push and defers updates during autosave (artifact: %s)',
+		async (artifactMode) => {
+			routeParams.projectId = 'p-push';
+			routeParams.agentId = 'a-push';
+			const wrapper = await renderView({
+				props: {
+					artifactMode,
+					artifactProjectId: 'p-push',
+					artifactAgentId: 'a-push',
+				},
+			});
+			const update: PushMessage = {
+				type: 'agentUpdated',
+				data: { projectId: 'p-push', agentId: 'a-push', source: 'builder' },
+			};
+			getAgentMock.mockClear();
+			fetchConfigMock.mockClear();
+
+			vi.useFakeTimers();
+			try {
+				for (const listener of pushListeners) listener(update);
+				await vi.advanceTimersByTimeAsync(400);
+				await flushPromises();
+
+				expect(getAgentMock).toHaveBeenCalledTimes(1);
+				expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+				getAgentMock.mockClear();
+				fetchConfigMock.mockClear();
+				wrapper
+					.findComponent({ name: 'AgentBuilderEditorColumn' })
+					.vm.$emit('update:config', { instructions: 'Local pending edit' });
+				await nextTick();
+
+				for (const listener of pushListeners) listener(update);
+				await vi.advanceTimersByTimeAsync(400);
+				await flushPromises();
+
+				expect(getAgentMock).not.toHaveBeenCalled();
+				expect(fetchConfigMock).not.toHaveBeenCalled();
+				expect(wrapper.find(externalUpdateSelector).exists()).toBe(false);
+
+				// The remote change is not lost: once the local save lands it is applied.
+				// (The save itself refetches the agent, so the config fetch is the marker.)
+				await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+				await nextTick();
+				await flushPromises();
+
+				expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+			} finally {
+				vi.useRealTimers();
+				wrapper.unmount();
+			}
+		},
+	);
+
 	it('coalesces rapid external agent updates into one refresh cascade', async () => {
 		const wrapper = await renderView({
 			props: {
@@ -2574,23 +5653,97 @@ describe('AgentBuilderView — three-column shell', () => {
 			artifactAgentPending: true,
 		};
 
-		it('renders without reading anything for an agent that does not exist yet', async () => {
+		beforeEach(() => {
+			mockPendingAgentRow('aBcDeFgHiJkLmNoP');
+		});
+
+		it('reads nothing but the existence probe for an agent that does not exist yet', async () => {
 			await renderView({ props: pendingProps });
 
-			expect(getAgentMock).not.toHaveBeenCalled();
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
 			expect(fetchConfigMock).not.toHaveBeenCalled();
 			expect(createAgentMock).not.toHaveBeenCalled();
 		});
 
-		it('creates the pending agent once and refreshes validation after the first save', async () => {
-			let configTarget: string | undefined;
-			repointConfigMock.mockImplementation((projectId: string, agentId: string) => {
-				configTarget = `${projectId}:${agentId}`;
+		// A stale pending marker (the chat created the agent under this id, or a
+		// previous binding write failed) must not draft over the real row.
+		it('hydrates an existing row instead of drafting over it', async () => {
+			getAgentMock.mockReset();
+			getAgentMock.mockResolvedValue(
+				makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }),
+			);
+			const artifactPersistAgent = vi
+				.fn()
+				.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }));
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
 			});
-			updateConfigMock.mockImplementation(async (projectId: string, agentId: string) => ({
-				versionId: 'v1',
-				stale: configTarget !== `${projectId}:${agentId}`,
-			}));
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			expect(editor.props('agentUnsaved')).toBe(false);
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'aBcDeFgHiJkLmNoP');
+			// The host is told, so it can retire the stale pending marker.
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			// No second persist: the row already exists.
+			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
+		});
+
+		// The row is real and hydrated, so re-showing a blank draft would undo the
+		// probe — but the binding must not be silently abandoned either.
+		it('retries a failed binding on the next edit without reverting to a draft', async () => {
+			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' });
+			getAgentMock.mockReset();
+			getAgentMock.mockResolvedValue(persisted);
+			const artifactPersistAgent = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('binding failed'))
+				.mockResolvedValue(persisted);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+			// Hydrated, not drafting — the failed bind must not undo that.
+			expect(editor.props('agentUnsaved')).toBe(false);
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+		});
+
+		// The retry lives in `ensureAgentPersisted` — the funnel every mutating path
+		// awaits — so a skill-only or MCP-only edit retries it too, not just a config
+		// save.
+		it('retries a failed binding from the shared persistence funnel', async () => {
+			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' });
+			getAgentMock.mockReset();
+			getAgentMock.mockResolvedValue(persisted);
+			const artifactPersistAgent = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('binding failed'))
+				.mockResolvedValue(persisted);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+
+			const ensureAgentPersisted = editor.props('ensureAgentPersisted') as () => Promise<void>;
+			await ensureAgentPersisted();
+
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+			// A satisfied binding is not retried again.
+			await ensureAgentPersisted();
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+		});
+
+		it('creates the pending agent once and refreshes validation after the first save', async () => {
 			const wrapper = await renderView({ props: pendingProps });
 			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
@@ -2599,17 +5752,14 @@ describe('AgentBuilderView — three-column shell', () => {
 				instructions: 'Answer support mail',
 			});
 			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-4-5' });
-			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
 			expect(createAgentMock).toHaveBeenCalledTimes(1);
 			expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
 				id: 'aBcDeFgHiJkLmNoP',
+				config: expect.objectContaining({ instructions: 'Answer support mail' }),
 			});
-			expect(updateConfigMock).toHaveBeenCalledWith(
-				'p1',
-				'aBcDeFgHiJkLmNoP',
-				expect.objectContaining({ instructions: 'Answer support mail' }),
-			);
+			expect(updateConfigMock).not.toHaveBeenCalled();
 			await vi.waitFor(() =>
 				expect(
 					wrapper
@@ -2626,29 +5776,120 @@ describe('AgentBuilderView — three-column shell', () => {
 			wrapper
 				.findComponent({ name: 'AgentBuilderEditorColumn' })
 				.vm.$emit('update:config', { instructions: 'Answer support mail' });
-			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalled());
 
-			expect(updateConfigMock).toHaveBeenCalledWith(
-				'p1',
-				'aBcDeFgHiJkLmNoP',
-				expect.objectContaining({
+			expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+				id: 'aBcDeFgHiJkLmNoP',
+				config: expect.objectContaining({
 					personalisation: expect.objectContaining({
 						icon: expect.any(String),
 						gradient: expect.objectContaining({ angle: expect.any(Number) }),
 					}),
 				}),
-			);
+			});
 		});
 
-		it('reports the agent so the host can stop treating the artifact as pending', async () => {
-			const wrapper = await renderView({ props: pendingProps });
+		// The host's persist call creates AND durably binds the agent, so it stands
+		// in for the plain create — and only its resolution retires the draft.
+		it('persists a hosted artifact through the host, not the strict create', async () => {
+			const artifactPersistAgent = vi.fn(
+				async ({ config }: Parameters<typeof persistPendingAgent>[2]) =>
+					makeCreationResponse(config, { id: 'aBcDeFgHiJkLmNoP' }),
+			);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('update:config', { instructions: 'Answer support mail' });
-			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			editor.vm.$emit('update:config', { name: 'Support Agent' });
+			await vi.waitFor(() => expect(editor.props('agentUnsaved')).toBe(false));
 
-			expect(wrapper.emitted('persisted')).toHaveLength(1);
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
+			expect(artifactPersistAgent).toHaveBeenCalledWith({
+				projectId: 'p1',
+				agentId: 'aBcDeFgHiJkLmNoP',
+				name: 'Support Agent',
+				config: expect.objectContaining({ name: 'Support Agent' }),
+			});
+			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(updateConfigMock).not.toHaveBeenCalled();
+			expect(editor.props('agentUnsaved')).toBe(false);
+		});
+
+		it('keeps queued creation retries on their original artifact after switching targets', async () => {
+			const firstCreate = Promise.withResolvers<ReturnType<typeof makeCreationResponse>>();
+			const artifactPersistAgent = vi
+				.fn()
+				.mockReturnValueOnce(firstCreate.promise)
+				.mockResolvedValue(makeCreationResponse(undefined, { id: pendingProps.artifactAgentId }));
+			mockPendingAgentRow(pendingProps.artifactAgentId, 'otherPendingId12');
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			vi.useFakeTimers();
+			try {
+				editor.vm.$emit('update:config', { instructions: 'First edit' });
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(500);
+				expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
+
+				editor.vm.$emit('update:config', { instructions: 'Queued edit' });
+				await nextTick();
+				await vi.advanceTimersByTimeAsync(500);
+				expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
+
+				await wrapper.setProps({ artifactAgentId: 'otherPendingId12' });
+				firstCreate.reject(new Error('Creation failed'));
+				await flushPromises();
+
+				expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+				expect(artifactPersistAgent).toHaveBeenLastCalledWith({
+					projectId: 'p1',
+					agentId: pendingProps.artifactAgentId,
+					name: expect.any(String),
+					config: expect.objectContaining({ instructions: 'Queued edit' }),
+				});
+				expect(
+					wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved'),
+				).toBe(true);
+				expect(updateConfigMock).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+				wrapper.unmount();
+			}
+		});
+
+		it('adopts and reloads after a binding retry without overwriting the committed configuration', async () => {
+			const persisted = makeCreationResponse(undefined, { id: 'aBcDeFgHiJkLmNoP', adopted: true });
+			const artifactPersistAgent = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('binding failed'))
+				.mockResolvedValue(persisted);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+			await flushPromises();
+
+			// Creation committed, but the binding failed. The next edit retries the binding.
+			expect(updateConfigMock).not.toHaveBeenCalled();
+			expect(editor.props('agentUnsaved')).toBe(true);
+			getAgentMock.mockResolvedValue(persisted);
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail, politely' });
+			await vi.waitFor(() =>
+				expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+			);
+
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+			expect(editor.props('agentUnsaved')).toBe(false);
+			expect(updateConfigMock).not.toHaveBeenCalled();
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'aBcDeFgHiJkLmNoP');
 		});
 
 		it('keeps the editor mounted while a newly persisted artifact hydrates', async () => {
@@ -2687,7 +5928,11 @@ describe('AgentBuilderView — three-column shell', () => {
 
 				await ensureAgentPersisted();
 
-				let resolveUpdate!: (value: { versionId: string; stale: boolean }) => void;
+				let resolveUpdate!: (value: {
+					config: TestAgentConfig | null;
+					versionId: string;
+					stale: boolean;
+				}) => void;
 				updateConfigMock.mockReset();
 				updateConfigMock.mockImplementation(
 					() =>
@@ -2708,10 +5953,18 @@ describe('AgentBuilderView — three-column shell', () => {
 					'p1',
 					'aBcDeFgHiJkLmNoP',
 					expect.objectContaining({ instructions: 'Keep these instructions' }),
+					'hash-1',
 				);
 				expect(fetchConfigMock).not.toHaveBeenCalled();
 
-				resolveUpdate({ versionId: 'v2', stale: false });
+				resolveUpdate({
+					config: withDefaultLlm({
+						name: 'agents.new.defaultName',
+						instructions: 'Keep these instructions',
+					}),
+					versionId: 'v2',
+					stale: false,
+				});
 				await flushPromises();
 
 				expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'aBcDeFgHiJkLmNoP');
@@ -2804,6 +6057,111 @@ describe('AgentBuilderView — three-column shell', () => {
 		createElementSpy.mockRestore();
 	});
 
+	it('saves the description from the header menu through the write-locked config path', async () => {
+		getAgentWriteLockMock.mockResolvedValue(null);
+		rootStoreMock.pushRef = 'tab-1';
+		const wrapper = await renderView();
+		await flushPromises();
+		pushSendMock.mockClear();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('header-action', 'edit-description');
+		await nextTick();
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'agentDescriptionModal' }),
+		);
+
+		openModalWithDataMock.mock.calls[0][0].data.onConfirm('Answers support tickets');
+		await flushPromises();
+
+		expect(pushSendMock).toHaveBeenCalledWith({
+			type: 'agentWriteAccessRequested',
+			agentId: 'a1',
+		});
+		await vi.waitFor(() =>
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({ description: 'Answers support tickets' }),
+				'hash-1',
+			),
+		);
+	});
+
+	it('saves the n8n Chat description through the write-locked config path and flushes before returning', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+
+		await (
+			wrapper.vm as unknown as { saveN8nChatDescription: (description: string) => Promise<void> }
+		).saveN8nChatDescription('Handles support tickets');
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ description: 'Handles support tickets' }),
+			'hash-1',
+		);
+	});
+
+	it('skips the n8n Chat description save when nothing changed', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+		updateConfigMock.mockClear();
+
+		await (
+			wrapper.vm as unknown as { saveN8nChatDescription: (description: string) => Promise<void> }
+		).saveN8nChatDescription('');
+
+		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('rejects the n8n Chat description save when the config save fails', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+		updateConfigMock.mockRejectedValueOnce(new Error('network'));
+
+		await expect(
+			(
+				wrapper.vm as unknown as { saveN8nChatDescription: (description: string) => Promise<void> }
+			).saveN8nChatDescription('Handles support tickets'),
+		).rejects.toThrow();
+	});
+
+	it('rejects the n8n Chat description save after a failed debounced save of it', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: { description: string }) => void;
+			saveN8nChatDescription: (description: string) => Promise<void>;
+		};
+		updateConfigMock.mockRejectedValueOnce(new Error('network'));
+		vm.onConfigFieldUpdate({ description: 'Handles support tickets' });
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await flushPromises();
+
+		await expect(vm.saveN8nChatDescription('Handles support tickets')).rejects.toThrow();
+	});
+
+	it('includes n8n Chat in the initial trigger baseline when its flag is on', async () => {
+		n8nChatFlag.value = true;
+		await renderView();
+
+		expect(builderTelemetryMock.fetchInitialTriggersBaseline).toHaveBeenCalledWith(
+			expect.arrayContaining(['n8n_chat']),
+		);
+	});
+
+	it('excludes n8n Chat from the initial trigger baseline when its flag is off', async () => {
+		n8nChatFlag.value = false;
+		await renderView();
+
+		expect(builderTelemetryMock.fetchInitialTriggersBaseline).not.toHaveBeenCalledWith(
+			expect.arrayContaining(['n8n_chat']),
+		);
+	});
+
 	it('opens the JSON import modal and saves imported config from the header menu', async () => {
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');
@@ -2848,6 +6206,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				...importedConfig,
 				memory: { enabled: true, storage: 'n8n' },
 			}),
+			'hash-1',
 		);
 	});
 
@@ -2860,6 +6219,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 		expect(header.props('projectName')).toBe('Personal');
+		expect(header.props('projectIcon')).toEqual({ type: 'icon', value: 'user' });
 	});
 
 	it('opens the tool config modal with the custom tool source', async () => {
@@ -2918,13 +6278,13 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				name: 'agentToolConfigModal',
-				data: expect.objectContaining({
-					toolRef,
-					customTool,
-					validationIssues: [validationIssue],
-				}),
+				data: expect.objectContaining({ toolRef, customTool }),
 			}),
 		);
+		const [{ data }] = openModalWithDataMock.mock.calls[0] as [
+			{ data: { validationIssues: () => unknown[] } },
+		];
+		expect(data.validationIssues()).toEqual([validationIssue]);
 	});
 
 	it('applies the tools modal confirm payload as arrays to the local config', async () => {
@@ -2964,7 +6324,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(vm.localConfig.tools).toEqual(tools);
 	});
 
-	it('shows applied skills and opens a skill modal from the capabilities section', async () => {
+	it('shows applied skills and opens a skill modal from the Skills section', async () => {
 		const skill = {
 			name: 'summarize_notes',
 			description: 'Summarize notes before replying',
@@ -2986,11 +6346,11 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		const wrapper = await renderView();
 
-		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
-		expect(capabilities.exists()).toBe(true);
-		expect(capabilities.props('skills')).toEqual([{ id: 'summarize_notes', skill }]);
+		const skillsSection = wrapper.findComponent({ name: 'AgentSkillsSection' });
+		expect(skillsSection.exists()).toBe(true);
+		expect(skillsSection.props('skills')).toEqual([{ id: 'summarize_notes', skill }]);
 
-		capabilities.vm.$emit('open-skill', 'summarize_notes');
+		skillsSection.vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
@@ -3027,7 +6387,7 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		const wrapper = await renderView();
 		wrapper
-			.findComponent({ name: 'AgentCapabilitiesSection' })
+			.findComponent({ name: 'AgentSkillsSection' })
 			.vm.$emit('remove-skill', 'summarize_notes');
 		await nextTick();
 
@@ -3036,10 +6396,10 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(vm.localConfig.skills).toEqual([]);
-		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([]);
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([]);
 	});
 
-	it('opens the add skill modal and applies the created skill', async () => {
+	it('adds a skill without a duplicate config save or success toast', async () => {
 		const skill = {
 			name: 'Summarize Meetings',
 			description: 'Use when summarizing meeting notes',
@@ -3055,17 +6415,21 @@ describe('AgentBuilderView — three-column shell', () => {
 		createAgentSkillMock.mockResolvedValueOnce({
 			id: 'skill_0Ab9ZkLm3Pq7Xy2N',
 			skill,
+			skillHash: 'skill-hash-1',
 			versionId: 'v2',
 		});
 		getAgentMock.mockResolvedValueOnce(
 			makeAgentResponse({
 				skills: { skill_0Ab9ZkLm3Pq7Xy2N: skill },
+				skillHashes: { skill_0Ab9ZkLm3Pq7Xy2N: 'skill-hash-1' },
 			}),
 		);
 
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('add-skill');
-		await nextTick();
+		fetchConfigMock.mockClear();
+		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('add-skill');
+		// The modal opens once the agent is persisted.
+		await flushPromises();
 
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -3078,24 +6442,24 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { skill: typeof skill }) => void;
+			onConfirm: (payload: { skill: typeof skill }) => Promise<unknown>;
 		};
-		modalData.onConfirm({ skill });
-		await flushPromises();
-		await nextTick();
+		await modalData.onConfirm({ skill });
 
 		const vm = wrapper.vm as unknown as {
 			localConfig: { tools?: AgentJsonToolRef[]; skills?: AgentJsonSkillRef[] };
 		};
+		// The modal resolves before the agent refresh finishes.
+		await vi.waitFor(() =>
+			expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]),
+		);
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
-		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]);
-		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill },
 		]);
-		expect(showMessageMock).toHaveBeenCalledWith({
-			title: 'agents.builder.skills.added',
-			type: 'success',
-		});
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(showMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('applies skill modal edits to the local config and agent resource', async () => {
@@ -3108,7 +6472,6 @@ describe('AgentBuilderView — three-column shell', () => {
 			name: 'meeting_summary',
 			description: 'Use when extracting decisions from meeting notes',
 			instructions: 'Extract decisions, risks, and action items.',
-			allowedTools: ['load_workflow'],
 			references: [
 				{
 					path: 'references/guide.md',
@@ -3116,6 +6479,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				},
 			],
 		};
+		// Skills drop allowed tools: the edit keeps everything else.
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
@@ -3128,18 +6492,18 @@ describe('AgentBuilderView — three-column shell', () => {
 				skills: {
 					summarize_notes: skill,
 				},
+				skillHashes: { summarize_notes: 'skill-hash-1' },
 			}),
 		);
 		updateAgentSkillMock.mockResolvedValueOnce({
 			id: 'summarize_notes',
 			skill: updatedSkill,
+			skillHash: 'skill-hash-2',
 			versionId: 'v2',
 		});
 
 		const wrapper = await renderView();
-		wrapper
-			.findComponent({ name: 'AgentCapabilitiesSection' })
-			.vm.$emit('open-skill', 'summarize_notes');
+		wrapper.findComponent({ name: 'AgentSkillsSection' }).vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
@@ -3153,7 +6517,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		).toEqual({
 			summarize_notes: updatedSkill,
 		});
-		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
+		expect(wrapper.findComponent({ name: 'AgentSkillsSection' }).props('skills')).toEqual([
 			{ id: 'summarize_notes', skill: updatedSkill },
 		]);
 
@@ -3166,59 +6530,63 @@ describe('AgentBuilderView — three-column shell', () => {
 			'a1',
 			'summarize_notes',
 			updatedSkill,
+			'skill-hash-1',
+			undefined,
 		);
 	});
 
-	it('omits allowed tools before saving a skill when none are attached', async () => {
-		const skill = {
-			name: 'summarize_notes',
-			description: 'Use when summarizing notes',
-			instructions: 'Read the notes and produce a concise summary.',
-			allowedTools: ['missing_tool'],
-		};
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-			skills: [{ type: 'skill', id: 'summarize_notes' }],
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		getAgentMock.mockResolvedValueOnce(
-			makeAgentResponse({
-				skills: {
-					summarize_notes: skill,
-				},
-			}),
-		);
-		updateAgentSkillMock.mockResolvedValueOnce({
-			id: 'summarize_notes',
-			skill: {
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-			versionId: 'v2',
-		});
+	it.each([
+		{ pinned: false, expected: { draft: 3, published: 1, latest: 3, pinned: false } },
+		{ pinned: true, expected: { draft: 1, published: 1, latest: 3, pinned: true } },
+	])(
+		'counts the new skill version after a save that changed it (pinned: $pinned)',
+		async ({ pinned, expected }) => {
+			const skill = {
+				name: 'summarize_notes',
+				description: 'Use when summarizing notes',
+				instructions: 'Read the notes and produce a concise summary.',
+			};
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				skills: [{ type: 'skill', id: 'summarize_notes' }],
+			};
+			mockConfig.value = withDefaultLlm(intendedConfig);
+			getAgentMock.mockResolvedValueOnce(
+				makeAgentResponse({
+					skills: { summarize_notes: skill },
+					skillHashes: { summarize_notes: 'skill-hash-1' },
+					skillVersions: {
+						summarize_notes: { draft: pinned ? 1 : 2, published: 1, latest: 2, pinned },
+					},
+				}),
+			);
+			const editedSkill = { ...skill, instructions: 'Summarize in one line.' };
+			updateAgentSkillMock.mockResolvedValueOnce({
+				id: 'summarize_notes',
+				skill: editedSkill,
+				skillHash: 'skill-hash-2',
+				versionId: 'v2',
+			});
 
-		const wrapper = await renderView();
-		wrapper
-			.findComponent({ name: 'AgentCapabilitiesSection' })
-			.vm.$emit('open-skill', 'summarize_notes');
-		await nextTick();
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm({ id: 'summarize_notes', skill });
-		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+			const wrapper = await renderView();
+			wrapper
+				.findComponent({ name: 'AgentSkillsSection' })
+				.vm.$emit('open-skill', 'summarize_notes');
+			await nextTick();
+			openModalWithDataMock.mock.calls[0][0].data.onConfirm({
+				id: 'summarize_notes',
+				skill: editedSkill,
+			});
+			await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+			await nextTick();
 
-		expect(updateAgentSkillMock).toHaveBeenCalledWith(
-			expect.anything(),
-			'p1',
-			'a1',
-			'summarize_notes',
-			{
-				name: skill.name,
-				description: skill.description,
-				instructions: skill.instructions,
-			},
-		);
-	});
+			expect(
+				(wrapper.vm as unknown as { agent: { skillVersions: Record<string, unknown> } }).agent
+					.skillVersions.summarize_notes,
+			).toEqual(expected);
+		},
+	);
 
 	it('shows the loading spinner while initialize() is in flight and hides it after', async () => {
 		// A promise that we control — lets us capture the intermediate loading state.
@@ -3255,10 +6623,7 @@ describe('AgentBuilderView — three-column shell', () => {
 	});
 });
 
-// Generous timeout for the same reason as the preview-routing block: mounting
-// this SFC plus its design-system deps is slow enough under parallel-suite
-// pressure to trip default timeouts.
-describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => {
+describe('AgentBuilderView — evals focus request', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		agentEvalsFlagMock.enabled = true;
@@ -3302,19 +6667,29 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 		return () => wrapper.find('[data-testid="agent-evals-tab-content"]').exists();
 	}
 
-	it('selects the evals tab for a request raised before it mounted', async () => {
+	function savedGenerationCalls() {
+		return generateDraftCasesMock.mock.calls.filter(([, , , options]) => options?.save !== false);
+	}
+
+	it('selects the evals tab and prepares unsaved examples for a request raised before it mounted', async () => {
 		const wrapper = await seedFocusRequest('a1', false);
-		await settle(evalsTabShown(wrapper));
+		await settle(() => evalsTabShown(wrapper)() && generateDraftCasesMock.mock.calls.length > 0);
 
 		expect(evalsTabShown(wrapper)()).toBe(true);
-		expect(generateDraftCasesMock).not.toHaveBeenCalled();
+		expect(generateDraftCasesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', {
+			count: 10,
+			save: false,
+		});
+		expect(savedGenerationCalls()).toEqual([]);
 	});
 
-	it('starts generation when the request asks for it', async () => {
+	it('starts one saved generation when the request asks for it', async () => {
 		await seedFocusRequest('a1', true);
-		await settle(() => generateDraftCasesMock.mock.calls.length > 0);
+		await settle(() => savedGenerationCalls().length > 0);
 
-		expect(generateDraftCasesMock).toHaveBeenCalledOnce();
+		// The empty-state preview can also request unsaved examples. Those must
+		// not be mistaken for a second request to persist a dataset.
+		expect(savedGenerationCalls()).toEqual([[expect.anything(), 'p1', 'a1', {}]]);
 	});
 
 	it('ignores a request naming a different agent', async () => {
@@ -3338,6 +6713,7 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 	it('ignores the request while the agent is still unsaved', async () => {
 		// Unsaved narrows the row to Agent only, so honouring the request here
 		// would render evals content with no Evals tab visible to match it.
+		mockPendingAgentRow('aBcDeFgHiJkLmNoP');
 		const wrapper = await seedFocusRequest('aBcDeFgHiJkLmNoP', true, {
 			artifactMode: true,
 			artifactProjectId: 'p1',
@@ -3356,4 +6732,668 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 	// flight, so whether the request is served or still legitimately held within a
 	// bounded settle is not deterministic. The store tests pin the hold/consume
 	// semantics instead; see `agentEvals.store.test.ts`.
+});
+
+describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, () => {
+	beforeEach(() => {
+		resetViewMocks();
+		vi.restoreAllMocks();
+		agentPermissionsMock.canCreate.value = true;
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canPublish.value = true;
+		agentPermissionsMock.canUnpublish.value = true;
+	});
+
+	it('shows a read-only banner and disables editing when another user holds the lock', async () => {
+		// Simulate an existing lock held by a different user and tab.
+		getAgentWriteLockMock.mockResolvedValue({
+			userId: 'user-2',
+			clientId: 'tab-2',
+		});
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		// The collaboration banner is visible.
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+
+		// Editing is disabled via effectiveCanEditAgent → isEditingLocked.
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			false,
+		);
+
+		wrapper.unmount();
+	});
+
+	it('hides the assistant toggle behind the take-over banner for another tab', async () => {
+		getAgentWriteLockMock.mockResolvedValue({ userId: 'user-1', clientId: 'tab-2' });
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-collaboration-take-over"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+
+		wrapper.unmount();
+	});
+
+	it('reacts to writeAccessAcquired from another client by showing the read-only banner', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+		// Start with no lock — lazy acquisition means the tab is writable
+		// until someone else acquires the lock.
+		getAgentWriteLockMock.mockResolvedValue(null);
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		// No lock held by anyone — the tab is writable (lazy acquisition).
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			true,
+		);
+
+		// Another client acquires the lock (takeover).
+		const acquireOther: PushMessage = {
+			type: 'writeAccessAcquired',
+			data: {
+				agentId: 'a1',
+				userId: 'user-2',
+				clientId: 'tab-2',
+			},
+		};
+		for (const listener of pushListeners) listener(acquireOther);
+		await flushPromises();
+
+		// The banner appears and editing is disabled.
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			false,
+		);
+
+		wrapper.unmount();
+	});
+
+	it('requests the lock on the first edit while staying editable and autosaving', async () => {
+		getAgentWriteLockMock.mockResolvedValue(null);
+		rootStoreMock.pushRef = 'tab-1';
+		usersStoreMock.currentUserId = 'user-1';
+
+		const wrapper = await renderView();
+		await flushPromises();
+		pushSendMock.mockClear();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await flushPromises();
+
+		// The edit requests the lazy lock…
+		expect(pushSendMock).toHaveBeenCalledWith({
+			type: 'agentWriteAccessRequested',
+			agentId: 'a1',
+		});
+		// …but the round-trip must not disable the editor or cancel the
+		// autosave the same edit scheduled.
+		expect(editor.props('canEditAgent')).toBe(true);
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+		// Once acknowledged, this tab is the writer and stays editable.
+		const acquired: PushMessage = {
+			type: 'writeAccessAcquired',
+			data: { agentId: 'a1', userId: 'user-1', clientId: 'tab-1' },
+		};
+		for (const listener of pushListeners) listener(acquired);
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="agent-collaboration-banner"]').exists()).toBe(false);
+		expect(editor.props('canEditAgent')).toBe(true);
+
+		wrapper.unmount();
+	});
+});
+
+describe(
+	'AgentBuilderView — budget cap increase from the preview dock',
+	{ timeout: 60_000 },
+	() => {
+		beforeEach(() => {
+			resetViewMocks();
+			vi.restoreAllMocks();
+			agentPermissionsMock.canCreate.value = true;
+			agentPermissionsMock.canUpdate.value = true;
+			agentPermissionsMock.canPublish.value = true;
+			agentPermissionsMock.canUnpublish.value = true;
+		});
+
+		type IncreaseBudget = (payload: {
+			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+			amount: number;
+		}) => Promise<boolean>;
+
+		function dockIncreaseBudget(
+			wrapper: Awaited<ReturnType<typeof renderView>>,
+		): IncreaseBudget | undefined {
+			return wrapper.findComponent({ name: 'AgentTestDock' }).props('increaseBudget') as
+				| IncreaseBudget
+				| undefined;
+		}
+
+		it('passes an increaseBudget handler to the preview dock while editing is allowed', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+
+			expect(dockIncreaseBudget(wrapper)).toBeTypeOf('function');
+
+			wrapper.unmount();
+		});
+
+		it('omits the increaseBudget handler when another user holds the lock', async () => {
+			getAgentWriteLockMock.mockResolvedValue({
+				userId: 'user-2',
+				clientId: 'tab-2',
+			});
+			rootStoreMock.pushRef = 'tab-1';
+			usersStoreMock.currentUserId = 'user-1';
+
+			const wrapper = await renderView();
+			await flushPromises();
+
+			expect(dockIncreaseBudget(wrapper)).toBeUndefined();
+
+			wrapper.unmount();
+		});
+
+		it('persists the raised cap before resolving true', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockClear();
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({
+					config: expect.objectContaining({
+						guardrails: expect.objectContaining({
+							budget: expect.objectContaining({ enabled: true, sessionCostCapUsd: 5 }),
+						}),
+					}),
+				}),
+				'hash-1',
+			);
+
+			wrapper.unmount();
+		});
+
+		it('resolves false when the save fails', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockRejectedValueOnce(new Error('save failed'));
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(false);
+
+			wrapper.unmount();
+		});
+
+		it('resolves false when the save conflicts and the server config is reloaded', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockRejectedValueOnce(
+				new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+			);
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(false);
+
+			wrapper.unmount();
+		});
+
+		it('rejects an increase that is not above the current cap', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockClear();
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(false);
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('clears the matching budget stop after a settings save persists a raised cap', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+			});
+			await flushPromises();
+
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({
+					config: expect.objectContaining({
+						guardrails: expect.objectContaining({
+							budget: expect.objectContaining({ sessionCostCapUsd: 10 }),
+						}),
+					}),
+				}),
+				'hash-1',
+			);
+			expect(clearBudgetStopsMock).toHaveBeenCalledExactlyOnceWith(['sessionCostCapUsd']);
+
+			wrapper.unmount();
+		});
+
+		it('keeps the budget stop when a settings save lowers the cap', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockClear();
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 2 } } },
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).not.toHaveBeenCalled();
+			// The lowered cap still persists through the regular debounced autosave.
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('lifts the budget stop when the cap persists after an MCP save failed', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			const { useMCPStore } = await import('@n8n/frontend-module-mcp');
+			vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(
+				new Error('mcp save failed'),
+			);
+
+			// The failed MCP save leaves its loop rejecting later flushes.
+			vi.useFakeTimers();
+			try {
+				wrapper
+					.findComponent({ name: 'AgentBuilderEditorColumn' })
+					.vm.$emit('toggle-mcp-access', true);
+				await vi.advanceTimersByTimeAsync(500);
+				await flushPromises();
+			} finally {
+				vi.useRealTimers();
+			}
+			expect(showErrorMock).toHaveBeenCalled();
+			updateConfigMock.mockClear();
+			clearBudgetStopsMock.mockClear();
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 10,
+			});
+
+			expect(saved).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalled();
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 20 } } },
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).toHaveBeenCalledExactlyOnceWith(['sessionCostCapUsd']);
+
+			wrapper.unmount();
+		});
+
+		it('keeps the budget stop when the preview session changes during the settings save', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			routeQuery.continueSessionId = 'thread-1';
+			const wrapper = await renderView();
+			await flushPromises();
+			const save = Promise.withResolvers<{
+				config: TestAgentConfig;
+				versionId: string;
+				stale: boolean;
+			}>();
+			updateConfigMock.mockImplementationOnce(() => save.promise);
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+			});
+			routeQuery.continueSessionId = 'thread-2';
+			save.resolve({
+				config: {
+					name: 'Agent One',
+					instructions: 'You are a helpful assistant.',
+					config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+				},
+				versionId: 'v1',
+				stale: false,
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('keeps the budget stop when the settings save conflicts', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockRejectedValueOnce(
+				new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+			);
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+	},
+);
+
+describe('chat-first builder', () => {
+	beforeEach(() => {
+		builderExperimentMock.layout = { chatWidth: 'wide', testChat: 'inline' };
+	});
+	afterEach(() => {
+		builderExperimentMock.layout = { chatWidth: 'current', testChat: 'dock' };
+	});
+	beforeEach(() => {
+		resetViewMocks();
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canExecute.value = true;
+	});
+	async function renderWithPreviewLink(href: string) {
+		return await renderView({
+			props: { builderLayout: undefined },
+			stubs: {
+				InstanceAiChatPanel: {
+					...commonStubs.InstanceAiChatPanel,
+					components: { AgentMarkdownChunk },
+					template: `<div><AgentMarkdownChunk source="[Preview](${href})" /><slot name="composer-start" /></div>`,
+				},
+			},
+		});
+	}
+	it.each(['/projects/p1/agents/a1/preview', '/projects/p1/agents/a1?openPreview=true'])(
+		'selects Test from an Assistant Preview link without navigation: %s',
+		async (href) => {
+			const wrapper = await renderWithPreviewLink(href);
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+			await assistant.get('a').trigger('click');
+			await flushPromises();
+			expect(preview.props('isOpen')).toBe(true);
+			expect(assistant.props('visible')).toBe(false);
+			expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+	it.each(['building', 'not runnable', 'no permission'])(
+		'keeps Build selected when a Preview link is blocked: %s',
+		async (reason) => {
+			if (reason === 'not runnable') {
+				getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+			}
+			if (reason === 'no permission') agentPermissionsMock.canExecute.value = false;
+			const wrapper = await renderWithPreviewLink('/projects/p1/agents/a1/preview');
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			if (reason === 'building') assistant.vm.$emit('update:working', true);
+			await nextTick();
+			await assistant.get('a').trigger('click');
+			await flushPromises();
+			expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+			expect(assistant.props('visible')).toBe(true);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+	it('routes Preview links for another agent without opening the current Test chat', async () => {
+		const wrapper = await renderWithPreviewLink('/projects/p2/agents/a2/preview');
+		await wrapper.getComponent({ name: 'InstanceAiChatPanel' }).get('a').trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		expect(routerPush).toHaveBeenCalledExactlyOnceWith('/projects/p2/agents/a2?openPreview=true');
+	});
+	it('opens the wide builder by default and keeps both chats mounted across mode changes', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+		expect(assistant.props('closable')).toBe(false);
+		expect(assistant.props('showOpenFullAssistant')).toBe(false);
+		expect(preview.props('inline')).toBe(true);
+		expect(assistant.props('visible')).toBe(true);
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		expect(preview.props('isOpen')).toBe(true);
+		expect(assistant.props('visible')).toBe(false);
+		expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+		await preview.get('[data-testid="agent-builder-mode-build"]').trigger('click');
+		await flushPromises();
+		expect(assistant.props('visible')).toBe(true);
+		expect(preview.props('isOpen')).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).vm).toBe(preview.vm);
+	});
+	it('ignores a pending Test transition after the user selects Build', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const save = Promise.withResolvers<{
+			config: TestAgentConfig;
+			versionId: string;
+			stale: boolean;
+		}>();
+		updateConfigMock.mockImplementationOnce(() => save.promise);
+		wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:config', {
+			instructions: 'Answer support questions.',
+		});
+		await nextTick();
+		const transition = wrapper.vm.setChatMode('test');
+		await flushPromises();
+		expect(updateConfigMock).toHaveBeenCalled();
+		await wrapper.vm.setChatMode('build');
+		if (!mockConfig.value) throw new Error('Agent config is missing');
+		save.resolve({ config: mockConfig.value, versionId: 'v2', stale: false });
+		expect(await transition).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+	});
+
+	it('keeps the standalone selector visible when the agent cannot run', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const selector = wrapper.getComponent({ name: 'AgentBuilderChatMode' });
+		expect(selector.props('testDisabled')).toBe(true);
+		expect(selector.props('testDisabledReason')).toBe('agents.builder.preview.disabledTooltip');
+		expect(
+			selector.get('[data-testid="agent-builder-mode-test"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			selector.get('[data-testid="agent-builder-mode-build"]').attributes('disabled'),
+		).toBeUndefined();
+	});
+
+	it.each([
+		{ chatWidth: 'current', testChat: 'inline' },
+		{ chatWidth: 'wide', testChat: 'inline' },
+		{ chatWidth: 'wide', testChat: 'dock' },
+	])('keeps the Assistant artifact layout unchanged for $chatWidth / $testChat', async (layout) => {
+		builderExperimentMock.layout = layout;
+		trackExperimentExposure.mockClear();
+		const wrapper = await renderView({
+			props: {
+				builderLayout: undefined,
+				artifactMode: true,
+				artifactProjectId: 'p1',
+				artifactAgentId: 'a1',
+			},
+		});
+		expect(wrapper.findComponent({ name: 'AgentBuilderChatMode' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).exists()).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('inline')).toBe(false);
+		expect(wrapper.getComponent({ name: 'AgentBuilderEditorColumn' }).props('chatFirst')).toBe(
+			false,
+		);
+		expect(trackExperimentExposure).not.toHaveBeenCalled();
+	});
+
+	it('keeps both mode selectors visible and disabled while the Assistant works', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		assistant.vm.$emit('update:working', true);
+		await nextTick();
+		for (const selector of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+			expect(selector.props('disabled')).toBe(true);
+			for (const button of selector.findAll('button'))
+				expect(button.attributes('disabled')).toBeDefined();
+		}
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(false);
+		assistant.vm.$emit('update:working', false);
+		await nextTick();
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+	});
+
+	it.each([true, false])(
+		'switches from Test to Build only after an accepted handoff (%s)',
+		async (accepted) => {
+			handoffMock.mockReturnValueOnce(accepted);
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+			await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+			await flushPromises();
+			const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+			preview.vm.$emit('send-to-assistant');
+			await flushPromises();
+			expect(handoffMock).toHaveBeenCalled();
+			expect(preview.props('isOpen')).toBe(!accepted);
+			expect(assistant.props('visible')).toBe(accepted);
+			expect(
+				assistant.get('[data-testid="agent-builder-mode-build"]').attributes('aria-pressed'),
+			).toBe(String(accepted));
+		},
+	);
+
+	it('keeps width and test placement independent', async () => {
+		const wrapper = await renderView({
+			props: { builderLayout: { chatWidth: 'current', testChat: 'inline' } },
+		});
+		(wrapper.vm as unknown as { builderContainerWidth: number }).builderContainerWidth = 1440;
+		await nextTick();
+		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
+			'--agent-ai-panel-width: 432px',
+		);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('inline')).toBe(true);
+		await wrapper.setProps({ builderLayout: { chatWidth: 'wide', testChat: 'dock' } });
+		expect(wrapper.get('[data-testid="agent-builder-container"]').attributes('style')).toContain(
+			'--agent-ai-panel-width: 936px',
+		);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).props('inline')).toBe(false);
+	});
+
+	it('keeps configuration accessible on a narrow screen without unmounting chat', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		(wrapper.vm as unknown as { builderHostWidth: number }).builderHostWidth = 375;
+		await nextTick();
+		const assistant = wrapper.getComponent({ name: 'InstanceAiChatPanel' });
+		expect(assistant.props('closable')).toBe(true);
+		assistant.vm.$emit('close');
+		await nextTick();
+		expect(assistant.props('visible')).toBe(false);
+		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		expect(assistant.props('visible')).toBe(true);
+		expect(wrapper.getComponent({ name: 'InstanceAiChatPanel' }).vm).toBe(assistant.vm);
+		await assistant.get('[data-testid="agent-builder-mode-test"]').trigger('click');
+		await flushPromises();
+		const preview = wrapper.getComponent({ name: 'AgentTestDock' });
+		expect(preview.props('closable')).toBe(true);
+		preview.vm.$emit('close');
+		await nextTick();
+		expect(preview.props('isOpen')).toBe(false);
+		await wrapper.get('[data-testid="agent-builder-show-chat"]').trigger('click');
+		expect(assistant.props('visible')).toBe(false);
+		expect(preview.props('isOpen')).toBe(true);
+		expect(wrapper.getComponent({ name: 'AgentTestDock' }).vm).toBe(preview.vm);
+	});
+
+	it('shows the same disclaimer in both empty chats', async () => {
+		const wrapper = await renderView({ props: { builderLayout: undefined } });
+		for (const name of ['InstanceAiChatPanel', 'AgentTestDock']) {
+			expect(
+				wrapper.getComponent({ name }).get('[data-testid="agent-builder-chat-disclaimer"]').text(),
+			).toBe('instanceAi.input.disclaimer');
+		}
+	});
+
+	it.each(['InstanceAiChatPanel', 'AgentTestDock'])(
+		'ends the discovery hint after a message from %s',
+		async (source) => {
+			const wrapper = await renderView({ props: { builderLayout: undefined } });
+			if (source === 'AgentTestDock') await wrapper.vm.setChatMode('test');
+			const chat = wrapper.getComponent({ name: source });
+			expect(chat.getComponent({ name: 'AgentBuilderChatMode' }).props('discovery')).toBe(true);
+			chat.vm.$emit('message-sent');
+			await nextTick();
+			for (const mode of wrapper.findAllComponents({ name: 'AgentBuilderChatMode' })) {
+				expect(mode.props('discovery')).toBe(false);
+			}
+		},
+	);
 });

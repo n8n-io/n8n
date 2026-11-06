@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_ADMIN_ROLE,
@@ -16,8 +17,7 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
@@ -51,6 +51,7 @@ describe('getStatus', () => {
 		mock(),
 	);
 	const sourceControlContextFactory = mock<SourceControlContextFactory>();
+	const eventService = mock<EventService>();
 	const sourceControlStatusService = new SourceControlStatusService(
 		mockLogger(),
 		gitService,
@@ -60,7 +61,7 @@ describe('getStatus', () => {
 		tagRepository,
 		folderRepository,
 		workflowRepository,
-		mock<EventService>(),
+		eventService,
 	);
 
 	beforeEach(() => {
@@ -375,6 +376,7 @@ describe('getStatus', () => {
 		).rejects.toThrowError(ForbiddenError);
 
 		expect(gitService.resetBranch).not.toHaveBeenCalled();
+		expect(gitService.pull).not.toHaveBeenCalled();
 	});
 
 	it('should allow push status for a user with project source control push access', async () => {
@@ -885,6 +887,78 @@ describe('getStatus', () => {
 				(file) => file.type === 'project' && file.status === 'deleted',
 			);
 			expect(projectDeletions).toHaveLength(0);
+		});
+	});
+
+	describe('telemetry', () => {
+		const user = globalAdminUserWithId;
+
+		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is not set', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-push-ui',
+				expect.objectContaining({ userId: user.id, publicApi: false }),
+			);
+		});
+
+		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is `ui`', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+				origin: 'ui',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-push-ui',
+				expect.objectContaining({ userId: user.id, publicApi: false }),
+			);
+		});
+
+		it('emits `source-control-user-started-push-ui` with publicApi: true when origin is `publicApi`', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+				origin: 'publicApi',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-push-ui',
+				expect.objectContaining({ userId: user.id, publicApi: true }),
+			);
+		});
+
+		it('emits `source-control-user-started-pull-ui` with publicApi: false when origin is not set', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-pull-ui',
+				expect.objectContaining({ userId: user.id, publicApi: false }),
+			);
+		});
+
+		it('emits `source-control-user-started-pull-ui` with publicApi: true when origin is `publicApi`', async () => {
+			await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+				origin: 'publicApi',
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'source-control-user-started-pull-ui',
+				expect.objectContaining({ userId: user.id, publicApi: true }),
+			);
 		});
 	});
 

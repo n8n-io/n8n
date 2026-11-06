@@ -15,33 +15,43 @@ import type {
 	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
+import { modelConfigToId } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	getNativeWebSearchProviderTools,
 	getProviderPrefix,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
+	isRoutedAnthropicModel,
 } from '@n8n/ai-utilities/agent-config';
-import type {
-	AgentSkill,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentJsonSkillConfig,
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	type AgentModelCredentialConfig,
+	type AgentSkill,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentJsonSkillConfig,
 } from '@n8n/api-types';
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { UserError } from '@n8n/errors';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
 import {
-	resolveEmbeddingProviderOptionsFromCredential,
+	resolveEpisodicMemoryEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
-} from './embedding-credential';
+} from '@/modules/knowledge/vector-stores/embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
-import { buildVectorStore } from './vector-store-factory';
+import {
+	resolveWebSearchGatewayProxyConfig,
+	type AiGatewaySearchCredentialResolver,
+} from './web-search-credential';
+import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
+import type { FinishKnowledgeToolCall } from '../agent-knowledge-usage-tracker';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
@@ -63,6 +73,18 @@ const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
+/**
+ * Appended only for the in-app preview chat. Without this the agent agrees to
+ * setup changes it cannot make. The preview UI offers the n8n Assistant hand-off
+ * beside this answer.
+ */
+const PREVIEW_SELF_MODIFICATION_POLICY =
+	'### Preview chat policy\n' +
+	'This conversation only runs you. You can change things in n8n, including your own setup, only through your tools. Your setup is your instructions, model, tools, skills, knowledge, channels, integrations, schedules, name and any other part of your configuration. A request that names no other owner, such as "add a tool" or "connect a Slack channel", is about your setup.\n' +
+	'If none of your tools can make a change that the user asks for, say plainly that you cannot make it here, and tell them to ask the n8n Assistant, which edits the agent for them.\n' +
+	'Never claim that a change was applied unless a tool result confirms it.';
+
+/** `null` drops the tool from the agent; `undefined` falls back to the inert marker tool. */
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
 ) => Promise<BuiltTool | null | undefined>;
@@ -82,11 +104,6 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
-
-type MemoryWorkerModelConfig = {
-	model: string;
-	credential: string;
-};
 
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
@@ -124,6 +141,51 @@ export interface BuildFromJsonOptions {
 	 * the eval path when its mock MCP transport is injected.
 	 */
 	attachAuthPendingMcpServers?: boolean;
+	/**
+	 * Build for the in-app preview chat, which appends
+	 * {@link PREVIEW_SELF_MODIFICATION_POLICY} to the instructions. Runtimes
+	 * built with this differ from every other surface, so callers must keep
+	 * them on their own cache key.
+	 */
+	previewChat?: boolean;
+	/** Called when each vector store search starts. The returned function gets the size of the output that the model gets. */
+	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall;
+}
+
+function countVectorStoreSearches(
+	searchTool: BuiltTool,
+	onVectorStoreSearch: (runId: string | undefined) => FinishKnowledgeToolCall,
+): BuiltTool {
+	const searchHandler = searchTool.handler;
+	if (!searchHandler) {
+		return searchTool;
+	}
+
+	return {
+		...searchTool,
+		async handler(input, ctx) {
+			const finishSearch = onVectorStoreSearch(ctx.runId);
+			const startedAt = Date.now();
+			let output: unknown;
+			try {
+				output = await searchHandler.call(searchTool, input, ctx);
+			} catch (error) {
+				const errorType = error instanceof Error ? error.name : typeof error;
+				finishSearch({ failed: true, searchDurationMs: Date.now() - startedAt, errorType });
+				throw error;
+			}
+
+			const searchDurationMs = Date.now() - startedAt;
+
+			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
+			const json: string | undefined = JSON.stringify(modelOutput);
+			const contentChars = json?.length ?? 0;
+			const emptySearch =
+				isRecord(output) && Array.isArray(output.results) && output.results.length === 0;
+			finishSearch({ failed: false, contentChars, searchDurationMs, emptySearch });
+			return output;
+		},
+	};
 }
 
 /**
@@ -152,11 +214,12 @@ export async function buildFromJson(
 		options.skills ?? {},
 		createRuntimeSkillRegistry,
 	);
-	agent.instructions(getInstructionsWithWebSearchPolicy(config));
+	agent.instructions(buildInstructions(config, options));
 
 	// Tools
 	if (config.tools) {
 		for (const ref of config.tools) {
+			if (ref.enabled === false) continue;
 			const built = await resolveToolRef(ref, toolDescriptors, options);
 			if (built) {
 				agent.tool(built);
@@ -190,7 +253,12 @@ export async function buildFromJson(
 			// selected yet — skip them rather than failing the whole agent build.
 			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
 			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
-			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
+			const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
+			agent.tool(
+				options.onVectorStoreSearch
+					? countVectorStoreSearches(searchTool, options.onVectorStoreSearch)
+					: searchTool,
+			);
 		}
 	}
 
@@ -216,22 +284,13 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(
-			agent,
-			config.memory,
-			options.memoryFactory,
-			options.credentialProvider,
-			options.resolveManagedEmbeddingProviderOptions,
-		);
+		await applyMemoryFromConfig(agent, config.memory, options);
 	}
 
 	// Config options
 	if (config.config) {
 		if (config.config.reasoning) {
 			agent.reasoning(config.config.reasoning);
-		}
-		if (config.config.promptCaching) {
-			agent.promptCaching(config.config.promptCaching);
 		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
@@ -241,25 +300,14 @@ export async function buildFromJson(
 		}
 	}
 
-	return agent;
-}
+	if (config.config?.promptCaching) {
+		agent.promptCaching(config.config.promptCaching);
+	} else if (isRoutedAnthropicModel(config.model)) {
+		// Existing agents receive the cache default without a config update.
+		agent.promptCaching({ enabled: true });
+	}
 
-function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
-	if (typeof modelConfig === 'string') return modelConfig;
-	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
-		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
-	}
-	if (
-		typeof modelConfig === 'object' &&
-		modelConfig !== null &&
-		'provider' in modelConfig &&
-		'modelId' in modelConfig
-	) {
-		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
-		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
-		return provider && modelId ? `${provider}/${modelId}` : undefined;
-	}
-	return undefined;
+	return agent;
 }
 
 function getProviderToolPrefix(toolName: string): string | undefined {
@@ -267,9 +315,13 @@ function getProviderToolPrefix(toolName: string): string | undefined {
 	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
 }
 
-function getInstructionsWithWebSearchPolicy(config: AgentJsonConfig): string {
-	if (config.config?.webSearch?.enabled !== true) return config.instructions;
-	return `${config.instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
+function buildInstructions(config: AgentJsonConfig, options: BuildFromJsonOptions): string {
+	const policies = [
+		config.config?.webSearch?.enabled === true ? WEB_SEARCH_POLICY_INSTRUCTION : undefined,
+		options.previewChat === true ? PREVIEW_SELF_MODIFICATION_POLICY : undefined,
+	].filter((policy) => policy !== undefined);
+	if (policies.length === 0) return config.instructions;
+	return [config.instructions.trimEnd(), ...policies].join('\n\n');
 }
 
 /**
@@ -280,7 +332,7 @@ export function buildProviderToolsForModel(
 	config: AgentJsonConfig,
 	modelConfig: ModelConfig,
 ): BuiltProviderTool[] {
-	const modelId = modelConfigToModelId(modelConfig);
+	const modelId = modelConfigToId(modelConfig);
 	if (!modelId) return [];
 
 	const providerPrefix = getProviderPrefix(modelId);
@@ -301,7 +353,7 @@ export function buildProviderToolsForModel(
 
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
-	credentialProvider: CredentialProvider,
+	credentialProvider: CredentialProvider & Partial<AiGatewaySearchCredentialResolver>,
 	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
@@ -319,10 +371,10 @@ function buildFallbackWebSearchTool(
 		};
 	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
-		throw new Error('Web search is enabled but no fallback search provider is configured.');
+		throw new UserError('Web search is enabled but no fallback search provider is configured.');
 	}
 	if (!webSearchConfig.credential) {
-		throw new Error('Web search is enabled but no search credential is configured.');
+		throw new UserError('Web search is enabled but no search credential is configured.');
 	}
 	const credentialId = webSearchConfig.credential;
 
@@ -333,33 +385,39 @@ function buildFallbackWebSearchTool(
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);
-			const credential = await credentialProvider.resolve(credentialId);
 			const { braveSearch, searxngSearch } = await import('@n8n/ai-utilities');
+			const searchOptions = {
+				maxResults: args.maxResults,
+				includeDomains: args.includeDomains,
+				excludeDomains: args.excludeDomains,
+			};
 
 			if (webSearchConfig.provider === 'brave') {
+				// n8n Connect (Gateway credits): route through the AI gateway with a
+				// minted credential instead of the user's API key.
+				if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+					const proxyConfig = await resolveWebSearchGatewayProxyConfig(
+						webSearchConfig.provider,
+						credentialProvider,
+					);
+					return await braveSearch('', args.query, { ...searchOptions, proxyConfig });
+				}
+				const credential = await credentialProvider.resolve(credentialId);
 				if (typeof credential.apiKey !== 'string') {
 					throw new Error('Brave Search credential is missing an API key.');
 				}
-				return await braveSearch(credential.apiKey, args.query, {
-					maxResults: args.maxResults,
-					includeDomains: args.includeDomains,
-					excludeDomains: args.excludeDomains,
-				});
+				return await braveSearch(credential.apiKey, args.query, searchOptions, webSearchFetch);
 			}
 
+			// SearXNG is self-hosted, so it has no gateway-served managed path.
+			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+				throw new UserError('Gateway credits web search is only available for Brave Search.');
+			}
+			const credential = await credentialProvider.resolve(credentialId);
 			if (typeof credential.apiUrl !== 'string') {
 				throw new Error('SearXNG credential is missing an API URL.');
 			}
-			return await searxngSearch(
-				credential.apiUrl,
-				args.query,
-				{
-					maxResults: args.maxResults,
-					includeDomains: args.includeDomains,
-					excludeDomains: args.excludeDomains,
-				},
-				webSearchFetch,
-			);
+			return await searxngSearch(credential.apiUrl, args.query, searchOptions, webSearchFetch);
 		},
 	};
 }
@@ -391,7 +449,6 @@ function getConfiguredSkillSource(
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
-			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
 			linkedFiles,
 		});
 	}
@@ -445,6 +502,7 @@ async function resolveToolRef(
 				description: descriptor.description,
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
+				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
@@ -477,7 +535,9 @@ async function resolveToolRef(
 					options: { name: ref.name, description: ref.description },
 				},
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -491,7 +551,9 @@ async function resolveToolRef(
 				editable: false,
 				metadata: { nodeTool: true, ...ref.node },
 			};
-			const tool = (await options.resolveTool?.(ref)) ?? marker;
+			const resolved = await options.resolveTool?.(ref);
+			if (resolved === null) return null;
+			const tool = resolved ?? marker;
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -503,9 +565,12 @@ async function resolveToolRef(
 async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
-	memoryFactory: MemoryFactory,
-	credentialProvider: CredentialProvider,
-	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	{
+		memoryFactory,
+		credentialProvider,
+		resolveManagedEmbeddingProviderOptions,
+		modelFetch,
+	}: BuildFromJsonOptions,
 ) {
 	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
@@ -515,11 +580,10 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
-			await resolveEpisodicMemoryJsonConfig(
-				memoryConfig.episodicMemory,
-				credentialProvider,
+			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider, {
 				resolveManagedEmbeddingProviderOptions,
-			),
+				modelFetch,
+			}),
 		);
 	}
 
@@ -573,22 +637,20 @@ async function applyMemoryFromConfig(
 async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
-	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	{
+		resolveManagedEmbeddingProviderOptions,
+		modelFetch,
+	}: Pick<BuildFromJsonOptions, 'resolveManagedEmbeddingProviderOptions' | 'modelFetch'>,
 ) {
-	const {
-		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-		createEpisodicMemoryExtractFn,
-		createEpisodicMemoryReflectFn,
-	} = await import('@n8n/agents');
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryConsolidateFn } =
+		await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
-	const embeddingProviderOptions =
-		config.credential === MANAGED_CREDENTIAL_TOKEN
-			? await resolveManagedEmbeddingProviderOptions?.()
-			: await resolveEmbeddingProviderOptionsFromCredential(
-					config.credential,
-					embeddingModel,
-					credentialProvider,
-				);
+	const embeddingProviderOptions = await resolveEpisodicMemoryEmbeddingProviderOptions(
+		config.credential,
+		embeddingModel,
+		credentialProvider,
+		{ resolveManaged: resolveManagedEmbeddingProviderOptions, fetch: modelFetch },
+	);
 
 	if (!embeddingProviderOptions) {
 		throw new Error('Managed Episodic Memory embeddings require the AI assistant proxy.');
@@ -596,18 +658,14 @@ async function resolveEpisodicMemoryJsonConfig(
 
 	return {
 		enabled: true,
-		...(config.extractorModel !== undefined && {
-			extract: createEpisodicMemoryExtractFn(
-				await resolveMemoryWorkerModelConfig(config.extractorModel, credentialProvider),
-			),
-		}),
 		...(config.reflectorModel !== undefined && {
-			reflect: createEpisodicMemoryReflectFn(
+			consolidate: createEpisodicMemoryConsolidateFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
 			),
 		}),
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
+		...(config.guidance !== undefined && { guidance: config.guidance }),
 		embeddingProviderOptions,
 	};
 }
@@ -626,7 +684,7 @@ async function resolveModelConfig(
 }
 
 async function resolveMemoryWorkerModelConfig(
-	config: MemoryWorkerModelConfig,
+	config: AgentModelCredentialConfig,
 	credentialProvider: CredentialProvider,
 ): Promise<ModelConfig> {
 	// Mirrors `resolveModelConfig`: an empty credential means "not configured",

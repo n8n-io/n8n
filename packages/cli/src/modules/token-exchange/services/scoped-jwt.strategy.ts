@@ -4,8 +4,12 @@ import { Service } from '@n8n/di';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
-import type { AuthStrategy, AuthStrategyOptions } from '@/services/auth-strategy.types';
-import { JwtService } from '@/services/jwt.service';
+import type {
+	AuthStrategy,
+	AuthStrategyOptions,
+	AuthStrategyResult,
+} from '@n8n/backend-services/auth';
+import { JwtService } from '@n8n/backend-services';
 
 import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../token-exchange.types';
 
@@ -28,7 +32,7 @@ export class ScopedJwtStrategy implements AuthStrategy {
 		const issuer = options?.issuer ?? TOKEN_EXCHANGE_ISSUER;
 
 		// 1. Decode (unverified) — check iss before expensive signature verification
-		const decoded = this.jwtService.decode<IssuedJwtPayload>(token);
+		const decoded = this.jwtService.decodeUnverified<IssuedJwtPayload>(token);
 		if (!decoded || decoded.iss !== issuer) {
 			return null; // Not a token-exchange JWT — pass to next strategy
 		}
@@ -36,7 +40,7 @@ export class ScopedJwtStrategy implements AuthStrategy {
 		// 2. Verify signature + expiry
 		let payload: IssuedJwtPayload;
 		try {
-			payload = this.jwtService.verify<IssuedJwtPayload>(token, {
+			payload = this.jwtService.verify<IssuedJwtPayload>('tokenExchange', token, {
 				issuer,
 			});
 		} catch (error) {
@@ -71,16 +75,19 @@ export class ScopedJwtStrategy implements AuthStrategy {
 		};
 	}
 
-	async authenticate(req: AuthenticatedRequest): Promise<boolean | null> {
+	async authenticate(req: AuthenticatedRequest): Promise<AuthStrategyResult> {
 		// 1. Extract token from Authorization: Bearer or x-n8n-api-key header
 		const token = this.extractToken(req);
-		if (!token) return null;
+		if (!token) return { outcome: 'abstained' };
 
 		// 2. Build token grant
 		const tokenGrant = await this.buildTokenGrant(token);
 
-		if (tokenGrant === false || tokenGrant === null) {
-			return tokenGrant;
+		if (tokenGrant === false) {
+			return { outcome: 'rejected' };
+		}
+		if (tokenGrant === null) {
+			return { outcome: 'abstained' };
 		}
 
 		// 3. Acting principal: actor (if resolved) or subject
@@ -91,7 +98,7 @@ export class ScopedJwtStrategy implements AuthStrategy {
 
 		req.user = actingUser;
 
-		return true;
+		return { outcome: 'authenticated' };
 	}
 
 	private async findUser(id: string) {

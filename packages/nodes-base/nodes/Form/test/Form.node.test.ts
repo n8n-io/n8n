@@ -46,6 +46,23 @@ describe('Form Node', () => {
 		mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
 	});
 
+	describe('node description', () => {
+		it('should offer an option to hide the attribution footer on the Form Ending page', () => {
+			// The Form Trigger exposes `appendAttribution` so builders can drop the
+			// "Form automated with n8n" footer, but the Form Ending page has no
+			// equivalent toggle — it always renders the footer.
+			const completionOptions = form.description.properties.find(
+				(property) =>
+					property.name === 'options' &&
+					property.displayOptions?.show?.operation?.includes('completion'),
+			);
+
+			expect(completionOptions?.options).toContainEqual(
+				expect.objectContaining({ name: 'appendAttribution' }),
+			);
+		});
+	});
+
 	describe('execute method', () => {
 		it('should throw an error if Form Trigger node is not set', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('page');
@@ -341,6 +358,9 @@ describe('Form Node', () => {
 
 				expect(result).toEqual({ noWebhookResponse: true });
 				expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
+					// The attribution footer is on for every case here, so it always
+					// carries the link it points at.
+					n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 					...expected,
 				});
 			}
@@ -1065,6 +1085,7 @@ describe('Form Node', () => {
 				redirect: vi.fn(),
 				send: vi.fn(),
 				setHeader: vi.fn(),
+				removeHeader: vi.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,
@@ -1074,8 +1095,10 @@ describe('Form Node', () => {
 			const result = await form.webhook(mockWebhookFunctions);
 
 			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponseObject.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
 			expect(mockResponseObject.render).toHaveBeenCalledWith('form-trigger-completion', {
 				appendAttribution: 'test',
+				n8nWebsiteLink: 'https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger',
 				formTitle: 'test',
 				message: 'Test Message',
 				redirectUrl: 'https://n8n.io',

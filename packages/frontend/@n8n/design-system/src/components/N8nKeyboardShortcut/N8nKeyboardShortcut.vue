@@ -46,16 +46,21 @@ const keys = computed(() => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	border-radius: var(--radius--sm);
+	border-radius: var(--radius--2xs);
 	height: 18px;
 	min-width: 18px;
 	padding: 0 var(--spacing--4xs);
-	border: solid 1px var(--n8n--kbd-border, var(--color--foreground));
+	border: 0.5px solid var(--n8n--kbd-border, var(--border-color--subtle));
+	box-shadow: var(--shadow--xs);
 	background: var(--n8n--kbd-bg, var(--color--background));
+	background-clip: padding-box;
 }
 
 .key {
 	color: var(--n8n--kbd-text, var(--color--text));
 	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	font-family: var(--font-family--monospace);
+	font-variant-numeric: tabular-nums;
 }
 </style>

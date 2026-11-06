@@ -104,6 +104,46 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps the skill update content delivered for the response', () => {
+		const update = {
+			skillId: 'hub-example',
+			name: 'Writing style',
+			version: 'v2',
+			change: 'updated',
+			content: 'Private skill instructions.',
+		};
+		expect(
+			map(
+				{
+					type: 'message',
+					message: {
+						type: 'custom',
+						data: {
+							type: 'n8n:runtime-skill-update',
+							skillUpdate: update,
+						},
+					},
+				},
+				'response-1',
+			),
+		).toEqual({
+			type: 'skill-update',
+			runId,
+			agentId,
+			responseId: 'response-1',
+			payload: {
+				skillId: update.skillId,
+				name: update.name,
+				version: update.version,
+				change: update.change,
+				content: update.content,
+			},
+		});
+		expect(
+			map({ type: 'message', message: { type: 'custom', data: { skillUpdate: update } } }),
+		).toBeNull();
+	});
+
 	it('preserves responseId when provided', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' }, 'response-1')).toEqual({
 			type: 'text-delta',
@@ -296,7 +336,7 @@ describe('mapAgentChunkToEvent', () => {
 			map({
 				type: 'tool-call-suspended',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				input: { prompt: 'Confirm?' },
 				suspendPayload: {
 					requestId: 'request-1',
@@ -312,7 +352,7 @@ describe('mapAgentChunkToEvent', () => {
 					],
 					requireUserSelection: true,
 					projectId: 'project-1',
-					inputType: 'plan-review',
+					inputType: 'questions',
 					questions: [
 						{
 							id: 'q1',
@@ -321,22 +361,20 @@ describe('mapAgentChunkToEvent', () => {
 						},
 					],
 					introMessage: 'Before continuing',
-					tasks: {
-						tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-					},
-					planItems: [
-						{
-							id: 'task-1',
-							title: 'Build workflow',
-							kind: 'build-workflow',
-							spec: 'Create a workflow',
-							deps: [],
-						},
-					],
 					domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 					credentialFlow: { stage: 'generic' },
+					credentialDestination: {
+						origin: 'https://api.example.com',
+						nodeNames: ['Fetch account'],
+					},
 					setupRequests: [validSetupNode],
 					workflowId: 'wf-1',
+					resourceName: 'CRM Lead enrichment',
+					approvalDetails: {
+						action: 'insert-rows',
+						count: 1,
+						rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+					},
 					resourceDecision: {
 						toolGroup: 'Local Gateway',
 						resource: '/tmp/file.txt',
@@ -352,7 +390,7 @@ describe('mapAgentChunkToEvent', () => {
 			payload: {
 				requestId: 'request-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask-user',
+				toolName: 'ask_user',
 				args: { prompt: 'Confirm?' },
 				severity: 'destructive',
 				message: 'Need approval',
@@ -366,11 +404,21 @@ describe('mapAgentChunkToEvent', () => {
 				],
 				requireUserSelection: true,
 				projectId: 'project-1',
-				inputType: 'plan-review',
+				inputType: 'questions',
 				domainAccess: { url: 'https://example.com/api', host: 'example.com' },
 				credentialFlow: { stage: 'generic' },
+				credentialDestination: {
+					origin: 'https://api.example.com',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [validSetupNode],
 				workflowId: 'wf-1',
+				resourceName: 'CRM Lead enrichment',
+				approvalDetails: {
+					action: 'insert-rows',
+					count: 1,
+					rows: [{ values: [{ column: 'name', value: '"Alice"' }], remainingColumns: 0 }],
+				},
 				questions: [
 					{
 						id: 'q1',
@@ -379,18 +427,6 @@ describe('mapAgentChunkToEvent', () => {
 					},
 				],
 				introMessage: 'Before continuing',
-				tasks: {
-					tasks: [{ id: 't1', description: 'Build workflow', status: 'todo' }],
-				},
-				planItems: [
-					{
-						id: 'task-1',
-						title: 'Build workflow',
-						kind: 'build-workflow',
-						spec: 'Create a workflow',
-						deps: [],
-					},
-				],
 				resourceDecision: {
 					toolGroup: 'Local Gateway',
 					resource: '/tmp/file.txt',
@@ -425,6 +461,7 @@ describe('mapAgentChunkToEvent', () => {
 			toolCallId: 'tc-1',
 			suspendPayload: {
 				severity: 'unknown',
+				approvalDetails: { action: 'insert-rows', count: -1 },
 				credentialRequests: [{ invalid: true }],
 				inputType: 'bad-input-type',
 				questions: [{ invalid: true }],
@@ -432,6 +469,10 @@ describe('mapAgentChunkToEvent', () => {
 				domainAccess: { url: 'https://example.com' },
 				webSearch: { invalid: true },
 				credentialFlow: { stage: 'unknown' },
+				credentialDestination: {
+					origin: 'https://api.example.com/path',
+					nodeNames: ['Fetch account'],
+				},
 				setupRequests: [{ invalid: true }],
 				workflowId: 42,
 			},
@@ -456,16 +497,15 @@ describe('mapAgentChunkToEvent', () => {
 		expect(
 			map({
 				type: 'tool-call-suspended',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				input: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				input: { message: 'Delete record-1' },
 				suspendPayload: {
 					type: 'approval',
 					requestId: 'approval-1',
 					toolName: 'delete_record',
 					displayName: 'Delete record',
 					args: { id: 'record-1' },
-					builderCheckpoint: { runId: 'builder-run', toolCallId: 'call-agent' },
 				},
 			}),
 		).toEqual({
@@ -474,9 +514,9 @@ describe('mapAgentChunkToEvent', () => {
 			agentId,
 			payload: {
 				requestId: 'approval-1',
-				toolCallId: 'build-agent-call',
-				toolName: 'build-agent',
-				args: { agentRef: 'support-agent' },
+				toolCallId: 'call-agent-call',
+				toolName: 'agent_builder_call_agent',
+				args: { message: 'Delete record-1' },
 				severity: 'warning',
 				message: 'Confirmation required',
 				targetApproval: {
@@ -575,6 +615,38 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps confirmations with an app blueprint', () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project',
+			description: 'Plan weekly tasks.',
+			theme: 'both',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'apps',
+				input: { action: 'create', blueprint: appBlueprint },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Review the app blueprint',
+					inputType: 'app-blueprint',
+					appBlueprint,
+				},
+			}),
+		).toMatchObject({
+			type: 'confirmation-request',
+			payload: {
+				inputType: 'app-blueprint',
+				appBlueprint,
+			},
+		});
+	});
+
 	it('maps confirmations with an mcpConnectRequest payload', () => {
 		expect(
 			map({
@@ -592,7 +664,9 @@ describe('mapAgentChunkToEvent', () => {
 								serverSlug: 'brave',
 								title: 'Brave',
 								tagline: 'Search the web with Brave Search',
-								credentialType: 'braveMcpOAuth2Api',
+								usesCredentials: [
+									{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+								],
 							},
 						],
 					},
@@ -615,7 +689,9 @@ describe('mapAgentChunkToEvent', () => {
 							serverSlug: 'brave',
 							title: 'Brave',
 							tagline: 'Search the web with Brave Search',
-							credentialType: 'braveMcpOAuth2Api',
+							usesCredentials: [
+								{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
+							],
 						},
 					],
 				},
@@ -638,6 +714,97 @@ describe('mapAgentChunkToEvent', () => {
 
 		expect(event).toMatchObject({ type: 'confirmation-request' });
 		expect(event).not.toHaveProperty('payload.mcpConnectRequest');
+	});
+
+	it('maps confirmations with a testListener payload', () => {
+		const testListener = {
+			workflowId: 'wf-1',
+			triggers: [
+				{
+					nodeName: 'Webhook',
+					url: 'http://localhost:5678/webhook-test/abc/intake',
+					method: 'POST',
+				},
+			],
+			deadlineAt: '2026-01-01T00:10:00.000Z',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_executions',
+				input: { action: 'listen', workflowId: 'wf-1' },
+				suspendPayload: {
+					requestId: 'request-1',
+					severity: 'info',
+					message: 'Waiting for a test request to Intake',
+					testListener,
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'workflow_builder_executions',
+				args: { action: 'listen', workflowId: 'wf-1' },
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+	});
+
+	it.each([
+		['without triggers', { workflowId: 'wf-1' }],
+		[
+			'with an empty workflowId',
+			{
+				workflowId: '',
+				triggers: [
+					{ nodeName: 'Webhook', url: 'http://localhost:5678/webhook-test/abc', method: 'POST' },
+				],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with an empty triggers list',
+			{ workflowId: 'wf-1', triggers: [], deadlineAt: '2026-01-01T00:10:00.000Z' },
+		],
+		[
+			'with an empty trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: '', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+		[
+			'with a relative trigger URL',
+			{
+				workflowId: 'wf-1',
+				triggers: [{ nodeName: 'Webhook', url: 'webhook-test/abc/intake', method: 'POST' }],
+				deadlineAt: '2026-01-01T00:10:00.000Z',
+			},
+		],
+	])('drops a malformed testListener payload %s', (_, testListener) => {
+		const event = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'workflow_builder_executions',
+			suspendPayload: {
+				requestId: 'request-1',
+				severity: 'info',
+				message: 'Waiting for a test request to Intake',
+				testListener,
+			},
+		});
+
+		expect(event).toMatchObject({ type: 'confirmation-request' });
+		expect(event).not.toHaveProperty('payload.testListener');
 	});
 
 	it('returns null for suspensions without a tool call id', () => {

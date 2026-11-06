@@ -16,7 +16,6 @@ const config: StorybookConfig = {
 		'../../design-system/src/**/*.mdx',
 	],
 	addons: [
-		getAbsolutePath('@chromatic-com/storybook'),
 		getAbsolutePath('@storybook/addon-vitest'),
 		getAbsolutePath('@storybook/addon-a11y'),
 		{
@@ -30,7 +29,7 @@ const config: StorybookConfig = {
 			},
 		},
 		getAbsolutePath('storybook-addon-vue-mdx'),
-		getAbsolutePath('@vueless/storybook-dark-mode'),
+		getAbsolutePath('@storybook/addon-themes'),
 	],
 	framework: {
 		name: getAbsolutePath('@storybook/vue3-vite'),

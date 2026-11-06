@@ -11,7 +11,6 @@ import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
-	OperationalError,
 	type INodeCredentials,
 	type IWorkflowBase,
 	jsonStringify,
@@ -19,10 +18,9 @@ import {
 	INodeParameters,
 	INode,
 	type IBinaryData,
-	UserError,
 } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError, OperationalError, UserError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -85,7 +83,7 @@ export class ChatHubTitleService {
 		incomingCredentials: INodeCredentials,
 		incomingModel: ChatHubConversationModel,
 	) {
-		return await this.sessionRepository.manager.transaction(async (trx) => {
+		return await this.sessionRepository.runInTransaction({}, async (trx, ctx) => {
 			const { resolvedCredentials, resolvedModel, credentialId, projectId } =
 				await this.resolveCredentialsAndModelForTitle(
 					user,
@@ -115,7 +113,7 @@ export class ChatHubTitleService {
 				attachments,
 				resolvedCredentials,
 				resolvedModel,
-				trx,
+				ctx,
 				providerSettings,
 			);
 		});

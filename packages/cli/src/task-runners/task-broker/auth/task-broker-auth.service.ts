@@ -3,7 +3,7 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { randomBytes, timingSafeEqual } from 'crypto';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 /**
  * Cached in place of a runner ID for a grant token minted without one bound.
@@ -58,11 +58,9 @@ export class TaskBrokerAuthService {
 	 */
 	async tryConsumeGrantToken(grantToken: string): Promise<GrantTokenConsumption> {
 		const key = this.cacheKeyForGrantToken(grantToken);
-		const consumed = await this.cacheService.get<string>(key);
-		// Not found from cache --> Invalid token
+		const consumed = await this.cacheService.take<string>(key);
+		// Not found in cache --> Invalid or already consumed token
 		if (consumed === undefined) return { isValid: false, boundRunnerId: null };
-
-		await this.cacheService.delete(key);
 
 		return {
 			isValid: true,

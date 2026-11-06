@@ -13,6 +13,15 @@ const enableStreaminOption: INodeProperties = {
 	description: 'Whether this agent will stream the response in real-time as it generates text',
 };
 
+const forceToolCallOnFirstIterationOption: INodeProperties = {
+	displayName: 'Force Tool Call on First Iteration',
+	name: 'forceToolCallOnFirstIteration',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether the model must call at least one tool on its first response of each run. Later responses are unrestricted so the agent can answer. Useful for smaller models that otherwise skip tool calls; the model must support forced tool choice.',
+};
+
 const maxTokensFromMemoryOption: INodeProperties = {
 	displayName: 'Max Tokens To Read From Memory',
 	name: 'maxTokensFromMemory',
@@ -34,5 +43,6 @@ export const toolsAgentProperties: INodeProperties = {
 		enableStreaminOption,
 		getBatchingOptionFields(undefined, 1),
 		maxTokensFromMemoryOption,
+		forceToolCallOnFirstIterationOption,
 	],
 };

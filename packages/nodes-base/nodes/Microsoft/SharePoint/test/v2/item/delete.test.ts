@@ -5,11 +5,11 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),

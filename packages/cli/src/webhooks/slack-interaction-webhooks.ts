@@ -18,6 +18,8 @@ interface SlackInteractionPayload {
  */
 @Service()
 export class SlackInteractionWebhooks extends HitlInteractionWebhooks {
+	protected readonly platformNodeType = 'n8n-nodes-base.slack';
+
 	protected async parseCallback(
 		req: WaitingWebhookRequest,
 	): Promise<ParsedHitlCallbackReference | null> {

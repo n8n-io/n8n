@@ -90,7 +90,7 @@ const onProjectMouseUp = () => {
 		@mouseenter="onHover"
 		@mouseup="isDragging ? onProjectMouseUp() : null"
 	>
-		<N8nLink :to="projectLink" :class="[$style['project-link']]">
+		<N8nLink :to="projectLink" :underline="false" :class="[$style['project-link']]">
 			<ProjectIcon :icon="projectIcon" :border-less="true" size="mini" :title="projectName" />
 			<N8nText
 				size="medium"
@@ -105,6 +105,8 @@ const onProjectMouseUp = () => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .home-project {
 	display: flex;
 	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);

@@ -3,7 +3,9 @@ import {
 	DeleteFolderDto,
 	ListFolderQueryDto,
 	TransferFolderBodyDto,
+	TransferPreviewQueryDto,
 	UpdateFolderDto,
+	type FolderTransferPreview,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -21,12 +23,9 @@ import {
 	Middleware,
 } from '@n8n/decorators';
 import { NextFunction, Response } from 'express';
-import { UserError } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, InternalServerError, NotFoundError, UserError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -198,6 +197,29 @@ export class ProjectController {
 				throw new NotFoundError(e.message);
 			}
 			throw new InternalServerError(undefined, e);
+		}
+	}
+
+	@Get('/:folderId/transfer-preview')
+	@ProjectScope('folder:move')
+	@Licensed('feat:folders')
+	async transferFolderPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('folderId') sourceFolderId: string,
+		@Param('projectId') sourceProjectId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<FolderTransferPreview> {
+		try {
+			return await this.enterpriseWorkflowService.previewFolderTransfer(
+				req.user,
+				sourceProjectId,
+				sourceFolderId,
+				query.destinationProjectId,
+			);
+		} catch (e) {
+			if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
+			throw e;
 		}
 	}
 

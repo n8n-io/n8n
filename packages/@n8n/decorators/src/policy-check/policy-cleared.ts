@@ -1,22 +1,85 @@
 import { UnexpectedError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 import { brand } from './policy-brand';
-import type { EnforcementPoint, PolicyDecision, PolicyVersionRef } from './policy-check';
+import type {
+	EnforcementPoint,
+	PolicedCredential,
+	PolicedWorkflow,
+	PolicyDecision,
+	PolicyVersionRef,
+} from './policy-check';
 
 /**
  * What kind of thing was policed. Closed, so a typo is a compile error rather than a binding
  * that silently never matches. Open to widening: `contentImport` in particular is generic over
  * artifact kind, and adding a kind here touches no signature.
  */
-export type PolicySubjectType = 'workflow' | 'credential';
+export type PolicySubjectType = 'workflow' | 'credential' | 'agent';
 
 /** What a decision was about. */
 export type PolicySubject = {
 	readonly type: PolicySubjectType;
 
-	/** Stable id, or a content hash where there is none yet — a workflow being created. */
+	/** A committed row's id, or a content hash when it has none yet — a workflow being created. */
 	readonly id: string;
 };
+
+const policySubjectType = (workflow: Pick<PolicedWorkflow, 'artifactKind'>): PolicySubjectType =>
+	workflow.artifactKind ?? 'workflow';
+
+/**
+ * A workflow being created binds to its content, not an id.
+ *
+ * A create has no committed identity — the row's id is generated on insert, and a
+ * client-supplied id is no proof of anything checked. Binding to the node hash makes the
+ * clearance cover the content policy actually saw, so nothing may mutate `nodes` between the
+ * check and the write.
+ */
+export function workflowContentSubject(
+	workflow: Pick<PolicedWorkflow, 'nodes' | 'artifactKind'>,
+): PolicySubject {
+	// Same object within one request, so key order is stable.
+	const hash = createHash('sha256').update(JSON.stringify(workflow.nodes)).digest('hex');
+
+	return { type: policySubjectType(workflow), id: hash };
+}
+
+/**
+ * An existing workflow binds to its id; one with none yet binds to its content.
+ *
+ * Truthiness, not `!== null`: a create's id is absent as `undefined`, and treating that as
+ * present would bind every create to the same `undefined` subject — a token for one create
+ * would then clear any other.
+ */
+export function workflowSubject(
+	workflow: Pick<PolicedWorkflow, 'id' | 'nodes' | 'artifactKind'>,
+): PolicySubject {
+	if (workflow.id) return { type: policySubjectType(workflow), id: workflow.id };
+
+	return workflowContentSubject(workflow);
+}
+
+/**
+ * A credential being created binds to its type, the one field a check reads.
+ *
+ * Same reasoning as {@link workflowContentSubject}: a create has no committed id, and a
+ * client-supplied one proves nothing. Nothing may change `type` between the check and the write.
+ */
+export function credentialContentSubject(
+	credential: Pick<PolicedCredential, 'type'>,
+): PolicySubject {
+	const hash = createHash('sha256').update(credential.type).digest('hex');
+
+	return { type: 'credential', id: hash };
+}
+
+/** An existing credential binds to its id; one with none yet binds to its type. */
+export function credentialSubject(credential: PolicedCredential): PolicySubject {
+	if (credential.id) return { type: 'credential', id: credential.id };
+
+	return credentialContentSubject(credential);
+}
 
 /**
  * Proof that policy enforcement cleared one specific action, returned by every `enforce*`

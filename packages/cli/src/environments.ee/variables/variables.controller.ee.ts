@@ -7,8 +7,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Licensed, Patch, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 

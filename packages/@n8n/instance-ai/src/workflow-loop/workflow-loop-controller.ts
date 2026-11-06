@@ -273,6 +273,9 @@ export function handleVerificationVerdict(
 
 	switch (verdict.verdict) {
 		case 'verified': {
+			// The loop still completes on a partial run — re-issuing verification
+			// would replay the same coverage forever. Only the claim is downgraded,
+			// so `done` carries an honest verdict instead of a blocked state.
 			attempt.result = 'success';
 			return {
 				state: {
@@ -287,6 +290,7 @@ export function handleVerificationVerdict(
 					type: 'done',
 					workflowId: verdict.workflowId,
 					summary: verdict.summary,
+					claim: verdict.claim,
 					mockedCredentialTypes: normalizedState.mockedCredentialTypes,
 					hasUnresolvedPlaceholders: normalizedState.hasUnresolvedPlaceholders,
 					setupSkippedByUser: normalizedState.setupSkippedByUser,
@@ -470,6 +474,7 @@ function escalateToRepair(
 			status: 'active',
 			rebuildAttempts: state.rebuildAttempts + 1,
 			lastFailureSignature: verdict.failureSignature,
+			lastFailedNodeName: verdict.failedNodeName ?? state.lastFailedNodeName,
 			lastExecutionId: verdict.executionId,
 			lastWorkflowInspection: verdict.workflowInspection,
 			lastRemediation: remediation,

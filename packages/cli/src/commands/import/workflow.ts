@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -12,11 +13,11 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import glob from 'fast-glob';
 import fs from 'fs';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
@@ -38,6 +39,7 @@ function assertHasWorkflowsToImport(
 
 /**
  * Creates workflow entities from plain objects while preserving versionMetadata metadata.
+ * Generates an ID for each workflow that has none.
  */
 function createWorkflowsWithVersionMetadata(
 	workflowRepository: WorkflowRepository,
@@ -46,6 +48,9 @@ function createWorkflowsWithVersionMetadata(
 	const createdWorkflows = workflowRepository.create(workflows);
 	return createdWorkflows.map((created, index) => ({
 		...created,
+		// A plain object does not run the entity insert hook that generates missing IDs.
+		// The ownership check also needs the ID before the insert.
+		id: created.id || generateNanoId(),
 		versionMetadata: workflows[index].versionMetadata,
 	}));
 }
@@ -104,6 +109,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
 	override needsExpressionEngine = true;
 
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
+
 	async run(): Promise<void> {
 		const { flags } = this;
 
@@ -143,7 +154,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
+		const result = await this.checkRelations(workflows, project.id, flags);
 
 		if (!result.success) {
 			throw new UserError(result.message);
@@ -158,19 +169,25 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			{ activeState: flags.activeState },
 		);
 
-		this.logContentImportViolations(violations);
+		this.logSkippedWorkflows(violations);
 
-		this.reportSuccess(workflows.length);
+		const importedCount = workflows.length - violations.length;
+
+		this.reportSuccess(importedCount);
 
 		Container.get(EventService).emit('server-cli-import', {
 			activeState: flags.activeState,
-			workflowCount: workflows.length,
+			workflowCount: importedCount,
 			separate: flags.separate,
 		});
 	}
 
-	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {
-		// The credential is not supposed to be re-owned.
+	private async checkRelations(
+		workflows: IWorkflowBase[],
+		targetProjectId: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
+	) {
+		// The workflow is not supposed to be re-owned.
 		if (!userId && !projectId) {
 			return {
 				success: true as const,
@@ -189,7 +206,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`
@@ -202,7 +219,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 				return {
 					success: false as const,
-					message: `The credential with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
+					message: `The workflow with ID "${workflow.id}" is already owned by ${currentOwner}. It can't be re-owned by ${newOwner}.`,
 				};
 			}
 		}
@@ -222,20 +239,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
 	}
 
-	private logContentImportViolations(violations: WorkflowImportViolations[]) {
-		for (const { name, contentImportPolicy } of violations) {
-			if (contentImportPolicy.violations.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
-					{ violations: contentImportPolicy.violations },
-				);
-			}
-			if (contentImportPolicy.checkErrors.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
-					{ checkErrors: contentImportPolicy.checkErrors },
-				);
-			}
+	private logSkippedWorkflows(skipped: WorkflowImportViolations[]) {
+		for (const { name, violations } of skipped) {
+			this.logger.warn(
+				`Skipped workflow "${name}": ${violations.length} content-import policy violation(s)`,
+				{ violations },
+			);
 		}
 	}
 
@@ -292,9 +301,6 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		for (const file of files) {
 			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
-			if (!workflow.id) {
-				workflow.id = generateNanoId();
-			}
 
 			try {
 				assertHasWorkflowsToImport([workflow]);

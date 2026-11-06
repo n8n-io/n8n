@@ -1,6 +1,10 @@
 import type { Request } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
+import { OAUTH_SESSION_COOKIE_PREFIX } from '@/modules/oauth-server/oauth-session.service';
+import { OIDC_ID_TOKEN_COOKIE_NAME } from '@/modules/sso-oidc/constants';
+import { OAUTH_BINDING_COOKIE_NAME } from '@/oauth/oauth-browser-binding.service';
 import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
 
 describe('webhookRequestSanitizer', () => {
@@ -317,13 +321,15 @@ describe('webhookRequestSanitizer', () => {
 		it('should remove every disallowed cookie in one pass', () => {
 			mockRequest.headers = {
 				cookie:
-					'n8n-auth=a; n8n-browserId=b; n8n-form-auth-ex-12345=c; n8n-form-oauth=d; other-cookie=value',
+					'n8n-auth=a; n8n-browserId=b; n8n-form-auth-ex-12345=c; n8n-form-oauth=d; n8n-chat-oauth=e; n8n-chat-oauth-refresh=f; other-cookie=value',
 			};
 			mockRequest.cookies = {
 				'n8n-auth': 'a',
 				'n8n-browserId': 'b',
 				'n8n-form-auth-ex-12345': 'c',
 				'n8n-form-oauth': 'd',
+				'n8n-chat-oauth': 'e',
+				'n8n-chat-oauth-refresh': 'f',
 				'other-cookie': 'value',
 			};
 
@@ -331,6 +337,92 @@ describe('webhookRequestSanitizer', () => {
 
 			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
 			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+	});
+
+	describe('cookies n8n issues for its own flows', () => {
+		const N8N_ISSUED_COOKIES = [
+			// One authorization flow's session cookie, named by its flow id.
+			`${OAUTH_SESSION_COOKIE_PREFIX}ktest00-0123456789abcdef01234567`,
+			// The name the authorization session used before it was keyed per flow.
+			'n8n-oauth-session',
+			OAUTH_BINDING_COOKIE_NAME,
+			OIDC_ID_TOKEN_COOKIE_NAME,
+			OIDC_STATE_COOKIE_NAME,
+			OIDC_NONCE_COOKIE_NAME,
+		];
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the cookie header', (name) => {
+			mockRequest.headers = { cookie: `${name}=abc123; other-cookie=value` };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+		});
+
+		it.each(N8N_ISSUED_COOKIES)('should remove %s from the parsed cookies', (name) => {
+			mockRequest.cookies = { [name]: 'abc123', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+
+		// A browser holds one authorization-session cookie for each pending flow, so
+		// matching the prefix has to take all of them, not one known name.
+		it('should remove every pending authorization flow cookie', () => {
+			const first = `${OAUTH_SESSION_COOKIE_PREFIX}ktest00-0123456789abcdef01234567`;
+			const second = `${OAUTH_SESSION_COOKIE_PREFIX}ktest01-89abcdef0123456789abcdef`;
+			mockRequest.headers = { cookie: `${first}=a; ${second}=b; other-cookie=value` };
+			mockRequest.cookies = { [first]: 'a', [second]: 'b', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+			expect(mockRequest.cookies).toEqual({ 'other-cookie': 'value' });
+		});
+
+		it('should leave a cookie that begins with the session name but not the separator', () => {
+			mockRequest.headers = { cookie: 'n8n-oauth-sessions=abc123; other-cookie=value' };
+			mockRequest.cookies = { 'n8n-oauth-sessions': 'abc123', 'other-cookie': 'value' };
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('n8n-oauth-sessions=abc123; other-cookie=value');
+			expect(mockRequest.cookies).toEqual({
+				'n8n-oauth-sessions': 'abc123',
+				'other-cookie': 'value',
+			});
+		});
+	});
+
+	// The chat endpoints skip sanitizing for their own node type, so the hosted page
+	// still receives these. Every other webhook must not see them — the `-refresh` one
+	// carries a 30-day credential.
+	describe('when the chat cookies are present', () => {
+		const chatCookieNames = ['n8n-chat-oauth', 'n8n-chat-oauth-refresh'];
+
+		it.each(chatCookieNames)('should remove %s from the header', (name) => {
+			mockRequest.headers = {
+				cookie: `${name}=abc123; other-cookie=value`,
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
+		});
+
+		it.each(chatCookieNames)('should remove %s from parsed cookies', (name) => {
+			mockRequest.cookies = {
+				[name]: 'abc123',
+				'other-cookie': 'value',
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.cookies).toEqual({
+				'other-cookie': 'value',
+			});
 		});
 	});
 });

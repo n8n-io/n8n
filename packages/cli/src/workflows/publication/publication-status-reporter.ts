@@ -3,24 +3,28 @@ import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
+	TransactionRunner,
 	type TriggerStatusRow,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import type {
 	FailedTriggerPublicationStatus,
 	PublicationResult,
 	PublicationSkipReason,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
+import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
 
 /**
@@ -41,10 +45,12 @@ export class PublicationStatusReporter {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
+		private readonly retryStateRepository: WorkflowPublicationRetryStateRepository,
+		private readonly transactionRunner: TransactionRunner,
 		private readonly activationErrorsService: ActivationErrorsService,
-		private readonly push: Push,
 		private readonly publisher: Publisher,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
+		private readonly workflowPushNotifier: WorkflowPushNotifier,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -54,7 +60,7 @@ export class PublicationStatusReporter {
 			case 'completed': {
 				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
 				await this.complete(record, this.toRows(record, result.triggerStatuses), warningMessage);
-				this.pushStatus({
+				await this.pushStatus({
 					type: 'workflowActivated',
 					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
 				});
@@ -64,7 +70,7 @@ export class PublicationStatusReporter {
 			case 'unpublished': {
 				const warningMessage = this.surfaceTeardownFailures(result.teardownFailures);
 				await this.complete(record, /*triggerStatuses=*/ [], warningMessage);
-				this.pushStatus({
+				await this.pushStatus({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },
 				});
@@ -84,8 +90,15 @@ export class PublicationStatusReporter {
 					publishedVersionId: record.publishedVersionId,
 					outboxId: record.id,
 				});
-				await this.outboxRepository.markFailed(record.id, errorMessage);
-				this.pushFailedToActivate(record.workflowId, errorMessage);
+				await this.transactionRunner.run({}, async (ctx) => {
+					await this.retryStateRepository.suppressRetry(
+						record.workflowId,
+						record.publishedVersionId,
+						ctx,
+					);
+					await this.outboxRepository.markFailed(record.id, errorMessage, ctx);
+				});
+				await this.pushFailedToActivate(record.workflowId, errorMessage);
 				return;
 			}
 
@@ -94,22 +107,38 @@ export class PublicationStatusReporter {
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
 				const { triggerStatuses } = result;
-				await this.outboxRepository.manager.transaction(async (trx) => {
+				await this.transactionRunner.run({}, async (ctx) => {
 					if (triggerStatuses) {
 						await this.triggerStatusRepository.replaceForWorkflow(
 							record.workflowId,
 							this.toRows(record, triggerStatuses),
-							trx,
+							ctx,
 						);
 					}
-					await this.outboxRepository.markFailed(record.id, result.error.message, trx);
+					await this.retryStateRepository.suppressRetry(
+						record.workflowId,
+						record.publishedVersionId,
+						ctx,
+					);
+					await this.outboxRepository.markFailed(record.id, result.error.message, ctx);
 				});
 				// An expected denial, already logged as a warning by the applier — the
 				// terminal state and the UI push stand, the fault report does not.
-				if (!isPolicyRefusal(result.error)) {
+				const policyRefusal = isPolicyRefusal(result.error);
+				if (!policyRefusal) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				this.pushFailedToActivate(record.workflowId, result.error.message);
+				// Name a node only when the error belongs to it. Shared failures name none.
+				const failedTriggers = (triggerStatuses ?? []).filter((s) => s.status === 'failed');
+				let nodeId: string | undefined;
+				if (result.error instanceof TriggerNodeIdTooLongError) {
+					if (result.error.affectedNodes.length === 1) {
+						nodeId = result.error.affectedNodes[0]?.id;
+					}
+				} else if (!policyRefusal && failedTriggers.length === 1) {
+					nodeId = failedTriggers[0].nodeId;
+				}
+				await this.pushFailedToActivate(record.workflowId, result.error.message, nodeId);
 				return;
 			}
 
@@ -135,7 +164,7 @@ export class PublicationStatusReporter {
 		const failures = triggerStatuses.filter(
 			(s): s is FailedTriggerPublicationStatus => s.status === 'failed',
 		);
-		const errorMessage = this.formatActivationError(failures);
+		const errorMessage = this.formatPartialActivationError(failures);
 
 		this.logger.warn('Workflow partially published; some triggers failed to activate', {
 			workflowId: record.workflowId,
@@ -143,16 +172,17 @@ export class PublicationStatusReporter {
 			failedNodeIds: failures.map((s) => s.nodeId),
 		});
 
-		await this.outboxRepository.manager.transaction(async (trx) => {
+		await this.transactionRunner.run({}, async (ctx) => {
 			await this.triggerStatusRepository.replaceForWorkflow(
 				record.workflowId,
 				this.toRows(record, triggerStatuses),
-				trx,
+				ctx,
 			);
-			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
+			await this.retryStateRepository.clearRetrySuppression(record.workflowId, ctx);
+			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, ctx);
 		});
 
-		this.pushStatus({
+		await this.pushStatus({
 			type: 'workflowPartiallyActivated',
 			data: {
 				workflowId: record.workflowId,
@@ -182,19 +212,23 @@ export class PublicationStatusReporter {
 	}
 
 	/** Builds a human-readable message naming each failed node and its error. */
-	private formatActivationError(failures: FailedTriggerPublicationStatus[]): string {
-		const detail = failures
-			.map((status) => `"${status.nodeName}": ${status.errorMessage}`)
-			.join('; ');
+	private formatPartialActivationError(failures: FailedTriggerPublicationStatus[]): string {
+		const detail = formatNodeFailures(
+			failures.map(({ nodeName, errorMessage }) => ({ nodeName, message: errorMessage })),
+		);
 
 		return `Some triggers failed to activate: ${detail}`;
 	}
 
 	/** Pushes a failed-to-activate status to clients connected to any main. */
-	private pushFailedToActivate(workflowId: string, errorMessage: string): void {
-		this.pushStatus({
+	private async pushFailedToActivate(
+		workflowId: string,
+		errorMessage: string,
+		nodeId?: string,
+	): Promise<void> {
+		await this.pushStatus({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage },
+			data: { workflowId, errorMessage, nodeId },
 		});
 	}
 
@@ -205,17 +239,22 @@ export class PublicationStatusReporter {
 	 * is leader-only), but clients may be connected to a follower. The relay is
 	 * fire-and-forget so a pubsub failure never fails the terminal-status report.
 	 */
-	private pushStatus(pushMsg: WorkflowPublicationStatusMessage): void {
-		this.push.broadcast(pushMsg);
+	private async pushStatus(pushMsg: WorkflowPublicationStatusMessage): Promise<void> {
+		// Relayed before the lookup, so a recipient-lookup failure only drops
+		// the local push, not the relay.
 		void this.publisher
 			.publishCommand({ command: 'display-workflow-publication-status', payload: pushMsg })
 			.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
+
+		await this.workflowPushNotifier.notify(pushMsg.data.workflowId, pushMsg);
 	}
 
 	/** Displays a publication status relayed by the leader (see {@link pushStatus}). */
 	@OnPubSubEvent('display-workflow-publication-status', { instanceType: 'main' })
-	handleDisplayWorkflowPublicationStatus(pushMsg: WorkflowPublicationStatusMessage): void {
-		this.push.broadcast(pushMsg);
+	async handleDisplayWorkflowPublicationStatus(
+		pushMsg: WorkflowPublicationStatusMessage,
+	): Promise<void> {
+		await this.workflowPushNotifier.notify(pushMsg.data.workflowId, pushMsg);
 	}
 
 	/**
@@ -231,9 +270,9 @@ export class PublicationStatusReporter {
 	): string | undefined {
 		if (!teardownFailures?.length) return undefined;
 
-		const detail = teardownFailures
-			.map((failure) => `"${failure.nodeName}": ${failure.error.message}`)
-			.join('; ');
+		const detail = formatNodeFailures(
+			teardownFailures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
+		);
 		const message = `External webhook deregistration failed for: ${detail}`;
 
 		this.errorReporter.error(
@@ -253,15 +292,16 @@ export class PublicationStatusReporter {
 		triggerStatuses?: TriggerStatusRow[],
 		warningMessage?: string,
 	): Promise<void> {
-		await this.outboxRepository.manager.transaction(async (trx) => {
+		await this.transactionRunner.run({}, async (ctx) => {
 			if (triggerStatuses !== undefined) {
 				await this.triggerStatusRepository.replaceForWorkflow(
 					record.workflowId,
 					triggerStatuses,
-					trx,
+					ctx,
 				);
 			}
-			await this.outboxRepository.markCompleted(record.id, trx, warningMessage);
+			await this.retryStateRepository.clearRetrySuppression(record.workflowId, ctx);
+			await this.outboxRepository.markCompleted(record.id, ctx, warningMessage);
 		});
 		await this.activationErrorsService.deregister(record.workflowId);
 	}

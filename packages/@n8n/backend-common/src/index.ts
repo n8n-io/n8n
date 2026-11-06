@@ -1,10 +1,11 @@
 export * from './license-state';
 export type * from './types';
 
-export { inDevelopment, inProduction, inTest } from './environment';
+export { inDevelopment, inProduction, inTest, isEnvFeatureEnabled } from './environment';
 export { isObjectLiteral } from './utils/is-object-literal';
 export { Logger } from './logging/logger';
 export { ModuleRegistry } from './modules/module-registry';
+export type { PackagedModules } from './modules/module-registry';
 export type { ModuleName } from './modules/modules.config';
 export { ModulesConfig } from './modules/modules.config';
 export {
@@ -20,6 +21,10 @@ export { CliParser } from './cli-parser';
 export { TypedEmitter } from './typed-emitter';
 
 export { LockService } from './locking/lock.service';
+export {
+	SingleFlightLease,
+	type SingleFlightLeaseOptions,
+} from './locking/single-flight-lease';
 export {
 	type ILockService,
 	LockNamespace,

@@ -1,4 +1,5 @@
 import type { EnforcementPoint, PolicyCleared } from '@n8n/decorators';
+import type { SecurityContext } from '@n8n/permissions';
 
 /**
  * Transaction ports — the TypeORM-agnostic surface business logic depends on.
@@ -25,26 +26,46 @@ export type IsolationLevel =
  * detect a nested `run` requesting a level that differs from the active transaction's.
  */
 export abstract class Transaction {
-	constructor(private readonly isolationLevel?: IsolationLevel) {}
+	constructor(
+		private readonly isolationLevel?: IsolationLevel,
+		private readonly readOnly = false,
+	) {}
 
 	/** The isolation level this transaction was opened with, if one was requested. */
 	getIsolationLevel(): IsolationLevel | undefined {
 		return this.isolationLevel;
 	}
+
+	/** Whether this transaction was opened read-only; a write inside it is a bug. */
+	isReadOnly(): boolean {
+		return this.readOnly;
+	}
 }
 
 /**
  * Ambient operation context, created at the edge and threaded through the call chain as
- * `ctx`. Carries the active `trx` (if any); reserved to grow actor/scope fields for the
- * access-control follow-up. Immutable — the runner augments it by producing a copy.
+ * `ctx`. Carries the active `trx` (if any) and the caller's `security` context (if
+ * authenticated). Immutable — the runner augments it by producing a copy.
  */
 export interface OperationContext {
 	readonly trx?: Transaction;
 	readonly policyCleared?: PolicyCleared<EnforcementPoint>;
+	readonly security?: SecurityContext; // owner: the authentication edge
 }
 
 export interface RunOptions {
 	isolationLevel?: IsolationLevel;
+	/**
+	 * Open the transaction read-only. On the pooled SQLite driver the transaction
+	 * leases from the read pool instead of waiting for the single write connection.
+	 * On Postgres it runs on a configured read replica, or on the primary when none
+	 * is configured, and is marked with `SET TRANSACTION READ ONLY`. A write
+	 * statement inside a read-only transaction fails on both drivers. Keep the
+	 * callback short, pass `ctx` to every repository call, and do not await
+	 * external I/O inside it, because the transaction holds a pooled read
+	 * connection for its whole duration.
+	 */
+	readOnly?: boolean;
 }
 
 /**

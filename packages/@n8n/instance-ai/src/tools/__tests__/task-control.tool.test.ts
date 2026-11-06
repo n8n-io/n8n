@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 
-import { executeTool } from '../../__tests__/tool-test-utils';
-import { createToolRegistry } from '../../tool-registry';
+import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';
 import type { OrchestrationContext } from '../../types';
 import { createTaskControlTool } from '../task-control.tool';
 
@@ -19,7 +18,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 			subscribe: vi.fn(),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
-		domainTools: createToolRegistry(),
 		abortSignal: new AbortController().signal,
 		taskStorage: {
 			get: vi.fn(),
@@ -33,14 +31,12 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe('task-control tool', () => {
-	it('describes update-checklist as lightweight and non-scheduler', () => {
+describe('workflow_builder_task_control tool', () => {
+	it('describes update-checklist as lightweight', () => {
 		const tool = createTaskControlTool(createMockContext());
 
 		expect(tool.description).toContain('update-checklist');
 		expect(tool.description).toContain('lightweight visible checklists');
-		expect(tool.description).toContain('do not need scheduler-driven execution');
-		expect(tool.description).toContain('create-tasks');
 	});
 
 	// ── update-checklist ────────────────────────────────────────────────────
@@ -211,6 +207,42 @@ describe('task-control tool', () => {
 			expect(result).toEqual({
 				result: 'Error: correction delivery not available.',
 			});
+		});
+	});
+});
+
+describe('workflow_builder_task_control tool — checklist item contract', () => {
+	function checklistInput(description: string) {
+		return {
+			action: 'update-checklist',
+			tasks: [{ id: 'task-1', description, status: 'todo' }],
+		};
+	}
+
+	it('accepts a checklist item with a description', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('Create the Users data table'));
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects a checklist item whose description is blank', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('  '));
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('trims surrounding whitespace off the description', () => {
+		const tool = createTaskControlTool(createMockContext());
+
+		const parsed = parseToolInput(tool, checklistInput('\nCreate the Users data table\n'));
+
+		expect(parsed.success).toBe(true);
+		expect(parsed.success && parsed.data).toMatchObject({
+			tasks: [{ description: 'Create the Users data table' }],
 		});
 	});
 });

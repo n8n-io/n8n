@@ -246,6 +246,12 @@ function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: nu
 	return field.fieldLabel ?? field.fieldName ?? '';
 }
 
+/** Target of the "Form automated with n8n" attribution footer. */
+export function getN8nWebsiteLink(instanceId?: string) {
+	const utm_campaign = instanceId ? `&utm_campaign=${encodeURIComponent(instanceId)}` : '';
+	return `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
+}
+
 export function prepareFormData({
 	formTitle,
 	formDescription,
@@ -285,8 +291,7 @@ export function prepareFormData({
 	hasAuthenticatedSubmitter?: boolean;
 	hostNavigationPath?: string;
 }) {
-	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
-	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
+	const n8nWebsiteLink = getN8nWebsiteLink(instanceId);
 
 	if (formSubmittedText === undefined) {
 		formSubmittedText = 'Your response has been recorded';
@@ -1156,18 +1161,21 @@ async function authenticateFormUserOrRespond(
 			}
 			return null;
 		} else {
-			// For POST requests, the OAuth2 flow is not applicable. We fall through to the cookie and token checks below.
+			// For POST requests, the OAuth2 flow is not applicable: the page presents the token
+			// it was given. An absent token is validated too, so the 401 carries the challenge
+			// that names the resource metadata either way.
 			const formToken = req.headers['x-auth-token'];
-			if (typeof formToken === 'string' && formToken) {
-				const validation = await context.validateN8nOAuth2Token(formToken, resourceUrl);
-				if (validation.valid) {
-					await context.establishTriggerIdentity(formToken, resourceUrl); // seeds the run
-					return {
-						user: validation.user,
-						token: null,
-					};
-				}
+			const token = typeof formToken === 'string' ? formToken : '';
+			const validation = await context.validateN8nOAuth2Token(token, resourceUrl);
+			if (validation.valid) {
+				// Seeds the run. The subject rides in the seal, so a worker never needs the token.
+				await context.establishTriggerIdentity(token, resourceUrl, validation.user.id);
+				return {
+					user: validation.user,
+					token: null,
+				};
 			}
+			if (validation.challenge) res.setHeader('WWW-Authenticate', validation.challenge);
 			res.status(401).send();
 			return null;
 		}

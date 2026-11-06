@@ -118,11 +118,26 @@ const node = computed(() => {
 
 const { hasNodeRun, workflowExecution, workflowRunData, nodeRunData } = useExecutionData({ node });
 
-const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const {
+	canReveal,
+	isDynamicCredentials,
+	isSubWorkflowRedaction,
+	revealData,
+	credentialToShare,
+	openCredentialSharing,
+} = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
 });
+
+const noOutputActionLabel = computed(() =>
+	i18n.baseText(
+		isTriggerNode.value
+			? 'ndv.output.noOutputData.trigger.action'
+			: 'ndv.output.noOutputData.notRun.action',
+	),
+);
 
 const hasAiMetadata = computed(() => {
 	if (isNodeRunning.value || !workflowRunData.value) {
@@ -357,6 +372,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							: 'ndv.output.noOutputData.notRun.title',
 					)
 				"
+				has-compact-action
 			>
 				<template v-if="isTriggerNode" #icon>
 					<svg width="16" viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -384,15 +400,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<NodeExecuteButton
 								hide-icon
 								transparent
-								variant="subtle"
+								variant="outline"
 								:node-name="activeNode?.name ?? ''"
-								:label="
-									i18n.baseText(
-										isTriggerNode
-											? 'ndv.output.noOutputData.trigger.action'
-											: 'ndv.output.noOutputData.notRun.action',
-									)
-								"
+								:label="noOutputActionLabel"
 								telemetry-source="inputs"
 								@execute="emit('execute')"
 							/>
@@ -403,15 +413,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<NodeExecuteButton
 							hide-icon
 							transparent
-							variant="subtle"
+							variant="outline"
 							:node-name="activeNode?.name ?? ''"
-							:label="
-								i18n.baseText(
-									isTriggerNode
-										? 'ndv.output.noOutputData.trigger.action'
-										: 'ndv.output.noOutputData.notRun.action',
-								)
-							"
+							:label="noOutputActionLabel"
 							telemetry-source="inputs"
 							@execute="emit('execute')"
 						/>
@@ -421,6 +425,20 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							{{ i18n.baseText('ndv.output.insertTestData') }}
 						</N8nText>
 					</template>
+				</template>
+				<template #actions>
+					<NodeExecuteButton
+						icon-only
+						hide-label
+						variant="outline"
+						size="medium"
+						:node-name="activeNode?.name ?? ''"
+						:aria-label="noOutputActionLabel"
+						:tooltip="noOutputActionLabel"
+						telemetry-source="inputs"
+						data-test-id="execute-step-compact"
+						@execute="emit('execute')"
+					/>
 				</template>
 			</NDVEmptyState>
 		</template>
@@ -453,7 +471,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -463,7 +484,10 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<RedactedDataState
 				:title="i18n.baseText('ndv.output.redacted.title')"
 				:is-dynamic-credentials="isDynamicCredentials"
+				:is-sub-workflow-redaction="isSubWorkflowRedaction"
 				:can-reveal="canReveal"
+				:credential-to-share="credentialToShare"
+				@share-credential="openCredentialSharing"
 				@open-settings="openWorkflowSettings"
 				@reveal="revealData"
 			/>
@@ -503,7 +527,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	text-transform: uppercase;
 	color: var(--color--text--tint-1);
 	letter-spacing: 2px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--xs);
 }
 

@@ -149,6 +149,66 @@ describe('formCompletionUtils', () => {
 			});
 		});
 
+		it('should pass the attribution link to the completion template', async () => {
+			// The completion template renders the "Form automated with n8n" footer as
+			// `<a href={{n8nWebsiteLink}} ...>`. Without the link in the render context
+			// the anchor has no usable href, so the footer resolves against the
+			// completion page's own URL instead of pointing at n8n.io.
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+				expression ===
+				`{{ $(${JSON.stringify(trigger.name)}).params.options?.appendAttribution === false ? false : true }}`
+					? true
+					: '',
+			);
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					appendAttribution: true,
+					n8nWebsiteLink: expect.stringContaining('https://n8n.io/'),
+				}),
+			);
+		});
+
+		it('should let the completion page turn the attribution footer off on its own', async () => {
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage: 'Form has been submitted successfully',
+					options: { formTitle: 'Form Title', appendAttribution: false },
+				};
+				return params[parameterName];
+			});
+			// The trigger keeps the footer on, so only the node's own option can
+			// account for it being dropped here.
+			mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+				expression ===
+				`{{ $(${JSON.stringify(trigger.name)}).params.options?.appendAttribution === false ? false : true }}`
+					? true
+					: '',
+			);
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					appendAttribution: false,
+					n8nWebsiteLink: undefined,
+				}),
+			);
+		});
+
 		it('should render completionTitle and completionMessage as-is without re-evaluating them', async () => {
 			// `getNodeParameter` already resolves expressions, so the values it
 			// returns must be rendered verbatim. Resolving them a second time
@@ -431,7 +491,35 @@ describe('formCompletionUtils', () => {
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
 
-		it('should NOT set Content-Security-Policy header when respondWith is redirect', async () => {
+		it.each(['', 'ws://example.com'])(
+			'should keep the Content-Security-Policy header when the redirect URL is not valid (case %#)',
+			async (invalidRedirectUrl) => {
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						completionTitle: 'Form Completion',
+						completionMessage: 'Form has been submitted successfully',
+						options: { formTitle: 'Form Title' },
+						respondWith: 'redirect',
+						redirectUrl: invalidRedirectUrl,
+					};
+					return params[parameterName];
+				});
+
+				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+				expect(mockResponse.setHeader).toHaveBeenCalledWith(
+					'Content-Security-Policy',
+					expect.stringContaining('sandbox'),
+				);
+				expect(mockResponse.removeHeader).not.toHaveBeenCalled();
+				expect(mockResponse.render).toHaveBeenCalledWith(
+					'form-trigger-completion',
+					expect.objectContaining({ redirectUrl: undefined }),
+				);
+			},
+		);
+
+		it('should remove the Content-Security-Policy header when respondWith is redirect', async () => {
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
 					completionTitle: 'Form Completion',
@@ -450,6 +538,7 @@ describe('formCompletionUtils', () => {
 				'Content-Security-Policy',
 				expect.any(String),
 			);
+			expect(mockResponse.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
 			expect(mockResponse.render).toHaveBeenCalledWith(
 				'form-trigger-completion',
 				expect.objectContaining({
@@ -536,7 +625,7 @@ describe('formCompletionUtils', () => {
 			});
 		});
 
-		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
+		it('should remove the Content-Security-Policy header when form HTML sandboxing is disabled', async () => {
 			vi.mocked(isFormHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
@@ -554,6 +643,7 @@ describe('formCompletionUtils', () => {
 				'Content-Security-Policy',
 				expect.any(String),
 			);
+			expect(mockResponse.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
 			expect(mockResponse.render).toHaveBeenCalled();
 		});
 	});

@@ -1,7 +1,9 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
+import type * as AgentThreadsApiModule from '../composables/useAgentThreadsApi';
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 // Hoisted mock state so vi.mock factories (which run before any imports)
 // can reference these without hitting a temporal-dead-zone error.
@@ -15,6 +17,7 @@ const {
 	loadMore,
 	deleteThread,
 	setFilters,
+	track,
 } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 	storeState: {
@@ -22,7 +25,7 @@ const {
 		loading: false,
 		nextCursor: null as string | null,
 		autoRefresh: true,
-		filters: { status: 'all', origin: 'all', startDate: '', endDate: '' },
+		filters: { status: 'all', origin: 'all', startDate: '', endDate: '' } as AgentSessionFilters,
 	},
 	fetchThreads: vi.fn(),
 	startAutoRefresh: vi.fn(),
@@ -31,10 +34,30 @@ const {
 	loadMore: vi.fn(),
 	deleteThread: vi.fn(),
 	setFilters: vi.fn(),
+	track: vi.fn(),
 }));
 
 let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>;
 let documentRemoveEventListenerSpy: ReturnType<typeof vi.spyOn>;
+
+const stopSession = vi.hoisted(() => vi.fn());
+const agentPermissions = vi.hoisted(() => ({ canExecute: { value: true } }));
+
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => agentPermissions,
+}));
+
+vi.mock('../composables/useAgentThreadsApi', async (importOriginal) => ({
+	...(await importOriginal<typeof AgentThreadsApiModule>()),
+	stopSession,
+}));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ pushRef: 'session-xyz', restApiContext: {} }),
+}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -46,12 +69,15 @@ vi.mock('@n8n/i18n', () => ({
 				{
 					'agentSessions.viewTrace': 'View session trace',
 					'agentSessions.origin.preview': 'Preview',
-					'agentSessions.origin.instanceAi': 'AI Assistant',
+					'agentSessions.origin.instanceAi': 'n8n Assistant',
 					'agentSessions.origin.mcp': 'MCP',
 					'agentSessions.origin.subAgent': 'Sub-agent',
 					'agentSessions.origin.schedule': 'Schedule',
 					'agentSessions.origin.workflow': 'Workflow',
+					'agentSessions.origin.n8nChat': 'n8n Chat',
 					'agentSessions.empty': 'No agent sessions',
+					'agentSessions.emptyDescription':
+						'Sessions will appear here after you preview your agent.',
 					'agentSessions.emptyWithFilters': 'No sessions match these filters',
 					'agentSessions.status.running': 'Running',
 					'agentSessions.status.succeeded': 'Succeeded',
@@ -75,6 +101,10 @@ vi.mock('@n8n/design-system', () => ({
 		template: '<div data-test-id="agent-session-actions" />',
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
+	},
+	N8nBadge: {
+		props: ['leadingIcon'],
+		template: '<span><span :data-icon="leadingIcon" /><slot /></span>',
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCheckbox: {
@@ -133,10 +163,6 @@ vi.mock('../components/AgentSessionsFilter.vue', () => ({
 	},
 }));
 
-vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
-}));
-
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
@@ -146,33 +172,40 @@ vi.mock('../utils/thread-title', () => ({
 		thread.title ?? thread.firstMessage ?? 'Session',
 }));
 
-vi.mock('@/app/constants', () => ({
-	MODAL_CONFIRM: 'modal-confirm',
-}));
-
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
 	convertToDisplayDate: () => ({ date: '2026-07-20', time: '10:05' }),
 }));
 
 vi.mock('@/features/agents/constants', () => ({
-	AGENT_PREVIEW_VIEW: 'AgentPreviewView',
 	AGENT_SESSION_DETAIL_VIEW: 'AgentSessionDetailView',
 	CONTINUE_SESSION_ID_PARAM: 'continueSessionId',
 	EXECUTIONS_SECTION_KEY: '__executions',
 }));
 
-vi.mock('@n8n/api-types', () => ({}));
-
 vi.mock('element-plus', () => ({
 	ElSkeletonItem: { template: '<div />' },
 }));
 
-import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
+import type { AgentExecutionThread, AgentSessionFilters } from '../composables/useAgentThreadsApi';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
+
+const defaultFilters: AgentSessionFilters = {
+	status: 'all',
+	origin: 'all',
+	startDate: '',
+	endDate: '',
+};
+const activeFilters: AgentSessionFilters = {
+	status: 'error',
+	origin: 'slack',
+	startDate: '2026-10-01T00:00:00.000Z',
+	endDate: '2026-10-20T00:00:00.000Z',
+};
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return {
 		id: 'thread-1',
+		canContinueInPreview: true,
 		agentId: 'agent-1',
 		agentName: 'Agent',
 		parentThreadId: null,
@@ -223,6 +256,8 @@ async function mountView({
 describe('AgentSessionsListView', () => {
 	beforeEach(() => {
 		storeState.autoRefresh = true;
+		agentPermissions.canExecute.value = true;
+		stopSession.mockReset().mockResolvedValue({ cancelRequested: true });
 		fetchThreads.mockReset();
 		fetchThreads.mockResolvedValue(undefined);
 		setFilters.mockReset();
@@ -235,6 +270,66 @@ describe('AgentSessionsListView', () => {
 	afterEach(() => {
 		documentAddEventListenerSpy.mockRestore();
 		documentRemoveEventListenerSpy.mockRestore();
+	});
+
+	it('offers Stop for a running session and refreshes after stopping it', async () => {
+		const wrapper = await mountView({
+			threads: [makeThread({ status: 'running', source: 'slack' })],
+		});
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		expect(menu.props('items')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: false })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).toHaveBeenCalledExactlyOnceWith({}, 'project-1', 'agent-1', 'thread-1');
+		expect(refreshThreads).toHaveBeenCalledWith('project-1', 'agent-1');
+		wrapper.unmount();
+	});
+
+	it.each(['succeeded', 'error', 'cancelled', 'interrupted'] as const)(
+		'hides Stop for a %s session',
+		async (status) => {
+			const wrapper = await mountView({ threads: [makeThread({ status })] });
+			const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+			expect(menu.props('items')).not.toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
+			);
+			menu.vm.$emit('select', 'stop');
+			await flushPromises();
+			expect(stopSession).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
+
+	it('hides Stop without execute permission', async () => {
+		agentPermissions.canExecute.value = false;
+		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		expect(menu.props('items')).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('disables Stop while the request runs', async () => {
+		const pending = Promise.withResolvers<{ cancelRequested: boolean }>();
+		stopSession.mockReturnValueOnce(pending.promise);
+		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
+		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		menu.vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(menu.props('items')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: true })]),
+		);
+		menu.vm.$emit('select', 'stop');
+		expect(stopSession).toHaveBeenCalledTimes(1);
+		pending.resolve({ cancelRequested: true });
+		await flushPromises();
+		wrapper.unmount();
 	});
 
 	it('opens the trace from the row and keeps a native title button', async () => {
@@ -284,17 +379,91 @@ describe('AgentSessionsListView', () => {
 		);
 	});
 
-	it('requests filtered results when the filter changes', async () => {
-		const wrapper = await mountView();
+	it.each(['success', 'failure'])(
+		'tracks filter changes before requesting results with %s',
+		async (outcome) => {
+			if (outcome === 'failure') setFilters.mockRejectedValueOnce(new Error('Request failed'));
+			const wrapper = await mountView();
+			expect(track).not.toHaveBeenCalled();
 
-		await wrapper.get('[data-test-id="agent-sessions-filter"]').trigger('click');
+			await wrapper.get('[data-test-id="agent-sessions-filter"]').trigger('click');
+			await flushPromises();
 
-		expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', {
-			status: 'error',
-			origin: 'all',
-			startDate: '',
-			endDate: '',
+			expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', {
+				status: 'error',
+				origin: 'all',
+				startDate: '',
+				endDate: '',
+			});
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: ['status'] },
+			);
+			expect(track.mock.invocationCallOrder[0]).toBeLessThan(
+				setFilters.mock.invocationCallOrder[0],
+			);
+		},
+	);
+
+	it.each([
+		{
+			action: 'changes several filters',
+			previous: defaultFilters,
+			next: activeFilters,
+			filterNames: ['status', 'origin', 'start_date', 'end_date'],
+		},
+		{
+			action: 'resets filters',
+			previous: activeFilters,
+			next: defaultFilters,
+			filterNames: ['status', 'origin', 'start_date', 'end_date'],
+		},
+		{
+			action: 'clears one filter',
+			previous: activeFilters,
+			next: { ...activeFilters, startDate: '' },
+			filterNames: ['start_date'],
+		},
+		{
+			action: 'keeps filter values unchanged',
+			previous: activeFilters,
+			next: { ...activeFilters },
+			filterNames: [],
+		},
+		{
+			action: 'uses equivalent date objects',
+			previous: { ...activeFilters, startDate: new Date('2026-10-01T00:00:00.000Z') },
+			next: { ...activeFilters, startDate: new Date('2026-10-01T00:00:00.000Z') },
+			filterNames: [],
+		},
+	])(
+		'reports only changed field names when the user $action',
+		async ({ previous, next, filterNames }) => {
+			const wrapper = await mountView({ filters: previous });
+			wrapper.getComponent({ name: 'AgentSessionsFilter' }).vm.$emit('filterChanged', next);
+			await flushPromises();
+
+			expect(setFilters).toHaveBeenCalledWith('project-1', 'agent-1', next);
+			if (filterNames.length === 0) {
+				expect(track).not.toHaveBeenCalled();
+				return;
+			}
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.USER_APPLIED_SESSION_FILTER,
+				{ agent_id: 'agent-1', push_ref: 'session-xyz', filter_names: filterNames },
+			);
+		},
+	);
+
+	it('shows guidance in the empty state when there are no sessions', async () => {
+		const wrapper = await mountView({
+			threads: [],
 		});
+
+		expect(wrapper.get('[data-test-id="agent-sessions-empty"]').text()).toBe('No agent sessions');
+		expect(wrapper.get('[data-test-id="agent-sessions-empty-description"]').text()).toBe(
+			'Sessions will appear here after you preview your agent.',
+		);
 	});
 
 	it('shows the filtered empty state when no sessions match', async () => {
@@ -306,6 +475,7 @@ describe('AgentSessionsListView', () => {
 		expect(wrapper.get('[data-test-id="agent-sessions-empty"]').text()).toBe(
 			'No sessions match these filters',
 		);
+		expect(wrapper.find('[data-test-id="agent-sessions-empty-description"]').exists()).toBe(false);
 	});
 
 	it('opens the parent trace in the current tab by default', async () => {
@@ -401,17 +571,20 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'telegram' }, 'Telegram', 'telegram'],
 		[{ source: 'linear' }, 'Linear', 'linear'],
 		[{ source: 'discord' }, 'Discord', 'discord'],
-		[{ source: 'instance-ai' }, 'AI Assistant', 'flask-conical'],
+		[{ source: 'whatsapp' }, 'WhatsApp', 'whatsapp'],
+		[{ source: 'instance-ai' }, 'n8n Assistant', 'flask-conical'],
 		[{ source: 'mcp' }, 'MCP', 'flask-conical'],
 		[{ source: null }, 'Preview', 'flask-conical'],
 		[{ source: 'chat' }, 'Preview', 'flask-conical'],
 		[{ source: 'n8n_chat' }, 'Preview', 'flask-conical'],
+		[{ source: 'n8n_chat_production' }, 'n8n Chat', 'message-square'],
 		[{ source: 'workflow' }, 'Workflow', 'workflow'],
 		[{ source: 'subagent' }, 'Sub-agent', 'bot'],
 		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent', 'bot'],
 		[{ source: 'task' }, 'Schedule', 'clock'],
 		[{ taskId: 'task-1', source: 'slack' }, 'Schedule', 'clock'],
-		[{ source: 'teams' }, 'Teams', 'plug'],
+		[{ source: 'teams' }, 'Teams', 'teams'],
+		[{ source: 'future-channel' }, 'Future-channel', 'plug'],
 		[{ source: ' Slack ' }, 'Slack', 'slack'],
 	] as const)(
 		'renders origin chip for %j as %s with the %s icon',

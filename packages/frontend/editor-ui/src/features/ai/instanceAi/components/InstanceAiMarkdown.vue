@@ -1,11 +1,19 @@
 <script lang="ts" setup>
+import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import {
+	buildAgentTestHref,
+	resolveAgentTestLink,
+	type AgentTestTarget,
+} from '@/features/agents/utils/agentTestUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
-import { useRouter } from 'vue-router';
 import { useThread } from '../instanceAi.store';
+import { appHref, skillsHubHref } from '../canvasPreview.utils';
+import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
 const props = defineProps<{
 	content: string;
+	agentPreviewTarget?: AgentTestTarget;
 	/**
 	 * True while the source text is still streaming in. While streaming we skip
 	 * the resource-name decoration — O(content × resources), re-run on every
@@ -18,7 +26,7 @@ const props = defineProps<{
 }>();
 
 const thread = useThread();
-const router = useRouter();
+const i18n = useI18n();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
 
@@ -38,6 +46,20 @@ const openAgentPreview = inject<((id: string, projectId: string) => boolean) | u
 	'openAgentPreview',
 	undefined,
 );
+const openAgentChatPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
+	'openAgentChatPreview',
+	undefined,
+);
+const openSkillPreview = inject<((id: string) => boolean) | undefined>(
+	'openSkillPreview',
+	undefined,
+);
+const openAppPreview = inject<((id: string) => boolean) | undefined>('openAppPreview', undefined);
+const embedSubject = inject(INSTANCE_AI_EMBED_SUBJECT_KEY, undefined);
+
+function isCurrentSubject(type: string, id: string): boolean {
+	return isEmbedSubject(embedSubject?.value, type, id);
+}
 
 /** Icon SVG paths for each resource type — matches the n8n design system icons. */
 const ICON_SVGS: Record<string, string> = {
@@ -49,6 +71,9 @@ const ICON_SVGS: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
 	agent:
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>',
+	app: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="16" y="14" rx="1"/></svg>',
+	skill:
+		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>',
 };
 
 /** URL builders for each resource type — fallbacks when the registry has no projectId. */
@@ -57,6 +82,7 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
 	credential: (id) => `/home/credentials/${id}`,
 	'data-table': () => '/home/datatables',
 	agent: () => '/home/agents',
+	skill: (id) => skillsHubHref(id),
 };
 
 /**
@@ -164,7 +190,7 @@ function decorateResourceNames(content: string): string {
 
 	// Build entries sorted longest-name-first to avoid partial-match conflicts
 	const entries = [...registry.values()]
-		.filter((entry) => entry.name.length >= 3)
+		.filter((entry) => entry.name.length >= 3 && !isCurrentSubject(entry.type, entry.id))
 		.sort((a, b) => b.name.length - a.name.length);
 
 	let result = content;
@@ -214,19 +240,19 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
+	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
 ];
-const AGENT_PREVIEW_PATH = /^\/projects\/[^/]+\/agents\/[^/]+\/preview\/?$/;
-
+const AGENT_ROUTE_PATTERN = /^\/projects\/[^/]+\/agents\/([^/]+)\/?$/;
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
 
-function getSameOriginPathname(href: string): string | undefined {
+function getSameOriginUrl(href: string): URL | undefined {
 	const isRootRelative = href.startsWith('/') && !href.startsWith('//');
 	const isAbsolute = ABSOLUTE_URL_PATTERN.test(href);
 	if (!isRootRelative && !isAbsolute) return undefined;
 
 	try {
 		const url = new URL(href, window.location.origin);
-		return url.origin === window.location.origin ? url.pathname : undefined;
+		return url.origin === window.location.origin ? url : undefined;
 	} catch {
 		return undefined;
 	}
@@ -266,8 +292,24 @@ function buildResourceUrl(type: string, id: string, projectId: string | undefine
 		if (type === 'data-table') return `/projects/${projectId}/datatables/${id}`;
 		if (type === 'credential') return `/projects/${projectId}/credentials/${id}`;
 		if (type === 'agent') return `/projects/${projectId}/agents/${id}`;
+		if (type === 'app') return appHref(projectId, id);
 	}
 	return URL_BUILDERS[type]?.(id) ?? '#';
+}
+
+function resolveContextualAgentPreviewLink(href: string) {
+	const resolved = resolveAgentTestLink(href);
+	if (!resolved || !props.agentPreviewTarget) return resolved;
+	const resolvedUrl = new URL(resolved.href, window.location.origin);
+
+	return {
+		...props.agentPreviewTarget,
+		href: buildAgentTestHref(
+			props.agentPreviewTarget.projectId,
+			props.agentPreviewTarget.agentId,
+			resolvedUrl.searchParams,
+		),
+	};
 }
 
 /**
@@ -287,17 +329,27 @@ function enhanceResourceLinks(): void {
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
-		if (link.dataset.resourceChip) continue;
+		if (link.dataset.resourceChip || link.dataset.agentPreviewId) continue;
 
 		const href = link.getAttribute('href') ?? '';
+		if (
+			embedSubject?.value.type === 'agent' &&
+			resolveContextualAgentPreviewLink(href) &&
+			link.textContent === 'Preview'
+		) {
+			link.textContent = i18n.baseText('agents.builder.chatMode.test');
+		}
 
 		// 1. Handle n8n-resource:// custom scheme links
-		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table|agent)\/(.+)$/.exec(
-			href,
-		);
+		const resourceMatch =
+			/^n8n-resource:\/\/(workflow|credential|data-table|agent|skill|app)\/(.+)$/.exec(href);
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
 			const id = decodeResourceId(encodedId);
+			if (isCurrentSubject(type, id)) {
+				link.replaceWith(...link.childNodes);
+				continue;
+			}
 
 			// Look up registry entry to find projectId for project-scoped routes.
 			// Search the name index because it contains both produced and listed
@@ -317,16 +369,27 @@ function enhanceResourceLinks(): void {
 		}
 
 		// 2. Handle standard links pointing to internal n8n routes
-		const internalPathname = getSameOriginPathname(href);
-		if (!internalPathname) continue;
-		if (AGENT_PREVIEW_PATH.test(internalPathname)) {
+		const agentPreviewTarget = resolveContextualAgentPreviewLink(href);
+		if (agentPreviewTarget) {
+			const { projectId, agentId } = agentPreviewTarget;
+			link.href = agentPreviewTarget.href;
 			link.removeAttribute('target');
 			link.removeAttribute('rel');
+			link.dataset.agentPreviewId = agentId;
+			link.dataset.agentPreviewProjectId = projectId;
+			continue;
+		}
+		const internalUrl = getSameOriginUrl(href);
+		if (!internalUrl) continue;
+
+		const agentId = AGENT_ROUTE_PATTERN.exec(internalUrl.pathname)?.[1];
+		if (agentId && isCurrentSubject('agent', decodeResourceId(agentId))) {
+			link.replaceWith(...link.childNodes);
 			continue;
 		}
 
 		for (const { pattern, type } of INTERNAL_ROUTE_PATTERNS) {
-			if (pattern.test(internalPathname)) {
+			if (pattern.test(internalUrl.pathname)) {
 				link.target = '_blank';
 				link.rel = 'noopener noreferrer';
 				applyResourceChip(link, type);
@@ -347,10 +410,9 @@ function enhanceResourceLinks(): void {
  * never re-attached), downgrading chips to plain new-tab links.
  *
  * Click behavior:
- * - Left-click on an agent Preview path (`/projects/.../agents/.../preview`)
- *   → same-tab SPA navigation via `router.push` (no `target="_blank"`).
- * - Cmd/Ctrl+click → leave to the browser (new tab); Preview links do not
- *   set `target="_blank"`.
+ * - An agent Preview link opens the embedded agent chat.
+ * - Cmd/Ctrl+click preserves link navigation in the embedded builder.
+ * - Cmd/Ctrl+click on other links opens a new tab.
  * - Left-click on workflow/data-table → opens (or switches to) the inline
  *   preview tab. If the preview is already showing this resource, falls
  *   through to default `target="_blank"` and opens a new tab instead.
@@ -358,18 +420,21 @@ function enhanceResourceLinks(): void {
  *   → opens in a new tab.
  */
 function handleLinkClick(event: MouseEvent): void {
-	if (event.metaKey || event.ctrlKey) return; // Let browser handle new-tab
 	if (!(event.target instanceof Element)) return;
 
 	const clickedLink = event.target.closest('a');
 	if (!(clickedLink instanceof HTMLAnchorElement)) return;
 
-	const internalPathname = getSameOriginPathname(clickedLink.getAttribute('href') ?? '');
-	if (internalPathname && AGENT_PREVIEW_PATH.test(internalPathname)) {
+	if (embedSubject?.value.type === 'agent' && (event.metaKey || event.ctrlKey)) return;
+
+	const previewTarget = resolveContextualAgentPreviewLink(clickedLink.getAttribute('href') ?? '');
+	if (previewTarget && openAgentChatPreview) {
 		event.preventDefault();
-		void router.push(internalPathname);
+		openAgentChatPreview(previewTarget.agentId, previewTarget.projectId);
 		return;
 	}
+
+	if (event.metaKey || event.ctrlKey) return;
 
 	const type = clickedLink.dataset.resourceChip;
 	const id = clickedLink.dataset.resourceId;
@@ -392,6 +457,10 @@ function handleLinkClick(event: MouseEvent): void {
 		if (registryEntry?.projectId) {
 			switched = openAgentPreview?.(id, registryEntry.projectId);
 		}
+	} else if (type === 'skill') {
+		switched = openSkillPreview?.(id);
+	} else if (type === 'app') {
+		switched = openAppPreview?.(id);
 	}
 
 	// Suppress default navigation only when the preview actually switched.

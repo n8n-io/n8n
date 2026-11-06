@@ -29,3 +29,13 @@ export function getTokenRequestClient(host: 'fixed-vendor' | 'user-controlled'):
 		? Container.get(OutboundHttp).requests({ useDefaultSsrfPolicy: 'unsafe' })
 		: Container.get(OutboundHttp).requests();
 }
+
+export function hasAccessToken(response: unknown): response is { access_token: string } {
+	return (
+		typeof response === 'object' &&
+		response !== null &&
+		'access_token' in response &&
+		typeof response.access_token === 'string' &&
+		response.access_token.length > 0
+	);
+}

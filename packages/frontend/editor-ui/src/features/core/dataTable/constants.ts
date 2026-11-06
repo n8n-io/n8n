@@ -1,9 +1,11 @@
 import { DATA_TABLE_COLUMN_REGEX } from '@n8n/api-types';
 
-// Route and view identifiers
-export const DATA_TABLE_VIEW = 'data-tables';
-export const PROJECT_DATA_TABLES = 'project-data-tables';
-export const DATA_TABLE_DETAILS = 'data-table-details';
+export {
+	DATA_TABLE_VIEW,
+	PROJECT_DATA_TABLES,
+	DATA_TABLE_DETAILS,
+} from '@n8n/frontend-constants/data-tables';
+
 export const DATA_TABLE_STORE = 'dataTableStore';
 
 export const DEFAULT_DATA_TABLE_PAGE_SIZE = 10;

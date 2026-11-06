@@ -1,4 +1,4 @@
-import type { BaseMessage, AIMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ValidationError, ToolExecutionError } from '@/errors';
 import { createProgressReporter } from '@/tools/helpers/progress';
 import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
+import { isAIMessage } from '@/types/langchain';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 /**
@@ -49,10 +50,8 @@ export function extractIntrospectionEventsFromMessages(
 	const events: IntrospectionEvent[] = [];
 
 	for (const msg of messages) {
-		// Check if message is an AIMessage with tool_calls
-		const aiMsg = msg as AIMessage;
-		if (aiMsg._getType?.() === 'ai' && aiMsg.tool_calls && Array.isArray(aiMsg.tool_calls)) {
-			for (const toolCall of aiMsg.tool_calls) {
+		if (isAIMessage(msg) && msg.tool_calls && Array.isArray(msg.tool_calls)) {
+			for (const toolCall of msg.tool_calls) {
 				if (toolCall.name === 'introspect' && toolCall.args) {
 					const args = toolCall.args as Record<string, unknown>;
 					events.push({

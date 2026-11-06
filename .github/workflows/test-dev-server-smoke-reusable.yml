@@ -10,7 +10,7 @@ on:
 
 env:
   NODE_OPTIONS: '--max-old-space-size=6144'
-  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
+  PLAYWRIGHT_BROWSERS_PATH: packages/quality/testing/playwright/.playwright-browsers
 
 jobs:
   smoke:
@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
           fetch-depth: 1
           ref: ${{ inputs.ref }}
@@ -53,6 +53,6 @@ jobs:
         with:
           name: dev-server-smoke-report
           path: |
-            packages/testing/playwright/test-results/
-            packages/testing/playwright/playwright-report/
+            packages/quality/testing/playwright/test-results/
+            packages/quality/testing/playwright/playwright-report/
           retention-days: 7

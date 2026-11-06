@@ -1,10 +1,12 @@
-import { type AgentJsonConfig, type AgentSkill } from '@n8n/api-types';
+import { type AgentSkill } from '@n8n/api-types';
+
+import type { AgentSkillRefs } from '../json-config/agent-document';
 
 export function getMissingSkillIds(
-	config: AgentJsonConfig | null,
+	skillRefs: AgentSkillRefs,
 	skills: Record<string, AgentSkill>,
 ): string[] {
-	const refs = config?.skills ?? [];
+	const refs = skillRefs ?? [];
 	const seen = new Set<string>();
 	const missing: string[] = [];
 

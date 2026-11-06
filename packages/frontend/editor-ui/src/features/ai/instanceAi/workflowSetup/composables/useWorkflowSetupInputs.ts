@@ -23,6 +23,8 @@ export function useWorkflowSetupInputs(deps: {
 	isSectionComplete: (section: WorkflowSetupSection) => boolean;
 	isCredentialTestFailed: (section: WorkflowSetupSection) => boolean;
 	isSectionSkipped: (section: WorkflowSetupSection) => boolean;
+	/** Complete or skipped: the wizard has nothing left to ask for this section. */
+	isSectionHandled: (section: WorkflowSetupSection) => boolean;
 	markSectionSkipped: (section: WorkflowSetupSection) => void;
 	buildCompletedSetupPayload: () => WorkflowSetupApplyPayload;
 } {
@@ -138,6 +140,10 @@ export function useWorkflowSetupInputs(deps: {
 
 	function isSectionComplete(section: WorkflowSetupSection): boolean {
 		return isCredentialComplete(section) && areParametersComplete(section);
+	}
+
+	function isSectionHandled(section: WorkflowSetupSection): boolean {
+		return isSectionComplete(section) || isSectionSkipped(section);
 	}
 
 	function isCredentialTestFailed(section: WorkflowSetupSection): boolean {
@@ -280,6 +286,7 @@ export function useWorkflowSetupInputs(deps: {
 		isSectionComplete,
 		isCredentialTestFailed,
 		isSectionSkipped,
+		isSectionHandled,
 		markSectionSkipped,
 		buildCompletedSetupPayload,
 	};

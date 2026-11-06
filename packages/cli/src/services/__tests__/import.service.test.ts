@@ -5,13 +5,14 @@ import type {
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { DataTableDDLService } from '@n8n/backend-module-data-table';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -55,6 +56,7 @@ describe('ImportService', () => {
 	let mockWorkflowService: WorkflowService;
 	let mockPolicyEnforcementService: PolicyEnforcementService;
 	let mockSharedWorkflowRepository: SharedWorkflowRepository;
+	let mockWorkflowRepository: WorkflowRepository;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -71,10 +73,9 @@ describe('ImportService', () => {
 		mockWorkflowService = mock<WorkflowService>();
 		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
 		mockPolicyEnforcementService.hasChecksFor = vi.fn().mockReturnValue(true);
-		mockPolicyEnforcementService.evaluateContentImport = vi
-			.fn()
-			.mockResolvedValue({ violations: [] });
+		mockPolicyEnforcementService.enforceContentImport = vi.fn().mockResolvedValue(mock());
 		mockSharedWorkflowRepository = mock<SharedWorkflowRepository>();
+		mockWorkflowRepository = mock<WorkflowRepository>();
 		mockSharedWorkflowRepository.findOwnerProjectsByWorkflowIds = vi
 			.fn()
 			.mockResolvedValue(new Map());
@@ -133,6 +134,8 @@ describe('ImportService', () => {
 			mockWorkflowService,
 			mockPolicyEnforcementService,
 			mockSharedWorkflowRepository,
+			mockWorkflowRepository,
+			mock(),
 		);
 	});
 
