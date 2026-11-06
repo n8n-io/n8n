@@ -6,6 +6,8 @@ import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import type { ResumeAttemptService, ResumeClaim } from '@/executions/resume-attempt.service';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -20,6 +22,7 @@ describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
+	const resumeAttemptService = mock<ResumeAttemptService>();
 
 	const project = mock<Project>({ id: 'projectId' });
 	const execution = mock<IExecutionResponse>({
@@ -37,6 +40,7 @@ describe('WaitTracker', () => {
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
+		resumeAttemptService.claim.mockResolvedValue({ granted: true, attempt: 1 });
 		waitTracker = new WaitTracker(
 			mockLogger(),
 			executionRepository,
@@ -44,6 +48,7 @@ describe('WaitTracker', () => {
 			activeExecutions,
 			workflowRunner,
 			instanceSettings,
+			resumeAttemptService,
 		);
 		multiMainSetup.on.mockReturnThis();
 	});
@@ -143,6 +148,55 @@ describe('WaitTracker', () => {
 				false,
 				execution.id,
 			);
+		});
+
+		it('claims a resume attempt before reading the execution', async () => {
+			await waitTracker.startExecution(execution.id);
+
+			expect(resumeAttemptService.claim).toHaveBeenCalledWith(execution.id, 'waiting');
+			const [claimOrder] = resumeAttemptService.claim.mock.invocationCallOrder;
+			const [readOrder] = executionRepository.findSingleExecution.mock.invocationCallOrder;
+			expect(claimOrder).toBeLessThan(readOrder);
+		});
+
+		it('does not read or run the execution when its resume attempts are used up', async () => {
+			resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
+
+			await waitTracker.startExecution(execution.id);
+
+			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('gives the attempt back when the load throws', async () => {
+			executionRepository.findSingleExecution
+				.calledWith(execution.id)
+				.mockRejectedValueOnce(new Error('database is locked'));
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow('database is locked');
+
+			expect(resumeAttemptService.release).toHaveBeenCalledTimes(1);
+			expect(resumeAttemptService.release).toHaveBeenCalledWith(execution.id, 'waiting', 1);
+		});
+
+		it('rejects a second resume while the first one is still in progress', async () => {
+			const claim = createDeferredPromise<ResumeClaim>();
+			resumeAttemptService.claim.mockReturnValueOnce(claim.promise);
+
+			const first = waitTracker.startExecution(execution.id);
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
+				ExecutionAlreadyResumingError,
+			);
+			expect(resumeAttemptService.claim).toHaveBeenCalledTimes(1);
+			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
+
+			claim.resolve({ granted: true, attempt: 1 });
+			await first;
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBeUndefined();
+			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 		});
 
 		describe('parent execution restart behavior', () => {
@@ -250,6 +304,25 @@ describe('WaitTracker', () => {
 					parentExecution.id,
 				);
 			});
+
+			it('should skip the parent execution when another process already claimed it', async () => {
+				const { parentExecution, postExecutePromise } = setupParentExecutionTest(true);
+				resumeAttemptService.claim
+					.mockResolvedValueOnce({ granted: true, attempt: 1 })
+					.mockRejectedValueOnce(new ExecutionAlreadyResumingError(parentExecution.id));
+
+				await waitTracker.startExecution(execution.id);
+
+				postExecutePromise.resolve(mock<IRun>());
+				await jest.advanceTimersByTimeAsync(100);
+
+				expect(resumeAttemptService.claim).toHaveBeenCalledWith(parentExecution.id, 'waiting');
+				expect(executionRepository.findSingleExecution).not.toHaveBeenCalledWith(
+					parentExecution.id,
+					expect.anything(),
+				);
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
 		});
 	});
 
@@ -280,6 +353,7 @@ describe('WaitTracker', () => {
 				activeExecutions,
 				workflowRunner,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
+				resumeAttemptService,
 			);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);

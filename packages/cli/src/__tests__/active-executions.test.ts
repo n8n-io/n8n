@@ -112,6 +112,10 @@ describe('ActiveExecutions', () => {
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 		expect(executionRepository.createNewExecution).toHaveBeenCalledTimes(0);
 		expect(executionRepository.updateExistingExecution).toHaveBeenCalledTimes(1);
+		expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+			FAKE_SECOND_EXECUTION_ID,
+			expect.objectContaining({ id: FAKE_SECOND_EXECUTION_ID, resumeAttempts: 0 }),
+		);
 	});
 
 	describe('attachWorkflowExecution', () => {

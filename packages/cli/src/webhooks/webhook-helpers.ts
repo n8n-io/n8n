@@ -663,7 +663,7 @@ export async function executeWebhook(
 			// on child execution completion, resume parent execution
 			void executePromise.then(() => {
 				const waitTracker = Container.get(WaitTracker);
-				void waitTracker.startExecution(parentExecution.executionId);
+				void waitTracker.resumeOrSkip(parentExecution.executionId);
 			});
 		}
 

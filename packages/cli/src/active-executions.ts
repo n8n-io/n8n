@@ -86,11 +86,15 @@ export class ActiveExecutions {
 
 			await this.concurrencyControl.throttle({ mode, executionId });
 
-			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+			const execution: Pick<
+				IExecutionDb,
+				'id' | 'data' | 'waitTill' | 'status' | 'resumeAttempts'
+			> = {
 				id: executionId,
 				data: executionData.executionData!,
 				waitTill: null,
 				status: executionStatus,
+				resumeAttempts: 0,
 				// this is resuming, so keep `startedAt` as it was
 			};
 
