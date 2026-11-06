@@ -6,7 +6,7 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 
 The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation is moving here from `packages/cli/src/modules/agents/` in steps, with no user-facing change.
 
-Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. Uploaded-file knowledge lives in `files/`: the entity (`KnowledgeFile`, table `agent_files`) and its repository, the file store (`KnowledgeFileStore`, which `init()` wires to the configured blob backends), the file service (`KnowledgeFileService`: upload, list, delete, scope-based), the upload middleware, the storage naming helpers and the upload error. Retrieval (the sandbox mirror and the search commands) still lives in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
+Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. Uploaded-file knowledge lives in `files/` (the file store, which `init()` wires to the configured blob backends; the file service, `KnowledgeFileService`: upload, list, delete, scope-based; the upload middleware, the storage naming helpers and the upload error), plus the entity (`KnowledgeFile`, table `agent_files`) in `entities/` and its repository in `repositories/`. Retrieval (the sandbox mirror and the search commands) still lives in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
 ## Boundary
 
