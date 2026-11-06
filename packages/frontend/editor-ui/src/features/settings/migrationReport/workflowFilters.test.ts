@@ -1,5 +1,4 @@
 import type { BreakingChangeRuleDetailWorkflow } from '@n8n/api-types';
-import { TIME } from '@/app/constants';
 import {
 	countActiveFilters,
 	countQuickFilters,
@@ -8,25 +7,7 @@ import {
 	matchesWorkflowFilters,
 	type WorkflowFilters,
 } from './workflowFilters';
-import { owner, rowContext } from './__tests__/workflowRow';
-
-const now = new Date('2026-10-09T12:00:00Z').getTime();
-const daysAgo = (days: number) => new Date(now - days * TIME.DAY);
-
-const workflow = (
-	overrides: Partial<BreakingChangeRuleDetailWorkflow> = {},
-): BreakingChangeRuleDetailWorkflow => ({
-	id: 'workflow-1',
-	name: 'Workflow',
-	active: true,
-	numberOfExecutions: 10,
-	lastUpdatedAt: daysAgo(1),
-	lastExecutedAt: daysAgo(1),
-	issues: [],
-	status: 'open',
-	isArchived: false,
-	...overrides,
-});
+import { daysAgo, now, owner, rowContext, workflowRow as workflow } from './__tests__/workflowRow';
 
 const matches = (item: BreakingChangeRuleDetailWorkflow, filters: Partial<WorkflowFilters>) =>
 	matchesWorkflowFilters(item, { ...DEFAULT_WORKFLOW_FILTERS, ...filters }, now);

@@ -59,6 +59,11 @@ describe('workflowSort', () => {
 			'grace',
 			'unassigned',
 		]);
+		expect(names(sortWorkflows(rows, [{ id: 'owner', desc: true }], 'Unassigned'))).toEqual([
+			'unassigned',
+			'grace',
+			'ada',
+		]);
 	});
 
 	it('should sort run counts as numbers', () => {
