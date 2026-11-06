@@ -60,6 +60,7 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import split from 'lodash/split';
 import { ExternalHooks } from '@/external-hooks';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createHmac } from 'crypto';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -104,6 +105,12 @@ export type OauthFlowState = {
 	 */
 	managedVersion?: number;
 };
+
+/** What `registerClient` found out, for telemetry. It fills the fields as it learns them. */
+type ClientRegistrationResult = Pick<
+	RelayEventMap['oauth-client-registered'],
+	'method' | 'serverSupportsCimd' | 'serverSupportsDcr'
+>;
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
@@ -1185,13 +1192,28 @@ export class OauthService {
 		}
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			await this.registerClient(
-				oauthCredentials,
-				authorizationServerUrl!,
-				toUpdate,
-				toDelete,
-				discoveredScopes,
-			);
+			const registration: ClientRegistrationResult = {};
+			let success = false;
+			try {
+				await this.registerClient(
+					oauthCredentials,
+					authorizationServerUrl!,
+					toUpdate,
+					toDelete,
+					discoveredScopes,
+					registration,
+				);
+				success = true;
+			} finally {
+				this.eventService.emit('oauth-client-registered', {
+					userId: csrfUserId(csrfData),
+					credentialId: credential.id,
+					credentialType: credential.type,
+					...registration,
+					success,
+					cimdEnabled: this.globalConfig.auth.oauthCimdEnabled,
+				});
+			}
 		}
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
@@ -1251,6 +1273,7 @@ export class OauthService {
 		toUpdate: ICredentialDataDecryptedObject,
 		toDelete: string[],
 		discoveredResourceScopes?: string[],
+		registration: ClientRegistrationResult = {},
 	): Promise<void> {
 		// Step 2: Discover Authorization Server Metadata (RFC 8414 / OpenID Connect)
 		const dcrAuthorizationServerUrl = authorizationServerUrl ?? oauthCredentials.serverUrl;
@@ -1326,6 +1349,13 @@ export class OauthService {
 		}
 
 		const clientMetadataUrl = this.selectClientMetadataUrl(metadata, oauthCredentials);
+		registration.serverSupportsCimd = metadata.client_id_metadata_document_supported === true;
+		registration.serverSupportsDcr = registration_endpoint !== undefined;
+		registration.method = clientMetadataUrl
+			? 'cimd'
+			: registration_endpoint
+				? 'dcr'
+				: 'none_available';
 		if (clientMetadataUrl) {
 			// With CIMD the metadata document URL is the client ID, so no registration request is sent.
 			this.applyDcrManagedFields(oauthCredentials, toUpdate, toDelete, {
