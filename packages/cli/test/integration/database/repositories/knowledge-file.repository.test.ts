@@ -5,9 +5,9 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
-import { AgentFile } from '@/modules/agents/entities/agent-file.entity';
-import { AgentFileRepository } from '@/modules/agents/repositories/agent-file.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 describe('AgentFileRepository', () => {
 	let agentRepo: AgentRepository;
@@ -17,7 +17,7 @@ describe('AgentFileRepository', () => {
 	let projectId: string;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['agents']);
+		await testModules.loadModules(['knowledge', 'agents']);
 		await testDb.init();
 		agentRepo = Container.get(AgentRepository);
 		fileRepo = Container.get(AgentFileRepository);

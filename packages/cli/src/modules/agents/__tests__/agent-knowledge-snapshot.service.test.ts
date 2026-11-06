@@ -1,12 +1,12 @@
 import { mock } from 'vitest-mock-extended';
 
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
-
-import { AgentKnowledgeSnapshotService } from '../agent-knowledge-snapshot.service';
 import type {
 	AgentFileRepository,
 	AgentKnowledgeTotals,
-} from '../repositories/agent-file.repository';
+} from '@/modules/knowledge/repositories/knowledge-file.repository';
+
+import { AgentKnowledgeSnapshotService } from '../agent-knowledge-snapshot.service';
 import type { AgentRepository, PublishedAgentVectorStores } from '../repositories/agent.repository';
 
 describe('AgentKnowledgeSnapshotService', () => {

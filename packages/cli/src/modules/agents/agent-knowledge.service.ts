@@ -19,7 +19,9 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
+import type { AgentFile } from '@/modules/knowledge/entities/knowledge-file.entity';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import {
 	AgentKnowledgeUploadError,
@@ -34,8 +36,6 @@ import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
 import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
-import type { AgentFile } from './entities/agent-file.entity';
-import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
 

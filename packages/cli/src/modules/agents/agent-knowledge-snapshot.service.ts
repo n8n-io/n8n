@@ -1,11 +1,11 @@
 import { Service } from '@n8n/di';
 
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-
 import {
 	AgentFileRepository,
 	type AgentKnowledgeTotals,
-} from './repositories/agent-file.repository';
+} from '@/modules/knowledge/repositories/knowledge-file.repository';
+
 import { AgentRepository, type PublishedAgentVectorStores } from './repositories/agent.repository';
 
 const PAGE_SIZE = 500;

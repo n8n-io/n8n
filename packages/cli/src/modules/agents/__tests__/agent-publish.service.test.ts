@@ -33,7 +33,7 @@ import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';

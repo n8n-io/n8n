@@ -60,7 +60,7 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';

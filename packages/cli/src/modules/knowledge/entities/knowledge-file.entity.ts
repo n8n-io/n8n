@@ -1,7 +1,7 @@
 import { WithTimestampsAndStringId, type ExecutionDataStorageLocation } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity';
+import { Agent } from '@/modules/agents/entities/agent.entity';
 
 /**
  * The table still carries a nullable `binaryDataId` and its unique index, left

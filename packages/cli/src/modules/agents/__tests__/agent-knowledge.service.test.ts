@@ -21,8 +21,8 @@ import { createKnowledgeTelemetryHmac } from '../agent-knowledge-telemetry';
 import { AgentKnowledgeUploadError } from '../agent-knowledge-upload.error';
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
-import type { AgentFile } from '../entities/agent-file.entity';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
+import type { AgentFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import type { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const instanceSecret = 'instance-secret';
