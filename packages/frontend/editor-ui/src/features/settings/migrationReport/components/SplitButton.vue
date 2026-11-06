@@ -1,17 +1,25 @@
 <script lang="ts" setup>
 import { N8nActionToggle, N8nButton, N8nIconButton } from '@n8n/design-system';
 
-defineOptions({ inheritAttrs: false });
+type Action = {
+	label: string;
+	value: string;
+	disabled?: boolean;
+};
 
-defineProps<{
+type Props = {
 	label: string;
 	// Names the icon-only toggle for screen readers.
 	toggleLabel: string;
 	// Also disables the menu, so the bar shows one state for the whole button.
 	disabled?: boolean;
 	// More actions in the chevron menu.
-	actions: Array<{ label: string; value: string; disabled?: boolean }>;
-}>();
+	actions: Action[];
+};
+
+defineOptions({ inheritAttrs: false });
+
+defineProps<Props>();
 
 const emit = defineEmits<{
 	click: [];
