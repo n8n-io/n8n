@@ -16,6 +16,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { getAiGatewayBalancePill } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -177,19 +178,7 @@ const fallbackCredentialType = computed(() =>
 );
 
 // Balance pill for the managed row, matching NodeCredentials.
-const balancePill = computed<{ text: string; type: 'default' | 'danger' } | undefined>(() => {
-	const balance = aiGateway.balance.value;
-	if (balance === undefined) return undefined;
-	const depleted = balance <= 0;
-	return {
-		text: depleted
-			? i18n.baseText('aiGateway.wallet.noCredits')
-			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
-					interpolate: { balance: `$${Number(balance).toFixed(2)}` },
-				}),
-		type: depleted ? 'danger' : 'default',
-	};
-});
+const balancePill = computed(() => getAiGatewayBalancePill(aiGateway.balance.value, i18n));
 
 // n8n Connect (Gateway credits) is offered as a credential option only when the
 // gateway can actually serve the selected provider's credential type. SearXNG is

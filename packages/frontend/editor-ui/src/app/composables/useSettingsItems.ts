@@ -10,6 +10,7 @@ import { isContextEnabled } from '@/features/settings/context/context.utils';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
+import { formatAiGatewayBalanceRemaining } from '../utils/formatters/aiGatewayBalanceFormatter';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
@@ -266,9 +267,7 @@ export function useSettingsItems() {
 					: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
 					balance.value !== undefined
-						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
-								interpolate: { balance: `$${Number(balance.value).toFixed(2)}` },
-							})
+						? formatAiGatewayBalanceRemaining(balance.value, i18n)
 						: undefined,
 			},
 			{

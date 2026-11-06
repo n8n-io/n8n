@@ -79,6 +79,7 @@ import AiGatewayBalancePill from './AiGatewayCredits/AiGatewayBalancePill.vue';
 import AiGatewayCredentialOption from './AiGatewayCredits/AiGatewayCredentialOption.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { getAiGatewayBalancePill } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 
 import {
 	N8nIcon,
@@ -210,19 +211,7 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 const aiGateway = useAiGateway();
 const { openTopUp } = useAiGatewayTopUp();
 
-const balancePill = computed(() => {
-	const balance = aiGateway.balance.value;
-	if (balance === undefined) return undefined;
-	const depleted = balance <= 0;
-	return {
-		text: depleted
-			? i18n.baseText('aiGateway.wallet.noCredits')
-			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
-					interpolate: { balance: `$${Number(balance).toFixed(2)}` },
-				}),
-		type: depleted ? ('danger' as const) : ('default' as const),
-	};
-});
+const balancePill = computed(() => getAiGatewayBalancePill(aiGateway.balance.value, i18n));
 
 function entryPlaceholder(credentialType: string): string {
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {

@@ -17,6 +17,7 @@ import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { formatAiGatewayBalanceRemaining } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 import { VIEWS } from '@/app/constants';
 
 const i18n = useI18n();
@@ -33,9 +34,7 @@ const PAGE_SIZE = 50;
 const walletBalance = computed(() => aiGatewayStore.balance);
 const walletBadgeText = computed(() =>
 	walletBalance.value !== undefined
-		? i18n.baseText('aiGateway.wallet.balanceRemaining', {
-				interpolate: { balance: `$${Number(walletBalance.value).toFixed(2)}` },
-			})
+		? formatAiGatewayBalanceRemaining(walletBalance.value, i18n)
 		: undefined,
 );
 const entries = computed(() => aiGatewayStore.usageEntries);
