@@ -1,3 +1,5 @@
+import { getAgentKnowledgePaths } from '@/modules/agents/agent-knowledge-storage';
+
 import {
 	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
@@ -7,12 +9,8 @@ import {
 	parseReadKnowledgeOutput,
 	parseRipgrepCountOutput,
 	parseRipgrepOutput,
-} from '../agent-knowledge-commands';
-import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
-import {
-	searchKnowledgeInputSchema,
-	type AgentKnowledgeFileReference,
-} from '../agent-knowledge-retrieval';
+} from '../commands';
+import { searchKnowledgeInputSchema, type AgentKnowledgeFileReference } from '../retrieval-schemas';
 
 const mobyDickFile: AgentKnowledgeFileReference = {
 	file: 'moby-dick.txt',
