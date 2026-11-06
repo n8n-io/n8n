@@ -425,12 +425,6 @@ defineExpose({ resetNavigation, highlightFirstItem });
 	overflow-y: auto;
 	scroll-padding-bottom: var(--spacing--sm);
 	scrollbar-width: none;
-	mask-image: linear-gradient(
-		to bottom,
-		black 0,
-		black calc(100% - var(--spacing--sm)),
-		transparent 100%
-	);
 
 	&::-webkit-scrollbar {
 		display: none;
