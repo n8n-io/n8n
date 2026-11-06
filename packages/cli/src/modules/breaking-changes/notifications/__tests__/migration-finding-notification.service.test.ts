@@ -128,7 +128,7 @@ describe('MigrationFindingNotificationService', () => {
 					{ id: 'wf-1', name: 'Flow wf-1' },
 					{ id: 'wf-2', name: 'Flow wf-2' },
 				],
-				reportUrl: `https://n8n.example/settings/migration-report/${RULE_ID}`,
+				reportUrl: `https://n8n.example/settings/migration-report/${RULE_ID}?owner=me`,
 			});
 			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([1, 2], expect.anything());
 			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([3], expect.anything());

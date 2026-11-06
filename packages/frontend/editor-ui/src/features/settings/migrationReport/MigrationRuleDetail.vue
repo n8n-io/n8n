@@ -44,7 +44,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import FindingStateSelect from './components/FindingStateSelect.vue';
@@ -72,6 +72,7 @@ useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
+const route = useRoute();
 
 // The server lists only the workflows the user can edit, and editing a workflow
 // allows triaging and migrating it. So every row is editable. A notification
@@ -677,7 +678,13 @@ function onSortChange(value: string) {
 // Filter state
 const searchInput = ref('');
 const searchQuery = ref(''); // Debounced value for filtering
-const workflowFilters = ref<WorkflowFilters>({ ...DEFAULT_WORKFLOW_FILTERS });
+// The notification email links here with `?owner=me` to show the recipient's workflows.
+const workflowFilters = ref<WorkflowFilters>({
+	...DEFAULT_WORKFLOW_FILTERS,
+	...(route.query.owner === 'me' && usersStore.currentUserId
+		? { owner: usersStore.currentUserId }
+		: {}),
+});
 
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
