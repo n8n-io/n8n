@@ -182,6 +182,11 @@ export interface ExecutionResult {
 	workflowPinnedNodeNames?: string[];
 	/** Nodes whose output items carry file data, which `data` omits. */
 	binaryOutputNodeNames?: string[];
+	/**
+	 * Time-based Wait nodes that a verification run executed without their
+	 * delay. They ran and passed their input through, but did not wait.
+	 */
+	skippedWaitNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */

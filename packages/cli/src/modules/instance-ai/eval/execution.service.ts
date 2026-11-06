@@ -62,6 +62,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { pruneConfigForEval } from '@/modules/agents/evaluation/evaluation-config';
+import { skipTimeBasedWaits } from '../skip-time-based-waits';
 import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
@@ -540,16 +541,9 @@ export class EvalExecutionService {
 		// Time-based Wait nodes park the execution until a future timestamp
 		// (specificTime) or sleep away the scenario budget (timeInterval), so
 		// downstream nodes never run inside the eval window even when the built
-		// workflow is correct. Zero them — execution order and branch structure
-		// stay observable, and the verifier still sees the builder's original
-		// wait config in the workflow JSON. Webhook/form-resume waits are left
-		// untouched (they model an external event, not the passage of time).
-		for (const node of workflowEntity.nodes) {
-			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
-			const resume = node.parameters?.resume;
-			if (resume === 'webhook' || resume === 'form') continue;
-			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };
-		}
+		// workflow is correct. The verifier still sees the builder's original
+		// wait config in the workflow JSON.
+		workflowEntity.nodes = skipTimeBasedWaits(workflowEntity.nodes).nodes;
 
 		const workflow = this.buildWorkflow(workflowEntity);
 		// Multi-trigger workflows: Phase 1 picks the trigger the scenario targets

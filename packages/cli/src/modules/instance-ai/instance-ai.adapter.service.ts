@@ -267,6 +267,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { skipTimeBasedWaits } from './skip-time-based-waits';
 import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
 import {
 	buildToolAgentRequest,
@@ -2365,6 +2366,12 @@ export class InstanceAiAdapterService {
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 
+				// A verification run tests the workflow logic, not the passage of time.
+				// Without this, each retry or throttle wait adds its real duration.
+				const waits = options?.isVerificationRun
+					? skipTimeBasedWaits(nodes)
+					: { nodes, skippedNodeNames: [] };
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -2374,6 +2381,7 @@ export class InstanceAiAdapterService {
 					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
+						nodes: waits.nodes,
 						connections,
 						settings: {
 							...workflow.settings,
@@ -2546,6 +2554,9 @@ export class InstanceAiAdapterService {
 						...result,
 						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
 						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+						...(waits.skippedNodeNames.length > 0
+							? { skippedWaitNodeNames: waits.skippedNodeNames }
+							: {}),
 					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an

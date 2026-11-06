@@ -428,6 +428,24 @@ export function buildSimulationNote(
 	return undefined;
 }
 
+/** Tell the agent which waits ran without their delay, so it does not claim the timing was tested. */
+export function buildSkippedWaitNote(
+	skippedWaitNodeNames: string[] | undefined,
+	reachedNames: Set<string>,
+): string | undefined {
+	const reached = (skippedWaitNodeNames ?? []).filter((name) => reachedNames.has(name));
+	if (reached.length === 0) return undefined;
+	return (
+		`Ran ${reached.length} time-based Wait node(s) without their delay: ${reached.join(', ')}. ` +
+		'The data flow through them is verified, but the wait duration is not.'
+	);
+}
+
+export function joinNotes(...notes: Array<string | undefined>): string | undefined {
+	const present = notes.filter((note): note is string => note !== undefined);
+	return present.length > 0 ? present.join(' ') : undefined;
+}
+
 function buildCoverageNote(
 	nodesNotReached: string[],
 	result: ExecutionRunResult,
@@ -661,7 +679,10 @@ export function analyzeVerificationResult(args: {
 		nodesNotReached,
 		remediation,
 		nodesExecuted: namesOrDataKeys(reachedNames, result.data),
-		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
+		simulationNote: joinNotes(
+			buildSimulationNote(reachedSimulatedNodes, false),
+			buildSkippedWaitNote(result.skippedWaitNodeNames, reachedNames),
+		),
 		coverageNote: buildCoverageNote(
 			nodesNotReached,
 			result,
