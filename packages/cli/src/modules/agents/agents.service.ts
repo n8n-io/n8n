@@ -52,7 +52,7 @@ import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentExecutionService } from './agent-execution.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
+import { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';

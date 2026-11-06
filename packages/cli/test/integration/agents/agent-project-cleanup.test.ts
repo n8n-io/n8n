@@ -3,7 +3,7 @@ import { ProjectRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
-import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
+import { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
 import { chatThreadId } from '@/modules/agents/agent-test-chat.service';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
 import { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';

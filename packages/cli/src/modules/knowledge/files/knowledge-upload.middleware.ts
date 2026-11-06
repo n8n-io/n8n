@@ -9,10 +9,7 @@ import multer from 'multer';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import {
-	KnowledgeUploadError,
-	type KnowledgeUploadFailureReason,
-} from '@/modules/knowledge/files/knowledge-upload.error';
+import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
 
 const allowedAgentFileExtensions = new Set<string>(ALLOWED_AGENT_FILE_EXTENSIONS);
 
