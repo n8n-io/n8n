@@ -58,7 +58,9 @@ export class AgentsModule implements ModuleInterface {
 		// data backend cannot be reached — so a live process in s3/az mode always
 		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
-		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
+		const { AgentKnowledgeFileStore } = await import(
+			'@/modules/knowledge/files/knowledge-file-store.js'
+		);
 		const { ExecutionDataJsonStore } = await import(
 			'@/executions/execution-data/execution-data-json-store.js'
 		);

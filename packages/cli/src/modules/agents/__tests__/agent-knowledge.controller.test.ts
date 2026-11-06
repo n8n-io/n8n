@@ -15,7 +15,8 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 import {
 	AgentKnowledgeUploadError,
 	type AgentKnowledgeUploadFailureReason,
-} from '../agent-knowledge-upload.error';
+} from '@/modules/knowledge/files/knowledge-upload.error';
+
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';

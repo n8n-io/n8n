@@ -23,7 +23,7 @@ import { AgentExecutionService } from '../agent-execution.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
-import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
+import { AgentKnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
 import { AgentChannelReconciler } from '../integrations/agent-channel-reconciler.service';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { DiscordIntegration } from '../integrations/platforms/discord/discord-integration';

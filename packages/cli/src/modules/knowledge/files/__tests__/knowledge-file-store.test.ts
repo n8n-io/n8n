@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
+import { AgentKnowledgeFileStore } from '../knowledge-file-store';
 
 vi.unmock('node:fs');
 vi.unmock('node:fs/promises');

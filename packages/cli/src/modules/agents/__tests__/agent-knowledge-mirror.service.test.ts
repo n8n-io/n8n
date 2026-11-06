@@ -8,10 +8,11 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentKnowledgeFileStore } from '@/modules/knowledge/files/knowledge-file-store';
+import { getAgentKnowledgePaths } from '@/modules/knowledge/files/storage-naming';
+
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
-import type { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
-import { getAgentKnowledgePaths } from '../agent-knowledge-storage';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,

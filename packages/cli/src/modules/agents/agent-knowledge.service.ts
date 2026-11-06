@@ -20,21 +20,24 @@ import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
 import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
-import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
-
-import {
-	AgentKnowledgeUploadError,
-	type AgentKnowledgeUploadFailureReason,
-} from './agent-knowledge-upload.error';
-import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import {
 	AgentKnowledgeFileStore,
 	type StoredAgentKnowledgeFile,
-} from './agent-knowledge-file-store';
+} from '@/modules/knowledge/files/knowledge-file-store';
+import {
+	AgentKnowledgeUploadError,
+	type AgentKnowledgeUploadFailureReason,
+} from '@/modules/knowledge/files/knowledge-upload.error';
+import {
+	storageFileNameForOriginalFileName,
+	toAgentFileDto,
+} from '@/modules/knowledge/files/storage-naming';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { createKnowledgeTelemetryHmac } from './agent-knowledge-telemetry';
-import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
