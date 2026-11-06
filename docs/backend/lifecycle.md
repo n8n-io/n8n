@@ -24,14 +24,14 @@ Every role starts in this order:
 4. Start modules.
 5. Start the role, e.g. a main starts serving requests, and a worker dequeues jobs.
 
-A process creates its services using the dependency injection container at `@n8n/di`. The container creates one instance of each `@Service()` class.
+A process creates its services with the dependency injection container at `@n8n/di`. The container creates one instance of each `@Service()` class.
 
 Decorators from `@n8n/decorators`, e.g. `@RestController()` or `@SystemTask()`, only record metadata. At startup, n8n reads this metadata and registers routes and tasks. A new route or task therefore needs no registration code.
 
 Configuration comes from env vars, through `@Config` classes at `@n8n/config`. The container creates each `@Config` class once, at startup. Some settings also have a value in the database, which the owner or an admin saves in the UI.
 
 > [!IMPORTANT]
-> **A setting that an admin saves in the UI wins over its env var.** For example, the Assistant sandbox stays off after an admin turns off the sandbox, even when `N8N_INSTANCE_AI_SANDBOX_ENABLED` is `true`.
+> **A setting that an admin saves in the UI overrides its env var.** For example, the Assistant sandbox stays off after an admin turns off the sandbox, even when `N8N_INSTANCE_AI_SANDBOX_ENABLED` is `true`.
 
 Each process has a **host ID**, e.g. `main-6bf523178bc6`. A pubsub message names its sender by host ID. Do not confuse the host ID with the **instance ID**, which identifies the whole deployment. Telemetry and the license rely on the instance ID.
 

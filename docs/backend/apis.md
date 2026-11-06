@@ -37,7 +37,7 @@ n8n sends the value that the method returns as JSON, under the key `data`. If th
 | `UserError` | 400 |
 | Any other error | 500 |
 
-Only one browser tab at a time can change a workflow. A route that changes a workflow should check that the request comes from that tab.
+Only one browser tab at a time can change a workflow. A route that changes a workflow must check that the request comes from that tab.
 
 ## Public API
 

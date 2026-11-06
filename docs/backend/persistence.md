@@ -18,7 +18,7 @@ n8n supports SQLite and PostgreSQL. SQLite is the default, and all small n8n Clo
 
 ## Repositories
 
-Business logic should not import TypeORM. A service should call a repository method with a name that says what the method does, e.g. `markFirstAuthenticated`. For several writes in one transaction, the service should use `TransactionRunner`. The [root AGENTS.md](../../AGENTS.md#persistence-layer--the-typeorm-boundary) gives the rules and an example.
+Business logic must not import TypeORM. A service must call a repository method with a name that says what the method does, e.g. `markFirstAuthenticated`. For several writes in one transaction, the service uses `TransactionRunner`. The [root AGENTS.md](../../AGENTS.md#persistence-layer--the-typeorm-boundary) gives the rules and an example.
 
 ## Execution data
 
@@ -55,7 +55,7 @@ Users can create small tables in a project, called **data tables**. n8n creates 
 <details>
 <summary>Answers</summary>
 
-1. D. Business logic should not import TypeORM. A service should call a named repository method.
+1. D. Business logic must not import TypeORM. A service must call a named repository method.
 2. C. A worker and a main do not share a disk.
 
 </details>

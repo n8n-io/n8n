@@ -34,7 +34,7 @@ async update(
 ) {
 ```
 
-A list route should filter its results to the projects where the user has the scope.
+A list route must filter its results to the projects where the user has the scope.
 
 ## Ownership
 
@@ -71,7 +71,7 @@ A check that fails or times out also blocks the action. The [policy README](../.
 <details>
 <summary>Answers</summary>
 
-1. B. A list route should filter its results to the projects where the user has the scope.
+1. B. A list route must filter its results to the projects where the user has the scope.
 2. B. Sharing does not change the owner.
 3. C. A check that fails or times out also blocks the action.
 

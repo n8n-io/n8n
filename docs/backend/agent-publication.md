@@ -35,7 +35,7 @@ Before the publication, the main runs these checks:
 
 - The user may publish agents in the project, and no other browser tab is editing the agent.
 - No policy refuses the agent version, and its configuration (e.g. tools) is valid.
-- Each **chat integration** of the agent version can start. A chat integration lets the users of e.g. Slack send messages to the agent. A chat integration cannot start if, say, another agent is already using the same credential.
+- Each **chat integration** of the agent version can start. A chat integration allows the users of a chat app, e.g. Slack, to send messages to the agent. A chat integration cannot start if, say, another agent is already using the same credential.
 
 If any check fails, the previous version stays published.
 
