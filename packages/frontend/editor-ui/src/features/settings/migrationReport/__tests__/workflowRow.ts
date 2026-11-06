@@ -1,5 +1,7 @@
 import type { BreakingChangeRuleDetailWorkflow, BreakingChangeWorkflowOwner } from '@n8n/api-types';
 import { TIME } from '@/app/constants';
+import { shallowRef } from 'vue';
+import type { UpdateRows } from '../findingRows';
 import type { RowContext } from '../findingState';
 
 export const now = new Date('2026-10-09T12:00:00Z').getTime();
@@ -38,3 +40,12 @@ export const owner = (
 	source: 'assigned',
 	...overrides,
 });
+
+/** Rows held the way the page holds them, for composables that take an `updateRows`. */
+export const rowList = (initial: BreakingChangeRuleDetailWorkflow[]) => {
+	const rows = shallowRef(initial);
+	const updateRows: UpdateRows = (update) => {
+		rows.value = update(rows.value);
+	};
+	return { rows, updateRows };
+};

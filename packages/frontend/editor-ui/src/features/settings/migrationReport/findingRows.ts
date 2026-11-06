@@ -6,6 +6,9 @@ import type {
 
 type Row = BreakingChangeRuleDetailWorkflow;
 
+/** Replaces the rows of the page with the result of `update`. */
+export type UpdateRows = (update: (rows: Row[]) => Row[]) => void;
+
 // Each function returns a new list, because the page keeps the rows in a shallow ref.
 
 export function withStatuses(
