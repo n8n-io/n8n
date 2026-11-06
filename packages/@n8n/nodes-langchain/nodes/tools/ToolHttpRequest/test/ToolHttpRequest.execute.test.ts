@@ -113,4 +113,17 @@ describe('ToolHttpRequest execute', () => {
 		await expect(httpTool.execute.call(ctx)).rejects.toThrow('Input is not a valid JSON');
 		expect(helpers.httpRequest).not.toHaveBeenCalled();
 	});
+
+	it.each([{ input: '' }, {}])(
+		'should not send the request when the input is empty on version 1: %j',
+		async (json) => {
+			setup([{ json }], 1);
+			helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
+
+			await expect(httpTool.execute.call(ctx)).rejects.toThrow(
+				"Model did not provide parameter 'id'",
+			);
+			expect(helpers.httpRequest).not.toHaveBeenCalled();
+		},
+	);
 });

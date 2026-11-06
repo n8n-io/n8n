@@ -714,7 +714,7 @@ export const configureToolFunction = (
 		let response: string = '';
 		let executionError: Error | undefined = undefined;
 
-		if (!toolParameters.length) {
+		if (!toolParameters.length || !query) {
 			query = '{}';
 		}
 
