@@ -48,6 +48,7 @@ export type PubSubCommandMap = {
 	'reload-source-control-config': never;
 
 	'reload-mcp-registry': never;
+	'mcp-tools-changed': { channel: string; revision: string };
 
 	'reload-otel-config': never;
 	'reload-public-api-rate-limit-settings': never;

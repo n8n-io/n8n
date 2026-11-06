@@ -81,6 +81,7 @@ export namespace PubSub {
 			ToCommand<'reload-sso-provisioning-configuration'>;
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
+		export type McpToolsChanged = ToCommand<'mcp-tools-changed'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
 		export type ReloadPublicApiRateLimitSettings =
 			ToCommand<'reload-public-api-rate-limit-settings'>;
@@ -142,6 +143,7 @@ export namespace PubSub {
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
+		| Commands.McpToolsChanged
 		| Commands.ReloadOtelConfig
 		| Commands.ReloadPublicApiRateLimitSettings
 		| Commands.ReloadInstanceAiSettings
