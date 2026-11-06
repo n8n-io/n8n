@@ -73,6 +73,21 @@ const BLUEPRINT: AppBlueprint = {
 	visibility: 'project',
 	description: 'Track tasks and mark them complete.',
 	theme: 'both',
+	bindings: [
+		{
+			kind: 'dataTable',
+			name: 'Tasks',
+			description: 'Stores the tasks shown in the app.',
+			status: 'existing',
+			resourceId: 'table-1',
+		},
+		{
+			kind: 'workflow',
+			name: 'Task reminders',
+			description: 'Sends reminders for tasks that are due.',
+			status: 'new',
+		},
+	],
 };
 
 function createInput(blueprint: AppBlueprint = BLUEPRINT) {

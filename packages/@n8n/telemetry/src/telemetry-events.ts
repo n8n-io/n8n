@@ -1,5 +1,6 @@
 import type { TelemetryEventRegistry } from './define';
 import { AGENTS_TELEMETRY } from './events/agents';
+import { APPS_TELEMETRY } from './events/apps';
 import { AUTH_TELEMETRY } from './events/auth';
 import { CONTEXT_TELEMETRY } from './events/context';
 import { CREDENTIALS_TELEMETRY } from './events/credentials';
@@ -21,6 +22,7 @@ export const TELEMETRY_EVENT = {
 	POLICIES: POLICIES_TELEMETRY,
 	PROMOTIONS: PROMOTIONS_TELEMETRY,
 	AGENTS: AGENTS_TELEMETRY,
+	APPS: APPS_TELEMETRY,
 	AUTH: AUTH_TELEMETRY,
 	CREDENTIALS: CREDENTIALS_TELEMETRY,
 	CONTEXT: CONTEXT_TELEMETRY,

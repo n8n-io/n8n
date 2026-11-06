@@ -2,7 +2,6 @@ export * from './data-table-aggregate.service';
 export * from './data-table-column.entity';
 export * from './data-table-column.repository';
 export type { DataTableEventMap } from './data-table-events';
-export * from './data-table-permissions';
 export * from './data-table-proxy.service';
 export * from './data-table-rows.repository';
 export * from './data-table-size-validator.service';
@@ -17,4 +16,10 @@ export * from './errors/data-table-system-column-name-conflict.error';
 export * from './errors/data-table-validation.error';
 export * from './persistence/data-table-ddl';
 export * from './utils/pair-columns';
-export * from './utils/sql-utils';
+export {
+	isValidColumnName,
+	isValidDataTableId,
+	normalizeUserRowValueForDatabase,
+	quoteIdentifier,
+	toTableName,
+} from './utils/sql-utils';

@@ -10,7 +10,7 @@ import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
@@ -31,7 +31,6 @@ import {
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { nanoid } from 'nanoid';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type { ProxyTokenManager } from '@/services/proxy-token-manager';

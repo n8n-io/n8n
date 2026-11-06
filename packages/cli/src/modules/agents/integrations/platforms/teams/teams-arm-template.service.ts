@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { createHmac } from 'node:crypto';
 
 import { JwtService, UrlService } from '@n8n/backend-services';

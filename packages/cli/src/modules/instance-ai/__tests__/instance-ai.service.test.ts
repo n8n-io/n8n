@@ -276,12 +276,11 @@ import {
 } from '@n8n/instance-ai';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {

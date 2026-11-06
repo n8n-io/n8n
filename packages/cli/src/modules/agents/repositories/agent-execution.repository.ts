@@ -126,6 +126,10 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return first?.parentExecutionId ? { parentExecutionId: first.parentExecutionId } : null;
 	}
 
+	async hasRunningForProject(projectId: string): Promise<boolean> {
+		return await this.exists({ where: { status: 'running', thread: { projectId } } });
+	}
+
 	async findRunning(): Promise<RunningAgentExecution[]> {
 		return await this.find({
 			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
@@ -258,8 +262,13 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async moveTimelineToBlob(
 		executionId: string,
 		storedAt: Exclude<AgentExecution['storedAt'], 'db'>,
+		ctx: OperationContext = {},
 	): Promise<void> {
-		await this.update({ id: executionId, storedAt: 'db' }, { storedAt, timeline: null });
+		await this.managerFor(ctx).update(
+			AgentExecution,
+			{ id: executionId, storedAt: 'db' },
+			{ storedAt, timeline: null },
+		);
 	}
 
 	async findTimelineStorageLocation(
@@ -466,6 +475,23 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	/** Delete every run in a thread. Caller must verify ownership first. */
 	async deleteByThreadId(threadId: string): Promise<void> {
 		await this.delete({ threadId });
+	}
+
+	/** Find log handles before the project cascade removes its execution threads. */
+	async findBlobRefsByProjectId(
+		projectId: string,
+	): Promise<(Pick<AgentExecution, 'id' | 'threadId' | 'storedAt'> & { agentId: string })[]> {
+		const executions = await this.find({
+			select: { id: true, threadId: true, storedAt: true, thread: { agentId: true } },
+			relations: { thread: true },
+			where: { thread: { projectId }, storedAt: Not('db') },
+		});
+		return executions.map((execution) => ({
+			id: execution.id,
+			threadId: execution.threadId,
+			storedAt: execution.storedAt,
+			agentId: execution.thread.agentId,
+		}));
 	}
 
 	/** Blob-stored log refs across all of an agent's threads — for log cleanup on agent delete. */

@@ -494,6 +494,7 @@ describe('createInstanceAgent', () => {
 				],
 			},
 			loadSkill: vi.fn(),
+			dynamicCatalog: { skillIds: [], notice: 'Hub skills are temporarily unavailable.' },
 		};
 
 		await createInstanceAgent({
@@ -513,6 +514,9 @@ describe('createInstanceAgent', () => {
 		} as never);
 
 		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
+		expect(mockAgentInstances[0]?.instructions).toHaveBeenCalledWith('system prompt', {
+			providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+		});
 	});
 
 	it('adds the builder delegate runtime skills to the orchestrator skills', async () => {

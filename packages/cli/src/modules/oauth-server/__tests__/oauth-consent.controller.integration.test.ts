@@ -13,6 +13,8 @@ import { OAuthClientRepository } from '../database/repositories/oauth-client.rep
 import type { OAuthSessionPayload } from '../oauth-session.service';
 import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
 
+// This suite starts backend modules and a database. The integration runner reuses
+// the migrated SQLite template in CI.
 const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
 
 let owner: User;

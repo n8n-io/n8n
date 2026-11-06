@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import type { WhatsAppTemplateComponent } from '@chat-adapter/whatsapp';
 

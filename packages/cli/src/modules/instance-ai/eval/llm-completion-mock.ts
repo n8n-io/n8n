@@ -13,7 +13,7 @@ import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { isUnknownArray } from '@n8n/utils/is-unknown-array';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { redactSecretKeys, redactSecretValuePatterns } from './request-sanitizer';

@@ -183,6 +183,33 @@ mirrored into `write_todos` via `createWriteTodosTool({ delegateToolName })`),
 but those values are fixed at tool-build time, so the instructions prefix stays
 byte-stable for the life of a run.
 
+## Dynamic skill catalogues
+
+A host can set `RuntimeSkillSource.dynamicCatalog` with `skillIds` and an
+optional `notice`. The SDK keeps these entries out of the system catalogue.
+Other entries retain their existing order and loading protocol. The source
+still owns all skill and reference reads, including access checks.
+
+Before each model call, the runtime checks the latest visible catalogue
+snapshot. It appends a `n8n:runtime-skill-catalog` custom message when the
+catalogue or notice changes. The model receives this as a user message inside
+`<system-reminder>`. The runtime also appends an empty snapshot when all dynamic
+skills become unavailable. A new snapshot replaces earlier dynamic catalogues.
+It does not change the static catalogue or rewrite older messages.
+
+Snapshots persist with the conversation and checkpoints. An unchanged snapshot
+is reused across calls and turns. After observation masking hides it, the
+runtime appends the current snapshot again. Each change adds context tokens
+until compaction. The reminder uses user-role priority. It does not grant the
+catalogue system-role priority.
+
+The Assistant opts Hub skills into this path, including its availability
+notice. Other SDK callers retain the system catalogue unless they opt in.
+No additional cache marker is required. The change preserves the old built-in
+prefix when the tools and other instructions match. A prefix that previously
+contained custom skills needs a new cache write after migration. Model, tool,
+prompt-profile, and provider cache changes can still cause misses.
+
 ## Anthropic: instruction-level cache breakpoint
 
 `.promptCaching()` attaches `providerOptions.anthropic.cacheControl` to the

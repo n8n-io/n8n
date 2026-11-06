@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { Attachment, PostableCard, PostableMarkdown, PostableRaw, Thread } from 'chat';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';

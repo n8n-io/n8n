@@ -1,5 +1,5 @@
 import { generateNanoId, type OperationContext, type TransactionRunner } from '@n8n/db';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';

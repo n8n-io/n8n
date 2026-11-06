@@ -1,5 +1,5 @@
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
-import { EventService } from '@n8n/backend-services';
+import type { EventService } from '@n8n/backend-services';
 // EOF Experiment cleanup
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
 vi.mock('@n8n/instance-ai', async () => {
@@ -1956,7 +1956,6 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { UserError, UnexpectedError } from 'n8n-workflow';
 import {
 	type CredentialsFinderService,
 	type InstanceWriteAccessService,
@@ -1980,6 +1979,8 @@ import {
 	InternalServerError,
 	LockedError,
 	NotFoundError,
+	UserError,
+	UnexpectedError,
 } from '@n8n/errors';
 import type { License } from '@/license';
 
@@ -2535,6 +2536,7 @@ describe('createNodeAdapter', () => {
 function createDataTableAdapterForTests(overrides?: {
 	branchReadOnly?: boolean;
 	projectId?: string;
+	threadId?: string;
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -2618,6 +2620,7 @@ function createDataTableAdapterForTests(overrides?: {
 
 	const context = service.createContext(mockUser, {
 		projectId: overrides?.projectId,
+		threadId: overrides?.threadId,
 	});
 	const adapter = context.dataTableService;
 
@@ -9337,7 +9340,10 @@ describe('createContext: appService', () => {
 
 	it('creates apps in the bound project with the create scope', async () => {
 		const { apps } = mockAppsModule(true);
-		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
+		const { context, mockUser } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			threadId: 'thread-1',
+		});
 
 		await context.appService?.createApp({
 			name: 'Todos',
@@ -9352,13 +9358,16 @@ describe('createContext: appService', () => {
 		expect(apps.createApp).toHaveBeenCalledWith(
 			'project-1',
 			{ name: 'Todos', namespace: 'todos', visibility: 'instance' },
-			{ id: APP_ID },
+			{ id: APP_ID, actor: { userId: 'user-1', threadId: 'thread-1' } },
 		);
 	});
 
 	it('exports with the read scope and commits with the update scope', async () => {
 		const { sources } = mockAppsModule(true);
-		const { context, mockUser } = createDataTableAdapterForTests({ projectId: 'project-1' });
+		const { context, mockUser } = createDataTableAdapterForTests({
+			projectId: 'project-1',
+			threadId: 'thread-1',
+		});
 		const archive = Buffer.from('archive');
 
 		await context.appService?.exportDraft(APP_ID);
@@ -9371,7 +9380,10 @@ describe('createContext: appService', () => {
 			projectId: 'project-1',
 		});
 		expect(sources.exportDraft).toHaveBeenCalledWith('project-1', APP_ID);
-		expect(sources.commit).toHaveBeenCalledWith('project-1', APP_ID, 'v1', archive, 'Label');
+		expect(sources.commit).toHaveBeenCalledWith('project-1', APP_ID, 'v1', archive, 'Label', {
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
 	});
 
 	it('reads the draft bindings with their types and the SDK with the read scope', async () => {
