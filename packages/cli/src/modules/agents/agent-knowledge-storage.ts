@@ -2,7 +2,7 @@ import type { AgentFileDto } from '@n8n/api-types';
 import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
 import path from 'node:path';
 
-import type { AgentFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
 
 import { AgentKnowledgeUploadError } from './agent-knowledge-upload.error';
 
@@ -74,7 +74,7 @@ export function storageFileNameForOriginalFileName(originalFileName: string): st
 	return sanitizedName;
 }
 
-export function toAgentFileDto(file: AgentFile): AgentFileDto {
+export function toAgentFileDto(file: KnowledgeFile): AgentFileDto {
 	return {
 		id: file.id,
 		agentId: file.agentId,

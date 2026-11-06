@@ -9,7 +9,7 @@ import { nanoid } from 'nanoid';
 
 import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 
-import { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import {
 	buildMirrorFinalizeCommand,
@@ -127,7 +127,7 @@ export class AgentKnowledgeMirrorService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly projectDeletion: AgentProjectDeletionRepository,

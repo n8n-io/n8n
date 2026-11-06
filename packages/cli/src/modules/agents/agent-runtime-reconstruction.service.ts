@@ -55,7 +55,7 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-import { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import { WorkflowRunner } from '@/workflow-runner';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
@@ -312,7 +312,7 @@ export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,

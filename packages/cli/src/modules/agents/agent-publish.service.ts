@@ -19,7 +19,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
-	AgentFileRepository,
+	KnowledgeFileRepository,
 	type AgentKnowledgeTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import { Telemetry } from '@/telemetry';
@@ -124,7 +124,7 @@ export class AgentPublishService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly agentPolicyService: AgentPolicyService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly publishHistory: AgentPublishHistoryRepository,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}

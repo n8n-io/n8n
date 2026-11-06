@@ -28,7 +28,7 @@ import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storag
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
@@ -60,7 +60,7 @@ function makeService() {
 	const sandboxRuntimeService = mock<AgentSandboxRuntimeService>();
 	sandboxRuntimeService.isEnabled.mockReturnValue(true);
 	const workspaceService = mock<AgentWorkspaceService>();
-	const fileRepository = mock<AgentFileRepository>();
+	const fileRepository = mock<KnowledgeFileRepository>();
 	fileRepository.hasFilesForAgent.mockResolvedValue(false);
 
 	const service = new AgentRuntimeReconstructionService(

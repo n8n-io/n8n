@@ -19,9 +19,9 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { BadRequestError } from '@n8n/errors';
 
-import type { AgentFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import type { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
-import { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import {
 	AgentKnowledgeUploadError,
@@ -50,7 +50,7 @@ export interface UploadedKnowledgeFile {
 export class AgentKnowledgeService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
@@ -72,7 +72,7 @@ export class AgentKnowledgeService {
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
 
-			const uploadedFiles: AgentFile[] = [];
+			const uploadedFiles: KnowledgeFile[] = [];
 			const results: UploadedKnowledgeFile[] = [];
 			try {
 				for (const file of files) {
@@ -159,10 +159,20 @@ export class AgentKnowledgeService {
 	}
 
 	/**
-	 * Cleanup for the agent and project deletion cascades. Not gated on the
-	 * knowledge module: skipping it would leave stored bytes that no row points at.
+	 * Cleanup for the agent and project deletion cascades. With the knowledge
+	 * module off its entity is not registered, so the rows cannot be read: the
+	 * database cascade still removes them with the agent, but their stored bytes
+	 * stay (see the knowledge module AGENTS.md).
 	 */
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
+		if (!this.knowledgeAvailabilityService.isModuleActive()) {
+			this.logger.warn(
+				'Knowledge module is inactive, so the stored knowledge file bytes of the deleted agent are kept',
+				{ agentId },
+			);
+			return;
+		}
+
 		const files = await this.agentFileRepository.findByAgentId(agentId, {});
 		await this.agentFileRepository.deleteByAgentId(agentId, {});
 		if (files.length > 0) {
@@ -192,7 +202,7 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		file: Express.Multer.File,
-	): Promise<AgentFile> {
+	): Promise<KnowledgeFile> {
 		const fileId = generateNanoId();
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
@@ -222,7 +232,7 @@ export class AgentKnowledgeService {
 		file: Express.Multer.File,
 		stored: StoredAgentKnowledgeFile,
 		ctx: OperationContext,
-	): Promise<AgentFile> {
+	): Promise<KnowledgeFile> {
 		return await this.agentFileRepository.saveUploadedFile(
 			{
 				id: fileId,
@@ -258,7 +268,7 @@ export class AgentKnowledgeService {
 		return createReadStream(file.path);
 	}
 
-	private async cleanupUploadedFiles(files: AgentFile[]): Promise<void> {
+	private async cleanupUploadedFiles(files: KnowledgeFile[]): Promise<void> {
 		for (const file of files) {
 			await this.agentKnowledgeFileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])

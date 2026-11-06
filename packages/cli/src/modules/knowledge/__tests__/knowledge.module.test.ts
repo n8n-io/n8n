@@ -1,7 +1,7 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { AgentFile } from '../entities/knowledge-file.entity';
+import { KnowledgeFile } from '../entities/knowledge-file.entity';
 import { KnowledgeModule } from '../knowledge.module';
 
 describe('KnowledgeModule', () => {
@@ -17,7 +17,7 @@ describe('KnowledgeModule', () => {
 	});
 
 	it('registers the knowledge file entity', async () => {
-		await expect(new KnowledgeModule().entities()).resolves.toEqual([AgentFile]);
+		await expect(new KnowledgeModule().entities()).resolves.toEqual([KnowledgeFile]);
 	});
 
 	it('initializes without side effects', async () => {

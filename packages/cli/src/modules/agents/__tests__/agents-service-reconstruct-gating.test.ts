@@ -60,7 +60,7 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
-import type { AgentFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
+import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
@@ -110,7 +110,7 @@ function makeReconstructionService(
 		agentRepository?: AgentRepository;
 		agentSandboxRuntimeService?: AgentSandboxRuntimeService;
 		n8nCheckpointStorage?: N8NCheckpointStorage;
-		agentFileRepository?: AgentFileRepository;
+		agentFileRepository?: KnowledgeFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
 		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
 		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
@@ -131,7 +131,7 @@ function makeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		overrides.logger ?? mock<Logger>(),
 		overrides.agentRepository ?? mock<AgentRepository>(),
-		overrides.agentFileRepository ?? mock<AgentFileRepository>(),
+		overrides.agentFileRepository ?? mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		overrides.n8nCheckpointStorage ?? mock<N8NCheckpointStorage>(),
@@ -347,7 +347,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('attaches a workspace when the effective sandbox setting is enabled', async () => {
-		const agentFileRepository = mock<AgentFileRepository>();
+		const agentFileRepository = mock<KnowledgeFileRepository>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
@@ -376,7 +376,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('keeps knowledge tools gated by uploaded files', async () => {
-		const agentFileRepository = mock<AgentFileRepository>();
+		const agentFileRepository = mock<KnowledgeFileRepository>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
@@ -400,7 +400,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 	});
 
 	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
-		const agentFileRepository = mock<AgentFileRepository>();
+		const agentFileRepository = mock<KnowledgeFileRepository>();
 		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 			isEnabled: () => true,
 		});
@@ -435,7 +435,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 			const construction = createDeferredPromise<agents.Agent>();
 			const acquisition =
 				createDeferredPromise<Awaited<ReturnType<AgentWorkspaceService['getAgentWorkspace']>>>();
-			const agentFileRepository = mock<AgentFileRepository>();
+			const agentFileRepository = mock<KnowledgeFileRepository>();
 			const agentWorkspaceService = mock<AgentWorkspaceService>();
 			agentWorkspaceService.getAgentWorkspace.mockImplementationOnce(async () => {
 				started.resolve();

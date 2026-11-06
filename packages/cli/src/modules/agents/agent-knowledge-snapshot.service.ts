@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
-	AgentFileRepository,
+	KnowledgeFileRepository,
 	type AgentKnowledgeTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
@@ -26,7 +26,7 @@ export interface AgentKnowledgeSnapshot {
 export class AgentKnowledgeSnapshotService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentFileRepository: AgentFileRepository,
+		private readonly agentFileRepository: KnowledgeFileRepository,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
