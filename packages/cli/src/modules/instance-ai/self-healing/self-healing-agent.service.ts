@@ -10,7 +10,13 @@ import { InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
@@ -20,6 +26,7 @@ import {
 	selfHealingOutputSchema,
 	streamAgentRun,
 	MAX_STEPS,
+	OutsideThreadProjectError,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -377,31 +384,39 @@ export class SelfHealingAgentService {
 		workflowId: string,
 		targets: Targets,
 		signal: AbortSignal,
-	) {
+	): Promise<WorkflowSuggestionBaseline | string> {
 		signal.throwIfAborted();
 		const callerVersionIds = [...targets.values()].map(
 			({ expectedBaseline }) => expectedBaseline.publishedVersionId,
 		);
+		if (targets.size > MAX_SUB_WORKFLOW_TARGETS) {
+			return 'This run already changes the maximum number of sub-workflows.';
+		}
+		if (!(await this.dependencies.isCalledBy(workflowId, callerVersionIds))) {
+			return 'No published version of a workflow that this run can change calls this workflow.';
+		}
+		if (await this.suggestions.getPendingResultId(workflowId)) {
+			return 'This workflow already has a pending suggestion.';
+		}
+		if (!(await this.configurations.canActOn(user, workflowId))) {
+			return 'The run user cannot change this workflow or read its executions.';
+		}
 		if (
-			targets.size > MAX_SUB_WORKFLOW_TARGETS ||
-			!(await this.dependencies.isCalledBy(workflowId, callerVersionIds)) ||
-			(await this.suggestions.getPendingResultId(workflowId)) ||
-			!(await this.configurations.canActOn(user, workflowId)) ||
 			!(await this.configurations.hasReviewerWhoCanEditAll({ id: configurationId, projectId }, [
 				...targets.keys(),
 				workflowId,
 			]))
 		) {
-			return undefined;
+			return 'No reviewer can edit this workflow and all other workflows of this run.';
 		}
 		try {
 			const target = await this.suggestions.captureBaseline(workflowId, user.id);
 			signal.throwIfAborted();
-			if (target.projectId !== projectId) return undefined;
+			if (target.projectId !== projectId) return 'This workflow belongs to a different project.';
 			targets.set(workflowId, target);
 			return target;
 		} catch (error) {
-			if (error instanceof ConflictError || error instanceof ForbiddenError) return undefined;
+			if (error instanceof ConflictError || error instanceof ForbiddenError) return error.message;
 			throw error;
 		}
 	}
@@ -468,7 +483,9 @@ export class SelfHealingAgentService {
 		const workflowService = context.workflowService;
 		let queue: Promise<unknown> = Promise.resolve();
 		const admit = async (workflowId: string) => {
-			if (targets.has(workflowId) || !input.includeSubWorkflows) return targets.get(workflowId);
+			const target = targets.get(workflowId);
+			if (target) return target;
+			if (!input.includeSubWorkflows) return 'This run can change only the triggering workflow.';
 			const admission = queue.then(
 				async () =>
 					targets.get(workflowId) ??
@@ -478,11 +495,21 @@ export class SelfHealingAgentService {
 			return await admission;
 		};
 
+		const { assertInThreadProject } = context;
+		context.assertInThreadProject = async (resource) => {
+			await assertInThreadProject?.(resource);
+			if (resource.kind !== 'workflow') return;
+			const target = await admit(resource.id);
+			if (typeof target === 'string') {
+				throw new UserError(target, { cause: new OutsideThreadProjectError() });
+			}
+		};
+
 		context.workflowService = {
 			...workflowService,
 			get: async (workflowId) => {
 				const target = await admit(workflowId);
-				if (!target) return await workflowService.get(workflowId);
+				if (typeof target === 'string') return await workflowService.get(workflowId);
 				await this.suggestions.requireEditor(user.id, workflowId);
 				const detail = await workflowService.get(workflowId);
 
@@ -505,7 +532,9 @@ export class SelfHealingAgentService {
 
 			getAsWorkflowJSON: async (workflowId, versionId) => {
 				const target = versionId ? targets.get(workflowId) : await admit(workflowId);
-				if (!target) return await workflowService.getAsWorkflowJSON(workflowId, versionId);
+				if (typeof target !== 'object') {
+					return await workflowService.getAsWorkflowJSON(workflowId, versionId);
+				}
 				await this.suggestions.requireEditor(user.id, workflowId);
 				if (versionId && versionId !== target.expectedBaseline.publishedVersionId) {
 					throw new ForbiddenError('Read the published baseline assigned to this investigation.');
@@ -556,7 +585,7 @@ export class SelfHealingAgentService {
 		context: InstanceAiContext;
 		modelId: ModelConfig;
 		metadata: SelfHealingThreadMetadata;
-		admit: (workflowId: string) => Promise<WorkflowSuggestionBaseline | undefined>;
+		admit: (workflowId: string) => Promise<WorkflowSuggestionBaseline | string>;
 		candidateFiles: CandidateFiles;
 		onStreamStart: () => void;
 	}): Promise<StreamRunResult> {
@@ -575,13 +604,13 @@ export class SelfHealingAgentService {
 			verifyCandidate: async (args) => {
 				signal.throwIfAborted();
 				const target = await admit(args.workflowId);
-				if (!target) {
+				if (typeof target === 'string') {
 					return {
 						filePath: args.filePath,
 						validation: {
 							success: false,
 							errors: [
-								'You cannot change this workflow. Use its source only to understand the failure.',
+								`You cannot change this workflow. ${target} Use its source only to understand the failure.`,
 							],
 						},
 						verification: { status: 'not_run' },

@@ -72,7 +72,7 @@ This uses the existing Assistant run lifecycle. It does not create another job r
 The backend binds `verify_candidate({ workflowId, filePath, validationOnly?, triggerNodeName?, inputData? })` to this investigation.
 It checks current access before it reads and compiles the candidate against the captured baseline.
 The workflow ID selects the baseline. The run tries to admit a workflow that is not a target yet.
-A workflow that the run cannot admit fails validation.
+A workflow that the run cannot admit fails validation. The error gives the reason.
 The file must declare the same workflow ID. Otherwise, validation fails with `candidate_workflow_mismatch`.
 With `validationOnly: true`, it returns structural checks without execution.
 For execution checks, the agent selects the failed trigger and supplies its test input.
@@ -209,6 +209,7 @@ a workflow only when all of these conditions are true:
 
 The run captures the baseline of an admitted workflow and serves all its later reads from it.
 Reads of a workflow that is not admitted return the live workflow. The agent cannot verify it.
+`get_workflow_as_code` returns its source inline without a file, with the reason in the note.
 The run admits one workflow at a time. It checks a workflow that is not admitted again on each
 read, because a new target can make it eligible.
 Sub-workflows get no admission reservation.

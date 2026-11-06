@@ -10,6 +10,7 @@ import type { ErrorReporter } from 'n8n-core';
 import {
 	createInstanceAiTraceContext,
 	createSelfHealingAgent,
+	OutsideThreadProjectError,
 	streamAgentRun,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
@@ -879,11 +880,18 @@ describe('SelfHealingAgentService', () => {
 			const original = context.workflowService;
 			adapter.createContext.mockReturnValueOnce(context);
 			await service.execute(runInput, options);
-			return { workflows: context.workflowService, original };
+			const assertWritable = async (id: string) =>
+				await context.assertInThreadProject?.({ kind: 'workflow', id });
+			return { workflows: context.workflowService, original, assertWritable };
 		};
+		const refusal = (reason: string) =>
+			expect.objectContaining({
+				message: expect.stringContaining(reason),
+				cause: expect.any(OutsideThreadProjectError),
+			});
 
 		it('admits a called sub-workflow on its first current read and serves its baseline', async () => {
-			const { workflows } = await run(subWorkflowInput);
+			const { workflows, assertWritable } = await run(subWorkflowInput);
 
 			const [detail, json] = await Promise.all([
 				workflows.get(subWorkflow.workflowId),
@@ -909,12 +917,17 @@ describe('SelfHealingAgentService', () => {
 				subWorkflow.workflowId,
 				user.id,
 			);
+			await expect(assertWritable(baseline.workflowId)).resolves.toBeUndefined();
+			await expect(assertWritable(subWorkflow.workflowId)).resolves.toBeUndefined();
 		});
 
 		it('does not admit sub-workflows when the setting is off', async () => {
-			const { workflows } = await run(input);
+			const { workflows, assertWritable } = await run(input);
 
 			expect(await workflows.get(subWorkflow.workflowId)).toBe(live);
+			await expect(assertWritable(subWorkflow.workflowId)).rejects.toEqual(
+				refusal('only the triggering workflow'),
+			);
 			expect(dependencies.isCalledBy).not.toHaveBeenCalled();
 			expect(suggestions.captureBaseline).not.toHaveBeenCalled();
 		});
@@ -929,33 +942,47 @@ describe('SelfHealingAgentService', () => {
 		});
 
 		it.each([
-			['is not called by a target', () => dependencies.isCalledBy.mockResolvedValue(false)],
+			[
+				'is not called by a target',
+				() => dependencies.isCalledBy.mockResolvedValue(false),
+				'No published version',
+			],
 			[
 				'has a pending suggestion',
 				() => suggestions.getPendingResultId.mockResolvedValue('pending-result'),
+				'pending suggestion',
 			],
-			['lacks actor access', () => configurations.canActOn.mockResolvedValue(false)],
+			[
+				'lacks actor access',
+				() => configurations.canActOn.mockResolvedValue(false),
+				'read its executions',
+			],
 			[
 				'has no reviewer for the group',
 				() => configurations.hasReviewerWhoCanEditAll.mockResolvedValue(false),
+				'No reviewer',
 			],
 			[
 				'has unpublished changes',
 				() => suggestions.captureBaseline.mockRejectedValue(new ConflictError('Unpublished')),
+				'Unpublished',
 			],
 			[
 				'is not editable',
 				() => suggestions.captureBaseline.mockRejectedValue(new ForbiddenError('No access')),
+				'No access',
 			],
 			[
 				'is in another project',
 				() => suggestions.captureBaseline.mockResolvedValue(subBaseline('sub-workflow', 'other')),
+				'different project',
 			],
-		])('serves a live read of a workflow that %s', async (_label, arrange) => {
+		])('keeps a workflow that %s read-only', async (_label, arrange, reason) => {
 			arrange();
-			const { workflows } = await run(subWorkflowInput);
+			const { workflows, assertWritable } = await run(subWorkflowInput);
 
 			expect(await workflows.get(subWorkflow.workflowId)).toBe(live);
+			await expect(assertWritable(subWorkflow.workflowId)).rejects.toEqual(refusal(reason));
 		});
 
 		it('admits a nested sub-workflow that was read before its caller', async () => {
@@ -1006,7 +1033,10 @@ describe('SelfHealingAgentService', () => {
 		);
 		expect(unknown).toMatchObject({
 			filePath: subWorkflowFile,
-			validation: { success: false, errors: [expect.stringContaining('cannot change')] },
+			validation: {
+				success: false,
+				errors: [expect.stringContaining('cannot change this workflow. No published version')],
+			},
 			verification: { status: 'not_run' },
 		});
 	});
