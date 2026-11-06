@@ -33,7 +33,7 @@ A workflow has a **draft**, which is the last saved version, and a **published v
 
 ## Checks
 
-First, the main checks that the user may publish the workflow and that the version can run (e.g. that its webhook path is free). Policies (e.g. a required review) can also refuse the publication.
+First, the main checks that the user may publish the workflow and that the version can run (e.g. that its webhook path is free). A policy or an open review request can also refuse the publication.
 
 The main runs all checks before it changes anything, so a refused publication leaves the previous version live. Every way to publish (e.g. editor, public API, or source control) runs the same checks.
 

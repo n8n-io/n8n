@@ -116,4 +116,4 @@ The agent page also has skills, tools, and triggers. Like a workflow, an agent h
 
 Each page names a contact person to ask about its topic. For an area without a page, find its path in `OWNERS` and ask the team that owns it.
 
-Finally, this guide explains high-level concepts, not implementation details. Before your first PR, read `AGENTS.md` at the repository root for the coding conventions. For common tasks (e.g. a migration or a public API endpoint), point your coding agent to the matching skill (e.g. `n8n:db-migrations`). For n8n as users see it, read [docs.n8n.io](https://docs.n8n.io).
+Finally, this guide explains high-level concepts, not implementation details. Before your first PR, read `AGENTS.md` at the repository root for the coding conventions. For a common task, point your coding agent to its skill, e.g. `n8n:db-migrations` for a migration. For n8n as users see it, read [docs.n8n.io](https://docs.n8n.io).

@@ -59,7 +59,7 @@ n8n Cloud runs one instance for each customer. A control plane outside the n8n r
 
 The control plane depends on these names and files in the n8n repository, and no n8n test checks them:
 
-- Environment variable names. Retire an old name with `DeprecationService`, which keeps it working for a release.
+- Environment variable names. To retire an old name, keep reading it in its `@Config` class for a release, and add a warning to `DeprecationService`.
 - Module names and license feature names.
 - The external hooks, and the files and methods that they import, such as `HooksService`. A moved file makes every n8n Cloud instance fail at startup. Search the code for "cloud hooks" before you move code.
 - The health endpoints `/healthz` and `/healthz/readiness`, and `/metrics`.

@@ -49,7 +49,7 @@ Each main keeps the agents that it ran recently in a cache, ready to answer. The
 
 Besides messages from the editor, two kinds of **triggers** can start an agent: chat integrations and schedules. A chat integration starts the agent when a user of the chat app sends a message. A schedule starts the agent at set times.
 
-The main starts the triggers of the published version, and then answers the editor.
+The main starts the triggers of the published version, and asks the other mains to start their chat integrations. Then the main answers the editor.
 
 | Trigger | Where it runs |
 |---|---|

@@ -8,7 +8,7 @@ contact: afitzek
 
 # Credentials
 
-To call an external service, a node usually needs a secret, which n8n stores as a **credential**. A credential is an encrypted secret that a project owns, e.g. an API key for an external service. n8n decrypts it only when a node needs it during an execution, and does not store the decrypted value.
+To call an external service, a node usually needs a secret, which n8n stores as a **credential**. A credential is an encrypted secret that a project owns, e.g. an API key for an external service. n8n decrypts it only when a node or an agent needs it, and does not store the decrypted value.
 
 This page explains how users share and use credentials, and how n8n encrypts them. It also covers Gateway credits and external secrets.
 
@@ -16,7 +16,7 @@ This page explains how users share and use credentials, and how n8n encrypts the
 
 A share or a transfer of a workflow does not include its credentials. During a transfer, the user can also share the credentials with the new project.
 
-A user can use their personal credential in any team project they are a member of, without sharing it. For example, Alice adds her personal Slack credential to a workflow in a team project. Bob, another member in the team project, sees that the workflow uses a Slack credential of Alice, but cannot use it. Bob also sees that the executions ran, but not their data. This is also true for owners and admins.
+A user can use their personal credential in any team project they are a member of, without sharing it. For example, Alice adds her personal Slack credential to a workflow in a team project. Bob, another member in the team project, sees that the workflow uses a Slack credential of Alice, but cannot use it. Bob also sees that the executions ran, but not their data. Owners and admins also see only that the executions ran.
 
 ## End-user credentials
 

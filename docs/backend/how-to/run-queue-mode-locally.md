@@ -26,7 +26,9 @@ The command also configures queue mode for each n8n process that starts from `pa
 Start a main in a new data folder:
 
 ```bash
-N8N_USER_FOLDER=$HOME/.n8n-queue pnpm start
+N8N_USER_FOLDER=$HOME/.n8n-queue \
+  OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true \
+  pnpm start
 ```
 
 In a second terminal, start a worker in the same data folder, on another port:
@@ -67,6 +69,7 @@ Stop the main, and start it again with multi-main turned on:
 ```bash
 N8N_USER_FOLDER=$HOME/.n8n-queue \
   N8N_MULTI_MAIN_SETUP_ENABLED=true \
+  OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true \
   pnpm start
 ```
 
@@ -76,6 +79,7 @@ In a third terminal, start the second main on other ports:
 cd packages/cli/bin
 N8N_USER_FOLDER=$HOME/.n8n-queue \
   N8N_MULTI_MAIN_SETUP_ENABLED=true \
+  OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true \
   N8N_PORT=5681 \
   N8N_RUNNERS_BROKER_PORT=5682 \
   ./n8n start

@@ -61,7 +61,7 @@ The [n8n Assistant](ai-functionality.md#n8n-assistant) writes the source code of
    - A. In a task runner.
    - B. In an isolate of the `agents` module.
    - C. In the remote sandbox of the n8n Assistant.
-   - D. Inside the n8n process.
+   - D. In a separate container.
 
 <details>
 <summary>Answers</summary>
