@@ -16,7 +16,7 @@ Most callers sign in with an API key. A key has its own scopes, a smaller set th
 
 Each endpoint is a method on a `@PublicApiController` class. The build generates the OpenAPI document from these methods and from the request and response types in `@n8n/api-types`, so a new endpoint describes itself. A lint rule keeps repositories out of public API controllers, so they call services. List endpoints page with cursors, not with page numbers.
 
-`@n8n/cli` is a command line client that uses only the public API. `.agents/skills/public-api/SKILL.md` gives the steps for a new endpoint.
+`@n8n/cli` is a command line client that uses only the public API. To add an endpoint with a coding agent, point it to the `n8n:public-api` skill.
 
 ## Quiz
 
@@ -44,9 +44,9 @@ Each endpoint is a method on a `@PublicApiController` class. The build generates
 <details>
 <summary>Answers</summary>
 
-1. A. The REST API under `/rest`. The public API is a contract with callers outside n8n. A change must not break them.
-2. D. No. A key has its own scopes, a smaller set than the scopes of users.
-3. C. With cursors. List endpoints page with cursors, not with page numbers.
-4. B. A service. A lint rule keeps repositories out of public API controllers.
+1. A. The public API is a contract with callers outside n8n. A change must not break them.
+2. D. A key has its own scopes, a smaller set than the scopes of users.
+3. C. List endpoints page with cursors, not with page numbers.
+4. B. A lint rule keeps repositories out of public API controllers.
 
 </details>

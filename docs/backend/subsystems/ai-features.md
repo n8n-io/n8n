@@ -79,10 +79,10 @@ To run the Assistant locally, you need your own model key and a sandbox. `packag
 <details>
 <summary>Answers</summary>
 
-1. D. No. The saved value wins over the environment variable. An environment variable can give the default of a setting, but the value in the database wins.
-2. C. Only mains serve the REST routes of these features. This is the second of the four checks: module, main, license, then setting.
-3. B. About half of the pubsub commands relay AI events between mains. A browser connects to only one main, so AI events go between mains over pubsub.
-4. A. When a PR opens or becomes ready for review. You can also start them by hand. The evals do not run on each push. To run them again, start the workflow by hand with the PR number.
-5. D. It turns a part of the feature on or off, never the whole feature. The module list, the license, and the settings turn a feature on. Flags control parts of it.
+1. D. An environment variable can give the default of a setting, but the value in the database wins.
+2. C. This is the second of the four checks: module, main, license, then setting.
+3. B. A browser connects to only one main, so AI events go between mains over pubsub.
+4. A. The evals do not run on each push. To run them again, start the workflow by hand with the PR number.
+5. D. The module list, the license, and the settings turn a feature on. Flags control parts of it.
 
 </details>

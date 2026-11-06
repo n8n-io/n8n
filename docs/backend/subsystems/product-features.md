@@ -48,9 +48,9 @@ The earlier pages covered the core: workflows, agents, processes, and data. Many
 <details>
 <summary>Answers</summary>
 
-1. B. The whole instance is locked. A push or a pull locks the whole instance.
-2. A. No. Workflow reviews add an approval step before a publication.
-3. D. Through a pubsub command. An install on one main reaches the other mains through pubsub.
-4. C. Cloud uses the command, so its flags and output are a contract. Cloud copies whole tables out of an instance and back in with these commands.
+1. B. A push or a pull locks the whole instance.
+2. A. Workflow reviews add an approval step before a publication.
+3. D. An install on one main reaches the other mains through pubsub.
+4. C. Cloud copies whole tables out of an instance and back in with these commands.
 
 </details>

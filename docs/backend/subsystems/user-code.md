@@ -65,10 +65,10 @@ Agents do not use task runners. An agent runs its custom tool code in its own is
 <details>
 <summary>Answers</summary>
 
-1. C. The editor previews with the old engine, and the backend runs the isolate engine. The editor cannot load the native module of the isolate, so it uses the old engine.
-2. B. The second copy of the helper, so that both engines agree. The helpers exist in two copies: one for the old engine, and one in the code that the isolate loads.
-3. A. It stops at startup with a message. The process does not fall back to a weaker engine. `N8N_EXPRESSION_ENGINE=legacy` selects the old engine on purpose.
-4. D. No. The runner reads the code first and asks for only the data that it uses. The JavaScript runner learns from the code which data it uses.
-5. C. In a task runner next to the worker that runs the workflow. A runner sits next to the process that runs workflows. In queue mode, that process is a worker.
+1. C. The editor cannot load the native module of the isolate, so it uses the old engine.
+2. B. The helpers exist in two copies: one for the old engine, and one in the code that the isolate loads.
+3. A. The process does not fall back to a weaker engine. `N8N_EXPRESSION_ENGINE=legacy` selects the old engine on purpose.
+4. D. The JavaScript runner learns from the code which data it uses.
+5. C. A runner sits next to the process that runs workflows. In queue mode, that process is a worker.
 
 </details>

@@ -8,104 +8,102 @@ contact: ivov
 
 # How n8n runs
 
-The process that you started on [Start here](README.md) did all the work. Production setups split that work across many processes, and n8n Cloud runs the same code for many thousands of customers. This page starts from your one process and adds each part of the production setup, with the problem that each part solves.
+The process that you started locally on the [previous page](README.md) ran all of n8n on its own. Production setups split n8n across many processes, and n8n Cloud runs the same code in thousands of customer instances. On this page, we add each part of the production setup and explain why it exists.
+
+Week 1 follows your three steps from the previous page through this setup: the [publication](workflow-publication.md), the [webhook call](workflow-execution.md), and the [message to the agent](agent-turn.md).
 
 ## One process
 
-`pnpm start` runs the command `n8n start`. A process that runs this command is a **main**. In your session, the main did five things:
+`pnpm start` runs the CLI command `n8n start`. A process that runs this command is called a **main**. In your session, the main:
 
-- It served the editor: the web app, and the REST API under `/rest` that the editor calls.
-- It sent the progress of the manual run to your browser tab, over a connection that n8n calls **push**.
-- It received the calls to `/webhook-test/hello` and `/webhook/hello`.
-- It ran both executions.
-- It can run agent turns, when an agent has a model.
+- served the editor: the web app, and the REST API under `/rest` that the editor calls.
+- received the calls to `/webhook-test/hello` and `/webhook/hello`, and your message to the agent.
+- ran both workflow executions, and sent the progress of the manual execution to your browser tab via websocket.
+- ran the agent turn, and streamed its answer back in the HTTP response of your message.
 
-The inside of a main looks like most Express applications. Controllers take requests and call services. Services call repositories, and repositories use TypeORM. A small dependency injection container, `@n8n/di`, creates the services, and decorators register the routes.
+The inside of a main looks somewhat like most [Express](https://expressjs.com) applications. Controllers take requests and call services. Services call repositories, and repositories use [TypeORM](https://typeorm.io). A small dependency injection container, `@n8n/di`, creates the services, and decorators register the routes.
 
-The **execution engine** is different. It is a library in `n8n-core` that runs the nodes of a workflow, and it knows nothing about HTTP or the database. The process gives it hooks, and the hooks save the results. Agent turns run on another library, the agent runtime in `@n8n/agents`. Both kinds of work use the same nodes, credentials, permissions, and database.
+Each workflow execution is passed to the **execution engine**, a library in `n8n-core` that runs the nodes of a workflow and knows nothing about HTTP or the database. (This is the v1 engine. [Engine v2](subsystems/engine-2.md) is in development.)
 
-The main keeps almost all its state in the database. That fact makes the next steps possible.
+Agent turns run on another library, the agent runtime in `@n8n/agents`. Workflow executions and agent turns share the same nodes, credentials, permissions, and database.
 
 ## Workers
 
-One process can serve the editor and run executions, but heavy executions then slow the editor down. **Queue mode** moves the executions to other processes. With `EXECUTIONS_MODE=queue`, a main does not run a production execution. It writes the execution row, and it adds a job to a queue in Redis. The queue library is Bull. A **worker**, a process that runs `n8n worker`, takes the job and runs the execution.
+In **regular mode**, one process serves the editor and runs executions, so heavy executions can slow the editor down. In **queue mode** (also called **scaling mode**), a main sets up the execution and adds a job to a [Bull](https://github.com/OptimalBits/bull) queue backed by Redis.
 
-The job carries only the id of the execution. The worker reads the workflow and the input from the database. If a worker dies, the input is still there, and n8n marks the execution `crashed`.
+Alongside the main, processes that run the CLI command `n8n worker` are called **workers**. A worker takes the job from the queue and runs the execution. The job carries only the ID of the execution. The worker reads the workflow and the input from the database. When the execution ends, the worker saves the results to the database and reports completion to the main through the queue.
 
-A third role, the **webhook process**, runs `n8n webhook`. It only receives production webhook calls and adds their jobs to the queue. Busy instances use it to keep webhook traffic away from the editor.
+Processes that run the CLI command `n8n webhook` are called **webhook processes**. A webhook process only receives production webhook calls and adds their jobs to the queue. Busy instances run several of them behind a load balancer, to take in more webhook calls and keep that load off the main that serves the editor.
 
-In queue mode, the manual runs from the editor also go to workers. Agent turns stay on mains. Only mains run the consumer that takes messages for agents.
+In queue mode, workers run only workflow executions, and agent turns still run on the main.
 
-| Work | Main, one process | Main, queue mode | Worker | Webhook process |
+| Work | Regular mode:<br>main | Queue mode:<br>main | Queue mode:<br>worker | Queue mode:<br>webhook process |
 |---|---|---|---|---|
 | Serve the editor and the APIs | yes | yes | no | no |
 | Receive production webhooks | yes | yes | no | yes |
-| Run executions | yes | no | yes | no |
+| Run workflow executions | yes | no | yes | no |
 | Fire schedules and poll other services | yes | yes | no | no |
 | Run agent turns | yes | yes | no | no |
 
 ## Multi-main
 
-Queue mode still has one main. If that main stops, the editor stops. **Multi-main** runs several mains behind a load balancer, so that one main can fail.
+With one main, a stopped main takes down the editor, the APIs, the schedules and polling triggers, and the agent turns. **Multi-main** runs several mains behind a load balancer for higher availability.
 
-Several mains cause a new problem. Some work must happen exactly once. A workflow can start with a trigger that polls a service every minute. If two mains polled, each new record would start two executions. Therefore one main is the **leader**, and only the leader does this work. The leader holds a key in Redis that expires after a few seconds, and it renews the key while it runs. If the leader dies, another main takes the key.
+Several mains cause a new problem: some work must happen exactly once. If two mains ran the same poller, each new record would start two executions. Therefore one main is the **leader**, and only the leader runs pollers. Schedules need no leader, because any main starts each due run from a job in the database. The leader holds a key in Redis that expires after a few seconds and renews it while it runs. If the leader dies, another main takes the key.
 
-Leadership can move at any time. Code that must run once in the cluster therefore cannot use a plain timer, which every main would start. n8n is moving this work to a scheduler in the database, which any main can run without a leader.
-
-The processes also tell each other about changes. A publication arrives on one main, but the leader must start the triggers. The main sends a command over Redis **pubsub**, and every process receives it.
+Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/latest/develop/pubsub/). For example, if you publish a workflow through a main that is not the leader, that main broadcasts a command, and the leader starts the triggers.
 
 ## n8n Cloud
 
-n8n Cloud runs one instance for each customer. A control plane in another repository creates each instance, sets its environment variables, and upgrades it to new versions. It also loads a hooks file into each instance. The hooks file adds the limits of each plan.
+n8n Cloud runs one instance for each customer. A control plane outside the n8n repository creates, configures, and upgrades each instance, and adds Cloud-specific behavior through hooks.
 
-This has one effect on your work: some names are contracts with code outside this repository. Cloud reads environment variables, module names, and license feature names. It calls the hooks by name and checks the health endpoints. A rename of any of these can break every Cloud instance, and no test in this repository fails. [Cloud contracts](subsystems/cloud.md) lists them.
+The control plane depends on names in the n8n repository: environment variables, module names, license feature names, hook names, and health endpoints. Renaming one can break all of Cloud, and no n8n test catches it. See [Cloud contracts](subsystems/cloud.md).
 
-Paid features ship in every instance, also in self-hosted ones. A license decides if they run. [Licensing](subsystems/licensing.md) explains the checks.
+## Licensing
+
+Paid features ship in every instance, including self-hosted ones. A license decides if they run. See [Licensing](subsystems/licensing.md).
 
 ## Compatibility
 
-Users save a workflow and expect it to work the same way for years. An upgrade must not change what a saved workflow does. n8n has three ways to change behavior without that problem:
+Upgrading an n8n instance must not change what a saved workflow does. Common ways to change behavior safely:
 
-- A node stores its `typeVersion`. A change of behavior goes into a new version of the node, and saved workflows keep the old one.
-- A workflow stores some settings, such as the order in which it runs nodes. New workflows get the new setting, and old workflows keep theirs.
-- A change that cannot follow those two ways waits for the next major version, on the `3.x` branch. `.github/DEVELOPING_V3.md` describes the process.
-
-Review checks these rules, not CI. When your change can alter a saved workflow, say so in the PR.
-
-The code changes too. Many parts of the backend exist in an old shape and a new shape at the same time. For example, some features live in `packages/cli`, and newer ones are modules. `AGENTS.md` names the new shape, and lint rules stop new code in the old shape.
+- In a node, add a new node version (`typeVersion`). Saved workflows keep the old version.
+- In the engine, add a workflow setting. New workflows get the new behavior, and saved workflows keep the old one.
+- For the whole instance, add an opt-in environment variable. Instances keep the old behavior until an admin turns it on.
+- If no safe way exists, wait for the next [major version](https://www.notion.so/3815b6e0c94f8052b838e90fc6e1ab14) to make a breaking change.
 
 ## Packages
 
 | Package | Holds |
 |---|---|
-| `packages/cli` | The `n8n` package: the commands, the server, the controllers, and most services and modules |
-| `packages/core` | The execution engine |
-| `packages/workflow` | The workflow model, the expression evaluator, and shared types. The editor uses it too |
-| `packages/@n8n/db` | The entities, the repositories, and the migrations |
-| `packages/@n8n/agents` | The agent runtime |
-| `packages/@n8n/instance-ai` | The n8n Assistant, the agent inside the editor that builds workflows |
-| `packages/@n8n/api-types` | The request and response types that the editor shares |
-| `packages/@n8n/config` | All environment variables |
-| `packages/modules` | Features that are their own packages |
-| `packages/nodes-base`, `packages/@n8n/nodes-langchain` | The built-in nodes. The node teams own them |
+| `packages/cli/` | CLI commands, HTTP server, controllers, and most services and modules: auth and SSO, credentials, executions and their lifecycle, triggers and webhooks, queue mode and pubsub, push, task runners, licensing, events and telemetry, public API, and more |
+| `packages/core/` | Execution engine, node execution contexts (the helpers that nodes call), trigger and poller runtime, node and credential loading, binary data storage, encryption, and instance settings |
+| `packages/workflow/` | Workflow model, expression evaluator, and shared types, used by both backend and frontend |
+| `packages/@n8n/db/` | Entities, repositories, and migrations |
+| `packages/@n8n/agents/` | Agent runtime |
+| `packages/@n8n/instance-ai/` | Backend of the n8n Assistant, the agent that builds and fixes workflows for the user |
+| `packages/@n8n/api-types/` | Request and response types that the editor shares |
+| `packages/@n8n/config/` | Config from env vars |
+| `packages/modules/` | Modules in their own packages |
+| `packages/nodes-base/`<br>`packages/@n8n/nodes-langchain/` | Built-in nodes |
 
 ## Quiz
 
 1. In queue mode, a production webhook call arrives on a main. Which process runs the execution?
    - A. A worker. The main writes the execution row and adds a job to the queue in Redis.
-   - B. The main. Queue mode moves only manual runs to workers.
+   - B. The main. Queue mode moves only manual executions to workers.
    - C. The webhook process. It receives the call from the main.
    - D. The leader. Only the leader runs production executions.
-2. A worker dies in the middle of an execution. What does n8n still have?
-   - A. Nothing. The job in Redis held the workflow and the input.
-   - B. The job, which another worker runs again from the start.
-   - C. The output of every node, which a main uses to finish the run.
-   - D. The input of the execution, in the database. n8n marks the execution `crashed`.
-3. Your code must run once an hour for the whole cluster. Why is a plain timer wrong?
-   - A. Timers do not run in queue mode.
-   - B. Only workers can run timers.
-   - C. Every main starts the timer, so the code runs once for each main.
-   - D. The leader removes timers that other code starts.
+2. A worker finishes an execution. What does it do with the result?
+   - A. It answers the webhook call itself.
+   - B. It writes the result into the job in Redis, and nothing else.
+   - C. It sends the result to the editor over websocket.
+   - D. It saves the results to the database and reports completion to the main through the queue.
+3. In multi-main, the leader dies. What happens to pollers?
+   - A. They stop until an admin picks a new leader.
+   - B. Every main starts running them.
+   - C. The key of the leader in Redis expires, and another main takes it and runs them.
+   - D. Workers take them over.
 4. You rename an environment variable, and all tests pass. What can still break?
    - A. Nothing. CI checks every use of each variable.
    - B. Every Cloud instance, because the Cloud control plane sets environment variables by name.
@@ -120,12 +118,10 @@ The code changes too. Many parts of the backend exist in an old shape and a new 
 <details>
 <summary>Answers</summary>
 
-1. A. A worker. The main writes the execution row and adds a job to the queue in Redis. In queue mode, a main does not run production executions. A worker takes the job from Redis and runs it.
-2. D. The input of the execution, in the database. n8n marks the execution `crashed`. The job carries only the id of the execution. The workflow and the input stay in the database.
-3. C. Every main starts the timer, so the code runs once for each main. Some work must happen exactly once. A plain timer runs in every main. n8n moves this work to a scheduler in the database.
-4. B. Every Cloud instance, because the Cloud control plane sets environment variables by name. Environment variables are a contract with the Cloud control plane in another repository. No test in this repository checks it.
-5. A. You add a new `typeVersion` of the node. Saved workflows keep the old version. A node stores its `typeVersion`. A change of behavior goes into a new version.
+1. A. In queue mode, a main does not run production executions. A worker takes the job from Redis and runs it.
+2. D. The job carries only the ID of the execution, so the database holds the data.
+3. C. The leader renews its key while it runs, so a dead leader loses the key within a few seconds.
+4. B. Environment variables are a contract with the Cloud control plane outside the n8n repository. No test in the n8n repository checks it.
+5. A. A node stores its `typeVersion`. A change of behavior goes into a new version.
 
 </details>
-
-Week 1 follows your three steps from the first page through this setup: [the publication](workflow-publication.md), [the webhook call](workflow-execution.md), and [the message to the agent](agent-turn.md).

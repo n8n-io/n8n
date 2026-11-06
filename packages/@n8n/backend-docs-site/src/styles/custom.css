@@ -1,9 +1,8 @@
 /* The theme follows docs.n8n.io: the n8n pink, warm grays, a filled sidebar card.
-   The body font is Inter, as on lisette.run. Titles stay in Geist. */
+   The body font is Inter and code uses the system mono font, as on lisette.run. Titles stay in Geist. */
 :root {
 	--sl-font: 'Inter';
 	--n8n-font-title: 'Geist', var(--__sl-font);
-	--sl-font-mono: 'Geist Mono';
 	--sl-line-height: 1.625;
 	--sl-text-h1: 2.25rem;
 	--sl-text-h2: 1.875rem;
@@ -271,6 +270,9 @@ h1#_top {
 	border-spacing: 0;
 	border: 1px solid var(--sl-color-hairline);
 	border-radius: 0.75rem;
+	/* Starlight shows tables as blocks, so a narrow table left empty space inside its frame. */
+	width: fit-content;
+	max-width: 100%;
 	overflow-y: hidden;
 	scrollbar-width: thin;
 	scrollbar-color: var(--sl-color-gray-5) transparent;
@@ -381,6 +383,17 @@ pre.mermaid .labelBkg {
    `break-word`, also lowers the minimum cell width, so the table does not scroll. */
 .sl-markdown-content td code {
 	overflow-wrap: anywhere;
+}
+
+/* A symbol (code without path break points) breaks only when it is wider than the table,
+   so the column grows to fit a short name such as `PostHogClient`. */
+.sl-markdown-content td code:not(:has(wbr)) {
+	overflow-wrap: break-word;
+}
+
+/* A path in the first column names the row, so it stays on one line. */
+.sl-markdown-content td:first-child code:has(wbr) {
+	white-space: nowrap;
 }
 
 /* Code blocks: Shiki writes both themes as CSS variables. Pick the one for the active theme. */
@@ -974,7 +987,8 @@ mobile-starlight-toc nav {
 .sl-markdown-content ol.n8n-steps > li::before {
 	content: counter(step);
 	position: absolute;
-	top: calc((var(--sl-line-height) * 1em - var(--bullet)) / 2);
+	/* Center the dot on the first line of the step title, which is larger than body text. */
+	top: calc((var(--sl-line-height) * var(--sl-text-lg) - var(--bullet)) / 2);
 	inset-inline-start: 0;
 	width: var(--bullet);
 	height: var(--bullet);
@@ -1014,4 +1028,14 @@ mobile-starlight-toc nav {
 
 .sl-markdown-content .n8n-step-title + * {
 	margin-top: 0.375rem;
+}
+
+.sl-markdown-content kbd {
+	padding: 0.0625rem 0.375rem;
+	border: 1px solid var(--sl-color-gray-5);
+	border-bottom-width: 2px;
+	border-radius: 0.25rem;
+	background-color: var(--sl-color-gray-6);
+	font-family: var(--__sl-font-mono);
+	font-size: 0.85em;
 }

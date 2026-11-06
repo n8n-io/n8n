@@ -63,11 +63,11 @@ The `otel` module sends OpenTelemetry traces of workflow and node executions.
 <details>
 <summary>Answers</summary>
 
-1. A. Add an entry for it in `counting-rules.ts`. Billing, insights, and execution limits all use that one file. Do not write a list of modes of your own.
-2. D. Log streaming users, because they filter on event names. Log streaming event names are a contract.
-3. C. None of your lines. The scope filter hides every line that has no scope. Give the logger of your service a scope.
-4. B. The process reads the file and marks executions without a final event as crashed. The event bus writes each event to a file before it sends it on, so the file is also a recovery log.
+1. A. Billing, insights, and execution limits all use that one file. Do not write a list of modes of your own.
+2. D. Log streaming event names are a contract.
+3. C. The scope filter hides every line that has no scope. Give the logger of your service a scope.
+4. B. The event bus writes each event to a file before it sends it on, so the file is also a recovery log.
 
 </details>
 
-[Roll out a change](../how-to/roll-out-a-change.md) shows how to use these signals during a rollout.
+[Roll out a backend change](../how-to/roll-out-a-change.md) shows how to use these signals during a rollout.

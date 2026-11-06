@@ -1,181 +1,89 @@
 ---
-title: Roll out a change
-audience: Backend engineers who ship a change behind a flag or watch it in production
+title: Roll out a backend change
+audience: Backend engineers who release a risky change to n8n Cloud
 tier: 3
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-06
 contact: ivov
 ---
 
-# Roll out a change
+# Roll out a backend change
 
-A change that passes CI can still fail on real workflows, under real load. This page shows the signals that a running n8n gives you, and a procedure to turn a change on step by step. It also lists what a revert leaves behind.
+A risky backend change should be released behind a flag that is disabled by default, and then rolled out to a growing share of instances on n8n Cloud. This page shows how to choose a flag mechanism, what to monitor during the rollout, and what a rollback does not undo.
 
-[Observability](../subsystems/observability.md) explains the event and metric code.
+## Choose a flag mechanism
 
-## Turn on the signals
+| Mechanism | Enables change for | Takes effect | Consumed by |
+|---|---|---|---|
+| n8n Cloud instance flag | A share of n8n Cloud instances | At the next upgrade of each instance | A `@Config` class, through an env var |
+| [PostHog](https://eu.posthog.com) flag | A share of instances or users, on n8n Cloud and self-hosted | Within 10m of an update in PostHog | `PostHogClient` |
 
-Most signals are off by default. To try the commands on this page, start n8n as in [Run queue mode locally](run-queue-mode-locally.md).
+Use an n8n Cloud instance flag when your code reads the setting once, at startup. Use a PostHog flag when you must be able to disable the flag without a restart.
 
-### Metrics
+Keep in mind:
 
-`N8N_METRICS=true` adds `GET /metrics` in the Prometheus format. Mains and webhook processes serve it on their HTTP port. A worker serves it on its worker server port, which needs `QUEUE_HEALTH_CHECK_ACTIVE=true`.
+- An instance with `N8N_DIAGNOSTICS_ENABLED=false` reads every PostHog flag as disabled. Self-hosted users can still enable your change with `N8N_FEATURE_FLAG_OVERRIDES`.
+- A PostHog flag also reaches self-hosted instances. To limit it to n8n Cloud, add a condition on `n8n_deployment_type` in PostHog.
+- A flag that you read with `PostHogClient.getFeatureFlags(user)` can differ between two users on one instance. Use `getFeatureFlagForInstance(name)` for one value per instance.
 
-With only `N8N_METRICS=true`, you get these families:
+## Create your flag
 
-- Node.js and process metrics, for example `n8n_process_resident_memory_bytes` and `n8n_nodejs_eventloop_lag_p99_seconds`.
-- `n8n_workflow_execution_duration_seconds`, a histogram with the labels `status` and `mode`.
-- `n8n_version_info`, `n8n_active_workflow_count`, and, on mains, `n8n_instance_role_leader`.
+- **n8n Cloud instance flag:** In the `n8n-cloud` repository, add the flag with your first percentage and the first n8n version with your code. In the same PR, map the flag to your env var. For an example, see [the PR that added `nativeEvaluationVerify`](https://github.com/n8n-io/n8n-cloud/pull/5401).
+- **PostHog flag:** Create the flag disabled in the staging and production PostHog projects, with a key `NNN_name`. Put its constant in `@n8n/api-types`. [PostHog Feature Flags](https://app.notion.com/p/3ff5b6e0c94f802ead22d77426d62def) in Notion describes the full process.
 
-Other families need their own flag. These are the most useful for backend changes:
+## Try the change on staging internal
 
-| Flag | Metrics | Use it for |
-|---|---|---|
-| `N8N_METRICS_INCLUDE_QUEUE_METRICS` | `n8n_scaling_mode_queue_jobs_*` | Queue depth, failed jobs, and missed completions in queue mode |
-| `N8N_METRICS_INCLUDE_DB_POOL_METRICS` | `n8n_db_pool_*` | Requests that wait for a database connection |
-| `N8N_METRICS_INCLUDE_API_ENDPOINTS` | `n8n_http_request_duration_seconds` | Request latency. Add the `N8N_METRICS_INCLUDE_API_*_LABEL` flags to split it by path, method, and status code |
-| `N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS` | A counter for each event bus event, for example `n8n_workflow_failed_total` | Counts of workflow, node, and queue events |
-| `N8N_METRICS_INCLUDE_SCHEDULER_METRICS` | `n8n_scheduler_*` | The durable scheduler |
+If applicable, consider enabling your change on staging internal. This instance runs the [beta release](https://docs.n8n.io/release-notes) in queue mode with multi-main. The n8n Cloud control plane does not manage it, so n8n Cloud instance flags do not reach it.
 
-`packages/@n8n/config/src/configs/endpoints.config.ts` lists every flag.
+- **Env var:** Follow the [runbook](https://app.notion.com/p/2ee5b6e0c94f80ce958ded2c4302b91f).
+- **PostHog flag:** Add a condition on the instance ID of staging internal.
 
-> [!WARNING]
-> Each main counts the queue metrics on its own. In multi-main, use `max` across mains, not `sum`.
+Announce the change in `#mission-internal-instance`.
 
-### Health endpoints
+> [!CAUTION]
+> **Staging internal runs business-critical workflows.** Before you merge, know how to roll back your change. After you merge, monitor the [instance load](https://grafmon.app.n8n.cloud/d/load-internal/n8n-staging-internal-c2b7-instance-load?orgId=1&from=now-6h&to=now&timezone=browser&var-datasource=ea3389f8-972a-4261-93f7-7c911602172d&var-topk=5&refresh=30s) and [Postgres performance](https://grafmon.app.n8n.cloud/d/pgss-internal/n8n-staging-internal-c2b7-postgres-performance?orgId=1&from=now-6h&to=now&timezone=browser&var-datasource=ea3389f8-972a-4261-93f7-7c911602172d&var-topk=5&refresh=30s) dashboards, and the [Sentry issues](https://n8nio.sentry.io/issues/?groupStatsPeriod=auto&project=4503924908883968&query=is%3Aunresolved%20server_name%3An8n-internal-instance-stage&referrer=issue-list&sort=date&statsPeriod=14d) of the instance.
 
-| Endpoint | Returns 200 when |
-|---|---|
-| `/healthz` | The HTTP server is up. It checks nothing else |
-| `/healthz/readiness` | The database is connected and migrated, and startup is complete. On a worker, Redis must also be connected |
+## Roll out on n8n Cloud
 
-A main does not check Redis for readiness, even in queue mode. A worker serves both endpoints only with `QUEUE_HEALTH_CHECK_ACTIVE=true`.
+For an n8n Cloud instance flag:
 
-### Logs
+1. Raise the percentage in a PR to `n8n-cloud`. Open one PR for each raise.
+2. Announce the raise in `#mission-n8n-cloud` after you merge the PR.
+3. The raise reaches production when its release PR merges, as the [n8n Cloud release process](https://github.com/n8n-io/n8n-cloud/blob/main/docs/release-process.md) describes.
+4. Each instance gets the flag only at its next upgrade, plan change, or creation.
 
-| Variable | Values |
-|---|---|
-| `N8N_LOG_LEVEL` | `error`, `warn`, `info`, `debug` |
-| `N8N_LOG_OUTPUT` | `console`, `file`, or both, separated by a comma |
-| `N8N_LOG_FORMAT` | `text`, or `json` for a log shipper |
-| `N8N_LOG_SCOPES` | A list of scopes, for example `scaling,pubsub,multi-main-setup,redis` |
+Typical rollouts use 10%, then 50%, then 100%, with about two weeks between raises.
 
-`LOG_SCOPES` in the `@n8n/config` package lists all scopes. The scope filter works only at `N8N_LOG_LEVEL=debug` or with `N8N_LOG_FORMAT=json`. It also hides every line that has no scope. For example, the worker startup recovery logs its warning with no scope, so a filter for `scaling` does not show it.
+For a PostHog flag, change the rollout percentage in PostHog.
 
-### Event log
+When the rollout reaches 100%, remove the flag.
 
-Each process writes its events to a file in its n8n folder: `n8nEventLog.log` on a main and `n8nEventLog-worker.log` on a worker. Each line is one JSON message, for example `n8n.node.started`. The file exists with or without a license. A license is necessary only to send events to log streaming destinations.
+## Monitor the rollout
 
-Follow the file to see events as they happen:
+Before the first raise, make your change observable:
 
-```bash
-tail -f $HOME/.n8n-queue/.n8n/n8nEventLog.log
-```
-
-### Traces and errors
-
-- `N8N_OTEL_ENABLED=true` sends OpenTelemetry traces for workflow and node executions. By default, n8n traces only production executions. The `otel` module README lists the settings.
-- `N8N_SENTRY_DSN` sends errors to Sentry. Without it, errors go only to the logs.
-
-## Choose the switch
-
-Each toggle system changes at its own speed. Know the speed before you plan the steps, because it sets how fast you can turn the change off.
-
-| System | Takes effect | To turn it off |
-|---|---|---|
-| PostHog feature flag | After up to 10 min on the backend, because each process caches flags for each user. In the editor, at the next login or page load | Change the flag in PostHog, then wait for the cache |
-| `N8N_FEATURE_FLAG_OVERRIDES` or a dedicated `N8N_..._ENABLED` variable | At the next restart | Change the variable and restart |
-| `N8N_ENV_FEAT_*` variable | At the next restart | Unset the variable and restart |
-| License flag `feat:*` or `quota:*` | At once on each process, after a `reload-license` pubsub command | Change the license |
-| Module enablement | At the next restart | Change `N8N_ENABLED_MODULES` or `N8N_DISABLED_MODULES` and restart |
-| Cloud instance flag | When Cloud rebuilds the configuration of the instance | Change the flag in the control plane |
-
-Three PostHog facts affect a rollout:
-
-- **An instance with `N8N_DIAGNOSTICS_ENABLED=false` never gets PostHog flags.** Only the env overrides apply there.
-- **PostHog evaluates a flag for each user**, with the id `<instance id>#<user id>`. Two users on one instance can get different values in a percentage rollout.
-- **Each process has its own cache.** For up to 10 min after a change, a main and a worker can disagree.
-
-The `experiments` skill in `.agents/skills/experiments/SKILL.md` covers how to create a PostHog flag. A new flag starts disabled. Do not turn on a rollout as part of the code change.
-
-## Plan the steps
-
-Write the plan before you turn the flag on. Decide the steps, the time at each step, and the signals that stop the rollout. A decision that you make after you see the data is easy to bend.
-
-A good start is 1%, 10%, 50%, and 100%. Keep each step for at least one full weekday, because some defects show only under peak load. These numbers are a starting point, not a rule. Use smaller steps for a change to the execution path, and larger steps for a change that only the editor shows.
-
-## Watch the signals
-
-**Success signals** show that the change does its job. Use the telemetry events of your feature, and split them by the `User is part of experiment` event.
-
-**Stop signals** show that the change does harm. Pick no more than a dozen. For a backend change, start with these:
-
-| Signal | Metric or source |
-|---|---|
-| Execution failure ratio, for each mode | `n8n_workflow_execution_duration_seconds_count{status="failed"}` against the total |
-| Crashed executions | The `crashed` status, and `n8n_scaling_mode_queue_jobs_completion_missed` in queue mode |
-| Event loop lag | `n8n_nodejs_eventloop_lag_p99_seconds` |
-| Memory | `n8n_process_resident_memory_bytes` |
-| Queue depth | `n8n_scaling_mode_queue_jobs_waiting` |
-| Database pool | `n8n_db_pool_*` requests that wait |
-
-Compare the group with the change against a control group at the same time. An aggregate hides a small group: a 20% error rate on 5% of instances shows as 1% in the total. Crashes are rare at 1%, so set an absolute limit next to each relative one.
-
-> [!NOTE]
-> A backend event with no `user_id` does not reach PostHog. If your group looks empty, check that your events carry a user.
+- Add [metrics](../subsystems/observability.md#signals) for what your change does, and [telemetry events](../subsystems/observability.md#events) if appropriate. PostHog ignores a backend event that has no `user_id`.
+- Label your metrics by whether the flag is enabled.
+- Build a [Grafana](https://grafmon.app.n8n.cloud/) dashboard that compares instances with and without the flag, on the same n8n versions.
+- Decide which values stop the rollout.
 
 ## Roll back
 
-When a stop signal fires, roll back first and find the cause second. Turn the flag off. If the code itself is wrong, revert it and release.
+- **n8n Cloud instance flag:** Set the percentage back to 0% in a PR, and release it. Instances that already have the flag keep it. To disable the flag on each of them, run the [medic CLI](https://github.com/n8n-io/n8n-cloud/tree/main/scripts/medic-cli):
 
-A revert does not undo everything. Before you ship, check each item below against your change:
+  ```bash
+  medic set-overrides ivov \
+    '{"instanceFeatureFlags":{"memoryGuard":false}}'
+  ```
 
-- **Migrations stay applied.** Old code ignores a migration that it does not know. To undo one, run `n8n db:revert` before the downgrade. See [Write a database migration](write-a-database-migration.md#know-how-n8n-runs-migrations).
-- **Rows in a new format stay.** Old code must already read them. Ship the reader one release before the writer.
-- **Settings rows and state that a `reload-*` command loaded stay.**
-- **Operator overrides stay.** An env variable that forces a flag on keeps it on after you turn the flag off in PostHog.
-- **The PostHog cache keeps the old value** for up to 10 min.
-- **Telemetry events and browser storage stay.** For example, a dismissed banner stays dismissed.
-- **External effects stay.** An identity provider, a webhook caller, or a third-party API can see the change and react to it.
+  The command redeploys the instance. The override stays until you remove it.
+- **PostHog flag:** Disable the flag in PostHog. Each process reads the update within 10m.
 
-Next to each new flag check, write one comment that says what turning it off does. The SCIM opt-in in `packages/cli/src/modules/scim/scim-opt-in.ts` is a good example.
+## What a rollback does not undo
 
-When the rollout reaches 100%, remove the flag. Create the removal ticket when you create the flag.
+Before you release, check your change against each item:
 
-## Quiz
-
-1. You turn off a PostHog flag. When does the backend see the change?
-   - A. After up to 10 minutes, because each process caches flags.
-   - B. At once.
-   - C. At the next restart.
-   - D. At the next release.
-2. An instance sets `N8N_DIAGNOSTICS_ENABLED=false`. Which flag values does it get?
-   - A. The PostHog values, as other instances do.
-   - B. All flags on.
-   - C. The values from its license.
-   - D. Only the env overrides. It never gets PostHog flags.
-3. Your change fails on 20% of the instances in a 5% group. What does the total error rate show?
-   - A. About 20%.
-   - B. About 5%.
-   - C. About 1%, so compare the group against a control group.
-   - D. Nothing, because PostHog filters failures.
-4. Your change writes rows in a new format. What happens to those rows after a revert?
-   - A. The revert deletes them.
-   - B. They stay, so the old code must already read them. Ship the reader one release before the writer.
-   - C. A migration converts them back.
-   - D. n8n ignores them.
-
-<details>
-<summary>Answers</summary>
-
-1. A. After up to 10 minutes, because each process caches flags. For up to 10 minutes after a change, a main and a worker can disagree.
-2. D. Only the env overrides. It never gets PostHog flags. PostHog needs diagnostics, so only the overrides apply there.
-3. C. About 1%, so compare the group against a control group. An aggregate hides a small group. Set an absolute limit next to each relative one too.
-4. B. They stay, so the old code must already read them. Ship the reader one release before the writer. A revert does not undo data that the new code wrote.
-
-</details>
-
-## Read more
-
-- [Google SRE workbook: Canary releases](https://sre.google/workbook/canarying-releases/)
-- [Google SRE book: Reliable product launches at scale](https://sre.google/sre-book/reliable-product-launches/)
-- [Martin Fowler: Feature toggles](https://martinfowler.com/articles/feature-toggles.html)
+- [Migrations](write-a-database-migration.md#how-n8n-runs-migrations) stay applied. To undo one, run `n8n db:revert` before the downgrade.
+- Rows in a new format stay. Release the code that reads them one version before the code that writes them.
+- Instance settings that your change saved in the `settings` table (e.g. the SSO configuration) stay.
+- Overrides keep their value, both in `N8N_FEATURE_FLAG_OVERRIDES` and from medic.
+- External systems (e.g. an identity provider or a webhook caller) keep what they did in response to your change.

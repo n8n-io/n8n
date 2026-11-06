@@ -58,9 +58,9 @@ The editor hides the features that an instance cannot use. The backend must stil
 <details>
 <summary>Answers</summary>
 
-1. C. Put `@Licensed` on the paid routes. `licenseFlag` stops the whole module, and n8n reads it only at startup. `@Licensed` reads the license on each request.
-2. B. Yes. A hidden button does not protect a route. A caller can send the request without the editor.
-3. A. Nothing by itself. It tells a reviewer that the code needs a license check on its path. The suffix marks code under the Enterprise license. The check must still be in the code.
-4. D. No limit. A quota value is a number, and `-1` means no limit.
+1. C. `licenseFlag` stops the whole module, and n8n reads it only at startup. `@Licensed` reads the license on each request.
+2. B. A caller can send the request without the editor.
+3. A. The suffix marks code under the Enterprise license. The check must still be in the code.
+4. D. A quota value is a number, and `-1` means no limit.
 
 </details>

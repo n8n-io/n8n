@@ -61,9 +61,9 @@ Never edit `N8N_ENABLED_MODULES` by hand on a Cloud instance. A wrong value can 
 <details>
 <summary>Answers</summary>
 
-1. D. Retire the old name with `DeprecationService`, which keeps it working for a release. Cloud sets environment variables by name, so a rename breaks it.
-2. C. The previous version must still work with the migrated schema. A rollback starts the previous image on the migrated database.
-3. B. Every Cloud instance fails at startup. Search for "cloud hooks" before you move code.
-4. A. If a license feature or a setting can do the same job. A license feature or a setting gives the behavior to self-hosted users too.
+1. D. Cloud sets environment variables by name, so a rename breaks it.
+2. C. A rollback starts the previous image on the migrated database.
+3. B. Search for "cloud hooks" before you move code.
+4. A. A license feature or a setting gives the behavior to self-hosted users too.
 
 </details>

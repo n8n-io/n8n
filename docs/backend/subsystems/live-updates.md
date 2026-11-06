@@ -74,10 +74,10 @@ The Chat Trigger node has a chat widget that a user can put on a website. The wi
 <details>
 <summary>Answers</summary>
 
-1. C. Only the tabs on the current main. A message to the tabs of a user goes only to tabs on the current main, so it can miss some tabs.
-2. B. Placeholders, and then the data when the execution ends. Pubsub has a size limit, so the relay drops large output.
-3. A. Collaboration, because the browser must also send messages. Collaboration needs WebSocket. Server-Sent Events go only from the server to the browser.
-4. D. 423. The answer is 409 when another tab of the same user holds the lock, and 423 when another user holds it.
-5. C. The events that it missed, from the event log. The Assistant writes each event to a log table first, and the editor asks for the events after the last one that it saw.
+1. C. A message to the tabs of a user goes only to tabs on the current main, so it can miss some tabs.
+2. B. Pubsub has a size limit, so the relay drops large output.
+3. A. Collaboration needs WebSocket. Server-Sent Events go only from the server to the browser.
+4. D. The answer is 409 when another tab of the same user holds the lock, and 423 when another user holds it.
+5. C. The Assistant writes each event to a log table first, and the editor asks for the events after the last one that it saw.
 
 </details>

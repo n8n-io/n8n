@@ -86,11 +86,11 @@ In regular mode, an operator can limit how many production executions run at onc
 <details>
 <summary>Answers</summary>
 
-1. B. A pubsub command does nothing in regular mode. Test it in queue mode. In regular mode, no other process exists to receive the command.
-2. A. Opt out of the merge of bursts. n8n merges a burst of the same command into one message, unless the command opts out.
-3. D. When the key in Redis expires, after up to 10 seconds. A leader that stops cleanly deletes the key. A leader that crashes cannot, so the others wait for the expiry.
-4. C. Each time the work runs, because the role can change at any time. Use `@OnLeaderTakeover` and `@OnLeaderStepdown`, and check the role when the code runs.
-5. B. Two mains can both act as the leader. Code must stay correct when two lease holders overlap. Locks in n8n are leases with an expiry, and two holders can overlap.
+1. B. In regular mode, no other process exists to receive the command.
+2. A. n8n merges a burst of the same command into one message, unless the command opts out.
+3. D. A leader that stops cleanly deletes the key. A leader that crashes cannot, so the others wait for the expiry.
+4. C. Use `@OnLeaderTakeover` and `@OnLeaderStepdown`, and check the role when the code runs.
+5. B. Locks in n8n are leases with an expiry, and two holders can overlap.
 
 </details>
 

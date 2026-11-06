@@ -8,7 +8,7 @@ import Default from '@astrojs/starlight/components/Head.astro';
 <link rel="preconnect" href="https://avatars.githubusercontent.com" />
 <link
 	rel="stylesheet"
-	href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400..700&family=Geist+Mono:wght@400;500&display=swap"
+	href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400..700&display=swap"
 />
 
 <script>
@@ -86,6 +86,63 @@ import Default from '@astrojs/starlight/components/Head.astro';
 				if (svg?.querySelector('.sequenceNumber')) {
 					const box = svg.viewBox.baseVal;
 					svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.width} ${box.height + 12}`);
+				}
+				// Mermaid puts the label of a self-message above its loop, halfway to the step before.
+				// The label moves to the right of the loop, so it sits next to its own step number.
+				// Mermaid draws a self-message as a path, after the text lines of its label.
+				const loops = svg?.querySelectorAll<SVGPathElement>('path.messageLine0, path.messageLine1');
+				for (const loop of loops ?? []) {
+					const lines: SVGTextElement[] = [];
+					let label = loop.previousElementSibling;
+					while (label instanceof SVGTextElement && label.classList.contains('messageText')) {
+						lines.unshift(label);
+						label = label.previousElementSibling;
+					}
+					if (lines.length === 0) continue;
+					// Mermaid bends the loop 60px out for a 20px drop, so it looks stretched. Pull it in.
+					const points = (loop.getAttribute('d') ?? '').match(/-?[\d.]+/g)?.map(Number) ?? [];
+					if (points.length === 8) {
+						const [startX, startY] = points;
+						const [endX, mermaidEndY] = points.slice(6);
+						// The arrow head ends lower, so that it does not touch the step circle.
+						const endY = mermaidEndY + 6;
+						const reach = 40;
+						loop.setAttribute(
+							'd',
+							`M ${startX},${startY} C ${startX + reach},${startY - 8} ${endX + reach},${endY + 8} ${endX},${endY}`,
+						);
+					}
+					const curve = loop.getBBox();
+					const lineHeight = lines[0].getBBox().height;
+					const top = curve.y + curve.height / 2 - (lines.length * lineHeight) / 2;
+					lines.forEach((line, index) => {
+						line.setAttribute('x', `${curve.x + curve.width + 8}`);
+						line.setAttribute('y', `${top + index * lineHeight}`);
+						line.setAttribute('dy', '0.8em');
+						line.setAttribute('text-anchor', 'start');
+						line.style.textAnchor = 'start';
+					});
+				}
+				// The step circle of the message above a loop touches the top of the loop box. Only the
+				// top of the box moves down. The messages inside the box stay where they are.
+				const loopTopShift = 16;
+				for (const box of svg?.querySelectorAll('g:has(> line.loopLine)') ?? []) {
+					const edges = Array.from(box.querySelectorAll<SVGLineElement>(':scope > line.loopLine'));
+					const top = Math.min(...edges.map((edge) => Math.min(edge.y1.baseVal.value, edge.y2.baseVal.value)));
+					for (const edge of edges) {
+						if (edge.y1.baseVal.value === top) edge.y1.baseVal.value += loopTopShift;
+						if (edge.y2.baseVal.value === top) edge.y2.baseVal.value += loopTopShift;
+					}
+					for (const part of box.querySelectorAll(':scope > .labelBox, :scope > .labelText, :scope > .loopText')) {
+						part.setAttribute('transform', `translate(0, ${loopTopShift})`);
+					}
+				}
+				// A label that moved to the right can reach past the drawing, so the drawing widens.
+				if (svg && loops && loops.length > 0) {
+					const box = svg.viewBox.baseVal;
+					const content = svg.getBBox();
+					const right = Math.max(box.x + box.width, content.x + content.width + 8);
+					svg.setAttribute('viewBox', `${box.x} ${box.y} ${right - box.x} ${box.height}`);
 				}
 			}
 		};

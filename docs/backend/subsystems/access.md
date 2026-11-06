@@ -76,10 +76,10 @@ A credential can also give each user a different secret, and a value can come fr
 <details>
 <summary>Answers</summary>
 
-1. B. They become invalid, because the JWT contains a hash of the password. n8n keeps no session table. A change of the password or the email makes old tokens invalid.
-2. A. Only a signed-in user. A route must opt out with `skipAuth` to allow other callers. Every REST route requires a signed-in user by default.
-3. D. It asks for the projects where the user has the scope, and it filters the list on those projects. A list route cannot check each row through a URL, so it filters by project.
-4. C. A project. Workflows, agents, and credentials belong to a project. Each user has a personal project.
-5. B. The data that the key encrypted would become unreadable. The ciphertext names its key, so keys can rotate, but an old key must stay.
+1. B. n8n keeps no session table. A change of the password or the email makes old tokens invalid.
+2. A. Every REST route requires a signed-in user by default.
+3. D. A list route cannot check each row through a URL, so it filters by project.
+4. C. Workflows, agents, and credentials belong to a project. Each user has a personal project.
+5. B. The ciphertext names its key, so keys can rotate, but an old key must stay.
 
 </details>

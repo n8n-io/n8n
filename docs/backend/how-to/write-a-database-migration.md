@@ -2,63 +2,50 @@
 title: Write a database migration
 audience: Backend engineers who change the database schema
 tier: 3
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-06
 contact: ivov
 ---
 
 # Write a database migration
 
-A migration is a class that changes the database schema or its data. n8n runs pending migrations at startup on every instance, with no person present. The instance does not start until the migrations finish. After a release, you cannot change a migration. A mistake in a migration therefore reaches every instance and stays there.
+A migration is a class that changes the database schema or its data. [Data storage](../subsystems/data.md) explains the data layer around migrations.
 
-The schema is the migrations. TypeORM runs with `synchronize: false`, so an entity class alone creates no table. [Data](../subsystems/data.md) explains the data layer around the migrations.
+After a release, you cannot edit a migration, i.e. only a new migration can fix a buggy one.
 
-> [!TIP]
-> In Claude Code, the `n8n:db-migrations` skill loads the full rule set from `.agents/skills/db-migrations/SKILL.md`. Use it when you write a migration. This page covers the steps and the rules that cause the most incidents.
+> [!NOTE]
+> If you use a coding agent, point it to the `n8n:db-migrations` skill.
 
-## Decide if you need a migration
+## How n8n runs migrations
 
-Before you add a table or a column, look for one that already holds the data. A review rejects a migration that duplicates a column, adds a backfill that a default can replace, or mixes two changes in one file. Make one logical change in each migration.
+- **Every process migrates at startup.** Mains, workers, and webhook processes run pending migrations when they start. A process is not ready until its migrations finish.
+- **PostgreSQL migrates one instance at a time.** Each instance waits for a lock before it runs the migrations.
+- **On PostgreSQL, all pending migrations share one transaction.** If one migration fails, n8n undoes all of them, and the schema stays as it was before the upgrade.
+- **On SQLite, each migration has its own transaction.** If one migration fails, the migrations before it stay applied.
+- **Old code ignores new migrations.** After a downgrade, n8n does not undo migrations that it does not know. To undo a migration, run `db:revert` before the downgrade.
+- **Engine v2 has its own migrations.** They live in `packages/@n8n/engine/src/database/migrations/` and target a separate database. This page does not cover them.
 
-## Create the file
+## Create a migration
 
-<!-- steps -->
+n8n supports SQLite and PostgreSQL. Migrations live in three folders under `packages/@n8n/db/src/migrations/`: `common/` for both databases, `postgresdb/`, and `sqlite/`. Pick the folder by how much your change differs between the two databases:
 
-1. **Run the generator.**
+- **Same on both:** `common/`
+- **Small difference** (e.g. one statement or slightly different syntax): `common/`, with a branch on `isPostgres` or `isSqlite`
+- **Large difference** (e.g. different steps to rebuild a table): two migrations, one in `postgresdb/` and one in `sqlite/`
+- **PostgreSQL only** (e.g. a column type change): one migration in `postgresdb/`, and none for SQLite
 
-   ```sh
-   pnpm --filter=@n8n/db migration:new AddTracingToExecution
-   ```
+From repository root, generate the migration:
 
-   The name is PascalCase and describes the change. The generator writes `<timestamp>-<Name>.ts` in `packages/@n8n/db/src/migrations/common/`. The class name is the name plus the timestamp.
+```bash
+pnpm --filter=@n8n/db migration:new AddTracingToExecution
+```
 
-2. **Choose the folder.**
-
-   Keep the file in `common/` when the change works on SQLite and PostgreSQL. Small differences can branch on `isPostgres` or `isSqlite` in one file. Use `--folder=postgresdb` or `--folder=sqlite` only when the change applies to one database. A file in `sqlite/` or `postgresdb/` with the same name as a file in `common/` replaces it for that database.
-
-3. **Keep the timestamp.**
-
-   Do not type a timestamp by hand. The Code Health rule `migration-timestamp` fails CI for a timestamp that is not after the newest migration, or that is far in the future.
-
-The generator also writes the two index files, `sqlite/index.ts` and `postgresdb/index.ts`. Git ignores them. The `build`, `typecheck`, `lint`, and `test` scripts of `@n8n/db` write them again. If an index is out of date, the import fails and names the command `pnpm --filter=@n8n/db gen:migration-index`.
+The generator writes `<timestamp>-AddTracingToExecution.ts` to `common/`. For `postgresdb/` or `sqlite/`, add `--folder=postgresdb` or `--folder=sqlite`.
 
 ## Write `up` and `down`
 
-A migration implements `ReversibleMigration` or `IrreversibleMigration` from `packages/@n8n/db/src/migrations/migration-types.ts`. Each method receives a `MigrationContext`. These fields are the ones you use most:
+Each method receives a `MigrationContext`, which holds the schema builder, `runQuery` for raw SQL, and helpers for escaping and batching.
 
-| Field | Use |
-|---|---|
-| `schemaBuilder` | The DSL for tables, columns, indexes, and foreign keys |
-| `runQuery(sql, params?)` | Runs SQL. Use it instead of `queryRunner.query` |
-| `escape.tableName`, `escape.columnName`, `escape.indexName` | Add the table prefix and quote each identifier |
-| `isSqlite`, `isPostgres` | Branch for one database |
-| `runInBatches(query, operation, limit?)` | Reads a large table in pages |
-| `copyTable` | Copies rows from one table to another in batches |
-| `parseJson` | Parses a JSON column value |
-| `logger` | Logs progress. Do not use `console.log` |
-
-The DSL is in `packages/@n8n/db/src/migrations/dsl/`. `createTable` takes columns, indexes, checks, and foreign keys. Other functions add or drop columns, indexes, foreign keys, `NOT NULL`, and enum checks.
-
-This migration uses both the DSL and raw SQL. From `packages/@n8n/db/src/migrations/common/1793035273653-CreateAgentPublishHistory.ts`:
+Example from the agents feature, with the schema builder and raw SQL:
 
 ```ts
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
@@ -78,40 +65,15 @@ export class CreateAgentPublishHistory1793035273653 implements ReversibleMigrati
 			.withColumns(
 				column('id').int.primary.autoGenerate2,
 				column('agentId').varchar(36).notNull,
-				column('versionId').varchar(36),
 				column('event')
 					.varchar(16)
 					.notNull.withEnumCheck(['activated', 'deactivated'])
 					.comment('Publication or explicit unpublication'),
-				column('userId').uuid,
-				column('author').varchar(255).notNull,
-				column('isLegacy')
-					.bool.notNull.default(false)
-					.comment('Legacy publication with an unknown end time'),
+				// ...
 			)
 			.withCreatedAt.withIndexOn(['agentId', 'id'])
-			.withIndexOn('versionId')
-			.withIndexOn('userId')
-			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' })
-			.withForeignKey('versionId', {
-				tableName: 'agent_history',
-				columnName: 'versionId',
-				onDelete: 'SET NULL',
-			})
-			.withForeignKey('userId', { tableName: 'user', columnName: 'id', onDelete: 'SET NULL' });
-
-		await this.copyPublications(ctx);
-	}
-
-	private async copyPublications({ escape, runQuery }: MigrationContext) {
-		const c = escape.columnName;
-		const columns = ['agentId', 'versionId', 'event', 'userId', 'author', 'isLegacy', 'createdAt']
-			.map(c)
-			.join(', ');
-
-		await runQuery(`INSERT INTO ${escape.tableName('agent_publish_history')} (${columns})
-			SELECT ${c('agentId')}, ${c('versionId')}, 'activated', ${c('publishedById')}, ${c('author')}, true, ${c('createdAt')}
-			FROM ${escape.tableName('agent_history')} ORDER BY ${c('createdAt')}, ${c('versionId')}`);
+			.withForeignKey('agentId', { tableName: 'agents', columnName: 'id', onDelete: 'CASCADE' });
+		// ...
 	}
 
 	async down({ schemaBuilder: { dropTable }, escape, runQuery }: MigrationContext) {
@@ -124,149 +86,87 @@ export class CreateAgentPublishHistory1793035273653 implements ReversibleMigrati
 }
 ```
 
-The example follows the rules that reviewers check first:
+Use `IrreversibleMigration` only when `up()` deletes the data that `down()` needs.
 
-- Columns are `notNull` unless a missing value has a meaning.
-- An enum-like column has `withEnumCheck` and a `comment`.
-- Each foreign key has an `onDelete` that matches the relationship. `SET NULL` needs a nullable column.
-- The data copy is in its own method, with an `ORDER BY`.
-- `down()` undoes `up()` fully, so `up()` can run again after it.
+Do not write transaction code in a migration. n8n already runs each migration in a transaction.
 
-Use `IrreversibleMigration` only when `up()` deletes the data that `down()` needs. Never write an empty `down()`.
+In a migration, import application code only as types, and copy any helper you need into the file. Imported code can change later, and the migration must keep working.
 
 > [!CAUTION]
-> **SQLite rebuilds the table for some DSL calls.** SQLite cannot alter most column properties. For this reason, `addColumns`, `dropColumns`, `addNotNull`, `dropNotNull`, `addEnumCheck`, and `dropEnumCheck` copy the table to a new one. Each call needs the argument `{ recreatesOnSqlite: true }`. When another table points at the rebuilt table with `ON DELETE CASCADE`, the rebuild deletes the rows of that other table. To add a nullable column or a column with a default, use a raw `ALTER TABLE ... ADD COLUMN`, as the example does. For other changes, write a `sqlite/` migration with `withFKsDisabled = true as const`. `packages/@n8n/db/src/migrations/sqlite/1793612194540-RemovePublicAppVisibility.ts` is an example.
+> **SQLite table rebuilds can be slow and can delete data.** Calls that add or drop columns, `NOT NULL` constraints, or enum checks copy the table and drop the original. The drop cascades to any table that points at it with `ON DELETE CASCADE`.
+>
+> - To add a nullable column or a column with a default, use a raw `ALTER TABLE ... ADD COLUMN`, as the agents migration above does for `publicationRevision`.
+> - For other changes, write a migration in `sqlite/` with `withFKsDisabled = true as const`. This setting turns off foreign key checks while the migration runs, so the drop deletes no other rows.
 
 ## Move data safely
 
-A data migration reads and changes rows. The skill lists the rules in full. These rules prevent the most failures:
-
 - **Expect bad data.** Old rows can hold `null`, an old JSON shape, or JSON that does not parse. Check each value before you use it.
 - **Work in SQL where you can.** One `INSERT ... SELECT` is faster than a loop in TypeScript.
-- **Read in batches.** Never run a `SELECT *` without a limit. Use `runInBatches` with 100 to 500 rows, or `copyTable`.
+- **Read in batches.** Never run `SELECT *` without a limit. Use `runInBatches` with 100 to 500 rows, or `copyTable`.
 - **Fix the order.** Add an `ORDER BY` to each backfill, so that a second run gives the same result.
-- **Count before you swap.** When you copy a table and then replace the old one, compare the row counts first.
+- **Count before you swap.** When you copy a table to replace the old one, compare the row counts first.
 
 > [!WARNING]
-> **Large tables make slow migrations.** `execution_entity` and `workflow_entity` can hold millions of rows. On a large instance, a slow migration looks like a failed upgrade, because the instance does not start before the migration ends. Do not rewrite these tables, change a column type, or build an index on them without a measurement.
+> **Large tables make slow migrations.** `execution_entity` and `workflow_entity` can hold millions of rows, and a slow migration looks like a failed upgrade. Before you rewrite, retype, or index these tables, measure the migration on a large dataset.
 
-## Remove a column or a table in two releases
+## Drop columns in two releases
 
-During a rolling deploy, old and new code run against the same schema. A rollback also starts the old code against the migrated schema. The old code must therefore still work after your migration.
+Do not drop a column in the same release that stops using it. During a rolling deploy, the previous release still runs while the new one starts. A rollback also starts the previous release again. Both run against the migrated schema, so the previous release fails if its column is gone.
 
-<!-- steps -->
+Split the removal into two releases:
 
-1. **Stop all writes in one release.** The code stops using the column, and the column stays.
-2. **Drop the column in a later release.** No running code uses it now.
+1. **First release:** remove all code that reads or writes the column, and keep the column.
+2. **Later release:** drop the column in a migration. No running code uses it any more.
 
-The same rule applies to a table. [n8n Cloud](../subsystems/cloud.md#control-plane) explains upgrades and rollbacks in Cloud.
+[n8n Cloud](../subsystems/cloud.md#control-plane) explains upgrades and rollbacks in Cloud.
 
 ## Update the entity
 
-The entity in `packages/@n8n/db/src/entities/`, or in the module that owns the table, must agree with the migration. Give each index that the DSL creates an `@Index` on the entity too. Do not import an entity, or other live code, as a value in a migration. A migration must give the same result in every future release.
+Make the entity in `packages/@n8n/db/src/entities/`, or in the module that owns the table, match the migration. Give each index that the migration creates an `@Index` on the entity too.
 
-After the migration and the entity agree, run `pnpm db:schema:docs` at the root. It writes the schema docs in `docs/generated/`. It needs Docker and `tbls`. CI runs `pnpm db:schema:check` and fails when the docs are out of date. Do not edit those files by hand.
+Then update the schema docs from repository root. The command needs Docker and `tbls`:
+
+```bash
+pnpm db:schema:docs
+```
 
 ## Test the migration
 
-Each data migration needs a test in `packages/cli/test/migration/`. A schema-only migration also gets one in most PRs. The helpers are in `packages/@n8n/backend-test-utils/src/migration-test-helpers.ts`:
+Write a test in `packages/cli/test/migration/` for each data migration, and for most schema migrations. Insert test data with raw SQL, because a repository uses the current entity, not the schema of the migration. `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md` lists the helpers.
 
-| Helper | What it does |
-|---|---|
-| `initDbUpToMigration(name)` | Runs every migration before the named one |
-| `runSingleMigration(name)` | Runs the named migration |
-| `undoLastSingleMigration()` | Runs `down()` of the last migration |
-| `createTestMigrationContext(dataSource)` | Gives a context with `runQuery` and `escape` for fixtures |
-
-Insert the fixtures with raw SQL, not with repositories. A repository uses the entity of today, not the schema at the time of the migration. `packages/@n8n/backend-test-utils/MIGRATION_TESTING.md` has the full guide.
-
-This test checks that `down()` keeps the rows of a child table. From `packages/cli/test/migration/1793603668718-add-last-dispatched-at-to-scheduled-job.test.ts`:
+Example from the scheduler, where `down()` must keep the rows of a child table:
 
 ```ts
-	describe('down', () => {
-		it('drops the column without deleting a job or a queued task', async () => {
-			await runSingleMigration(MIGRATION_NAME);
-			const seeded = createTestMigrationContext(dataSource);
-			await insertJob(seeded, 'job');
-			await insertTaskFor(seeded, 'job');
-			await seeded.queryRunner.release();
+describe('down', () => {
+	it('drops the column without deleting a job or a queued task', async () => {
+		await runSingleMigration(MIGRATION_NAME);
+		const seeded = createTestMigrationContext(dataSource);
+		await insertJob(seeded, 'job');
+		await insertTaskFor(seeded, 'job');
+		await seeded.queryRunner.release();
 
-			await undoLastSingleMigration();
+		await undoLastSingleMigration();
 
-			const context = createTestMigrationContext(dataSource);
-			expect(await columnNames(context, 'scheduled_job')).not.toContain('lastDispatchedAt');
-			expect(await countRows(context, 'scheduled_job')).toBe(1);
-			expect(await countRows(context, 'scheduled_task')).toBe(1);
-			await context.queryRunner.release();
-		});
+		const context = createTestMigrationContext(dataSource);
+		expect(await columnNames(context, 'scheduled_job')).not.toContain('lastDispatchedAt');
+		expect(await countRows(context, 'scheduled_job')).toBe(1);
+		expect(await countRows(context, 'scheduled_task')).toBe(1);
+		await context.queryRunner.release();
 	});
+});
 ```
 
-Run the test on both databases from `packages/cli`. The second command starts PostgreSQL in a container, so it needs Docker.
+Run the test on both databases from `packages/cli/`. The PostgreSQL command needs Docker.
 
-```sh
-pnpm test:sqlite:migrations test/migration/1793603668718-add-last-dispatched-at-to-scheduled-job.test.ts
-pnpm test:postgres:migrations:tc test/migration/1793603668718-add-last-dispatched-at-to-scheduled-job.test.ts
+```bash
+pnpm test:sqlite:migrations \
+  test/migration/1793603668718-add-last-dispatched-at-to-scheduled-job.test.ts
+pnpm test:postgres:migrations:tc \
+  test/migration/1793603668718-add-last-dispatched-at-to-scheduled-job.test.ts
 ```
 
-Also run the migration on a local instance. `pnpm start` at the root applies it. `pnpm start -- db:revert` runs `down()` of the last migration. Start n8n again to apply it a second time. Do not change the migrations table by hand.
+Then check it on a local instance: `pnpm start` applies the migration, and `pnpm start -- db:revert` reverts it.
 
 ## Get a review
 
-`OWNERS` marks `packages/@n8n/db/src/migrations/` as `required` for `@n8n-io/migrations-review`. A PR with a migration cannot merge without an approval from that team. The tests in `packages/cli/test/migration/` do not need that approval.
-
-The AI reviewer cubic also has a "DB migrations" agent in `cubic.yaml`. It checks the migration against the rules in `.agents/review-rules/db-migrations/`. Read those five files before you open the PR, because the human reviewers use the same rules.
-
-CI runs the migration tests on SQLite and on the main PostgreSQL version for each PR. The merge queue runs them on each supported PostgreSQL version.
-
-## Transactions
-
-You do not write transaction code in a migration. n8n starts the transactions for you:
-
-- **On PostgreSQL, all pending migrations share one transaction.** If one migration fails, n8n undoes all of them. The schema then stays as it was before the upgrade.
-- **On SQLite, each migration has its own transaction.** If one migration fails, the migrations before it stay applied.
-
-On PostgreSQL, a long migration keeps this transaction open until all pending migrations end. This is one more reason to keep each migration fast.
-
-A SQLite migration can set `transaction = false as const` for a very large change. A SQLite migration with `withFKsDisabled = true as const` manages its own transaction. Both settings have no effect on PostgreSQL. `DbConnection.migrate` in `packages/@n8n/db/src/connection/db-connection.ts` has the code.
-
-## Know how n8n runs migrations
-
-- **Every process migrates.** Main, worker, and webhook processes run pending migrations at startup.
-- **PostgreSQL migrates one instance at a time.** Each instance waits for an advisory lock before it runs the migrations.
-- **Old code ignores new migrations.** After a downgrade, n8n does not undo migrations that it does not know. `n8n db:revert` also refuses to run without the code of the last migration. To undo a migration, run `db:revert` before the downgrade.
-- **Cloud copies some SQLite tables by name.** A rename of such a table breaks the backups. [n8n Cloud](../subsystems/cloud.md#contracts) lists the tables.
-- **Engine v2 has its own migrations.** They are in `packages/@n8n/engine/src/database/migrations/` and target a separate database. This page does not cover them.
-
-## Quiz
-
-1. You want to remove a column. How many releases does it take?
-   - A. One. The migration drops the column and the code stops using it.
-   - B. One, if the migration has a `down()`.
-   - C. Three, one for each database and one for the entity.
-   - D. Two. One release stops all writes, and a later release drops the column.
-2. On SQLite, you call `addColumns` on a table that another table points at with `ON DELETE CASCADE`. What can happen?
-   - A. Nothing. SQLite alters the table in place.
-   - B. The migration fails at once.
-   - C. The rebuild of the table deletes the rows of the other table.
-   - D. The foreign key is removed.
-3. On PostgreSQL, the third of five pending migrations fails. What is the state of the schema?
-   - A. The first two migrations stay applied.
-   - B. As it was before the upgrade. All pending migrations share one transaction.
-   - C. All five are marked as applied.
-   - D. The failed migration is skipped, and the others run.
-4. Why does a migration test insert its fixtures with raw SQL?
-   - A. A repository uses the entity of today, not the schema at the time of the migration.
-   - B. Repositories are too slow for tests.
-   - C. Raw SQL works only on SQLite.
-   - D. The migration review team requires it.
-
-<details>
-<summary>Answers</summary>
-
-1. D. Two. One release stops all writes, and a later release drops the column. During a rolling deploy or a rollback, old code runs against the new schema.
-2. C. The rebuild of the table deletes the rows of the other table. SQLite copies the table to a new one for this call. Use a raw `ALTER TABLE ... ADD COLUMN` for a nullable column.
-3. B. As it was before the upgrade. All pending migrations share one transaction. On SQLite, each migration has its own transaction, so the earlier ones stay applied.
-4. A. A repository uses the entity of today, not the schema at the time of the migration. The test runs at an earlier schema, and today's entity can differ from it.
-
-</details>
+A PR with a migration needs an approval from [`@n8n-io/migrations-review`](https://github.com/orgs/n8n-io/teams/migrations-review). Before you open the PR, go through the pre-flight checklist in `.agents/skills/db-migrations/SKILL.md`. Each item is a fix that reviewers often ask for.

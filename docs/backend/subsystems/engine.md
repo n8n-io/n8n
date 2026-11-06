@@ -81,10 +81,10 @@ A node type maps each `typeVersion` to its implementation. A saved node keeps it
 <details>
 <summary>Answers</summary>
 
-1. A. Invert the map with the helpers in `n8n-workflow`, because the map is keyed by the start node. The connections map is keyed by the node where a connection starts. The root `AGENTS.md` shows the helpers.
-2. D. Expressions in later nodes that use links, such as `$('Webhook').item`. Each output item remembers its input item. A node that breaks these paired items makes those expressions fail.
-3. C. The backend throws `UnrecognizedNodeTypeError`. This happens after an operator excludes a node, or when a community package is missing.
-4. B. It ignores it. Pinned data replaces the output of a node in manual runs only.
-5. A. Every saved workflow that uses that version. Only review catches this. A new behavior goes into a new version, so that saved nodes keep their behavior.
+1. A. The connections map is keyed by the node where a connection starts. The root `AGENTS.md` shows the helpers.
+2. D. Each output item remembers its input item. A node that breaks these paired items makes those expressions fail.
+3. C. This happens after an operator excludes a node, or when a community package is missing.
+4. B. Pinned data replaces the output of a node in manual runs only.
+5. A. A new behavior goes into a new version, so that saved nodes keep their behavior.
 
 </details>

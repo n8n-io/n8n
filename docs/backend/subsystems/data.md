@@ -1,12 +1,12 @@
 ---
-title: Data
+title: Data storage
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-05
 contact: ivov
 ---
 
-# Data
+# Data storage
 
 On Day 1, you read your executions from a SQLite file. This page explains where n8n keeps its data, and the rules that apply when you add a table or store more of it. Read it before you write a migration, a query, or code that stores files or execution data.
 
@@ -73,10 +73,10 @@ The workflow index records what each workflow depends on: credentials, data tabl
 <details>
 <summary>Answers</summary>
 
-1. D. Nothing. The migrations define the schema. The entity classes do not create tables. An entity change does nothing until a migration makes the same change.
-2. C. The database, because a worker and a main do not share a disk. S3 and Azure need a license, and the file system is not shared between processes.
-3. B. Yes. Each row records where its data is. The setting applies to new executions, and old rows still point to the database.
-4. A. No. Only the data table nodes can use the proxy. Each data table is a real SQL table, so the proxy limits who can reach it.
-5. D. Into a repository method with a name that says what it does. n8n keeps TypeORM inside the repositories, and CI fails when new business code imports it.
+1. D. The entity classes do not create tables. An entity change does nothing until a migration makes the same change.
+2. C. S3 and Azure need a license, and the file system is not shared between processes.
+3. B. The setting applies to new executions, and old rows still point to the database.
+4. A. Each data table is a real SQL table, so the proxy limits who can reach it.
+5. D. n8n keeps TypeORM inside the repositories, and CI fails when new business code imports it.
 
 </details>

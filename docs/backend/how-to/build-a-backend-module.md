@@ -2,102 +2,51 @@
 title: Build a backend module
 audience: Backend engineers who add a feature to n8n
 tier: 3
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-06
 contact: ivov
 ---
 
 # Build a backend module
 
-A backend module is one optional feature of the backend in its own folder. The module holds the routes, services, tables, settings, and startup work of that feature. n8n loads the code of a module only when the module is enabled, licensed, and right for the instance type.
-
-This page tells you how to build a module.
+Most new backend features are built as modules (e.g. [Insights](https://docs.n8n.io/administer/observe-and-log/track-usage-with-insights) or [Data tables](https://docs.n8n.io/build/work-with-data/data-tables)). A module keeps all the backend code of one feature in one place. n8n starts the module only when it is enabled, licensed, and needed on that process.
 
 > [!NOTE]
-> Modules are for features of the core team. They are not an extension point for external contributors.
+> Only n8n engineers build backend modules. Modules are not an extension point for community contributors.
 
-## Decide if a module fits
+## Choose a location
 
-Start with a module for each new feature. A module is a bad fit when the feature changes the internals of `packages/cli` in many places. Workflow archival is an example. If you are not sure, ask the owners of `packages/@n8n/backend-common/` in `OWNERS`.
+A new module lives in its own pnpm package at `packages/modules/<name>/backend/`. The module must not import `packages/cli/`.
 
-A module lives in one of two places:
+Most existing modules currently live in `packages/cli/src/modules/<name>/` and are moving to their own pnpm packages. Create a new module in `packages/cli/src/modules/` only if it depends on code inside `packages/cli/`, which should be rare. Additionally, some features cannot be a module, because they change code all over `packages/cli/` (e.g. workflow archival).
 
-- **A workspace package at `packages/modules/<name>/backend`.** This is the target for new modules. The package must not import `packages/cli`.
-- **A folder in `packages/cli/src/modules/<name>`.** Use this only when the module needs code that exists only in `packages/cli`. The module can move to a package when that code has a package-level interface.
+If you are unsure where your feature belongs, or if it can be a module at all, ask in `#team-backend`.
 
-If the feature is already a package in `packages/@n8n/`, add a small module that imports the feature from that package. The module then makes sure that n8n loads the feature only when it is needed.
+## Create a module
 
-## Create the module
+From repository root:
 
-<!-- steps -->
-
-1. **Run the scaffolder.**
-
-   Run this command at the repository root. Use a kebab-case name.
-
-   ```sh
-   pnpm n8n-module-sdk create my-feature --stack=backend
-   ```
-
-2. **Check what the scaffolder changed.**
-
-   The scaffolder writes the package `@n8n/backend-module-my-feature` to `packages/modules/<name>/backend`. It also changes three files outside the package:
-
-   - It adds the package as a dependency in `packages/cli/package.json`.
-   - It adds a lazy import to `packages/cli/src/modules/modules.manifest.ts`.
-   - It adds the name to `MODULE_NAMES` in `packages/@n8n/backend-common/src/modules/modules.config.ts`. An unknown name makes startup throw `UnknownModuleError`.
-
-3. **Install, then run the checks.**
-
-   ```sh
-   pnpm install
-   pnpm turbo typecheck --filter=@n8n/backend-module-my-feature
-   pnpm turbo lint --filter=@n8n/backend-module-my-feature
-   pnpm turbo test --filter=@n8n/backend-module-my-feature
-   ```
-
-   Use Turbo. It builds the workspace dependencies of the package first.
-
-For a module that must stay in `packages/cli/src/modules`, run `pnpm setup-backend-module` instead. The script is `scripts/backend-module/setup.mjs`.
-
-The manifest entry for a packaged module is a thunk, so a disabled module is never imported. From `packages/cli/src/modules/modules.manifest.ts`:
-
-```ts
-	insights: async () => await import('@n8n/backend-module-insights/module'),
+```bash
+pnpm n8n-module-sdk create my-feature --stack=backend
 ```
 
-## Lay out the files
+The scaffolder writes the package `@n8n/backend-module-my-feature` to `packages/modules/my-feature/backend/`.
 
-The scaffolder writes only the entrypoint, an empty `index.ts`, one test, and the package configuration. Add the other files when the feature needs them. A typical module has these files:
-
-```sh
-src/
-├── __tests__/
-├── index.ts                    # public API for other packages
-├── my-feature.module.ts        # entrypoint
-├── my-feature.controller.ts    # REST routes
-├── my-feature.service.ts       # business logic
-├── my-feature.task.ts          # periodic work
-├── my-feature.repository.ts    # database access
-├── my-feature.entity.ts        # table model
-├── my-feature.config.ts        # environment variables
-└── my-feature.constants.ts
+```bash
+pnpm install
+pnpm turbo typecheck --filter=@n8n/backend-module-my-feature
+pnpm turbo lint --filter=@n8n/backend-module-my-feature
+pnpm turbo test --filter=@n8n/backend-module-my-feature
 ```
 
-Only the `.module.ts` infix is necessary. Use the other infixes too, because they make the files easy to find. A large module can group files in folders. The inbound auth module keeps its repositories in `database/repositories/`, for example.
+For a module in `packages/cli/src/modules/`, run `pnpm setup-backend-module` instead.
 
-A packaged module follows the import rules in its `README.md`:
+If other packages need services, entities, or types from your module, export them from `src/index.ts`. Do not expose the entrypoint there, because n8n imports it separately.
 
-- Do not import from `packages/cli` or from the `n8n` package.
-- Declare each workspace and third-party import in the module package.
-- Export the API for other packages from `src/index.ts`.
-- Keep the entrypoint in the `./module` export only. An import of the entrypoint runs the `@BackendModule` decorator.
-- Put shared test helpers in a `./testing` export. The insights and data table packages have one.
+## Write an entrypoint
 
-A module in `packages/cli/src/modules` can import from `packages/cli`, from shared packages such as `@n8n/db` and `@n8n/backend-common`, and from the dependencies of `packages/cli`.
+The entrypoint is the file that n8n loads first. It tells n8n which tables, periodic tasks, and settings the module adds, and how to start and stop the module.
 
-## Write the entrypoint
-
-The entrypoint is a class with the `@BackendModule` decorator that implements `ModuleInterface`. The decorator also registers the class as a `@Service()`. The insights module uses most of the methods. From `packages/modules/insights/backend/src/insights.module.ts`:
+Example from the insights module:
 
 ```ts
 @BackendModule({ name: 'insights', instanceTypes: ['main', 'webhook'] })
@@ -138,139 +87,121 @@ export class InsightsModule implements ModuleInterface {
 }
 ```
 
-Each method is optional. `ModuleInterface` in `packages/@n8n/decorators/src/module/module.ts` defines them:
+Every method is optional. Keep the entrypoint lightweight:
 
-| Method | What it returns or does | When `ModuleRegistry` calls it |
-|---|---|---|
-| `entities()` | The entity classes of the module | At load, before the database connects |
-| `nodeLoaders()` | Extra node loaders, as in the community packages module | At load |
-| `commands()` | Imports CLI command files | At load |
-| `init()` | Imports controllers and starts services | At init |
-| `systemTasks()` | `@SystemTask()` classes for periodic work | At init, after `init()` |
-| `settings()` | An object for the frontend, served on `/module-settings` | At init |
-| `context()` | An object for workflow executions | At init |
-| `shutdown()` | Stops the services of the module | See the warning below |
+- Import every file with `await import()` inside a method.
+- Do not give the class a constructor. Use `Container.get()` in the methods.
+- Put `@OnShutdown()` on `shutdown()`. Without it, `shutdown()` never runs.
 
-> [!WARNING]
-> **Put `@OnShutdown()` on `shutdown()`.** `ModuleRegistry.shutdownModule` exists, but no production code calls it. `ShutdownService` calls only methods with `@OnShutdown()`. Without the decorator, the shutdown method never runs.
-
-> [!WARNING]
-> **Keep the entrypoint free of static relative imports.** Import every file of the module with `await import()` inside a method. Do not give the class a constructor. Constructor parameters load their classes when the entrypoint loads, also for a disabled module. Use `Container.get()` in the methods instead. In `packages/cli`, the lint rules `no-top-level-relative-imports-in-backend-module` and `no-constructor-in-backend-module` enforce this for `*.module.ts` files. The `oxlint` configuration of a packaged module does not have these rules, so a reviewer must check them.
-
-Under `module: NodeNext`, a packaged module writes the `.js` extension in each dynamic import, as the insights module does.
-
-## Choose where the module starts
+## Set license and instance types
 
 `@BackendModule` takes three options:
 
-- `name`: the kebab-case name, as in `MODULE_NAMES`.
-- `licenseFlag`: one flag or an array of flags. With an array, one licensed flag is enough. An unlicensed module does not start.
-- `instanceTypes`: a subset of `main`, `webhook`, and `worker`. Without this option, the module starts on all three.
+- `name` for module name
+- `licenseFlag` for license flag that the module needs
+- `instanceTypes` for instance types that run the module (all by default)
 
-From `packages/cli/src/modules/external-secrets.ee/external-secrets.module.ts`:
+Example from the external secrets module:
 
 ```ts
-@BackendModule({ name: 'external-secrets', licenseFlag: 'feat:externalSecrets' })
+@BackendModule({
+	name: 'external-secrets',
+	licenseFlag: 'feat:externalSecrets',
+})
 ```
 
-When only some routes need a license, do not set `licenseFlag`. Put `@Licensed()` on those routes. From `packages/modules/insights/backend/src/insights.controller.ts`:
+When only some routes need a license, do not license the whole module with `licenseFlag`. Put `@Licensed()` on those routes instead.
+
+Example from the insights module, where `/summary` needs no license and `/by-workflow` does:
 
 ```ts
+@RestController('/insights')
+export class InsightsController {
+	@Get('/summary')
+	@GlobalScope('insights:list')
+	async getInsightsSummary(/* ... */) { /* ... */ }
+
 	@Get('/by-workflow')
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
+	async getInsightsByWorkflow(/* ... */) { /* ... */ }
+}
 ```
 
 > [!CAUTION]
-> **n8n checks the license only at startup.** `initModules` runs once, from the `start`, `webhook`, and `worker` commands. A license that changes later does not start or stop a module. Read [Licensing](../subsystems/licensing.md#checks) before you choose between `licenseFlag` and `@Licensed()`.
+> **n8n checks `licenseFlag` only at startup.** A license that changes later does not start or stop a module. See [Licensing](../subsystems/licensing.md#checks).
 
-## Add the parts of the feature
+## Add routes, services, and tables
 
-This section tells you how to connect each part to the module.
+| To add | Write | Method |
+|---|---|---|
+| Routes | `@RestController()` class in `*.controller.ts` | `init()` |
+| Services | `@Service()` class in `*.service.ts` | `init()` |
+| Periodic tasks | `@SystemTask()` class in `*.task.ts` | `systemTasks()` |
+| Tables | `@Entity()` class in `*.entity.ts`, repository in `*.repository.ts` | `entities()` |
+| CLI commands | `@Command()` class in `*.command.ts` | `commands()` |
 
-<!-- steps -->
+Keep in mind:
 
-1. **Routes**
+- **Routes:** Protect each authenticated route with `@ProjectScope` or `@GlobalScope`. Type each request body as a DTO class from `@n8n/api-types`, because the server validates only DTO classes.
+- **Services:** Import each injected class as a value, not with `import type`. With `import type`, the container injects `undefined`.
+- **Periodic tasks:** Do not start timers in services. Use a `@SystemTask()` class, which n8n already schedules, moves on leader handover, and stops at shutdown.
+- **Tables:** Follow "Persistence layer & the TypeORM boundary" in the root `AGENTS.md` for the repository.
+- **Configuration:** Write a `@Config` class in `*.config.ts`, with a default for each `@Env()` property.
+- **Migrations:** See [Write a database migration](write-a-database-migration.md). n8n runs all migrations, even for a disabled module.
 
-   Write a `@RestController()` class, and import its file in `init()`. The import runs the decorators, and the server then mounts the routes. Keep the controller small. It parses the request and calls a service. Give every authenticated route a scope decorator: `@ProjectScope` when the URL has a project or resource id, `@GlobalScope` when it has none. Type each body as a DTO class from `@n8n/api-types`. The server validates a body only when its type is a DTO class.
+## Share data with the frontend and executions
 
-2. **Services**
+`settings()` serves an object to the frontend on `/rest/module-settings`. After a setting changes at runtime, call `ModuleRegistry.refreshModuleSettings(name)`.
 
-   Write `@Service()` classes for the business logic. Start them from `init()` with `Container.get()`. A service can use `@OnLifecycleEvent()`, `@OnPubSubEvent()`, and `@OnShutdown()`. Do not write `import type` for a class that a constructor injects, because the container then injects `undefined`.
+`context()` adds an object to `IWorkflowExecuteAdditionalData`, under the module name.
 
-3. **Periodic work**
-
-   Do not start a timer in a service. Write a `@SystemTask()` class in a `*.task.ts` file, and return it from `systemTasks()`. The system task runner then controls the schedule, the leader handover, and the shutdown. `InsightsCompactionTask` in `packages/modules/insights/backend/src/insights-compaction.task.ts` is the example. `packages/cli/src/scheduling/system-tasks/README.md` describes the runner.
-
-4. **Tables**
-
-   Write the entities, and return them from `entities()`. Write a repository that composes a file-private `BaseRepository` table. The root `AGENTS.md` section "Persistence layer & the TypeORM boundary" has the rules and a worked example. Name an entity class without the `Entity` suffix, for example `InsightsRaw`.
-
-5. **Migrations**
-
-   Add the migrations to `packages/@n8n/db/src/migrations`, not to the module. See [Write a database migration](write-a-database-migration.md). n8n runs all migrations, also for a disabled module. The tables of a disabled module therefore exist too.
-
-6. **Configuration**
-
-   Write a `@Config` class with `@Env()` properties in `<name>.config.ts`. Give each property a type annotation and a default. The annotation, for example `: boolean`, tells n8n how to parse the value.
-
-7. **CLI commands**
-
-   Write a `@Command()` class in a `.command.ts` file, and import it in `commands()`. The community packages module does this in `packages/cli/src/modules/community-packages/community-packages.module.ts`.
-
-## Share data with the frontend and with executions
-
-`settings()` sends an object to the frontend. When a setting changes at runtime, call `ModuleRegistry.refreshModuleSettings(name)` so that the frontend gets the new value.
-
-`context()` adds an object to `WorkflowExecuteAdditionalData`, under the module name. Nodes and the engine can then use the feature. From `packages/modules/data-table/backend/src/data-table.module.ts`:
+Example from the data table module:
 
 ```ts
+@BackendModule({ name: 'data-table' })
+export class DataTableModule implements ModuleInterface {
+	// ...
+
 	async context() {
 		const { DataTableProxyService } = await import('./data-table-proxy.service.js');
 
 		return { dataTableProxyProvider: Container.get(DataTableProxyService) };
 	}
+}
 ```
 
-> [!IMPORTANT]
-> **Add the type by hand.** `context()` does not change the type of `WorkflowExecuteAdditionalData`. Add a property with the module name to the type in `packages/core/src/execution-engine/index.ts`. The data table module has this line:
->
-> ```ts
-> 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
-> ```
+Add the type by hand to `IWorkflowExecuteAdditionalData` in `packages/core/src/execution-engine/index.ts`.
 
-## Register the parts that live outside the module
+Example from the data table module:
 
-Some facts about a module still live in shared files. Change these files when the feature needs them:
+```ts
+declare module 'n8n-workflow' {
+	interface IWorkflowExecuteAdditionalData {
+		// ...
+		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+	}
+}
+```
 
-| Need | File |
+## Register the module in shared files
+
+| To add | File |
 |---|---|
-| A license flag | `LICENSE_FEATURES` in `packages/@n8n/constants/src/index.ts` |
-| A license check method | `LicenseState` in `packages/@n8n/backend-common/src/license-state.ts` |
-| A log scope | `LOG_SCOPES` in `packages/@n8n/config/src/configs/logging.config.ts` |
-| A migration | `packages/@n8n/db/src/migrations` |
-| Request and response types for the frontend | `packages/@n8n/api-types` |
-| Default on | `defaultModules` in `packages/@n8n/backend-common/src/modules/module-registry.ts` |
+| License flag | `LICENSE_FEATURES` in `packages/@n8n/constants/src/index.ts` |
+| Log scope | `LOG_SCOPES` in `packages/@n8n/config/src/configs/logging.config.ts` |
+| Enabled by default | `defaultModules` in `packages/@n8n/backend-common/src/modules/module-registry.ts` |
 
-## Turn the module on and off
+## Enable or disable a module
 
-Operators control modules with two environment variables:
+- `N8N_ENABLED_MODULES` enables a module that is disabled by default.
+- `N8N_DISABLED_MODULES` disables a module.
 
-- `N8N_ENABLED_MODULES` turns on a module that is not a default module.
-- `N8N_DISABLED_MODULES` turns off any module.
+## Module testing
 
-A name in both lists makes startup throw `ModuleConfusionError`.
+Keep the tests in the module folder, under `src/`. To load the module in a test, use `testModules.loadModules` from `@n8n/backend-test-utils`.
 
-To make a module a default module, add it to `defaultModules`. n8n starts the modules in the order of that list. If your module reads the state of another module, put your module after it. The comments in the list show two examples.
-
-> [!TIP]
-> Modules cannot call each other through a shared interface. Two narrow ways exist. `ModuleRegistry.isActive(name)` tells a module if another module is active. The agents module reads `isActive('knowledge')` in `settings()`. A manifest thunk can also bind `packages/cli` services to classes of the package before the import. The `apps` entry in `packages/cli/src/modules/modules.manifest.ts` does this. Ask the module system owners before you add a third way.
-
-## Test the module
-
-Keep the tests in the module package, under `src`. Keep a test in `packages/cli` only when it checks the wiring in `packages/cli` or uses its fixtures.
-
-To load a packaged module in a test, give `testModules.loadModules` from `@n8n/backend-test-utils` the name and an import thunk. From `packages/modules/data-table/backend/src/__tests__/csv-parser.service.test.ts`:
+Example from the data table module:
 
 ```ts
 beforeAll(async () => {
@@ -280,38 +211,10 @@ beforeAll(async () => {
 });
 ```
 
-The scaffolded `vitest.config.ts` uses `createVitestConfigWithDecorators`. A package that owns TypeORM entities also needs `tscDecoratorTransform` from `packages/@n8n/vitest-config/tsc-decorator-transform.ts`.
+A module with entities also needs `tscDecoratorTransform` from `packages/@n8n/vitest-config/tsc-decorator-transform.ts` in its `vitest.config.ts`.
 
-> [!WARNING]
-> **A composed repository has no `find` or `save` for tests.** Seed and check data through the use-case methods of the repository. Or get a TypeORM repository for the entity with `Container.get(DataSource).getRepository(...)`. `packages/cli/src/encryption/__tests__/encryption-bootstrap.service.integration.test.ts` does this. Do not add a passthrough method for tests. `testDb.truncate` works as before.
+Your repository has only the methods that you write, with no `find` or `save`. In tests, seed and check data through its use-case methods, or through `Container.get(DataSource).getRepository(...)`.
 
 ## Run the module locally
 
-Run `pnpm watch` in the module package, and `pnpm dev` in `packages/cli`. The package watch rebuilds `dist` of the module. `packages/cli/nodemon.json` restarts n8n only when `packages/cli/dist` changes. Restart n8n after a change to the module.
-
-## Quiz
-
-1. Your module has a `shutdown()` method without `@OnShutdown()`. When does it run?
-   - A. When the process stops.
-   - B. When an admin turns the module off.
-   - C. Never.
-   - D. Only in tests.
-2. Why must the entrypoint of a module have no constructor parameters?
-   - A. The decorator does not support constructors.
-   - B. They load their classes when the entrypoint loads, also for a disabled module.
-   - C. Constructors run on every request.
-   - D. The module would start twice.
-3. An instance gets a new license while it runs. Does a module with `licenseFlag` start?
-   - A. Not until the process restarts.
-   - B. Yes, at once.
-   - C. Yes, after the next request.
-   - D. Only on the leader.
-
-<details>
-<summary>Answers</summary>
-
-1. C. Never. `ShutdownService` calls only methods with `@OnShutdown()`, and no production code calls `ModuleRegistry.shutdownModule`.
-2. B. They load their classes when the entrypoint loads, also for a disabled module. Use `Container.get()` in the methods, and import files with `await import()`.
-3. A. Not until the process restarts. n8n checks the license of modules only at startup.
-
-</details>
+Run `pnpm watch` in the module folder, and `pnpm dev` in `packages/cli/`. n8n does not restart when the module changes, so restart it after each change.

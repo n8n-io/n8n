@@ -74,9 +74,9 @@ A resume URL carries a token or a signature, and n8n checks it. n8n also refuses
 <details>
 <summary>Answers</summary>
 
-1. B. The key of `webhook_entity`, which is the path and the method. The table key refuses a second row with the same path and method.
-2. A. A unique index on a key made of the job and the planned time. The execution starts with that key, and the index refuses a second one.
-3. D. As a system task. All new periodic work is a system task. A lint rule stops new leader hooks that start timers.
-4. C. In the process, because it is shorter than 65 seconds. A shorter wait sleeps in the process. A longer wait goes to the database, and the leader resumes it.
+1. B. The table key refuses a second row with the same path and method.
+2. A. The execution starts with that key, and the index refuses a second one.
+3. D. All new periodic work is a system task. A lint rule stops new leader hooks that start timers.
+4. C. A shorter wait sleeps in the process. A longer wait goes to the database, and the leader resumes it.
 
 </details>
