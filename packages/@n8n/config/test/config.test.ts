@@ -596,6 +596,7 @@ describe('GlobalConfig', () => {
 			recovery: {
 				maxLastExecutions: 3,
 				workflowDeactivationEnabled: false,
+				maxResumeAttempts: 2,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',

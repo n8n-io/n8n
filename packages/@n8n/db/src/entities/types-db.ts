@@ -76,6 +76,7 @@ export interface IExecutionBase {
 	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
 	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
+	resumeAttempts?: number; // see `ExecutionEntity.resumeAttempts`
 	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
 	usedPrivateCredentials?: boolean; // see `ExecutionEntity.usedPrivateCredentials`
 }

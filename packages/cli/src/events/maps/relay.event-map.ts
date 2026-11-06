@@ -68,6 +68,7 @@ export type CrashDetector =
 	| 'queue-recovery'
 	| 'startup-recovery'
 	| 'start-failure'
+	| 'resume-limit'
 	| 'workflow-deactivation';
 
 export type ProjectSummary = {
