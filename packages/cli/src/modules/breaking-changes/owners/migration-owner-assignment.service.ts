@@ -31,7 +31,7 @@ export class MigrationOwnerAssignmentService {
 			throw new BadRequestError('The user cannot sign in, so they cannot own the workflow');
 		}
 
-		// The report lists only workflows the user can edit, so an owner must be able to edit it.
+		// An owner has to be able to open and edit the workflow to fix it.
 		const allowedUserIds = await this.workflowSharingService.getUserIdsWithAccessToWorkflow(
 			workflowId,
 			'workflow:update',
