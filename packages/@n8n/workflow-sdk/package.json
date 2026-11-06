@@ -45,6 +45,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "generate:docs": "pnpm build && node dist/docs/generate-docs.js",
+    "prepack": "node dist/docs/generate-docs.js --stamp-version",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "oxlint --quiet",
@@ -86,7 +88,8 @@
     }
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "docs/**/*"
   ],
   "bin": {
     "workflow-sdk": "./dist/cli/index.js"
