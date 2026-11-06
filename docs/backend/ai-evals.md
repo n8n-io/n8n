@@ -1,14 +1,14 @@
 ---
-title: AI evals
+title: Evals
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-06
 contact: CharlieKolb
 ---
 
-# AI evals
+# Evals
 
-[AI for building](ai-for-building.md) and [AI context](ai-context.md) showed AI features that call a model. The output of a model changes from one run to the next, so a unit test cannot show that an AI feature gives good results. An **eval**, short for evaluation, runs an AI feature on a set of cases, and scores each result. This page explains the three kinds of evals in n8n.
+[AI for building](ai-for-building.md) and [Context for AI](ai-context.md) showed AI features that call a model. The output of a model changes from one run to the next, so a unit test cannot show that an AI feature gives good results. An **eval**, short for evaluation, runs an AI feature on a set of cases, and scores each result. This page explains the three kinds of evals in n8n.
 
 | Kind | Who runs it | What it tests | Code |
 |---|---|---|---|
@@ -47,7 +47,7 @@ n8n engineers run eval scenarios against the n8n Assistant, to check a change to
 1. A main restarts during a workflow eval. What happens to the test run?
    - A. It continues from the last case.
    - B. It starts again from the first case.
-   - C. n8n marks it as failed, and the user starts it again.
+   - C. n8n marks it as failed.
    - D. A worker takes it over.
 2. Why do agent evals not run in queue mode?
    - A. Workers have no access to the database.

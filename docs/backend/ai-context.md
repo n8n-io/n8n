@@ -1,12 +1,12 @@
 ---
-title: AI context
+title: Context for AI
 audience: Backend engineers new to n8n
 tier: 3
 last_reviewed: 2026-11-06
 contact: RicardoE105
 ---
 
-# AI context
+# Context for AI
 
 [Agent turn](agent-turn.md) and [AI for building](ai-for-building.md) showed AI features that call a model. A model knows only what is in its prompt. This page explains how n8n gives AI more context: skills, knowledge, and external tools.
 
@@ -51,9 +51,9 @@ n8n reads the catalog from a remote registry. A system task refreshes it every 8
    - B. Yes. n8n keeps `skills` on while `agents` is on.
    - C. Only on the leader.
    - D. Only with a license.
-2. You add a function in the `knowledge` module that returns the files of an agent. Where does the permission check go?
-   - A. In the `knowledge` module, before it returns the files.
-   - B. In the caller, which checks who owns the agent.
+2. A new function in the `knowledge` module returns the files of an agent. Where does the permission check go?
+   - A. In the `knowledge` module.
+   - B. In the caller.
    - C. In the database, with a row filter.
    - D. Nowhere. Files of an agent are public.
 

@@ -728,13 +728,22 @@ mobile-starlight-toc nav {
 	list-style: none;
 }
 
+/* A and B share a row, and C and D share the next. Phones keep one column. */
+@media (min-width: 50rem) {
+	.sl-markdown-content .quiz-options {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
 .sl-markdown-content .quiz-options > li {
+	display: flex;
 	margin: 0;
 }
 
 .sl-markdown-content .quiz-option {
 	display: block;
 	width: 100%;
+	height: 100%;
 	margin: 0;
 	padding: 0.625rem 0.875rem;
 	border: 1px solid var(--sl-color-hairline);

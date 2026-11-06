@@ -46,13 +46,13 @@ A user can create small tables in a project, called **data tables**, and nodes r
 2. Where does binary data go by default in queue mode?
    - A. The file system of the main.
    - B. S3.
-   - C. The database, because a worker and a main do not share a disk.
+   - C. The database.
    - D. The job in Redis.
 3. A service needs a query with `In` and `IsNull`. Where does the query go?
    - A. Into the service, with an import from TypeORM.
    - B. Into the controller.
    - C. Into a migration.
-   - D. Into a repository method with a name that says what it does.
+   - D. Into a named repository method.
 
 <details>
 <summary>Answers</summary>

@@ -65,9 +65,9 @@ Only one tab at a time can change a workflow: the tab that holds the **write loc
 
 1. A request body does not match the DTO class of its `@Body` parameter. What happens?
    - A. The method runs with the raw body.
-   - B. n8n answers 400 with the first validation error, and the method does not run.
-   - C. n8n answers 500, and reports the error.
-   - D. n8n drops the fields that do not match, and runs the method.
+   - B. n8n answers 400.
+   - C. n8n answers 500.
+   - D. n8n drops the fields that do not match.
 2. Your service throws a `UserError` in a REST route. Which status code does the caller get?
    - A. 403.
    - B. 404.
@@ -75,14 +75,14 @@ Only one tab at a time can change a workflow: the tab that holds the **write loc
    - D. 500.
 3. You add a REST route and add no auth option. Who can call it?
    - A. Anyone.
-   - B. Only a signed-in user. A route must set `skipAuth` to allow other callers.
+   - B. Only a signed-in user.
    - C. Only the owner.
    - D. Only API keys.
 4. In multi-main, the backend sends a push message to all tabs of one user. Which tabs get it?
    - A. All tabs of the user, on every main.
    - B. Only the most recent tab.
    - C. Only the tabs on the current main.
-   - D. None, because user messages need SSE.
+   - D. None.
 
 <details>
 <summary>Answers</summary>

@@ -44,19 +44,19 @@ n8n reads variables through `CacheService`, which uses Redis in queue mode, so a
 
 ## Quiz
 
-1. In queue mode, a worker runs a node that needs a credential. Where does n8n decrypt the credential?
-   - A. On the main, which sends the decrypted value in the job.
-   - B. On the worker, which holds the encryption key.
-   - C. In the database, with a decrypt function.
-   - D. Nowhere. The database stores the decrypted value.
-2. A user moves a workflow to another project. What happens to the credentials that the workflow uses?
+1. In queue mode, where does n8n decrypt the credential of a node?
+   - A. On the main.
+   - B. On the worker.
+   - C. In the database.
+   - D. Nowhere.
+2. A user moves a workflow to another project. What happens to its credentials?
    - A. They move with the workflow.
    - B. n8n copies them into the target project.
-   - C. They stay in their project. The user can share them into the target project.
+   - C. They stay in their project.
    - D. n8n deletes them from the old project.
-3. An instance has Gateway credits. A user adds an HTTP Request node that calls a model provider. Does n8n attach the managed credential automatically?
+3. With Gateway credits, does n8n attach the managed credential to an HTTP Request node automatically?
    - A. Yes, as for every node.
-   - B. No. The HTTP Request node calls a URL that the user controls.
+   - B. No.
    - C. Only in a personal project.
    - D. Only for the instance owner.
 

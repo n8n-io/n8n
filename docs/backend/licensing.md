@@ -58,7 +58,7 @@ A **quota** limits how much of a feature an instance can use. Two plans can have
 | `quota:maxVariables` | The variables | When a user creates a variable |
 | `quota:workflowHistoryPrune` | How long n8n keeps workflow history | When n8n prunes workflow history |
 | `quota:insights:*` | How far back Insights shows data, and how long it keeps data | In the `insights` module |
-| `quota:evaluations:*` | The workflows with evals, and the concurrent test runs | [AI evals](ai-evals.md#workflow-evals) |
+| `quota:evaluations:*` | The workflows with evals, and the concurrent test runs | [Evals](ai-evals.md#workflow-evals) |
 | `quota:aiCredits` | The credits of the AI workflow builder | [AI for building](ai-for-building.md#workflow-builder) |
 | `quota:aiGatewayBudget` | The budget of Gateway credits | [Credentials](credentials.md#gateway-credits) |
 
@@ -101,16 +101,16 @@ The renewal also sends the IDs of up to 1000 active workflows. The license serve
 2. A customer buys a license for a module that has a `licenseFlag`. When does the module start?
    - A. At once, when the license renews.
    - B. At the next request to one of its routes.
-   - C. After the next restart, because n8n checks `licenseFlag` only at startup.
+   - C. After the next restart.
    - D. Only after the next release.
 3. What does the suffix `.ee` on a file do?
-   - A. Nothing by itself. It tells a reviewer that the code needs a license check on its path.
+   - A. Nothing. It only marks the code for reviewers.
    - B. It stops the file from loading without a license.
    - C. It removes the file from free builds.
    - D. It adds the `@Licensed` decorator.
-4. An instance has more active triggers than its `quota:activeWorkflows`. A user publishes another workflow. What happens?
+4. An instance is over its `quota:activeWorkflows`. A user publishes another workflow. What happens?
    - A. n8n refuses the publication with 403.
-   - B. The publication succeeds. n8n does not check this quota, but the usage page and the license server see the usage.
+   - B. The publication succeeds.
    - C. n8n stops the oldest trigger.
    - D. The leader stops renewing the license.
 

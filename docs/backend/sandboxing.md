@@ -42,19 +42,19 @@ Many outbound requests go to a URL that a user entered, for example in an HTTP R
 
 1. You change the helper `.toDateTime()`. What else must you change?
    - A. Nothing. One file holds all helpers.
-   - B. The second copy of the helper, so that both engines agree.
+   - B. The second copy of the helper.
    - C. The task runner, because it runs all helpers.
    - D. The migration that stores the helpers.
 2. In queue mode, where does a Code node run?
-   - A. In a task runner next to the main that received the request.
+   - A. In a task runner next to the main.
    - B. In the isolate pool of the main.
-   - C. In a task runner next to the worker that runs the workflow.
+   - C. In a task runner next to the worker.
    - D. Inside the worker process.
 3. A node gives output items without links to its input items. What fails?
    - A. Nothing. The links are only for the editor.
    - B. The node itself, at once.
    - C. The save of the run data.
-   - D. Expressions in later nodes that use links, such as `$('Webhook').item`.
+   - D. Expressions such as `$('Webhook').item` in later nodes.
 
 <details>
 <summary>Answers</summary>

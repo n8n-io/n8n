@@ -63,16 +63,16 @@ In regular mode, an operator can limit how many production executions run at onc
 
 ## Quiz
 
-1. You test a new pubsub command on your laptop in regular mode, and nothing happens. Why?
+1. You test a new pubsub command in regular mode, and nothing happens. Why?
    - A. Pubsub needs a license.
-   - B. A pubsub command does nothing in regular mode. Test it in queue mode.
+   - B. Pubsub does nothing in regular mode.
    - C. Pubsub commands reach only workers.
    - D. The command needs a restart to register.
-2. The new scheduler can start a Schedule Trigger twice after a crash. What stops the second execution?
-   - A. A unique index on a key made of the job and the planned time.
+2. After a crash, the scheduler can start a run twice. What stops the second run?
+   - A. A unique index on the job and its planned time.
    - B. The leader, which checks every run.
    - C. A lock that the scheduler holds in memory.
-   - D. Nothing. Users must make their workflows safe to run twice.
+   - D. Nothing.
 3. You add work that runs every night, once for the cluster. How do you write it?
    - A. As a timer in a method with `@OnLeaderTakeover`.
    - B. As a timer in the constructor of a service.
@@ -80,9 +80,9 @@ In regular mode, an operator can limit how many production executions run at onc
    - D. As a system task.
 4. A leader loses its connection to Redis for a short time. What can happen?
    - A. The leader stops at once, and no main leads.
-   - B. Two mains can both act as the leader. Code must stay correct when two lease holders overlap.
+   - B. Two mains can both act as the leader.
    - C. Workers take over the leader tasks.
-   - D. Nothing. Redis keeps the old leader until it returns.
+   - D. Nothing.
 
 <details>
 <summary>Answers</summary>

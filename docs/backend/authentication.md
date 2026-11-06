@@ -43,11 +43,11 @@ The session cookie holds a JWT, and n8n keeps no session table. The JWT contains
    - A. They stay valid until they expire.
    - B. n8n deletes them from the session table.
    - C. Only the current session stays valid.
-   - D. They become invalid, because the JWT contains a hash of the password.
+   - D. They become invalid.
 2. SAML is active. A member enters an email and a password on the sign-in page. What happens?
-   - A. The sign-in works, because email sign-in is always on.
-   - B. n8n refuses the sign-in, unless the member has `allowSSOManualLogin`.
-   - C. n8n sends the member to the identity provider with the password.
+   - A. The sign-in works.
+   - B. n8n refuses it, unless the member has `allowSSOManualLogin`.
+   - C. n8n sends the password to the identity provider.
    - D. n8n tries the LDAP handler.
 
 <details>

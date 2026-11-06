@@ -74,26 +74,26 @@ The leader also checks regularly that the running triggers match the published v
 ## Quiz
 
 1. The editor gets a 200 for its publish request. Are the triggers live?
-   - A. Yes. The request waits until the leader starts the triggers.
-   - B. Not yet. The version is published, and the task to start its triggers is saved. The editor learns the outcome later.
+   - A. Yes.
+   - B. Not yet.
    - C. Yes on one main, and no in multi-main.
-   - D. No. The 200 means only that the checks passed, and nothing is saved yet.
-2. Another workflow already uses the webhook path, so a check refuses the publication. What runs now?
-   - A. The previous published version, because all checks run before the main changes anything.
-   - B. No version. The refused publication unpublishes the workflow.
+   - D. No. Nothing is saved yet.
+2. A check refuses the publication because the webhook path is taken. What runs now?
+   - A. The previous published version.
+   - B. No version.
    - C. The new version, without its webhook.
    - D. The draft, until a user fixes the path.
-3. A workflow has three triggers, and one of them fails to start. What is the state of the workflow?
-   - A. n8n rolls back the publication, and no trigger runs.
-   - B. The leader retries until all three triggers start, and none run until then.
-   - C. It is a partial publish, and the other two triggers run.
+3. One of three triggers fails to start. What is the state of the workflow?
+   - A. n8n rolls back the publication.
+   - B. No trigger runs until all three start.
+   - C. It is a partial publish.
    - D. The workflow goes back to the previous version.
 
 <details>
 <summary>Answers</summary>
 
 1. B. The main answers after the transaction. The leader starts the triggers after that, and a websocket message reports the outcome.
-2. A. A refused publication changes nothing, so the previous version stays live.
+2. A. A refused publication changes nothing, so the previous version stays published.
 3. C. The leader records whether each trigger started. One failure does not stop the others.
 
 </details>

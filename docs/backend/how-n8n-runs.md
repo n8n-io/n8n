@@ -98,28 +98,28 @@ Upgrading an n8n instance must not change what a saved workflow does. Common way
 ## Quiz
 
 1. In queue mode, a production webhook call arrives on a main. Which process runs the execution?
-   - A. A worker. The main writes the execution row and adds a job to the queue in Redis.
-   - B. The main. Queue mode moves only manual executions to workers.
-   - C. The webhook process. It receives the call from the main.
-   - D. The leader. Only the leader runs production executions.
+   - A. A worker.
+   - B. The main.
+   - C. A webhook process.
+   - D. The leader.
 2. A worker finishes an execution. What does it do with the result?
    - A. It answers the webhook call itself.
-   - B. It writes the result into the job in Redis, and nothing else.
+   - B. It writes the result only into the job in Redis.
    - C. It sends the result to the editor over websocket.
-   - D. It saves the results to the database and reports completion to the main through the queue.
+   - D. It saves the result to the database, and tells the main through the queue.
 3. In multi-main, the leader dies. What happens to pollers?
    - A. They stop until an admin picks a new leader.
    - B. Every main starts running them.
-   - C. The key of the leader in Redis expires, and another main takes it and runs them.
+   - C. Another main becomes the leader and runs them.
    - D. Workers take them over.
 4. You rename an environment variable, and all tests pass. What can still break?
    - A. Nothing. CI checks every use of each variable.
-   - B. Every n8n Cloud instance, because the n8n Cloud control plane sets environment variables by name.
-   - C. Only the editor, because it reads the variables at load.
-   - D. Only workers, because they read a separate list of variables.
+   - B. Every n8n Cloud instance.
+   - C. Only the editor.
+   - D. Only workers.
 5. You want to change what a node does. How do saved workflows keep their behavior?
-   - A. You add a new `typeVersion` of the node. Saved workflows keep the old version.
-   - B. You change the node, and a migration updates the saved workflows.
+   - A. You add a new `typeVersion` of the node.
+   - B. A migration updates the saved workflows.
    - C. You add a feature flag in PostHog.
    - D. You change the node only on the `master` branch.
 

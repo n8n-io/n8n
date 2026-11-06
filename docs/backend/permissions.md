@@ -44,12 +44,12 @@ Every check must pass. A refusal answers 403. A check that throws or times out a
    - C. The folders of the project.
    - D. The `project_relation` table.
 2. You write code that moves many workflows to another project. What else must it do?
-   - A. Nothing. The sharing table is the only source of ownership.
+   - A. Nothing.
    - B. Restart the leader, so that the triggers move.
-   - C. Call `invalidateWorkflowProjectCacheByIds`, because n8n caches the owner project of each workflow.
+   - C. Call `invalidateWorkflowProjectCacheByIds`.
    - D. Update the `projectId` column of each workflow.
 3. A policy check times out during a publication. What happens?
-   - A. The publication goes ahead, because the check did not answer.
+   - A. The publication goes ahead.
    - B. n8n retries the check until it answers.
    - C. The publication is blocked, and the answer is 503.
    - D. The publication is blocked, and the answer is 403.

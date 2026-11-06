@@ -74,21 +74,21 @@ A message to an agent starts an [agent turn](agent-turn.md) instead.
    - B. A lifecycle hook.
    - C. The Webhook node.
    - D. The editor, when it receives the result.
-2. You edit and save a published workflow, but you do not publish it again. A call to its production URL arrives. Which version runs?
-   - A. The draft, because it is the last saved version.
+2. You save changes to a published workflow, but do not publish them. Which version does a production call run?
+   - A. The draft.
    - B. The published version.
    - C. Both versions, one after the other.
-   - D. None. The call fails until you publish the draft.
+   - D. None.
 3. In queue mode, a Webhook node responds **When Last Node Finishes**. Which process sends the HTTP response?
-   - A. The main or webhook process that holds the open request.
+   - A. The process that holds the open request.
    - B. The worker, directly to the caller.
    - C. The leader, for all webhook calls.
-   - D. Any main, because each one gets the result.
+   - D. Any main.
 4. A Wait node waits for two days. What happens to the execution?
    - A. The process sleeps for two days.
    - B. The worker keeps the job for two days.
-   - C. n8n saves it to the database, and the leader resumes it when it is due.
-   - D. n8n fails the execution, because a wait has a limit.
+   - C. n8n saves it, and the leader resumes it when due.
+   - D. n8n fails the execution.
 5. In a manual execution, a user runs one node in the middle of a workflow. Which nodes does the engine run?
    - A. All nodes of the workflow, from the trigger.
    - B. Only the nodes on the path to that node whose input changed.

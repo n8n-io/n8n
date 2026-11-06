@@ -68,7 +68,7 @@ AI for building has no separate backend. The Assistant and the MCP server start 
 
 ## Quiz
 
-1. An instance has no sandbox configured. A user asks the Assistant to build a workflow. What happens?
+1. With no sandbox, a user asks the Assistant to build a workflow. What happens?
    - A. The Assistant builds the workflow on the main.
    - B. The Assistant cannot build the workflow.
    - C. The Assistant builds the workflow on a worker.
@@ -78,15 +78,15 @@ AI for building has no separate backend. The Assistant and the MCP server start 
    - B. Yes, if the workflow is published.
    - C. Only if an admin is the user.
    - D. Only if the workflow has MCP access turned on.
-3. In queue mode with self-healing on, a production execution fails on a worker. What does the worker do?
+3. With self-healing on, a production execution fails on a worker. What does the worker do?
    - A. It runs the Assistant to investigate the failure.
-   - B. It sends the workflow ID and the execution ID to a main over pubsub.
+   - B. It tells a main over pubsub.
    - C. It retries the execution.
-   - D. Nothing. Self-healing covers only failures on mains.
-4. A browser loses its connection to the Assistant during a long run, and reconnects to another main. What does it get?
+   - D. Nothing.
+4. During a long Assistant run, a browser reconnects to another main. What does it get?
    - A. Only the events after the reconnection.
-   - B. An error, because the run belongs to the first main.
-   - C. The events that it missed, from the durable event log.
+   - B. An error.
+   - C. The events that it missed.
    - D. A new run of the same message.
 
 <details>

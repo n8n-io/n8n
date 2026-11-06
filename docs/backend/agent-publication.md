@@ -68,16 +68,16 @@ Each main regularly compares the chat integrations that run on the main with the
 
 1. Two users publish the same agent at the same moment. What happens?
    - A. Both publications succeed, and the last one wins.
-   - B. One succeeds. The other gets 409, and the user tries again.
+   - B. One succeeds, and the other gets 409.
    - C. The leader merges the two versions.
    - D. Both fail, and the agent stays unpublished.
 2. A user publishes an agent with a Slack chat integration, and Slack is down. What happens?
-   - A. The publication fails, and the previous version stays published.
-   - B. The main answers 200. Each main connects the chat integration later.
+   - A. The publication fails.
+   - B. It succeeds, and Slack connects later.
    - C. The main waits until Slack is back.
    - D. n8n removes the chat integration from the agent.
 3. How does a workflow publication differ from an agent publication?
-   - A. A workflow publication saves a task in an outbox, and the leader starts the triggers later. In an agent publication, the main starts the triggers, and then answers.
+   - A. Only a workflow publication uses an outbox.
    - B. Only an agent publication runs policy checks.
    - C. Only a workflow publication uses a transaction.
    - D. They do not differ.

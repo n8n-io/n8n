@@ -58,10 +58,10 @@ The `otel` module sends OpenTelemetry traces of workflow and node executions.
    - A. Nobody. Event names are internal.
    - B. Only PostHog.
    - C. Only the failure email.
-   - D. Log streaming users, because they filter on event names.
+   - D. Log streaming users.
 3. A telemetry event has a name with a typo. What do you do?
    - A. Rename the event in the registry.
-   - B. Keep the name. A rename cuts the history of the event in the data warehouse.
+   - B. Keep the name.
    - C. Rename it, and also rename the old table.
    - D. Send both names for one release.
 

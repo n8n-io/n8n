@@ -50,11 +50,11 @@ When a process stops, n8n calls the `@OnShutdown()` methods of its services in o
 
 ## Quiz
 
-1. You change the value of an env var that a `@Config` class reads, while the process runs. When does the process use the new value?
+1. You change an env var that a `@Config` class reads while the process runs. When does the new value apply?
    - A. At once.
    - B. At the next request.
-   - C. After a restart, because the container creates each `@Config` class once.
-   - D. Never. The value is saved in the database.
+   - C. After a restart.
+   - D. Never.
 2. A worker starts after a release that adds a migration. What does it do before it takes jobs?
    - A. Nothing. Only mains migrate.
    - B. It waits until a main has migrated.
@@ -62,12 +62,12 @@ When a process stops, n8n calls the `@OnShutdown()` methods of its services in o
    - D. It reads the schema from Redis.
 3. You add a `shutdown()` method to a service, without a decorator. When does it run?
    - A. When the process stops.
-   - B. Never. Only methods with `@OnShutdown()` run at shutdown.
+   - B. Never.
    - C. When the container removes the service.
    - D. On the leader only.
 4. An admin saved a feature setting as off. Its environment variable says on. Is the feature on?
    - A. Yes. The environment variable wins.
-   - B. No. The saved value wins over the environment variable.
+   - B. No. The saved value wins.
    - C. It depends on the license.
    - D. Only on mains.
 

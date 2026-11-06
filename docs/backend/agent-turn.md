@@ -80,18 +80,18 @@ The **AI Agent** node is not part of this runtime. It is a node inside a workflo
 ## Quiz
 
 1. A main crashes just after you send a message to an agent. Is the message lost?
-   - A. Yes. The message was only in the open HTTP request.
+   - A. Yes.
    - B. Only in multi-main.
-   - C. No. Redis keeps the message until a main reads it.
-   - D. No. The main saved the message to a queue in the database first.
+   - C. No. Redis keeps the message.
+   - D. No. The database keeps the message.
 2. Two messages for the same conversation arrive on two different mains. How do they run?
    - A. At the same time, one on each main.
    - B. The second message cancels the first turn.
    - C. In order, one at a time.
    - D. On workers, one for each message.
 3. In queue mode, an agent calls a workflow as a tool. Where does that workflow run?
-   - A. On the main, inside the agent runtime, with no execution.
-   - B. On a worker, as a workflow execution. The turn waits for it on the main.
+   - A. On the main, with no execution.
+   - B. On a worker, as an execution.
    - C. In a V8 isolate, like a custom tool.
    - D. On the leader, because tools need a leader.
 4. The model replies with a tool to call. What calls the tool?
@@ -102,7 +102,7 @@ The **AI Agent** node is not part of this runtime. It is a node inside a workflo
 5. An AI Agent node in a workflow asks the model for a tool. Where does the tool run?
    - A. In an agent turn on the main.
    - B. In a child execution, as a sub-workflow.
-   - C. In the same execution. The engine runs the tool nodes that connect to the AI Agent node.
+   - C. In the same execution.
    - D. In a task runner.
 
 <details>

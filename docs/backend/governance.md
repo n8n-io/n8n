@@ -48,16 +48,16 @@ Both features copy entities field by field. A change to an entity can therefore 
 1. A reviewer asks for changes to a workflow. Can a user publish the workflow now?
    - A. Yes. A request for changes closes the review.
    - B. Yes, if the user is an admin.
-   - C. No. The review request stays open, and n8n refuses to publish while a request is open.
+   - C. No. The open request blocks the publication.
    - D. No. The reviewer must publish it.
-2. A workflow has no redaction setting. The admin sets the instance minimum to production executions. Does n8n redact the production executions of the workflow?
+2. A workflow has no redaction setting. The instance minimum covers production executions. Does n8n redact them?
    - A. No. The workflow setting wins.
-   - B. Yes. The instance minimum applies when the workflow setting is weaker.
+   - B. Yes.
    - C. Only for new workflows.
    - D. Only on mains.
 3. An Environments v1 pull writes a workflow. Which side effects of `WorkflowService` run?
-   - A. All of them, because every write goes through `WorkflowService`.
-   - B. Only the ones that the import code adds, because a pull writes the entities directly.
+   - A. All of them.
+   - B. Only the ones that the import code adds.
    - C. Only the publication of its triggers.
    - D. None, and none are necessary.
 
