@@ -37,6 +37,12 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Get many files',
 			},
 			{
+				name: 'Get Presigned URL',
+				value: 'getPresignedUrl',
+				description: 'Get a presigned URL for a file',
+				action: 'Get a presigned URL for a file',
+			},
+			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file',
@@ -835,6 +841,105 @@ export const fileFields: INodeProperties[] = [
 				name: 'folderKey',
 				type: 'string',
 				default: '',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                file:getPresignedUrl                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Bucket Name',
+		name: 'bucketName',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+	},
+	{
+		displayName: 'File Key',
+		name: 'fileKey',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+	},
+	{
+		displayName: 'Set Custom URL Expiry Time',
+		name: 'setUrlExpiryTime',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+	},
+	// We cannot reassign a lifetime for chained credentials, so we need to warn the user that the requested lifetime may be capped at 1 hour.
+	// for STS/AssumeRole there is currently no option to set a lifetime in the credentials.
+	{
+		displayName:
+			'When using STS or Assume Role credentials, the requested URL expiry is capped at 1 hour and may be shorter if the credentials expire earlier. For longer validity, use IAM credentials with a suitable lifetime.',
+		name: 'temporaryCredentialsNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+				setUrlExpiryTime: [true],
+			},
+		},
+	},
+	{
+		displayName: 'URL Expiry Time',
+		description:
+			'The time period (in seconds) for which the presigned URL will be valid. Maximum is 604800 seconds (7 days).',
+		name: 'urlExpiryTime',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+			maxValue: 604800,
+		},
+		default: 3600,
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+				setUrlExpiryTime: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Omit Content-Disposition Override',
+				name: 'noContentDisposition',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to omit the Content-Disposition override and let the browser use the object metadata to decide whether to display or download the file',
 			},
 		],
 	},
