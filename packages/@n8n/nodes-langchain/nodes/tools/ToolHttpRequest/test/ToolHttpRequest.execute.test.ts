@@ -126,4 +126,33 @@ describe('ToolHttpRequest execute', () => {
 			expect(helpers.httpRequest).not.toHaveBeenCalled();
 		},
 	);
+
+	it('should report the index of the item whose placeholders could not be replaced', async () => {
+		setup([{ json: { input: '{"q": 1}' } }, { json: { input: '{"q": "1 2"}' } }], 1);
+		ctx.getNodeParameter.mockImplementation((paramName: string, _: number, fallback?: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return 'https://example.com/search';
+				case 'sendBody':
+					return true;
+				case 'specifyBody':
+					return 'json';
+				case 'jsonBody':
+					return '{"q": {q}}';
+				case 'placeholderDefinitions.values':
+					return [{ name: 'q', type: 'json' }];
+				default:
+					return fallback;
+			}
+		});
+		helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
+
+		await expect(httpTool.execute.call(ctx)).rejects.toMatchObject({
+			message: expect.stringContaining('Could not replace placeholders in body'),
+			context: { itemIndex: 1 },
+		});
+		expect(helpers.httpRequest).toHaveBeenCalledTimes(1);
+	});
 });
