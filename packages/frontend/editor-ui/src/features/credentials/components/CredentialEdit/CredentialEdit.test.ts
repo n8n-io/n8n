@@ -1431,6 +1431,140 @@ describe('CredentialEdit', () => {
 		});
 	});
 
+	describe('automatic OAuth mode', () => {
+		const automaticOAuthApi: ICredentialType = {
+			name: 'automaticOAuthApi',
+			extends: ['oAuth2Api'],
+			displayName: 'Automatic OAuth2 API',
+			dynamicClientRegistration: true,
+			properties: [
+				{
+					displayName: 'Server URL',
+					name: 'serverUrl',
+					type: 'hidden',
+					default: 'https://auth.example.com',
+				},
+				{
+					displayName: 'Grant Type',
+					name: 'grantType',
+					type: 'hidden',
+					default: 'authorizationCode',
+				},
+				{
+					displayName: 'Use Dynamic Client Registration',
+					name: 'useDynamicClientRegistration',
+					type: 'hidden',
+					default: false,
+				},
+				{
+					displayName: 'Client ID',
+					name: 'clientId',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { useDynamicClientRegistration: [false] } },
+				},
+				// Shows in both modes, so it marks a rendered form.
+				{ displayName: 'Workspace', name: 'workspace', type: 'string', default: '' },
+			],
+			iconUrl: '',
+			supportedNodes: [],
+		};
+
+		const setupStores = (credentialData?: Record<string, unknown>) => {
+			// Other tests leave stores behind in the shared pinia, for example an active node.
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.UI]: { modalStateById: { [CREDENTIAL_EDIT_MODAL_KEY]: { open: true } } },
+					[STORES.SETTINGS]: {
+						settings: {
+							enterprise: { sharing: true, externalSecrets: false },
+							templates: { host: '' },
+						},
+					},
+					[STORES.PROJECTS]: {
+						personalProject: {
+							id: 'personal-project',
+							type: 'personal',
+							scopes: ['credential:create'],
+						},
+					},
+				},
+			});
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[automaticOAuthApi.name]: automaticOAuthApi,
+			};
+			credentialsStore.getNewCredentialName.mockResolvedValue('Automatic account');
+			if (credentialData) {
+				credentialsStore.getCredentialData.mockResolvedValueOnce({
+					// @ts-expect-error data is decrypted
+					data: credentialData,
+					createdAt: '2026-10-30T10:00:00.000Z',
+					updatedAt: '2026-10-30T10:00:00.000Z',
+					id: 'cred-automatic',
+					name: 'Automatic account',
+					type: automaticOAuthApi.name,
+					isManaged: false,
+					sharedWithProjects: [],
+					scopes: ['credential:update'],
+					oauthTokenData: false,
+				});
+			}
+			return { credentialsStore, pinia };
+		};
+
+		const waitForForm = async (view: ReturnType<typeof renderComponent>) =>
+			await retry(() => expect(view.queryByText('Workspace')).toBeInTheDocument());
+
+		test('starts a new credential in Automatic mode', async () => {
+			const { pinia } = setupStores();
+
+			const view = renderComponent({
+				props: {
+					activeId: automaticOAuthApi.name,
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'new',
+				},
+				pinia,
+			});
+			await waitForForm(view);
+
+			expect(view.queryByText('Client ID')).not.toBeInTheDocument();
+		});
+
+		test('opens a credential without a stored choice in Custom mode', async () => {
+			const { credentialsStore, pinia } = setupStores({
+				clientId: 'own-client-id',
+				clientSecret: 'own-client-secret',
+			});
+
+			const view = renderComponent({
+				props: { activeId: 'cred-automatic', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			await retry(() => expect(view.queryByText('Client ID')).toBeInTheDocument());
+		});
+
+		test('opens a credential saved in Automatic mode in Automatic mode', async () => {
+			const { credentialsStore, pinia } = setupStores({
+				useDynamicClientRegistration: true,
+				clientId: 'registered-client-id',
+			});
+
+			const view = renderComponent({
+				props: { activeId: 'cred-automatic', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitForForm(view);
+
+			expect(view.queryByText('Client ID')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('saving credentials', () => {
 		const createPiniaForSaveTest = (
 			credentialModalState: Partial<NewCredentialsModal> = {},

@@ -1387,6 +1387,8 @@
 	"credentialEdit.credentialConfig.subtitle": "In {appName}, use the URL above when prompted to enter an OAuth callback or redirect URL",
 	"credentialEdit.credentialConfig.theServiceYouReConnectingTo": "the service you're connecting to",
 	"credentialEdit.credentialConfig.missingCredentialType": "This credential's type isn't available. This usually happens when a previously installed community or custom node was uninstalled.",
+	"credentialEdit.credentialConfig.oauthModeAutomatic": "Automatic (recommended)",
+	"credentialEdit.credentialConfig.oauthModeAutomaticWithAuthType": "Automatic - {authType}",
 	"credentialEdit.credentialConfig.oauthModeManaged": "Managed OAuth2 (recommended)",
 	"credentialEdit.credentialConfig.oauthModeCustom": "Custom OAuth2",
 	"credentialEdit.credentialConfig.oauthModeManagedWithAuthType": "Managed OAuth2 - {authType}",
