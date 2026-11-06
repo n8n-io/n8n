@@ -217,6 +217,12 @@ describe('ToolsConnectionModal', () => {
 			nodeTypeName: 'n8n-nodes-base.gmailTool',
 			restriction: { name: 'n8n-nodes-base.gmailTool', available: false, scope: 'instance' },
 		};
+		const restrictedGatewayDuplicate: ToolConnectionItem = {
+			...restrictedGateway,
+			id: 'nodeType:gmail',
+			category: 'app-action',
+			freeCredits: undefined,
+		};
 		const restrictedApp: ToolConnectionItem = {
 			id: 'nodeType:outlook',
 			kind: 'node',
@@ -241,11 +247,13 @@ describe('ToolsConnectionModal', () => {
 		const { getAllByTestId, getByTestId } = renderWith({
 			// Restricted first, and one of them gateway-backed: the all-tab rank sort alone
 			// would keep it above the usable tool.
-			items: [restrictedGateway, restrictedApp, usableApp],
+			items: [restrictedGateway, restrictedGatewayDuplicate, restrictedApp, usableApp],
 			categories: ['all', 'app-action'],
 		});
 
+		// The restricted plain Gmail row is a gateway duplicate, so "All" shows Gmail once.
 		const titlesOnAll = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+		expect(titlesOnAll).toHaveLength(3);
 		expect(titlesOnAll[0]).toContain('Google Sheets');
 		expect(titlesOnAll[1]).toContain('Gmail');
 		expect(titlesOnAll[2]).toContain('Outlook');
@@ -254,9 +262,10 @@ describe('ToolsConnectionModal', () => {
 		await fireEvent.click(getByTestId('tab-app-action'));
 		await waitFor(() => {
 			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
-			expect(titles).toHaveLength(2);
+			expect(titles).toHaveLength(3);
 			expect(titles[0]).toContain('Google Sheets');
-			expect(titles[1]).toContain('Outlook');
+			expect(titles[1]).toContain('Gmail');
+			expect(titles[2]).toContain('Outlook');
 		});
 	});
 
