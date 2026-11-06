@@ -33,6 +33,7 @@ export type AgentOptions = {
 	returnIntermediateSteps?: boolean;
 	passthroughBinaryImages?: boolean;
 	passthroughBinaryPdfs?: boolean;
+	passthroughToolResultImages?: boolean;
 	enableStreaming?: boolean;
 	maxTokensFromMemory?: number;
 	forceToolCallOnFirstIteration?: boolean;
