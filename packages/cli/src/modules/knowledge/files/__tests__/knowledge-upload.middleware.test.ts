@@ -1,20 +1,20 @@
 import { MAX_AGENT_FILES_PER_UPLOAD } from '@n8n/api-types';
 import multer from 'multer';
 
-import { describeMulterError, isAllowedAgentFile } from '../knowledge-upload.middleware';
+import { describeMulterError, isAllowedKnowledgeFile } from '../knowledge-upload.middleware';
 
-describe('AgentUploadMiddleware', () => {
+describe('KnowledgeUploadMiddleware', () => {
 	it.each(['data.csv', 'notes.md', 'notes.markdown', 'document.pdf', 'plain.txt'])(
 		'allows %s',
 		(originalname) => {
-			expect(isAllowedAgentFile({ originalname })).toBe(true);
+			expect(isAllowedKnowledgeFile({ originalname })).toBe(true);
 		},
 	);
 
 	it.each(['archive.zip', 'image.png', 'script.js', 'document.pdf.exe', 'README'])(
 		'rejects %s',
 		(originalname) => {
-			expect(isAllowedAgentFile({ originalname })).toBe(false);
+			expect(isAllowedKnowledgeFile({ originalname })).toBe(false);
 		},
 	);
 });
