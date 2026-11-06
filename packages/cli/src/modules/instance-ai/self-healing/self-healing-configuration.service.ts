@@ -4,7 +4,7 @@ import type {
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService, type RoleLoader } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -27,7 +27,7 @@ import { SelfHealingConfigurationRepository } from './database/self-healing-conf
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 
 export const REVIEWER_SCOPES: Scope[] = ['workflow:read', 'workflow:update'];
-export const ACTOR_SCOPES: Scope[] = ['workflow:read', 'workflow:update', 'execution:read'];
+const ACTOR_SCOPES: Scope[] = ['workflow:read', 'workflow:update', 'execution:read'];
 
 const NO_ELIGIBLE_REVIEWER =
 	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
@@ -193,7 +193,8 @@ export class SelfHealingConfigurationService {
 	}
 
 	private async reviewerRoles(ctx: OperationContext = {}) {
-		const loadRoles = async () => await this.roleRepository.findAll(ctx);
+		let roles: ReturnType<RoleLoader> | undefined;
+		const loadRoles = async () => await (roles ??= this.roleRepository.findAll(ctx));
 		const [projectRoleSlugs, globalRoleSlugs, workflowRoleSlugs] = await Promise.all([
 			this.roles.rolesWithScope('project', REVIEWER_SCOPES, loadRoles),
 			this.roles.rolesWithScope('global', REVIEWER_SCOPES, loadRoles),
@@ -227,6 +228,10 @@ export class SelfHealingConfigurationService {
 			workflowIds,
 			{},
 		);
+	}
+
+	async canActOn(user: User, workflowId: string) {
+		return (await this.workflows.findWorkflowHeadForUser(workflowId, user, ACTOR_SCOPES)) !== null;
 	}
 
 	private async canEnable(user: User, projectId: string) {

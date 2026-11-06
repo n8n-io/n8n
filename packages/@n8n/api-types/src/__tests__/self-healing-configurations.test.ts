@@ -1,5 +1,4 @@
 import {
-	PreviewSelfHealingSubWorkflowsDto,
 	SaveSelfHealingConfigurationDto,
 	UpdateSelfHealingConfigurationDto,
 } from '../self-healing-configurations';
@@ -58,16 +57,3 @@ it.each([SaveSelfHealingConfigurationDto, UpdateSelfHealingConfigurationDto])(
 		expect(dto.safeParse({ ...input, includeSubWorkflows: 'yes' }).success).toBe(false);
 	},
 );
-
-it('accepts between one and 100 workflows for a sub-workflow preview', () => {
-	expect(PreviewSelfHealingSubWorkflowsDto.parse({ workflowIds: ['workflow'] })).toEqual({
-		workflowIds: ['workflow'],
-	});
-	expect(PreviewSelfHealingSubWorkflowsDto.safeParse({ workflowIds: [] }).success).toBe(false);
-	expect(PreviewSelfHealingSubWorkflowsDto.safeParse({}).success).toBe(false);
-	const workflowIds = Array.from({ length: 101 }, (_, index) => `workflow-${index}`);
-	expect(PreviewSelfHealingSubWorkflowsDto.safeParse({ workflowIds }).success).toBe(false);
-	expect(
-		PreviewSelfHealingSubWorkflowsDto.safeParse({ workflowIds: workflowIds.slice(1) }).success,
-	).toBe(true);
-});

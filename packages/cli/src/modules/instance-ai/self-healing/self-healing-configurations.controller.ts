@@ -1,9 +1,7 @@
 import {
-	PreviewSelfHealingSubWorkflowsDto,
 	SaveSelfHealingConfigurationDto,
 	SetSelfHealingConfigurationEnabledDto,
 	UpdateSelfHealingConfigurationDto,
-	type SelfHealingSubWorkflowPreview,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Middleware, Patch, Post, RestController } from '@n8n/decorators';
@@ -13,7 +11,6 @@ import type { NextFunction, Response } from 'express';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 import { SelfHealingConfigurationService } from './self-healing-configuration.service';
-import { SubWorkflowDiscoveryService } from './sub-workflow-discovery.service';
 
 type ConfigurationRequest = AuthenticatedRequest<{ projectId: string; configurationId: string }>;
 
@@ -25,10 +22,7 @@ function configurationId(req: ConfigurationRequest) {
 
 @RestController('/projects/:projectId/self-healing-configurations')
 export class SelfHealingConfigurationsController {
-	constructor(
-		private readonly configurations: SelfHealingConfigurationService,
-		private readonly subWorkflows: SubWorkflowDiscoveryService,
-	) {}
+	constructor(private readonly configurations: SelfHealingConfigurationService) {}
 
 	@Middleware()
 	async checkAccess(req: ConfigurationRequest, res: Response, next: NextFunction) {
@@ -47,15 +41,6 @@ export class SelfHealingConfigurationsController {
 	@Get('/options')
 	async options(req: ConfigurationRequest) {
 		return await this.configurations.getConfigurationChoices(req.params.projectId);
-	}
-
-	@Post('/sub-workflows/preview')
-	async previewSubWorkflows(
-		req: ConfigurationRequest,
-		_res: Response,
-		@Body input: PreviewSelfHealingSubWorkflowsDto,
-	): Promise<SelfHealingSubWorkflowPreview> {
-		return await this.subWorkflows.discover(req.user, req.params.projectId, input.workflowIds);
 	}
 
 	@Get('/:configurationId')

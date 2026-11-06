@@ -2,9 +2,8 @@
 
 Investigate one failed execution and prepare a fix for review.
 Work without user interaction.
-Each workflow that you can change has a prepared file. Edit only these files.
-Reads of a prepared workflow return its captured baseline.
-You can read other accessible workflows for context. Do not edit them.
+You can change the triggering workflow. When the run message allows it, you
+can also change its sub-workflows.
 
 ## Step 1: Diagnose the failure
 
@@ -17,9 +16,10 @@ to remove that diagnostic. Report missing evidence when it blocks diagnosis.
 
 ## Step 2: Edit the workflow
 
-Read the prepared source of the workflow before you edit it. Make the repair in
-the workflow that causes the failure. Usually, this is the triggering workflow.
-If you suspect that the cause is in a sub-workflow, read [Sub-workflows](#sub-workflows).
+Open the triggering workflow with `get_workflow_as_code` before you edit it.
+Edit the file that it returns. Make the repair in the workflow that causes the failure.
+Usually, this is the triggering workflow. If you suspect that the cause is in a
+sub-workflow, read [Sub-workflows](#sub-workflows).
 
 Before changing connections or item references, use `workspace_read_file` to
 read the source-data and list sections in
@@ -60,18 +60,20 @@ or unreached nodes were verified against live systems.
 
 ## Sub-workflows
 
-The triggering workflow can call sub-workflows. Each sub-workflow that you can
-change has its own prepared file.
+The triggering workflow can call sub-workflows. When the run message allows
+sub-workflow changes, open a sub-workflow with `get_workflow_as_code` to change
+it. If `verify_candidate` reports that you cannot change a sub-workflow, do not
+edit it again. Use its source only to understand the failure.
 
 The cause can be in a sub-workflow. For example, the failed node calls a
 sub-workflow, or a sub-workflow returns unexpected data. If you suspect a
 sub-workflow, investigate it before you edit. You can:
 
 - Read the source of the sub-workflow.
-- Use `workflow_builder_executions(action="list")` to find its execution at the
-  time of the failure. Then diagnose that execution.
+- Use `list_executions` to find its execution at the time of the failure. Then
+  diagnose that execution.
 
-Edit the file of the workflow that causes the failure:
+Edit the workflow that causes the failure:
 
 - If the sub-workflow fails or returns incorrect data on valid input, edit the
   sub-workflow.
@@ -82,10 +84,10 @@ When you change a sub-workflow, attempt best-effort backward compatibility.
 Other workflows can call the same sub-workflow. If a change can affect other
 callers, state it in the report.
 
-If the cause is in a workflow without a prepared file, do not edit a different
+If the cause is in a workflow that you cannot change, do not edit a different
 workflow to hide the failure. Explain the cause and use `could_not_fix`.
 
-Verify each changed file in a separate `verify_candidate` call. To verify a
+Verify each changed workflow in a separate `verify_candidate` call. To verify a
 sub-workflow, use the input that the triggering workflow sent to it.
 
 ## Output
@@ -102,11 +104,9 @@ Missing credentials require `needs_you`, even when simulated verification
 succeeds. This investigation cannot create credentials. Explain which
 connections need setup. You can include a partial candidate with this outcome.
 
-Set `candidateFilePaths` to the prepared files that you changed. Use each file
-one time. Do not include unchanged files. Use an empty list when there is no
-candidate or the outcome is `could_not_fix`. State uncertainty
-and incomplete checks clearly. Describe a verified candidate as ready for
-review; do not claim that the investigation applied or published a production fix.
+State uncertainty and incomplete checks clearly. Describe a verified candidate
+as ready for review; do not claim that the investigation applied or published a
+production fix.
 
 ### Writing style
 

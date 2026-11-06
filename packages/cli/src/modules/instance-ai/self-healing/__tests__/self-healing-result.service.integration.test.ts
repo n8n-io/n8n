@@ -274,7 +274,7 @@ async function prepareInvestigation(
 			outcome,
 			summary: input.summary,
 			report: input.report,
-			candidateFilePaths: withSuggestion ? ['candidate.workflow.ts'] : [],
+			candidateWorkflowIds: withSuggestion ? [original.id] : [],
 		},
 		usage: input.usage,
 		completedAt: new Date().toISOString(),
@@ -794,7 +794,7 @@ it('rolls back all completion writes and releases the claim on failure', async (
 				outcome: 'fix_ready',
 				summary: `Updated the request using ${value}.`,
 				report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
-				candidateFilePaths: ['candidate.workflow.ts'],
+				candidateWorkflowIds: [original.id],
 			},
 			usage: input.usage,
 			candidates: [
@@ -2727,7 +2727,7 @@ describe('configuration lifecycle', () => {
 					outcome: 'could_not_fix',
 					summary: 'No fix found.',
 					report: 'No fix found.',
-					candidateFilePaths: [],
+					candidateWorkflowIds: [],
 				},
 				usage: { credits: null, turns: null, durationSeconds: null },
 			};

@@ -1668,6 +1668,28 @@ describe('workflows tool', () => {
 			).resolves.toBeUndefined();
 		});
 
+		it('keeps the read-only note with investigation source guidance', async () => {
+			const context = createWorkspaceContext(new Map());
+			const error = new OutsideThreadProjectError();
+			context.assertInThreadProject = vi.fn().mockRejectedValue(error);
+			const tool = createWorkflowToolRouter(context, {
+				surface: 'full',
+				sourceGuidance: 'Edit the investigation candidate.',
+			});
+
+			const result = await executeTool<{ note?: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.note).toContain(error.message);
+			expect(result.note).not.toContain('investigation candidate');
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
+			).resolves.toBeUndefined();
+		});
+
 		it('reports a failed project lookup as an error, not as read-only', async () => {
 			const context = createWorkspaceContext(new Map());
 			context.assertInThreadProject = vi.fn().mockRejectedValue(new Error('lookup failed'));

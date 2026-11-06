@@ -69,18 +69,21 @@ Re-enablement does not change the background user recorded on an existing invest
 The producer calls `InstanceAiService.startSelfHealingRun()` with its stored thread and run IDs.
 This uses the existing Assistant run lifecycle. It does not create another job runner.
 
-The backend binds `verify_candidate({ filePath, validationOnly?, triggerNodeName?, inputData? })` to this investigation.
+The backend binds `verify_candidate({ workflowId, filePath, validationOnly?, triggerNodeName?, inputData? })` to this investigation.
 It checks current access before it reads and compiles the candidate against the captured baseline.
-The file path selects the baseline. A file that the investigation did not prepare fails validation.
+The workflow ID selects the baseline. The run tries to admit a workflow that is not a target yet.
+A workflow that the run cannot admit fails validation.
+The file must declare the same workflow ID. Otherwise, validation fails with `candidate_workflow_mismatch`.
 With `validationOnly: true`, it returns structural checks without execution.
 For execution checks, the agent selects the failed trigger and supplies its test input.
 The tool passes these options to the existing verification runner. Each call tests one trigger.
 
-`SelfHealingAgentService` creates `self-healing/<name-slug>-<workflowId>.workflow.ts` from each
-captured baseline: the triggering workflow and its sub-workflows. All files use one sandbox.
-It uses the same workflow converter as ordinary workflow reads. The starting message lists each
-file with its workflow name and ID.
-Reads of a prepared workflow return its captured baseline. The agent cannot select another version.
+`SelfHealingAgentService` does not write workflow files. The starting message gives the name and ID
+of the triggering workflow. The agent opens a workflow with the `get_workflow_as_code` tool.
+This tool writes the source to a workspace file. All files use one sandbox.
+Reads of a target return its captured baseline. The agent cannot select another version.
+The triggering workflow is always a target. Sub-workflows become targets when the agent reads or verifies them.
+See [Sub-workflows](#sub-workflows). Reads of other workflows are for context only.
 The agent edits the workflow that causes the failure. This can be a sub-workflow.
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
@@ -91,11 +94,12 @@ The agent has no save, publish, credential setup, MCP, browser, or delegation to
 It does not request user confirmation or start follow-up runs.
 
 The runtime returns technical `status`, finish information, `usage`, and validated `output`
-when available. Output requires `outcome`, `summary`, `report`, and `candidateFilePaths`.
-`candidateFilePaths` lists the prepared files of the changed workflows. It is empty when there is no candidate.
-`fix_ready` requires at least one path. `could_not_fix` excludes them.
-The run maps each path to its prepared baseline and returns a candidate compiler for each.
-An unknown or duplicate path returns no candidates. The investigation then fails and stores no result.
+when available. Output requires `outcome`, `summary`, `report`, and `candidateWorkflowIds`.
+`candidateWorkflowIds` lists the IDs of the changed workflows. It is empty when there is no candidate.
+`fix_ready` requires at least one ID. `could_not_fix` excludes them.
+The run remembers the last file of each target that passed validation in `verify_candidate`.
+It returns a candidate compiler for each listed ID with that file and the baseline of the target.
+The run removes duplicate IDs. An ID without such a file returns no candidates. The investigation then fails and stores no result.
 Final compilation compiles every candidate. One failure fails the whole investigation.
 If a candidate has mocked credentials or placeholders, the producer changes `fix_ready` to `needs_you`.
 It keeps the candidates and replaces the report with setup instructions for all of them.
@@ -167,14 +171,6 @@ Crashes, interruptions, and turn limits without an accepted result release the r
 A different eligible failed execution can then start an investigation. The same execution remains
 deduplicated. There is no retry cap for runs that finish without a result.
 
-## Discover sub-workflows
-
-`SubWorkflowDiscoveryService` finds the published sub-workflows that each given workflow calls,
-at every depth. It reads `workflowCall` rows of the dependency index for published versions only.
-It stops at workflows that the user cannot read, update, and see executions of, and at workflows
-in another project. It returns the nearest sub-workflows first. The result is not stored.
-Investigation preparation still checks each target.
-
 ## Configure self-healing
 
 Project Settings provides configuration management for team projects under the existing `project:update` permission.
@@ -198,14 +194,24 @@ Enabling a configuration records the user whose access authorizes subsequent inv
 
 `includeSubWorkflows` lets investigations repair sub-workflows of covered workflows. It does not
 start investigations for sub-workflow failures. It defaults to `false`.
-When it is set, the agent run discovers the sub-workflows of the triggering workflow and
-captures their baselines before it prepares the files. It keeps the nearest sub-workflows in the
-same project that pass the baseline checks, up to `MAX_SUB_WORKFLOW_TARGETS`. Sub-workflows without
-edit access, with unpublished changes, or with a pending suggestion are left out. A sub-workflow is also
-left out when no reviewer can edit it, the triggering workflow, and the sub-workflows already kept, so a
-reviewer can always see the result. Sub-workflows get no admission reservation.
-`POST .../self-healing-configurations/sub-workflows/preview` returns the discovery result for
-each selected workflow, so the form can show it.
+When it is set, the agent run tries to admit a sub-workflow when the agent reads its current version
+or calls `verify_candidate` for it. Historical version reads do not admit a workflow. The run admits
+a workflow only when all of these conditions are true:
+
+- The published version of a target calls it. The run reads `workflowCall` rows of the dependency index.
+  Sub-workflows of admitted sub-workflows can also become targets.
+- It has no pending suggestion.
+- The actor has the same workflow and execution access to it as to the triggering workflow.
+- A reviewer can edit it and all current targets, so a reviewer can always see the result.
+- The baseline capture succeeds. The workflow must have edit access and no unpublished changes.
+- It is in the project of the triggering workflow.
+- The run has fewer than `MAX_SUB_WORKFLOW_TARGETS` sub-workflow targets.
+
+The run captures the baseline of an admitted workflow and serves all its later reads from it.
+Reads of a workflow that is not admitted return the live workflow. The agent cannot verify it.
+The run admits one workflow at a time. It checks a workflow that is not admitted again on each
+read, because a new target can make it eligible.
+Sub-workflows get no admission reservation.
 
 ### Reviewers
 
@@ -272,7 +278,7 @@ No suggestion row is created by verification.
 
 ## Store a result
 
-The runtime validates final output. The producer compiles the named workspace file.
+The runtime validates final output. The producer compiles the current content of the file that last passed validation for each listed workflow.
 It applies the shared text filter to the final summary and report before storage.
 It keeps both fields within their output limits after replacement.
 It passes the report, runtime usage, and compiled graph directly to the result service.

@@ -24,25 +24,27 @@ export const selfHealingOutputSchema = z
 				'A concise Markdown report under 150 words. Use only **What happened** and **What changed** sections. ' +
 					'Include verification limits and any next step under What changed. State when no changes were made.',
 			),
-		candidateFilePaths: z
+		candidateWorkflowIds: z
 			.array(z.string().trim().min(1))
-			.describe('Prepared files of the changed workflows. Use one path for each workflow.'),
+			.describe(
+				'IDs of the changed workflows. Verify each one with verify_candidate first. Leave empty for could_not_fix.',
+			),
 	})
 	.strict()
 	.superRefine((output, ctx) => {
-		if (output.outcome === 'fix_ready' && output.candidateFilePaths.length === 0) {
+		if (output.outcome === 'fix_ready' && output.candidateWorkflowIds.length === 0) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				path: ['candidateFilePaths'],
-				message: 'A ready fix requires a candidate file.',
+				path: ['candidateWorkflowIds'],
+				message: 'A ready fix requires a changed workflow.',
 			});
 		}
 
-		if (output.outcome === 'could_not_fix' && output.candidateFilePaths.length > 0) {
+		if (output.outcome === 'could_not_fix' && output.candidateWorkflowIds.length > 0) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				path: ['candidateFilePaths'],
-				message: 'An unsuccessful investigation cannot return a candidate file.',
+				path: ['candidateWorkflowIds'],
+				message: 'An unsuccessful investigation cannot return a changed workflow.',
 			});
 		}
 	});
@@ -69,6 +71,7 @@ export function isSelfHealingResourceId(resourceId: string | undefined): boolean
 
 export const selfHealingCandidateInputSchema = z
 	.object({
+		workflowId: z.string().min(1).describe('ID of the workflow that the candidate changes.'),
 		filePath: z.string().min(1).describe('Path to the candidate workflow source.'),
 		validationOnly: z.boolean().optional().describe('Run static checks without execution.'),
 		triggerNodeName: z

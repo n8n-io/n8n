@@ -39,10 +39,10 @@ export interface CreateSelfHealingAgentOptions {
 }
 
 const SOURCE_GUIDANCE =
-	'Read workflow source for context. Edit only the prepared workflow files. ' +
+	'Open a workflow as source before you edit it. ' +
+	'Reads of a workflow that you can change return its captured baseline. ' +
 	'Use workspace_read_file and workspace_str_replace_file, then verify_candidate. ' +
-	'Reads of a prepared workflow return its captured baseline. ' +
-	'You can read other accessible workflows for context. Do not edit them.';
+	'Use other workflows for context only. Do not edit them.';
 
 function createSelfHealingTools(
 	context: InstanceAiContext,

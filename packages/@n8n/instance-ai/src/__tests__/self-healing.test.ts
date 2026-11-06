@@ -9,24 +9,21 @@ const report = {
 
 describe('self-healing output', () => {
 	it.each([
-		{ outcome: 'fix_ready', candidateFilePaths: ['self-healing/candidate.workflow.ts'] },
-		{
-			outcome: 'fix_ready',
-			candidateFilePaths: ['self-healing/a.workflow.ts', 'self-healing/b.workflow.ts'],
-		},
-		{ outcome: 'needs_you', candidateFilePaths: ['self-healing/candidate.workflow.ts'] },
-		{ outcome: 'needs_you', candidateFilePaths: [] },
-		{ outcome: 'could_not_fix', candidateFilePaths: [] },
+		{ outcome: 'fix_ready', candidateWorkflowIds: ['workflow'] },
+		{ outcome: 'fix_ready', candidateWorkflowIds: ['workflow', 'sub-workflow'] },
+		{ outcome: 'needs_you', candidateWorkflowIds: ['workflow'] },
+		{ outcome: 'needs_you', candidateWorkflowIds: [] },
+		{ outcome: 'could_not_fix', candidateWorkflowIds: [] },
 	])('accepts $outcome with its candidate rules', (output) => {
 		expect(selfHealingOutputSchema.safeParse({ ...report, ...output }).success).toBe(true);
 	});
 
 	it.each([
 		{ outcome: 'fix_ready' },
-		{ outcome: 'needs_you', candidateFilePaths: undefined },
-		{ outcome: 'needs_you', candidateFilePaths: null },
-		{ outcome: 'could_not_fix', candidateFilePaths: ['candidate.ts'] },
-		{ outcome: 'needs_you', candidateFilePaths: [''] },
+		{ outcome: 'needs_you', candidateWorkflowIds: undefined },
+		{ outcome: 'needs_you', candidateWorkflowIds: null },
+		{ outcome: 'could_not_fix', candidateWorkflowIds: ['workflow'] },
+		{ outcome: 'needs_you', candidateWorkflowIds: [''] },
 		{ outcome: 'needs_you', summary: ' ' },
 		{ outcome: 'needs_you', report: ' ' },
 		{ outcome: 'needs_you', report: 'x'.repeat(50_001) },
@@ -34,7 +31,7 @@ describe('self-healing output', () => {
 		{ outcome: 'needs_you', workflowId: 'other-workflow' },
 	])('rejects invalid output %#', (output) => {
 		expect(
-			selfHealingOutputSchema.safeParse({ ...report, candidateFilePaths: [], ...output }).success,
+			selfHealingOutputSchema.safeParse({ ...report, candidateWorkflowIds: [], ...output }).success,
 		).toBe(false);
 	});
 
@@ -47,7 +44,7 @@ describe('self-healing output', () => {
 			...report,
 			outcome: 'needs_you',
 			summary,
-			candidateFilePaths: [],
+			candidateWorkflowIds: [],
 		};
 		expect(selfHealingOutputSchema.parse(output)).toEqual({ ...output, summary: expected });
 	});

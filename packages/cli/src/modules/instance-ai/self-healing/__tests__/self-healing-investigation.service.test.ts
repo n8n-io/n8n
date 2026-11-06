@@ -112,7 +112,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'could_not_fix',
 				summary: 'No fix found.',
 				report: 'The cause could not be determined.',
-				candidateFilePaths: [],
+				candidateWorkflowIds: [],
 			},
 			usage: { credits: 2, turns: 3, durationSeconds: 10 },
 		};
@@ -195,7 +195,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you' as const,
 			summary: `The response contained ${value}.`,
 			report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
-			candidateFilePaths: [],
+			candidateWorkflowIds: [],
 		};
 		run.output = output;
 
@@ -205,7 +205,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'The response contained [REDACTED].',
 			report: 'Check the HTTP Request node. Authorization: [REDACTED]',
-			candidateFilePaths: [],
+			candidateWorkflowIds: [],
 		});
 		expect(output.report).toContain(value);
 	});
@@ -236,7 +236,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome,
 				summary: 'Update the node.',
 				report: 'The node now uses the correct field.',
-				candidateFilePaths: ['candidate.ts'],
+				candidateWorkflowIds: ['workflow'],
 			};
 			run.candidates = [
 				{
@@ -271,7 +271,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'fix_ready' as const,
 				summary: 'The workflow is fixed.',
 				report: 'The credential was created and verification passed.',
-				candidateFilePaths: ['candidate.ts'],
+				candidateWorkflowIds: ['workflow'],
 			};
 			const graph = { nodes: [], connections: {} };
 			run.output = output;
@@ -339,7 +339,7 @@ describe('SelfHealingInvestigationService', () => {
 			outcome: 'needs_you',
 			summary: 'Reconnect the credential.',
 			report: 'The credential needs to be reconnected.',
-			candidateFilePaths: [],
+			candidateWorkflowIds: [],
 		};
 		await startAndFinish();
 		expect(results.complete.mock.calls[0]?.[0]?.output.outcome).toBe('needs_you');
@@ -365,7 +365,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'fix_ready',
 				summary: 'Update the nodes.',
 				report: 'Both workflows now use the correct field.',
-				candidateFilePaths: ['candidate.ts', 'sub-workflow.ts'],
+				candidateWorkflowIds: ['workflow', 'sub-workflow'],
 			};
 			run.candidates = [
 				{
@@ -439,7 +439,7 @@ describe('SelfHealingInvestigationService', () => {
 				outcome: 'fix_ready',
 				summary: 'Candidate checked.',
 				report: 'Verification passed.',
-				candidateFilePaths: ['candidate.workflow.ts'],
+				candidateWorkflowIds: ['workflow'],
 			};
 			const compile = vi.fn();
 			run.candidates = [{ baseline, compile }];

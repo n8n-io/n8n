@@ -13,17 +13,20 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import omit from 'lodash/omit';
 import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
 
 import { createResult } from '../../self-healing/__tests__/support/result';
+import { SelfHealingResultRepository } from '../../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from '../database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from '../database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from '../workflow-suggestion.service';
 
 let suggestions: WorkflowSuggestionRepository;
+let results: SelfHealingResultRepository;
 let tx: TransactionRunner;
 let workflow: WorkflowEntity;
 let project: Project;
@@ -61,6 +64,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['instance-ai']);
 	await testDb.init();
 	suggestions = Container.get(WorkflowSuggestionRepository);
+	results = Container.get(SelfHealingResultRepository);
 	tx = Container.get(TransactionRunner);
 });
 beforeEach(async () => {
@@ -72,6 +76,93 @@ beforeEach(async () => {
 afterAll(async () => await testDb.terminate());
 afterEach(async () => {
 	await suggestions.createQueryBuilder().delete().execute();
+});
+
+describe('open results', () => {
+	async function copyResult(ctx: OperationContext = {}) {
+		const original = await results.getResult(
+			resultId,
+			{ workflowId: workflow.id, projectId: project.id },
+			ctx,
+		);
+		return await results.createResult(omit(original, 'id'), ctx);
+	}
+
+	it.each([
+		{ triggerMatches: true, suggestionState: null, expected: true },
+		{ triggerMatches: true, suggestionState: 'pending', expected: true },
+		{ triggerMatches: true, suggestionState: 'closed', expected: true },
+		{ triggerMatches: false, suggestionState: null, expected: false },
+		{ triggerMatches: false, suggestionState: 'pending', expected: true },
+		{ triggerMatches: false, suggestionState: 'closed', expected: false },
+	] as const)(
+		'finds the result for trigger=$triggerMatches and suggestion=$suggestionState',
+		async ({ triggerMatches, suggestionState, expected }) => {
+			if (!triggerMatches) {
+				const otherWorkflow = await createWorkflow({}, project);
+				await results.update(resultId, { workflowId: otherWorkflow.id });
+			}
+			if (suggestionState) {
+				const suggestion = await insertPending({});
+				await suggestions.update(suggestion.id, { state: suggestionState });
+			}
+			expect(await results.getOpenResultIds(workflow.id)).toEqual(expected ? [resultId] : []);
+			expect(await results.getOpenForWorkflow(workflow.id, project.id)).toEqual(
+				expected ? { id: resultId } : null,
+			);
+			const otherProject = await createTeamProject();
+			expect(await results.getOpenForWorkflow(workflow.id, otherProject.id)).toBeNull();
+		},
+	);
+
+	it.each(['closed', 'applied', 'dismissed', 'outdated'] as const)(
+		'excludes %s results for the trigger and pending member',
+		async (reviewState) => {
+			const child = await createWorkflow({}, project);
+			await insertPending({}, { ...baseline(), workflowId: child.id });
+			await results.update(resultId, { reviewState });
+			for (const workflowId of [workflow.id, child.id]) {
+				expect(await results.getOpenResultIds(workflowId)).toEqual([]);
+				expect(await results.getOpenForWorkflow(workflowId, project.id)).toBeNull();
+			}
+		},
+	);
+
+	it('returns every matching result once when both branches match', async () => {
+		await insertPending({});
+		const second = await copyResult();
+		const expected = [resultId, second.id].sort();
+		expect((await results.getOpenResultIds(workflow.id)).sort()).toEqual(expected);
+		expect(expected).toContain((await results.getOpenForWorkflow(workflow.id, project.id))?.id);
+	});
+
+	it('reads both branches through the caller transaction', async () => {
+		const child = await createWorkflow({}, project);
+		await results.update(resultId, { reviewState: 'closed' });
+		await expect(
+			tx.run({}, async (ctx) => {
+				const result = await copyResult(ctx);
+				await suggestions.createPending(
+					{ ...baseline(), workflowId: child.id },
+					payload(),
+					'fix_ready',
+					result.id,
+					ctx,
+				);
+				for (const workflowId of [workflow.id, child.id]) {
+					expect(await results.getOpenResultIds(workflowId, ctx)).toEqual([result.id]);
+					expect(await results.getOpenForWorkflow(workflowId, project.id, ctx)).toEqual({
+						id: result.id,
+					});
+				}
+				throw new Error('Rollback the result.');
+			}),
+		).rejects.toThrow('Rollback the result.');
+		for (const workflowId of [workflow.id, child.id]) {
+			expect(await results.getOpenResultIds(workflowId)).toEqual([]);
+			expect(await results.getOpenForWorkflow(workflowId, project.id)).toBeNull();
+		}
+	});
 });
 
 it('accepts only one concurrent pending proposal for a workflow', async () => {

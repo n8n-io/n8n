@@ -1,5 +1,4 @@
 import {
-	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
@@ -12,6 +11,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleRepository,
 	ServiceAccountRepository,
 	TransactionRunner,
 	UserRepository,
@@ -23,12 +23,11 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import { RoleCacheService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
 import { UserService } from '@/services/user.service';
@@ -123,6 +122,33 @@ async function createInvestigation(
 		finishedAt,
 	});
 }
+
+it('shares role reads on cache misses and reads them in the transaction', async () => {
+	const { user, project, input } = await fixture();
+	const configuration = await configurations.save(user, project.id, input);
+	const cache = Container.get(RoleCacheService);
+	const loadRoles = vi.spyOn(Container.get(RoleRepository), 'findAll');
+	try {
+		await cache.invalidateCache();
+		const choices = await configurations.getConfigurationChoices(project.id);
+		expect(loadRoles).toHaveBeenCalledExactlyOnceWith({});
+		loadRoles.mockClear();
+
+		expect(await configurations.getConfigurationChoices(project.id)).toEqual(choices);
+		expect(loadRoles).not.toHaveBeenCalled();
+
+		for (let attempt = 0; attempt < 2; attempt++) {
+			await cache.invalidateCache();
+			await configurations.setEnabled(user, project.id, configuration.id, true);
+			expect(loadRoles).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ trx: expect.anything() }),
+			);
+			loadRoles.mockClear();
+		}
+	} finally {
+		loadRoles.mockRestore();
+	}
+});
 
 it.each(['pause', 'remove'] as const)(
 	'requests cancellation of only unfinished investigations after %s commits',
@@ -377,10 +403,6 @@ it('requires existing project settings permission for every operation', async ()
 	await agent.patch(`${url}/${config.id}`).send(config).expect(403);
 	await agent.patch(`${url}/${config.id}/enabled`).send({ enabled: true }).expect(403);
 	await agent.delete(`${url}/${config.id}`).expect(403);
-	await agent
-		.post(`${url}/sub-workflows/preview`)
-		.send({ workflowIds: ['workflow'] })
-		.expect(403);
 });
 
 it('lets a personal project owner manage self-healing in their personal project', async () => {
@@ -463,10 +485,6 @@ async function expectNoConfigurationAccess(user: User, projectId: string, id: nu
 	await agent.patch(`${url}/${id}`).send(body).expect(403);
 	await agent.patch(`${url}/${id}/enabled`).send({ enabled: false }).expect(403);
 	await agent.delete(`${url}/${id}`).expect(403);
-	await agent
-		.post(`${url}/sub-workflows/preview`)
-		.send({ workflowIds: ['workflow'] })
-		.expect(403);
 	expect(await configurations.list(projectId)).toHaveLength(1);
 }
 
@@ -1051,8 +1069,10 @@ it('reverts and reapplies the configuration schema', async () => {
 	const subWorkflows = findMigration(
 		'AddIncludeSubWorkflowsToSelfHealingConfiguration1793629699000',
 	);
+	const activityIndex = findMigration('IndexSelfHealingInvestigationActivity1793700906582');
 	const runner = db.createQueryRunner();
 	try {
+		await activityIndex.down(runner);
 		await subWorkflows.down(runner);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeSubWorkflows')).toBe(
 			false,
@@ -1068,6 +1088,7 @@ it('reverts and reapplies the configuration schema', async () => {
 			await migration.up(runner);
 			await projectMembers.up(runner);
 			await subWorkflows.up(runner);
+			await activityIndex.up(runner);
 		}
 		expect(await runner.hasTable(repository.metadata.tablePath)).toBe(true);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeAllProjectMembers')).toBe(
@@ -1115,54 +1136,6 @@ describe('sub-workflows', () => {
 		expect(await configurations.get(project.id, created.body.data.id)).toMatchObject({
 			includeSubWorkflows: false,
 		});
-	});
-
-	it('previews the sub-workflows of the selected workflows', async () => {
-		const { user, project, url } = await fixture();
-		const index = Container.get(WorkflowIndexService);
-		const publish = async (name: string, calledWorkflowIds: string[] = []) => {
-			const nodes = calledWorkflowIds.map((workflowId) => ({
-				id: randomUUID(),
-				name: randomUUID(),
-				type: 'n8n-nodes-base.executeWorkflow',
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-				parameters: { workflowId: { __rl: true, mode: 'id', value: workflowId } },
-			}));
-			const workflow = await createActiveWorkflow({ name, nodes }, project);
-			await index.updateIndexForPublished(workflow, workflow.activeVersionId!, nodes);
-			return workflow;
-		};
-		const second = await publish('Second');
-		const first = await publish('First', [second.id]);
-		const root = await publish('Root', [first.id]);
-		const unpublished = await createWorkflow({ activeVersionId: null }, project);
-
-		const response = await server
-			.authAgentFor(user)
-			.post(`${url}/sub-workflows/preview`)
-			.send({ workflowIds: [root.id, unpublished.id] })
-			.expect(200);
-
-		expect(response.body.data).toEqual({
-			[root.id]: {
-				subWorkflows: [
-					{ id: first.id, name: 'First', otherProject: false },
-					{ id: second.id, name: 'Second', otherProject: false },
-				],
-				inaccessible: 0,
-			},
-			[unpublished.id]: { subWorkflows: [], inaccessible: 0 },
-		});
-	});
-
-	it('rejects a preview without workflows', async () => {
-		const { user, url } = await fixture();
-		await server
-			.authAgentFor(user)
-			.post(`${url}/sub-workflows/preview`)
-			.send({ workflowIds: [] })
-			.expect(400);
 	});
 });
 

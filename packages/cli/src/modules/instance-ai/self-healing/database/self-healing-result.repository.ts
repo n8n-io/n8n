@@ -90,22 +90,48 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		return whereReviewer(query, 'configuration', ':reviewerId');
 	}
 
-	async getOpenForWorkflow(workflowId: string, projectId: string, ctx: OperationContext = {}) {
-		const query = this.managerFor(ctx).createQueryBuilder(SelfHealingResult, 'result');
-		const pendingSuggestion = query
-			.subQuery()
-			.select('1')
-			.from(WorkflowSuggestion, 'suggestion')
-			.where('suggestion.selfHealingResultId = result.id')
-			.andWhere('suggestion.workflowId = :workflowId')
+	private openResultsForWorkflowQuery(
+		workflowId: string,
+		projectId: string | undefined,
+		ctx: OperationContext,
+	) {
+		const manager = this.managerFor(ctx);
+		const triggered = manager
+			.createQueryBuilder(SelfHealingResult, 'result')
+			.select('result.id', 'id')
+			.where('result.workflowId = :workflowId')
+			.andWhere("result.reviewState = 'open'");
+		const targeted = manager
+			.createQueryBuilder(WorkflowSuggestion, 'suggestion')
+			.select('suggestion.selfHealingResultId', 'id')
+			.innerJoin('suggestion.selfHealingResult', 'result')
+			.where('suggestion.workflowId = :workflowId')
 			.andWhere("suggestion.state = 'pending'")
-			.getQuery();
-		return await query
-			.select('result.id')
-			.where('result.projectId = :projectId', { projectId })
-			.andWhere(`(result.workflowId = :workflowId OR EXISTS ${pendingSuggestion})`, { workflowId })
-			.andWhere("result.reviewState = 'open'")
-			.getOne();
+			.andWhere("result.reviewState = 'open'");
+		if (projectId !== undefined) {
+			triggered.andWhere('result.projectId = :projectId');
+			targeted.andWhere('result.projectId = :projectId');
+		}
+		return manager
+			.createQueryBuilder()
+			.select('open_result.id', 'id')
+			.from(`(${triggered.getQuery()} UNION ${targeted.getQuery()})`, 'open_result')
+			.setParameters({ workflowId, projectId });
+	}
+
+	async getOpenForWorkflow(workflowId: string, projectId: string, ctx: OperationContext = {}) {
+		return (
+			(await this.openResultsForWorkflowQuery(workflowId, projectId, ctx)
+				.limit(1)
+				.getRawOne<{ id: string }>()) ?? null
+		);
+	}
+
+	async getOpenResultIds(workflowId: string, ctx: OperationContext = {}) {
+		const results = await this.openResultsForWorkflowQuery(workflowId, undefined, ctx).getRawMany<{
+			id: string;
+		}>();
+		return results.map(({ id }) => id);
 	}
 
 	async isInCooldown(

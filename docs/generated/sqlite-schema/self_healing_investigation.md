@@ -48,7 +48,7 @@ CREATE TABLE "self_healing_investigation" ("id" varchar(36) PRIMARY KEY NOT NULL
 | IDX_24923f35caa34c1f264576a791 | CREATE INDEX "IDX_24923f35caa34c1f264576a791" ON "self_healing_investigation" ("backgroundUserId")  |
 | IDX_bfdc789961ad0537486e0e2d29 | CREATE UNIQUE INDEX "IDX_bfdc789961ad0537486e0e2d29" ON "self_healing_investigation" ("workflowId", "executionId")  |
 | IDX_eb5b7d44599bd9a34f02f071b2 | CREATE INDEX "IDX_eb5b7d44599bd9a34f02f071b2" ON "self_healing_investigation" ("projectId")  |
-| IDX_self_healing_investigation_configurationId | CREATE INDEX "IDX_self_healing_investigation_configurationId" ON "self_healing_investigation" ("configurationId")  |
+| IDX_self_healing_investigation_configurationId_createdAt | CREATE INDEX "IDX_self_healing_investigation_configurationId_createdAt" ON "self_healing_investigation" ("configurationId", "createdAt")  |
 | IDX_self_healing_investigation_resultId | CREATE UNIQUE INDEX "IDX_self_healing_investigation_resultId" ON "self_healing_investigation" ("resultId") WHERE "resultId" IS NOT NULL |
 | IDX_self_healing_investigation_workflowId | CREATE UNIQUE INDEX "IDX_self_healing_investigation_workflowId" ON "self_healing_investigation" ("workflowId") WHERE "finishedAt" IS NULL |
 | sqlite_autoindex_self_healing_investigation_1 | PRIMARY KEY (id) |

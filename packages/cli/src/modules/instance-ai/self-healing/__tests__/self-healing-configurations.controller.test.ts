@@ -6,7 +6,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationsController } from '../self-healing-configurations.controller';
-import type { SubWorkflowDiscoveryService } from '../sub-workflow-discovery.service';
 
 const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 	SelfHealingConfigurationsController as never,
@@ -24,10 +23,7 @@ it('checks configuration access on every route', () => {
 describe('checkAccess', () => {
 	const user = mock<User>({ id: 'user' });
 	const service = mock<SelfHealingConfigurationService>();
-	const controller = new SelfHealingConfigurationsController(
-		service,
-		mock<SubWorkflowDiscoveryService>(),
-	);
+	const controller = new SelfHealingConfigurationsController(service);
 	const req = { user, params: { projectId: 'project', configurationId: '1' } } as never;
 
 	beforeEach(() => service.canConfigure.mockReset());

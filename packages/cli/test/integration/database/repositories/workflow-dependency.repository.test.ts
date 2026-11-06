@@ -372,8 +372,8 @@ describe('WorkflowDependencyRepository', () => {
 		});
 	});
 
-	describe('findWorkflowCalls()', () => {
-		it('should return workflow calls of the given published versions only', async () => {
+	describe('isCalledBy()', () => {
+		it('should match workflow calls of the given published versions only', async () => {
 			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
 			const add = async (dependencyKey: string, publishedVersionId: string | null) => {
 				const dependencies = new WorkflowDependencies(workflow.id, 1, publishedVersionId);
@@ -384,9 +384,15 @@ describe('WorkflowDependencyRepository', () => {
 			await add('draft-child', null);
 			await add('child', 'current-version');
 
-			const calls = await workflowDependencyRepository.findWorkflowCalls(['current-version']);
-
-			expect(calls).toEqual([{ workflowId: workflow.id, calledWorkflowId: 'child' }]);
+			expect(await workflowDependencyRepository.isCalledBy('child', ['current-version'])).toBe(
+				true,
+			);
+			expect(await workflowDependencyRepository.isCalledBy('old-child', ['current-version'])).toBe(
+				false,
+			);
+			expect(
+				await workflowDependencyRepository.isCalledBy('draft-child', ['current-version']),
+			).toBe(false);
 		});
 
 		it('should skip other dependency types', async () => {
@@ -399,9 +405,9 @@ describe('WorkflowDependencyRepository', () => {
 			});
 			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
 
-			const calls = await workflowDependencyRepository.findWorkflowCalls(['current-version']);
-
-			expect(calls).toEqual([]);
+			expect(await workflowDependencyRepository.isCalledBy('cred', ['current-version'])).toBe(
+				false,
+			);
 		});
 	});
 

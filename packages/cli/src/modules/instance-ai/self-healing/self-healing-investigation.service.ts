@@ -257,7 +257,7 @@ export class SelfHealingInvestigationService {
 			completedAt: new Date().toISOString(),
 		};
 
-		if (output.candidateFilePaths.length > 0) {
+		if (output.candidateWorkflowIds.length > 0) {
 			if (!run.candidates) throw new BadRequestError('The candidate files are unavailable.');
 
 			const missingSetup: string[] = [];

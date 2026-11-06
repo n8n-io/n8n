@@ -14,7 +14,6 @@ import {
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
 import { WorkflowDependency, WorkflowEntity, WORKFLOW_DEPENDENCY_INDEX_VERSION } from '../entities';
-import { chunkIds } from '../utils/chunk-ids';
 
 /**
  * Which workflows an aggregate over the index may span. The roles come from the caller
@@ -69,23 +68,12 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		super(WorkflowDependency, dataSource.manager);
 	}
 
-	async findWorkflowCalls(
-		publishedVersionIds: string[],
-	): Promise<Array<{ workflowId: string; calledWorkflowId: string }>> {
-		const calls = [];
-		for (const chunk of chunkIds(publishedVersionIds)) {
-			const rows = await this.find({
-				select: { workflowId: true, dependencyKey: true },
-				where: { publishedVersionId: In(chunk), dependencyType: 'workflowCall' },
-			});
-			calls.push(
-				...rows.map(({ workflowId, dependencyKey }) => ({
-					workflowId,
-					calledWorkflowId: dependencyKey,
-				})),
-			);
-		}
-		return calls;
+	async isCalledBy(workflowId: string, publishedVersionIds: string[]) {
+		return await this.existsBy({
+			publishedVersionId: In(publishedVersionIds),
+			dependencyType: 'workflowCall',
+			dependencyKey: workflowId,
+		});
 	}
 
 	async findDependenciesForResources(

@@ -58,7 +58,7 @@ function sharedWorkflowEditQuery<T extends ObjectLiteral>(
 		.where('shareMember.userId = projectMember.userId')
 		.andWhere('shareMember.role IN (:...projectRoleSlugs)', { projectRoleSlugs })
 		.andWhere('share.role IN (:...workflowRoleSlugs)', { workflowRoleSlugs })
-		.andWhere('owner.projectId = projectMember.projectId')
+		.andWhere('owner.projectId = :projectId')
 		.andWhere('owner.role = :ownerRole', { ownerRole: 'workflow:owner' });
 }
 
@@ -180,15 +180,20 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		const [workflows, reviewers, activity] = await Promise.all([
 			this.manager.findBy(SelfHealingConfigurationWorkflow, { configurationId }),
 			this.manager.findBy(SelfHealingConfigurationReviewer, { configurationId }),
-			this.manager
-				.createQueryBuilder(SelfHealingInvestigation, 'investigation')
-				.select('investigation.configurationId', 'configurationId')
-				.addSelect('MAX(investigation.createdAt)', 'lastActivity')
-				.where('investigation.configurationId IN (:...ids)', {
-					ids: configurationIds,
-				})
-				.groupBy('investigation.configurationId')
-				.getRawMany<{ configurationId: number; lastActivity: Date | string }>(),
+			this.createQueryBuilder('configuration')
+				.select('configuration.id', 'configurationId')
+				.addSelect(
+					(query) =>
+						query
+							.select('investigation.createdAt')
+							.from(SelfHealingInvestigation, 'investigation')
+							.where('investigation.configurationId = configuration.id')
+							.orderBy('investigation.createdAt', 'DESC')
+							.limit(1),
+					'lastActivity',
+				)
+				.where('configuration.id IN (:...ids)', { ids: configurationIds })
+				.getRawMany<{ configurationId: number; lastActivity: Date | string | null }>(),
 		]);
 
 		const workflowsByConfiguration = groupBy(workflows, 'configurationId');

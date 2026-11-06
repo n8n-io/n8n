@@ -23,6 +23,7 @@ import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { SelfHealingResultRepository } from '../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 
@@ -65,6 +66,7 @@ export class WorkflowSuggestionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly results: SelfHealingResultRepository,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
@@ -314,7 +316,7 @@ export class WorkflowSuggestionService {
 	}
 
 	async closeResultsOfMovedWorkflow(workflowId: string) {
-		for (const id of await this.suggestions.getOpenResultIds(workflowId)) {
+		for (const id of await this.results.getOpenResultIds(workflowId)) {
 			await this.closeResultAsOutdated(id);
 		}
 	}

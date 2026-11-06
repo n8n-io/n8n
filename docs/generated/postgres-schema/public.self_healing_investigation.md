@@ -47,7 +47,7 @@
 | IDX_24923f35caa34c1f264576a791 | CREATE INDEX "IDX_24923f35caa34c1f264576a791" ON public.self_healing_investigation USING btree ("backgroundUserId") |
 | IDX_bfdc789961ad0537486e0e2d29 | CREATE UNIQUE INDEX "IDX_bfdc789961ad0537486e0e2d29" ON public.self_healing_investigation USING btree ("workflowId", "executionId") |
 | IDX_eb5b7d44599bd9a34f02f071b2 | CREATE INDEX "IDX_eb5b7d44599bd9a34f02f071b2" ON public.self_healing_investigation USING btree ("projectId") |
-| IDX_self_healing_investigation_configurationId | CREATE INDEX "IDX_self_healing_investigation_configurationId" ON public.self_healing_investigation USING btree ("configurationId") |
+| IDX_self_healing_investigation_configurationId_createdAt | CREATE INDEX "IDX_self_healing_investigation_configurationId_createdAt" ON public.self_healing_investigation USING btree ("configurationId", "createdAt") |
 | IDX_self_healing_investigation_resultId | CREATE UNIQUE INDEX "IDX_self_healing_investigation_resultId" ON public.self_healing_investigation USING btree ("resultId") WHERE ("resultId" IS NOT NULL) |
 | IDX_self_healing_investigation_workflowId | CREATE UNIQUE INDEX "IDX_self_healing_investigation_workflowId" ON public.self_healing_investigation USING btree ("workflowId") WHERE ("finishedAt" IS NULL) |
 | PK_735895e1c137cd827884cfa843a | CREATE UNIQUE INDEX "PK_735895e1c137cd827884cfa843a" ON public.self_healing_investigation USING btree (id) |

@@ -19,17 +19,6 @@ export class SetSelfHealingConfigurationEnabledDto extends Z.class({
 	enabled: z.boolean(),
 }) {}
 
-export class PreviewSelfHealingSubWorkflowsDto extends Z.class({
-	workflowIds: z.array(z.string().min(1).max(36)).min(1).max(100),
-}) {}
-
-export type SelfHealingSubWorkflow = { id: string; name: string; otherProject: boolean };
-
-export type SelfHealingSubWorkflowPreview = Record<
-	string,
-	{ subWorkflows: SelfHealingSubWorkflow[]; inaccessible: number }
->;
-
 export type SelfHealingConfigurationDto = SaveSelfHealingConfigurationDto & {
 	id: number;
 	projectId: string;
