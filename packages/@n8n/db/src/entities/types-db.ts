@@ -58,6 +58,7 @@ export interface IExecutionBase {
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
 	waitTill?: Date | null;
+	resumeAttempts?: number; // see `ExecutionEntity.resumeAttempts`
 }
 
 // Required by PublicUser

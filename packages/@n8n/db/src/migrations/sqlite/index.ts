@@ -117,6 +117,7 @@ import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-Crea
 import { CreateWorkflowPublishHistoryTable1764167920585 } from '../common/1764167920585-CreateWorkflowPublishHistoryTable';
 import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
 import { AddInsightsRawTimestampIdIndex1784000000004 } from '../common/1784000000004-AddInsightsRawTimestampIdIndex';
+import { AddResumeAttemptsToExecutionEntity1793553583760 } from '../common/1793553583760-AddResumeAttemptsToExecutionEntity';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -239,6 +240,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowPublishHistoryTable1764167920585,
 	BackfillMissingWorkflowHistoryRecords1765448186933,
 	AddInsightsRawTimestampIdIndex1784000000004,
+	AddResumeAttemptsToExecutionEntity1793553583760,
 ];
 
 export { sqliteMigrations };

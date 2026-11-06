@@ -132,6 +132,13 @@ const moreThanOrEqual = (date: string): unknown => {
 
 // This is the max number of elements in an IN-clause.
 // It's a conservative value, as some databases indicate limits around 1000.
+export type ResumableExecutionStatus = 'waiting' | 'new';
+
+export type ResumeAttemptClaim =
+	| { outcome: 'claimed'; attempts: number }
+	| { outcome: 'exhausted'; attempts: number }
+	| { outcome: 'conflict' };
+
 const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
@@ -403,6 +410,87 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.logger.info('Marked executions as `crashed`', { executionIds });
 			processed += batch.length;
 		}
+	}
+
+	/**
+	 * Set a `waiting` or `new` execution to `crashed`. With `expectedAttempts`, the row is
+	 * left alone if its resume attempt count changed since it was read.
+	 */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		{ expectedAttempts }: { expectedAttempts?: number } = {},
+	): Promise<boolean> {
+		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId, status };
+		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
+
+		const result = await this.update(where, {
+			status: 'crashed',
+			stoppedAt: new Date(),
+			waitTill: null,
+		});
+
+		const transitioned = (result.affected ?? 0) > 0;
+		if (transitioned) {
+			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		}
+
+		return transitioned;
+	}
+
+	/**
+	 * Count one resume attempt before the load, so a load that kills the process stays
+	 * counted. `conflict` means the row is no longer in `status`.
+	 */
+	async claimResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		maxAttempts: number,
+	): Promise<ResumeAttemptClaim> {
+		const execution = await this.findOne({
+			select: ['id', 'resumeAttempts'],
+			where: { id: executionId, status },
+		});
+		if (!execution) return { outcome: 'conflict' };
+
+		const { resumeAttempts: attempts } = execution;
+		if (attempts >= maxAttempts) return { outcome: 'exhausted', attempts };
+
+		// The count just read is part of the predicate, so two processes cannot take the same attempt.
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts + 1 },
+		);
+		if ((result.affected ?? 0) === 0) return { outcome: 'conflict' };
+
+		return { outcome: 'claimed', attempts: attempts + 1 };
+	}
+
+	/**
+	 * Give back an attempt. `attempts` is the count the claim returned, so a newer claim by
+	 * another process is not undone.
+	 */
+	async releaseResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		attempts: number,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts - 1 },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findEnqueuedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
+
+		return rows.map(({ id }) => id);
 	}
 
 	/**

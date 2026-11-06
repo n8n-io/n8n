@@ -39,6 +39,8 @@ class QueueRecoveryConfig {
 	batchSize: number = 100;
 }
 
+const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+
 @Config
 class RecoveryConfig {
 	/**
@@ -53,6 +55,15 @@ class RecoveryConfig {
 	 */
 	@Env('N8N_WORKFLOW_AUTODEACTIVATION_ENABLED')
 	workflowDeactivationEnabled: boolean = false;
+
+	/**
+	 * How many times n8n tries to resume a waiting execution or start a queued one before it
+	 * marks the execution as crashed, so an execution whose data doesn't fit in memory can't
+	 * restart n8n in a loop. The count resets once the execution runs. Set to 0 to remove the
+	 * limit.
+	 */
+	@Env('N8N_EXECUTIONS_MAX_RESUME_ATTEMPTS', nonNegativeIntSchema)
+	maxResumeAttempts: number = 2;
 }
 
 const executionModeSchema = z.enum(['regular', 'queue']);

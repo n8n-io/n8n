@@ -7,7 +7,7 @@ import { Container } from '@n8n/di';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { jsonParse, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -20,17 +20,15 @@ import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
-import { ExecutionService } from '@/executions/execution.service';
+import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
-import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
-import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -380,33 +378,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * enqueue any remaining ones until we have spare concurrency capacity again.
 	 */
 	private async runEnqueuedExecutions() {
-		const executions = await Container.get(ExecutionService).findAllEnqueuedExecutions();
-
-		if (executions.length === 0) return;
-
-		this.logger.debug('[Startup] Found enqueued executions to run', {
-			executionIds: executions.map((e) => e.id),
-		});
-
-		const ownershipService = Container.get(OwnershipService);
-		const workflowRunner = Container.get(WorkflowRunner);
-
-		for (const execution of executions) {
-			const project = await ownershipService.getWorkflowProjectCached(execution.workflowId);
-
-			const data: IWorkflowExecutionDataProcess = {
-				executionMode: execution.mode,
-				executionData: execution.data,
-				workflowData: execution.workflowData,
-				projectId: project.id,
-			};
-
-			Container.get(EventService).emit('execution-started-during-bootup', {
-				executionId: execution.id,
-			});
-
-			// do not block - each execution either runs concurrently or is queued
-			void workflowRunner.run(data, undefined, false, execution.id);
-		}
+		await Container.get(EnqueuedExecutionRecoveryService).recoverEnqueuedExecutions();
 	}
 }

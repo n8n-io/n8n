@@ -77,6 +77,10 @@ export class ExecutionEntity {
 	@DateTimeColumn({ nullable: true })
 	waitTill: Date | null;
 
+	/** Resume attempts since the execution last entered `waiting` or `new`. Reset once it runs. */
+	@Column({ type: 'smallint', default: 0 })
+	resumeAttempts: number;
+
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
 

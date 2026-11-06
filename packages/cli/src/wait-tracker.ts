@@ -3,9 +3,11 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { ensureError, UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ResumeAttemptService } from '@/executions/resume-attempt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { shouldRestartParentExecution } from './workflow-helpers';
@@ -21,6 +23,8 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
+	private readonly resuming = new Set<string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -28,6 +32,7 @@ export class WaitTracker {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly resumeAttemptService: ResumeAttemptService,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
 	}
@@ -75,7 +80,7 @@ export class WaitTracker {
 				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(() => {
-						void this.startExecution(executionId);
+						void this.resumeOrSkip(executionId);
 					}, triggerTime),
 				};
 			}
@@ -90,10 +95,56 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 	}
 
+	/**
+	 * Resume from a timer or a finished child. A claim by another process is expected, so it
+	 * is logged and not thrown.
+	 */
+	async resumeOrSkip(executionId: string) {
+		try {
+			await this.startExecution(executionId);
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) {
+				this.logger.info('Execution already claimed by another process, skipping', {
+					executionId,
+				});
+				return;
+			}
+			this.logger.error('Failed to start waiting execution', {
+				executionId,
+				error: ensureError(error).message,
+			});
+		}
+	}
+
 	async startExecution(executionId: string) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
+		// A poll can find the row still `waiting` while this process resumes it. A second
+		// resume would double the memory in use and consume a second attempt.
+		if (this.resuming.has(executionId)) throw new ExecutionAlreadyResumingError(executionId);
+		this.resuming.add(executionId);
+		try {
+			await this.resumeExecution(executionId);
+		} finally {
+			this.resuming.delete(executionId);
+		}
+	}
+
+	private async resumeExecution(executionId: string) {
+		const claim = await this.resumeAttemptService.claim(executionId, 'waiting');
+		if (!claim.granted) return;
+
+		try {
+			await this.loadAndRun(executionId);
+		} catch (error) {
+			// The next poll retries a resume that throws, so it must not count toward the limit
+			await this.resumeAttemptService.release(executionId, 'waiting', claim.attempt);
+			throw error;
+		}
+	}
+
+	private async loadAndRun(executionId: string) {
 		// Get the data to execute
 		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
@@ -130,7 +181,7 @@ export class WaitTracker {
 		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
 			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
-				void this.startExecution(parentExecution.executionId);
+				void this.resumeOrSkip(parentExecution.executionId);
 			});
 		}
 	}
