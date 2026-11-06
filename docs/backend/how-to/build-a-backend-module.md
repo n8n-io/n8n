@@ -150,9 +150,9 @@ Keep in mind:
 - **Configuration:** Write a `@Config` class in `*.config.ts`, with a default for each `@Env()` property.
 - **Migrations:** See [Write a database migration](write-a-database-migration.md). n8n runs all migrations, even for a disabled module.
 
-## Share data with the frontend and executions
+## Share data with the editor and executions
 
-`settings()` serves an object to the frontend on `/rest/module-settings`. After a setting changes at runtime, call `ModuleRegistry.refreshModuleSettings(name)`.
+`settings()` serves an object to the editor on `/rest/module-settings`. After a setting changes at runtime, call `ModuleRegistry.refreshModuleSettings(name)`.
 
 `context()` adds an object to `IWorkflowExecuteAdditionalData`, under the module name.
 

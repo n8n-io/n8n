@@ -43,7 +43,7 @@ Unlike a task runner, an isolate runs inside the n8n process. If a custom tool r
 
 ## n8n Assistant
 
-The n8n Assistant writes the source code of workflows, and compiles it in remote sandboxes. [AI for building](ai-for-building.md#sandbox) explains these sandboxes.
+The [n8n Assistant](ai-functionality.md#n8n-assistant) writes the source code of a workflow, and compiles it in a remote sandbox, so that its file writes and commands do not run on the n8n host. Without a sandbox, the Assistant cannot build workflows.
 
 ## Quiz
 

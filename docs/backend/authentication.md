@@ -8,53 +8,97 @@ contact: guillaumejacquart
 
 # Authentication
 
-[APIs](apis.md) showed that authentication is the first check on a REST route. The backend gets requests from the editor, from scripts, from MCP clients, and from products that embed n8n. This page explains how each caller proves who it is, how users sign in, and how n8n keeps their sessions.
+The [APIs](apis.md) page mentioned that authentication is the first check on a request.
+
+This page explains how callers prove who they are and sign in, and how n8n checks their sessions.
 
 ## Callers
 
-> [!WARNING]
-> **A route with `skipAuth` must check the caller in another way.** For example, the route for signed binary data checks a signature, and the routes that resolve a signup token check that token.
+Each kind of caller proves its identity differently.
 
-| Caller | Proof |
-|---|---|
-| The editor | A JWT in the cookie `n8n-auth` |
-| A script that uses the public API | An API key with scopes |
-| An MCP client | An API key, or a token from the OAuth server of the instance |
-| A product that embeds n8n | A token exchange, behind an environment flag |
+**Editor:** The user signs in, and n8n sets a session cookie that holds a JWT. The editor then sends this cookie with each request.
 
-## Sign-in methods
+```mermaid
+sequenceDiagram
+    autonumber
+    participant E as Editor
+    participant N as n8n
+    E->>N: sign-in
+    N-->>E: session cookie with JWT
+    E->>N: request with cookie
+```
 
-Email sign-in is in the core. LDAP, SAML, and OIDC are licensed modules, and only one method is active at a time. With SAML or OIDC, the `provisioning` module can set the roles of a user from the claims of the identity provider. It can also refuse a sign-in. SCIM lets an identity provider create and remove users, and it works only with SAML or OIDC.
+**Script:** A script sends an API key with each request to the public API.
 
-## Sign-in flow
+**Third-party app:** An app that embeds n8n signs its users in with a **token exchange**.
 
-Email and LDAP use the same route, `POST /login`. Each of them is a class with `@AuthHandler()`, and `AuthHandlerRegistry` finds a handler by its name. The route tries the email handler first. If the active method is LDAP, the route then tries the LDAP handler, except for the owner.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant A as Third-party app
+    participant N as n8n
+    N->>N: register app key<br/>as trusted
+    A->>N: JWT naming user,<br/>signed with app key
+    N->>N: check signature,<br/>find or create user
+    N-->>A: n8n token
+    A->>N: request with token
+```
 
-When SAML or OIDC is active, the route refuses a password sign-in. Only the owner and users with `allowSSOManualLogin` can still use a password. SAML and OIDC send the browser to the identity provider, and their callback route signs the user in.
+**MCP client:** An MCP client sends an API key, a token from a token exchange, or an OAuth token. n8n can issue the OAuth token itself, after the user approves the client.
 
-After a password check, n8n checks the MFA code, if the user has MFA on. Every method then calls `issueCookie` in `AuthService`, so the rest of the backend sees one kind of session.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as MCP client
+    participant N as n8n
+    C->>N: authorization request
+    N->>N: user signs in<br/>and approves client
+    N-->>C: OAuth token
+    C->>N: request with OAuth token
+```
+
+**Sessionless caller:** A user who opens an invitation link has no session yet, so the route for this link skips authentication. A route that skips authentication must verify the caller in another way.
+
+## Sign-in
+
+Users sign in with an email and a password by default. An admin can enable LDAP, SAML, or OIDC instead. SAML and OIDC send the user to an identity provider, and turn off password sign-in for most users.
+
+With SAML or OIDC, the identity provider can also manage users:
+
+- **Provisioning:** n8n sets the roles of a user from the identity provider at each sign-in.
+- **SCIM:** The identity provider creates, updates, and removes users.
+
+Every sign-in method ends with the same session cookie, so a route does not need to know how the user signed in.
 
 ## Sessions
 
-The session cookie holds a JWT, and n8n keeps no session table. The JWT contains a hash of the password and the email of the user. A change to either one makes old sessions invalid. A logout adds the token to a block list.
+n8n does not store sessions on the server. The session JWT holds a hash of the email, password, and multi-factor authentication (MFA) secret of the user, so a change to any of them ends the other sessions of that user. A logout adds the JWT to a block list.
+
+If an admin requires MFA, a session without MFA can reach only the routes for MFA setup.
 
 ## Quiz
 
-1. A user changes their password. What happens to their open sessions?
-   - A. They stay valid until they expire.
-   - B. n8n deletes them from the session table.
-   - C. Only the current session stays valid.
-   - D. They become invalid.
-2. SAML is active. A member enters an email and a password on the sign-in page. What happens?
+1. Your route skips authentication, because its caller has no session (e.g. a link in an email). What must the route do?
+   - A. Nothing.
+   - B. Check the caller in another way, e.g. with a signature.
+   - C. Ask for an API key.
+   - D. Check the license.
+2. SAML is enabled. A member enters an email and a password on the sign-in page. What happens?
    - A. The sign-in works.
-   - B. n8n refuses it, unless the member has `allowSSOManualLogin`.
+   - B. n8n refuses it, because password sign-in is off.
    - C. n8n sends the password to the identity provider.
-   - D. n8n tries the LDAP handler.
+   - D. n8n tries LDAP.
+3. A user changes their password. What happens to their open sessions?
+   - A. They stay valid until they expire.
+   - B. n8n deletes them from a session table.
+   - C. Only the current session stays valid.
+   - D. They all end.
 
 <details>
 <summary>Answers</summary>
 
-1. D. n8n keeps no session table. A change of the password or the email makes old tokens invalid.
-2. B. When SAML or OIDC is active, only the owner and users with `allowSSOManualLogin` can use a password.
+1. B. A route that skips authentication must verify the caller in another way.
+2. B. With SAML or OIDC, password sign-in is off for most users.
+3. C. The session JWT holds a hash of the password, so a change ends the other sessions of that user.
 
 </details>

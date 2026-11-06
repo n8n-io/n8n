@@ -94,7 +94,7 @@ The mode records how the execution started.
 
 ## Build an agent
 
-An **agent** is an AI model with instructions and tools that answers messages. A message to an agent starts an **agent turn**, which runs outside the workflow engine.
+An **agent** answers messages with an AI model. A user builds an agent in n8n, and gives it instructions and tools. A message to an agent starts an **agent turn**, which runs outside the workflow engine.
 
 To build the agent:
 

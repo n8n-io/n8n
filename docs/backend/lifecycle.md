@@ -62,7 +62,7 @@ At startup, a process reads only the list of node types and credential types in 
 n8n has two ways to block a node type:
 
 - With `NODES_EXCLUDE`, no process loads the node type, so a workflow that uses the node fails.
-- With a [policy](permissions.md#policies), the node type stays loaded, and n8n refuses the action on the workflow. A policy can also block a credential type.
+- With a [policy](authorization.md#policies), the node type stays loaded, and n8n refuses the action on the workflow. A policy can also block a credential type.
 
 ## Shutdown
 

@@ -8,89 +8,83 @@ contact: SamWooler
 
 # APIs
 
-On [Workflow publication](workflow-publication.md), the editor called a REST route to publish a workflow. The backend serves two HTTP APIs. The REST API under `/rest` serves the editor. The public API under `/api/v1` serves scripts, CI pipelines, and other tools. This page explains how a request reaches your code, how the two APIs differ, and how the backend sends live data to the browser. [Authentication](authentication.md) explains how n8n knows who sent the request.
+The [Workflow publication](workflow-publication.md) page followed a REST call from the editor. The backend serves two HTTP APIs:
+
+- The **REST API** under `/rest` serves the editor. It is private and can change without notice.
+- The **public API** under `/api/v1` serves scripts, CI pipelines, and other tools. Since it is public, a change must not break existing callers.
+
+This page explains how a request reaches your code, how the two APIs differ, and how the backend sends live data to callers. [Authentication](authentication.md) explains how n8n knows who sent a request.
 
 ## REST routes
 
-A REST route is a method on a class with `@RestController()`. A method decorator, such as `@Get('/summary')` or `@Post('/')`, gives the HTTP method and the path. At startup, n8n registers each controller under `/rest`.
+A REST route is a method on a controller class. Decorators on the method give the HTTP method and the path. n8n serves each route under `/rest`.
 
-Before the method runs, n8n runs these checks in this order:
+Before the method runs, n8n checks, in this order:
 
-1. Authentication, unless the route sets `skipAuth`.
-2. The license check of `@Licensed`.
-3. The scope check of `@GlobalScope` or `@ProjectScope`.
+1. **Authentication:** The caller is signed in, unless the route skips this check.
+2. **License:** The license has the feature that the route needs.
+3. **Permission:** The role of the user allows the action. [Authorization](authorization.md#roles-and-scopes) explains roles.
 
-A parameter with `@Body` or `@Query` must have a DTO class from `@n8n/api-types` as its type. n8n parses the request with the Zod schema of that class. If the request does not match, n8n answers 400 with the first validation error, and the method does not run.
+Decorators on the method declare the license and the permission that the route needs.
 
-n8n sends the value that the method returns as JSON, under the key `data`. A thrown error sets the status code:
+To read the body or the query of a request, use a data transfer object (DTO), i.e. a class from `@n8n/api-types` that holds a Zod schema. If the request does not match the schema, n8n answers 400.
+
+n8n sends the value that the method returns as JSON, under the key `data`. If the method throws, the error class sets the status code:
 
 | Error | Status |
 |---|---|
-| A subclass of `ResponseError` from `@n8n/errors`, such as `NotFoundError` | The status of that class |
+| A subclass of `ResponseError` (e.g. `NotFoundError`) | The status of that class |
 | `UserError` | 400 |
 | Any other error | 500 |
 
-n8n reports every error to the error reporter, except a `ResponseError` with a status of 404 or lower.
-
-The REST API belongs to the editor, and the two change together.
+Only one browser tab at a time can change a workflow. A route that changes a workflow should check that the request comes from that tab.
 
 ## Public API
 
-The public API is a contract with code outside n8n. A change must not break callers that already exist, also when the code behind an endpoint changes.
+A user can give an API key only the scopes that the user has. An endpoint checks both the scopes of the key and the role of the user.
 
-Most callers sign in with an API key. A key has its own scopes, a smaller set than the scopes of users. A key never has a scope that the role of its owner lacks.
-
-Each endpoint is a method on a `@PublicApiController` class. The build generates the OpenAPI document from these methods and from the request and response types in `@n8n/api-types`, so a new endpoint describes itself. A public API controller calls services, not repositories. List endpoints page with cursors, not with page numbers.
-
-`@n8n/cli` is a command line client that uses only the public API. To add an endpoint with a coding agent, point it to the `n8n:public-api` skill.
+The build generates the OpenAPI document from the DTOs of the endpoints, so a change to one of these DTOs changes the public contract. The `n8n:public-api` skill explains how to add an endpoint.
 
 ## Live updates
 
-The backend also sends live data to the browser:
+A REST route answers once. To show progress while work runs, the backend uses one of two mechanisms:
 
-| Channel | Carries | After a reconnect |
-|---|---|---|
-| Push | The progress of manual runs, collaboration, and notifications | Lost. The editor fetches the state again |
-| The response of an agent chat | One agent turn | The editor reads the recorded conversation |
-| The response of an n8n Assistant run | One run of the Assistant | Missed events play again from a log |
-| A streaming webhook response | The output of a workflow while it runs | Lost |
+- **Push:** Each editor tab keeps a WebSocket connection to a main open, and the backend sends messages over it at any time (e.g. updates on manual executions).
+- **Streamed response:** The backend keeps the response to one request open, and writes each part when it is ready (e.g. agent chat, n8n Assistant, streaming webhooks).
 
 > [!WARNING]
-> **A push message is lost when the connection drops.** Send over push only the state that the editor can also fetch again.
+> **When a connection drops, the data in transit is lost.** Only the n8n Assistant replays the missed parts. Send over push only the state that the editor can also fetch again.
 
-Push is one connection for each browser tab, over WebSocket by default. In multi-main, only one main holds a given tab, so a worker or another main relays a message for that tab over pubsub. A message to all tabs of a user reaches only the tabs on the current main. The relay drops node output that is too large for pubsub, and the editor loads that data when the execution ends. The types of all push messages live in `@n8n/api-types`.
+The types of push messages are in `@n8n/api-types`.
 
-Only one tab at a time can change a workflow: the tab that holds the **write lock**. The routes that change a workflow check the lock. Collaboration needs WebSocket, so it does not start with `N8N_PUSH_BACKEND=sse`.
+In multi-main, each tab connects to one main. Push can address a message in two ways:
+
+- **To one tab:** n8n pubsub relays the message to the main of that tab, so the tab always gets it (e.g. a worker sends the progress of a manual execution).
+- **To a user:** n8n does not relay the message. If the user has tabs on two mains, only the tabs on the main that sends the message get it.
 
 ## Quiz
 
-1. A request body does not match the DTO class of its `@Body` parameter. What happens?
-   - A. The method runs with the raw body.
-   - B. n8n answers 400.
-   - C. n8n answers 500.
-   - D. n8n drops the fields that do not match.
-2. Your service throws a `UserError` in a REST route. Which status code does the caller get?
-   - A. 403.
-   - B. 404.
-   - C. 400.
-   - D. 500.
-3. You add a REST route and add no auth option. Who can call it?
+1. You add a REST route, and do not skip authentication. Who can call it?
    - A. Anyone.
    - B. Only a signed-in user.
    - C. Only the owner.
-   - D. Only API keys.
-4. In multi-main, the backend sends a push message to all tabs of one user. Which tabs get it?
+   - D. Only users with the owner role.
+2. You rename a field in the DTO of a public API endpoint. What else changes?
+   - A. Nothing. DTOs are internal.
+   - B. The public contract, so existing callers can break.
+   - C. Only the REST API.
+   - D. Only the editor.
+3. In multi-main, a main sends a push message to a user. Which tabs get it?
    - A. All tabs of the user, on every main.
    - B. Only the most recent tab.
-   - C. Only the tabs on the current main.
+   - C. Only the tabs of that user on the main that sends the message.
    - D. None.
 
 <details>
 <summary>Answers</summary>
 
-1. B. n8n parses the request with the Zod schema of the DTO class before the method runs.
-2. C. A `UserError` means that the caller caused the error. An error that is not a `UserError` or a `ResponseError` gives 500.
-3. B. Authentication is the first check, and every route runs it unless it sets `skipAuth`.
-4. C. A message to the tabs of a user goes only to tabs on the current main, so it can miss some tabs.
+1. B. Authentication is the first check, and every route runs it unless the route skips it.
+2. B. The build generates the OpenAPI document from these DTOs, so a DTO change changes the public contract.
+3. C. n8n does not relay a message to a user, so only the tabs on the main that sends the message get it.
 
 </details>

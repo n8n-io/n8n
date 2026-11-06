@@ -15,8 +15,8 @@ const TIER_TWO = [
 // Month 1 pages in reading order, in groups. The build fails when a page is in no group.
 const MONTH_ONE = [
 	{ label: 'Processes', slugs: ['lifecycle', 'coordination', 'persistence', 'sandboxing', 'observability'] },
-	{ label: 'Requests', slugs: ['apis', 'authentication', 'permissions', 'credentials'] },
-	{ label: 'Features', slugs: ['licensing', 'governance', 'ai-for-building', 'ai-context', 'ai-evals'] },
+	{ label: 'Requests', slugs: ['apis', 'authentication', 'authorization', 'credentials'] },
+	{ label: 'Features', slugs: ['licensing', 'governance', 'ai-functionality'] },
 ];
 
 const DOCS_DIR = new URL('../../../docs/backend/', import.meta.url);

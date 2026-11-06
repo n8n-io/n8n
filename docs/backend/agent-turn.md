@@ -74,7 +74,7 @@ The **AI Agent** node is not part of this runtime. It is a node inside a workflo
 
 ## Read next
 
-- [AI for building](ai-for-building.md): how AI builds and fixes workflows and agents for the user.
+- [AI functionality](ai-functionality.md): how AI builds and fixes workflows and agents for the user.
 - [APIs](apis.md#live-updates): what happens to a streamed reply when the connection drops.
 
 ## Quiz
