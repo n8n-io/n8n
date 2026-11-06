@@ -106,6 +106,29 @@ describe('ToolHttpRequest execute', () => {
 		expect(helpers.httpRequest).not.toHaveBeenCalled();
 	});
 
+	it('should send the request from the model input on version 1', async () => {
+		setup([{ json: { input: '{"id":"42"}' } }], 1);
+		ctx.getNodeParameter.mockImplementation((paramName: string, _: number, fallback?: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'GET';
+				case 'url':
+					return 'https://example.com/users/{id}';
+				default:
+					return fallback;
+			}
+		});
+		helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
+
+		const result = await httpTool.execute.call(ctx);
+
+		expect(helpers.httpRequest).toHaveBeenCalledTimes(1);
+		expect(helpers.httpRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ method: 'GET', url: 'https://example.com/users/42' }),
+		);
+		expect(result).toEqual([[{ json: { response: 'Ada' }, pairedItem: { item: 0 } }]]);
+	});
+
 	it('should throw when the model input is invalid on version 1', async () => {
 		setup([{ json: { input: 'not json' } }], 1);
 		helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
@@ -151,6 +174,22 @@ describe('ToolHttpRequest execute', () => {
 
 		await expect(httpTool.execute.call(ctx)).rejects.toMatchObject({
 			message: expect.stringContaining('Could not replace placeholders in body'),
+			context: { itemIndex: 1 },
+		});
+		expect(helpers.httpRequest).toHaveBeenCalledTimes(1);
+	});
+
+	it('should report the index of the item whose tool could not be built', async () => {
+		setup([{ json: { id: '1', field: 'name' } }, { json: { id: '2', field: 'email' } }]);
+		const parameter = ctx.getNodeParameter.getMockImplementation()!;
+		ctx.getNodeParameter.mockImplementation((paramName: string, itemIndex: number, fallback) => {
+			if (paramName === 'url' && itemIndex === 1) throw new Error('Could not resolve the URL');
+			return parameter(paramName, itemIndex, fallback);
+		});
+		helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
+
+		await expect(httpTool.execute.call(ctx)).rejects.toMatchObject({
+			message: 'Could not resolve the URL',
 			context: { itemIndex: 1 },
 		});
 		expect(helpers.httpRequest).toHaveBeenCalledTimes(1);
