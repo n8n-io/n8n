@@ -14,8 +14,8 @@ contact: ivov
 
 In queue mode, the processes talk to each other over Redis pubsub, through two separate systems:
 
-- **Bull pubsub:** a worker reports on a job, e.g. a webhook response. Only the process that holds the open request acts on the report.
-- **n8n pubsub:** a main publishes a command to every process, e.g. "reload the license". Workers answer on a channel of their own. A service handles a command using a method with `@OnPubSubEvent`.
+- **Bull pubsub:** A worker reports on a job, e.g. a webhook response. Only the process that holds the open request acts on the report.
+- **n8n pubsub:** A main publishes a command to every process, e.g. "reload the license". Workers answer on a channel of their own. A service handles a command using a method with `@OnPubSubEvent`.
 
 With worker pools, the jobs of a project go to a named queue, and only the workers of that pool dequeue them.
 

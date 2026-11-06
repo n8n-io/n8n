@@ -115,8 +115,8 @@ Do not drop a column in the same release that stops using it. During a rolling d
 
 Split the removal into two releases:
 
-1. **First release:** remove all code that reads or writes the column, and keep the column.
-2. **Later release:** drop the column in a migration. No running code uses it any more.
+1. **First release:** Remove all code that reads or writes the column, and keep the column.
+2. **Later release:** Drop the column in a migration. No running code uses it any more.
 
 ## Update the entity
 

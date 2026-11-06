@@ -28,7 +28,7 @@ The `insights` module counts finished executions on mains and webhook processes,
 
 The `instance-reporting` module is not on by default. It reports the billable executions of each day to a receiver that the operator sets. It saves each report before it sends it, so a retry sends the same numbers.
 
-Insights, billing, and execution limits all use one file to decide which runs count, as [Observability](observability.md#execution-counts) explains.
+Insights, billing, and execution limits all use [one file](../../packages/@n8n/backend-services/src/executions/counting-rules.ts) to decide which runs count. A new execution mode needs an entry there. Your code should not keep its own list of modes.
 
 ## Environments
 

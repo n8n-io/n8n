@@ -33,6 +33,7 @@
 	--sl-color-hairline-light: var(--sl-color-gray-5);
 	--sl-color-hairline-shade: var(--sl-color-gray-5);
 	--n8n-panel: #232222;
+	--n8n-current-link: #ffa3b9;
 	--n8n-muted-link: rgb(255 255 255 / 0.64);
 	--n8n-hover: rgb(255 255 255 / 0.06);
 	--n8n-logo: var(--sl-color-accent);
@@ -60,6 +61,7 @@
 	--sl-color-hairline-light: var(--sl-color-gray-6);
 	--sl-color-hairline-shade: var(--sl-color-gray-6);
 	--n8n-panel: #fbf9fa;
+	--n8n-current-link: var(--sl-color-accent-high);
 	--n8n-muted-link: rgb(31 28 29 / 0.64);
 	--n8n-hover: rgb(31 28 29 / 0.04);
 	--n8n-logo: var(--sl-color-white);
@@ -135,7 +137,7 @@
 .sidebar-content [aria-current='page']:hover,
 .sidebar-content [aria-current='page']:focus {
 	font-weight: 600;
-	color: var(--sl-color-accent);
+	color: var(--n8n-current-link);
 	background: transparent;
 }
 
