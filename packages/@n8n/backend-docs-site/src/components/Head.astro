@@ -236,7 +236,8 @@ import Default from '@astrojs/starlight/components/Head.astro';
 
 <script>
 	// A page counts as read when the reader scrolls to its end, or at once when it fits on the
-	// screen. The list stays in this browser only, and the page works without it.
+	// screen. A page with a quiz counts as read only when every answer is right. The list stays
+	// in this browser only, and the page works without it.
 	const STORAGE_KEY = 'n8n-backend-docs:read-pages';
 	const normalize = (path: string) => path.replace(/\/+$/, '') || '/';
 
@@ -276,8 +277,12 @@ import Default from '@astrojs/starlight/components/Head.astro';
 	};
 
 	showRead();
-	checkEnd();
-	window.addEventListener('scroll', checkEnd, { passive: true });
+	if (document.querySelector('.quiz-question')) {
+		document.addEventListener('quiz:all-right', markRead);
+	} else {
+		checkEnd();
+		window.addEventListener('scroll', checkEnd, { passive: true });
+	}
 </script>
 
 <script>
@@ -330,6 +335,10 @@ import Default from '@astrojs/starlight/components/Head.astro';
 				question.dataset.result = right ? 'right' : 'wrong';
 				verdict.textContent = right ? 'Correct' : `Wrong, the answer is ${question.dataset.answer}`;
 				if (explanation) explanation.hidden = false;
+				const questions = document.querySelectorAll<HTMLElement>('.quiz-question');
+				if (Array.from(questions).every((item) => item.dataset.result === 'right')) {
+					document.dispatchEvent(new Event('quiz:all-right'));
+				}
 			});
 		});
 		retry.addEventListener('click', reset);
