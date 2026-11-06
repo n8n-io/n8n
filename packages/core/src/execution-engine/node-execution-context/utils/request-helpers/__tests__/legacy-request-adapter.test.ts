@@ -53,6 +53,36 @@ describe('proxyRequestToAxios', () => {
 		});
 	});
 
+	describe('eval simulated-services runs', () => {
+		it('sends the request through the run egress proxy', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				ssrfBridge: undefined,
+				evalEgressProxy: 'http://127.0.0.1:4567',
+			});
+
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://api.example.test/x');
+
+			expect(requestLegacy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					uri: 'https://api.example.test/x',
+					proxy: 'http://127.0.0.1:4567',
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('leaves the proxy alone in a normal run', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				ssrfBridge: undefined,
+				evalEgressProxy: undefined,
+			});
+
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://api.example.test/x');
+
+			expect(requestLegacy.mock.calls[0][0]).not.toHaveProperty('proxy');
+		});
+	});
+
 	describe('request config normalisation', () => {
 		const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
 
