@@ -3704,7 +3704,7 @@ describe('LogStreamingEventRelay', () => {
 						surfaces: ['public-api'],
 						identitySubject: 'binding',
 						linkByEmail: 'verified-only',
-						provisionHuman: 'off',
+						provisionPerson: 'off',
 						roleMappingMode: 'off',
 					},
 				});
