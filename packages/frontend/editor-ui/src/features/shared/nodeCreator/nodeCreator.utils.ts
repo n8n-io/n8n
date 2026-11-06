@@ -272,9 +272,13 @@ export function searchNodes(
 	];
 
 	for (const result of searchResults) {
-		const existingResult = searchResultsByKey.get(result.item.key);
+		const resultKey =
+			result.item.type === 'action'
+				? `${result.item.key}:${result.item.properties.actionKey}`
+				: result.item.key;
+		const existingResult = searchResultsByKey.get(resultKey);
 		if (!existingResult || result.score > existingResult.score) {
-			searchResultsByKey.set(result.item.key, result);
+			searchResultsByKey.set(resultKey, result);
 		}
 	}
 
