@@ -88,6 +88,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				additionalData,
 				runExecutionData,
 				connectionInputData,
+				mode,
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getDataTableHelperFunctions(additionalData, workflow, node),

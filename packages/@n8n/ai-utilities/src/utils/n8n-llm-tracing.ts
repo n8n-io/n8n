@@ -12,6 +12,9 @@ import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } fro
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import { buildChatGenAiAttributes, type GenAiProviderName } from '../gen-ai';
+import { LangChainUsageTracker } from '../llm-usage/langchain-handler';
+import { credentialFromNode, providerFromCredentials } from '../llm-usage/report';
+import { checkLlmCall } from '../llm-usage/state';
 import { extractRespondingModel, toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
@@ -102,6 +105,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 
 	#parentRunIndex?: number;
 
+	private readonly usageTracker = new LangChainUsageTracker();
+
 	/**
 	 * A map to associate LLM run IDs to run details.
 	 * Key: Unique identifier for each LLM run (run ID)
@@ -148,6 +153,36 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		this.options = { ...this.options, ...options };
 	}
 
+	/**
+	 * The vendor that the node's credential names. Nodes built on the OpenAI client (DeepSeek,
+	 * xAI, OpenRouter and others) report `openai` to LangChain.
+	 */
+	private credentialProvider(): string | undefined {
+		return providerFromCredentials(
+			Object.keys(this.executionFunctions.getNode().credentials ?? {}),
+		);
+	}
+
+	/**
+	 * Rejects when a policy blocks the call. LangChain rethrows a handler error only with
+	 * `raiseError`, so it is set right before the throw: until then, hook errors are only logged.
+	 */
+	private async checkCall(metadata?: Record<string, unknown>) {
+		const context = this.executionFunctions.getLlmUsageContext?.();
+		if (!context) return;
+		try {
+			await checkLlmCall({
+				context,
+				credential: credentialFromNode(this.executionFunctions.getNode().credentials),
+				provider: this.credentialProvider(),
+				model: typeof metadata?.ls_model_name === 'string' ? metadata.ls_model_name : undefined,
+			});
+		} catch (error) {
+			this.raiseError = true;
+			throw error;
+		}
+	}
+
 	async estimateTokensFromGeneration(generations: LLMResult['generations']) {
 		const messages = generations.flatMap((gen) => gen.map((g) => g.text));
 		return await this.estimateTokensFromStringList(messages);
@@ -159,6 +194,15 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async handleLLMEnd(output: LLMResult, runId: string) {
+		// Read the usage before the generations are converted for the logs panel below.
+		this.usageTracker.end(
+			output,
+			runId,
+			this.executionFunctions.getLlmUsageContext?.(),
+			this.credentialProvider(),
+			credentialFromNode(this.executionFunctions.getNode().credentials),
+		);
+
 		// The fallback should never happen since handleLLMStart should always set the run details
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
@@ -252,6 +296,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		_tags?: string[],
 		metadata?: Record<string, unknown>,
 	) {
+		await this.checkCall(metadata);
+		this.usageTracker.start(runId, metadata);
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 		const sourceNodeRunIndex =
 			this.#parentRunIndex !== undefined
@@ -291,6 +337,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
+		this.usageTracker.discard(runId);
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
 		stripNonXHeaders(error);

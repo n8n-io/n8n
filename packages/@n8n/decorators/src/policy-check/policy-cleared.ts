@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { brand } from './policy-brand';
 import type {
 	EnforcementPoint,
+	LlmCallPolicyContext,
 	PolicedCredential,
 	PolicedWorkflow,
 	PolicyDecision,
@@ -79,6 +80,15 @@ export function credentialSubject(credential: PolicedCredential): PolicySubject 
 	if (credential.id) return { type: 'credential', id: credential.id };
 
 	return credentialContentSubject(credential);
+}
+
+/** An LLM call binds to its agent, else to its workflow. Nothing is written with the clearance. */
+export function llmCallSubject(
+	context: Pick<LlmCallPolicyContext, 'agentId' | 'workflowId'>,
+): PolicySubject {
+	if (context.agentId) return { type: 'agent', id: context.agentId };
+
+	return { type: 'workflow', id: context.workflowId ?? '' };
 }
 
 /**

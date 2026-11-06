@@ -27,4 +27,5 @@ export const packagedModules: PackagedModules = {
 		return await import('@n8n/backend-module-apps/module');
 	},
 	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
+	'llm-usage': async () => await import('@n8n/backend-module-llm-usage/module'),
 };

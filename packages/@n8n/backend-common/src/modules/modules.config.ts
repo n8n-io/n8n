@@ -50,6 +50,7 @@ export const MODULE_NAMES = [
 	'apps',
 	'knowledge',
 	'execution-limits',
+	'llm-usage',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

@@ -62,6 +62,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 				additionalData,
 				runExecutionData,
 				connectionInputData,
+				mode,
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 

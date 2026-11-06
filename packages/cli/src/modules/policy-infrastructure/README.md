@@ -25,7 +25,7 @@ flowchart LR
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
-        other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt"]
+        other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt<br/>llmCall (call guard)"]
     end
 
     subgraph pep["Enforcement point · src/policy (always loaded)"]
@@ -100,8 +100,9 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | `credentialTransfer` | 1000 ms | row id                            | move to another project                                               |
 | `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
 | `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
+| `llmCall`           | 250 ms   | agent id, else workflow id        | before each LLM call of a node or an agent (see below)               |
 
-Deadlines are tight on the two points that sit inside a running execution. A
+Deadlines are tight on the points that sit inside a running execution. A
 wedged policy store there pins worker slots instead of failing one request.
 
 A one-off CLI command registers no check unless it calls
@@ -116,6 +117,12 @@ commands wrote.
 
 ## Contexts
 
+`llmCall` came after the RFC. Its call sites are in packages that cannot import cli: the core
+HTTP helpers, `N8nLlmTracing` and the agents usage middleware. They call `checkLlmCall` from
+`@n8n/ai-utilities/llm-usage`. This module installs that guard in `init()`
+(`src/policy/llm-call-guard.ts`), and the guard calls `enforceLlmCall` with a system actor. The
+clearance token is not used. LLM budgets (llm-usage module) are its only check.
+
 Each point hands its check a different context. The types are in
 `@n8n/decorators/src/policy-check/policy-check.ts`.
 
@@ -129,6 +136,7 @@ Each point hands its check a different context. The types are in
 | `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
 | `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
+| `llmCall`           | `LlmCallPolicyContext`     | `callerType`, `workflowId`, `agentId`, `projectId`, `accountableUserId`, `credential`, `provider`, `model` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
 `nodes`. Nothing else, so a check cannot start to depend on unrelated fields.

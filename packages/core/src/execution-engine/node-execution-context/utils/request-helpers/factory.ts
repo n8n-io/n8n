@@ -22,6 +22,7 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
+import { withLlmUsageCapture } from './llm-usage-capture';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
 
@@ -31,6 +32,7 @@ export const getRequestHelperFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 	runExecutionData: IRunExecutionData | null = null,
 	connectionInputData: INodeExecutionData[] = [],
+	executionMode?: WorkflowExecuteMode,
 ): RequestHelperFunctions => {
 	const getResolvedValue = (
 		parameterValue: NodeParameterValueType,
@@ -75,6 +77,24 @@ export const getRequestHelperFunctions = (
 		return headers;
 	};
 
+	// Reports the LLM calls that the helpers below send, with the node and its run.
+	const captureLlmUsage = async <T>(
+		requestBody: unknown,
+		send: () => Promise<T>,
+		credentialType?: string,
+	) =>
+		await withLlmUsageCapture(
+			{
+				workflow,
+				node,
+				additionalData,
+				llmUsageRun: { runExecutionData, mode: executionMode },
+				credentialType,
+			},
+			requestBody,
+			send,
+		);
+
 	return {
 		getTraceHeaders,
 		httpRequest: async (requestOptions: IHttpRequestOptions) => {
@@ -91,7 +111,10 @@ export const getRequestHelperFunctions = (
 			if (Object.keys(traceHeaders).length) {
 				Object.assign((requestOptions.headers ??= {}), traceHeaders);
 			}
-			return await Container.get(OutboundHttp).requests().request(requestOptions);
+			return await captureLlmUsage(
+				requestOptions.body,
+				async () => await Container.get(OutboundHttp).requests().request(requestOptions),
+			);
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
@@ -124,14 +147,19 @@ export const getRequestHelperFunctions = (
 			additionalCredentialOptions,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
-			return await httpRequestWithAuthentication.call(
-				this,
+			return await captureLlmUsage(
+				requestOptions.body,
+				async () =>
+					await httpRequestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+					),
 				credentialsType,
-				requestOptions,
-				workflow,
-				node,
-				additionalData,
-				additionalCredentialOptions,
 			);
 		},
 		async refreshOAuth2Token(
@@ -165,8 +193,12 @@ export const getRequestHelperFunctions = (
 				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
 				Object.assign((target.headers ??= {}), traceHeaders);
 			}
-			// oxlint-disable-next-line typescript/no-deprecated
-			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+			return await captureLlmUsage(
+				(typeof uriOrObject === 'string' ? options : uriOrObject)?.body,
+				async () =>
+					// oxlint-disable-next-line typescript/no-deprecated
+					await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+			);
 		},
 
 		async requestWithAuthentication(
@@ -177,16 +209,21 @@ export const getRequestHelperFunctions = (
 			itemIndex,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
-			// oxlint-disable-next-line typescript/no-deprecated
-			return await requestWithAuthentication.call(
-				this,
+			return await captureLlmUsage(
+				requestOptions.body,
+				async () =>
+					// oxlint-disable-next-line typescript/no-deprecated
+					await requestWithAuthentication.call(
+						this,
+						credentialsType,
+						requestOptions,
+						workflow,
+						node,
+						additionalData,
+						additionalCredentialOptions,
+						itemIndex,
+					),
 				credentialsType,
-				requestOptions,
-				workflow,
-				node,
-				additionalData,
-				additionalCredentialOptions,
-				itemIndex,
 			);
 		},
 

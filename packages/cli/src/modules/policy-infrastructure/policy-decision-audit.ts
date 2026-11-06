@@ -88,6 +88,12 @@ const policedWorkflowId = (context: {
 
 /** What was policed, read off the context. */
 function targetOf(context: AnyPolicyContext) {
+	// An LLM call also has a `credential` field, so it returns before the credential branches.
+	if ('callerType' in context) {
+		const { agentId, workflowId, projectId } = context;
+		return agentId ? { agentId, projectId } : { workflowId, projectId };
+	}
+
 	// Same rule as a workflow save: a create has no committed id, whatever the payload claims.
 	if ('storedCredential' in context) {
 		return {

@@ -106,6 +106,15 @@ describe('SupplyDataContext', () => {
 		runExecutionData,
 	});
 
+	describe('getLlmUsageContext', () => {
+		it('describes the model node for the records of its LLM calls', () => {
+			expect(supplyDataContext.getLlmUsageContext()).toMatchObject({
+				callerType: 'node',
+				nodeName: 'Test Node',
+			});
+		});
+	});
+
 	describe('getInputData', () => {
 		const inputIndex = 0;
 

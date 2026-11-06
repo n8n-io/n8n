@@ -13,6 +13,8 @@ import './evaluations.public.controller';
 import './executions.public.controller';
 import './folders.public.controller';
 import './insights.public.controller';
+import './llm-budgets.public.controller';
+import './llm-usage.public.controller';
 import './ldap.public.controller';
 import './log-streaming.public.controller';
 import './n8n-packages.public.controller';
