@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { N8nActionToggle, N8nButton, N8nIconButton } from '@n8n/design-system';
 
-// Attributes such as `data-test-id` belong on the main button, not on the wrapper.
 defineOptions({ inheritAttrs: false });
 
 defineProps<{
@@ -30,7 +29,6 @@ const emit = defineEmits<{
 			v-bind="$attrs"
 			@click="emit('click')"
 		/>
-		<!-- The menu flips upward on its own when the bar is pinned to the bottom of the page. -->
 		<N8nActionToggle
 			:actions="actions"
 			:disabled="disabled"
@@ -50,11 +48,6 @@ const emit = defineEmits<{
 </template>
 
 <style lang="scss" module>
-// Each outline button draws its own border ring, so two halves side by side show a
-// double divider. The wrapper draws one border around both halves instead, and the
-// toggle draws a single divider. Same approach as the split button in instanceAi, with
-// the border color of the outline buttons next to it. The rules sit inside `.group` so
-// they outrank the button's own outline styles.
 .group {
 	display: inline-flex;
 	border: 1px solid var(--border-color);

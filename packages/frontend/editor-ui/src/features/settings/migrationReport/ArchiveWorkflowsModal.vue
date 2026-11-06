@@ -15,7 +15,6 @@ import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { TARGET_VERSION_DISPLAY, type ArchiveWorkflowsModalMode } from './constants';
 
-// The rule detail page renders this dialog only while it is open, and does the work on `confirm`.
 const props = defineProps<{
 	mode: ArchiveWorkflowsModalMode;
 	workflows: BreakingChangeRuleDetailWorkflow[];
@@ -77,7 +76,6 @@ function confirm() {
 					}}
 				</N8nText>
 				<N8nText v-if="publishedNote" color="text-dark">{{ publishedNote }}</N8nText>
-				<!-- The user should see which running workflows a bulk archive stops. -->
 				<ul v-if="!isPrompt" :class="$style.list" data-test-id="archive-workflows-modal-list">
 					<li v-for="workflow in published" :key="workflow.id" :class="$style.row">
 						<N8nText color="text-dark" :class="$style.name">{{ workflow.name }}</N8nText>
@@ -133,7 +131,6 @@ function confirm() {
 	gap: var(--spacing--sm);
 }
 
-// A bulk action can cover many workflows. The list scrolls so the buttons stay in view.
 .list {
 	max-height: calc(5 * var(--spacing--2xl));
 	overflow-y: auto;

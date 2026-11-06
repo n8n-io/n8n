@@ -646,8 +646,6 @@ const bulkWontFixActions = computed(() => [
 	},
 ]);
 
-// Archiving unpublishes a workflow, and restoring it does not publish it again.
-// So the modal asks first only when a selected workflow is published.
 function onBulkWontFixAndArchive() {
 	const workflows = bulkArchiveTargets.value;
 	if (workflows.length === 0) return;
@@ -1281,7 +1279,6 @@ watch(
 				</template>
 			</N8nSelectedItemsInfo>
 		</div>
-		<!-- Outside the selection bar: the single-row prompt opens with no rows selected. -->
 		<ArchiveWorkflowsModal
 			v-if="archiveDialog"
 			:mode="archiveDialog.mode"
