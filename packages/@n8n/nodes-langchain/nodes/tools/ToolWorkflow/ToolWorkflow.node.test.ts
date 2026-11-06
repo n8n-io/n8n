@@ -1,6 +1,7 @@
 import { DynamicTool } from '@langchain/classic/tools';
 import {
 	type ExecuteWorkflowData,
+	type IDataObject,
 	type INode,
 	type ISupplyDataFunctions,
 	type IExecuteFunctions,
@@ -359,5 +360,91 @@ describe('ToolWorkflowV1', () => {
 		const result = await tool.func('hello');
 
 		expect(result).toContain('The workflow did not return a response');
+	});
+
+	describe('execute', () => {
+		const createExecuteContext = (items: INodeExecutionData[]) =>
+			mock<IExecuteFunctions>({
+				getInputData: vi.fn(() => items),
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.3, name: 'test tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex, fallback) => {
+					switch (paramName) {
+						case 'name':
+							return 'test_tool';
+						case 'description':
+							return 'description text';
+						case 'specifyInputSchema':
+							return false;
+						case 'source':
+							return 'database';
+						case 'workflowId':
+							return { value: 'wf-id' };
+						default:
+							return fallback;
+					}
+				}),
+				getWorkflowDataProxy: vi.fn(
+					() =>
+						({
+							$execution: { id: 'exec-id' },
+							$workflow: { id: 'workflow-id' },
+						}) as unknown as IWorkflowDataProxyData,
+				),
+				setMetadata: vi.fn(),
+			});
+
+		const node = new ToolWorkflow().nodeVersions[1.3] as ToolWorkflowV1;
+
+		it('should run the sub-workflow once per input item and pair each result', async () => {
+			const ctx = createExecuteContext([
+				{ json: { input: 'first' } },
+				{ json: { input: 'second' } },
+			]);
+			ctx.executeWorkflow
+				.mockResolvedValueOnce({ data: [[{ json: { result: 'one' } }]], executionId: 'sub-1' })
+				.mockResolvedValueOnce({ data: [[{ json: { result: 'two' } }]], executionId: 'sub-2' });
+
+			const result = await node.execute.call(ctx);
+
+			expect(result).toEqual([
+				[
+					{ json: { result: 'one' }, pairedItem: { item: 0 } },
+					{ json: { result: 'two' }, pairedItem: { item: 1 } },
+				],
+			]);
+			expect(manual.execute).toHaveBeenNthCalledWith(
+				1,
+				{ json: { query: 'first' } },
+				0,
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(ctx.setMetadata).toHaveBeenLastCalledWith({
+				subExecution: { executionId: 'sub-2', workflowId: 'wf-id' },
+			});
+			expect(ctx.addInputData).not.toHaveBeenCalled();
+			expect(ctx.addOutputData).not.toHaveBeenCalled();
+			expect(ctx.logAiEvent).not.toHaveBeenCalled();
+		});
+
+		it('should wrap responses that are not objects', async () => {
+			const ctx = createExecuteContext([{ json: { input: 'hello' } }]);
+			ctx.executeWorkflow.mockResolvedValueOnce({
+				data: [[{ json: 42 as unknown as IDataObject }]],
+				executionId: 'sub-1',
+			});
+
+			const result = await node.execute.call(ctx);
+
+			expect(result).toEqual([[{ json: { response: '42' }, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should throw when the sub-workflow fails so the engine records the error', async () => {
+			const ctx = createExecuteContext([{ json: { input: 'hello' } }]);
+			ctx.executeWorkflow.mockRejectedValueOnce(new Error('Workflow execution failed'));
+
+			await expect(node.execute.call(ctx)).rejects.toThrow('Workflow execution failed');
+		});
 	});
 });

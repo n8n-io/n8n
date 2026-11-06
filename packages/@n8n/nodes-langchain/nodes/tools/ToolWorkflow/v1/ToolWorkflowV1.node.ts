@@ -18,6 +18,7 @@ import type {
 	INodeParameterResourceLocator,
 	ITaskMetadata,
 	INodeTypeBaseDescription,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
@@ -32,6 +33,231 @@ import {
 } from '../../../../utils/schemaParsing';
 import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
 
+const toOutputJson = (response: string): IDataObject => {
+	const parsed = jsonParse<unknown>(response, { fallbackValue: null });
+	return isObject(parsed) && !Array.isArray(parsed) ? (parsed as IDataObject) : { response };
+};
+
+async function getTool(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	itemIndex: number,
+	log = true,
+): Promise<DynamicTool | DynamicStructuredTool> {
+	const workflowProxy = ctx.getWorkflowDataProxy(0);
+
+	const name = ctx.getNodeParameter('name', itemIndex) as string;
+	const description = ctx.getNodeParameter('description', itemIndex) as string;
+
+	let subExecutionId: string | undefined;
+	let subWorkflowId: string | undefined;
+
+	const useSchema = ctx.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
+	let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
+
+	const runFunction = async (
+		query: string | IDataObject,
+		runManager?: CallbackManagerForToolRun,
+	): Promise<string> => {
+		const source = ctx.getNodeParameter('source', itemIndex) as string;
+		const workflowInfo: IExecuteWorkflowInfo = {};
+		if (source === 'database') {
+			// Read workflow from database
+			const nodeVersion = ctx.getNode().typeVersion;
+			if (nodeVersion <= 1.1) {
+				workflowInfo.id = ctx.getNodeParameter('workflowId', itemIndex) as string;
+			} else {
+				const { value } = ctx.getNodeParameter(
+					'workflowId',
+					itemIndex,
+					{},
+				) as INodeParameterResourceLocator;
+				workflowInfo.id = value as string;
+			}
+
+			subWorkflowId = workflowInfo.id;
+		} else if (source === 'parameter') {
+			// Read workflow from parameter
+			const workflowJson = ctx.getNodeParameter('workflowJson', itemIndex) as string;
+			try {
+				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+
+				// subworkflow is same as parent workflow
+				subWorkflowId = workflowProxy.$workflow.id;
+			} catch (error) {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					`The provided workflow is not valid JSON: "${(error as Error).message}"`,
+					{
+						itemIndex,
+					},
+				);
+			}
+		}
+
+		const rawData: IDataObject = { query };
+
+		const workflowFieldsJson = ctx.getNodeParameter('fields.values', itemIndex, [], {
+			rawExpressions: true,
+		}) as SetField[];
+
+		// Copied from Set Node v2
+		for (const entry of workflowFieldsJson) {
+			if (entry.type === 'objectValue' && (entry.objectValue as string).startsWith('=')) {
+				rawData[entry.name] = (entry.objectValue as string).replace(/^=+/, '');
+			}
+		}
+
+		const options: SetNodeOptions = {
+			include: 'all',
+		};
+
+		const newItem = await manual.execute.call(
+			ctx,
+			{ json: { query } },
+			itemIndex,
+			options,
+			rawData,
+			ctx.getNode(),
+		);
+
+		const items = [newItem] as INodeExecutionData[];
+
+		let receivedData: ExecuteWorkflowData;
+		try {
+			receivedData = await ctx.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
+				parentExecution: {
+					executionId: workflowProxy.$execution.id,
+					workflowId: workflowProxy.$workflow.id,
+					shouldResume: true,
+				},
+				returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
+			});
+			subExecutionId = receivedData.executionId;
+		} catch (error) {
+			// Make sure a valid error gets returned that can by json-serialized else it will
+			// not show up in the frontend
+			throw new NodeOperationError(ctx.getNode(), error as Error);
+		}
+		if (receivedData.waitTill) {
+			// A parked child has no final output yet; its `data` is the HITL node's passthrough
+			// input. The parent is already parked via BaseExecuteContext.executeWorkflow and
+			// gets the real output on resume.
+			return JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER);
+		}
+
+		const response: string | undefined = get(receivedData, 'data[0][0].json') as string | undefined;
+		if (response === undefined) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'There was an error: "The workflow did not return a response"',
+			);
+		}
+
+		return response;
+	};
+
+	const toolHandler = async (
+		query: string | IDataObject,
+		runManager?: CallbackManagerForToolRun,
+	): Promise<string> => {
+		const { index } = log
+			? ctx.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]])
+			: { index: 0 };
+
+		let response: string = '';
+		let executionError: ExecutionError | undefined;
+		try {
+			response = await runFunction(query, runManager);
+		} catch (error) {
+			// TODO: Do some more testing. Issues here should actually fail the workflow
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			executionError = error;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			response = `There was an error: "${error.message}"`;
+		}
+
+		if (typeof response === 'number') {
+			response = (response as number).toString();
+		}
+
+		if (isObject(response)) {
+			response = JSON.stringify(response, null, 2);
+		}
+
+		if (typeof response !== 'string') {
+			// TODO: Do some more testing. Issues here should actually fail the workflow
+			executionError = new NodeOperationError(ctx.getNode(), 'Wrong output type returned', {
+				description: `The response property should be a string, but it is an ${typeof response}`,
+			});
+			response = `There was an error: "${executionError.message}"`;
+		}
+
+		let metadata: ITaskMetadata | undefined;
+		if (subExecutionId && subWorkflowId) {
+			metadata = {
+				subExecution: {
+					executionId: subExecutionId,
+					workflowId: subWorkflowId,
+				},
+			};
+		}
+
+		if (!log) {
+			if (metadata && 'setMetadata' in ctx) ctx.setMetadata(metadata);
+			if (executionError) throw executionError;
+			return response;
+		}
+
+		if (executionError) {
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, executionError, metadata);
+		} else {
+			// Output always needs to be an object
+			// so we try to parse the response as JSON and if it fails we just return the string wrapped in an object
+			const json = toOutputJson(response);
+			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json }]], metadata);
+		}
+		logAiEvent(ctx, 'ai-tool-called', { query, response });
+		return response;
+	};
+
+	const functionBase = {
+		name,
+		description,
+		func: toolHandler,
+	};
+
+	if (useSchema) {
+		try {
+			// We initialize these even though one of them will always be empty
+			// it makes it easier to navigate the ternary operator
+			const jsonExample = ctx.getNodeParameter('jsonSchemaExample', itemIndex, '') as unknown;
+			const inputSchema = ctx.getNodeParameter('inputSchema', itemIndex, '') as unknown;
+
+			const schemaType = ctx.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
+			const jsonSchema =
+				schemaType === 'fromJson'
+					? generateSchemaFromExample(jsonExample)
+					: parseJsonSchemaParameter(inputSchema);
+
+			const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
+
+			tool = new DynamicStructuredTool({
+				schema: zodSchema,
+				...functionBase,
+			});
+		} catch (error) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Error during parsing of JSON Schema. \n ' + error,
+			);
+		}
+	} else {
+		tool = new DynamicTool(functionBase);
+	}
+
+	return tool;
+}
+
 export class ToolWorkflowV1 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -43,214 +269,23 @@ export class ToolWorkflowV1 implements INodeType {
 	}
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const workflowProxy = this.getWorkflowDataProxy(0);
+		return { response: await getTool(this, itemIndex) };
+	}
 
-		const name = this.getNodeParameter('name', itemIndex) as string;
-		const description = this.getNodeParameter('description', itemIndex) as string;
-
-		let subExecutionId: string | undefined;
-		let subWorkflowId: string | undefined;
-
-		const useSchema = this.getNodeParameter('specifyInputSchema', itemIndex) as boolean;
-		let tool: DynamicTool | DynamicStructuredTool | undefined = undefined;
-
-		const runFunction = async (
-			query: string | IDataObject,
-			runManager?: CallbackManagerForToolRun,
-		): Promise<string> => {
-			const source = this.getNodeParameter('source', itemIndex) as string;
-			const workflowInfo: IExecuteWorkflowInfo = {};
-			if (source === 'database') {
-				// Read workflow from database
-				const nodeVersion = this.getNode().typeVersion;
-				if (nodeVersion <= 1.1) {
-					workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
-				} else {
-					const { value } = this.getNodeParameter(
-						'workflowId',
-						itemIndex,
-						{},
-					) as INodeParameterResourceLocator;
-					workflowInfo.id = value as string;
-				}
-
-				subWorkflowId = workflowInfo.id;
-			} else if (source === 'parameter') {
-				// Read workflow from parameter
-				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
-				try {
-					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-
-					// subworkflow is same as parent workflow
-					subWorkflowId = workflowProxy.$workflow.id;
-				} catch (error) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`The provided workflow is not valid JSON: "${(error as Error).message}"`,
-						{
-							itemIndex,
-						},
-					);
-				}
-			}
-
-			const rawData: IDataObject = { query };
-
-			const workflowFieldsJson = this.getNodeParameter('fields.values', itemIndex, [], {
-				rawExpressions: true,
-			}) as SetField[];
-
-			// Copied from Set Node v2
-			for (const entry of workflowFieldsJson) {
-				if (entry.type === 'objectValue' && (entry.objectValue as string).startsWith('=')) {
-					rawData[entry.name] = (entry.objectValue as string).replace(/^=+/, '');
-				}
-			}
-
-			const options: SetNodeOptions = {
-				include: 'all',
-			};
-
-			const newItem = await manual.execute.call(
-				this,
-				{ json: { query } },
-				itemIndex,
-				options,
-				rawData,
-				this.getNode(),
-			);
-
-			const items = [newItem] as INodeExecutionData[];
-
-			let receivedData: ExecuteWorkflowData;
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const response: INodeExecutionData[] = [];
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const tool = await getTool(this, itemIndex, false);
 			try {
-				receivedData = await this.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
-					parentExecution: {
-						executionId: workflowProxy.$execution.id,
-						workflowId: workflowProxy.$workflow.id,
-						shouldResume: true,
-					},
-					returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
-				});
-				subExecutionId = receivedData.executionId;
+				const result = (await tool.invoke(items[itemIndex].json)) as string;
+				response.push({ json: toOutputJson(result), pairedItem: { item: itemIndex } });
 			} catch (error) {
-				// Make sure a valid error gets returned that can by json-serialized else it will
-				// not show up in the frontend
-				throw new NodeOperationError(this.getNode(), error as Error);
+				throw error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex });
 			}
-			if (receivedData.waitTill) {
-				// A parked child has no final output yet; its `data` is the HITL node's passthrough
-				// input. The parent is already parked via BaseExecuteContext.executeWorkflow and
-				// gets the real output on resume.
-				return JSON.stringify(SUB_WORKFLOW_WAITING_PLACEHOLDER);
-			}
-
-			const response: string | undefined = get(receivedData, 'data[0][0].json') as
-				| string
-				| undefined;
-			if (response === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'There was an error: "The workflow did not return a response"',
-				);
-			}
-
-			return response;
-		};
-
-		const toolHandler = async (
-			query: string | IDataObject,
-			runManager?: CallbackManagerForToolRun,
-		): Promise<string> => {
-			const { index } = this.addInputData(NodeConnectionTypes.AiTool, [[{ json: { query } }]]);
-
-			let response: string = '';
-			let executionError: ExecutionError | undefined;
-			try {
-				response = await runFunction(query, runManager);
-			} catch (error) {
-				// TODO: Do some more testing. Issues here should actually fail the workflow
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				executionError = error;
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				response = `There was an error: "${error.message}"`;
-			}
-
-			if (typeof response === 'number') {
-				response = (response as number).toString();
-			}
-
-			if (isObject(response)) {
-				response = JSON.stringify(response, null, 2);
-			}
-
-			if (typeof response !== 'string') {
-				// TODO: Do some more testing. Issues here should actually fail the workflow
-				executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
-					description: `The response property should be a string, but it is an ${typeof response}`,
-				});
-				response = `There was an error: "${executionError.message}"`;
-			}
-
-			let metadata: ITaskMetadata | undefined;
-			if (subExecutionId && subWorkflowId) {
-				metadata = {
-					subExecution: {
-						executionId: subExecutionId,
-						workflowId: subWorkflowId,
-					},
-				};
-			}
-
-			if (executionError) {
-				void this.addOutputData(NodeConnectionTypes.AiTool, index, executionError, metadata);
-			} else {
-				// Output always needs to be an object
-				// so we try to parse the response as JSON and if it fails we just return the string wrapped in an object
-				const json = jsonParse<IDataObject>(response, { fallbackValue: { response } });
-				void this.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json }]], metadata);
-			}
-			logAiEvent(this, 'ai-tool-called', { query, response });
-			return response;
-		};
-
-		const functionBase = {
-			name,
-			description,
-			func: toolHandler,
-		};
-
-		if (useSchema) {
-			try {
-				// We initialize these even though one of them will always be empty
-				// it makes it easier to navigate the ternary operator
-				const jsonExample = this.getNodeParameter('jsonSchemaExample', itemIndex, '') as unknown;
-				const inputSchema = this.getNodeParameter('inputSchema', itemIndex, '') as unknown;
-
-				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
-				const jsonSchema =
-					schemaType === 'fromJson'
-						? generateSchemaFromExample(jsonExample)
-						: parseJsonSchemaParameter(inputSchema);
-
-				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
-
-				tool = new DynamicStructuredTool({
-					schema: zodSchema,
-					...functionBase,
-				});
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Error during parsing of JSON Schema. \n ' + error,
-				);
-			}
-		} else {
-			tool = new DynamicTool(functionBase);
 		}
-
-		return {
-			response: tool,
-		};
+		return [response];
 	}
 }
