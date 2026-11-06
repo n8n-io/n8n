@@ -6,7 +6,7 @@ import {
 	isAttachmentMediaTypeSupported,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 } from '@n8n/api-types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';

@@ -15,10 +15,9 @@ const now = new Date('2026-01-01T12:00:00.000Z');
 
 function setup(overrides: Partial<AppVersion> = {}) {
 	const manager = mock<EntityManager>();
-	const repository = new AppVersionRepository(
-		mock<DataSource>({ manager }),
-		mock<TransactionRunner>(),
-	);
+	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	const repository = new AppVersionRepository(mock<DataSource>({ manager }), txRunner);
 	const version = mock<AppVersion>({
 		id: 'version',
 		appId: 'app',
@@ -123,6 +122,37 @@ describe('AppVersionRepository build state', () => {
 			{ id: 'version', bundleArtifactId: IsNull(), buildStatus: 'running', buildAttempts: 2 },
 			{ bundleArtifactId: 7, buildStatus: 'succeeded', buildStatusUpdatedAt: now },
 		);
+	});
+
+	it('inserts a copy that references the artifacts and the build of the source version', async () => {
+		const { repository, manager } = setup();
+		const statusAt = new Date('2026-01-01T11:00:00.000Z');
+		const source = {
+			id: 'version',
+			appId: 'app',
+			label: 'Old',
+			sourceArtifactId: 3,
+			bundleArtifactId: 4,
+			buildAttempts: 1,
+			buildStatus: 'succeeded',
+			buildStatusUpdatedAt: statusAt,
+			bindings: [],
+		} as unknown as AppVersion;
+		const bindings = [{ key: 'submit', kind: 'workflow' as const, workflowId: 'w1' }];
+
+		await repository.insertCopy(source, { id: 'copy', label: 'Old', bindings }, {});
+
+		expect(manager.insert).toHaveBeenCalledExactlyOnceWith(AppVersion, {
+			id: 'copy',
+			label: 'Old',
+			bindings,
+			appId: 'app',
+			sourceArtifactId: 3,
+			bundleArtifactId: 4,
+			buildAttempts: 1,
+			buildStatus: 'succeeded',
+			buildStatusUpdatedAt: statusAt,
+		});
 	});
 
 	it('uses separate cutoff conditions for queued and running builds', async () => {

@@ -38,6 +38,7 @@ export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './node-annotations';
 export * from './node-validation';
 export * from './node-grouping-validation';
 export * from './empty-group-anchor';

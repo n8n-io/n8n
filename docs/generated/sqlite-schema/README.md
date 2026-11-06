@@ -54,7 +54,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
-| [app_version](app_version.md) | 10 |  | table |
+| [app_version](app_version.md) | 12 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -78,7 +78,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_annotation_tags](execution_annotation_tags.md) | 2 |  | table |
 | [execution_annotations](execution_annotations.md) | 6 |  | table |
 | [execution_data](execution_data.md) | 4 |  | table |
-| [execution_entity](execution_entity.md) | 19 |  | table |
+| [execution_entity](execution_entity.md) | 20 |  | table |
 | [execution_ledger](execution_ledger.md) | 16 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
@@ -131,7 +131,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
 | [role_scope](role_scope.md) | 2 |  | table |
-| [scheduled_job](scheduled_job.md) | 25 |  | table |
+| [scheduled_job](scheduled_job.md) | 26 |  | table |
 | [scheduled_task](scheduled_task.md) | 19 |  | table |
 | [scope](scope.md) | 3 |  | table |
 | [secrets_provider_connection](secrets_provider_connection.md) | 7 |  | table |
@@ -272,9 +272,9 @@ erDiagram
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--o| "app_artifact" : "FOREIGN KEY (bundleArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app_version" }o--|| "app_artifact" : "FOREIGN KEY (sourceArtifactId) REFERENCES app_artifact (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "app_version" }o--|| "app" : "FOREIGN KEY (appId) REFERENCES app (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -984,11 +984,13 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  TEXT bindings
   INTEGER buildAttempts
   varchar_16_ buildStatus
   datetime_3_ buildStatusUpdatedAt
   INTEGER bundleArtifactId FK
   datetime_3_ createdAt
+  TEXT description
   varchar id PK
   varchar_255_ label
   INTEGER sourceArtifactId FK
@@ -1223,6 +1225,7 @@ erDiagram
   INTEGER id
   bigint jsonSizeBytes
   varchar mode
+  SMALLINT resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   datetime startedAt
@@ -1716,6 +1719,7 @@ erDiagram
   INTEGER id
   INTEGER intervalSeconds
   varchar_16_ kind
+  datetime_3_ lastDispatchedAt
   datetime_3_ lastFiredAt
   INTEGER maxAttempts
   INT misfireGraceSeconds

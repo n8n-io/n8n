@@ -11,7 +11,8 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to run successfully. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `google-vertex-anthropic/claude-opus-4-8`. |
+| `N8N_INSTANCE_AI_ENABLED` | boolean | unset | Whether the n8n Assistant is on when no admin has turned it on or off in Settings > Assistant. When unset, it's off on the Enterprise plan and on for all other plans. A choice saved in Settings > Assistant overrides this variable. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-5-5` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to run successfully. To keep Opus 4.8: `anthropic/claude-opus-4-8`. Vertex Claude: `google-vertex-anthropic/claude-opus-5-5`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | Explicit API key for the environment-selected model. It works with built-in providers and custom endpoints. When it is empty, built-in providers can use their standard API-key environment variable. Some local endpoints do not require a key. |
 | `N8N_INSTANCE_AI_VERTEX_PROJECT_ID` | string | `''` | Google Cloud project for `google-vertex-anthropic/*`. Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON. |
@@ -243,7 +244,7 @@ in Instance AI settings.
 
 ```bash
 # Configure the model. The instance-ai module is enabled by default.
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
+N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-5-5
 N8N_INSTANCE_AI_MODEL_API_KEY="$ANTHROPIC_API_KEY"
 
 # With MCP servers
@@ -275,7 +276,7 @@ N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
 # Direct Google Vertex Claude (no AI assistant proxy)
 # Keep N8N_AI_ASSISTANT_BASE_URL unset/empty.
-N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-4-8
+N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-5-5
 N8N_INSTANCE_AI_VERTEX_PROJECT_ID=my-gcp-project
 N8N_INSTANCE_AI_VERTEX_LOCATION=global
 N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
@@ -304,7 +305,7 @@ services:
       - "8888:8080"  # optional: expose to host
   n8n:
     environment:
-      N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-4-8
+      N8N_INSTANCE_AI_MODEL: anthropic/claude-opus-5-5
       N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 
