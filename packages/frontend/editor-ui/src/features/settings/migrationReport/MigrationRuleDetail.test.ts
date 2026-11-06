@@ -36,10 +36,11 @@ const grace = {
 	email: 'grace@example.com',
 };
 
-const { showError, showMessage, resolveRoute } = vi.hoisted(() => ({
+const { showError, showMessage, resolveRoute, routeQuery } = vi.hoisted(() => ({
 	showError: vi.fn(),
 	showMessage: vi.fn(),
 	resolveRoute: vi.fn(() => ({ href: '/workflow/workflow-1' })),
+	routeQuery: { value: {} as Record<string, string> },
 }));
 
 vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
@@ -51,6 +52,7 @@ vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	useRouter: () => ({ push: vi.fn(), resolve: resolveRoute }),
+	useRoute: () => ({ query: routeQuery.value }),
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
@@ -145,6 +147,7 @@ const createMockRuleResult = (
 
 describe('MigrationRuleDetail', () => {
 	beforeEach(() => {
+		routeQuery.value = {};
 		renderComponent = createComponentRenderer(MigrationRuleDetail, {
 			pinia: createTestingPinia(),
 			global: {
@@ -1715,6 +1718,12 @@ describe('MigrationRuleDetail', () => {
 			expect(mine).toHaveTextContent('Assigned to me 1');
 
 			await userEvent.click(mine);
+			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 1']));
+		});
+		it('should start filtered to the current user when the URL has owner=me', async () => {
+			mockedStore(useUsersStore).currentUserId = 'user-1';
+			routeQuery.value = { owner: 'me' };
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(rowNames()).toEqual(['Test Workflow 1']));
 		});
 	});
