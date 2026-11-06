@@ -21,13 +21,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import {
-	jsonParse,
-	MANAGED_VERSION_KEY,
-	OperationalError,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { jsonParse, MANAGED_VERSION_KEY } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -35,7 +29,14 @@ import {
 } from '@/constants';
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
+import {
+	AuthError,
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { OAuthRequest } from '@/requests';
 import { extractAccountIdentifierFromData } from '@/oauth/account-identifier';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';

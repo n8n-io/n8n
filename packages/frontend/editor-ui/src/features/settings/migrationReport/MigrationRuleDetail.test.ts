@@ -2,6 +2,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
+import { defineComponent, h } from 'vue';
+import { N8nDataTableServer } from '@n8n/design-system';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger, mockedStore } from '@/__tests__/utils';
@@ -63,6 +65,7 @@ const mockWorkflowWithIssue = {
 	lastUpdatedAt: new Date('2024-01-15'),
 	lastExecutedAt: new Date('2024-01-14'),
 	status: 'open' as const,
+	isArchived: false,
 	owner: {
 		id: 'user-1',
 		firstName: 'Ada',
@@ -88,6 +91,7 @@ const mockWorkflowWithMultipleNodes = {
 	numberOfExecutions: 50,
 	lastUpdatedAt: new Date('2024-01-10'),
 	status: 'open' as const,
+	isArchived: false,
 	issues: [
 		{
 			nodeId: 'node-2',
@@ -1551,17 +1555,25 @@ describe('MigrationRuleDetail', () => {
 	});
 
 	describe('pagination', () => {
-		// Mounting controls and tooltips in all 25 rows can exceed the test timeout.
-		// Other test groups cover these components. Keep the real table and filters here.
+		// A distinct name keeps Vue Test Utils from stubbing the inner table again.
+		const PaginationTable = { ...N8nDataTableServer, name: 'PaginationTable' };
+
+		// Keep the real table, pagination, and filters. Render only row names here,
+		// because mounting all cell components on each page can exceed the test timeout.
 		const renderPaginationComponent = () =>
 			renderComponent({
 				props: { migrationRuleId: 'rule-1' },
 				global: {
 					stubs: {
-						N8nUserSelect: true,
-						FindingStateSelect: true,
-						TimeAgo: true,
-						N8nTooltip: { template: '<slot />' },
+						N8nDataTableServer: defineComponent({
+							inheritAttrs: false,
+							setup(_, { attrs }) {
+								return () =>
+									h(PaginationTable, attrs, {
+										item: ({ item }: { item: { name: string } }) => h('tr', [h('td', item.name)]),
+									});
+							},
+						}),
 					},
 				},
 			});
@@ -1623,6 +1635,28 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 				expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
 			});
+			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
+		});
+
+		it('should hide archived workflows until the filter shows them', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, isArchived: true },
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
+			expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
+
+			const content = await openFilters();
+			await userEvent.click(
+				within(content).getByRole('checkbox', { name: 'Show archived workflows' }),
+			);
+
+			await waitFor(() => expect(screen.getByText('Test Workflow 2')).toBeInTheDocument());
 			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
 		});
 

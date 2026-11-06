@@ -223,6 +223,9 @@ describe('AgentChatController route access scopes', () => {
 		['cancelTasks', 'agent:execute'],
 		['streamTaskCancellation', 'agent:execute'],
 		['getTaskCancellation', 'agent:execute'],
+		['cancelProductionTasks', 'agent:execute'],
+		['streamProductionTaskCancellation', 'agent:execute'],
+		['getProductionTaskCancellation', 'agent:execute'],
 		['getPlan', 'agent:execute'],
 		['getProductionPlan', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
@@ -928,6 +931,37 @@ describe('AgentChatController execution cancellation', () => {
 			});
 		},
 	);
+
+	it.each([undefined, 'all', 'foreground'] as const)(
+		'forwards scope %s for the current n8n Chat execution',
+		async (scope) => {
+			const { controller, chatExecutionService, agentsService, agentExecutionService } =
+				makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+			chatExecutionService.requestCancel.mockResolvedValue(true);
+
+			await expect(
+				controller.cancelProductionChatExecution(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					{} as never,
+					'agent-1',
+					'thread-1',
+					'execution-1',
+					scope ? { scope } : undefined,
+				),
+			).resolves.toEqual({ cancelRequested: true });
+			expect(chatExecutionService.requestCancel).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'execution-1',
+				userId: 'user-1',
+				surface: 'n8n-chat',
+				...(scope ? { scope } : {}),
+			});
+		},
+	);
 });
 
 describe('AgentChatController HITL cancellation', () => {
@@ -955,6 +989,32 @@ describe('AgentChatController HITL cancellation', () => {
 				agentId: 'agent-1',
 				runId: 'run-1',
 				resourceId: 'draft-chat:user-1',
+				...(scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
+			});
+		},
+	);
+
+	it.each([undefined, 'all', 'foreground'] as const)(
+		'cancels a suspended n8n Chat run with scope %s',
+		async (scope) => {
+			const { controller, agentExecutionOrchestratorService, agentsService } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionOrchestratorService.cancelChatRun.mockResolvedValue(true);
+
+			await expect(
+				controller.cancelProductionChatRun(
+					{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+					{} as never,
+					'agent-1',
+					'run-1',
+					scope ? { scope } : undefined,
+				),
+			).resolves.toEqual({ cancelled: true });
+
+			expect(agentExecutionOrchestratorService.cancelChatRun).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				runId: 'run-1',
+				resourceId: productionChatMemoryResourceId('user-1'),
 				...(scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 			});
 		},
@@ -1988,6 +2048,49 @@ describe('AgentChatController task cancellation', () => {
 			controller.streamTaskCancellation(request as never, makeSseResponse([]), { planId: null }),
 		).rejects.toThrow('Session not found');
 		await expect(controller.getTaskCancellation(request as never)).rejects.toThrow(
+			'Session not found',
+		);
+		expect(taskCancellation.request).not.toHaveBeenCalled();
+		expect(taskCancellation.state).not.toHaveBeenCalled();
+	});
+
+	it('stops the displayed plan of an n8n Chat conversation on the n8n Chat surface', async () => {
+		const { controller, agentsService, agentExecutionService, taskCancellation } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+
+		await controller.cancelProductionTasks(request as never, makeSseResponse([]), {
+			planId: 'plan',
+		});
+		await controller.streamProductionTaskCancellation(request as never, makeSseResponse([]), {
+			planId: 'plan',
+		});
+		await controller.getProductionTaskCancellation(request as never);
+
+		expect(taskCancellation.request).toHaveBeenCalledWith('thread', 'plan', undefined, 'n8n-chat');
+		expect(taskCancellation.request).toHaveBeenCalledWith(
+			'thread',
+			'plan',
+			expect.any(Function),
+			'n8n-chat',
+		);
+		expect(taskCancellation.state).toHaveBeenCalledWith('thread');
+	});
+
+	it('rejects n8n Chat cancellation for a session the user cannot access', async () => {
+		const { controller, agentsService, agentExecutionService, taskCancellation } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+
+		await expect(
+			controller.cancelProductionTasks(request as never, makeSseResponse([]), { planId: null }),
+		).rejects.toThrow('Session not found');
+		await expect(
+			controller.streamProductionTaskCancellation(request as never, makeSseResponse([]), {
+				planId: null,
+			}),
+		).rejects.toThrow('Session not found');
+		await expect(controller.getProductionTaskCancellation(request as never)).rejects.toThrow(
 			'Session not found',
 		);
 		expect(taskCancellation.request).not.toHaveBeenCalled();

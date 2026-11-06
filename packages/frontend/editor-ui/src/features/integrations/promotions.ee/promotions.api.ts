@@ -9,7 +9,7 @@ import type {
 	PromotionReviewDetailsRequestDto,
 } from '@n8n/api-types';
 import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
-import { makeRestApiRequest, request } from '@n8n/rest-api-client';
+import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
 
 export async function getPromotionPreview(
 	context: IRestApiContext,
@@ -58,10 +58,10 @@ export async function promoteProjectSelection(
 	projectId: string,
 	payload: PromoteSelectionRequestDto,
 ): Promise<PromotePackageResultDto> {
-	return await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `/promotions/projects/${projectId}/promote`,
-		data: payload,
-	});
+	return await makePublicApiRequest(
+		context,
+		'POST',
+		`/promotions/projects/${projectId}/promote`,
+		payload,
+	);
 }

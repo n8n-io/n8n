@@ -81,7 +81,7 @@ export class InstanceAiPage extends BasePage {
 	async mockSearchVerification(
 		response: { ok: true; resultCount: number } | { ok: false; failure: string },
 	): Promise<void> {
-		await this.page.route('**/rest/instance-ai/settings/verify/search', async (route) => {
+		await this.page.route('**/rest/assistant/settings/verify/search', async (route) => {
 			await route.fulfill({ json: { data: response } });
 		});
 	}

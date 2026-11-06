@@ -1,3 +1,4 @@
+import type { WorkflowImportDecision } from './workflow-import.types';
 import {
 	WorkflowPublishingPolicy,
 	type PublishingAction,
@@ -54,4 +55,20 @@ export function decidePublishingAction(
 ): PublishingAction {
 	if (context.status === 'skipped') return 'noop';
 	return PUBLISHING_POLICIES[policy](context);
+}
+
+/**
+ * Decides the publication action before writes. The archive step handles unpublishing
+ * archived workflows, so they need no action in the publication sweep.
+ */
+export function decidePlannedPublishingAction(
+	policy: WorkflowPublishingPolicy,
+	item: WorkflowImportDecision,
+): PublishingAction {
+	if (item.action === 'skip' || item.sourceArchived) return 'noop';
+	return decidePublishingAction(policy, {
+		status: item.action === 'create' ? 'created' : 'updated',
+		sourcePublished: item.sourcePublished,
+		currentlyPublished: item.action === 'update' && Boolean(item.existing.activeVersionId),
+	});
 }
