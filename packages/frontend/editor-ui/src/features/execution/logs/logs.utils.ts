@@ -16,7 +16,6 @@ import {
 	type INodeExecutionData,
 	type IWorkflowGroup,
 	createEmptyRunExecutionData,
-	createRunExecutionData,
 	isEmptyGroupAnchor,
 } from 'n8n-workflow';
 import {
@@ -715,18 +714,17 @@ export function mergeStartData(
 	startData: { [nodeName: string]: ITaskStartedData[] },
 	response: IExecutionResponse,
 ): IExecutionResponse {
-	if (!response.data) {
-		return response;
-	}
+	// The response is the store's execution object as is, so `data` and
+	// `runData` can be missing.
+	const data = response.data ?? createEmptyRunExecutionData();
+	const responseRunData = data.resultData.runData ?? {};
 
 	const nodeNames = [
-		...new Set(
-			Object.keys(startData).concat(Object.keys(response.data.resultData.runData)),
-		).values(),
+		...new Set(Object.keys(startData).concat(Object.keys(responseRunData))).values(),
 	];
 	const runData = Object.fromEntries(
 		nodeNames.map<[string, ITaskData[]]>((nodeName) => {
-			const tasks = response.data?.resultData.runData[nodeName] ?? [];
+			const tasks = responseRunData[nodeName] ?? [];
 
 			const mergedTasks = tasks.concat(
 				(startData[nodeName] ?? [])
@@ -761,9 +759,9 @@ export function mergeStartData(
 	return {
 		...response,
 		data: {
-			...response.data,
+			...data,
 			resultData: {
-				...response.data.resultData,
+				...data.resultData,
 				runData,
 			},
 		},
@@ -1001,25 +999,4 @@ export function isSubNodeLog(logEntry: LogEntry): boolean {
 
 export function isPlaceholderLog(treeNode: LogEntry): boolean {
 	return isNodeLog(treeNode) && treeNode.runData === undefined;
-}
-
-/**
- * Creates a copy of execution data just deep enough to keeps logs immutable and not reactive.
- * We deliberately avoid full deep copy here for performance reason.
- *
- * TODO: use shallowRef() for execution data in workflows store to make this unnecessary.
- */
-export function copyExecutionData(executionData: IExecutionResponse): IExecutionResponse {
-	return {
-		...executionData,
-		data: createRunExecutionData({
-			...executionData.data,
-			resultData: {
-				...executionData.data?.resultData,
-				runData: Object.fromEntries(
-					Object.entries(executionData.data?.resultData.runData ?? {}).map(([k, v]) => [k, [...v]]),
-				),
-			},
-		}),
-	};
 }

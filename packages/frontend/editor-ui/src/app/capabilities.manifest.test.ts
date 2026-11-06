@@ -17,16 +17,23 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-const { openDocumentStores, offerToExposeAllWorkflows, createSelfHealingChatHandoff } = vi.hoisted(
-	() => ({
-		openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
-		offerToExposeAllWorkflows: vi.fn(),
-		createSelfHealingChatHandoff: vi.fn(),
-	}),
-);
+const {
+	openDocumentStores,
+	offerToExposeAllWorkflows,
+	createSelfHealingChatHandoff,
+	createAppAssistantHandoff,
+} = vi.hoisted(() => ({
+	openDocumentStores: new Map<string, { mergeSettings: ReturnType<typeof vi.fn> }>(),
+	offerToExposeAllWorkflows: vi.fn(),
+	createSelfHealingChatHandoff: vi.fn(),
+	createAppAssistantHandoff: vi.fn(),
+}));
 
 vi.mock('@/features/ai/instanceAi/composables/useSelfHealingChatHandoff', () => ({
 	useSelfHealingChatHandoff: createSelfHealingChatHandoff,
+}));
+vi.mock('@/features/ai/instanceAi/composables/useAppAssistantHandoff', () => ({
+	useAppAssistantHandoff: createAppAssistantHandoff,
 }));
 
 vi.mock(
@@ -70,6 +77,10 @@ describe('registerShellCapabilities', () => {
 			createSelfHealingChatHandoff,
 		);
 		expect(createSelfHealingChatHandoff).not.toHaveBeenCalled();
+		expect(capabilityRegistry.use(capabilities.createAppAssistantHandoff)).toBe(
+			createAppAssistantHandoff,
+		);
+		expect(createAppAssistantHandoff).not.toHaveBeenCalled();
 	});
 
 	it('forwards openModal to the UI store', () => {

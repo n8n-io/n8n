@@ -121,7 +121,10 @@ export class EngineAdditionalDataBuilder {
 			executeWorkflow: unimplemented('Sub-workflows (executeWorkflow)'),
 			executeAgent: unimplemented('Agents (executeAgent)'),
 			listAgents: unimplemented('Agents (listAgents)'),
-			getRunExecutionData: unimplemented('Reading another execution (getRunExecutionData)'),
+			// The Execute Sub-workflow node reads the sub-execution's run data to trace paired
+			// items through it. The data plane has no v1 run data for a sub-execution. The shim
+			// drops the sub-execution items' own marks, so the node pairs them by index.
+			getRunExecutionData: async () => undefined,
 			getRuntimeCredential: unimplemented('Runtime credentials (getRuntimeCredential)'),
 			setExecutionStatus: () => {
 				throw new UnimplementedError(

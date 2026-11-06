@@ -96,6 +96,24 @@ export interface ResumeTargetRequest {
 }
 
 /**
+ * Body of `POST /resume-requests/locate`, phase one of every kind of resume
+ * request. `id` is the id in the resume URL or in the approval callback. The
+ * token says whether it names an execution or a step. The control plane
+ * forwards the token unread.
+ */
+export interface ResumeLocateRequest {
+	id: string;
+	token: string;
+	/**
+	 * The path and query of the resume URL as the caller sent them, without the
+	 * token parameter, for example
+	 * `/webhook-waiting/<step id>/<node id>?approved=true`. A step-bound token
+	 * accepts the request only if this equals the string that it holds.
+	 */
+	pathAndQuery?: string;
+}
+
+/**
  * The execution a resume request addresses, and the one step of it that
  * accepts a request. `target` is `null` when no step does: `execution.status`
  * says whether the execution ended or has not reached its wait yet.

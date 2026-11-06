@@ -39,13 +39,11 @@ import {
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
-	OperationalError,
 	TimeoutExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	type IWorkflowIssues,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -54,7 +52,7 @@ import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
 } from '@/modules/agents/evaluation/agent-evaluation.contracts';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';

@@ -30,13 +30,8 @@ import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { AutoPublishMode, INode } from 'n8n-workflow';
-import {
-	shouldAutoPublishWorkflow,
-	jsonParse,
-	OperationalError,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { shouldAutoPublishWorkflow, jsonParse } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -44,14 +39,19 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
-import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
+import {
+	DataTableColumn,
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableSizeValidator,
+	DataTable,
+	DataTableRepository,
+	isValidColumnName,
+	isValidDataTableId,
+} from '@n8n/backend-module-data-table';
+
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -193,6 +193,7 @@ export class SourceControlImportService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -961,6 +962,11 @@ export class SourceControlImportService {
 		if (archivedByPull) {
 			// A pull is a system mutation: no acting user to attribute the archive to.
 			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
+		}
+
+		const storedWorkflow = await this.workflowRepository.findOneBy({ id });
+		if (storedWorkflow) {
+			await this.workflowIndexService.updateIndexForDraft(storedWorkflow);
 		}
 
 		try {

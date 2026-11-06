@@ -11221,7 +11221,7 @@ describe('AgentRuntime — oversized tool results', () => {
 			estimatedTokenCount: number;
 			requiredAction: {
 				toolName: 'workspace_read_tool_result';
-				input: { path: string; view: 'describe' };
+				input: { path: string; view: 'json'; pointer: '' };
 			};
 		};
 
@@ -11453,7 +11453,7 @@ describe('AgentRuntime — oversized tool results', () => {
 			expect(envelopes.map(({ requiredAction }) => requiredAction)).toEqual(
 				envelopes.map(({ path }) => ({
 					toolName: 'workspace_read_tool_result',
-					input: { path, view: 'describe' },
+					input: { path, view: 'json', pointer: '' },
 				})),
 			);
 			expect(storedResultsSeenByNextModel).toEqual([

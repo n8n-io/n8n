@@ -38,6 +38,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import {
+	ProjectScopeService,
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	type WorkflowPublishGuardProxy,
@@ -143,6 +144,8 @@ beforeAll(async () => {
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
 		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
+		mock(),
+		Container.get(ProjectScopeService), // projectScopeService
 		mock(),
 	);
 });
