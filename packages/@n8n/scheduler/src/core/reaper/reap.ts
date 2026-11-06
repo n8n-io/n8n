@@ -123,8 +123,7 @@ async function retireStale(
 	let total = 0;
 	const held: RetiredTask[] = [];
 	try {
-		for (let batch = 0; batch < options.maxRetireBatches; batch++) {
-			if (signal?.aborted === true) break;
+		for (let batch = 0; batch < options.maxRetireBatches && signal?.aborted !== true; batch++) {
 			const { retired, heldByConcurrencyLimit } = await store.retireMissedPending(
 				options.batchSize,
 			);
