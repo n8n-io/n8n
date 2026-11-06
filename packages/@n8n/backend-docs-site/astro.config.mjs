@@ -4,29 +4,19 @@ import { defineConfig, passthroughImageService } from 'astro/config';
 import { readdirSync } from 'node:fs';
 import { remarkBackendDocs } from './plugins/remark-backend-docs.mjs';
 
-// The reading order from docs/backend/README.md. Pages missing here are appended alphabetically.
+// The reading order from docs/backend/README.md.
 const DAY_ONE = ['index', 'how-n8n-runs'];
 const TIER_TWO = [
 	'workflow-publication',
 	'workflow-execution',
+	'agent-publication',
 	'agent-turn',
 ];
-// Month 1 pages in reading order: workflows, agents, processes, state, then the product around them.
-const SUBSYSTEMS = [
-	'engine',
-	'triggers',
-	'user-code',
-	'ai-features',
-	'clusters',
-	'live-updates',
-	'data',
-	'observability',
-	'access',
-	'licensing',
-	'cloud',
-	'public-api',
-	'product-features',
-	'engine-2',
+// Month 1 pages in reading order, in groups. The build fails when a page is in no group.
+const MONTH_ONE = [
+	{ label: 'Processes', slugs: ['lifecycle', 'coordination', 'persistence', 'sandboxing', 'observability'] },
+	{ label: 'Requests', slugs: ['apis', 'authentication', 'permissions', 'credentials'] },
+	{ label: 'Features', slugs: ['licensing', 'governance', 'ai-for-building', 'ai-context', 'ai-evals'] },
 ];
 
 const DOCS_DIR = new URL('../../../docs/backend/', import.meta.url);
@@ -39,6 +29,22 @@ function pages(known, folder = '') {
 		.sort();
 	const ordered = [...known.filter((slug) => found.includes(slug)), ...found.filter((slug) => !known.includes(slug))];
 	return ordered.map((slug) => ({ slug: `${folder}${slug}` }));
+}
+
+/** Builds the Month 1 groups, and fails when a top-level page is in no tier. */
+function monthOneGroups() {
+	const found = pages([])
+		.map((item) => item.slug)
+		.filter((slug) => !DAY_ONE.includes(slug) && !TIER_TWO.includes(slug));
+	const grouped = MONTH_ONE.flatMap((group) => group.slugs);
+	const missing = found.filter((slug) => !grouped.includes(slug));
+	if (missing.length > 0) {
+		throw new Error(`Add these pages to DAY_ONE, TIER_TWO, or a group in MONTH_ONE: ${missing.join(', ')}`);
+	}
+	return MONTH_ONE.map((group) => ({
+		label: group.label,
+		items: group.slugs.filter((slug) => found.includes(slug)).map((slug) => ({ slug })),
+	}));
 }
 
 export default defineConfig({
@@ -70,10 +76,10 @@ export default defineConfig({
 				{ label: 'Day 1', items: DAY_ONE.map((slug) => ({ slug })) },
 				{
 					label: 'Week 1',
-					items: pages(TIER_TWO).filter((item) => !DAY_ONE.includes(item.slug)),
+					items: TIER_TWO.map((slug) => ({ slug })),
 				},
-				{ label: 'Month 1', collapsed: true, items: pages(SUBSYSTEMS, 'subsystems/') },
-				{ label: 'How to', items: pages(['run-queue-mode-locally', 'build-a-backend-module', 'write-a-database-migration', 'roll-out-a-change'], 'how-to/') },
+				{ label: 'Month 1', collapsed: true, items: monthOneGroups() },
+				{ label: 'How to', items: pages(['run-queue-mode-locally', 'build-a-backend-module', 'write-a-database-migration', 'test-a-backend-change', 'roll-out-a-change'], 'how-to/') },
 			],
 		}),
 	],

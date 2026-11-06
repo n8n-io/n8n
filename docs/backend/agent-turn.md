@@ -53,7 +53,7 @@ The agent that you built on [Start here](README.md) had no tools. An agent can u
 | Node | Main, outside any workflow |
 | Workflow | [Workflow execution](workflow-execution.md) |
 | MCP server | External server, called via [Model Context Protocol](https://modelcontextprotocol.io) |
-| Custom tool† | [V8 isolate](subsystems/user-code.md) on the main |
+| Custom tool† | [V8 isolate](sandboxing.md) on the main |
 
 † A [custom tool](https://docs.n8n.io/build/build-and-manage-agents#add-tools) is a small TypeScript function that a user adds to the agent in the editor. Its name, description, and input schema tell the model when and how to call it. The code comes from the user, so n8n runs it in an isolate, i.e. a separate JavaScript heap with its own memory limit.
 
@@ -68,7 +68,14 @@ Your message took the simplest path. Other turns differ from it in these common 
 - **Approval:** A tool can ask a person for approval. The turn then saves a checkpoint and pauses, and the approval resumes it from the checkpoint on any main.
 - **Multi-main:** Mains relay the stream over pubsub, so a second tab or the Stop button works on any main.
 
-The n8n Assistant, the agent that builds and fixes workflows for the user, uses the same agent runtime in its own module. [AI features](subsystems/ai-features.md) explains it.
+The agent runtime comes from `@n8n/agents`, a library that knows nothing about n8n. Two products build on it: the `agents` module, which runs the agents that users build, and the n8n Assistant in `@n8n/instance-ai`, which builds and fixes workflows for the user. The Assistant has its own threads and event log, and it reaches n8n through an adapter service.
+
+The **AI Agent** node is not part of this runtime. It is a node inside a workflow. When its model asks for a tool, the node asks the engine to run the tool nodes that connect to it, and the whole loop stays inside one execution.
+
+## Read next
+
+- [AI for building](ai-for-building.md): how AI builds and fixes workflows and agents for the user.
+- [APIs](apis.md#live-updates): what happens to a streamed reply when the connection drops.
 
 ## Quiz
 
@@ -92,6 +99,11 @@ The n8n Assistant, the agent that builds and fixes workflows for the user, uses 
    - B. The agent runtime on the main.
    - C. The editor, in your browser tab.
    - D. A worker, in every mode.
+5. An AI Agent node in a workflow asks the model for a tool. Where does the tool run?
+   - A. In an agent turn on the main.
+   - B. In a child execution, as a sub-workflow.
+   - C. In the same execution. The engine runs the tool nodes that connect to the AI Agent node.
+   - D. In a task runner.
 
 <details>
 <summary>Answers</summary>
@@ -100,5 +112,6 @@ The n8n Assistant, the agent that builds and fixes workflows for the user, uses 
 2. C. The database makes sure that only one main dequeues each message, and the messages of one conversation run in order.
 3. B. A workflow tool starts a workflow execution, and queue mode runs executions on workers.
 4. B. The model only decides what comes next. The runtime calls the tool, sends back the result, and asks the model again.
+5. C. The AI Agent node is a node, not an agent of the `agents` module. The whole loop stays inside one execution.
 
 </details>

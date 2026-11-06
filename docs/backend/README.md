@@ -102,15 +102,16 @@ To build the agent:
 2. Select a model, and add a credential with an API key for its provider (e.g. Anthropic or OpenAI). Ask your team for a dev key for that provider.
 3. Enter the instructions `Greet the user by name.`
 4. Click **Test agent**, and send `My name is Nathan.`
+5. Click **Publish**.
 
-The agent page also has skills, tools, triggers, and a **Publish** button. Like a workflow, an agent has a draft and a published version.
+The agent page also has skills, tools, and triggers. Like a workflow, an agent has a draft and a published version.
 
 ## What comes next
 
 | When | Read | You learn |
 |---|---|---|
 | Day&nbsp;1 | [How n8n runs](how-n8n-runs.md) | How one process becomes a cluster |
-| Week&nbsp;1 | [Workflow publication](workflow-publication.md), [Workflow execution](workflow-execution.md), [Agent turn](agent-turn.md) | The code path behind each Day 1 step |
+| Week&nbsp;1 | [Workflow publication](workflow-publication.md), [Workflow execution](workflow-execution.md), [Agent publication](agent-publication.md), [Agent turn](agent-turn.md) | The code path behind each Day 1 step |
 | Month&nbsp;1 | Area pages, as needed | The design and pitfalls of each area |
 
 Each page names a contact person to ask about its topic. For an area without a page, find its path in `OWNERS` and ask the team that owns it.

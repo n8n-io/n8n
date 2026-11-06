@@ -8,7 +8,7 @@ contact: ivov
 
 # Write a database migration
 
-A migration is a class that changes the database schema or its data. [Data storage](../subsystems/data.md) explains the data layer around migrations.
+A migration is a class that changes the database schema or its data. [Persistence](../persistence.md) explains the data layer around migrations.
 
 After a release, you cannot edit a migration, i.e. only a new migration can fix a buggy one.
 
@@ -117,8 +117,6 @@ Split the removal into two releases:
 
 1. **First release:** remove all code that reads or writes the column, and keep the column.
 2. **Later release:** drop the column in a migration. No running code uses it any more.
-
-[n8n Cloud](../subsystems/cloud.md#control-plane) explains upgrades and rollbacks in Cloud.
 
 ## Update the entity
 

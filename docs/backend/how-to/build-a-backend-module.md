@@ -129,7 +129,7 @@ export class InsightsController {
 ```
 
 > [!CAUTION]
-> **n8n checks `licenseFlag` only at startup.** A license that changes later does not start or stop a module. See [Licensing](../subsystems/licensing.md#checks).
+> **n8n checks `licenseFlag` only at startup.** A license that changes later does not start or stop a module. See [Licensing](../licensing.md#license-checks).
 
 ## Add routes, services, and tables
 

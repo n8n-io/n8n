@@ -23,7 +23,7 @@ Week 1 follows your three steps from the previous page through this setup: the [
 
 The inside of a main looks somewhat like most [Express](https://expressjs.com) applications. Controllers take requests and call services. Services call repositories, and repositories use [TypeORM](https://typeorm.io). A small dependency injection container, `@n8n/di`, creates the services, and decorators register the routes.
 
-Each workflow execution is passed to the **execution engine**, a library in `n8n-core` that runs the nodes of a workflow and knows nothing about HTTP or the database. (This is the v1 engine. [Engine v2](subsystems/engine-2.md) is in development.)
+Each workflow execution is passed to the **execution engine**, a library in `n8n-core` that runs the nodes of a workflow and knows nothing about HTTP or the database. (This is the v1 engine. Engine v2 is in development, and [its docs](../../packages/@n8n/engine/AGENTS.md) state the current design.)
 
 Agent turns run on another library, the agent runtime in `@n8n/agents`. Workflow executions and agent turns share the same nodes, credentials, permissions, and database.
 
@@ -55,13 +55,21 @@ Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/la
 
 ## n8n Cloud
 
-n8n Cloud runs one instance for each customer. A control plane outside the n8n repository creates, configures, and upgrades each instance, and adds Cloud-specific behavior through hooks.
+n8n Cloud runs one instance for each customer. A control plane outside the n8n repository creates, configures, and upgrades each instance. It sets the environment variables of each instance, including `N8N_DEPLOYMENT_TYPE=cloud`. It also loads hooks into the process, which add the limits of each plan and usage reports.
 
-The control plane depends on names in the n8n repository: environment variables, module names, license feature names, hook names, and health endpoints. Renaming one can break all of Cloud, and no n8n test catches it. See [Cloud contracts](subsystems/cloud.md).
+The control plane depends on these names and files in the n8n repository, and no n8n test checks them:
+
+- Environment variable names. Retire an old name with `DeprecationService`, which keeps it working for a release.
+- Module names and license feature names.
+- The external hooks, and the files and methods that they import, such as `HooksService`. A moved file makes every n8n Cloud instance fail at startup. Search the code for "cloud hooks" before you move code.
+- The health endpoints `/healthz` and `/healthz/readiness`, and `/metrics`.
+- The commands `n8n export:entities` and `n8n import:entities`. n8n Cloud uses them to copy whole tables out of an instance and back in.
+
+Before you add a branch on `N8N_DEPLOYMENT_TYPE`, check if a license feature or a setting can do the same job. Then self-hosted users get the behavior too.
 
 ## Licensing
 
-Paid features ship in every instance, including self-hosted ones. A license decides if they run. See [Licensing](subsystems/licensing.md).
+Paid features ship in every instance, including self-hosted ones. A license decides if they run. See [Licensing](licensing.md).
 
 ## Compatibility
 
@@ -106,7 +114,7 @@ Upgrading an n8n instance must not change what a saved workflow does. Common way
    - D. Workers take them over.
 4. You rename an environment variable, and all tests pass. What can still break?
    - A. Nothing. CI checks every use of each variable.
-   - B. Every Cloud instance, because the Cloud control plane sets environment variables by name.
+   - B. Every n8n Cloud instance, because the n8n Cloud control plane sets environment variables by name.
    - C. Only the editor, because it reads the variables at load.
    - D. Only workers, because they read a separate list of variables.
 5. You want to change what a node does. How do saved workflows keep their behavior?
@@ -121,7 +129,7 @@ Upgrading an n8n instance must not change what a saved workflow does. Common way
 1. A. In queue mode, a main does not run production executions. A worker takes the job from Redis and runs it.
 2. D. The job carries only the ID of the execution, so the database holds the data.
 3. C. The leader renews its key while it runs, so a dead leader loses the key within a few seconds.
-4. B. Environment variables are a contract with the Cloud control plane outside the n8n repository. No test in the n8n repository checks it.
+4. B. Environment variables are a contract with the n8n Cloud control plane outside the n8n repository. No test in the n8n repository checks it.
 5. A. A node stores its `typeVersion`. A change of behavior goes into a new version.
 
 </details>

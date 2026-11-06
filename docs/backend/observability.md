@@ -2,13 +2,13 @@
 title: Observability
 audience: Backend engineers new to n8n
 tier: 3
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-06
 contact: looorent
 ---
 
 # Observability
 
-When something happens in the backend, such as a publication or the end of an execution, several parts of n8n want to know. This page explains how one event reaches all of them, which executions count, and the metrics, logs, and traces of a process. Read it before you add an event or a metric.
+[Workflow execution](workflow-execution.md) followed one execution to its end. Several parts of n8n want to know when an execution ends, or when a user publishes a workflow. This page explains how one event reaches all of them, how product telemetry works, which executions count, and the metrics, logs, and traces of a process.
 
 ## Events
 
@@ -21,9 +21,19 @@ A service emits a typed event through `EventService`. It does not know who liste
 | The activity log | Rows in the table `activity_event` |
 | The failure email | The first failure of a production workflow |
 
-To add an event, add its payload type to the event map, emit it, and handle it in the relays that need it. Log streaming users filter on event names such as `n8n.workflow.success`, so those names are a contract. `pnpm --filter @n8n/telemetry catalog` lists the telemetry events that have a definition.
+To add an event, add its payload type to the event map, emit it, and handle it in the relays that need it. Log streaming users filter on event names such as `n8n.workflow.success`, so those names are a contract.
 
 The event bus behind log streaming is also a recovery log. Each process writes each event to a file on disk before it sends the event on. At startup, the process reads the file and marks executions without a final event as crashed.
+
+## Telemetry
+
+Product telemetry shows the product team how people use n8n. The backend sends these events through the `Telemetry` service in `packages/cli/src/telemetry/`, from the telemetry relay or with a direct `Telemetry.track()` call. An instance with diagnostics off sends none.
+
+> **Never rename a telemetry event.** The data warehouse keeps one table for each event name, so a rename cuts the history of the event. Add new properties, and do not change the type of a property.
+
+`@n8n/telemetry` holds a registry of events, with the name, a description, and a zod schema of the properties of each event. Pass the registry entry to `track()`, so that a wrong property fails the typecheck. `pnpm --filter @n8n/telemetry catalog` lists the registered events. Not all events are in the registry yet, so search the `track()` calls when the catalog has no match.
+
+To see the events of a local instance, run `pnpm telemetry:sink`, and start the backend with `pnpm dev:be:telemetry`. The `n8n:telemetry` skill explains how to add an event.
 
 ## Execution counts
 
@@ -49,25 +59,19 @@ The `otel` module sends OpenTelemetry traces of workflow and node executions.
    - B. Only PostHog.
    - C. Only the failure email.
    - D. Log streaming users, because they filter on event names.
-3. An operator sets `N8N_LOG_SCOPES=scaling`. Your service logs without a scope. What does the operator see?
-   - A. All of your lines.
-   - B. Only your error lines.
-   - C. None of your lines.
-   - D. Your lines, with the scope `scaling`.
-4. A process starts after a crash. What does the event log do?
-   - A. Nothing. The event log is only for log streaming.
-   - B. The process reads the file and marks executions without a final event as crashed.
-   - C. It sends the old events to PostHog.
-   - D. It runs the executions again.
+3. A telemetry event has a name with a typo. What do you do?
+   - A. Rename the event in the registry.
+   - B. Keep the name. A rename cuts the history of the event in the data warehouse.
+   - C. Rename it, and also rename the old table.
+   - D. Send both names for one release.
 
 <details>
 <summary>Answers</summary>
 
 1. A. Billing, insights, and execution limits all use that one file. Do not write a list of modes of your own.
 2. D. Log streaming event names are a contract.
-3. C. The scope filter hides every line that has no scope. Give the logger of your service a scope.
-4. B. The event bus writes each event to a file before it sends it on, so the file is also a recovery log.
+3. B. The data warehouse keeps one table for each event name. A rename is a new event, so plan it with the data team.
 
 </details>
 
-[Roll out a backend change](../how-to/roll-out-a-change.md) shows how to use these signals during a rollout.
+[Roll out a backend change](how-to/roll-out-a-change.md) shows how to use these signals during a rollout.

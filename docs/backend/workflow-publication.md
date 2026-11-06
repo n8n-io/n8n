@@ -66,6 +66,11 @@ The leader records whether each trigger started. If one trigger fails, the other
 
 The leader also checks regularly that the running triggers match the published versions, and fixes any mismatch (e.g. after a crash).
 
+## Read next
+
+- [Coordination](coordination.md): how mains elect the leader, and how n8n starts each trigger run only once.
+- [Permissions](permissions.md): scopes, ownership, and the policies that can refuse a publication.
+
 ## Quiz
 
 1. The editor gets a 200 for its publish request. Are the triggers live?

@@ -61,7 +61,7 @@ When the rollout reaches 100%, remove the flag.
 
 Before the first raise, make your change observable:
 
-- Add [metrics](../subsystems/observability.md#signals) for what your change does, and [telemetry events](../subsystems/observability.md#events) if appropriate. PostHog ignores a backend event that has no `user_id`.
+- Add [metrics](../observability.md#signals) for what your change does, and [telemetry events](../observability.md#events) if appropriate. PostHog ignores a backend event that has no `user_id`.
 - Label your metrics by whether the flag is enabled.
 - Build a [Grafana](https://grafmon.app.n8n.cloud/) dashboard that compares instances with and without the flag, on the same n8n versions.
 - Decide which values stop the rollout.
