@@ -1,38 +1,18 @@
 import type { IDataObject, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { addCustomFieldsPreSendAction } from '../GenericFunctions';
 
 describe('addCustomFieldsPreSendAction', () => {
-	let mockThis: any;
+	let mockThis: IExecuteSingleFunctions;
 
 	beforeEach(() => {
 		mockThis = {
-			helpers: {
-				httpRequest: vi.fn(),
-				httpRequestWithAuthentication: vi.fn(),
-				requestWithAuthenticationPaginated: vi.fn(),
-				request: vi.fn(),
-				requestWithAuthentication: vi.fn(),
-				requestOAuth1: vi.fn(),
-				requestOAuth2: vi.fn(),
-				assertBinaryData: vi.fn(),
-				getBinaryDataBuffer: vi.fn(),
-				prepareBinaryData: vi.fn(),
-				setBinaryDataBuffer: vi.fn(),
-				copyBinaryFile: vi.fn(),
-				binaryToBuffer: vi.fn(),
-				binaryToString: vi.fn(),
-				getBinaryPath: vi.fn(),
-				getBinaryStream: vi.fn(),
-				getBinaryMetadata: vi.fn(),
-				createDeferredPromise: vi
-					.fn()
-					.mockReturnValue({ promise: Promise.resolve(), resolve: vi.fn(), reject: vi.fn() }),
-			},
-		};
+			getNode: vi.fn().mockReturnValue({ name: 'HighLevel' }),
+		} as unknown as IExecuteSingleFunctions;
 	});
 
-	it('should format custom fields correctly when provided', async () => {
+	it('should format custom fields as HighLevel { id, fieldValue } entries', async () => {
 		const mockRequestOptions: IHttpRequestOptions = {
 			body: {
 				customFields: {
@@ -51,14 +31,61 @@ describe('addCustomFieldsPreSendAction', () => {
 			url: '',
 		};
 
-		const result = await addCustomFieldsPreSendAction.call(
-			mockThis as IExecuteSingleFunctions,
-			mockRequestOptions,
-		);
+		const result = await addCustomFieldsPreSendAction.call(mockThis, mockRequestOptions);
 
 		expect((result.body as IDataObject).customFields).toEqual([
-			{ id: '123', key: 'FieldName', field_value: 'TestValue' },
-			{ id: '456', key: 'default_key', field_value: 'AnotherValue' },
+			{ id: '123', fieldValue: 'TestValue' },
+			{ id: '456', fieldValue: 'AnotherValue' },
+		]);
+	});
+
+	// n8n-io/n8n#35392: Update used a resource locator plus the nested routing
+	// expression, which produced `{ fieldId: { id }, field_value }` instead of
+	// the `{ id, fieldValue }` body HighLevel accepts.
+	it('should remap resource-locator and legacy field_value shapes', async () => {
+		const mockRequestOptions: IHttpRequestOptions = {
+			body: {
+				customFields: [
+					{
+						fieldId: {
+							__rl: true,
+							value: 'custom-field-id',
+							mode: 'list',
+							cachedResultName: 'Resumo',
+						},
+						fieldValue: 'teste',
+					},
+					{
+						fieldId: { id: 'legacy-field-id' },
+						field_value: 'legacy-value',
+					},
+				],
+			} as IDataObject,
+			url: '',
+		};
+
+		const result = await addCustomFieldsPreSendAction.call(mockThis, mockRequestOptions);
+
+		expect((result.body as IDataObject).customFields).toEqual([
+			{ id: 'custom-field-id', fieldValue: 'teste' },
+			{ id: 'legacy-field-id', fieldValue: 'legacy-value' },
+		]);
+	});
+
+	it('should accept a plain string field id from an expression', async () => {
+		const mockRequestOptions: IHttpRequestOptions = {
+			body: {
+				customFields: {
+					values: [{ fieldId: 'string-field-id', fieldValue: 'plain' }],
+				},
+			} as IDataObject,
+			url: '',
+		};
+
+		const result = await addCustomFieldsPreSendAction.call(mockThis, mockRequestOptions);
+
+		expect((result.body as IDataObject).customFields).toEqual([
+			{ id: 'string-field-id', fieldValue: 'plain' },
 		]);
 	});
 
@@ -70,10 +97,7 @@ describe('addCustomFieldsPreSendAction', () => {
 			url: '',
 		};
 
-		const result = await addCustomFieldsPreSendAction.call(
-			mockThis as IExecuteSingleFunctions,
-			mockRequestOptions,
-		);
+		const result = await addCustomFieldsPreSendAction.call(mockThis, mockRequestOptions);
 
 		expect(result).toEqual(mockRequestOptions);
 	});
@@ -88,11 +112,23 @@ describe('addCustomFieldsPreSendAction', () => {
 			url: '',
 		};
 
-		const result = await addCustomFieldsPreSendAction.call(
-			mockThis as IExecuteSingleFunctions,
-			mockRequestOptions,
-		);
+		const result = await addCustomFieldsPreSendAction.call(mockThis, mockRequestOptions);
 
 		expect((result.body as IDataObject).customFields).toEqual([]);
+	});
+
+	it('should throw when a custom field has no usable id', async () => {
+		const mockRequestOptions: IHttpRequestOptions = {
+			body: {
+				customFields: {
+					values: [{ fieldId: {}, fieldValue: 'missing-id' }],
+				},
+			} as IDataObject,
+			url: '',
+		};
+
+		await expect(addCustomFieldsPreSendAction.call(mockThis, mockRequestOptions)).rejects.toThrow(
+			NodeOperationError,
+		);
 	});
 });
