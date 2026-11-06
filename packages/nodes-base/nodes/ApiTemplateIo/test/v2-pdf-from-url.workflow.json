@@ -1,0 +1,54 @@
+{
+	"name": "APITemplate.io V2 PDF from URL",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "cccccccc-cccc-4ccc-8ccc-ccccccccccc1",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "pdfv2",
+				"operation": "createFromUrl",
+				"pdfUrl": "https://example.com",
+				"pdfSettings": {
+					"paper_size": "Letter",
+					"print_background": "1"
+				}
+			},
+			"id": "cccccccc-cccc-4ccc-8ccc-ccccccccccc2",
+			"name": "APITemplate.io",
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "test-cred-id",
+					"name": "APITemplate.io API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APITemplate.io": [
+			{
+				"json": {
+					"status": "success",
+					"download_url": "https://cdn.apitemplate.io/files/from-url.pdf"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [[{ "node": "APITemplate.io", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
