@@ -2185,6 +2185,7 @@
 	"expressionModalInput.redacted": "Reveal data first to see value",
 	"expressionModalInput.redacted.noPermission": "No permission to reveal redacted data",
 	"expressionModalInput.redacted.dynamicCredentials": "End-user credential data can't be revealed",
+	"expressionModalInput.redacted.credentialInaccessible": "This execution used a credential you don't have access to, so its data is hidden",
 	"expressionModalInput.redacted.subWorkflow": "Redacted by a sub-workflow. Reveal data first to see value",
 	"expressionModalInput.null": "null",
 	"expressionTip.noExecutionData": "Execute previous nodes to use input data",
