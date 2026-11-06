@@ -18,7 +18,7 @@ import {
 } from '@/modules/knowledge/files/knowledge-upload.error';
 
 import { AgentKnowledgeController } from '../agent-knowledge.controller';
-import type { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import {
 	expectProjectScopedAgentRoutes,

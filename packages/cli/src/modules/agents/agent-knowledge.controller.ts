@@ -7,23 +7,21 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import type { UploadedKnowledgeFile } from '@/modules/knowledge/files/knowledge-file.service';
 import { KnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
 import {
-	AgentUploadMiddleware,
+	KnowledgeUploadMiddleware,
 	cleanupUploadedTempFiles,
 	describeMulterError,
 	multerFailureReason,
 } from '@/modules/knowledge/files/knowledge-upload.middleware';
-import {
-	AgentKnowledgeService,
-	type UploadedKnowledgeFile,
-} from '@/modules/knowledge/files/knowledge-file.service';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { Telemetry } from '@/telemetry';
 
+import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 
-const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
+const knowledgeUploadMiddleware = Container.get(KnowledgeUploadMiddleware);
 const KNOWLEDGE_FILES_FIELD = 'files';
 
 @RestController('/projects/:projectId/agents/v2')
@@ -55,7 +53,7 @@ export class AgentKnowledgeController {
 	}
 
 	@Post('/:agentId/files', {
-		middlewares: [agentUploadMiddleware.array(KNOWLEDGE_FILES_FIELD)],
+		middlewares: [knowledgeUploadMiddleware.array(KNOWLEDGE_FILES_FIELD)],
 	})
 	@ProjectScope('agent:update')
 	async uploadFiles(

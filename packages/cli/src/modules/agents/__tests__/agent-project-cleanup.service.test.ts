@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentExecutionService } from '../agent-execution.service';
-import type { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
+import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentProjectCleanupService } from '../agent-project-cleanup.service';
 import type { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';

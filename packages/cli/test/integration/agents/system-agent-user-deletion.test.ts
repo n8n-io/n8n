@@ -22,7 +22,7 @@ import { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import { AgentMessageQueueService } from '@/modules/agents/agent-message-queue.service';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
-import { AgentKnowledgeService } from '@/modules/knowledge/files/knowledge-file.service';
+import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import { chatThreadId } from '@/modules/agents/agent-test-chat.service';
 import { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
 import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
