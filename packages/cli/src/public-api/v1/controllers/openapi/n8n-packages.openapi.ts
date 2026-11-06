@@ -56,6 +56,12 @@ export const IMPORT_DESCRIPTION =
 	'require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents ' +
 	'do not require write grants. Creating a project or instance skill requires `skill:create`, ' +
 	'and saving a new version of one requires `skill:update`. ' +
+	'When the import publishes a workflow, including a republish under ' +
+	'`preserve-published-state`, the API key needs `workflow:activate`. When it unpublishes ' +
+	'one, the key needs `workflow:deactivate`. Skipped workflows and workflows marked as ' +
+	'archived in the package need neither publication scope. Archiving or restoring a matched ' +
+	'workflow needs `workflow:delete`. Restoring and publishing a workflow requires both ' +
+	'`workflow:delete` and `workflow:activate`. ' +
 	'Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +
@@ -110,7 +116,11 @@ export const IMPORT_SELECTION_DESCRIPTION =
 	'Packages that contain Agents are rejected before writes. Use the ordinary import endpoint ' +
 	'for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`, and ' +
 	'`idPolicy` replaces `workflowIdPolicy`. The old fields are rejected. ' +
-	'Publication remains fixed to `match-source`.';
+	'Publication remains fixed to `match-source`. When `match-source` publishes a selected ' +
+	'workflow, the API key also needs `workflow:activate`. When it unpublishes one, the key ' +
+	'needs `workflow:deactivate`. Archiving or restoring a matched workflow also needs ' +
+	'`workflow:delete`. Restoring and publishing a workflow requires both `workflow:delete` ' +
+	'and `workflow:activate`.';
 
 export const IMPORT_SELECTION_409_DESCRIPTION =
 	'Import blocked by at least one conflict among the issues — for example a workflow ' +

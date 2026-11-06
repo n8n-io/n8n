@@ -11,6 +11,7 @@ import {
 	getAgentBackgroundJobs,
 	getAgentBudgetSpend,
 	getAgentChatQueue,
+	getAgentTaskCancellation,
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
@@ -401,6 +402,7 @@ describe('useAgentApi', () => {
 			await getChatMessages(...args, 'n8n-chat');
 			await cancelAgentChatExecution(...args, 'execution-1', 'n8n-chat');
 			await cancelAgentChatRun(restApiContext, 'project-1', 'agent-1', 'run-1', 'n8n-chat');
+			await getAgentTaskCancellation(...args, 'n8n-chat');
 
 			// Relative paths only: makeRestApiRequest prepends `restApiContext.baseUrl` itself.
 			const path = '/projects/project-1/agents/v2/agent-1/n8n-chat/thread-1';
@@ -416,8 +418,14 @@ describe('useAgentApi', () => {
 				],
 				[restApiContext, 'POST', `${path}/queue/queue-1/steer`, { executionId: 'execution-1' }],
 				[restApiContext, 'GET', `${path}/messages`],
-				[restApiContext, 'DELETE', `${path}/executions/execution-1`],
-				[restApiContext, 'DELETE', '/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1'],
+				[restApiContext, 'DELETE', `${path}/executions/execution-1`, { scope: 'foreground' }],
+				[
+					restApiContext,
+					'DELETE',
+					'/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1',
+					{ scope: 'foreground' },
+				],
+				[restApiContext, 'GET', `${path}/task-cancellation`],
 			]);
 		});
 	});

@@ -20,6 +20,7 @@ import {
 	type InstanceAiThreadInfo,
 	type InstanceAiThreadSummary,
 	type InstanceAiAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type PushMessage,
 } from '@n8n/api-types';
@@ -401,6 +402,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	function stageElement(element: InstanceAiElementAttachment): void {
+		pendingComposerAttachments.value = [...pendingComposerAttachments.value, element];
+	}
+
+	const composerElementAppId = ref<string | null>(null);
+	function setComposerElementAppId(appId: string | null): void {
+		composerElementAppId.value = appId;
+	}
+	function hasComposerElementFor(appId: string): boolean {
+		return composerElementAppId.value === appId;
+	}
+
 	function consumePendingAttachments(): InstanceAiAttachment[] {
 		const staged = pendingComposerAttachments.value;
 		pendingComposerAttachments.value = [];
@@ -482,6 +495,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		syncThread,
 		pendingComposerAttachments,
 		stageNodeSets,
+		stageElement,
+		setComposerElementAppId,
+		hasComposerElementFor,
 		consumePendingAttachments,
 		composerFocusRequest,
 		requestComposerFocus,
