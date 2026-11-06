@@ -118,6 +118,43 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
+	describe('findScheduleStatesByOwnerType', () => {
+		it('reads the owner id, schedule state and last dispatch of every job owners of one kind hold', async () => {
+			entityManager.find.mockResolvedValueOnce([
+				{
+					ownerId: 'a',
+					enabled: true,
+					nextRunAt: CLOCK,
+					orphanedAt: null,
+					lastDispatchedAt: CLOCK,
+				} as ScheduledJob,
+			]);
+
+			const result = await repository.findScheduleStatesByOwnerType('system-task');
+
+			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
+				where: { ownerType: 'system-task' },
+				select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt', 'lastDispatchedAt'],
+			});
+			expect(result).toEqual([
+				{ ownerId: 'a', runnable: true, nextRunAt: CLOCK, lastDispatchedAt: CLOCK },
+			]);
+		});
+
+		it.each([
+			['disabled', { enabled: false, orphanedAt: null }],
+			['quarantined', { enabled: true, orphanedAt: CLOCK }],
+		])('marks a %s job not runnable', async (_, state) => {
+			entityManager.find.mockResolvedValueOnce([
+				{ ownerId: 'a', nextRunAt: CLOCK, lastDispatchedAt: null, ...state } as ScheduledJob,
+			]);
+
+			const [result] = await repository.findScheduleStatesByOwnerType('system-task');
+
+			expect(result.runnable).toBe(false);
+		});
+	});
+
 	describe('findPayloadsByOwnerType', () => {
 		it('reads the id, owner id and payload of every job owners of one kind hold', async () => {
 			const rows = [mock<ScheduledJob>({ id: 1, ownerId: 'a', payload: { n8nVersion: '1.0.0' } })];
@@ -130,35 +167,6 @@ describe('ScheduledJobRepository', () => {
 				select: ['id', 'ownerId', 'payload'],
 			});
 			expect(result).toBe(rows);
-		});
-	});
-
-	describe('findScheduleStatesByOwnerType', () => {
-		it('reads the owner id and schedule state of every job owners of one kind hold', async () => {
-			entityManager.find.mockResolvedValueOnce([
-				{ ownerId: 'a', enabled: true, nextRunAt: CLOCK, orphanedAt: null } as ScheduledJob,
-			]);
-
-			const result = await repository.findScheduleStatesByOwnerType('system-task');
-
-			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
-				where: { ownerType: 'system-task' },
-				select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
-			});
-			expect(result).toEqual([{ ownerId: 'a', runnable: true, nextRunAt: CLOCK }]);
-		});
-
-		it.each([
-			['disabled', { enabled: false, orphanedAt: null }],
-			['quarantined', { enabled: true, orphanedAt: CLOCK }],
-		])('marks a %s job not runnable', async (_, state) => {
-			entityManager.find.mockResolvedValueOnce([
-				{ ownerId: 'a', nextRunAt: CLOCK, ...state } as ScheduledJob,
-			]);
-
-			const [result] = await repository.findScheduleStatesByOwnerType('system-task');
-
-			expect(result.runnable).toBe(false);
 		});
 	});
 

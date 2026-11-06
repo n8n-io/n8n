@@ -73,6 +73,7 @@ describe('WorkflowImporter.apply', () => {
 				parentFolderId: 'folder-1',
 				sourcePublished: false,
 				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 			{
 				action: 'update',
@@ -83,6 +84,7 @@ describe('WorkflowImporter.apply', () => {
 				parentFolderId: null,
 				sourcePublished: false,
 				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 			{
 				action: 'skip',
@@ -92,6 +94,7 @@ describe('WorkflowImporter.apply', () => {
 				parentFolderId: null,
 				sourcePublished: false,
 				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 		] satisfies WorkflowPlanItem[];
 		const plan: WorkflowImportPlan = {
@@ -156,6 +159,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			] satisfies WorkflowPlanItem[],
 			conflicts: [],
@@ -226,6 +230,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -282,6 +287,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: true,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -328,6 +334,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: true,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -367,6 +374,7 @@ describe('WorkflowImporter.apply', () => {
 					parentFolderId: null,
 					sourcePublished: false,
 					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],

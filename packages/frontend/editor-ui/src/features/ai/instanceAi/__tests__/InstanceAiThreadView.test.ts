@@ -136,29 +136,40 @@ vi.mock('@/features/agents/composables/useAgentCapabilitySummary', () => ({
 
 const mockRouteState = vi.hoisted(() => ({
 	params: { threadId: 'thread-1' } as { threadId?: string },
+	query: { value: {} } as Ref<Record<string, string | undefined>>,
 }));
 
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRoute: () => ({
-		params: mockRouteState.params,
-		path: '/instance-ai/thread-1',
-		matched: [],
-		fullPath: '/instance-ai/thread-1',
-		query: {},
-		hash: '',
-		meta: {},
-	}),
-	useRouter: () => ({
-		push: routerPushSpy,
-		replace: routerReplaceSpy,
-		currentRoute: {
-			get value() {
-				return { params: mockRouteState.params };
+vi.mock('vue-router', async (importOriginal) => {
+	const [{ ref: createRef }, original] = await Promise.all([
+		import('vue'),
+		importOriginal<typeof import('vue-router')>(),
+	]);
+	mockRouteState.query = createRef(mockRouteState.query.value);
+
+	return {
+		...original,
+		useRoute: () => ({
+			params: mockRouteState.params,
+			path: '/instance-ai/thread-1',
+			matched: [],
+			fullPath: '/instance-ai/thread-1',
+			get query() {
+				return mockRouteState.query.value;
 			},
-		},
-	}),
-}));
+			hash: '',
+			meta: {},
+		}),
+		useRouter: () => ({
+			push: routerPushSpy,
+			replace: routerReplaceSpy,
+			currentRoute: {
+				get value() {
+					return { params: mockRouteState.params };
+				},
+			},
+		}),
+	};
+});
 
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const [{ ref: createRef }, original] = await Promise.all([
@@ -364,6 +375,19 @@ const InstanceAiDataTablePreviewStub = {
 	template: '<div data-test-id="data-table-preview-stub" />',
 };
 
+const InstanceAiAppPreviewStub = defineComponent({
+	props: {
+		appId: { type: String, required: true },
+		projectId: { type: String, required: true },
+	},
+	setup: (props) => () =>
+		h('div', {
+			'data-test-id': 'instance-ai-app-preview-stub',
+			'data-app-id': props.appId,
+			'data-project-id': props.projectId,
+		}),
+});
+
 // Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
 const InstanceAiResourcePickerStub = defineComponent({
 	props: {
@@ -399,6 +423,7 @@ const defaultViewStubs = {
 	InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 	AgentSection: AgentSectionStub,
 	InstanceAiDataTablePreview: InstanceAiDataTablePreviewStub,
+	InstanceAiAppPreview: InstanceAiAppPreviewStub,
 	InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
 	InstanceAiResourcePicker: InstanceAiResourcePickerStub,
 };
@@ -457,6 +482,7 @@ describe('InstanceAiThreadView', () => {
 		routerPushSpy.mockClear();
 		routerReplaceSpy.mockClear();
 		mockRouteState.params = { threadId: 'thread-1' };
+		mockRouteState.query.value = {};
 		localStorageState.store.clear();
 		inputState.initialDraft = '';
 		inputState.hasAttachments = false;
@@ -538,6 +564,32 @@ describe('InstanceAiThreadView', () => {
 			'workflow-1',
 			'artifact-project',
 		);
+	});
+
+	it('switches the preview when another app opens in the same thread', async () => {
+		store.threads[0].metadata = {
+			instanceAiAppTargets: [
+				{ appId: 'app-1', projectId: 'project-1' },
+				{ appId: 'app-2', projectId: 'project-1' },
+			],
+		};
+		thread.producedArtifacts = new Map([
+			['app-1', { type: 'app', id: 'app-1', projectId: 'project-1', name: 'First app' }],
+			['app-2', { type: 'app', id: 'app-2', projectId: 'project-1', name: 'Second app' }],
+		]) as typeof thread.producedArtifacts;
+		mockRouteState.query.value = { appId: 'app-1' };
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(await findByTestId('instance-ai-app-preview-stub')).toHaveAttribute(
+			'data-app-id',
+			'app-1',
+		);
+
+		mockRouteState.query.value = { appId: 'app-2' };
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-app-preview-stub')).toHaveAttribute('data-app-id', 'app-2');
+		});
 	});
 
 	it('registers an explicit workflow open without a project as unscoped', async () => {

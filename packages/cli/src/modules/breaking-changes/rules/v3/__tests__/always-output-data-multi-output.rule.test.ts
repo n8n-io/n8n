@@ -1,5 +1,6 @@
 import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionTypes, UnexpectedError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
