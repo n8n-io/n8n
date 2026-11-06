@@ -42,6 +42,9 @@ export const AGENT_EVAL_RUN_POLL_TIMEOUT = 10 * TIME.MINUTE;
 /** One failed poll is a blip worth retrying; a sustained run of them means we've lost the run. */
 export const AGENT_EVAL_RUN_POLL_MAX_ERRORS = 3;
 
+/** How long the editor waits for `nodeExecuteAfterData` before it fetches the node's output. */
+export const TRIMMED_RUN_DATA_FILL_DELAY = 3 * TIME.SECOND;
+
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
 export const AGENT_EXTERNAL_UPDATE_NOTICE_DURATION = 5 * TIME.MINUTE;
