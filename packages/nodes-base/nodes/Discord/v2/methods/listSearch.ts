@@ -1,3 +1,4 @@
+import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
 import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
@@ -74,36 +75,46 @@ export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 	};
 }
 
-export async function channelSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+export async function channelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
 	const guildId = await getGuildId.call(this);
 	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
 
+	const results = (response as IDataObject[])
+		.filter((channel) => channel.type !== 4) // Filter out categories
+		.map((channel) => ({
+			name: channel.name as string,
+			value: channel.id as string,
+			url: `https://discord.com/channels/${guildId}/${channel.id}`,
+		}))
+		.filter((channel) => !filter || channel.name.toLowerCase().includes(filter.toLowerCase()));
+
 	return {
-		results: (response as IDataObject[])
-			.filter((cannel) => cannel.type !== 4) // Filter out categories
-			.map((channel) => ({
-				name: channel.name as string,
-				value: channel.id as string,
-				url: `https://discord.com/channels/${guildId}/${channel.id}`,
-			})),
+		results: sortByProperty('name', results),
 	};
 }
 
 export async function textChannelSearch(
 	this: ILoadOptionsFunctions,
+	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const guildId = await getGuildId.call(this);
 
 	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
 
+	const results = (response as IDataObject[])
+		.filter((channel) => ![2, 4].includes(channel.type as number)) // Only text channels
+		.map((channel) => ({
+			name: channel.name as string,
+			value: channel.id as string,
+			url: `https://discord.com/channels/${guildId}/${channel.id}`,
+		}))
+		.filter((channel) => !filter || channel.name.toLowerCase().includes(filter.toLowerCase()));
+
 	return {
-		results: (response as IDataObject[])
-			.filter((cannel) => ![2, 4].includes(cannel.type as number)) // Only text channels
-			.map((channel) => ({
-				name: channel.name as string,
-				value: channel.id as string,
-				url: `https://discord.com/channels/${guildId}/${channel.id}`,
-			})),
+		results: sortByProperty('name', results),
 	};
 }
 
