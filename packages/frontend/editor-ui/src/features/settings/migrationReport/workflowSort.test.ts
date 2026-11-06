@@ -22,15 +22,16 @@ describe('workflowSort', () => {
 
 	it('should sort names without regard to case', () => {
 		const rows = [
-			workflowRow({ name: 'beta' }),
-			workflowRow({ name: 'Alpha' }),
-			workflowRow({ name: 'gamma' }),
+			workflowRow({ name: 'Gamma' }),
+			workflowRow({ name: 'alpha' }),
+			workflowRow({ name: 'Beta' }),
 		];
 
+		// A case-sensitive sort would put `alpha` last, after the capitals.
 		expect(names(sortWorkflows(rows, [{ id: 'name', desc: false }], 'Unassigned'))).toEqual([
-			'Alpha',
-			'beta',
-			'gamma',
+			'alpha',
+			'Beta',
+			'Gamma',
 		]);
 	});
 
