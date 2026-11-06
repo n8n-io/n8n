@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import {
 	assertKnowledgePathSegment,
-	type AgentKnowledgePaths,
+	type KnowledgePaths,
 } from '@/modules/knowledge/files/storage-naming';
 
 import {
@@ -544,10 +544,7 @@ function buildAwkPipeline(command: string, script: string): string {
 	].join('; ');
 }
 
-export function buildScopedKnowledgeShellCommand(
-	command: string,
-	paths: AgentKnowledgePaths,
-): string {
+export function buildScopedKnowledgeShellCommand(command: string, paths: KnowledgePaths): string {
 	const scopedCommand = [
 		`[ -d ${quoteShellArg(paths.filesDir)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
 		`cd ${quoteShellArg(paths.filesDir)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
@@ -566,7 +563,7 @@ export function buildMirrorFinalizeCommand(
 	toCopy: string[],
 	toDelete: string[],
 	manifestFiles: Array<Pick<AgentKnowledgeFileReference, 'file' | 'fileId'>>,
-	paths: AgentKnowledgePaths,
+	paths: KnowledgePaths,
 	stagingId: string,
 ): string {
 	for (const name of [...toCopy, ...toDelete, ...manifestFiles.map((file) => file.file)]) {

@@ -7,7 +7,7 @@ import multer from 'multer';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import { AgentKnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
+import { KnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload.error';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { Telemetry } from '@/telemetry';
 
@@ -72,9 +72,7 @@ export class AgentKnowledgeController {
 				if (error instanceof multer.MulterError) {
 					const message = `File upload error: ${describeMulterError(error)}`;
 					const reason = multerFailureReason(error, KNOWLEDGE_FILES_FIELD);
-					throw reason
-						? new AgentKnowledgeUploadError(message, reason)
-						: new BadRequestError(message);
+					throw reason ? new KnowledgeUploadError(message, reason) : new BadRequestError(message);
 				}
 				throw error;
 			}
@@ -159,7 +157,7 @@ export class AgentKnowledgeController {
 			return;
 		}
 
-		const reason = error instanceof AgentKnowledgeUploadError ? error.reason : 'unknown';
+		const reason = error instanceof KnowledgeUploadError ? error.reason : 'unknown';
 
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_FAILED_AGENT_KNOWLEDGE_UPLOAD, {
 			stage: 'server',
