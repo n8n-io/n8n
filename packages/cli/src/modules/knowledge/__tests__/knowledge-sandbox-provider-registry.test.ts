@@ -95,9 +95,12 @@ describe('KnowledgeSandboxProviderRegistry', () => {
 				async () => await registry.executeCommand(mock<WorkspaceSandbox>(), 'ls', 1_000),
 			],
 			['warm', async () => await registry.warm(scope)],
-			['destroy', async () => await registry.destroy(scope)],
 		])('rejects %s', async (_method, call) => {
 			await expect(call()).rejects.toThrow(expectedError);
+		});
+
+		it('resolves destroy, because teardown never throws and there is no sandbox to delete', async () => {
+			await expect(registry.destroy(scope)).resolves.toBeUndefined();
 		});
 	});
 });
