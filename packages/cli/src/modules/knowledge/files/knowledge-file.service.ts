@@ -19,7 +19,7 @@ import type { Readable } from 'node:stream';
 
 import type { KnowledgeFile } from '../entities/knowledge-file.entity';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
-import { createKnowledgeTelemetryHmac } from '../knowledge-telemetry';
+import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import { KnowledgeFileStore, type StoredKnowledgeFile } from './knowledge-file-store';
 import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
@@ -51,8 +51,8 @@ export class KnowledgeFileService {
 	private readonly logger: Logger;
 
 	constructor(
-		private readonly knowledgeFileRepository: KnowledgeFileRepository,
-		private readonly knowledgeFileStore: KnowledgeFileStore,
+		private readonly fileRepository: KnowledgeFileRepository,
+		private readonly fileStore: KnowledgeFileStore,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
 		logger: Logger,
@@ -91,23 +91,23 @@ export class KnowledgeFileService {
 	}
 
 	async listFiles(scope: KnowledgeConsumerScope): Promise<AgentFileDto[]> {
-		const files = await this.knowledgeFileRepository.findByAgentId(scope.agentId, {});
+		const files = await this.fileRepository.findByAgentId(scope.agentId, {});
 		return files.map((file) => toAgentFileDto(file));
 	}
 
 	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
-		return await this.knowledgeFileRepository.hasFilesForAgent(scope.agentId, {});
+		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
 	}
 
 	/** Returns false when the scope has no file with this id, so nothing was deleted. */
 	async deleteFile(scope: KnowledgeConsumerScope, fileId: string): Promise<boolean> {
-		const file = await this.knowledgeFileRepository.findByIdAndAgentId(fileId, scope.agentId, {});
+		const file = await this.fileRepository.findByIdAndAgentId(fileId, scope.agentId, {});
 		if (!file) {
 			return false;
 		}
 
-		await this.knowledgeFileRepository.deleteByIdAndAgentId(fileId, scope.agentId, {});
-		await this.knowledgeFileStore
+		await this.fileRepository.deleteByIdAndAgentId(fileId, scope.agentId, {});
+		await this.fileStore
 			.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 			.catch((error) => {
 				this.logger.warn('Failed to delete knowledge file blob', {
@@ -122,10 +122,10 @@ export class KnowledgeFileService {
 
 	/** Deletes every file of the scope and its stored bytes. */
 	async deleteAll(scope: KnowledgeConsumerScope): Promise<void> {
-		const files = await this.knowledgeFileRepository.findByAgentId(scope.agentId, {});
-		await this.knowledgeFileRepository.deleteByAgentId(scope.agentId, {});
+		const files = await this.fileRepository.findByAgentId(scope.agentId, {});
+		await this.fileRepository.deleteByAgentId(scope.agentId, {});
 		if (files.length > 0) {
-			await this.knowledgeFileStore
+			await this.fileStore
 				.delete(
 					files.map((file) => ({
 						storedAt: file.storedAt,
@@ -171,18 +171,17 @@ export class KnowledgeFileService {
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
 
-		const stored = await this.knowledgeFileStore.write(
-			{ agentId: scope.agentId, fileId },
-			content,
-			{ fileName: storageFileName, mimeType: file.mimetype },
-		);
+		const stored = await this.fileStore.write({ agentId: scope.agentId, fileId }, content, {
+			fileName: storageFileName,
+			mimeType: file.mimetype,
+		});
 
 		try {
 			return await reserveRow(
 				async (ctx) => await this.saveFileRow(scope, fileId, file, stored, ctx),
 			);
 		} catch (error) {
-			await this.knowledgeFileStore.delete([stored]).catch(() => {});
+			await this.fileStore.delete([stored]).catch(() => {});
 			if (isUniqueConstraintError(error)) {
 				throw this.duplicateFileNameError(file.originalname);
 			}
@@ -197,7 +196,7 @@ export class KnowledgeFileService {
 		stored: StoredKnowledgeFile,
 		ctx: OperationContext,
 	): Promise<KnowledgeFile> {
-		return await this.knowledgeFileRepository.saveUploadedFile(
+		return await this.fileRepository.saveUploadedFile(
 			{
 				id: fileId,
 				agentId: scope.agentId,
@@ -234,12 +233,10 @@ export class KnowledgeFileService {
 
 	private async cleanupUploadedFiles(files: KnowledgeFile[]): Promise<void> {
 		for (const file of files) {
-			await this.knowledgeFileStore
+			await this.fileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 				.catch(() => {});
-			await this.knowledgeFileRepository
-				.deleteByIdAndAgentId(file.id, file.agentId, {})
-				.catch(() => {});
+			await this.fileRepository.deleteByIdAndAgentId(file.id, file.agentId, {}).catch(() => {});
 		}
 	}
 
@@ -252,7 +249,7 @@ export class KnowledgeFileService {
 	}
 
 	private async validateUploadBatch(scope: KnowledgeConsumerScope, files: Express.Multer.File[]) {
-		const existingFiles = await this.knowledgeFileRepository.findByAgentId(scope.agentId, {});
+		const existingFiles = await this.fileRepository.findByAgentId(scope.agentId, {});
 		const existingTotalSizeBytes = existingFiles.reduce(
 			(total, file) => total + file.fileSizeBytes,
 			0,

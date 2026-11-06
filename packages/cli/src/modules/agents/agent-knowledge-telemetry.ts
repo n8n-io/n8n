@@ -1,6 +1,6 @@
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 
-import { createKnowledgeTelemetryHmac } from '@/modules/knowledge/knowledge-telemetry';
+import { createKnowledgeTelemetryHmac } from '@/modules/knowledge/telemetry/helpers';
 
 /** The parts that name one set of stored documents. A Pinecone namespace is its own set. */
 function vectorStoreIdentity(store: AgentJsonVectorStoreConfig): string[] {

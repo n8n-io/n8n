@@ -5,7 +5,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { createKnowledgeTelemetryHmac } from '@/modules/knowledge/knowledge-telemetry';
+import { createKnowledgeTelemetryHmac } from '@/modules/knowledge/telemetry/helpers';
 import type { Telemetry } from '@/telemetry';
 
 import { buildVectorStoreFingerprints } from '../agent-knowledge-telemetry';

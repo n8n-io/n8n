@@ -13,7 +13,7 @@ import type { InstanceSettings } from 'n8n-core';
 
 import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
-import { createKnowledgeTelemetryHmac } from '../../knowledge-telemetry';
+import { createKnowledgeTelemetryHmac } from '../../telemetry/helpers';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
 import type { KnowledgeFileStore } from '../knowledge-file-store';
 import { KnowledgeFileService, type KnowledgeWriteRunner } from '../knowledge-file.service';

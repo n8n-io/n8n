@@ -29,6 +29,7 @@ entities/        entity classes
 repositories/    repositories
 files/           upload, storage and file service code
 retrieval/       sandbox mirror, search commands, retrieval schemas
+telemetry/       helpers shared by the knowledge telemetry events
 vector-stores/   external vector-store connections
 ```
 
