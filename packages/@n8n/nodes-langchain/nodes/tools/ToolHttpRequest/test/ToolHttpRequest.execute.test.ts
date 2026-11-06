@@ -111,5 +111,6 @@ describe('ToolHttpRequest execute', () => {
 		helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
 
 		await expect(httpTool.execute.call(ctx)).rejects.toThrow('Input is not a valid JSON');
+		expect(helpers.httpRequest).not.toHaveBeenCalled();
 	});
 });

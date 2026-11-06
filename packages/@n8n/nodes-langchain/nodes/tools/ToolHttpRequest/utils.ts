@@ -872,7 +872,7 @@ export const configureToolFunction = (
 			response = errorMessage;
 		}
 
-		if (options) {
+		if (options && !executionError) {
 			try {
 				fullResponse = await httpRequest(options);
 			} catch (error) {
