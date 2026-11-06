@@ -34,6 +34,7 @@ export class OpenRouterApi implements ICredentialType {
 		properties: {
 			headers: {
 				Authorization: '=Bearer {{$credentials.apiKey}}',
+				'HTTP-Referer': 'https://n8n.io/',
 			},
 		},
 	};
@@ -42,6 +43,9 @@ export class OpenRouterApi implements ICredentialType {
 		request: {
 			baseURL: '={{ $credentials.url }}',
 			url: '/key',
+			headers: {
+				'HTTP-Referer': 'https://n8n.io/',
+			},
 		},
 	};
 }
