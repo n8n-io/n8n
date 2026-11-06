@@ -1,4 +1,5 @@
 import { isObjectLiteral } from '@n8n/backend-common';
+import { OperationalError } from '@n8n/errors';
 import { NodeOperationError } from 'n8n-workflow';
 import type { Workflow } from 'n8n-workflow';
 
@@ -32,6 +33,15 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			if (node) {
 				error = new NodeOperationError(node, errorObject as unknown as Error, errorObject);
 			}
+		}
+
+		if (
+			error === undefined &&
+			'level' in errorObject &&
+			(errorObject.level === 'warning' || errorObject.level === 'info')
+		) {
+			// Not for level `error`: the error reporter sends a `BaseError` without sanitizing its message.
+			error = new OperationalError(errorObject.message, { level: errorObject.level });
 		}
 
 		if (error === undefined) {

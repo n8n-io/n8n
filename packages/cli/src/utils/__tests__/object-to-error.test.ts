@@ -1,5 +1,6 @@
+import { BaseError } from '@n8n/errors';
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, parseErrorMetadata } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { objectToError } from '../object-to-error';
@@ -39,6 +40,60 @@ describe('objectToError', () => {
 			expect(result).not.toBeInstanceOf(NodeOperationError);
 			expect(result.message).toBe('Test error');
 		});
+	});
+
+	describe('error level', () => {
+		it.each(['warning', 'info'] as const)(
+			'should keep the `%s` level so the error reporter can drop the error',
+			(level) => {
+				const errorObject = {
+					message: 'Test error',
+					description: 'Test description',
+					level,
+				};
+				const workflow = mock<Workflow>();
+
+				const result = objectToError(errorObject, workflow);
+
+				expect(result).toBeInstanceOf(BaseError);
+				expect(result).toMatchObject({
+					level,
+					shouldReport: false,
+					message: 'Test error',
+					description: 'Test description',
+				});
+			},
+		);
+
+		it('should keep the sub-execution metadata of a `warning` error for continue-on-fail callers', () => {
+			const errorObject = {
+				message: 'Test error',
+				level: 'warning',
+				executionId: 'sub-execution-1',
+				workflowId: 'sub-workflow-1',
+			};
+			const workflow = mock<Workflow>();
+
+			const result = objectToError(errorObject, workflow);
+
+			expect(parseErrorMetadata(result)).toEqual({
+				subExecution: { executionId: 'sub-execution-1', workflowId: 'sub-workflow-1' },
+				subExecutionsCount: 1,
+			});
+		});
+
+		it.each(['error', undefined])(
+			'should create a plain `Error` when the level is `%s`',
+			(level) => {
+				const errorObject = { message: 'Test error', level };
+				const workflow = mock<Workflow>();
+
+				const result = objectToError(errorObject, workflow);
+
+				expect(result).not.toBeInstanceOf(BaseError);
+				expect(Object.hasOwn(result, 'level')).toBe(false);
+			},
+		);
 	});
 
 	describe('policy violations', () => {
