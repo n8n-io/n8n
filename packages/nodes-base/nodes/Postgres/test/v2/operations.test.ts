@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
+import { getResolvables } from '@utils/utilities';
+
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
@@ -744,6 +746,64 @@ describe('Test PostgresV2, executeQuery operation', () => {
 					'Query Parameters must be a string of comma-separated values or an array of values',
 				);
 			});
+		});
+	});
+
+	describe('queryReplacement resolution', () => {
+		it('should resolve queryReplacement only once for node version 2.5+', async () => {
+			const query = 'SELECT $1, $2, $3';
+			const rawQueryReplacement = '={{ $json.a }}, {{ $json.b }}, {{ $json.c }}';
+			const nodeParameters: IDataObject = {
+				operation: 'executeQuery',
+				query,
+				options: {
+					queryReplacement: rawQueryReplacement,
+					nodeVersion: 2.8,
+				},
+			};
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const evaluated: Record<string, unknown> = {
+				'{{ $json.a }}': 'a',
+				'{{ $json.b }}': 'b',
+				'{{ $json.c }}': 'c',
+			};
+
+			const evaluateExpression = vi.fn((expression: string) => evaluated[expression]);
+			const getNodeParameter = vi.fn(
+				(parameterName: string, _itemIndex: number, fallbackValue?: unknown) => {
+					if (parameterName === 'options.queryReplacement') {
+						// Simulate the real engine resolving the whole option string:
+						// every expression in it is evaluated once here.
+						let resolved = rawQueryReplacement.replace(/^=+/, '');
+						for (const resolvable of getResolvables(resolved)) {
+							resolved = resolved.replace(resolvable, String(evaluateExpression(resolvable)));
+						}
+						return resolved;
+					}
+					return get(nodeParameters, parameterName, fallbackValue);
+				},
+			);
+
+			const mockExecute = {
+				...createMockExecuteFunction(nodeParameters),
+				getNodeParameter,
+				evaluateExpression,
+			} as unknown as IExecuteFunctions;
+
+			await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+			expect(runQueries).toHaveBeenCalledWith(
+				[{ query, values: ['a', 'b', 'c'], options: { partial: true } }],
+				nodeOptions,
+			);
+			// The option string must not be resolved through getNodeParameter: the
+			// 2.5+ path computes the values from the raw value, so resolving it here
+			// would evaluate every expression a second time.
+			expect(
+				getNodeParameter.mock.calls.filter(([name]) => name === 'options.queryReplacement'),
+			).toHaveLength(0);
+			// Each expression is evaluated exactly once.
+			expect(evaluateExpression).toHaveBeenCalledTimes(3);
 		});
 	});
 });
