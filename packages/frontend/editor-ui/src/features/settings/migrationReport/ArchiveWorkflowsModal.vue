@@ -55,6 +55,18 @@ const publishedNote = computed(() => {
 	});
 });
 
+const cancelLabel = computed(() =>
+	isPrompt.value
+		? i18n.baseText('settings.migrationReport.detail.wontFix.archive.prompt.keep')
+		: i18n.baseText('generic.cancel'),
+);
+
+const confirmLabel = computed(() =>
+	isPrompt.value
+		? i18n.baseText('settings.migrationReport.detail.wontFix.archive.prompt.archive')
+		: i18n.baseText('settings.migrationReport.detail.bulk.wontFixAndArchive'),
+);
+
 function confirm() {
 	emit('confirm');
 	emit('close');
@@ -102,20 +114,12 @@ function confirm() {
 			<div :class="$style.actions">
 				<N8nButton
 					variant="outline"
-					:label="
-						isPrompt
-							? i18n.baseText('settings.migrationReport.detail.wontFix.archive.prompt.keep')
-							: i18n.baseText('generic.cancel')
-					"
+					:label="cancelLabel"
 					data-test-id="archive-workflows-modal-cancel-button"
 					@click="emit('close')"
 				/>
 				<N8nButton
-					:label="
-						isPrompt
-							? i18n.baseText('settings.migrationReport.detail.wontFix.archive.prompt.archive')
-							: i18n.baseText('settings.migrationReport.detail.bulk.wontFixAndArchive')
-					"
+					:label="confirmLabel"
 					data-test-id="archive-workflows-modal-confirm-button"
 					@click="confirm"
 				/>
