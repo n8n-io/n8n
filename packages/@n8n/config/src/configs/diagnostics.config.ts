@@ -9,6 +9,13 @@ class PostHogConfig {
 	/** PostHog API host URL. */
 	@Env('N8N_DIAGNOSTICS_POSTHOG_API_HOST')
 	apiHost: string = 'https://ph.n8n.io';
+
+	/**
+	 * Whether the editor enables PostHog autocapture with the SDK defaults.
+	 * @see https://posthog.com/docs/product-analytics/autocapture#configuring-interaction-autocapture
+	 */
+	@Env('N8N_DIAGNOSTICS_POSTHOG_AUTOCAPTURE')
+	autocapture: boolean = false;
 }
 
 @Config
