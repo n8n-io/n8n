@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
-import {
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuPortal,
-	DropdownMenuRoot,
-	DropdownMenuTrigger,
-} from 'reka-ui';
+import { N8nDropdownMenu, N8nIcon, N8nText, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { ChatHubSessionDto, ChatSessionId } from '@n8n/api-types';
 import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { useChatStore } from '../chat.store';
@@ -35,21 +26,42 @@ const portalTarget = computed(() => popOutWindow.value?.document.body);
 const isOpen = ref(false);
 const isLoading = ref(false);
 const hasFetchedForWorkflow = ref(false);
-const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 
 const workflowSessions = computed(() => {
 	const ids = chatStore.sessions.ids ?? [];
 	return ids.reduce<ChatHubSessionDto[]>((acc, id) => {
 		const s = chatStore.sessions.byId[id];
-		if (s && s.workflowId === props.workflowId && s.type === 'manual') {
+		if (s?.workflowId === props.workflowId && s.type === 'manual') {
 			acc.push(s);
 		}
 		return acc;
 	}, []);
 });
 
-const groupedSessions = computed(() => groupConversationsByDate(workflowSessions.value));
-const hasNoSessions = computed(() => workflowSessions.value.length === 0 && !isLoading.value);
+const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	if (isLoading.value) return [];
+
+	const grouped = groupConversationsByDate(workflowSessions.value);
+	const items: Array<DropdownMenuItemProps<string>> = [];
+
+	for (let i = 0; i < grouped.length; i++) {
+		const group = grouped[i];
+		items.push({
+			id: `__group-${i}__`,
+			label: group.group,
+			header: true,
+		});
+		for (const session of group.sessions) {
+			items.push({
+				id: session.id,
+				label: session.id,
+				checked: session.id === props.sessionId,
+			});
+		}
+	}
+
+	return items;
+});
 
 async function handleOpenChange(open: boolean) {
 	isOpen.value = open;
@@ -64,13 +76,9 @@ async function handleOpenChange(open: boolean) {
 	}
 }
 
-function handleSelectSession(sessionId: ChatSessionId) {
+function handleSelectSession(sessionId: string) {
+	if (sessionId.startsWith('__group-')) return;
 	emit('select-session', sessionId);
-	isOpen.value = false;
-}
-
-function formatSessionLabel(session: ChatHubSessionDto): string {
-	return session.id;
 }
 
 // Reset fetch state when workflow changes so we re-fetch on next open
@@ -81,105 +89,43 @@ watch(
 		hasFetchedForWorkflow.value = false;
 	},
 );
-
-// Custom dismiss for cross-window portals (pop-out chat window).
-// reka-ui's DismissableLayer captures ownerDocument during setup when the
-// element ref is still null, falling back to globalThis.document — the main
-// window's document. So the dismiss pointerdown listener never fires in the
-// pop-out window. This watcher adds one on the correct document.
-// NOTE: modal=false (set above) prevents reka-ui from setting pointer-events:none.
-watch(isOpen, (open, _oldValue, onCleanup) => {
-	const target = portalTarget.value;
-	if (!target || !open) return;
-
-	const targetDoc = target.ownerDocument;
-	if (!targetDoc || targetDoc === document) return;
-
-	let handler: ((e: PointerEvent) => void) | undefined;
-	const timerId = setTimeout(() => {
-		handler = (e: PointerEvent) => {
-			const contentEl = contentRef.value?.$el as HTMLElement | undefined;
-			if (contentEl?.contains(e.target as Node)) return;
-			setTimeout(() => {
-				if (isOpen.value) {
-					isOpen.value = false;
-				}
-			}, 0);
-		};
-		targetDoc.addEventListener('pointerdown', handler);
-	}, 0);
-
-	onCleanup(() => {
-		clearTimeout(timerId);
-		if (handler) targetDoc.removeEventListener('pointerdown', handler);
-	});
-});
 </script>
 
 <template>
-	<DropdownMenuRoot :modal="!isInPopOut" :open="isOpen" @update:open="handleOpenChange">
-		<DropdownMenuTrigger
-			:class="[$style.trigger, { [$style.open]: isOpen }]"
-			:title="
-				i18n.baseText('chatHub.canvas.session.tooltip.sessionId', {
-					interpolate: { sessionId: props.sessionId },
-				})
-			"
-			data-test-id="canvas-chat-session-dropdown"
-		>
-			<N8nText size="small" :class="$style.triggerText">
-				{{ sessionTitle }}
-			</N8nText>
-			<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
-		</DropdownMenuTrigger>
-
-		<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
-			<DropdownMenuContent
-				ref="contentRef"
-				:class="$style.content"
-				:side-offset="4"
-				align="start"
-				:avoid-collisions="true"
+	<N8nDropdownMenu
+		:model-value="isOpen"
+		:items="menuItems"
+		:portal-target="portalTarget"
+		:modal="!isInPopOut"
+		:loading="isLoading"
+		:empty-text="i18n.baseText('chatHub.canvas.session.noSessions')"
+		placement="bottom-start"
+		data-test-id="canvas-chat-session-dropdown"
+		width="20rem"
+		max-height="360px"
+		@update:model-value="handleOpenChange"
+		@select="handleSelectSession"
+	>
+		<template #trigger>
+			<button
+				type="button"
+				:class="[$style.trigger, { [$style.open]: isOpen }]"
+				:title="
+					i18n.baseText('chatHub.canvas.session.tooltip.sessionId', {
+						interpolate: { sessionId: props.sessionId },
+					})
+				"
 			>
-				<div v-if="isLoading" :class="$style.emptyState">
-					<N8nText size="small" color="text-light">…</N8nText>
-				</div>
-
-				<div v-else-if="hasNoSessions" :class="$style.emptyState">
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('chatHub.canvas.session.noSessions') }}
-					</N8nText>
-				</div>
-
-				<template v-else>
-					<DropdownMenuGroup
-						v-for="group in groupedSessions"
-						:key="group.group"
-						:class="$style.group"
-					>
-						<DropdownMenuLabel :class="$style.groupLabel">
-							{{ group.group }}
-						</DropdownMenuLabel>
-						<DropdownMenuItem
-							v-for="session in group.sessions"
-							:key="session.id"
-							:class="[$style.sessionItem, { [$style.active]: session.id === props.sessionId }]"
-							@select="handleSelectSession(session.id)"
-						>
-							<span :class="$style.sessionTitle">
-								{{ formatSessionLabel(session) }}
-							</span>
-						</DropdownMenuItem>
-					</DropdownMenuGroup>
-				</template>
-			</DropdownMenuContent>
-		</DropdownMenuPortal>
-	</DropdownMenuRoot>
+				<N8nText size="small" :class="$style.triggerText">
+					{{ sessionTitle }}
+				</N8nText>
+				<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
+			</button>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/motion';
-
 .trigger {
 	display: inline-flex;
 	align-items: center;
@@ -210,90 +156,5 @@ watch(isOpen, (open, _oldValue, onCleanup) => {
 	.open & {
 		transform: rotate(180deg);
 	}
-}
-
-.content {
-	--animation--popover-in--duration: 200ms;
-	--animation--popover-in--easing: cubic-bezier(0.16, 1, 0.3, 1);
-	--animation--popover-in--translate-x: 0;
-	--animation--popover-in--translate-y: 0;
-	--canvas-chat-session-dropdown--transform-origin-x: center;
-	--canvas-chat-session-dropdown--transform-origin-y: center;
-
-	min-width: 240px;
-	max-width: 320px;
-	max-height: 360px;
-	overflow: auto;
-	background-color: var(--color--foreground--tint-2);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	box-shadow:
-		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-	padding: var(--spacing--3xs);
-	z-index: 9999;
-	transform-origin: var(--canvas-chat-session-dropdown--transform-origin-x)
-		var(--canvas-chat-session-dropdown--transform-origin-y);
-
-	&[data-state='open'] {
-		@include motion.popover-in;
-	}
-
-	&[data-side='bottom'] {
-		--animation--popover-in--translate-y: 2px;
-		--canvas-chat-session-dropdown--transform-origin-y: top;
-	}
-
-	&[data-side='top'] {
-		--animation--popover-in--translate-y: -2px;
-		--canvas-chat-session-dropdown--transform-origin-y: bottom;
-	}
-}
-
-.emptyState {
-	padding: var(--spacing--sm);
-	text-align: center;
-}
-
-.group + .group {
-	margin-top: var(--spacing--4xs);
-}
-
-.groupLabel {
-	padding: var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text);
-	line-height: 1;
-}
-
-.sessionItem {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	height: var(--spacing--xl);
-	padding: var(--spacing--2xs);
-	border-radius: var(--radius);
-	cursor: pointer;
-	user-select: none;
-	font-size: var(--font-size--2xs);
-	line-height: 1;
-	color: var(--color--text);
-	outline: none;
-
-	&[data-highlighted] {
-		background-color: var(--color--foreground--tint-1);
-		cursor: pointer;
-	}
-
-	&.active {
-		font-weight: var(--font-weight--medium);
-	}
-}
-
-.sessionTitle {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 </style>
