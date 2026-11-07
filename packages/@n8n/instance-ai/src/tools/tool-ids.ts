@@ -122,28 +122,17 @@ export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.v
 	AGENT_BUILDER_TOOL_NAMES,
 ).filter((name) => !RETIRED_AGENT_BUILDER_TOOL_NAMES.has(name));
 
+/**
+ * Harness tools: the tools of the chat agent itself. Only these are sent in full.
+ * Every n8n resource tool (workflows, executions, data tables, credentials,
+ * Agents, workspace) is listed by name in the tool catalog and runs through `call_tool`.
+ */
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
 	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
 	// Deferring it would route the user's "let me out" through `call_tool`.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
-	DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
-	DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
-	DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
-	DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
-	DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
-	DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION,
-	...WORKFLOW_TOOL_NAMES,
-	...EXECUTION_TOOL_NAMES,
-	...DATA_TABLE_TOOL_NAMES,
 	DOMAIN_TOOL_IDS.PARSE_FILE,
-	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-	DOMAIN_TOOL_IDS.SEARCH_NODES,
-	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
-	DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
-	DOMAIN_TOOL_IDS.EXECUTE_NODE,
-	DOMAIN_TOOL_IDS.SEARCH_MODELS,
-	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
 	// n8n's own docs for n8n questions, but deferring n8n-docs put that route behind
@@ -168,10 +157,43 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
-	// The orchestrator builds Agents with these tools directly. Deferring them would add
-	// a `find_tools` round per tool and route every call through `call_tool` on
-	// every agent build. Registered only when the host provides a builder delegate
-	// (Agents module active), so an instance without it pays nothing.
-	...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,
 	DOMAIN_TOOL_IDS.SKILLS,
 ]);
+
+const NODE_TOOL_NAMES: readonly string[] = [
+	DOMAIN_TOOL_IDS.SEARCH_NODES,
+	DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+	DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+	DOMAIN_TOOL_IDS.EXECUTE_NODE,
+	DOMAIN_TOOL_IDS.SEARCH_MODELS,
+];
+
+const CREDENTIAL_TOOL_NAMES: readonly string[] = [
+	DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+	DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+	DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+	DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+	DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
+	DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION,
+];
+
+/** Catalog namespace of each deferred n8n tool. Unlisted tools go to the default namespace. */
+const TOOL_NAMESPACE_BY_NAME = new Map<string, string>([
+	...[...WORKFLOW_TOOL_NAMES, ...Object.values(WORKFLOW_BUILDER_TOOL_NAMES)]
+		.filter((name) => !EXECUTION_TOOL_NAMES.includes(name))
+		.map((name): [string, string] => [name, 'workflows']),
+	...EXECUTION_TOOL_NAMES.map((name): [string, string] => [name, 'executions']),
+	...DATA_TABLE_TOOL_NAMES.map((name): [string, string] => [name, 'data_tables']),
+	...CREDENTIAL_TOOL_NAMES.map((name): [string, string] => [name, 'credentials']),
+	...NODE_TOOL_NAMES.map((name): [string, string] => [name, 'nodes']),
+	...Object.values(AGENT_BUILDER_TOOL_NAMES).map((name): [string, string] => [name, 'agents']),
+	...Object.values(WORKSPACE_TOOL_NAME_BY_ACTION).map((name): [string, string] => [
+		name,
+		'workspace',
+	]),
+]);
+
+/** Returns the catalog namespace of a deferred n8n tool, or undefined for the default one. */
+export function getToolNamespace(toolName: string): string | undefined {
+	return TOOL_NAMESPACE_BY_NAME.get(toolName);
+}

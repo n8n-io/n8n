@@ -22,7 +22,7 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
+import { ALWAYS_LOADED_TOOL_NAMES, getToolNamespace } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -246,11 +246,12 @@ export async function createInstanceAgent(
 		// Catalog mode keeps the toolset fixed for the whole run, so the prompt cache
 		// survives, and a deferred tool costs one call_tool call instead of a load step.
 		agent.toolDeferral({ mode: 'catalog' });
-		// MCP tools are listed under their server, so the model can browse one
-		// service with find_tools({ namespace }) instead of searching the whole set.
+		// MCP tools are listed under their server and n8n tools under their resource
+		// (workflows, data_tables, agents, ...), so the model can browse one area
+		// with find_tools({ namespace }) instead of searching the whole set.
 		const byNamespace = new Map<string | undefined, InstanceAiToolRegistry>();
 		for (const [name, tool] of deferredTools) {
-			const namespace = tool.mcpServerName;
+			const namespace = tool.mcpServerName ?? getToolNamespace(name);
 			const group = byNamespace.get(namespace) ?? createToolRegistry();
 			group.set(name, tool);
 			byNamespace.set(namespace, group);

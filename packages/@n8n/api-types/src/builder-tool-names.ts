@@ -415,6 +415,37 @@ export function resolveBuilderToolName(toolName: string, action?: unknown): stri
 		: toolName;
 }
 
+/** Name of the tool catalog's dispatcher tool in the agents SDK. */
+export const CATALOG_CALL_TOOL_NAME = 'call_tool';
+
+/**
+ * Returns the tool and arguments that a `call_tool` call runs, so a display
+ * shows the real tool. Returns other calls unchanged. `arguments` can be an
+ * object or a JSON string, as the SDK accepts both.
+ */
+export function unwrapCatalogToolCall(
+	toolName: string,
+	args: Record<string, unknown>,
+): { toolName: string; args: Record<string, unknown> } {
+	if (toolName !== CATALOG_CALL_TOOL_NAME) return { toolName, args };
+	const target = args.tool;
+	if (typeof target !== 'string' || !target) return { toolName, args };
+	return { toolName: target, args: parseCatalogArguments(args.arguments) };
+}
+
+function parseCatalogArguments(value: unknown): Record<string, unknown> {
+	const isObject = (v: unknown): v is Record<string, unknown> =>
+		typeof v === 'object' && v !== null && !Array.isArray(v);
+	if (isObject(value)) return value;
+	if (typeof value !== 'string') return {};
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return isObject(parsed) ? parsed : {};
+	} catch {
+		return {};
+	}
+}
+
 /** Returns every former name of a builder tool. */
 export function getLegacyBuilderToolNames(toolName: string): string[] {
 	const renamed = Object.entries(LEGACY_BUILDER_TOOL_NAMES)

@@ -86,6 +86,34 @@ describe('mapAgentChunkToEvent', () => {
 		expect(map({ type: 'tool-call-delta', argumentsDelta: '{"x"' })).toBeNull();
 	});
 
+	it('reports the tool that a catalog call_tool call runs', () => {
+		expect(
+			map({
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'data_tables', arguments: { action: 'list' } },
+			}),
+		).toEqual({
+			type: 'tool-call',
+			runId,
+			agentId,
+			payload: { toolCallId: 'tc-1', toolName: 'data_tables', args: { action: 'list' } },
+		});
+
+		const confirmation = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-2',
+			toolName: 'call_tool',
+			input: { tool: 'workflows', arguments: '{"action":"delete"}' },
+			suspendPayload: { message: 'Delete it?' },
+		});
+		expect(confirmation).toMatchObject({
+			type: 'confirmation-request',
+			payload: { toolName: 'workflows', args: { action: 'delete' } },
+		});
+	});
+
 	it('maps native text deltas', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' })).toEqual({
 			type: 'text-delta',

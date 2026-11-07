@@ -246,21 +246,19 @@ describe('createInstanceAgent', () => {
 		});
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['workflow_builder_build_workflow-run-1']).toMatchObject({
+		expect(deferredTools['workflow_builder_build_workflow-run-1']).toMatchObject({
 			name: 'workflow_builder_build_workflow-run-1',
 		});
-		expect(attachedTools['list_workflows-run-1']).toMatchObject({
+		expect(deferredTools['list_workflows-run-1']).toMatchObject({
 			name: 'list_workflows-run-1',
 		});
-		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
-			name: 'verify-built-workflow-run-1',
-		});
-		expect(attachedTools['search_nodes-run-1']).toMatchObject({
+		expect(deferredTools['search_nodes-run-1']).toMatchObject({
 			name: 'search_nodes-run-1',
 		});
-		expect(secondRunAttachedTools['search_nodes-run-2']).toMatchObject({
+		expect(getDeferredTools(1)['search_nodes-run-2']).toMatchObject({
 			name: 'search_nodes-run-2',
 		});
+		expect(secondRunAttachedTools['research-run-2']).toMatchObject({ name: 'research-run-2' });
 	});
 
 	it('shares one domain context between domain and orchestration tools', async () => {
@@ -292,11 +290,11 @@ describe('createInstanceAgent', () => {
 			mcpManager: createMcpManagerStub(),
 		} as never);
 		expect(getDeferredTools()).not.toHaveProperty('workflow_builder_task_control-profile');
-		expect(getAttachedTools()).not.toHaveProperty('search_nodes-profile');
-		expect(getAttachedTools()).toHaveProperty('workflow_builder_build_workflow-profile');
+		expect(getDeferredTools()).not.toHaveProperty('search_nodes-profile');
+		expect(getDeferredTools()).toHaveProperty('workflow_builder_build_workflow-profile');
 	});
 
-	it('keeps workflow-builder skill tool names always loaded', async () => {
+	it('defers n8n resource tools to the catalog and keeps harness tools loaded', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
@@ -324,8 +322,12 @@ describe('createInstanceAgent', () => {
 			'run_workflow',
 		]) {
 			const scopedName = `${toolName}-builder-skill-run`;
+			expect(deferredTools[scopedName]).toMatchObject({ name: scopedName });
+			expect(attachedTools[scopedName]).toBeUndefined();
+		}
+		for (const toolName of ['research', 'n8n-docs']) {
+			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
-			expect(deferredTools[scopedName]).toBeUndefined();
 		}
 	});
 
