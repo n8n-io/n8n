@@ -146,8 +146,6 @@ beforeEach(async () => {
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
-
-	globalConfig.tags.disabled = false;
 });
 
 afterAll(() => {
@@ -414,23 +412,6 @@ describe('GET /workflows', () => {
 
 		expect(wfTags.length).toBe(1);
 		expect(wfTags[0].id).toBe(tag.id);
-	});
-
-	test('should omit tags entirely when tags are disabled', async () => {
-		globalConfig.tags.disabled = true;
-
-		try {
-			const tag = await createTag({ name: 'production' });
-			await createWorkflowWithHistory({ tags: [tag] }, member);
-
-			const response = await authMemberAgent.get('/workflows');
-
-			expect(response.statusCode).toBe(200);
-			expect(response.body.data).toHaveLength(1);
-			expect(response.body.data[0]).not.toHaveProperty('tags');
-		} finally {
-			globalConfig.tags.disabled = false;
-		}
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
@@ -970,21 +951,6 @@ describe('GET /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.tags).toEqual([expect.objectContaining({ id: tag.id, name: tag.name })]);
-	});
-
-	test('should omit tags entirely when tags are disabled', async () => {
-		globalConfig.tags.disabled = true;
-
-		try {
-			const workflow = await createWorkflowWithHistory({}, member);
-
-			const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
-
-			expect(response.statusCode).toBe(200);
-			expect(response.body).not.toHaveProperty('tags');
-		} finally {
-			globalConfig.tags.disabled = false;
-		}
 	});
 
 	test('should retrieve non-owned workflow for custom global role with workflow:read', async () => {
@@ -3180,9 +3146,9 @@ describe('PUT /workflows/:id', () => {
 				},
 				{
 					id: 'uuid-5678',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 					customTelemetryTags: {
@@ -3264,9 +3230,9 @@ describe('PUT /workflows/:id', () => {
 			nodes: [
 				{
 					id: 'uuid-updated',
-					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
-					name: 'Updated Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Updated Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [300, 400],
 				},
@@ -3464,9 +3430,9 @@ describe('PUT /workflows/:id', () => {
 				},
 				{
 					id: 'uuid-2',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3981,15 +3947,6 @@ describe('GET /workflows/:id/tags', () => {
 		expect(response.statusCode).toBe(401);
 	});
 
-	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
-		globalConfig.tags.disabled = true;
-
-		const response = await authOwnerAgent.get('/workflows/2/tags');
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Workflow Tags Disabled');
-	});
-
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/2/tags');
 
@@ -4043,15 +4000,6 @@ describe('PUT /workflows/:id/tags', () => {
 		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/workflows/2/tags');
 
 		expect(response.statusCode).toBe(401);
-	});
-
-	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
-		globalConfig.tags.disabled = true;
-
-		const response = await authOwnerAgent.put('/workflows/2/tags').send([]);
-
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('Workflow Tags Disabled');
 	});
 
 	test('should fail due to non-existing workflow', async () => {

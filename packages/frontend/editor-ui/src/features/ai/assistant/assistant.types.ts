@@ -305,19 +305,6 @@ export namespace ReplaceCodeRequest {
 	}
 }
 
-export namespace AskAiRequest {
-	export interface RequestPayload {
-		question: string;
-		context: {
-			schema: ChatRequest.NodeExecutionSchema[];
-			inputSchema: ChatRequest.NodeExecutionSchema;
-			pushRef: string;
-			ndvPushRef: string;
-		};
-		forNode: 'code' | 'transform';
-	}
-}
-
 // ============================================================================
 // Plan Mode Types
 // ============================================================================

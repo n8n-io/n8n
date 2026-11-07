@@ -31,14 +31,9 @@ import { SkillsGate } from '@/modules/skills';
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
 
-const makeGlobalConfig = ({
-	builderEnabled = true,
-	tagsDisabled = false,
-	managedByEnv = false,
-} = {}) =>
+const makeGlobalConfig = ({ builderEnabled = true, managedByEnv = false } = {}) =>
 	({
 		endpoints: { mcpBuilderEnabled: builderEnabled },
-		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
 	}) as unknown as GlobalConfig;
 
@@ -186,7 +181,7 @@ describe('McpProtectedResource', () => {
 				urlService,
 				mcpSettingsService,
 				mcpConfig,
-				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
+				makeGlobalConfig({ builderEnabled: false }),
 				moduleRegistry,
 				licenseState,
 				postHogClient,
@@ -203,8 +198,6 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['project:read']).toEqual([]);
 			expect(scopeTools['agent:read']).toBeUndefined();
 			expect(scopeTools['agent:write']).toBeUndefined();
-			// list_workflow_tags is hidden when tags are disabled
-			expect(scopeTools['tag:read']).toEqual([]);
 		});
 
 		it('should drop folder tools when folders are not licensed', async () => {

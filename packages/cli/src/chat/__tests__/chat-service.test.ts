@@ -48,7 +48,9 @@ describe('ChatService', () => {
 
 		await chatService.startSession(req);
 
-		expect(mockWs.send).toHaveBeenCalledWith('Connection rejected');
+		expect(mockWs.send).toHaveBeenCalledWith(
+			JSON.stringify({ type: 'error', message: 'Connection rejected' }),
+		);
 		expect(mockWs.close).toHaveBeenCalledWith(1008);
 	});
 
@@ -225,7 +227,9 @@ describe('ChatService', () => {
 
 			await chatService.startSession(req);
 
-			expect(mockWs.send).toHaveBeenCalledWith('Connection rejected');
+			expect(mockWs.send).toHaveBeenCalledWith(
+				JSON.stringify({ type: 'error', message: 'Connection rejected' }),
+			);
 			expect(mockWs.close).toHaveBeenCalledWith(1008);
 		});
 
@@ -292,7 +296,7 @@ describe('ChatService', () => {
 
 				await (chatService as any).checkHeartbeats();
 
-				expect(mockWs.send).toHaveBeenCalledWith('n8n|heartbeat');
+				expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat' }));
 				expect(clearInterval).toHaveBeenCalledWith(123);
 				expect((chatService as any).sessions.get(sessionKey)).toBeUndefined();
 			});
@@ -310,7 +314,7 @@ describe('ChatService', () => {
 
 				await (chatService as any).checkHeartbeats();
 
-				expect(mockWs.send).toHaveBeenCalledWith('n8n|heartbeat');
+				expect(mockWs.send).toHaveBeenCalledWith(JSON.stringify({ type: 'heartbeat' }));
 				expect((chatService as any).sessions.get(sessionKey)).toBeDefined();
 			});
 		});
@@ -334,7 +338,7 @@ describe('ChatService', () => {
 			};
 			(chatService as any).sessions.set(sessionKey, session);
 
-			const data = 'n8n|heartbeat-ack';
+			const data = JSON.stringify({ type: 'heartbeat-ack' });
 			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
 			await incomingMessageHandler(data);
 
@@ -364,6 +368,22 @@ describe('ChatService', () => {
 			expect(session.nodeWaitingForChatResponse).toBeUndefined();
 		});
 
+		it('should ignore non-JSON frames without resuming or reporting an error', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				executionId: '123',
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+
+			const data = 'not json';
+			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
+			await incomingMessageHandler(data);
+
+			expect(mockExecutionManager.runWorkflow).not.toHaveBeenCalled();
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+			expect(mockLogger.error).not.toHaveBeenCalled();
+		});
+
 		it('should handle errors during message processing', async () => {
 			const sessionKey = 'abc|123|public';
 			const session = {
@@ -371,7 +391,8 @@ describe('ChatService', () => {
 			};
 			(chatService as any).sessions.set(sessionKey, session);
 
-			const data = 'invalid json';
+			// Valid JSON but not a valid chat message — parsing fails and is reported
+			const data = JSON.stringify({ foo: 'bar' });
 			const incomingMessageHandler = (chatService as any).incomingMessageHandler(sessionKey);
 			await incomingMessageHandler(data);
 
@@ -468,7 +489,7 @@ describe('ChatService', () => {
 			);
 			await pollAndProcessChatResponses();
 
-			expect(session.connection.send).toHaveBeenCalledWith('n8n|continue');
+			expect(session.connection.send).toHaveBeenCalledWith(JSON.stringify({ type: 'continue' }));
 			expect(session.nodeWaitingForChatResponse).toBeUndefined();
 		});
 
@@ -490,7 +511,7 @@ describe('ChatService', () => {
 			);
 			await pollAndProcessChatResponses();
 
-			expect(session.connection.send).toHaveBeenCalledWith('n8n|continue');
+			expect(session.connection.send).toHaveBeenCalledWith(JSON.stringify({ type: 'continue' }));
 			expect(session.nodeWaitingForChatResponse).toBeUndefined();
 		});
 
@@ -523,11 +544,48 @@ describe('ChatService', () => {
 			);
 			await pollAndProcessChatResponses();
 
-			expect(session.connection.send).toHaveBeenCalledWith('test message');
+			expect(session.connection.send).toHaveBeenCalledWith(
+				'{"type":"message","text":"test message"}',
+			);
 			expect(session.nodeWaitingForChatResponse).toEqual('node1');
 		});
 
-		it('should stringify message if it is an object', async () => {
+		it('should wrap a string message as a message frame even when its text is JSON', async () => {
+			const sessionKey = 'abc|123|public';
+			const session = {
+				isProcessing: false,
+				executionId: '123',
+				connection: { send: vi.fn() },
+				sessionId: 'abc',
+				nodeWaitingForChatResponse: undefined,
+			};
+			(chatService as any).sessions.set(sessionKey, session);
+			const messageText = '{"type":"with-buttons","text":"hi","blockUserInput":false,"buttons":[]}';
+			mockExecutionManager.findExecution.mockResolvedValue({
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'node1',
+						runData: { node1: [{ data: { main: [[{ sendMessage: messageText }]] } }] },
+					},
+				},
+				workflowData: { nodes: [{ name: 'node1' }] },
+			} as any);
+			(chatService as any).shouldResumeImmediately = vi.fn().mockReturnValue(false);
+			(chatService as any).resumeExecution = vi.fn();
+
+			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
+				sessionKey,
+			);
+			await pollAndProcessChatResponses();
+
+			// A string message is always carried as the text of a message frame
+			expect(session.connection.send).toHaveBeenCalledWith(
+				JSON.stringify({ type: 'message', text: messageText }),
+			);
+		});
+
+		it('should send an object message as-is when it is already a structured frame', async () => {
 			const sessionKey = 'abc|123|public';
 			const session = {
 				isProcessing: false,

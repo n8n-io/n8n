@@ -342,8 +342,8 @@ describe('GlobalConfig', () => {
 			disablePublicChat: false,
 		},
 		compressionNode: {
-			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
-			maxZipEntries: 5000,
+			maxDecompressedSize: 256 * 1024 * 1024,
+			maxZipEntries: 1000,
 		},
 		mcpClient: {
 			cacheTtl: 300000,
@@ -460,7 +460,7 @@ describe('GlobalConfig', () => {
 			port: 5679,
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
-			taskTimeout: 300,
+			taskTimeout: 60,
 			taskRequestTimeout: 60,
 			taskAcceptTimeout: 2,
 			heartbeatInterval: 30,
@@ -558,8 +558,8 @@ describe('GlobalConfig', () => {
 			blockFileAccessToN8nFiles: true,
 			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
 			daysAbandonedWorkflow: 90,
-			contentSecurityPolicy: undefined,
-			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
+			contentSecurityPolicy: DEFAULT_CONTENT_SECURITY_POLICY,
+			contentSecurityPolicyReportOnly: undefined,
 			crossOriginOpenerPolicy: 'same-origin-allow-popups',
 			disableWebhookHtmlSandboxing: false,
 			disableFormHtmlSandboxing: false,
@@ -607,7 +607,6 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
-			preExecuteErrorCreatesExecution: false,
 		},
 		memoryGuard: {
 			enabled: false,
@@ -637,9 +636,6 @@ describe('GlobalConfig', () => {
 		},
 		collaboration: {
 			crdt: 'off',
-		},
-		tags: {
-			disabled: false,
 		},
 		workflowHistory: {
 			pruneTime: -1,

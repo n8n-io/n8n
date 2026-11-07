@@ -7,7 +7,6 @@ export { PublishAppDto } from './app/publish-app.dto';
 export { RestoreAppVersionDto } from './app/restore-app-version.dto';
 export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
-export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export {
 	AiBuilderChatRequestDto,
@@ -245,7 +244,6 @@ export {
 	type FullManualExecutionFromUnknownTriggerPayload,
 	type PartialManualExecutionToDestinationPayload,
 } from './workflows/manual-run.dto';
-export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
@@ -627,7 +625,6 @@ export {
 	workflowVersionPublicSchema,
 } from './workflow-history/workflow-version-public.dto';
 
-export { UpdateExternalSecretsSettingsDto } from './secrets-provider/update-external-secrets-settings.dto';
 export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
 export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';

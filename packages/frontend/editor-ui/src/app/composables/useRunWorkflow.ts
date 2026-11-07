@@ -14,12 +14,7 @@ import type {
 	IWorkflowBase,
 	IDestinationNode,
 } from 'n8n-workflow';
-import {
-	createRunExecutionData,
-	NodeConnectionTypes,
-	TelemetryHelpers,
-	BINARY_MODE_COMBINED,
-} from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 import { until } from '@vueuse/core';
 import { computed, getCurrentInstance, type Ref } from 'vue';
@@ -38,7 +33,6 @@ import {
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
@@ -88,7 +82,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const uiStore = useUIStore();
 	const agentRequestStore = useAgentRequestStore();
 
-	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowRunner = useRunWorkflowApi();
 	const workflowDocumentStore =
@@ -196,18 +189,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			}
 
 			const workflowData = workflowDocumentStore.value.serialize();
-
-			if (
-				rootStore.binaryDataMode === 'default' &&
-				workflowData.settings?.binaryMode === BINARY_MODE_COMBINED
-			) {
-				toast.showMessage({
-					title: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
-					message: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
-					type: 'error',
-				});
-				return undefined;
-			}
 
 			const consolidatedData = consolidateRunDataAndStartNodes(
 				directParentNodes,

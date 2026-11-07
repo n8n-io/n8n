@@ -3400,9 +3400,9 @@ describe('PATCH /workflows/:workflowId', () => {
 				},
 				{
 					id: 'uuid-5678',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3585,9 +3585,9 @@ describe('PATCH /workflows/:workflowId', () => {
 			nodes: [
 				{
 					id: 'uuid-5678',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3617,9 +3617,9 @@ describe('PATCH /workflows/:workflowId', () => {
 			nodes: [
 				{
 					id: 'uuid-5678',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [400, 300],
 				},
@@ -3891,8 +3891,7 @@ describe('PATCH /workflows/:workflowId', () => {
 				timezone: 'America/New_York',
 			},
 		});
-
-		expect(response.statusCode).toBe(200);
+		expect(response.statusCode, JSON.stringify(response.body, null, 2)).toBe(200);
 
 		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
@@ -5870,7 +5869,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 				nodes: [
 					{
 						id: 'trigger-1',
-						parameters: {},
+						parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
 						name: 'Schedule Trigger',
 						type: 'n8n-nodes-base.scheduleTrigger',
 						typeVersion: 1,

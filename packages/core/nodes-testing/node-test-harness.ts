@@ -18,10 +18,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
 
+import { Container } from '@n8n/di';
+
+import { BinaryDataService } from '../dist/binary-data';
 import { ExecutionLifecycleHooks } from '../dist/execution-engine/execution-lifecycle-hooks';
 import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
 import { CredentialTypes } from './credential-types';
 import { CredentialsHelper } from './credentials-helper';
+import { InlineBinaryDataService } from './inline-binary-data-service';
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { NodeTypes } from './node-types';
 
@@ -54,7 +58,10 @@ export class NodeTestHarness {
 		this.packagePaths.unshift(this.packageDir);
 
 		beforeAll(() => this.ensureNodesLoaded(), 30_000);
-		beforeEach(() => nock.disableNetConnect());
+		beforeEach(() => {
+			nock.disableNetConnect();
+			Container.set(BinaryDataService, new InlineBinaryDataService());
+		});
 	}
 
 	readWorkflowJSON(filePath: string) {
@@ -67,7 +74,7 @@ export class NodeTestHarness {
 
 	setupTests(options: TestOptions = {}) {
 		const workflowFilenames =
-			options.workflowFiles?.map((fileName) => path.join(this.relativePath, fileName)) ??
+			options.workflowFiles?.map((fileName) => path.posix.join(this.relativePath, fileName)) ??
 			this.workflowFilenames;
 
 		const tests = this.workflowToTests(workflowFilenames, options);
@@ -150,7 +157,7 @@ export class NodeTestHarness {
 
 	@Memoized
 	private get relativePath() {
-		return path.relative(this.packageDir, this.testDir);
+		return path.relative(this.packageDir, this.testDir).split(path.sep).join(path.posix.sep);
 	}
 
 	@Memoized
