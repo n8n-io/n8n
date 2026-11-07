@@ -6,6 +6,7 @@ import {
 	getSheetHeaderRowAndAddColumn,
 	getSheetHeaderRowAndSkipEmpty,
 	getSheetHeaderRowWithGeneratedColumnNames,
+	getSheetHeaderRowWithGeneratedColumnNamesForAllSheets,
 	getSheets,
 } from '../../../v2/methods/loadOptions';
 
@@ -165,6 +166,55 @@ describe('Google Sheets Functions', () => {
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				{ name: 'col_3', value: 'col_3' },
 			]);
+		});
+	});
+
+	describe('getSheetHeaderRowWithGeneratedColumnNamesForAllSheets', () => {
+		it('should union columns across grid and data-source sheets, naming blanks 1-based to match runtime', async () => {
+			// Chart-only (OBJECT) sheet is skipped; GRID and DATA_SOURCE are both read
+			mockGoogleSheetInstance.spreadsheetGetSheets.mockResolvedValue({
+				sheets: [
+					{ properties: { title: 'Sheet1', sheetType: 'GRID' } },
+					{ properties: { title: 'Connected', sheetType: 'DATA_SOURCE' } },
+					{ properties: { title: 'Chart', sheetType: 'OBJECT' } },
+				],
+			});
+			mockGoogleSheetInstance.getData
+				.mockResolvedValueOnce([['', 'Header1', '']])
+				.mockResolvedValueOnce([['Extra']]);
+			mockGoogleSheetInstance.testFilter
+				.mockReturnValueOnce(['', 'Header1', ''])
+				.mockReturnValueOnce(['Extra']);
+
+			const result = await getSheetHeaderRowWithGeneratedColumnNamesForAllSheets.call(
+				mockLoadOptionsFunctions as ILoadOptionsFunctions,
+			);
+
+			expect(result).toEqual([
+				// Blank headers use `col_<1-based index>`, matching the runtime keys once
+				// `row_number` is prepended (see GoogleSheet.lookupValues)
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				{ name: 'col_1', value: 'col_1' },
+				{ name: 'Header1', value: 'Header1' },
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				{ name: 'col_3', value: 'col_3' },
+				// The DATA_SOURCE sheet is read too, contributing its own column
+				{ name: 'Extra', value: 'Extra' },
+			]);
+		});
+
+		it('should treat a missing sheetType as a grid sheet', async () => {
+			mockGoogleSheetInstance.spreadsheetGetSheets.mockResolvedValue({
+				sheets: [{ properties: { title: 'Sheet1' } }],
+			});
+			mockGoogleSheetInstance.getData.mockResolvedValue([['Header1']]);
+			mockGoogleSheetInstance.testFilter.mockReturnValue(['Header1']);
+
+			const result = await getSheetHeaderRowWithGeneratedColumnNamesForAllSheets.call(
+				mockLoadOptionsFunctions as ILoadOptionsFunctions,
+			);
+
+			expect(result).toEqual([{ name: 'Header1', value: 'Header1' }]);
 		});
 	});
 

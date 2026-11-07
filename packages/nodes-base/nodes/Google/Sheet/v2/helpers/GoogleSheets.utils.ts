@@ -14,6 +14,7 @@ import type {
 	RangeDetectionOptions,
 	ResourceLocator,
 	SheetRangeData,
+	SpreadSheetResponse,
 	ValueInputOption,
 } from './GoogleSheets.types';
 import { ResourceLocatorUiNames, ROW_NUMBER } from './GoogleSheets.types';
@@ -206,6 +207,29 @@ export function getRangeString(sheetName: string, options: RangeDetectionOptions
 export async function getExistingSheetNames(sheet: GoogleSheet) {
 	const { sheets } = await sheet.spreadsheetGetSheets();
 	return ((sheets as IDataObject[]) || []).map((entry) => (entry.properties as IDataObject)?.title);
+}
+
+/**
+ * Titles of every sheet holding cells (GRID and DATA_SOURCE), in spreadsheet
+ * order. Non-cell sheets such as chart-only (OBJECT) tabs are skipped because
+ * the values API rejects a range pointing at them, which would otherwise fail
+ * the whole read.
+ */
+export async function getGridSheetNames(sheet: GoogleSheet): Promise<string[]> {
+	const response = (await sheet.spreadsheetGetSheets()) as SpreadSheetResponse | undefined;
+	const names: string[] = [];
+
+	for (const entry of response?.sheets ?? []) {
+		const properties = entry?.properties;
+		if (!properties?.title) continue;
+		// A missing type defaults to GRID; keep only cell-bearing sheets (GRID, DATA_SOURCE)
+		const sheetType = properties.sheetType ?? 'GRID';
+		if (sheetType !== 'GRID' && sheetType !== 'DATA_SOURCE') continue;
+
+		names.push(properties.title);
+	}
+
+	return names;
 }
 
 export function mapFields(this: IExecuteFunctions, inputSize: number) {
