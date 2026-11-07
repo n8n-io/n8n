@@ -928,7 +928,7 @@ export class WorkflowService {
 					: undefined;
 			await this.workflowHistoryService.saveVersion(
 				user,
-				changes,
+				{ ...changes, settings: prepared.workflow.settings },
 				workflowId,
 				autosaved,
 				source,
@@ -1612,6 +1612,7 @@ export class WorkflowService {
 			nodes: WorkflowEntity['nodes'];
 			connections: WorkflowEntity['connections'];
 			nodeGroups?: WorkflowEntity['nodeGroups'];
+			settings?: WorkflowHistory['settings'];
 		},
 		expectedActiveVersionId: string,
 	): Promise<{ published: true; versionId: string } | { published: false; reason: 'superseded' }> {

@@ -312,6 +312,17 @@ describe('ImportService', () => {
 		expect(workflowHistoryRecords[0].description).toBe('Historical workflow description');
 	});
 
+	test('should store the engine of the imported workflow in its history', async () => {
+		const workflowToImport = newWorkflow({ settings: { engineType: 'v2', availableInMCP: true } });
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {});
+
+		const [historyRecord] = await workflowHistoryRepository.find({
+			where: { workflowId: workflowToImport.id },
+		});
+		expect(historyRecord.settings).toEqual({ engineType: 'v2' });
+	});
+
 	test('should call WorkflowService.deactivateWorkflow when re-importing an existing active workflow', async () => {
 		const existingWorkflow = await createActiveWorkflow();
 

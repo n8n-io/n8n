@@ -1,5 +1,5 @@
 import type { PublishTimelineEvent } from '@n8n/api-types';
-import type { IConnections, INode, IWorkflowGroup } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowGroup, VersionedWorkflowSettings } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { get, patch, post } from '../utils';
@@ -12,6 +12,7 @@ export type WorkflowHistory = {
 	workflowPublishHistory: WorkflowPublishHistory[];
 	name: string | null;
 	description: string | null;
+	settings: VersionedWorkflowSettings;
 };
 
 export type WorkflowVersionData = Pick<WorkflowHistory, 'versionId' | 'name' | 'description'>;

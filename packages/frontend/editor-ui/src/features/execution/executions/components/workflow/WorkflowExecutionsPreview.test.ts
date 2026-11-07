@@ -477,6 +477,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			nodes: [],
 			connections: {},
 			workflowPublishHistory: [],
+			settings: {},
 			...overrides,
 		});
 
