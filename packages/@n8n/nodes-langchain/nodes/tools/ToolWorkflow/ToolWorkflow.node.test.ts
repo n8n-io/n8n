@@ -507,6 +507,23 @@ describe('ToolWorkflowV1', () => {
 				{ city: 'Berlin', turn: 2 },
 			],
 			[
+				'an unmatched key that fits one of the patternProperties',
+				{
+					properties: { city },
+					patternProperties: { '^u': { type: 'string' }, '^t': { type: 'number' } },
+				},
+				{ chatInput: 'hi', city: 'Berlin', units: 'metric', turn: 2 },
+			],
+			[
+				'an unmatched key checked only against typed additionalProperties',
+				{
+					properties: { city },
+					patternProperties: { '^u': { type: 'string' } },
+					additionalProperties: { type: 'number' },
+				},
+				{ city: 'Berlin', units: 'metric', turn: 2 },
+			],
+			[
 				'typed additionalProperties and a strict allOf member',
 				{
 					properties: { city },
