@@ -1,10 +1,11 @@
-import type { ElTag } from 'element-plus';
+import type { N8nTagType } from '../components/N8nTag/Tag.type';
 
 export type NodeCreatorTag = {
 	text: string;
-	type?: (typeof ElTag)['type'];
-	/** When true, renders as N8nBadge instead of ElTag. */
+	/** Color of the tag. A pill maps `info` and `danger` to the badge. Other colors use the success badge. */
+	type?: N8nTagType;
+	/** When true, renders as N8nBadge instead of N8nTag. */
 	pill?: boolean;
-	/** When true, renders as PreviewBadge instead of ElTag; `text` overrides the tag's default "Preview" label. */
+	/** When true, renders as PreviewBadge instead of N8nTag. `text` overrides the default "Preview" label. */
 	preview?: boolean;
 };

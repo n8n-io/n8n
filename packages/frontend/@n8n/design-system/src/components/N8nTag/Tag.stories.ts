@@ -14,6 +14,13 @@ const meta = {
 			control: 'select',
 			options: ['sm', 'md', 'lg'],
 		},
+		type: {
+			control: 'select',
+			options: ['success', 'info', 'warning', 'danger'],
+		},
+		round: {
+			control: 'boolean',
+		},
 	},
 	parameters: {
 		docs: {
@@ -40,6 +47,24 @@ export const Default: Story = {
 	args: {
 		text: 'tag name',
 		size: 'sm',
+	},
+};
+
+export const Colors: Story = {
+	render: () => ({
+		components: { N8nTag },
+		template: `
+			<div style="display: flex; gap: 12px; align-items: center;">
+				<N8nTag text="Neutral" :clickable="false" />
+				<N8nTag text="Success" type="success" :clickable="false" />
+				<N8nTag text="Info" type="info" :clickable="false" />
+				<N8nTag text="Warning" type="warning" :clickable="false" />
+				<N8nTag text="Danger" type="danger" :clickable="false" round />
+			</div>
+		`,
+	}),
+	args: {
+		text: 'tag name',
 	},
 };
 

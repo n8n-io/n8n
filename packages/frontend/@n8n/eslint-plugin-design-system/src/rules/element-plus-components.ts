@@ -136,7 +136,6 @@ export const allowedElementPlusComponents = [
 	'ElSwitch',
 	'ElTable',
 	'ElTableColumn',
-	'ElTag',
 	'ElUpload',
 ] as const satisfies readonly ElementPlusComponentName[];
 

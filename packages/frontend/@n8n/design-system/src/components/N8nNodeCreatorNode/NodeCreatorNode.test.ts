@@ -43,6 +43,15 @@ describe('N8nNodeCreatorNode', () => {
 		expect(getByText('Free credits').closest('.n8n-badge')?.className).toContain('success');
 	});
 
+	it('renders a non-pill tag with N8nTag', () => {
+		const { getByText } = renderNode({ text: 'Recommended', type: 'info' });
+		const tag = getByText('Recommended').closest('.n8n-tag');
+
+		expect(tag).toBeInTheDocument();
+		expect(tag?.className).toContain('info');
+		expect(tag?.className).toContain('round');
+	});
+
 	it('greys the row and renders the trailing slot when disabled', () => {
 		const { container, getByText } = render(NodeCreatorNode, {
 			props: { title: 'Gmail', description: 'Send email', disabled: true },

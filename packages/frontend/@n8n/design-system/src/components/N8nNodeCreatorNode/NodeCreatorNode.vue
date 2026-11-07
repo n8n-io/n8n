@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ElTag } from 'element-plus';
-
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
 import N8nBadge from '../N8nBadge';
+import N8nTag from '../N8nTag';
 import N8nIcon from '../N8nIcon';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 import N8nNewBadge from '../NewBadge/NewBadge.vue';
@@ -61,16 +60,14 @@ const { t } = useI18n();
 				>
 					{{ tag.text }}
 				</N8nBadge>
-				<ElTag
+				<N8nTag
 					v-else-if="tag"
 					:class="$style.tag"
-					disable-transitions
-					size="small"
-					round
+					:text="tag.text"
 					:type="tag.type ?? 'success'"
-				>
-					{{ tag.text }}
-				</ElTag>
+					:clickable="false"
+					round
+				/>
 				<N8nNewBadge v-if="isNew" :text="t('nodeCreatorNode.new')" />
 				<N8nIcon
 					v-if="isTrigger"
