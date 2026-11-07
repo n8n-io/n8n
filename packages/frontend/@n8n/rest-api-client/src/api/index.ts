@@ -33,4 +33,5 @@ export * from './users';
 export * from './versions';
 export * from './webhooks';
 export * from './workflowHistory';
+export * from './workflow-statistics';
 export type * from './workflows';
