@@ -479,7 +479,7 @@ export class AssistantTurnInputBuilder {
 		// already in the history the follow-up replays.
 		const aiPreferencesTurn =
 			aiPreferencesEnabled && resumeReason === undefined
-				? await this.resolveAiPreferencesTurn(user.id, boundProject, threadId, loadReplayedHistory)
+				? await this.resolveAiPreferencesTurn(user, boundProject, threadId, loadReplayedHistory)
 				: undefined;
 		const threadContextBlock = buildThreadContextBlock([
 			instanceContext.state === 'injected' ? instanceContext.block : '',
@@ -657,17 +657,17 @@ export class AssistantTurnInputBuilder {
 	 * turn — and reports an empty payload, which is an answer, not a missing one.
 	 */
 	private async resolveAiPreferencesTurn(
-		userId: string,
+		user: User,
 		project: ProjectSummary | undefined,
 		threadId: string,
 		loadHistory: () => Promise<AgentDbMessage[]>,
 	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
 		const resolved = await this.bestEffort(
 			'Assistant failed to read the AI preferences for this turn',
-			{ userId },
+			{ userId: user.id },
 			async () => {
 				const preferences = await this.aiPreferenceService.getApplicable(
-					userId,
+					user,
 					project ? [project] : [],
 				);
 				return { preferences, rendered: renderAiPreferencesBlock(preferences) };
