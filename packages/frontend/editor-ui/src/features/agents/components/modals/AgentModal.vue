@@ -6,6 +6,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nFocusScope,
 	N8nIcon,
 	N8nIconButton,
 	N8nInlineTextEdit,
@@ -13,7 +14,6 @@ import {
 	type DialogSize,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { FocusScope } from 'reka-ui';
 import { computed, nextTick, provide, ref, useSlots, useTemplateRef } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
@@ -234,14 +234,14 @@ function onOpenAutoFocus(event: Event) {
 					:data-scrollable="props.bodyScrollable ? 'true' : 'false'"
 					data-testid="agent-modal-body"
 				>
-					<FocusScope
+					<N8nFocusScope
 						v-if="!trapFocus"
 						as-child
 						@mount-auto-focus.prevent
 						@unmount-auto-focus.prevent
 					>
 						<span hidden aria-hidden="true" />
-					</FocusScope>
+					</N8nFocusScope>
 					<slot />
 				</N8nDialogBody>
 

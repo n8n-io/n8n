@@ -85,6 +85,15 @@ vi.mock('@n8n/design-system', async () => {
 				/>
 			`,
 		}),
+		N8nFocusScope: defineComponent({
+			props: {
+				asChild: Boolean,
+				loop: Boolean,
+				trapped: Boolean,
+			},
+			emits: ['mountAutoFocus', 'unmountAutoFocus'],
+			template: '<div data-testid="nested-credential-focus-scope"><slot /></div>',
+		}),
 		N8nIcon: defineComponent({ template: '<i />' }),
 		N8nIconButton: defineComponent({
 			inheritAttrs: false,
