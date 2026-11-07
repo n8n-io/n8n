@@ -190,6 +190,14 @@ describe('SkillSourceController', () => {
 					},
 				],
 			});
+			const hidden = data.skills.find((skill) => skill.location === 'hidden');
+			expect(hidden?.previewFiles).toEqual([
+				{
+					path: 'SKILL.md',
+					text: '---\nname: hidden\ndescription: Hidden text\nlicense: "MIT"\n---\n\nFollow⟦U+200B⟧ this.',
+				},
+			]);
+			expect(hidden?.previewTruncated).toBe(false);
 			expect(checkOf('huge')).toEqual({
 				verdict: 'blocked',
 				findings: [

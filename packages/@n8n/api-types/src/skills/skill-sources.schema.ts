@@ -136,6 +136,17 @@ export type SkillScanFinding = {
 /** The most severe finding gives the verdict. No one can override `blocked`. */
 export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFinding[] };
 
+/** One file of a skill as the import keeps it, so a reviewer can read the full skill. */
+export type SkillPreviewFile = {
+	/** `SKILL.md`, or the path of a reference file. */
+	path: string;
+	/**
+	 * The text. SKILL.md shows the name, the description and each frontmatter key on its own
+	 * line. Each hidden character shows as a marker such as `⟦U+200B⟧`.
+	 */
+	text: string;
+};
+
 /** One skill in the picker. */
 export type DiscoveredSkill = {
 	/** Opaque. Send it back in `skillKeys`. */
@@ -147,6 +158,10 @@ export type DiscoveredSkill = {
 	description: string | null;
 	/** Files that the import leaves out, such as scripts. */
 	skippedFiles: string[];
+	/** The files that the import keeps, for the review. Empty when n8n cannot read the skill. */
+	previewFiles: SkillPreviewFile[];
+	/** True when the skill is too large to show in full. `previewFiles` then lists the first files. */
+	previewTruncated: boolean;
 	/** The chosen scope already has a skill with this name. */
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;

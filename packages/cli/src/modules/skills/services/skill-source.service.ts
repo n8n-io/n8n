@@ -48,6 +48,7 @@ import {
 	type SkillTarget,
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
+import { skillPreview } from '../utils/skill-preview';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
@@ -153,19 +154,24 @@ export class SkillSourceService {
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
 				duplicate,
-				skills: skills.map(
-					(read): DiscoveredSkill => ({
+				skills: skills.map((read): DiscoveredSkill => {
+					const preview = read.fetched
+						? skillPreview(read.fetched.content)
+						: { files: [], truncated: false };
+					return {
 						key: read.key,
 						location: client.location(read.ref),
 						name: read.skill?.name ?? read.fetched?.content.name ?? null,
 						description: read.skill?.description ?? read.fetched?.content.description ?? null,
 						skippedFiles: read.fetched?.skippedFiles ?? [],
+						previewFiles: preview.files,
+						previewTruncated: preview.truncated,
 						nameTaken: nameTaken(read),
 						error: read.error ?? null,
 						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
-					}),
-				),
+					};
+				}),
 				truncated: discovered.truncated,
 				tooDeep: discovered.tooDeep,
 			};
