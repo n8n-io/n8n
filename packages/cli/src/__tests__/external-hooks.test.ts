@@ -4,11 +4,10 @@ import type {
 	WorkflowRepository,
 	CredentialsRepository,
 	SettingsRepository,
-	Person,
 	PersonRepository,
-	User,
 	Role,
 } from '@n8n/db';
+import { Person } from '@n8n/db';
 import type { Repository } from '@n8n/typeorm';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -151,7 +150,7 @@ describe('ExternalHooks', () => {
 		});
 
 		it('should project a fully populated user', () => {
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -159,7 +158,7 @@ describe('ExternalHooks', () => {
 				role: mock<Role>({ slug: 'global:admin' }),
 			});
 
-			expect(toWorkflowLifecycleHookActor(user)).toEqual({
+			expect(toWorkflowLifecycleHookActor(person)).toEqual({
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -169,7 +168,7 @@ describe('ExternalHooks', () => {
 		});
 
 		it('should preserve null email and names for a user without them', () => {
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: null as unknown as string,
 				firstName: null as unknown as string,
@@ -177,7 +176,7 @@ describe('ExternalHooks', () => {
 				role: mock<Role>({ slug: 'global:member' }),
 			});
 
-			expect(toWorkflowLifecycleHookActor(user)).toEqual({
+			expect(toWorkflowLifecycleHookActor(person)).toEqual({
 				id: 'user-1',
 				email: null,
 				firstName: null,
@@ -187,7 +186,7 @@ describe('ExternalHooks', () => {
 		});
 
 		it('should leave role undefined when the user has no role', () => {
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'actor@example.com',
 				firstName: 'Ada',
@@ -195,7 +194,7 @@ describe('ExternalHooks', () => {
 				role: undefined,
 			});
 
-			expect(toWorkflowLifecycleHookActor(user)?.role).toBeUndefined();
+			expect(toWorkflowLifecycleHookActor(person)?.role).toBeUndefined();
 		});
 	});
 });

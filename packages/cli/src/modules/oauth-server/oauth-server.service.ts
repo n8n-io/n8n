@@ -20,7 +20,7 @@ import { EventService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import type { User } from '@n8n/db';
+import { accountFirstName, isPerson, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -121,6 +121,17 @@ function matchesTypeFilter(name: string, type: McpClientTypeFilter): boolean {
 }
 
 /** Sort owners by display name so the "Connected by" dropdown reads naturally. */
+/** The owner of a consent. */
+function ownerSummary(user: User): ConnectedOAuthClientOwner {
+	const { id } = user;
+	if (isPerson(user)) {
+		const { firstName, lastName, email } = user;
+		return { id, firstName: firstName ?? null, lastName: lastName ?? null, email };
+	}
+	// A service account has no email and no last name. It shows its name as the first name.
+	return { id, firstName: accountFirstName(user), lastName: null, email: '' };
+}
+
 function sortOwners(owners: ConnectedOAuthClientOwner[]): ConnectedOAuthClientOwner[] {
 	return [...owners].sort((a, b) => {
 		const nameA = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
@@ -783,12 +794,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				scopes: consent.scope,
 				...(listAll
 					? {
-							owner: {
-								id: consent.user.id,
-								firstName: consent.user.firstName ?? null,
-								lastName: consent.user.lastName ?? null,
-								email: consent.user.email,
-							},
+							owner: ownerSummary(consent.user),
 						}
 					: {}),
 			};
@@ -875,7 +881,8 @@ export class OAuthServerService implements OAuthServerProvider {
 			});
 		}
 
-		if (revoker && revoker.id !== userId) {
+		// Only a person has an email to send to.
+		if (revoker && revoker.id !== userId && isPerson(consent.user)) {
 			this.mailer
 				.notifyMcpClientRevoked({ clientName: client.name, owner: consent.user, revoker })
 				.catch((e) => {

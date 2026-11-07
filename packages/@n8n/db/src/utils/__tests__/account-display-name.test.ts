@@ -1,7 +1,7 @@
 import { UnexpectedError } from 'n8n-workflow';
 
 import { Person, ServiceAccount, ServiceAccountDetails } from '../../entities';
-import { accountFirstName, accountFullName } from '../account-display-name';
+import { accountFirstName, accountFullName, accountSummary } from '../account-display-name';
 
 describe('account display name', () => {
 	it('names a person by their first and last name', () => {
@@ -25,5 +25,37 @@ describe('account display name', () => {
 
 		expect(() => accountFullName(serviceAccount)).toThrow(UnexpectedError);
 		expect(() => accountFirstName(serviceAccount)).toThrow(UnexpectedError);
+	});
+
+	describe('accountSummary', () => {
+		it("returns a person's email and name", () => {
+			const person = Object.assign(new Person(), {
+				id: 'person-1',
+				email: 'ada@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+			});
+
+			expect(accountSummary(person)).toEqual({
+				id: 'person-1',
+				email: 'ada@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+			});
+		});
+
+		it('returns the name of a service account as its first name, with no email', () => {
+			const serviceAccount = Object.assign(new ServiceAccount(), {
+				id: 'service-1',
+				details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+			});
+
+			expect(accountSummary(serviceAccount)).toEqual({
+				id: 'service-1',
+				email: null,
+				firstName: 'Deploy bot',
+				lastName: null,
+			});
+		});
 	});
 });
