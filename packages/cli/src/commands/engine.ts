@@ -8,7 +8,7 @@ import { UserError } from '@n8n/errors';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
-import type { ExecutionChannelPublisher } from '@/modules/engine-v2/response-channel/execution-channel';
+import type { ExecutionChannelPublisher } from '@/modules/engine-v2/execution-channel/execution-channel';
 
 import { BaseCommand } from './base-command';
 
@@ -49,13 +49,13 @@ export class Engine extends BaseCommand {
 		// The control plane runs in another process, so the execution channel uses Redis.
 		const logger = this.logger.scoped('engine-v2');
 		const { createRedisExecutionChannelPublisher } = await import(
-			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
+			'@/modules/engine-v2/execution-channel/redis-execution-channel.js'
 		);
 		const { ExecutionChannelSender } = await import(
-			'@/modules/engine-v2/response-channel/in-memory-execution-response-sender.js'
+			'@/modules/engine-v2/execution-channel/execution-channel-sender.js'
 		);
 		const { createExecutionResponseCodec } = await import(
-			'@/modules/engine-v2/response-channel/execution-response-frame.js'
+			'@/modules/engine-v2/execution-channel/execution-response-frame.js'
 		);
 		this.channelPublisher = await createRedisExecutionChannelPublisher(logger);
 

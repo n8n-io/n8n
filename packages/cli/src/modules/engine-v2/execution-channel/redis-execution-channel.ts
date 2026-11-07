@@ -22,7 +22,7 @@ async function createChannelNameGenerator(): Promise<RedisExecutionChannelNameGe
 /** Creates the data plane end of the Redis execution channel. */
 export async function createRedisExecutionChannelPublisher(logger: Logger) {
 	const { RedisClientService } = await import('@n8n/backend-services');
-	const { RedisExecutionChannelPublisher } = await import('./redis-execution-response-sender.js');
+	const { RedisExecutionChannelPublisher } = await import('./redis-execution-channel-publisher.js');
 
 	return new RedisExecutionChannelPublisher(
 		Container.get(RedisClientService).createClient({ type: 'publisher(n8n)' }),
@@ -35,7 +35,7 @@ export async function createRedisExecutionChannelPublisher(logger: Logger) {
 export async function startRedisExecutionChannelSubscriber(logger: Logger) {
 	const { RedisClientService } = await import('@n8n/backend-services');
 	const { RedisExecutionChannelSubscriber } = await import(
-		'./redis-execution-response-receiver.js'
+		'./redis-execution-channel-subscriber.js'
 	);
 
 	const subscriber = new RedisExecutionChannelSubscriber(
