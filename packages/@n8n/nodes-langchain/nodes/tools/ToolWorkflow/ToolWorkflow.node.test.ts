@@ -491,7 +491,12 @@ describe('ToolWorkflowV1', () => {
 			[
 				'patternProperties',
 				{ properties: { city }, patternProperties: { '^u': { type: 'string' } } },
-				closedQuery,
+				unitsQuery,
+			],
+			[
+				'only patternProperties',
+				{ patternProperties: { '^(u|t)': { type: 'string' } } },
+				{ units: 'metric' },
 			],
 			[
 				'no root properties and a strict allOf member',
@@ -521,7 +526,12 @@ describe('ToolWorkflowV1', () => {
 			[
 				'typed additionalProperties',
 				{ properties: { city }, additionalProperties: { type: 'string' } },
-				closedQuery,
+				{ chatInput: 'hi', city: 'Berlin', units: 'metric' },
+			],
+			[
+				'only typed additionalProperties',
+				{ additionalProperties: { type: 'string' } },
+				{ chatInput: 'hi', city: 'Berlin', units: 'metric' },
 			],
 			[
 				'additionalProperties not',
