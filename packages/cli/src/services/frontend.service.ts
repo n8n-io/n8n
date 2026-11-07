@@ -13,6 +13,7 @@ import path from 'path';
 
 import { UrlService } from '@n8n/backend-services';
 
+import { AiGatewayService } from './ai-gateway.service';
 import { AiUsageService } from './ai-usage.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
@@ -142,6 +143,7 @@ export class FrontendService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly inboxService: InboxService,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -638,11 +640,7 @@ export class FrontendService {
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
-		const isAiGatewayEnabled =
-			this.globalConfig.aiGateway.enabled &&
-			this.licenseState.isAiGatewayLicensed() &&
-			!!this.globalConfig.aiAssistant.baseUrl;
-		if (isAiGatewayEnabled) {
+		if (this.aiGatewayService.isEnabled()) {
 			this.settings.aiGateway = {
 				enabled: true,
 				budget: this.license.getValue(LICENSE_QUOTAS.AI_GATEWAY_BUDGET) ?? 0,
