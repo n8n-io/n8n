@@ -2,47 +2,53 @@ import type { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-export type RedisExecutionResponseChannelNameGenerator = (executionId: string) => string;
+import type { ExecutionChannelTopic } from './execution-channel';
+
+export type RedisExecutionChannelNameGenerator = (
+	topic: ExecutionChannelTopic,
+	executionId: string,
+) => string;
 
 /** Both planes must derive the same channel name, so they share this helper. */
-async function createChannelNameGenerator(): Promise<RedisExecutionResponseChannelNameGenerator> {
+async function createChannelNameGenerator(): Promise<RedisExecutionChannelNameGenerator> {
 	const { RedisClientService } = await import('@n8n/backend-services');
 	const prefix = Container.get(RedisClientService).toValidPrefix(
 		Container.get(GlobalConfig).redis.prefix,
 	);
-	const channelPrefix = `${prefix}:engine-v2-responses`;
 
-	return (executionId) => `${channelPrefix}:${executionId}`;
+	return (topic, executionId) => `${prefix}:engine-v2-${topic}:${executionId}`;
 }
 
-/** Creates the data plane end of the Redis response channel. */
-export async function createRedisExecutionResponseSender(logger: Logger) {
+/** Creates the data plane end of the Redis execution channel. */
+export async function createRedisExecutionChannelPublisher(logger: Logger) {
 	const { RedisClientService } = await import('@n8n/backend-services');
-	const { RedisExecutionResponseSender } = await import('./redis-execution-response-sender.js');
+	const { RedisExecutionChannelPublisher } = await import('./redis-execution-response-sender.js');
 
-	return new RedisExecutionResponseSender(
+	return new RedisExecutionChannelPublisher(
 		Container.get(RedisClientService).createClient({ type: 'publisher(n8n)' }),
 		await createChannelNameGenerator(),
 		logger,
 	);
 }
 
-/** Creates and starts the control plane end of the Redis response channel. */
-export async function startRedisExecutionResponseReceiver(logger: Logger) {
+/** Creates and starts the control plane end of the Redis execution channel. */
+export async function startRedisExecutionChannelSubscriber(logger: Logger) {
 	const { RedisClientService } = await import('@n8n/backend-services');
-	const { RedisExecutionResponseReceiver } = await import('./redis-execution-response-receiver.js');
+	const { RedisExecutionChannelSubscriber } = await import(
+		'./redis-execution-response-receiver.js'
+	);
 
-	const receiver = new RedisExecutionResponseReceiver(
+	const subscriber = new RedisExecutionChannelSubscriber(
 		Container.get(RedisClientService).createClient({ type: 'subscriber(n8n)' }),
 		await createChannelNameGenerator(),
 		logger,
 	);
 	try {
-		await receiver.start();
+		await subscriber.start();
 	} catch (error) {
-		await receiver.stop();
+		await subscriber.stop();
 		throw error;
 	}
 
-	return receiver;
+	return subscriber;
 }
