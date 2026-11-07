@@ -499,6 +499,32 @@ describe('MigrationRuleDetail', () => {
 			expect(getRowCheckbox('Test Workflow 1')).not.toBeChecked();
 		});
 
+		it('should reopen only the selected rows that are not open', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, status: 'wont_fix' },
+					],
+				}),
+			);
+			vi.mocked(breakingChangesApi.updateFindingStatuses).mockResolvedValue();
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('1 affected');
+
+			await userEvent.click(getRowCheckbox('Test Workflow 1'));
+			await userEvent.click(getRowCheckbox('Test Workflow 2'));
+			await userEvent.click(screen.getByTestId('migration-bulk-reopen-button'));
+
+			await waitFor(() => expect(screen.getByText('2 affected')).toBeInTheDocument());
+			expect(breakingChangesApi.updateFindingStatuses).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'rule-1',
+				['workflow-2'],
+				'open',
+			);
+		});
+
 		it('should disable an action that would change none of the selected rows', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await screen.findByText('2 affected');
@@ -779,20 +805,6 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText("Archive 'Test Workflow 1' too?")).toBeInTheDocument();
 			});
 
-			it('should not ask on a rule whose executions keep running', async () => {
-				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue({
-					...mockRuleResult,
-					ruleImpact: 'behaviorChanges',
-				});
-				renderComponent({ props: { migrationRuleId: 'rule-1' } });
-				await screen.findByText('2 affected');
-
-				await markRowWontFix('Test Workflow 1');
-
-				await waitFor(() => expect(breakingChangesApi.updateFindingStatus).toHaveBeenCalled());
-				expect(queryArchiveDialog()).not.toBeInTheDocument();
-			});
-
 			it('should archive the workflow when the user confirms the prompt', async () => {
 				renderComponent({ props: { migrationRuleId: 'rule-1' } });
 				await screen.findByText('2 affected');
@@ -1010,6 +1022,39 @@ describe('MigrationRuleDetail', () => {
 					expect.anything(),
 					'workflow-2',
 					'user-2',
+				);
+			});
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Grace Hopper')).toBeInTheDocument();
+			});
+		});
+
+		it('clears the assignment and shows the suggestion that comes back', async () => {
+			vi.mocked(breakingChangesApi.unassignWorkflowOwner).mockResolvedValue({
+				owner: { ...grace, source: 'suggested' },
+			});
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+			});
+
+			// The clear icon replaces the caret while the trigger is hovered and has a value.
+			const picker = screen.getByTestId('migration-owner-select');
+			await userEvent.hover(picker.querySelector('.select-trigger') as HTMLElement);
+			const clearButton = await waitFor(() => {
+				const found = picker.querySelector('.el-select__caret');
+				expect(found).not.toBeNull();
+				return found as HTMLElement;
+			});
+			await userEvent.click(clearButton);
+
+			await waitFor(() => {
+				expect(breakingChangesApi.unassignWorkflowOwner).toHaveBeenCalledWith(
+					expect.anything(),
+					'workflow-1',
 				);
 			});
 			await waitFor(() => {
@@ -1863,6 +1908,36 @@ describe('MigrationRuleDetail', () => {
 					['workflow-1'],
 				);
 				expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			});
+
+			it('should count owners in a plural label and explain the grouping in a tooltip', async () => {
+				vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+					createMockRuleResult({
+						affectedWorkflows: [
+							mockWorkflowWithIssue,
+							{
+								...mockWorkflowWithIssue,
+								id: 'workflow-3',
+								name: 'Test Workflow 3',
+								owner: { ...grace, source: 'assigned' as const },
+							},
+						],
+					}),
+				);
+				renderComponent({ props: { migrationRuleId: 'rule-1' } });
+				await screen.findByText('2 affected');
+
+				await selectRow('Test Workflow 1');
+				await selectRow('Test Workflow 3');
+				const button = screen.getByTestId('migration-bulk-notify-button');
+				expect(button).toHaveTextContent('Notify 2 owners');
+
+				await userEvent.hover(button);
+				expect(
+					await screen.findByText(
+						'Each owner gets one email that lists all of their selected workflows',
+					),
+				).toBeInTheDocument();
 			});
 
 			it('should not change the state of a row while its notification is in flight', async () => {

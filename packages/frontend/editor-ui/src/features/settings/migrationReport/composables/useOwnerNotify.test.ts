@@ -65,24 +65,29 @@ describe('useOwnerNotify', () => {
 			);
 		});
 
-		it('should show the skip reason when the server skips the row', async () => {
-			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
-				notifiedWorkflowIds: [],
-				skipped: [{ workflowId: 'workflow-1', reason: 'recently_notified' }],
-			});
-			const { rows, onNotify } = setup();
+		it.each([
+			[
+				'recently_notified',
+				'The owner was notified less than a minute ago. Wait a minute before you send a reminder',
+			],
+			['send_failed', 'The email could not be sent. Check the SMTP settings of the instance'],
+		] as const)(
+			'should show the reason when the server skips the row: %s',
+			async (reason, message) => {
+				vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+					notifiedWorkflowIds: [],
+					skipped: [{ workflowId: 'workflow-1', reason }],
+				});
+				const { rows, onNotify } = setup();
 
-			await onNotify(rows.value[0]);
+				await onNotify(rows.value[0]);
 
-			expect(rows.value[0].status).toBe('open');
-			expect(showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: 'error',
-					message:
-						'The owner was notified less than a minute ago. Wait a minute before you send a reminder',
-				}),
-			);
-		});
+				expect(rows.value[0].status).toBe('open');
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'error', message }),
+				);
+			},
+		);
 
 		it('should mark the row as notifying until the request ends', async () => {
 			let finish = () => {};
