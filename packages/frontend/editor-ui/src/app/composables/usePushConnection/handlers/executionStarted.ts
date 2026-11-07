@@ -46,10 +46,11 @@ export async function executionStarted(
 	}
 
 	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
+	const execution = executionDataStore.getExecutionSnapshot();
 
 	// Initialize or reinitialize execution data to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
-	if (!executionDataStore.execution?.data || needsInit) {
+	if (!execution?.data || needsInit) {
 		executionDataStore.setExecution({
 			id: data.executionId,
 			finished: false,
@@ -60,6 +61,11 @@ export async function executionStarted(
 			workflowData: workflowDocumentStore.getSnapshot(),
 			data: createRunExecutionData(),
 		});
+	} else if (execution.status === 'waiting') {
+		executionDataStore.setExecution(
+			{ ...execution, status: 'running' },
+			{ stripWaitingTaskData: false },
+		);
 	}
 
 	if (executionDataStore.execution?.data && data.flattedRunData) {
