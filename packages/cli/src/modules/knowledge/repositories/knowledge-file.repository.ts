@@ -2,11 +2,11 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { AgentFile } from '../entities/agent-file.entity';
+import { KnowledgeFile } from '../entities/knowledge-file.entity';
 
-class AgentFileTable extends BaseRepository<AgentFile> {
+class KnowledgeFileTable extends BaseRepository<KnowledgeFile> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(AgentFile, dataSource.manager, transactionRunner);
+		super(KnowledgeFile, dataSource.manager, transactionRunner);
 	}
 }
 
@@ -17,15 +17,15 @@ export interface AgentKnowledgeTotals {
 }
 
 @Service()
-export class AgentFileRepository {
-	private readonly table: AgentFileTable;
+export class KnowledgeFileRepository {
+	private readonly table: KnowledgeFileTable;
 
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		this.table = new AgentFileTable(dataSource, transactionRunner);
+		this.table = new KnowledgeFileTable(dataSource, transactionRunner);
 	}
 
-	async findByAgentId(agentId: string, ctx: OperationContext): Promise<AgentFile[]> {
-		return await this.table.managerFor(ctx).find(AgentFile, {
+	async findByAgentId(agentId: string, ctx: OperationContext): Promise<KnowledgeFile[]> {
+		return await this.table.managerFor(ctx).find(KnowledgeFile, {
 			where: { agentId },
 			// Secondary id sort keeps pagination stable when batch uploads
 			// share the same createdAt timestamp.
@@ -34,27 +34,27 @@ export class AgentFileRepository {
 	}
 
 	async hasFilesForAgent(agentId: string, ctx: OperationContext): Promise<boolean> {
-		return await this.table.managerFor(ctx).existsBy(AgentFile, { agentId });
+		return await this.table.managerFor(ctx).existsBy(KnowledgeFile, { agentId });
 	}
 
 	async findByIdAndAgentId(
 		fileId: string,
 		agentId: string,
 		ctx: OperationContext,
-	): Promise<AgentFile | null> {
-		return await this.table.managerFor(ctx).findOneBy(AgentFile, { id: fileId, agentId });
+	): Promise<KnowledgeFile | null> {
+		return await this.table.managerFor(ctx).findOneBy(KnowledgeFile, { id: fileId, agentId });
 	}
 
 	async saveUploadedFile(
 		file: Pick<
-			AgentFile,
+			KnowledgeFile,
 			'id' | 'agentId' | 'storedAt' | 'storageKey' | 'fileName' | 'mimeType' | 'fileSizeBytes'
 		>,
 		ctx: OperationContext,
-	): Promise<AgentFile> {
+	): Promise<KnowledgeFile> {
 		const manager = this.table.managerFor(ctx);
-		const agentFile = manager.create(AgentFile, file);
-		return await manager.save(AgentFile, agentFile);
+		const agentFile = manager.create(KnowledgeFile, file);
+		return await manager.save(KnowledgeFile, agentFile);
 	}
 
 	async deleteByIdAndAgentId(
@@ -62,11 +62,11 @@ export class AgentFileRepository {
 		agentId: string,
 		ctx: OperationContext,
 	): Promise<void> {
-		await this.table.managerFor(ctx).delete(AgentFile, { id: fileId, agentId });
+		await this.table.managerFor(ctx).delete(KnowledgeFile, { id: fileId, agentId });
 	}
 
 	async deleteByAgentId(agentId: string, ctx: OperationContext): Promise<void> {
-		await this.table.managerFor(ctx).delete(AgentFile, { agentId });
+		await this.table.managerFor(ctx).delete(KnowledgeFile, { agentId });
 	}
 
 	async getKnowledgeTotals(agentId: string, ctx: OperationContext): Promise<AgentKnowledgeTotals> {
@@ -86,7 +86,7 @@ export class AgentFileRepository {
 
 		const rows = await this.table
 			.managerFor(ctx)
-			.createQueryBuilder(AgentFile, 'file')
+			.createQueryBuilder(KnowledgeFile, 'file')
 			.select('file.agentId', 'agentId')
 			.addSelect('COUNT(file.id)', 'fileCount')
 			.addSelect('SUM(file.fileSizeBytes)', 'totalBytes')

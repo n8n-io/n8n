@@ -5,23 +5,23 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
-import { AgentFile } from '@/modules/agents/entities/agent-file.entity';
-import { AgentFileRepository } from '@/modules/agents/repositories/agent-file.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
-describe('AgentFileRepository', () => {
+describe('KnowledgeFileRepository', () => {
 	let agentRepo: AgentRepository;
-	let fileRepo: AgentFileRepository;
-	let fileTable: Repository<AgentFile>;
+	let fileRepo: KnowledgeFileRepository;
+	let fileTable: Repository<KnowledgeFile>;
 	let transactionRunner: TransactionRunner;
 	let projectId: string;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['agents']);
+		await testModules.loadModules(['knowledge', 'agents']);
 		await testDb.init();
 		agentRepo = Container.get(AgentRepository);
-		fileRepo = Container.get(AgentFileRepository);
-		fileTable = Container.get(DataSource).getRepository(AgentFile);
+		fileRepo = Container.get(KnowledgeFileRepository);
+		fileTable = Container.get(DataSource).getRepository(KnowledgeFile);
 		transactionRunner = Container.get(TransactionRunner);
 	});
 
@@ -71,14 +71,14 @@ describe('AgentFileRepository', () => {
 		const agentId = await createAgent();
 		const params = fileParams(agentId, 'original.txt', 100);
 		const original = await fileRepo.saveUploadedFile(params, {});
-		expect(original).toBeInstanceOf(AgentFile);
+		expect(original).toBeInstanceOf(KnowledgeFile);
 		expect(original).toMatchObject(params);
 		const oldUpdatedAt = new Date('2020-01-01T00:00:00.000Z');
 		await fileTable.update(original.id, { updatedAt: oldUpdatedAt });
 
 		const saved = await fileRepo.saveUploadedFile({ ...params, fileName: 'updated.txt' }, {});
 
-		expect(saved).toBeInstanceOf(AgentFile);
+		expect(saved).toBeInstanceOf(KnowledgeFile);
 		expect(saved).toMatchObject({ id: params.id, fileName: 'updated.txt' });
 		expect(saved.updatedAt.getTime()).toBeGreaterThan(oldUpdatedAt.getTime());
 		expect(await fileTable.countBy({ agentId })).toBe(1);
@@ -86,6 +86,18 @@ describe('AgentFileRepository', () => {
 			fileName: 'updated.txt',
 			createdAt: original.createdAt,
 		});
+	});
+
+	it('loses its rows with the agent through the database cascade, which the entity does not declare', async () => {
+		const agentId = await createAgent();
+		const otherAgentId = await createAgent();
+		await addFile(agentId, 'gone.txt', 100);
+		await addFile(otherAgentId, 'kept.txt', 100);
+
+		await agentRepo.delete({ id: agentId });
+
+		expect(await fileTable.countBy({ agentId })).toBe(0);
+		expect(await fileTable.countBy({ agentId: otherAgentId })).toBe(1);
 	});
 
 	it('rejects a duplicate file name for the same agent', async () => {
