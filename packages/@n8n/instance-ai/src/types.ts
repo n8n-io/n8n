@@ -1874,6 +1874,11 @@ export interface InstanceAiContext {
 	 *  accept absolute file paths under the root by normalizing them to
 	 *  workspace-relative. */
 	workspaceRoot?: string;
+	/**
+	 * Second root that the tools accept in absolute paths. Older Daytona sandboxes keep their files
+	 * there and link `workspaceRoot` to it, so tool output can name either root.
+	 */
+	fallbackWorkspaceRoot?: string;
 	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
 	threadId?: string;
 	/** Thread memory adapter used for thread-local metadata. */
