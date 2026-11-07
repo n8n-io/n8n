@@ -274,6 +274,189 @@ export function getPropertyName(operation: string) {
 	return operation.replace('send', '').toLowerCase();
 }
 
+const FENCE_MARKER_REGEX = /^\s*(`{3,}|~{3,})/;
+// Telegram does not read lines indented with a tab as code.
+const INDENTED_CODE_REGEX = /^ {4}/;
+const BACKTICK_RUN_REGEX = /`+/g;
+const TABLE_ROW_REGEX = /^\s*\|.*\|\s*$/;
+// A table delimiter row, with or without outer pipes: `|---|:--:|` or `--- | ---`.
+const TABLE_DELIMITER_ROW_REGEX = /^\s*(\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?|\|\s*:?-+:?\s*\|)\s*$/;
+const BLOCKQUOTE_PREFIX_REGEX = /^\s*(>\s?)+/;
+const HTML_VERBATIM_TAG_REGEX = /<\/?(pre|code)\b[^>]*>/gi;
+// Block-level tags already start a new line, and <br> already is one,
+// so a break next to them would add an empty line.
+const HTML_BLOCK_TAG =
+	'(?:br|hr|p|div|ul|ol|li|table|thead|tbody|tfoot|tr|th|td|caption|blockquote|pre|h[1-6]|details|summary|figure|figcaption)';
+const HTML_BLOCK_TAG_AT_END_REGEX = new RegExp(`<\\/?${HTML_BLOCK_TAG}\\b[^>]*>\\s*$`, 'i');
+const HTML_BLOCK_TAG_AT_START_REGEX = new RegExp(`^\\s*<\\/?${HTML_BLOCK_TAG}\\b`, 'i');
+// Lines that are a whole Markdown block: headings, thematic breaks and setext underlines.
+// Telegram shows any line that starts with `#` as a heading, `#hashtag` included.
+const MARKDOWN_BLOCK_LINE_REGEX = /^\s*(#.*|=+|-+|(\*\s*){3,}|(_\s*){3,}|(-\s*){3,})\s*$/;
+// Lines that start a new Markdown block: list items, block quotes and headings.
+const MARKDOWN_BLOCK_START_REGEX = /^\s*([-*+]\s|\d{1,9}[.)]\s|>|#)/;
+
+// An odd number of trailing backslashes, or two or more trailing spaces, is
+// Markdown's own hard-break syntax. An even number of backslashes is escaped.
+function hasMarkdownHardBreak(line: string): boolean {
+	if (/ {2,}$/.test(line)) return true;
+	const trailingBackslashes = /\\+$/.exec(line);
+	return trailingBackslashes !== null && trailingBackslashes[0].length % 2 === 1;
+}
+
+function isMarkdownBlockBoundary(line: string, nextLine: string, lineAfterNext = ''): boolean {
+	// Inside one block quote, check the quoted content instead of the `>` markers.
+	const quotePrefix = BLOCKQUOTE_PREFIX_REGEX.exec(line)?.[0];
+	const nextQuotePrefix = BLOCKQUOTE_PREFIX_REGEX.exec(nextLine)?.[0];
+	if (quotePrefix && nextQuotePrefix) {
+		// A different number of `>` markers starts a new, nested quote.
+		if (quotePrefix.split('>').length !== nextQuotePrefix.split('>').length) return true;
+		const quotedLine = line.replace(BLOCKQUOTE_PREFIX_REGEX, '');
+		const quotedNextLine = nextLine.replace(BLOCKQUOTE_PREFIX_REGEX, '');
+		if (quotedLine.trim() === '' || quotedNextLine.trim() === '') return true;
+		return isMarkdownBlockBoundary(quotedLine, quotedNextLine);
+	}
+
+	return (
+		MARKDOWN_BLOCK_LINE_REGEX.test(line) ||
+		MARKDOWN_BLOCK_LINE_REGEX.test(nextLine) ||
+		MARKDOWN_BLOCK_START_REGEX.test(nextLine) ||
+		FENCE_MARKER_REGEX.test(nextLine) ||
+		TABLE_ROW_REGEX.test(line) ||
+		TABLE_ROW_REGEX.test(nextLine) ||
+		TABLE_DELIMITER_ROW_REGEX.test(nextLine) ||
+		// The next line is a table header row. Telegram needs a blank line before a table,
+		// so keep these lines unchanged and do not split the table into loose lines.
+		TABLE_DELIMITER_ROW_REGEX.test(lineAfterNext)
+	);
+}
+
+// Counts the backtick runs in each line from `start` to the end of the paragraph.
+function countBacktickRuns(lines: string[], start: number): Map<string, number> {
+	const runsLeft = new Map<string, number>();
+	for (let i = start; i < lines.length && lines[i].trim() !== ''; i++) {
+		for (const [run] of lines[i].matchAll(BACKTICK_RUN_REGEX)) {
+			runsLeft.set(run, (runsLeft.get(run) ?? 0) + 1);
+		}
+	}
+	return runsLeft;
+}
+
+// Returns the backtick run of a code span that is still open at the end of the line.
+// `runsLeft` holds the runs not yet read in the paragraph, and this function updates it.
+function getOpenCodeSpan(line: string, openRun: string, runsLeft: Map<string, number>): string {
+	for (const match of line.matchAll(BACKTICK_RUN_REGEX)) {
+		const run = match[0];
+		runsLeft.set(run, (runsLeft.get(run) ?? 1) - 1);
+		if (openRun) {
+			if (run === openRun) openRun = '';
+			continue;
+		}
+		// An escaped backtick is plain text.
+		const backslashes = /\\*$/.exec(line.slice(0, match.index))?.[0].length ?? 0;
+		let opener = backslashes % 2 === 1 ? run.slice(1) : run;
+		// Telegram reads a run with no closing run of the same length in the paragraph
+		// as one plain backtick, followed by a shorter run.
+		while (opener && !runsLeft.get(opener)) opener = opener.slice(1);
+		openRun = opener;
+	}
+	return openRun;
+}
+
+export function materializeRichMessageLineBreaks(
+	content: string,
+	format: 'markdown' | 'html',
+): string {
+	const lines = content.split('\n');
+	let inFence = false;
+	let fenceToken = '';
+	let inVerbatimHtml = false;
+	let inIndentedCode = false;
+	let inTable = false;
+	let codeSpan = '';
+	let runsLeft = new Map<string, number>();
+
+	return lines
+		.map((line, i) => {
+			let isFenceMarker = false;
+			if (format === 'markdown') {
+				const fenceMatch = FENCE_MARKER_REGEX.exec(line);
+				if (fenceMatch) {
+					const token = fenceMatch[1];
+					if (!inFence) {
+						inFence = true;
+						fenceToken = token;
+						isFenceMarker = true;
+					} else if (token[0] === fenceToken[0] && token.length >= fenceToken.length) {
+						// Only a delimiter using the same character, at least as long as the
+						// opening one, actually closes the fence (same rule CommonMark uses) -
+						// a shorter or differently-charactered run is just fence content.
+						inFence = false;
+						fenceToken = '';
+						isFenceMarker = true;
+					}
+				}
+
+				// An indented code block starts after a blank line and continues while lines stay indented.
+				const previousLine = i === 0 ? '' : lines[i - 1];
+				inIndentedCode =
+					!inFence &&
+					!isFenceMarker &&
+					line.trim() !== '' &&
+					INDENTED_CODE_REGEX.test(line) &&
+					(previousLine.trim() === '' || inIndentedCode);
+
+				// A table starts at its delimiter row and ends at the first line without a pipe.
+				if (TABLE_DELIMITER_ROW_REGEX.test(line)) inTable = true;
+				else if (!line.includes('|')) inTable = false;
+
+				// Inline code can span lines, and Telegram shows a <br> in it as text.
+				if (i === 0 || previousLine.trim() === '') runsLeft = countBacktickRuns(lines, i);
+				const openCodeSpan = getOpenCodeSpan(line, codeSpan, runsLeft);
+				codeSpan =
+					inFence || isFenceMarker || inIndentedCode || line.trim() === '' ? '' : openCodeSpan;
+			}
+
+			if (format === 'html') {
+				for (const tag of line.matchAll(HTML_VERBATIM_TAG_REGEX)) {
+					inVerbatimHtml = !tag[0].startsWith('</');
+				}
+			}
+
+			const isLastLine = i === lines.length - 1;
+			if (isLastLine) return line;
+
+			// Keep a CRLF line ending intact: the <br> goes before the \r.
+			const eol = line.endsWith('\r') ? '\r' : '';
+			const text = eol ? line.slice(0, -1) : line;
+			const nextLine = lines[i + 1];
+			// In HTML, Telegram also collapses blank lines, so a paragraph break needs two <br>.
+			const isHtmlParagraphBreak = format === 'html' && nextLine.trim() === '';
+			const nextText = isHtmlParagraphBreak
+				? lines.slice(i + 1).find((l) => l.trim() !== '')
+				: nextLine;
+			const verbatim =
+				isFenceMarker ||
+				(format === 'markdown'
+					? inFence || inIndentedCode || inTable || codeSpan !== ''
+					: inVerbatimHtml);
+			const isSoftBreak =
+				!verbatim &&
+				text.trim() !== '' &&
+				nextText !== undefined &&
+				nextText.trim() !== '' &&
+				!HTML_BLOCK_TAG_AT_END_REGEX.test(text) &&
+				!HTML_BLOCK_TAG_AT_START_REGEX.test(nextText) &&
+				!(
+					format === 'markdown' &&
+					(hasMarkdownHardBreak(text) || isMarkdownBlockBoundary(text, nextLine, lines[i + 2]))
+				);
+
+			if (!isSoftBreak) return line;
+			return `${text}${isHtmlParagraphBreak ? '<br><br>' : '<br>'}${eol}`;
+		})
+		.join('\n');
+}
+
 export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 	// Only characters A-Z, a-z, 0-9, _ and - are allowed.
 	const secret_token = `${this.getWorkflow().id}_${this.getNode().id}`;
