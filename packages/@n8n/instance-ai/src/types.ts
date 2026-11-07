@@ -10,6 +10,7 @@ import type {
 	RuntimeSkill,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ObservationalMemoryConfig,
 	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
@@ -1974,6 +1975,17 @@ export interface InstanceAiMemoryConfig {
 		reflectorThresholdTokens: number;
 		/** Run the Observer inside a turn. Default `true`; `false` limits it to the post-turn path. */
 		midRunObservation?: boolean;
+		/** Rokura-style memory policy options, passed through to the agents SDK. All default off. */
+		policy?: Pick<
+			ObservationalMemoryConfig,
+			| 'windowShares'
+			| 'historyMode'
+			| 'logPlacement'
+			| 'failurePolicy'
+			| 'maxObserverBatchesPerRun'
+			| 'reflectionMode'
+			| 'historyRecall'
+		>;
 		/** Model for the Observer and Reflector. Defaults to the agent's model. */
 		model?: ModelConfig;
 		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */

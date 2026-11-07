@@ -262,6 +262,25 @@ export class AssistantAgentFactory {
 		});
 	}
 
+	/** Memory policy options from config. Each one is off unless its env var turns it on. */
+	private buildObservationPolicy(): NonNullable<
+		InstanceAiMemoryConfig['observationalMemory']
+	>['policy'] {
+		const config = this.instanceAiConfig;
+		return {
+			// Empty shares use the SDK defaults and look the window up in the model catalog.
+			...(config.observationWindowShares ? { windowShares: {} } : {}),
+			historyMode: config.observationHistoryMode,
+			logPlacement: config.observationLogPlacement,
+			failurePolicy: config.observationFailurePolicy,
+			...(config.observerMaxBatches > 0
+				? { maxObserverBatchesPerRun: config.observerMaxBatches }
+				: {}),
+			reflectionMode: config.reflectionMode,
+			historyRecall: config.historyRecall,
+		};
+	}
+
 	private createAgentMemoryOptions(
 		user: User,
 		threadId: string,
@@ -288,6 +307,7 @@ export class AssistantAgentFactory {
 					observerThresholdTokens ?? this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
 				midRunObservation: this.instanceAiConfig.midRunObservation,
+				policy: this.buildObservationPolicy(),
 				// Observer/reflector calls run in the background outside the run's
 				// finish-chunk usage, so they are claimed here per report. Best-effort:
 				// a billing failure must never block observation persistence.

@@ -1,7 +1,13 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
+
+const observationHistoryModeSchema = z.enum(['masked', 'cacheAware']);
+const observationLogPlacementSchema = z.enum(['system', 'message']);
+const observationFailurePolicySchema = z.enum(['disableForRun', 'retry']);
+const observationReflectionModeSchema = z.enum(['background', 'afterObserve']);
 
 @Config
 export class InstanceAiConfig {
@@ -98,6 +104,52 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
 	midRunObservation: boolean = false;
+
+	/**
+	 * Whether n8n Assistant sets its memory thresholds as shares of the model's context window.
+	 * When false, or when the window size is unknown, it uses the fixed token thresholds.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_WINDOW_SHARES')
+	observationWindowShares: boolean = false;
+
+	/**
+	 * How n8n Assistant replays earlier messages. One of `masked` or `cacheAware`.
+	 * With `cacheAware`, it keeps the full conversation while the provider prompt cache is warm,
+	 * and replaces older messages with the memory summary only after a pause or when the conversation is too long.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_HISTORY_MODE', observationHistoryModeSchema)
+	observationHistoryMode: z.infer<typeof observationHistoryModeSchema> = 'masked';
+
+	/**
+	 * Where n8n Assistant puts its memory summary. One of `system` or `message`.
+	 * With `message`, summary updates don't change the system prompt, which improves prompt-cache reuse.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_LOG_PLACEMENT', observationLogPlacementSchema)
+	observationLogPlacement: z.infer<typeof observationLogPlacementSchema> = 'system';
+
+	/**
+	 * What n8n Assistant does when a memory summary call fails during a turn. One of `disableForRun` or `retry`.
+	 * With `retry`, it tries again at the next step, up to the batch limit.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_FAILURE_POLICY', observationFailurePolicySchema)
+	observationFailurePolicy: z.infer<typeof observationFailurePolicySchema> = 'disableForRun';
+
+	/** Maximum memory summary calls in one turn. Set to 0 for no limit. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MAX_BATCHES')
+	observerMaxBatches: number = 0;
+
+	/**
+	 * When n8n Assistant condenses its memory summary. One of `background` or `afterObserve`.
+	 * With `afterObserve`, it condenses only after a turn that added to the summary.
+	 */
+	@Env('N8N_INSTANCE_AI_REFLECTION_MODE', observationReflectionModeSchema)
+	reflectionMode: z.infer<typeof observationReflectionModeSchema> = 'background';
+
+	/**
+	 * Whether n8n Assistant can read earlier messages of a conversation that its memory summary replaced.
+	 */
+	@Env('N8N_INSTANCE_AI_HISTORY_RECALL')
+	historyRecall: boolean = false;
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;

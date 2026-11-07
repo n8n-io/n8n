@@ -52,6 +52,16 @@ export function resolveObservationalMemoryConfig(
 		...(config.midRunObservation !== undefined
 			? { midRunObservation: config.midRunObservation }
 			: {}),
+		...(config.windowShares !== undefined ? { windowShares: config.windowShares } : {}),
+		...(config.historyMode !== undefined ? { historyMode: config.historyMode } : {}),
+		...(config.cacheTtlMs !== undefined ? { cacheTtlMs: config.cacheTtlMs } : {}),
+		...(config.logPlacement !== undefined ? { logPlacement: config.logPlacement } : {}),
+		...(config.failurePolicy !== undefined ? { failurePolicy: config.failurePolicy } : {}),
+		...(config.maxObserverBatchesPerRun !== undefined
+			? { maxObserverBatchesPerRun: config.maxObserverBatchesPerRun }
+			: {}),
+		...(config.reflectionMode !== undefined ? { reflectionMode: config.reflectionMode } : {}),
+		...(config.historyRecall !== undefined ? { historyRecall: config.historyRecall } : {}),
 		observe: config.observe ?? createObservationLogObserveFn(observerModel),
 		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
 	};

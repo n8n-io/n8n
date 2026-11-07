@@ -204,6 +204,13 @@ export class AgentMessageList {
 	observationLogMemory: string | undefined;
 
 	/**
+	 * Where the observation log goes. `system` folds it into the volatile system
+	 * message; `message` sends it as the first conversation message, so log
+	 * updates leave the system prefix byte-stable.
+	 */
+	observationLogPlacement: 'system' | 'message' = 'system';
+
+	/**
 	 * Short, model-facing note about MCP servers that failed to connect for
 	 * this run, so the agent can mention them to the user when relevant. Set
 	 * by `runAgentLoop` from `AgentRuntimeConfig.mcpConnectionFailures`. Folded
@@ -389,10 +396,13 @@ export class AgentMessageList {
 		if (this.observationMaskBoundary && messages[0]?.role !== 'user') {
 			messages.unshift({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
 		}
+		const logInMessage =
+			this.observationLogPlacement === 'message' && this.observationLogMemory?.trim();
+		if (logInMessage) messages.unshift({ role: 'user', content: logInMessage });
 		return {
 			system: buildSystemMessages(
 				baseInstructions,
-				this.observationLogMemory,
+				logInMessage ? undefined : this.observationLogMemory,
 				instructionProviderOptions,
 				volatileInstructions,
 				this.mcpConnectionNote,

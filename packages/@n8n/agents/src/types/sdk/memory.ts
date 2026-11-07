@@ -438,6 +438,64 @@ export interface ObservationalMemoryConfig {
 	observe?: ObservationLogObserveFn;
 	/** Policy callback that returns drop/merge instructions for the active observation log. */
 	reflect?: ObservationLogReflectFn;
+	/**
+	 * Derive thresholds from shares of the model's context window instead of
+	 * the fixed token counts above. The fixed counts stay the fallback when the
+	 * window size is unknown.
+	 */
+	windowShares?: ObservationWindowShares;
+	/**
+	 * `masked` (default) replays only messages after the observation cursor on
+	 * every turn. `cacheAware` replays the full history while the provider
+	 * prompt cache is warm, and switches to the log plus recent messages only
+	 * when the thread was idle longer than `cacheTtlMs` or the history is over
+	 * the hard limit.
+	 */
+	historyMode?: ObservationHistoryMode;
+	/** Prompt-cache lifetime used by `cacheAware` history. Default 5 minutes. */
+	cacheTtlMs?: number;
+	/**
+	 * `system` (default) renders the observation log into the system prompt.
+	 * `message` sends it as the first conversation message, so log updates do
+	 * not change the cached system prefix.
+	 */
+	logPlacement?: ObservationLogPlacement;
+	/**
+	 * `disableForRun` (default) stops observation for the rest of the run after
+	 * a failed or non-advancing Observer call. `retry` tries again at the next
+	 * boundary, up to `maxObserverBatchesPerRun` attempts.
+	 */
+	failurePolicy?: ObservationFailurePolicy;
+	/** Maximum Observer calls in one run. Unlimited when unset. */
+	maxObserverBatchesPerRun?: number;
+	/**
+	 * `background` (default) queues the Reflector after every turn.
+	 * `afterObserve` runs it only after an Observer call that advanced the cursor.
+	 */
+	reflectionMode?: ObservationReflectionMode;
+	/** Give the agent a `read_history` tool to read messages the log replaced. */
+	historyRecall?: boolean;
+}
+
+export type ObservationHistoryMode = 'masked' | 'cacheAware';
+export type ObservationLogPlacement = 'system' | 'message';
+export type ObservationFailurePolicy = 'disableForRun' | 'retry';
+export type ObservationReflectionMode = 'background' | 'afterObserve';
+
+/** Thresholds as shares (0–1) of the model's context window. */
+export interface ObservationWindowShares {
+	/** Context window size. Looked up in the model catalog when unset. */
+	contextWindowTokens?: number;
+	/** Unobserved size that triggers the first observation. Default 0.2. */
+	observeAt?: number;
+	/** New unobserved size that triggers later observations. Default 0.1. */
+	observeNew?: number;
+	/** Visible window size that starts a background mid-run observation. Default 0.6. */
+	midRunAt?: number;
+	/** Visible window size at which the loop waits for observation. Default 0.9. */
+	waitAt?: number;
+	/** Observation log size that triggers the Reflector. Default 0.6. */
+	reflectAt?: number;
 }
 
 interface MemoryConfigBase {

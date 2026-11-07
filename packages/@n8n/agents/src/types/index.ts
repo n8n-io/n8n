@@ -124,6 +124,11 @@ export type {
 	NewEpisodicMemoryCaptureCandidate,
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationHistoryMode,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
