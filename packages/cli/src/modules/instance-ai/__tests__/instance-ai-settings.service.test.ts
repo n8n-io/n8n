@@ -19,6 +19,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { License } from '@/license';
 
+import type { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
 import {
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
@@ -62,6 +63,7 @@ describe('InstanceAiSettingsService', () => {
 	const eventService = mock<EventService>();
 	const license = mock<License>();
 	const threadRepository = mock<InstanceAiThreadRepository>();
+	const cloudBrowserService = mock<InstanceAiCloudBrowserService>();
 	const logger = mock<Logger>();
 
 	let service: InstanceAiSettingsService;
@@ -79,6 +81,7 @@ describe('InstanceAiSettingsService', () => {
 			eventService,
 			license,
 			threadRepository,
+			cloudBrowserService,
 		);
 
 	beforeEach(() => {
@@ -109,6 +112,7 @@ describe('InstanceAiSettingsService', () => {
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
 			enabled: undefined,
+			cloudBrowserEnabled: true,
 		});
 		globalConfig.deployment.type = 'default';
 		license.isEnterprisePlan.mockReturnValue(false);
@@ -1912,6 +1916,78 @@ describe('InstanceAiSettingsService', () => {
 				serviceUrl: 'http://sandbox-api:8080',
 				apiKey: 'credential-key',
 			});
+		});
+	});
+
+	describe('cloud browser setting', () => {
+		const admin = mock<User>({ id: 'admin-1' });
+
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			cloudBrowserService.isAvailable.mockResolvedValue(true);
+		});
+
+		it('uses the environment value when the admin has not saved one', async () => {
+			expect((await service.getAdminSettings()).cloudBrowserEnabled).toBe(true);
+			expect(service.isCloudBrowserEnabled()).toBe(true);
+
+			globalConfig.instanceAi.cloudBrowserEnabled = false;
+
+			expect(service.isCloudBrowserEnabled()).toBe(false);
+		});
+
+		it('turns off and is saved', async () => {
+			const result = await service.updateAdminSettings({ cloudBrowserEnabled: false }, admin);
+
+			expect(result.cloudBrowserEnabled).toBe(false);
+			expect(persistedSettingsValue).toContain('"cloudBrowserEnabled":false');
+			expect(service.isCloudBrowserEnabled()).toBe(false);
+		});
+
+		it('turns on and is saved when the instance can use the cloud browser', async () => {
+			globalConfig.instanceAi.cloudBrowserEnabled = false;
+
+			const result = await service.updateAdminSettings({ cloudBrowserEnabled: true }, admin);
+
+			expect(result.cloudBrowserEnabled).toBe(true);
+			expect(persistedSettingsValue).toContain('"cloudBrowserEnabled":true');
+			expect(service.isCloudBrowserEnabled()).toBe(true);
+		});
+
+		it('turns on on cloud, where other fields are managed', async () => {
+			globalConfig.deployment.type = 'cloud';
+			globalConfig.instanceAi.cloudBrowserEnabled = false;
+
+			await expect(
+				service.updateAdminSettings({ cloudBrowserEnabled: true }, admin),
+			).resolves.toMatchObject({ cloudBrowserEnabled: true });
+			expect(persistedSettingsValue).toContain('"cloudBrowserEnabled":true');
+		});
+
+		it('refuses to turn on, and saves nothing, when the instance cannot use the cloud browser', async () => {
+			cloudBrowserService.isAvailable.mockResolvedValue(false);
+
+			await expect(
+				service.updateAdminSettings({ cloudBrowserEnabled: true }, admin),
+			).rejects.toThrow(UnprocessableRequestError);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('turns off even when the instance cannot use the cloud browser', async () => {
+			await service.updateAdminSettings({ cloudBrowserEnabled: true }, admin);
+			cloudBrowserService.isAvailable.mockResolvedValue(false);
+
+			const result = await service.updateAdminSettings({ cloudBrowserEnabled: false }, admin);
+
+			expect(result.cloudBrowserEnabled).toBe(false);
+		});
+
+		it('loads the saved toggle from the database, over the environment value', async () => {
+			persistedSettingsValue = JSON.stringify({ cloudBrowserEnabled: false });
+
+			await service.loadFromDb();
+
+			expect((await service.getAdminSettings()).cloudBrowserEnabled).toBe(false);
 		});
 	});
 
