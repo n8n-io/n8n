@@ -601,6 +601,10 @@ every reported finding, then call `workflow_builder_build_workflow` again.
   `executeOnce: true`.
 - SDK node mock `output` items are raw `$json` objects: write `[{ total: 42 }]`,
   never `[{ json: { total: 42 } }]`.
+- Never write file bytes or base64 for mock `output` or `fixtureOverrides`.
+  Use `{ $sampleFile: 'image/png' }` where a field holds base64 file data, or
+  `$binary: { data: 'image/png' }` on an item for a binary property. Supported
+  types: `image/png`, `image/jpeg`, `audio/mpeg`, `application/pdf`.
 - Whenever a node declares mock `output` for verification, include every field
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
