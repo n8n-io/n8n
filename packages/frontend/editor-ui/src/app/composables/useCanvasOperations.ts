@@ -28,6 +28,7 @@ import {
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useAiSimulatedDataGuard } from '@/app/composables/useAiSimulatedDataGuard';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { getN8nAgentsNodeName } from '@/experiments/inlineAgents/useInlineAgentsExperiment';
@@ -2973,11 +2974,20 @@ export function useCanvasOperations() {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
 
-		const { nodes, connections } = normalizeWorkflowData(data);
+		const { nodes, connections, credentialsReplaced } = normalizeWorkflowData(data);
 
 		initializedDocumentStore.setNodes(nodes);
 		initializedDocumentStore.setConnections(connections);
 		initializedDocumentStore.setHydrated(true);
+
+		// Executions run the saved workflow, so a credential ID that was replaced
+		// by a name match must be saved. Otherwise the run uses the deleted ID.
+		if (
+			credentialsReplaced &&
+			getResourcePermissions(initializedDocumentStore.scopes).workflow.update
+		) {
+			uiStore.markStateDirty();
+		}
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
