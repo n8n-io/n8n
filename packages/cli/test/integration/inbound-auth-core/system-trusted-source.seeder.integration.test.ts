@@ -184,7 +184,7 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 		expect(logger.error).not.toHaveBeenCalled();
 	});
 
-	it.each<[string, (store: TrustedSourceDbStore) => Promise<void>]>([
+	it.each<[string, (store: TrustedSourceDbStore) => Promise<unknown>]>([
 		['rename it', async (s) => await s.update(ID, { name: 'Renamed' })],
 		[
 			'change its config',
