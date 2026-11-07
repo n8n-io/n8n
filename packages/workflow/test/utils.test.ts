@@ -404,6 +404,27 @@ describe('deepCopy', () => {
 		expect(copy.deep.arr.slice(-1)[0]).not.toBe(object);
 	});
 
+	it('should preserve reference identity when an array is referenced multiple times', () => {
+		const shared = [1, 2];
+		const source = { a: shared, b: shared };
+		const copy = deepCopy(source);
+
+		expect(copy.a).toEqual(shared);
+		expect(copy.b).toEqual(shared);
+		expect(copy.a).not.toBe(shared);
+		expect(copy.a).toBe(copy.b);
+	});
+
+	it('should avoid max call stack with circular and self-referencing arrays', () => {
+		const arr: unknown[] = [];
+		arr.push(arr);
+
+		const copy = deepCopy(arr);
+
+		expect(copy).not.toBe(arr);
+		expect(copy[0]).toBe(copy);
+	});
+
 	it('should not promote an own __proto__ key onto the clone', () => {
 		// An object literal `{ __proto__: ... }` sets the prototype; only parsed
 		// JSON produces an own enumerable `__proto__` property, as a request body would.
