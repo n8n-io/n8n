@@ -405,6 +405,21 @@ describe('AgentSkillRepository', () => {
 			expect((await agentSkills.findSkillIdsUsedByAgent(agent.id)).sort()).toEqual(
 				[drafted, pinned, both].sort(),
 			);
+
+			// Handles lowercase column name returned by PostgreSQL driver
+			const rawSpy = vi.spyOn(agentSkills as any, "managerFor").mockReturnValue({
+				find: async () => [{ skillId: drafted }],
+				createQueryBuilder: () => ({
+					innerJoin: function () { return this; },
+					where: function () { return this; },
+					select: function () { return this; },
+					distinct: function () { return this; },
+					getRawMany: async () => [{ skillid: pinned }],
+				}),
+			});
+			const skillIdsWithPgCasing = await agentSkills.findSkillIdsUsedByAgent("agent-test");
+			rawSpy.mockRestore();
+			expect(skillIdsWithPgCasing.sort()).toEqual([drafted, pinned].sort());
 			expect(await agentSkills.findSkillIdsUsedByAgent('agent-gone')).toEqual([]);
 		});
 	});
