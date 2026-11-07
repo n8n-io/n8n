@@ -62,6 +62,17 @@ describe('ToolHttpRequest execute', () => {
 		]);
 	});
 
+	it('should send only the model arguments from the engine item', async () => {
+		setup([{ json: { chatInput: 'hi', id: '1', field: 'name', toolCallId: 'call_1' } }]);
+		helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
+
+		await httpTool.execute.call(ctx);
+
+		const [options] = helpers.httpRequest.mock.calls[0];
+		expect(options.url).toBe('https://example.com/users/1/name');
+		expect(JSON.stringify(options)).not.toMatch(/chatInput|call_1/);
+	});
+
 	it('should leave input and output logging to the engine', async () => {
 		setup([{ json: { id: '1', field: 'name' } }]);
 		helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
