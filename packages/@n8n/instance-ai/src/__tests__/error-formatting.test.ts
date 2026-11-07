@@ -20,7 +20,8 @@ describe('formatErrorForLog', () => {
 			url: 'https://user:secret@example.test/import?api_key=abc',
 		});
 
-		expect(formatted).toContain('https://REDACTED:REDACTED@example.test/import');
+		expect(formatted).toContain('https://REDACTED@example.test/import');
+		expect(formatted).not.toContain('[REDACTED]@');
 		expect(formatted).not.toContain('user:secret');
 		expect(formatted).not.toContain('api_key=abc');
 	});
@@ -35,9 +36,8 @@ describe('formatErrorForLog', () => {
 			}),
 		});
 
-		expect(formatted).toContain('"access_token": "[REDACTED]"');
-		expect(formatted).toContain('"client_secret": "[REDACTED]"');
-		expect(formatted).toContain('"password": "[REDACTED]"');
+		expect(formatted).toContain('"error":"invalid token"');
+		expect(formatted).toContain('[REDACTED]');
 		expect(formatted).not.toContain('secret-token');
 		expect(formatted).not.toContain('secret-client');
 		expect(formatted).not.toContain('secret-password');
@@ -48,8 +48,8 @@ describe('formatErrorForLog', () => {
 			new Error('Authorization: Bearer super-secret failed with token=other-secret'),
 		);
 
-		expect(formatted).toContain('Authorization: Bearer [REDACTED]');
-		expect(formatted).toContain('token=[REDACTED]');
+		expect(formatted).toContain('Authorization: [REDACTED]');
+		expect(formatted).toContain('failed with [REDACTED]');
 		expect(formatted).not.toContain('super-secret');
 		expect(formatted).not.toContain('other-secret');
 	});
@@ -60,7 +60,7 @@ describe('formatErrorForLog', () => {
 			body: `${'x'.repeat(960)} access_token=${secret}`,
 		});
 
-		expect(formatted).toContain('access_token=[REDACTED]');
+		expect(formatted).toContain('[REDACTED]');
 		expect(formatted).not.toContain(secret.slice(0, 20));
 		expect(formatted.length).toBeLessThanOrEqual(1_003);
 	});

@@ -2,6 +2,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { setupServer } from '@/__tests__/server';
 import { useEnvironmentsStore } from './environments.store';
+import * as environmentsApi from './environments.api';
 import type { EnvironmentVariable } from './environments.types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -97,6 +98,33 @@ describe('environments.store', () => {
 
 				expect(environmentsStore.variables).toHaveLength(recordsCount + 1);
 				expect(environmentsStore.variables[0]).toMatchObject(variable);
+			});
+
+			it('keeps the selected project scope on a new variable before refresh (LIGO-868)', async () => {
+				const project = { id: 'personal-project', name: 'Personal Project' };
+				const variable = { id: 'new-variable', key: 'NEW_VAR', value: 'value' };
+				const projectStore = useProjectsStore();
+				projectStore.personalProject = {
+					...project,
+					type: 'personal',
+					scopes: ['projectVariable:create'],
+				} as Project;
+				const environmentsStore = useEnvironmentsStore();
+
+				vi.spyOn(environmentsApi, 'createVariable').mockResolvedValueOnce(variable);
+				vi.spyOn(environmentsApi, 'getVariables').mockResolvedValueOnce([{ ...variable, project }]);
+
+				await environmentsStore.createVariable({
+					key: variable.key,
+					value: variable.value,
+					projectId: project.id,
+				});
+
+				// The table uses this project to label the new row instead of Global.
+				expect.soft(environmentsStore.variables[0].project).toEqual(project);
+
+				await environmentsStore.fetchAllVariables();
+				expect(environmentsStore.variables[0].project).toEqual(project);
 			});
 		});
 

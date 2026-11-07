@@ -464,7 +464,7 @@ export class AgentBrowserAdapter implements Adapter {
 			const resp = await this.run(['eval', HTML_PROBE_SCRIPT]);
 			const raw =
 				resp.data && typeof resp.data === 'object' && 'result' in resp.data
-					? (resp.data as { result: unknown }).result
+					? resp.data.result
 					: resp.data;
 			return parseHtmlProbeResult(raw);
 		} catch (error) {

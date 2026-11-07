@@ -39,10 +39,14 @@ pnpm build:deploy (N8N_GENERATE_LICENSES=true)
   └─ gh release upload
 ```
 
+The nightly validation builds the same production deployment closure and runs the same
+enrichment and SPDX gate through `sbom-validation-callable.yml`. It has read-only
+permissions and does not contain attestation or release upload steps.
+
 ### Docker image SBOM
 
-Produced by the `sbom-attestation` job in `docker-build-push.yml` on
-`stable`/`rc`/`nightly` builds.
+Produced by the `sbom-attestation` job in `docker-build-push.yml` for release builds that
+enable attestations.
 
 ```
 docker push
@@ -51,6 +55,11 @@ docker push
   └─ check-sbom-licenses.mjs  →  SPDX gate (npm only)
   └─ cosign attest     →  attested to image digest
 ```
+
+The daily validation waits up to two hours for the current scheduled Docker build to
+complete. It resolves that build's immutable SHA tags to digests. It runs the same Syft
+scan, enrichment, and npm SPDX gate for all four images. It uses
+`attest-image-sbom.mjs --validate-only`, so it does not run Cosign or write to the registry.
 
 The two pipelines use different scanners deliberately. The release SBOM scans a
 pnpm lockfile, which has no package files to read licenses from, so it queries

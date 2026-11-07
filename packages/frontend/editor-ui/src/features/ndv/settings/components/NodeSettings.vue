@@ -35,11 +35,17 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import {
+	RestrictedNodePanel,
+	RestrictedSubWorkflowCallout,
+	useNodeTypeRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NodeStorageLimitCallout from '@/features/core/dataTable/components/NodeStorageLimitCallout.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 import { RenameNodeCommand } from '@/app/models/history';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -61,9 +67,11 @@ import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
-import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
+import { N8nBlockUi, N8nCallout, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
 import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -111,6 +119,7 @@ const emit = defineEmits<{
 	];
 	activate: [];
 	execute: [];
+	replaceNode: [nodeId: string];
 	captureWheelBody: [WheelEvent];
 	dblclickHeader: [MouseEvent];
 }>();
@@ -171,10 +180,35 @@ const hasForeignCredential = computed(() => props.foreignCredentials.length > 0)
 const isHomeProjectTeam = computed(
 	() => currentWorkflow.value?.homeProject?.type === ProjectTypes.Team,
 );
+const isDeprecated = computed(() => Boolean(nodeType.value?.deprecated));
+
+const replacementNodeType = computed(() =>
+	nodeType.value?.replacedByNodeType
+		? nodeTypesStore.getNodeType(nodeType.value.replacedByNodeType)
+		: null,
+);
+
+const deprecatedNotice = computed(() =>
+	replacementNodeType.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: replacementNodeType.value.displayName },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
 const isReadOnly = computed(
-	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
+	() =>
+		props.readOnly ||
+		isDeprecated.value ||
+		(hasForeignCredential.value && !isHomeProjectTeam.value),
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
+
+const { labelOf } = usePolicyViolationLabels();
+const canCheckSubWorkflowPolicy = computed(
+	() => !props.readOnly && workflowDocumentStore.value.scopes.includes('workflow:update'),
+);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => node.value?.type);
 
 const nodeType = computed(() =>
 	node.value ? nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion) : null,
@@ -183,7 +217,7 @@ const nodeType = computed(() =>
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
 
 const nodeTypeName = computed(() => node.value?.type);
-const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
+const { canUpdatePackage, hasUpdateAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -221,7 +255,7 @@ const executeButtonTooltip = computed(() => {
 });
 
 const nodeVersionTag = computed(() => {
-	if (!nodeType.value || nodeType.value.hidden) {
+	if (!nodeType.value || nodeType.value.hidden || nodeType.value.deprecated) {
 		return i18n.baseText('nodeSettings.deprecated');
 	}
 
@@ -275,6 +309,12 @@ const showQuickConnectBanner = computed(
 		!props.isEmbeddedInCanvas,
 );
 
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: () => node.value?.type });
+const showGatewayCreditsPromotion = computed(
+	() =>
+		!!promotionText.value && !isReadOnly.value && !isDemoPreview.value && !props.isEmbeddedInCanvas,
+);
+
 const showNoParametersNotice = computed(
 	() =>
 		!isDisplayingCredentials.value &&
@@ -321,6 +361,11 @@ const hasOutputConnection = computed(() => {
 });
 
 const valueChanged = (parameterData: IUpdateInformation) => {
+	// The event bus and the curl import write here too, so hidden inputs alone do not lock the node.
+	if (isRestricted.value || isDeprecated.value) {
+		return;
+	}
+
 	let newValue: NodeParameterValue;
 
 	if (parameterData.hasOwnProperty('value')) {
@@ -428,6 +473,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
+			nodeHelpers.updateNodeInputIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
@@ -449,7 +495,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		workflowDocumentStore?.value?.setNodeValue({
 			name: _node.name,
 			key: topLevelKey,
-			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+			// Keep the node separate from values that inputs can mutate before emitting an edit.
+			value: deepCopy(nodeValues.value[topLevelKey]) as NodeParameterValue,
 		});
 	} else {
 		// A property on the node itself changed
@@ -666,7 +713,8 @@ function handleSelectAction(params: INodeParameters) {
 			v-if="isEmbeddedInCanvas && node"
 			:node="node"
 			:selected-tab="openPanel"
-			:read-only="readOnly"
+			:read-only="isReadOnly || isRestricted"
+			:hide-tabs="isRestricted"
 			:node-type="nodeType"
 			:push-ref="pushRef"
 			:sub-title="subTitle"
@@ -683,12 +731,14 @@ function handleSelectAction(params: INodeParameters) {
 			</template>
 		</ExperimentalEmbeddedNdvHeader>
 		<NodeSettingsHeader
-			v-else-if="node && nodeValid"
+			v-else-if="node && nodeValid && !isRestricted"
 			:selected-tab="openPanel"
 			:node-name="node.name"
 			:node-type="nodeType"
 			:execute-button-tooltip="executeButtonTooltip"
-			:hide-execute="props.hideExecute || !isExecutable || blockUI || !node || !nodeValid"
+			:hide-execute="
+				props.hideExecute || !isExecutable || blockUI || !node || !nodeValid || isDeprecated
+			"
 			:disable-execute="outputPanelEditMode.enabled && !isTriggerNode"
 			:hide-tabs="!nodeValid"
 			:hide-docs="props.hideDocs"
@@ -705,8 +755,16 @@ function handleSelectAction(params: INodeParameters) {
 			:preview-mode="isDemoPreview"
 		/>
 
+		<RestrictedNodePanel
+			v-if="node && nodeValid && isRestricted"
+			:node-type-name="nodeType?.displayName ?? node.type"
+			:restriction="restriction"
+			:show-replace="!isEmbeddedInCanvas && !readOnly"
+			@replace-node="emit('replaceNode', node.id)"
+		/>
+
 		<div
-			v-if="node && nodeValid"
+			v-else-if="node && nodeValid"
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
@@ -716,6 +774,14 @@ function handleSelectAction(params: INodeParameters) {
 			data-test-id="node-parameters"
 			@wheel.capture="emit('captureWheelBody', $event)"
 		>
+			<N8nCallout
+				v-if="isDeprecated"
+				theme="danger"
+				class="mt-xs"
+				data-test-id="node-deprecated-notice"
+			>
+				{{ deprecatedNotice }}
+			</N8nCallout>
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
@@ -726,6 +792,13 @@ function handleSelectAction(params: INodeParameters) {
 			/>
 			<FreeAiCreditsCallout />
 			<NodeStorageLimitCallout />
+			<RestrictedSubWorkflowCallout
+				v-if="node"
+				:parent-workflow-id="workflowDocumentStore.workflowId"
+				:node="node"
+				:enabled="canCheckSubWorkflowPolicy"
+				:label-of="labelOf"
+			/>
 			<NodeActionsList
 				v-if="openPanel === 'action'"
 				class="action-tab"
@@ -735,7 +808,7 @@ function handleSelectAction(params: INodeParameters) {
 			<NodeCredentials
 				v-if="openPanel === 'credential'"
 				:node="node"
-				:readonly="isReadOnly"
+				:readonly="readOnly || isDeprecated"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
 				:hide-ask-assistant="hideCredentialHelp"
@@ -765,10 +838,15 @@ function handleSelectAction(params: INodeParameters) {
 						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
+					<GatewayCreditsPromotion
+						v-if="showGatewayCreditsPromotion"
+						:text="promotionText ?? ''"
+						:class="$style.gatewayCreditsPromotion"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
-						:readonly="isReadOnly"
+						:readonly="readOnly || isDeprecated"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 						:hide-ask-assistant="hideCredentialHelp"
@@ -807,7 +885,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+					v-if="canUpdatePackage && hasUpdateAvailable"
 					data-test-id="update-available"
 					:package-name="packageName"
 					style="margin-top: var(--spacing--sm)"
@@ -867,6 +945,7 @@ function handleSelectAction(params: INodeParameters) {
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
+			:node-type-name="nodeTypeName"
 			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>
@@ -884,12 +963,16 @@ function handleSelectAction(params: INodeParameters) {
 		margin-top: var(--spacing--xl);
 
 		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--tint-1);
 	}
 }
 
 .quickConnectBanner {
+	margin-top: var(--spacing--sm);
+}
+
+.gatewayCreditsPromotion {
 	margin-top: var(--spacing--sm);
 }
 

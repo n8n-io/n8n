@@ -28,6 +28,7 @@ const makeWorkflow = (id: string): WorkflowEntity =>
 	});
 
 const bindings: PackageImportBindings = {
+	agents: new Map(),
 	credentials: new Map(),
 	workflows: new Map(),
 };
@@ -71,6 +72,8 @@ describe('WorkflowImporter.apply', () => {
 				decidedId: 'created-id',
 				parentFolderId: 'folder-1',
 				sourcePublished: false,
+				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 			{
 				action: 'update',
@@ -80,6 +83,8 @@ describe('WorkflowImporter.apply', () => {
 				existing: existingUpdate,
 				parentFolderId: null,
 				sourcePublished: false,
+				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 			{
 				action: 'skip',
@@ -88,6 +93,8 @@ describe('WorkflowImporter.apply', () => {
 				existing: existingSkip,
 				parentFolderId: null,
 				sourcePublished: false,
+				sourceArchived: false,
+				publishingAction: 'noop',
 			},
 		] satisfies WorkflowPlanItem[];
 		const plan: WorkflowImportPlan = {
@@ -120,7 +127,12 @@ describe('WorkflowImporter.apply', () => {
 			user,
 			expect.any(WorkflowEntity),
 			'existing-update',
-			{ publicApi: true, source: 'import', allowArchivedUpdate: false },
+			{
+				publicApi: true,
+				source: 'import',
+				allowArchivedUpdate: false,
+				allowUnresolvedErrorWorkflow: true,
+			},
 		);
 	});
 
@@ -146,6 +158,8 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			] satisfies WorkflowPlanItem[],
 			conflicts: [],
@@ -215,6 +229,8 @@ describe('WorkflowImporter.apply', () => {
 					decidedId: 'created',
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -228,6 +244,7 @@ describe('WorkflowImporter.apply', () => {
 		createWorkflow.mockResolvedValue(makeWorkflow('created'));
 
 		await importer.apply(context, plan, {
+			agents: new Map(),
 			credentials: new Map([['source-credential', 'target-credential']]),
 			workflows: new Map(),
 		});
@@ -269,6 +286,8 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -285,6 +304,7 @@ describe('WorkflowImporter.apply', () => {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: true,
+			allowUnresolvedErrorWorkflow: true,
 		});
 		expect(archive).not.toHaveBeenCalled();
 		expect(unarchive).not.toHaveBeenCalled();
@@ -313,6 +333,8 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -351,6 +373,8 @@ describe('WorkflowImporter.apply', () => {
 					existing,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: false,
+					publishingAction: 'noop',
 				},
 			],
 			conflicts: [],
@@ -392,14 +416,16 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{
-				workflowConflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				workflowPublishingPolicy: 'preserve-published-state',
+				conflictPolicy: 'new-version',
+				idPolicy: 'source',
+				publishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
+			{ checkRootPlacement: false },
 		);
 
 		expect(plan.items[0]).toMatchObject({ action: 'update', archiveTransition: null });
@@ -432,14 +458,16 @@ describe('WorkflowImporter.plan', () => {
 					entity,
 					parentFolderId: null,
 					sourcePublished: false,
+					sourceArchived: true,
 				},
 			],
 			{
-				workflowConflictPolicy: 'new-version',
-				workflowIdPolicy: 'source',
-				workflowPublishingPolicy: 'preserve-published-state',
+				conflictPolicy: 'new-version',
+				idPolicy: 'source',
+				publishingPolicy: 'preserve-published-state',
 				missingNodeTypeMode: 'fail',
 			},
+			{ checkRootPlacement: false },
 		);
 
 		expect(plan.archiveForbidden).toEqual([
@@ -451,5 +479,76 @@ describe('WorkflowImporter.plan', () => {
 				transition: 'archive',
 			},
 		]);
+	});
+	describe('placement of a matched workflow', () => {
+		const options = {
+			conflictPolicy: 'new-version',
+			idPolicy: 'source',
+			publishingPolicy: 'preserve-published-state',
+			missingNodeTypeMode: 'fail',
+		} as const;
+
+		/** The existing workflow sits in `old-folder`. The package puts it in `new-folder`, or at the root. */
+		const planMovedWorkflow = async (
+			layoutConflictPolicy?: 'fail' | 'follow-package',
+			{ toRoot = false } = {},
+		) => {
+			const matchService = mock<WorkflowImportMatchService>();
+			const importer = new WorkflowImporter(
+				matchService,
+				mock<WorkflowCreationService>(),
+				mock<WorkflowService>(),
+				mock<WorkflowFinderService>(),
+			);
+			const existing = Object.assign(makeWorkflow('existing'), {
+				parentFolder: { id: 'old-folder' },
+			});
+			matchService.findBySourceWorkflowIds.mockResolvedValue({
+				matches: new Map([['source', existing]]),
+				lineageConflicts: [],
+			});
+			matchService.findOwningProjectsByWorkflowId.mockResolvedValue(new Map());
+
+			return await importer.plan(
+				toRoot ? { ...context, folderId: null } : context,
+				[
+					{
+						sourceWorkflowId: 'source',
+						entity: makeWorkflow('source'),
+						parentFolderId: toRoot ? null : 'new-folder',
+						sourcePublished: false,
+						sourceArchived: false,
+					},
+				],
+				options,
+				{ checkRootPlacement: toRoot, layoutConflictPolicy },
+			);
+		};
+
+		it('reports a folder conflict by default', async () => {
+			const plan = await planMovedWorkflow();
+
+			expect(plan.folderConflicts).toEqual([
+				expect.objectContaining({
+					existingParentFolderId: 'old-folder',
+					targetFolderId: 'new-folder',
+				}),
+			]);
+			expect(plan.items[0]).not.toHaveProperty('moveToFolderId');
+		});
+
+		it('plans a move to the project root as null', async () => {
+			const plan = await planMovedWorkflow('follow-package', { toRoot: true });
+
+			expect(plan.folderConflicts).toEqual([]);
+			expect(plan.items[0]).toMatchObject({ action: 'update', moveToFolderId: null });
+		});
+
+		it('plans a move under follow-package placement', async () => {
+			const plan = await planMovedWorkflow('follow-package');
+
+			expect(plan.folderConflicts).toEqual([]);
+			expect(plan.items[0]).toMatchObject({ action: 'update', moveToFolderId: 'new-folder' });
+		});
 	});
 });

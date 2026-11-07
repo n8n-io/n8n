@@ -6,7 +6,7 @@ import type { JSONWebKeySet, JWTPayload, KeyObject } from 'jose';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { IdentifierValidationError } from '../identifier-interface';
 import { OAuth2MetadataHttpClient } from '../oauth2-metadata-http-client';

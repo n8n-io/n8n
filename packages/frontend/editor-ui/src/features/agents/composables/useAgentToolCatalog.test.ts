@@ -151,15 +151,15 @@ describe('useAgentToolCatalog', () => {
 		expect(availableToolTypes.value.map((nt) => nt.name)).not.toContain(OPENAI.name);
 	});
 
-	it('orders MCP, then n8n tools, then the rest by popularity', () => {
+	it('orders MCP tools first, then all n8n nodes by popularity', () => {
 		const { availableToolTypes } = useAgentToolCatalog();
 		const names = availableToolTypes.value.map((nt) => nt.name);
 
-		expect(names.indexOf(MCP.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
-		expect(names.indexOf(CODE_TOOL.name)).toBeLessThan(names.indexOf(SLACK.name));
+		expect(names.indexOf(MCP.name)).toBeLessThan(names.indexOf(SLACK.name));
+		expect(names.indexOf(SLACK.name)).toBeLessThan(names.indexOf(CODE_TOOL.name));
 	});
 
-	it('categorizes community packages by provenance, ignoring a self-declared n8n subcategory', () => {
+	it('categorizes all non-MCP tools as n8n nodes', () => {
 		const community = makeNodeType({
 			name: 'n8n-nodes-firecrawl.firecrawlTool',
 			displayName: 'Firecrawl',
@@ -172,7 +172,7 @@ describe('useAgentToolCatalog', () => {
 		expect(toolCategoryForNodeType(community)).toBe('app-action');
 		expect(toolCategoryForNodeType(SLACK)).toBe('app-action');
 		expect(toolCategoryForNodeType(MCP)).toBe('mcp');
-		expect(toolCategoryForNodeType(CODE_TOOL)).toBe('n8n');
+		expect(toolCategoryForNodeType(CODE_TOOL)).toBe('app-action');
 	});
 
 	it('keeps uninstalled verified community tools that getNodeType cannot resolve', () => {
@@ -261,29 +261,13 @@ describe('useAgentToolCatalog', () => {
 			.fn()
 			.mockResolvedValue([compatible, archived, formBody, waitBody, noTrigger, manualOnly]);
 
-		const { availableWorkflows, incompatibleWorkflows, loadWorkflows } = useAgentToolCatalog();
+		const { availableWorkflows, loadWorkflows } = useAgentToolCatalog();
 		await loadWorkflows('p-1');
 
 		// Compatible workflows surface as selectable; archived ones are excluded
 		// entirely. A wait-bearing workflow is now among the selectable ones.
+		// Incompatible workflows (form body, no trigger, manual-only) are absent.
 		expect(availableWorkflows.value.map((wf) => wf.id)).toEqual(['ok', 'wait']);
-
-		// Incompatible workflows surface with their reason, greyed out at the
-		// bottom of the picker. Archived ones are not surfaced as incompatible.
-		expect(incompatibleWorkflows.value).toEqual([
-			{
-				workflow: expect.objectContaining({ id: 'form' }),
-				reason: { reason: 'incompatible_nodes', nodeTypes: ['n8n-nodes-base.form'] },
-			},
-			{
-				workflow: expect.objectContaining({ id: 'no-trigger' }),
-				reason: { reason: 'no_supported_trigger' },
-			},
-			{
-				workflow: expect.objectContaining({ id: 'manual' }),
-				reason: { reason: 'no_supported_trigger' },
-			},
-		]);
 	});
 });
 

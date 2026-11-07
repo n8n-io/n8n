@@ -8,7 +8,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getSessionId } from '@utils/helpers';
+import { coerceSessionIdToString, getSessionId } from '@utils/helpers';
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
@@ -167,7 +167,11 @@ export class MemoryBufferWindow implements INodeType {
 		if (nodeVersion >= 1.2) {
 			sessionId = getSessionId(this, itemIndex);
 		} else {
-			sessionId = this.getNodeParameter('sessionKey', itemIndex) as string;
+			sessionId = coerceSessionIdToString(
+				this,
+				this.getNodeParameter('sessionKey', itemIndex),
+				itemIndex,
+			);
 		}
 
 		const memory = await memoryInstance.getMemory(`${workflowId}__${sessionId}`, {

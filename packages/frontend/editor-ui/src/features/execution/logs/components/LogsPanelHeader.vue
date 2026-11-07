@@ -30,6 +30,8 @@ function handleClick() {
 	font-size: var(--font-size--2xs);
 	text-align: left;
 	height: var(--logs-panel--header-height);
+	/* Keep the height fixed even when a sibling flex item overflows the panel */
+	flex-shrink: 0;
 	padding-inline: var(--spacing--2xs);
 	background-color: var(--color--foreground--tint-2);
 	display: flex;
@@ -59,6 +61,7 @@ function handleClick() {
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--4xs);
 	color: var(--color--text);
 	max-width: 70%;
 }

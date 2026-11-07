@@ -1,7 +1,7 @@
+import { type SerializedFolder, serializedFolderSchema } from '@n8n/api-types';
 import type { Folder } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { serializedFolderSchema, type SerializedFolder } from '../../spec/serialized/folder.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type FolderPackageKeyHandling = {

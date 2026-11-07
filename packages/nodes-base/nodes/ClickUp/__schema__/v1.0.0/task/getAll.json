@@ -52,6 +52,9 @@
                                 "due_date": {
                                     "type": "null"
                                 },
+                                "due_date_time": {
+                                    "type": "boolean"
+                                },
                                 "group_assignee": {
                                     "type": "null"
                                 },
@@ -61,14 +64,23 @@
                                 "name": {
                                     "type": "string"
                                 },
+                                "orderindex": {
+                                    "type": "integer"
+                                },
                                 "parent": {
                                     "type": "null"
                                 },
                                 "resolved": {
                                     "type": "boolean"
                                 },
+                                "sent_due_date_notif": {
+                                    "type": "null"
+                                },
                                 "start_date": {
                                     "type": "null"
+                                },
+                                "start_date_time": {
+                                    "type": "boolean"
                                 }
                             }
                         }
@@ -185,6 +197,9 @@
                     "depends_on": {
                         "type": "string"
                     },
+                    "lag_ms": {
+                        "type": "null"
+                    },
                     "task_id": {
                         "type": "string"
                     },
@@ -226,7 +241,7 @@
                 "type": "object",
                 "properties": {
                     "color": {
-                        "type": "string"
+                        "type": "null"
                     },
                     "email": {
                         "type": "string"
@@ -427,5 +442,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

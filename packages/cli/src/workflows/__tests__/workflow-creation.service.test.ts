@@ -1,22 +1,25 @@
 import type { Logger, LicenseState } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { EngineConfig } from '@n8n/config';
 import type {
 	EntityManager,
 	Folder,
 	Project,
 	ProjectRepository,
 	Role,
+	Transaction,
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
+import type { INode } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
@@ -27,11 +30,14 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { FolderService } from '@/services/folder.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
+import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { ALL_RULES_RELAXED, NO_RULES_RELAXED } from './node-group-rules.test-data';
 
 vi.mock('@/permissions.ee/check-access');
 vi.mock('@/workflow-helpers');
@@ -56,7 +62,10 @@ describe('WorkflowCreationService', () => {
 	let mcpSettingsService: MockProxy<McpSettingsService>;
 	let policyEnforcementServiceMock: MockProxy<PolicyEnforcementService>;
 	let workflowRepositoryMock: MockProxy<WorkflowRepository>;
+	let nodeGroupRulesFlagGateMock: MockProxy<NodeGroupRulesFlagGate>;
 	let loggerMock: MockProxy<Logger>;
+	let engineConfig: EngineConfig;
+	let moduleRegistry: ModuleRegistry;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -80,6 +89,7 @@ describe('WorkflowCreationService', () => {
 		enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 			ids: new Set(),
 			hasUnresolved: false,
+			hasUninspectableSource: false,
 		});
 
 		// Default: no active floor. Tests opt into a floor explicitly.
@@ -93,6 +103,14 @@ describe('WorkflowCreationService', () => {
 		policyEnforcementServiceMock.enforceWorkflowSave.mockResolvedValue(mock());
 
 		workflowRepositoryMock = mock<WorkflowRepository>();
+
+		// Default: the user is outside the rollout, so today's group rules apply.
+		nodeGroupRulesFlagGateMock = mock<NodeGroupRulesFlagGate>();
+		nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(NO_RULES_RELAXED);
+
+		// Default: engine v1 for new workflows, and the engine-v2 module is not active.
+		engineConfig = new EngineConfig();
+		moduleRegistry = new ModuleRegistry(mock(), mock(), mock(), mock(), mock());
 
 		workflowCreationService = new WorkflowCreationService(
 			loggerMock,
@@ -117,6 +135,9 @@ describe('WorkflowCreationService', () => {
 			mcpSettingsService,
 			policyEnforcementServiceMock,
 			workflowRepositoryMock,
+			nodeGroupRulesFlagGateMock,
+			mock(),
+			new WorkflowEngineDefaults(engineConfig, moduleRegistry),
 		);
 	});
 
@@ -132,6 +153,7 @@ describe('WorkflowCreationService', () => {
 			enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 				ids: new Set(['source-credential']),
 				hasUnresolved: false,
+				hasUninspectableSource: false,
 			});
 
 			const context = await workflowCreationService.prepareBatchContext(
@@ -155,6 +177,31 @@ describe('WorkflowCreationService', () => {
 			);
 			expect(context.allowedCredentialIds).toEqual(new Set(['target-credential']));
 		});
+
+		it.each([new Error('cache down'), 'cache down'])(
+			'disables auto-exposure and logs the cause when the setting lookup rejects with %s',
+			async (error) => {
+				const project = mock<Project>({ id: 'project-1' });
+				projectServiceMock.getProjectWithScope.mockResolvedValue(project);
+				folderServiceMock.getFoldersByIds.mockResolvedValue([]);
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+				mcpSettingsService.getAutoExposeNewWorkflows.mockRejectedValue(error);
+
+				const context = await workflowCreationService.prepareBatchContext(
+					mock<User>(),
+					project.id,
+					[],
+					[],
+					new Map(),
+				);
+
+				expect(context.autoExposeNewWorkflows).toBe(false);
+				expect(loggerMock.warn).toHaveBeenCalledExactlyOnceWith(
+					'Failed to resolve auto-expose setting for new workflow',
+					{ cause: 'cache down' },
+				);
+			},
+		);
 	});
 
 	function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
@@ -174,11 +221,13 @@ describe('WorkflowCreationService', () => {
 		const transactionManager = {
 			save: vi.fn().mockRejectedValue(new Error('Stopping for test')),
 		};
+		const transaction = mock<Transaction>();
 
 		// The create body still hands the manager to its co-writers; only the workflow row
 		// itself goes through the token-gated repository method.
 		workflowRepositoryMock.runInTransaction.mockImplementation(
-			async (ctx, fn) => await fn(transactionManager as unknown as EntityManager, ctx),
+			async (ctx, fn) =>
+				await fn(transactionManager as unknown as EntityManager, { ...ctx, trx: transaction }),
 		);
 		workflowRepositoryMock.createContent.mockRejectedValue(new Error('Stopping for test'));
 
@@ -188,10 +237,104 @@ describe('WorkflowCreationService', () => {
 			} as never);
 		}
 
-		return { transactionManager };
+		return { transactionManager, transaction };
+	}
+
+	/** A minimal workflow that carries one group, so the save path reads the flag. */
+	function makeGroupedWorkflow(): WorkflowEntity {
+		const workflow = new WorkflowEntity();
+		workflow.name = 'Test';
+		workflow.nodes = [];
+		workflow.connections = {};
+		workflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: [] }];
+		return workflow;
 	}
 
 	describe('createWorkflow()', () => {
+		it.each([false, true])(
+			'rechecks project access in the workflow transaction with publicApi=%s',
+			async (publicApi) => {
+				const user = mock<User>();
+				const project = mock<Project>({ id: 'project-1' });
+				const { transaction } = setupTransactionMocks();
+				projectServiceMock.getProjectWithScope.mockImplementation(
+					async (_user, _id, _scopes, ctx) => (ctx?.trx === transaction ? null : project),
+				);
+
+				await expect(
+					workflowCreationService.createWorkflow(user, makeWorkflow(), {
+						projectId: project.id,
+						publicApi,
+					}),
+				).rejects.toThrow(publicApi ? ForbiddenError : BadRequestError);
+
+				expect(projectServiceMock.getProjectWithScope).toHaveBeenNthCalledWith(
+					2,
+					user,
+					project.id,
+					['workflow:create'],
+					expect.objectContaining({ trx: transaction }),
+				);
+				expect(workflowRepositoryMock.createContent).not.toHaveBeenCalled();
+				expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+			},
+		);
+
+		it('relaxes the group rules for a user inside the rollout', async () => {
+			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = makeGroupedWorkflow();
+
+			// The transaction mock stops the create after validation, which is all this asserts.
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+			).rejects.toThrow();
+
+			expect(nodeGroupRulesFlagGateMock.getEnabledRules).toHaveBeenCalledWith(user);
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual(ALL_RULES_RELAXED);
+		});
+
+		it('keeps the group rules for a user outside the rollout', async () => {
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			setupTransactionMocks();
+
+			const user = mock<User>();
+			const newWorkflow = makeGroupedWorkflow();
+
+			await expect(
+				workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+			).rejects.toThrow();
+
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual(NO_RULES_RELAXED);
+		});
+
+		it('does not read the flag for a workflow without groups', async () => {
+			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			setupTransactionMocks();
+
+			const newWorkflow = makeGroupedWorkflow();
+			newWorkflow.nodeGroups = [];
+
+			await expect(
+				workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				}),
+			).rejects.toThrow();
+
+			expect(nodeGroupRulesFlagGateMock.getEnabledRules).not.toHaveBeenCalled();
+			const [, , options] = vi.mocked(WorkflowHelpers.validateWorkflowNodeGroups).mock.calls[0];
+			expect(options).toEqual({});
+		});
+
 		it('should throw BadRequestError for invalid workflow structure', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
@@ -256,6 +399,7 @@ describe('WorkflowCreationService', () => {
 				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 					ids: new Set(['credential-1']),
 					hasUnresolved: false,
+					hasUninspectableSource: false,
 				});
 				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(
 					new Set(['credential-1']),
@@ -312,6 +456,7 @@ describe('WorkflowCreationService', () => {
 				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
 					ids: new Set(['credential-1']),
 					hasUnresolved: true,
+					hasUninspectableSource: false,
 				});
 				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(
 					new Set(['credential-1']),
@@ -330,6 +475,58 @@ describe('WorkflowCreationService', () => {
 				).rejects.toThrow(
 					'The workflow you are trying to save contains credentials that are not shared with you',
 				);
+			});
+
+			it('should pass full credential access to the source check', async () => {
+				const user = mock<User>();
+				const newWorkflow = new WorkflowEntity();
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(),
+					hasUnresolved: false,
+					hasUninspectableSource: true,
+				});
+				enterpriseWorkflowServiceMock.canUseEveryCredential.mockReturnValue(true);
+				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(() => {
+					throw new Error('Stopping for test');
+				});
+
+				await expect(
+					workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+				).rejects.toThrow();
+
+				expect(enterpriseWorkflowServiceMock.canUseEveryCredential).toHaveBeenCalledWith(user);
+				expect(
+					enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser,
+				).toHaveBeenCalledWith(newWorkflow, new Set(), { allowUninspectableSource: true });
+			});
+
+			it('should preserve the source error message for a restricted user', async () => {
+				const user = mock<User>();
+				const newWorkflow = new WorkflowEntity();
+				const node = { name: 'Sub' } as INode;
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(),
+					hasUnresolved: false,
+					hasUninspectableSource: true,
+				});
+				enterpriseWorkflowServiceMock.canUseEveryCredential.mockReturnValue(false);
+				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(() => {
+					throw new UninspectableSubworkflowSourceError(node);
+				});
+
+				await expect(
+					workflowCreationService.createWorkflow(user, newWorkflow, { projectId: 'project-1' }),
+				).rejects.toThrow(
+					/'Sub' node loads its sub-workflow from a source that is resolved only when the workflow runs/,
+				);
+
+				expect(
+					enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser,
+				).toHaveBeenCalledWith(newWorkflow, new Set(), { allowUninspectableSource: false });
 			});
 		});
 
@@ -455,11 +652,14 @@ describe('WorkflowCreationService', () => {
 				projectId: 'project-1',
 			});
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: null, name: 'My workflow', nodes: [] },
-				storedWorkflow: null,
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: null, name: 'My workflow', nodes: [] },
+					storedWorkflow: null,
+					projectId: 'project-1',
+				},
+				expect.anything(),
+			);
 		});
 
 		it("falls back to the user's personal project when no project is given", async () => {
@@ -472,6 +672,7 @@ describe('WorkflowCreationService', () => {
 
 			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: 'personal-project' }),
+				expect.anything(),
 			);
 		});
 
@@ -1039,6 +1240,93 @@ describe('WorkflowCreationService', () => {
 				'Failed to resolve auto-expose setting for new workflow',
 				{ cause: 'cache down' },
 			);
+		});
+	});
+
+	describe('default engine', () => {
+		const user = mock<User>();
+
+		const activateEngineV2Module = () =>
+			vi.spyOn(moduleRegistry, 'isActive').mockImplementation((name) => name === 'engine-v2');
+
+		// A copy taken at save time, so a stamp applied after the save does not pass.
+		let savedSettings: WorkflowEntity['settings'];
+
+		const expectSavedSettings = (settings: WorkflowEntity['settings']) => {
+			expect(workflowRepositoryMock.createContent).toHaveBeenCalledTimes(1);
+			expect(savedSettings).toStrictEqual(settings);
+		};
+
+		beforeEach(() => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+			const { transactionManager } = setupTransactionMocks();
+			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			savedSettings = undefined;
+			workflowRepositoryMock.createContent.mockImplementation(async (workflow) => {
+				savedSettings = structuredClone(workflow.settings);
+				return workflow;
+			});
+			workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
+			workflowFinderServiceMock.findWorkflowForUser.mockImplementation(
+				async () => new WorkflowEntity(),
+			);
+		});
+
+		it('saves a workflow without an engine on v2 when the default is v2 and the module is active', async () => {
+			engineConfig.defaultType = 'v2';
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1', engineType: 'v2' });
+		});
+
+		it.each([
+			{ engineType: 'v1' as const, defaultType: 'v2' as const },
+			{ engineType: 'v2' as const, defaultType: 'v1' as const },
+		])(
+			'keeps an explicit $engineType when the default is $defaultType',
+			async ({ engineType, defaultType }) => {
+				engineConfig.defaultType = defaultType;
+				activateEngineV2Module();
+				const workflow = makeWorkflow({ settings: { engineType } });
+
+				await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+				expectSavedSettings({ engineType });
+			},
+		);
+
+		it('writes no engine when the default is v2 but the module is not active', async () => {
+			engineConfig.defaultType = 'v2';
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1' });
+		});
+
+		it('writes no engine when the default is v1', async () => {
+			engineConfig.defaultType = 'v1';
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1' });
+		});
+
+		it('adds no settings when the workflow has none and the default is v1', async () => {
+			engineConfig.defaultType = 'v1';
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: undefined });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings(undefined);
 		});
 	});
 });

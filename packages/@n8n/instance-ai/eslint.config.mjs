@@ -1,5 +1,5 @@
 import { defineConfig } from 'eslint/config';
-import { baseConfig } from '@n8n/eslint-config/base';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 const LAZY_RUNTIME_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the idle-memory guardrail.';
@@ -13,12 +13,11 @@ const restrictedLazyRuntimeImports = [
 	'turndown',
 ].map((name) => ({
 	name,
-	allowTypeImports: true,
 	message: LAZY_RUNTIME_IMPORT_MESSAGE,
 }));
 
 export default defineConfig(
-	baseConfig,
+	backendConfig,
 	{
 		ignores: [
 			'scripts/**/*.cjs',
@@ -34,24 +33,10 @@ export default defineConfig(
 		],
 	},
 	{
-		rules: {
-			// Tool names may be kebab-case identifiers (e.g. 'list-workflows'), which
-			// require quotes in object literals. Skip naming checks for those.
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'objectLiteralProperty',
-					modifiers: ['requiresQuotes'],
-					format: null,
-				},
-			],
-		},
-	},
-	{
 		files: ['src/**/*.ts'],
 		ignores: ['src/**/__tests__/**/*.ts'],
 		rules: {
-			'@typescript-eslint/no-restricted-imports': [
+			'n8n-local-rules/no-static-runtime-import': [
 				'error',
 				{ paths: restrictedLazyRuntimeImports },
 			],
@@ -82,15 +67,11 @@ export default defineConfig(
 		},
 	},
 	{
-		files: ['evaluations/computer-use/report-html.ts'],
+		files: ['evaluations/clients/n8n-client.ts'],
+		// An evaluation harness that talks to a local instance it started
+		// itself, so the guarded client buys nothing here.
 		rules: {
-			// Large template literal + inline CSS: type-aware `no-unsafe-*` rules
-			// can false-positive (imports/fields show as `error` in some editors).
-			// `tsc -p` still typechecks this file (evaluations/** is in tsconfig).
-			'@typescript-eslint/no-unsafe-assignment': 'off',
-			'@typescript-eslint/no-unsafe-member-access': 'off',
-			'@typescript-eslint/no-unsafe-argument': 'off',
-			'@typescript-eslint/no-unsafe-call': 'off',
+			'n8n-local-rules/no-uncentralized-http': 'off',
 		},
 	},
 );

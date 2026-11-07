@@ -1,6 +1,8 @@
 import {
 	AiGatewayConfigDto,
+	AiGatewayMcpServersResponse,
 	getAgentModelProviderCredentialTypes,
+	type AiGatewayMcpServer,
 	type AiGatewayUsageResponse,
 	type AiGatewayWalletResponse,
 } from '@n8n/api-types';
@@ -8,23 +10,96 @@ import { LicenseState } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError, OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { License } from '@/license';
+import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
+import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
+	AI_GATEWAY_MCP_CAPABILITY,
+	AI_GATEWAY_MCP_SLUG_PREFIX,
+	mcpRegistryIconMimeTypeSchema,
+	type McpRegistryServer,
+} from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 interface GatewayTokenResponse {
 	token: string;
 	expiresIn: number;
+}
+
+/** Who a request made on a user's behalf is for. The gateway bills and attributes it by this. */
+export interface AiGatewayRequestAttribution {
+	/** The Instance AI thread that owns the task. */
+	instanceAiThreadId: string;
+	/** An Instance AI background task. The gateway bills these requests to Assistant credits. */
+	instanceAiTaskId: string;
+}
+
+/** A gateway response with a status that is not 2xx. */
+export interface AiGatewayErrorResponse {
+	statusCode: number;
+	body: unknown;
+}
+
+interface GatewayUrlContext {
+	executionId?: string;
+	workflowId?: string;
+	projectId?: string;
+	agentId?: string;
+	instanceAiThreadId?: string;
+	instanceAiTaskId?: string;
+}
+
+/**
+ * Maps an AI Gateway MCP server to a registry row. The row slug has a reserved
+ * prefix, so it cannot replace a registry row; the URL keeps the gateway's own
+ * slug. Optional keys are only set when present, because the refresh compares
+ * rows in their stored form.
+ */
+function toAiGatewayRegistryServer(server: AiGatewayMcpServer, baseUrl: string): McpRegistryServer {
+	return {
+		name: server.name,
+		slug: `${AI_GATEWAY_MCP_SLUG_PREFIX}${server.slug}`,
+		title: server.title,
+		description: server.description,
+		tagline: server.tagline,
+		version: server.version,
+		updatedAt: server.updatedAt,
+		icons: server.icons.map(({ src, mimeType, theme }) => {
+			// The registry picks the preferred icon by MIME type. Drop a value it does not accept.
+			const parsedMimeType = mcpRegistryIconMimeTypeSchema.safeParse(mimeType);
+			return {
+				src,
+				...(parsedMimeType.success ? { mimeType: parsedMimeType.data } : {}),
+				...(theme ? { theme } : {}),
+			};
+		}),
+		...(server.websiteUrl ? { websiteUrl: server.websiteUrl } : {}),
+		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
+		tools: server.tools.map(({ name, title, readOnlyHint }) => ({
+			name,
+			...(title ? { title } : {}),
+			...(readOnlyHint !== undefined ? { annotations: { readOnlyHint } } : {}),
+		})),
+		// n8n hosts the server, so the service vendor does not publish it.
+		isOfficial: false,
+		origin: 'registry',
+		status: 'active',
+		requiredCapabilities: [AI_GATEWAY_MCP_CAPABILITY],
+		...(server.tags ? { tags: server.tags } : {}),
+	};
 }
 
 export type AiGatewayAvailability =
@@ -54,15 +129,19 @@ export class AiGatewayService {
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
+	/** A provider name is one URL segment, so it cannot change the structure of the URL. */
+	private static readonly PROVIDER_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	/**
@@ -84,6 +163,9 @@ export class AiGatewayService {
 
 	/**
 	 * Performs a request against the AI Gateway and returns the parsed body.
+	 *
+	 * For a status that is not 2xx, it throws the error from `options.mapErrorResponse` if it is
+	 * given. Otherwise it throws a `UserError` with `errorMessage` and the status code.
 	 */
 	private async gatewayRequest<T>(
 		options: {
@@ -91,8 +173,13 @@ export class AiGatewayService {
 			url: string;
 			headers?: Record<string, string>;
 			body?: unknown;
+			disableFollowRedirect?: boolean;
+			/** Returns the error to throw for a response with a status that is not 2xx. */
+			mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
+			signal?: AbortSignal;
+			timeoutMs?: number;
 		},
-		errorMessage: string,
+		errorMessage = 'Gateway credits request failed',
 	): Promise<T> {
 		const response = await this.outboundHttp
 			.requests({
@@ -103,11 +190,16 @@ export class AiGatewayService {
 				url: options.url,
 				...(options.headers ? { headers: options.headers } : {}),
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
+				...(options.disableFollowRedirect ? { disableFollowRedirect: true } : {}),
+				...(options.signal ? { abortSignal: options.signal } : {}),
+				...(options.timeoutMs !== undefined ? { timeout: options.timeoutMs } : {}),
 				returnFullResponse: true,
-				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
+				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as an error below
 			});
 		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
+			throw options.mapErrorResponse
+				? options.mapErrorResponse({ statusCode: response.statusCode, body: response.body })
+				: new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
 		}
 		return response.body as T;
 	}
@@ -177,6 +269,7 @@ export class AiGatewayService {
 		workflowId,
 		projectId,
 		executionId,
+		agentId,
 		node,
 	}: {
 		credentialType: string;
@@ -184,6 +277,7 @@ export class AiGatewayService {
 		workflowId?: string;
 		projectId?: string;
 		executionId?: string;
+		agentId?: string;
 		node?: Pick<INode, 'type' | 'typeVersion' | 'parameters'>;
 	}): Promise<ICredentialDataDecryptedObject> {
 		if (!this.licenseState.isAiGatewayLicensed()) {
@@ -194,6 +288,17 @@ export class AiGatewayService {
 		}
 
 		const baseUrl = this.requireBaseUrl();
+
+		if (isMcpAiGatewayAuthentication(credentialType)) {
+			return await this.getAiGatewayMcpCredential({
+				credentialType,
+				userId,
+				workflowId,
+				projectId,
+				node,
+				baseUrl,
+			});
+		}
 
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
@@ -212,30 +317,72 @@ export class AiGatewayService {
 			}
 		}
 
-		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
-		const resolvedUserId = await this.resolveUserId({
+		const { jwt, resolvedProjectId } = await this.resolveAndMintToken({
 			userId,
-			projectId: resolvedProjectId,
 			workflowId,
+			projectId,
 		});
-		if (!resolvedUserId) {
-			throw new UserError('Failed to resolve user for Gateway credits attribution.');
-		}
-		const jwt = await this.getOrFetchToken(resolvedUserId);
-		if (!jwt) {
-			throw new UserError('Failed to obtain a valid Gateway credits token.');
-		}
 
 		const urlFields = this.buildUrlFields(baseUrl, providerConfig, {
 			executionId,
 			workflowId,
 			projectId: resolvedProjectId,
+			agentId,
 		});
 
 		return {
 			[providerConfig.apiKeyField]: jwt,
 			...urlFields,
 		};
+	}
+
+	/**
+	 * Sends a request to a gateway provider on behalf of a signed-in user, with the user's
+	 * gateway token in the `authHeaderKey` header. The URL is built here from `provider`
+	 * and `path`, and redirects are not followed, so the token cannot reach another host.
+	 * The URL carries the attribution as an exec context.
+	 */
+	async sendProviderRequest<T>({
+		provider,
+		authHeaderKey,
+		method,
+		path,
+		body,
+		userId,
+		attribution,
+		mapErrorResponse,
+		timeoutMs,
+	}: {
+		/** The gateway provider name, for example `browserbaseBrowserUse`. */
+		provider: string;
+		authHeaderKey: string;
+		method: IHttpRequestMethods;
+		/** The provider's own route, added after the provider's gateway URL, for example `/v1/sessions`. */
+		path: string;
+		body?: unknown;
+		userId: string;
+		attribution: AiGatewayRequestAttribution;
+		mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
+		/** The request fails when no response arrives within this time. */
+		timeoutMs?: number;
+	}): Promise<T> {
+		if (!AiGatewayService.PROVIDER_NAME_PATTERN.test(provider)) {
+			throw new UnexpectedError('Invalid gateway provider name', { extra: { provider } });
+		}
+		this.assertEnabled();
+		const baseUrl = this.requireBaseUrl();
+		const token = await this.getOrFetchToken(userId, timeoutMs);
+		const gatewayPath = `${AiGatewayService.GATEWAY_PATH_PREFIX}/${provider}`;
+		const url = this.buildGatewayUrl(baseUrl, gatewayPath, attribution);
+		return await this.gatewayRequest<T>({
+			method,
+			url: `${url}${path}`,
+			headers: { [authHeaderKey]: token },
+			body,
+			disableFollowRedirect: true,
+			mapErrorResponse,
+			timeoutMs,
+		});
 	}
 
 	/**
@@ -248,7 +395,7 @@ export class AiGatewayService {
 	private buildUrlFields(
 		baseUrl: string,
 		providerConfig: { gatewayPath: string; urlField: string; routing?: Record<string, string> },
-		context: { executionId?: string; workflowId?: string; projectId?: string },
+		context: { executionId?: string; workflowId?: string; projectId?: string; agentId?: string },
 	): Record<string, string> {
 		const routing = providerConfig.routing;
 		if (routing && Object.keys(routing).length > 0) {
@@ -339,27 +486,63 @@ export class AiGatewayService {
 	 * `|`-joined, encoded list (`:workflowId|:projectId`, the `|` percent-encoded), so the
 	 * gateway can group usage by project. Omitting it keeps the `:workflowId`-only form.
 	 *
+	 * Agents have no execution or workflow. When an `agentId` is present (and no
+	 * `workflowId`), the literal `agent` takes the execution segment and the agentId
+	 * takes the workflow segment, so the gateway attributes usage to the agent.
+	 *
 	 * Example (OpenAI):
 	 *   without context → `<base>/v1/gateway/openai/v1`
 	 *   with context    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/openai/v1`
 	 *   with project    → `<base>/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw%7Cnr6r2FfB0mVeqZP1/openai/v1`
+	 *   agent           → `<base>/v1/gateway/exec/agent/AG123%7Cnr6r2FfB0mVeqZP1/openai/v1`
+	 *
+	 * Instance AI background tasks work the same way with the literal `instance-ai`,
+	 * which also tells the gateway to bill Assistant credits. The thread and task take
+	 * the workflow segment as `:threadId|:taskId`:
+	 *   instance AI     → `<base>/v1/gateway/exec/instance-ai/THR123%7CTASK123/browserbaseBrowserUse`
 	 */
 	private buildGatewayUrl(
 		baseUrl: string,
 		gatewayPath: string,
-		context: { executionId?: string; workflowId?: string; projectId?: string },
+		context: GatewayUrlContext,
 	): string {
-		if (context.executionId && context.workflowId) {
-			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
-				return `${baseUrl}${gatewayPath}`;
-			}
-			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
-			const contextSegment = encodeURIComponent(
-				[context.workflowId, context.projectId].filter(Boolean).join('|'),
-			);
-			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${contextSegment}${providerSuffix}`;
+		const { execId, contextIds = [] } = this.resolveExecContext(context);
+		if (!execId || !gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
+			return `${baseUrl}${gatewayPath}`;
 		}
-		return `${baseUrl}${gatewayPath}`;
+		const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
+		const execSegment = encodeURIComponent(execId);
+		const contextSegment = encodeURIComponent(contextIds.filter(Boolean).join('|'));
+		return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${execSegment}/${contextSegment}${providerSuffix}`;
+	}
+
+	/**
+	 * Returns the `execId` and `contextIds` when the request can be attributed.
+	 * Otherwise returns an empty object.
+	 */
+	private resolveExecContext(context: GatewayUrlContext): {
+		execId?: string;
+		contextIds?: Array<string | undefined>;
+	} {
+		if (context.instanceAiThreadId) {
+			return {
+				execId: 'instance-ai',
+				contextIds: [context.instanceAiThreadId, context.instanceAiTaskId],
+			};
+		}
+		if (context.workflowId) {
+			return {
+				execId: context.executionId,
+				contextIds: [context.workflowId, context.projectId],
+			};
+		}
+		if (context.agentId) {
+			return {
+				execId: 'agent',
+				contextIds: [context.agentId, context.projectId],
+			};
+		}
+		return {};
 	}
 
 	private requireBaseUrl(): string {
@@ -367,6 +550,71 @@ export class AiGatewayService {
 		if (!url)
 			throw new UserError('Gateway credits are not configured. Set the AI assistant base URL.');
 		return url;
+	}
+
+	/**
+	 * Mints the Gateway credits credential of an MCP registry server. Its checks
+	 * replace the provider config lookup and the node eligibility check of models.
+	 */
+	private async getAiGatewayMcpCredential({
+		credentialType,
+		userId,
+		workflowId,
+		projectId,
+		node,
+		baseUrl,
+	}: {
+		credentialType: string;
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+		node?: Pick<INode, 'type'>;
+		baseUrl: string;
+	}): Promise<ICredentialDataDecryptedObject> {
+		// The registry loader registers this type only for a server the AI Gateway lists.
+		if (!this.credentialTypes.recognizes(credentialType)) {
+			throw new UserError(`Gateway credits do not serve credential type "${credentialType}".`);
+		}
+		// Only a registry MCP node may hold this token. A node that can request any
+		// credential type, such as HTTP Request, must not receive it.
+		if (node && !node.type.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)) {
+			throw new UserError(
+				`Credential type "${credentialType}" can only be used by its MCP server node.`,
+			);
+		}
+		const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
+		// The token is billed and not limited to one provider, so pin it to the AI Gateway host.
+		return {
+			token: jwt,
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: new URL(baseUrl).hostname,
+		};
+	}
+
+	/** Resolves the user that a credential is attributed to, and mints a token for that user. */
+	private async resolveAndMintToken({
+		userId,
+		workflowId,
+		projectId,
+	}: {
+		userId: string | undefined;
+		workflowId?: string;
+		projectId?: string;
+	}): Promise<{ jwt: string; resolvedProjectId?: string }> {
+		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });
+		const resolvedUserId = await this.resolveUserId({
+			userId,
+			projectId: resolvedProjectId,
+			workflowId,
+		});
+		if (!resolvedUserId) {
+			throw new UserError('Failed to resolve user for Gateway credits attribution.');
+		}
+		const jwt = await this.getOrFetchToken(resolvedUserId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid Gateway credits token.');
+		}
+		return { jwt, resolvedProjectId };
 	}
 
 	private isConfigStale(): boolean {
@@ -427,6 +675,24 @@ export class AiGatewayService {
 			this.configFetchFailedAt = Date.now();
 			throw error;
 		}
+	}
+
+	/**
+	 * Fetches the AI Gateway MCP servers as registry rows. The registry refresh
+	 * stores them, so every n8n process reads them from the database.
+	 * @throws when the request fails or the response is not valid.
+	 */
+	async fetchAiGatewayMcpServers(signal?: AbortSignal): Promise<McpRegistryServer[]> {
+		const baseUrl = this.requireBaseUrl();
+		const data = await this.gatewayRequest<unknown>(
+			{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers`, signal },
+			'Failed to fetch Gateway credits MCP servers',
+		);
+		const parsed = AiGatewayMcpServersResponse.safeParse(data);
+		if (!parsed.success) {
+			throw new UserError('Gateway credits returned an invalid MCP servers response.');
+		}
+		return parsed.data.servers.map((server) => toAiGatewayRegistryServer(server, baseUrl));
 	}
 
 	/**
@@ -498,7 +764,7 @@ export class AiGatewayService {
 	 * if missing or past 90% of its lifetime. Deduplicates concurrent requests for the
 	 * same user so only one fetch is in-flight at a time.
 	 */
-	private async getOrFetchToken(userId: string): Promise<string> {
+	private async getOrFetchToken(userId: string, timeoutMs?: number): Promise<string> {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;
 		const cached = this.tokenCache.get(key);
 
@@ -509,7 +775,7 @@ export class AiGatewayService {
 		const pending = this.pendingTokenRequests.get(key);
 		if (pending) return await pending;
 
-		const promise = this.fetchAndCacheToken(userId, key);
+		const promise = this.fetchAndCacheToken(userId, key, timeoutMs);
 		this.pendingTokenRequests.set(key, promise);
 		try {
 			return await promise;
@@ -518,11 +784,16 @@ export class AiGatewayService {
 		}
 	}
 
-	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
+	private async fetchAndCacheToken(
+		userId: string,
+		key: string,
+		timeoutMs?: number,
+	): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
-		const [licenseCert, user] = await Promise.all([
+		// A service account has no email or name, so the gateway gets neither.
+		const [licenseCert, person] = await Promise.all([
 			this.license.loadCertStr(),
-			this.userRepository.findOneBy({ id: userId }),
+			this.personRepository.findById(userId),
 		]);
 
 		const { token, expiresIn } = await this.gatewayRequest<GatewayTokenResponse>(
@@ -532,12 +803,13 @@ export class AiGatewayService {
 				headers: this.buildGatewayCredentialsHeaders(userId),
 				body: {
 					licenseCert,
-					...(user?.email && { userEmail: user.email }),
-					...(user && {
-						userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined,
+					...(person?.email && { userEmail: person.email }),
+					...(person && {
+						userName: [person.firstName, person.lastName].filter(Boolean).join(' ') || undefined,
 					}),
 					instanceUrl: this.urlService.getInstanceBaseUrl(),
 				},
+				timeoutMs,
 			},
 			'Failed to fetch AI Gateway token',
 		);

@@ -10,7 +10,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IUser,
 	IWebhookData,
 	IWebhookFunctions,
@@ -25,7 +24,11 @@ import type {
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
-import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import { SupplyDataContext } from './supply-data-context';
+import {
+	getBinaryHelperFunctions,
+	getNodeBinaryHelperFunctions,
+} from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
@@ -62,8 +65,8 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 					json: {
 						body: (req.body ?? {}) as IDataObject,
 						headers: req.headers,
-						params: req.params as IDataObject,
-						query: req.query as IDataObject,
+						params: req.params,
+						query: req.query,
 					},
 				},
 			];
@@ -87,24 +90,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 		};
 
-		this.nodeHelpers = {
-			copyBinaryFile: async (filePath, fileName, mimeType) =>
-				await copyBinaryFile(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					filePath,
-					fileName,
-					mimeType,
-				),
-		};
+		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		// No real task run backs a webhook call, so this only exists to surface `node`
-		// to the credentials helper (e.g. for policy checks) — `data`/`source` are unused.
-		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
-
-		return await this._getCredentials<T>(type, executeData);
+		return await this._getRunlessCredentials<T>(type);
 	}
 
 	getBodyData() {
@@ -275,11 +265,12 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			runExecutionData,
 			this.runIndex,
 			connectionInputData,
-			{} as ITaskDataConnections,
+			{},
 			this.additionalData,
 			executeData,
 			this.mode,

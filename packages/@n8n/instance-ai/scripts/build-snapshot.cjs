@@ -36,7 +36,11 @@
  */
 
 const { Daytona } = require('@daytona/sdk');
-const { SnapshotManager } = require('@n8n/instance-ai');
+const {
+	BuilderTemplatesService,
+	SnapshotManager,
+	builderTemplatesOptionsFromEnv,
+} = require('@n8n/instance-ai');
 
 function parseVersion(argv) {
 	const flagIdx = argv.indexOf('--version');
@@ -94,7 +98,11 @@ async function main() {
 
 	const daytona = new Daytona({ apiKey, apiUrl });
 	const baseImage = process.env.SANDBOX_IMAGE || undefined;
-	const manager = new SnapshotManager(baseImage, consoleLogger, version);
+	const templatesService = new BuilderTemplatesService({
+		...builderTemplatesOptionsFromEnv({ logger: consoleLogger }),
+		fetch,
+	});
+	const manager = new SnapshotManager(baseImage, consoleLogger, version, templatesService);
 
 	const name = await manager.createSnapshot(daytona, {
 		timeout: 1800,

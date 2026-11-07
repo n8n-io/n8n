@@ -1,0 +1,71 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"busy": {
+			"type": "boolean"
+		},
+		"conference_meeting_client": {},
+		"conference_meeting_id": {},
+		"conference_meeting_url": {},
+		"creator_user_id": {
+			"type": "number"
+		},
+		"deal_id": {},
+		"done": {
+			"type": "boolean"
+		},
+		"due_date": {
+			"type": "string"
+		},
+		"due_time": {},
+		"duration": {},
+		"id": {
+			"type": "number"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"lead_id": {},
+		"location": {},
+		"marked_as_done_time": {},
+		"note": {},
+		"org_id": {},
+		"owner_id": {
+			"type": "number"
+		},
+		"participants": {
+			"items": {
+				"properties": {
+					"person_id": {
+						"type": "number"
+					},
+					"primary": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"person_id": {
+			"type": "number"
+		},
+		"priority": {},
+		"project_id": {},
+		"public_description": {
+			"type": "string"
+		},
+		"subject": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"update_time": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

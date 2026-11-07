@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { IANAZone } from 'luxon';
 import type {
 	IConnection,
@@ -50,7 +51,7 @@ export const workflowSettingsObjectSchema = z.object({
 	errorWorkflow: z
 		.string()
 		.describe(
-			'ID of a SEPARATE workflow to run whenever THIS workflow fails — the common best-practice way to send failure alerts (email, Slack, etc.) or log errors via a shared, reusable handler. The referenced workflow must contain an Error Trigger node; find its ID with search_workflows. Pass "DEFAULT" to clear it. There are two ways to handle failures: (a) a dedicated/shared error workflow set here, or (b) an Error Trigger node placed directly inside THIS workflow (n8n fires it automatically on failure, no setting needed). When the user asks for error handling, ask which pattern they prefer before choosing. When errorWorkflow is set, it takes precedence over a same-workflow Error Trigger for the failing run. Failure handling fires for production executions only, not manual/test runs. Distinct from per-node onError/retry (setNodeSettings).',
+			'ID of a SEPARATE workflow to run whenever THIS workflow fails — the common best-practice way to send failure alerts (email, Slack, etc.) or log errors via a shared, reusable handler. The referenced workflow must contain an Error Trigger node; find its ID with search_workflows. Pass "DEFAULT" to clear it. Must be a plain ID — this setting is never evaluated, so an expression would be stored as a literal ID and the handler would never run. There are two ways to handle failures: (a) a dedicated/shared error workflow set here, or (b) an Error Trigger node placed directly inside THIS workflow (n8n fires it automatically on failure, no setting needed). When the user asks for error handling, ask which pattern they prefer before choosing. When errorWorkflow is set, it takes precedence over a same-workflow Error Trigger for the failing run. Failure handling fires for production executions only, not manual/test runs. Distinct from per-node onError/retry (setNodeSettings).',
 		)
 		.optional(),
 	timezone: z
@@ -104,7 +105,7 @@ export const workflowSettingsObjectSchema = z.object({
 	callerPolicy: z
 		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 		.describe(
-			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Do not choose "any": it is deprecated and removed in version 3. Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
 		)
 		.optional(),
 	callerIds: z
@@ -186,7 +187,9 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.int()
 			.nonnegative()
 			.optional()
-			.describe('Source output index. Default 0.'),
+			.describe(
+				'Source output index. Default 0. The false branch of an If node is index 1, and the error output added by onError "continueErrorOutput" comes after the regular outputs (index 1 on a single-output node, index 2 on an If node).',
+			),
 		targetIndex: z
 			.number()
 			.int()
@@ -234,7 +237,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 					.enum(['stopWorkflow', 'continueRegularOutput', 'continueErrorOutput'])
 					.optional()
 					.describe(
-						'How the node behaves on error. "stopWorkflow" halts the run; "continueRegularOutput" forwards an empty item on the main output; "continueErrorOutput" routes the failure to the node\'s error output. Required for sub-nodes (LLM model, memory, tools) since the canvas UI does not expose this setting for them.',
+						'How the node behaves on error. "stopWorkflow" halts the run; "continueRegularOutput" forwards an empty item on the main output; "continueErrorOutput" routes the failure to the node\'s error output, which is appended after the regular outputs — wire it with addConnection and a matching sourceIndex (1 on a single-output node). Required for sub-nodes (LLM model, memory, tools) since the canvas UI does not expose this setting for them.',
 					),
 				retryOnFail: z.boolean().optional(),
 				maxTries: z
@@ -447,12 +450,9 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null && !Array.isArray(value);
-
 const sanitizeUnsafeKeys = (value: unknown): unknown => {
 	if (Array.isArray(value)) return value.map(sanitizeUnsafeKeys);
-	if (!isPlainObject(value)) return value;
+	if (!isRecord(value)) return value;
 	const out: Record<string, unknown> = {};
 	for (const [key, v] of Object.entries(value)) {
 		if (!isSafeObjectProperty(key)) continue;
@@ -582,7 +582,7 @@ const setAtPointer = (
 			const child: Record<string, unknown> = {};
 			writeSegment(cursor, key, child);
 			cursor = child;
-		} else if (isPlainObject(read.value) || Array.isArray(read.value)) {
+		} else if (isRecord(read.value) || Array.isArray(read.value)) {
 			// The intermediate container already exists and is valid (object or array)
 			// it is our cursor now, next iteration will read from it.
 			cursor = read.value;
@@ -619,7 +619,7 @@ const deepMerge = (
 	for (const [key, value] of Object.entries(source)) {
 		if (!isSafeObjectProperty(key)) continue;
 		const existing = Object.prototype.hasOwnProperty.call(result, key) ? result[key] : undefined;
-		if (isPlainObject(existing) && isPlainObject(value)) {
+		if (isRecord(existing) && isRecord(value)) {
 			result[key] = deepMerge(existing, value);
 		} else {
 			result[key] = sanitizeUnsafeKeys(value);
@@ -775,9 +775,7 @@ const handleUpdateNodeParameters: OpHandler<'updateNodeParameters'> = (op, ctx) 
 		return `node '${op.nodeName}' not found`;
 	}
 	const sanitized = sanitizeUnsafeKeys(op.parameters) as Record<string, unknown>;
-	const merged = op.replace
-		? sanitized
-		: deepMerge((node.parameters ?? {}) as Record<string, unknown>, sanitized);
+	const merged = op.replace ? sanitized : deepMerge(node.parameters ?? {}, sanitized);
 	node.parameters = merged as INodeParameters;
 	return null;
 };
@@ -1236,16 +1234,13 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
  *
  * The function never mutates the input.
  *
- * With `{ canvasGroupsEnabled: true }`, a failing operation of a type in
- * `NON_FATAL_OPERATION_TYPES` does not abort the batch — it is skipped and recorded
- * in the result's `skippedOperations` instead, and the remaining operations still
- * apply. With the flag off (or omitted), every operation is fatal, matching the
- * historical behavior exactly.
+ * A failing operation of a type in `NON_FATAL_OPERATION_TYPES` does not abort
+ * the batch — it is skipped and recorded in the result's `skippedOperations`
+ * instead, and the remaining operations still apply.
  */
 export function applyOperations(
 	input: WorkflowSlice,
 	operations: PartialUpdateOperation[],
-	options: { canvasGroupsEnabled?: boolean } = {},
 ): ApplyOperationsResult {
 	const skippedOperations: SkippedOperation[] = [];
 
@@ -1270,7 +1265,7 @@ export function applyOperations(
 
 		const error = handler(op, ctx, i);
 		if (error) {
-			if (options.canvasGroupsEnabled && NON_FATAL_OPERATION_TYPES.has(op.type)) {
+			if (NON_FATAL_OPERATION_TYPES.has(op.type)) {
 				skippedOperations.push({ opIndex: i, type: op.type, reason: error });
 				continue;
 			}

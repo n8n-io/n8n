@@ -25,9 +25,7 @@ import {
 } from '@n8n/decorators';
 import { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 
 import { collectSecretFieldNames, redactSecretConfig } from './config-redaction';
 import { CredentialResolutionError } from './errors/credential-resolution.error';

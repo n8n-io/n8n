@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent } from 'vue';
+import { defineComponent, type PropType } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -20,8 +20,9 @@ import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 
-vi.mock('vue-router', () => {
-	const params = {};
+vi.mock('vue-router', async () => {
+	const { reactive } = await import('vue');
+	const params = reactive({});
 	const query = {};
 	const push = vi.fn();
 	const replace = vi.fn();
@@ -85,8 +86,16 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 						type: String,
 						default: versionId,
 					},
+					actions: {
+						type: Array as PropType<Array<{ value: string; disabled?: boolean }>>,
+						default: () => [],
+					},
 				},
 				template: `<div>
+						<span
+							data-test-id="stub-restore-action"
+							:data-disabled="String(actions.find((action) => action.value === 'restore')?.disabled)"
+						/>
 						<button data-test-id="stub-preview-button" @click="event => $emit('preview', {id, event})" />
 						<button data-test-id="stub-compare-button" @click="() => $emit('compare', { id })" />
 						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
@@ -134,6 +143,23 @@ describe('WorkflowHistory', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('restore action', () => {
+		it.each([
+			[['workflow:read'], 'true'],
+			[['workflow:read', 'workflow:update'], 'false'],
+		])('with scopes %j, is disabled: %s', async (scopes, disabled) => {
+			route.params.workflowId = workflowId;
+			// Only this workflow carries the scopes, so the view must ask for it by id.
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockImplementation((id) =>
+				id === workflowId ? ({ scopes } as unknown as IWorkflowDb) : undefined,
+			);
+
+			const { findByTestId } = renderComponent({ pinia });
+
+			expect(await findByTestId('stub-restore-action')).toHaveAttribute('data-disabled', disabled);
+		});
 	});
 
 	it('should replace url path to contain /:versionId', async () => {
@@ -278,6 +304,20 @@ describe('WorkflowHistory', () => {
 
 		beforeEach(cleanRouteState);
 		afterEach(cleanRouteState);
+
+		it('should remount the timeline only when the workflow route changes', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+			const { findByTestId, getByTestId } = renderComponent({ pinia });
+			const oldTimeline = await findByTestId('stub-publish-timeline-select');
+			route.params.versionId = 'another-version';
+			await flushPromises();
+			expect(getByTestId('stub-publish-timeline-select')).toBe(oldTimeline);
+			route.params.workflowId = 'another-workflow';
+			await flushPromises();
+			expect(oldTimeline.isConnected).toBe(false);
+			expect(getByTestId('stub-publish-timeline-select')).not.toBe(oldTimeline);
+		});
 
 		it('should track telemetry when landing on the publish timeline tab via query param', async () => {
 			route.params.workflowId = workflowId;

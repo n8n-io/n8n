@@ -1,33 +1,43 @@
 <script setup lang="ts">
-import { N8nText } from '@n8n/design-system';
+import { N8nText, N8nVisuallyHidden } from '@n8n/design-system';
 
-defineProps<{
-	title: string;
-	description?: string;
-}>();
+withDefaults(
+	defineProps<{
+		title: string;
+		description?: string;
+		headerId: string;
+		headerVisibility?: 'visible' | 'visually-hidden';
+	}>(),
+	{
+		headerVisibility: 'visible',
+	},
+);
 </script>
 
 <template>
-	<div :class="$style.text">
-		<div :class="$style.row">
-			<div :class="$style.copy">
-				<N8nText tag="h3" size="xlarge" :bold="true">{{ title }}</N8nText>
-				<N8nText v-if="description" color="text-light">{{ description }}</N8nText>
-			</div>
-			<div v-if="$slots.actions" :class="$style.actions">
-				<slot name="actions" />
-			</div>
+	<div
+		:class="
+			headerVisibility === 'visually-hidden' && !$slots.actions ? $style.headingOnly : $style.row
+		"
+	>
+		<N8nVisuallyHidden v-if="headerVisibility === 'visually-hidden'" as-child>
+			<h3 :id="headerId">{{ title }}</h3>
+		</N8nVisuallyHidden>
+		<div v-else :class="$style.copy">
+			<N8nText :id="headerId" tag="h3" step="sm" :bold="true">{{ title }}</N8nText>
+			<N8nText v-if="description" color="text-light">{{ description }}</N8nText>
+		</div>
+		<div v-if="$slots.actions" :class="$style.actions">
+			<slot name="actions" />
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
-.text {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-	min-width: 0;
+@use '@n8n/design-system/css/mixins/motion';
+
+.headingOnly {
+	display: contents;
 }
 
 .row {
@@ -37,14 +47,24 @@ defineProps<{
 }
 
 .copy {
+	opacity: var(--agent-panel-header-opacity, 1);
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+	@include motion.reduced-motion;
+
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	flex: 1;
 	min-width: 0;
+	max-width: 80%;
+
+	> span {
+		text-wrap: balance;
+	}
 }
 
 .actions {
+	margin-inline-start: auto;
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;

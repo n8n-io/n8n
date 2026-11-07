@@ -171,8 +171,12 @@ describe('ChatHubExecutionWatcherService', () => {
 				...overrides,
 			}) as IRun;
 
-		const createAfterContext = (executionId: string, runData: IRun): WorkflowExecuteAfterContext =>
-			({ executionId, runData }) as WorkflowExecuteAfterContext;
+		const createAfterContext = (
+			executionId: string,
+			runData: IRun,
+			{ executedInThisProcess = true }: { executedInThisProcess?: boolean } = {},
+		): WorkflowExecuteAfterContext =>
+			({ executionId, runData, executedInThisProcess }) as WorkflowExecuteAfterContext;
 
 		it('should skip if context not found', async () => {
 			executionStore.get.mockResolvedValue(null);
@@ -457,7 +461,48 @@ describe('ChatHubExecutionWatcherService', () => {
 						createMessageOnResume: true,
 					});
 				});
+
+				it('should handle a segment once when the enqueuing process also reports it', async () => {
+					let stored = createContext({ responseMode: 'responseNodes' });
+					executionStore.get.mockImplementation(async () => stored);
+					executionStore.update.mockImplementation(async (_executionId, updates) => {
+						stored = { ...stored, ...updates };
+					});
+					chatHubExecutionService.extractMessage.mockReturnValue('Found the incident.');
+					executionPersistence.findSingleExecution.mockResolvedValue(
+						createExecution('@n8n/n8n-nodes-langchain.chat', { operation: 'send' }),
+					);
+					const runData = createRunData({ status: 'waiting' });
+
+					await service.handleWorkflowExecuteAfter(createAfterContext(EXECUTION_ID, runData));
+					await service.handleWorkflowExecuteAfter(
+						createAfterContext(EXECUTION_ID, runData, { executedInThisProcess: false }),
+					);
+
+					expect(messageRepository.createChatMessage).toHaveBeenCalledTimes(1);
+					expect(chatStreamService.endExecution).toHaveBeenCalledTimes(1);
+					expect(executionManager.runWorkflow).toHaveBeenCalledTimes(1);
+					expect(messageRepository.updateChatMessage).not.toHaveBeenCalledWith(
+						MOCK_NEW_MESSAGE_ID,
+						expect.anything(),
+					);
+				});
 			});
+		});
+
+		it('should ignore a call from a process that only enqueued the run', async () => {
+			executionStore.get.mockResolvedValue(createContext({ responseMode: 'responseNodes' }));
+
+			await service.handleWorkflowExecuteAfter(
+				createAfterContext(EXECUTION_ID, createRunData({ status: 'waiting' }), {
+					executedInThisProcess: false,
+				}),
+			);
+
+			expect(executionStore.get).not.toHaveBeenCalled();
+			expect(messageRepository.updateChatMessage).not.toHaveBeenCalled();
+			expect(chatStreamService.endExecution).not.toHaveBeenCalled();
+			expect(executionManager.runWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should not remove context when finished is false', async () => {

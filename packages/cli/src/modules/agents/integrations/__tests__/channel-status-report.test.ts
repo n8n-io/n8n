@@ -11,6 +11,7 @@ const telegram: AgentIntegrationConfig = {
 	credentialId: 'cred-telegram',
 	settings: { accessMode: 'public', allowedUsers: [] },
 };
+const n8nChat: AgentIntegrationConfig = { type: 'n8n_chat', credentialId: '' };
 
 /** Live unless a test says otherwise — expiry is exercised on its own below. */
 const isLive = (row: AgentChannelStatus) =>
@@ -52,10 +53,28 @@ function erroredRow(
 }
 
 describe('buildChannelStatusReport', () => {
+	it('uses the published n8n Chat entry while the draft changes', () => {
+		expect(buildChannelStatusReport([], PUBLISHED, [], isLive, [n8nChat])).toEqual({
+			status: 'connected',
+			integrations: [{ type: 'n8n_chat', status: 'connected' }],
+			drafts: [],
+		});
+		expect(buildChannelStatusReport([n8nChat], PUBLISHED, [], isLive)).toEqual({
+			status: 'configured',
+			integrations: [{ type: 'n8n_chat', status: 'configured' }],
+			drafts: [],
+		});
+		expect(buildChannelStatusReport([n8nChat], null, [], isLive, [n8nChat])).toEqual({
+			status: 'configured',
+			integrations: [{ type: 'n8n_chat', status: 'configured' }],
+			drafts: [],
+		});
+	});
 	it('reports no channels as disconnected', () => {
 		expect(buildChannelStatusReport([], PUBLISHED, [], isLive)).toEqual({
 			status: 'disconnected',
 			integrations: [],
+			drafts: [],
 		});
 	});
 
@@ -132,6 +151,21 @@ describe('buildChannelStatusReport', () => {
 
 		expect(report.integrations).toHaveLength(1);
 		expect(report.status).toBe('connected');
+	});
+
+	it('reports draft settings apart from the channels', () => {
+		const draft: AgentIntegrationConfig = {
+			type: 'telegram',
+			credentialId: '',
+			settings: { accessMode: 'private', allowedUsers: ['alice'] },
+		};
+
+		const report = buildChannelStatusReport([slack, draft], PUBLISHED, [], isLive);
+
+		expect(report.integrations.map(({ type }) => type)).toEqual(['slack']);
+		expect(report.drafts).toEqual([
+			{ type: 'telegram', settings: { accessMode: 'private', allowedUsers: ['alice'] } },
+		]);
 	});
 
 	describe('combining what several instances observed', () => {

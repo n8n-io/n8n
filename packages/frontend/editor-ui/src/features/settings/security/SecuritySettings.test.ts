@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -7,6 +7,8 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
@@ -15,6 +17,25 @@ vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
 }));
+
+vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
+	const limits = {
+		globalReadLimit: 1200,
+		globalReadWindowSeconds: 60,
+		globalWriteLimit: 600,
+		globalWriteWindowSeconds: 60,
+		endpointReadLimit: 1000,
+		endpointReadWindowSeconds: 60,
+		endpointWriteLimit: 500,
+		endpointWriteWindowSeconds: 60,
+	};
+	return {
+		getPublicApiRateLimitSettings: vi
+			.fn()
+			.mockResolvedValue({ enabled: false, ...limits, defaults: limits, envManagedFields: [] }),
+		updatePublicApiRateLimitSettings: vi.fn(),
+	};
+});
 
 const showToast = vi.fn();
 const showError = vi.fn();
@@ -70,6 +91,27 @@ describe('SecuritySettings', () => {
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 	});
 
+	describe('API key rate limits', () => {
+		it('does not show the section while its feature flag is off', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('rate-limits-section')).not.toBeInTheDocument();
+		});
+
+		it('shows the section while its feature flag is on', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled.mockImplementation(
+				(flag) => flag === PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG,
+			);
+			const { findByTestId } = renderView();
+
+			expect(await findByTestId('rate-limits-section')).toBeInTheDocument();
+		});
+	});
+
 	it('should render security heading and personal space section', async () => {
 		const { getByText } = renderView();
 
@@ -77,8 +119,65 @@ describe('SecuritySettings', () => {
 			expect(getSecuritySettings).toHaveBeenCalled();
 		});
 
-		expect(getByText('Security & policies')).toBeInTheDocument();
-		expect(getByText('Personal Space')).toBeInTheDocument();
+		expect(getByText('Policies')).toBeInTheDocument();
+		expect(getByText('Personal space')).toBeInTheDocument();
+	});
+
+	it('should use the shared settings page composition', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-settings-header')).toBeInTheDocument();
+			expect(getByTestId('security-data-redaction-section')).toBeInTheDocument();
+		});
+
+		expect(
+			within(getByTestId('security-mfa-section')).getByTestId('settings-row-group'),
+		).toBeInTheDocument();
+		expect(
+			within(getByTestId('security-data-redaction-section')).getByTestId('settings-row-group'),
+		).toBeInTheDocument();
+		expect(
+			within(getByTestId('security-personal-space-section')).getAllByTestId('settings-row-group'),
+		).toHaveLength(2);
+	});
+
+	it('should render concise section copy and the security documentation link', async () => {
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = true;
+		getSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			workflowReviews: { enabled: false },
+		});
+		const { getByTestId, getByText, queryByText } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-data-redaction-section')).toBeInTheDocument();
+		});
+
+		expect(getByTestId('settings-page-header-docs')).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/manage-security-policies',
+		);
+		expect(getByText('Manage security policies for this instance.')).toBeInTheDocument();
+		expect(getByText('Two-factor authentication')).toBeInTheDocument();
+		expect(
+			getByText('Require two-factor authentication for users who sign in with email and password.'),
+		).toBeInTheDocument();
+		expect(
+			getByText(
+				'Allow users to submit workflow versions for approval before publishing. Reviews are optional, but an open review blocks publishing.',
+			),
+		).toBeInTheDocument();
+		expect(
+			queryByText(
+				'Require workflow versions to be submitted for review and approved before they can be published to production.',
+			),
+		).not.toBeInTheDocument();
+		expect(
+			queryByText(
+				'Select whether to redact production executions, or manual and production executions.',
+			),
+		).not.toBeInTheDocument();
 	});
 
 	it('should render both publishing and sharing toggles with correct test ids', async () => {
@@ -880,6 +979,25 @@ describe('SecuritySettings', () => {
 				});
 				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
 			});
+		});
+
+		it('updates Inbox access after saving the policy without reloading settings', async () => {
+			settingsStore.settings.activeModules = ['inbox', 'workflow-reviews'];
+			settingsStore.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
+			updateSecuritySettings.mockResolvedValue({ workflowReviews: { enabled: true } });
+			const { findByTestId } = renderView();
+			const toggle = await findByTestId('security-workflow-reviews-toggle');
+			await userEvent.click(toggle);
+			await waitFor(() => expect(showToast).toHaveBeenCalled());
+			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
+			expect(settingsStore.settings.inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect(toggle).not.toHaveClass('is-disabled');
+			expect(showError).not.toHaveBeenCalled();
+			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
 
 		it('should disable workflow reviews toggle when managed by env', async () => {

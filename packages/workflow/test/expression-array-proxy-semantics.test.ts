@@ -4,7 +4,9 @@ import * as Helpers from './helpers';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 
-// Engine-parity tests for behaviour of `$json` arrays beyond plain indexed access.
+// Engine-parity tests for `$json` arrays beyond plain indexed access. Return
+// values must match on both engines; mutation persistence intentionally
+// diverges (see the isVm branches below).
 
 describe('Expression — array proxy semantics (engine parity)', () => {
 	const workflow = new Workflow({

@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
-import { reactive, ref } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InstanceAiAgentNode, InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 
@@ -18,6 +20,7 @@ const storeState = reactive({
 		agentTree?: InstanceAiAgentNode;
 	}>,
 	projectId: undefined as string | undefined,
+	hydrationStatus: 'ready' as 'idle' | 'hydrating' | 'ready',
 });
 const metadataState = ref<Record<string, unknown> | undefined>(undefined);
 const updateThreadMetadataMock = vi.fn(
@@ -49,9 +52,43 @@ describe('InstanceAiArtifactsPanel', () => {
 		storeState.currentTasks = undefined;
 		storeState.producedArtifacts = new Map<string, ResourceEntry>();
 		storeState.projectId = 'proj-1';
+		storeState.hydrationStatus = 'ready';
 		storeState.messages = [];
 		metadataState.value = undefined;
 		updateThreadMetadataMock.mockClear();
+		useProjectsStore().myProjects = [];
+	});
+
+	it('shows the project name once the thread project is known', () => {
+		useProjectsStore().myProjects = [
+			{ id: 'proj-1', name: 'Marketing', type: 'team', icon: { type: 'icon', value: 'layers' } },
+		] as ProjectListItem[];
+
+		const { getByText, queryByText, queryByTestId } = renderComponent();
+
+		expect(getByText('Marketing')).toBeInTheDocument();
+		expect(queryByText('Unknown project')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-project-loading')).not.toBeInTheDocument();
+	});
+
+	it('shows skeletons instead of "Unknown project" and "No artifacts yet" until hydration is ready', async () => {
+		storeState.projectId = undefined;
+		storeState.hydrationStatus = 'hydrating';
+
+		const { getByTestId, queryByTestId, queryByText, getByText } = renderComponent();
+
+		expect(getByTestId('instance-ai-artifacts-project-loading')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-artifacts-list-loading')).toBeInTheDocument();
+		expect(queryByText('Unknown project')).not.toBeInTheDocument();
+		expect(queryByText('No artifacts yet')).not.toBeInTheDocument();
+
+		storeState.hydrationStatus = 'ready';
+		await nextTick();
+
+		expect(queryByTestId('instance-ai-artifacts-project-loading')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-list-loading')).not.toBeInTheDocument();
+		expect(getByText('Unknown project')).toBeInTheDocument();
+		expect(getByText('No artifacts yet')).toBeInTheDocument();
 	});
 
 	it('keeps the empty artifacts section visible without an empty tasks section', () => {
@@ -430,6 +467,38 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(wasNotPrevented).toBe(false);
 		expect(openAgentPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'proj-1');
+	});
+
+	it('opens skill artifacts in preview and keeps the chat tab when the skill is already shown', () => {
+		// Returns false when the skill tab is already active.
+		const openSkillPreview = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
+		storeState.producedArtifacts = new Map<string, ResourceEntry>([
+			['skill-1', { type: 'skill', id: 'skill-1', name: 'Plan trips' }],
+		]);
+
+		const { getByRole } = renderComponent({
+			global: {
+				provide: {
+					openSkillPreview,
+				},
+			},
+		});
+
+		const artifactLink = getByRole('link', { name: 'Open Plan trips' });
+		expect(artifactLink).toHaveAttribute('href', '/settings/context/skills?skillId=skill-1');
+		expect(artifactLink).not.toHaveAttribute('target');
+		expect(artifactLink.querySelector('[data-icon="book-open"]')).toBeInTheDocument();
+
+		const firstClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(firstClick)).toBe(false);
+
+		// The row has no target="_blank", so a click that is not prevented would
+		// navigate the chat tab away.
+		const secondClick = new MouseEvent('click', { bubbles: true, cancelable: true });
+		expect(artifactLink.dispatchEvent(secondClick)).toBe(false);
+
+		expect(openSkillPreview).toHaveBeenNthCalledWith(1, 'skill-1');
+		expect(openSkillPreview).toHaveBeenNthCalledWith(2, 'skill-1');
 	});
 
 	it('shows a spinner on the artifact row while the AI is building it', () => {

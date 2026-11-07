@@ -15,12 +15,15 @@ import type { AgentResult, ToolCallRequest } from './types';
  * @param ctx - The execution context
  * @param eventStream - The stream of events from the agent
  * @param itemIndex - The current item index
+ * @param finalizeOutput - Maps the complete final answer to what the user should see; any
+ *   added text is streamed as a last chunk. Not applied to turns that request tools.
  * @returns AgentResult containing output and optional tool calls/steps
  */
 export async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
+	finalizeOutput?: (output: string) => string,
 ): Promise<AgentResult> {
 	const agentResult: AgentResult = {
 		output: '',
@@ -71,6 +74,13 @@ export async function processEventStream(
 			default:
 				break;
 		}
+	}
+	if (toolCalls.length === 0 && finalizeOutput) {
+		const finalOutput = finalizeOutput(agentResult.output);
+		if (finalOutput.startsWith(agentResult.output) && finalOutput !== agentResult.output) {
+			ctx.sendChunk('item', itemIndex, finalOutput.slice(agentResult.output.length));
+		}
+		agentResult.output = finalOutput;
 	}
 	ctx.sendChunk('end', itemIndex);
 

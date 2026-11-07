@@ -3,6 +3,10 @@
 Frontend feature module. Consumed from source by the editor-ui shell through
 `src/app/modules.manifest.ts`; there is no build step and no `dist`.
 
+Read the full guide at `packages/@n8n/module-cli/frontend-module-guide.md`. It gives the
+descriptor contract, the registration points and the known problems. This README gives a
+summary only.
+
 ```bash
 pnpm turbo typecheck --filter=@n8n/frontend-module-{{name}}
 pnpm turbo lint --filter=@n8n/frontend-module-{{name}}

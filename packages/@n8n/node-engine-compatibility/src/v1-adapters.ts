@@ -4,12 +4,22 @@
  */
 
 import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
-import type { GraphNode, StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	GraphNode,
+	StepExecutionContext,
+	StepSlots,
+	SubExecutionResumeCause,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
 import type {
+	CallbackManager,
+	ExecuteWorkflowData,
 	IConnections,
 	IExecuteData,
+	IExecuteWorkflowInfo,
 	INode,
+	INodeExecutionData,
 	INodeType,
 	INodeTypes,
 	IRunData,
@@ -24,6 +34,8 @@ import {
 	WorkflowExecuteModeList,
 } from 'n8n-workflow';
 
+import { supplySubExecutionResult } from './sub-execution-result';
+import type { SubWorkflowCalls } from './sub-workflow-calls';
 import {
 	MAIN_CONNECTION_TYPE,
 	MANUAL_TRIGGER_TYPE,
@@ -262,6 +274,47 @@ function tolerantNodeTypes(nodeTypes: INodeTypes): INodeTypes {
 	};
 }
 
+/**
+ * The v1 context of a step. `putExecutionToWait` records the wait the node asks
+ * for, and the executor turns the record into a wait declaration.
+ *
+ * Do not call super. Core sleeps in the process for a short deadline-only wait
+ * and calls the host status hook. The engine owns the wait, and the host does
+ * not know this run.
+ */
+export class DurableWaitExecuteContext extends ExecuteContext {
+	/** Only an explicit `false` makes a wait deadline-only. This matches core. */
+	acceptsResumeRequest = true;
+
+	/** Set right after construction: the sub-workflow calls of this run. */
+	subWorkflowCalls!: SubWorkflowCalls;
+	/** Set when this run follows the end of the step's sub-execution. */
+	subExecutionResume?: SubExecutionResumeCause;
+
+	/**
+	 * Records the sub-execution declaration on the first pass, or supplies the
+	 * sub-execution's result on the resume path.
+	 */
+	async executeWorkflow(
+		workflowInfo: IExecuteWorkflowInfo,
+		inputData?: INodeExecutionData[],
+		_parentCallbackManager?: CallbackManager,
+		options?: { doNotWaitToFinish?: boolean; returnLastRunOnly?: boolean },
+	): Promise<ExecuteWorkflowData> {
+		if (this.subExecutionResume) return supplySubExecutionResult(this.subExecutionResume, options);
+		return await this.subWorkflowCalls.declareSubExecution(workflowInfo, inputData ?? [], options);
+	}
+
+	async putExecutionToWait(
+		waitTill: Date,
+		options?: { acceptsResumeRequest?: boolean },
+	): Promise<void> {
+		this.acceptsResumeRequest = options?.acceptsResumeRequest ?? true;
+		this.runExecutionData.waitTill = waitTill;
+		return await Promise.resolve();
+	}
+}
+
 export function toV1ExecuteContext({
 	node,
 	workflow,
@@ -270,7 +323,10 @@ export function toV1ExecuteContext({
 	additionalData,
 	stepContext,
 	itemsByConnection,
-}: CreateExecuteContextParams): ExecuteContext {
+	resumeToken,
+	subWorkflowCalls,
+	subExecutionResume,
+}: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
 	const inputData: ITaskDataConnections = {
@@ -278,6 +334,7 @@ export function toV1ExecuteContext({
 	};
 
 	const runExecutionData = createRunExecutionData({
+		resumeToken,
 		startData: {},
 		resultData: { runData: execution.runData },
 		executionData: {
@@ -294,9 +351,9 @@ export function toV1ExecuteContext({
 		data: inputData,
 		source: source.length > 0 ? { main: source } : null,
 	};
-	const mode: WorkflowExecuteMode = stepContext.mode === 'production' ? 'trigger' : 'manual';
+	const mode = toV1ExecuteMode(stepContext);
 
-	return new ExecuteContext(
+	const context = new DurableWaitExecuteContext(
 		workflow,
 		node,
 		additionalData,
@@ -308,4 +365,7 @@ export function toV1ExecuteContext({
 		executeData,
 		[],
 	);
+	context.subWorkflowCalls = subWorkflowCalls;
+	context.subExecutionResume = subExecutionResume;
+	return context;
 }

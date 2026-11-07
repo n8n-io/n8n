@@ -5,6 +5,13 @@ interface WorkflowLockState {
 	waiters: Array<() => void>;
 }
 
+interface RunExclusiveOptions<T> {
+	workflowId: string;
+	fn: () => Promise<T>;
+	/** Bounds the wait for the lock: an abort while waiting rejects with its reason. */
+	signal: AbortSignal;
+}
+
 /**
  * Per-workflow FIFO async locks coordinating the publication outbox consumer
  * (which activates a workflow's triggers while applying a record) with leader
@@ -33,9 +40,9 @@ export class WorkflowPublicationLifecycleLock {
 		return this.stateByWorkflowId.has(workflowId);
 	}
 
-	/** Runs `fn` under the workflow's lock, waiting indefinitely to acquire it. */
-	async runExclusive<T>(workflowId: string, fn: () => Promise<T>): Promise<T> {
-		await this.acquire(workflowId);
+	/** Runs `fn` under the workflow's lock, waiting until the lock is free or `signal` aborts. */
+	async runExclusive<T>({ workflowId, fn, signal }: RunExclusiveOptions<T>): Promise<T> {
+		await this.acquire(workflowId, signal);
 		try {
 			return await fn();
 		} finally {
@@ -52,14 +59,30 @@ export class WorkflowPublicationLifecycleLock {
 		return state;
 	}
 
-	private async acquire(workflowId: string): Promise<void> {
+	private async acquire(workflowId: string, signal: AbortSignal): Promise<void> {
+		signal.throwIfAborted();
+
 		const state = this.getOrCreateState(workflowId);
 		if (!state.locked) {
 			state.locked = true;
 			return;
 		}
 
-		await new Promise<void>((resolve) => state.waiters.push(resolve));
+		await new Promise<void>((resolve, reject) => {
+			const waiter = () => {
+				signal.removeEventListener('abort', onAbort);
+				resolve();
+			};
+			// Drop the waiter so a later release hands the lock to the next live
+			// one instead of to a caller that has already given up.
+			const onAbort = () => {
+				const index = state.waiters.indexOf(waiter);
+				if (index !== -1) state.waiters.splice(index, 1);
+				reject(signal.reason);
+			};
+			state.waiters.push(waiter);
+			signal.addEventListener('abort', onAbort, { once: true });
+		});
 	}
 
 	/** Hands ownership to the next waiter, or drops the entry when none are waiting. */

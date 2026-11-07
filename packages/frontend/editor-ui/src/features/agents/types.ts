@@ -1,17 +1,39 @@
 import type { BaseResource } from '@/Interface';
+import type { IconName } from '@n8n/design-system';
 import type {
 	AgentJsonToolConfig,
+	AgentCreationState,
 	AgentReasoningLevel,
 	AgentSkill,
 	AgentSkillReference,
+	AgentTokenUsage,
 } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
 
+export interface SessionTimelineMetadata {
+	trigger: {
+		source: string | null;
+		icon: IconName;
+		label: string;
+	};
+	totalTokens: number;
+	totalCost: number | null;
+	durationLabel: string;
+}
+
 export interface AgentContinueLoadedEvent {
 	sessionId: string;
 	count: number;
+}
+
+export interface AgentUsageUpdate {
+	sessionId: string;
+	executionId: string;
+	usage?: AgentTokenUsage;
+	duration?: number;
+	complete: boolean;
 }
 
 export interface AgentFixWithAssistantFailure {
@@ -28,6 +50,13 @@ export interface AgentFixWithAssistantEvent {
 	failures: AgentFixWithAssistantFailure[];
 }
 
+/** A preview-chat message that asks the agent to change its own setup. */
+export interface AgentEditRequestEvent {
+	changeRequest: string;
+}
+
+export type AgentSendToAssistantEvent = AgentFixWithAssistantEvent | AgentEditRequestEvent;
+
 /**
  * Agent resource type definition.
  * This extends the ModuleResources interface to add Agent as a resource type.
@@ -36,6 +65,8 @@ export type AgentResource = BaseResource &
 	Agent & {
 		resourceType: 'agent';
 	};
+
+export type AgentCreationResource = AgentResource & AgentCreationState;
 
 // Extend the ModuleResources interface to include Agent
 declare module '@/Interface' {

@@ -1,26 +1,37 @@
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import {
+	CREDENTIAL_ONLY_NODE_PREFIX,
+	getCredentialOnlyNodeCredentialType,
+	isCredentialOnlyNodeType,
+} from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 
 import { TypeAvailabilityPolicyAttachmentRepository } from './database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
-import { orderedAttachments } from './policy-evaluator';
+import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
+import {
+	toEffectivePolicy,
+	unconfiguredScope,
+	UNCONFIGURED_VERSION,
+	type EffectivePolicy,
+	type ProjectEffectivePolicy,
+} from './effective-policy';
+import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
+import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
-import { lintRulesForShadowing, type ShadowWarning } from './policy-shadow-lint';
+import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
+import { TypeAvailabilityPolicySnapshot } from './type-availability-policy-snapshot';
 
-/**
- * A scope that has never been written has no row. That "unconfigured" state behaves as
- * allow-all, and reports version `0` — so a first write can send `expectedVersion: 0` and
- * a racing second first-write correctly sees a mismatch once the row exists.
- */
-const UNCONFIGURED_VERSION = 0;
+export type { EffectivePolicy } from './effective-policy';
 
 /** One attachment slot as the API accepts it, before the scope it belongs to is known. */
 export type AttachmentInput = {
@@ -29,29 +40,102 @@ export type AttachmentInput = {
 	readonly isFloor: boolean;
 };
 
-/**
- * A scope's composed effective policy: its own `defaultAction` plus every attached policy's
- * rules, flattened into the order the evaluator would apply them. `scopeId: null` means the
- * scope has never been written (allow-all, version `0`) — the caller decides whether to
- * still lazily create it, so this method never writes.
- */
-export type EffectivePolicy = {
-	readonly scopeId: string | null;
-	readonly kind: string;
-	readonly projectId: string | null;
-	readonly defaultAction: PolicyAction;
-	readonly version: number;
-	readonly rules: readonly PolicyRule[];
+export type ScopeAttachments = {
 	readonly attachments: readonly PolicyAttachment[];
+	readonly version: number;
+};
+
+/** One type's composed verdict, as `evaluateComposedTypes` reports it. */
+export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+/**
+ * Composed verdicts plus the version of every scope that was read.
+ *
+ * `versions` is structurally a `PolicyVersionRef[]`, so a policy check passes it straight
+ * through without this service importing the check contract.
+ */
+export type ComposedTypeEvaluation = {
+	readonly verdicts: ComposedTypeVerdict[];
+	readonly versions: Array<{ scope: NodeTypeAvailabilityScope; version: number }>;
 };
 
 type PolicyDocumentWrite = {
 	readonly policy: TypeAvailabilityPolicy;
-	readonly warnings: readonly ShadowWarning[];
+	readonly warnings: readonly PolicyRuleWarning[];
 };
 
-function flattenRules(attachments: readonly PolicyAttachment[]): PolicyRule[] {
-	return orderedAttachments(attachments).flatMap((attachment) => [...attachment.rules]);
+function rulesContainDelegate(rules: readonly PolicyRule[]): boolean {
+	return rules.some((rule) => rule.action === 'delegate');
+}
+
+const DELEGATE_RULE_AT_PROJECT_SCOPE = 'A rule cannot use action "delegate" at project scope';
+
+/**
+ * `delegate` is only satisfiable at instance scope. A project write never accepts it — not in
+ * a rule's `action` (already rejected by `PutProjectPolicyDto`'s schema) and not in
+ * `defaultAction`, which lives on the `policy_scope` row rather than in the policy document, so
+ * the DTO's rule-level check does not cover it on its own. Defense in depth: a future caller
+ * reaching this service directly, not only through the project controller, still can't write an
+ * unsatisfiable `delegate` on a project row.
+ *
+ * The composed write is not the only way rules reach a project row: `replaceAttachments` and
+ * `updatePolicyDocument` guard the same invariant on their own paths.
+ */
+function assertNoDelegateAtProjectScope(
+	projectId: string | null,
+	defaultAction: PolicyAction,
+	rules: readonly PolicyRule[] = [],
+): void {
+	if (projectId === null) return;
+
+	if (defaultAction === 'delegate') {
+		throw new UserError('defaultAction cannot be "delegate" at project scope');
+	}
+	if (rulesContainDelegate(rules)) {
+		throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
+	}
+}
+
+/**
+ * A credential-only node (`n8n-creds-base.<type>`) exists only in the editor. It is stored and
+ * executed as `n8n-nodes-base.httpRequest`, so a node type rule on the generated name would
+ * never match anything and never reach the builder. The credential type rule on `<type>` is
+ * what hides that node and blocks it, so the write points there.
+ */
+function assertNoCredentialOnlyNodeRules(kind: string, rules: readonly PolicyRule[]): void {
+	if (kind !== NODE_TYPES_KIND) return;
+
+	for (const rule of rules) {
+		if (rule.selector.kind === 'name' && isCredentialOnlyNodeType(rule.selector.value)) {
+			const credentialType = getCredentialOnlyNodeCredentialType(rule.selector.value);
+			throw new UserError(
+				`Node type rule names the credential-only node "${rule.selector.value}", which is HTTP Request with a credential attached. Write a credential type rule on "${credentialType}" instead.`,
+			);
+		}
+	}
+}
+
+/**
+ * No loader provides the credential-only prefix, so a `package` rule on it can never match on
+ * any instance. Unlike a package that is merely not installed, nothing can fix it later.
+ */
+function assertNoCredentialOnlyPackageRules(rules: readonly PolicyRule[]): void {
+	for (const rule of rules) {
+		if (rule.selector.kind === 'package' && rule.selector.value === CREDENTIAL_ONLY_NODE_PREFIX) {
+			throw new UserError(
+				`Package rule names "${CREDENTIAL_ONLY_NODE_PREFIX}", which no package provides. Write a credential type rule instead.`,
+			);
+		}
+	}
+}
+
+/** Only credential types declare `extends`, so the selector means nothing for another kind. */
+function assertExtendsSelectorsValid(kind: string, rules: readonly PolicyRule[]): void {
+	if (kind === CREDENTIAL_TYPES_KIND) return;
+
+	if (rules.some((rule) => rule.selector.kind === 'extends')) {
+		throw new UserError('An "extends" rule is only valid in a credential type policy');
+	}
 }
 
 /** Mirrors the DTO-level check in `ReplaceAttachmentsDto`, as a defensive service-level guard. */
@@ -88,11 +172,18 @@ export class TypeAvailabilityPolicyService {
 		private readonly attachmentRepository: TypeAvailabilityPolicyAttachmentRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly eventService: EventService,
+		private readonly snapshot: TypeAvailabilityPolicySnapshot,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly nodeTypes: NodeTypes,
 	) {}
 
 	/**
 	 * Never creates a scope row on read — an unconfigured scope reports allow-all with
 	 * version `0` rather than being materialized just because someone looked at it.
+	 *
+	 * Deliberately uncached. The `version` it reports is what an editor sends back as
+	 * `expectedVersion`, so a stale read here would turn into a spurious write conflict.
+	 * Enforcement reads go through `readEnforcedScope` instead.
 	 */
 	async getEffectivePolicy(
 		kind: string,
@@ -100,35 +191,21 @@ export class TypeAvailabilityPolicyService {
 		ctx: OperationContext = {},
 	): Promise<EffectivePolicy> {
 		const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
-		if (!scope) {
-			return {
-				scopeId: null,
-				kind,
-				projectId,
-				defaultAction: 'allow',
-				version: UNCONFIGURED_VERSION,
-				rules: [],
-				attachments: [],
-			};
-		}
+		if (!scope) return unconfiguredScope(kind, projectId);
 
 		const attachments = await this.attachmentRepository.listAttachmentsForScope(scope.id, ctx);
 
-		return {
-			scopeId: scope.id,
-			kind,
-			projectId,
-			defaultAction: scope.defaultAction,
-			version: scope.version,
-			rules: flattenRules(attachments),
-			attachments,
-		};
+		return toEffectivePolicy(scope, attachments);
 	}
 
 	/**
-	 * Sets the scope's default action, creating the scope on first write. The version check
-	 * runs inside the same transaction as the write, so two racing first-writes can't both
-	 * see "no row yet" and both succeed — the loser's `expectedVersion: 0` no longer matches.
+	 * Sets the scope's default action, creating the scope on first write.
+	 *
+	 * On Postgres the scope row is locked for the duration of the transaction, so a racing
+	 * writer blocks on the read until this one commits, then re-reads the bumped version and
+	 * correctly fails the `expectedVersion` check — instead of both writers reading the same
+	 * version and one silently overwriting the other's change. A first write has no row to
+	 * lock; `createScopeOrConflict` covers that case.
 	 */
 	async setDefaultAction(
 		kind: string,
@@ -137,8 +214,15 @@ export class TypeAvailabilityPolicyService {
 		expectedVersion: number,
 		updatedBy: string,
 	): Promise<TypeAvailabilityPolicyScope> {
+		assertNoDelegateAtProjectScope(projectId, defaultAction);
+
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
+			const scope = await this.scopeRepository.findScopeByKindAndProject(
+				kind,
+				projectId,
+				ctx,
+				true,
+			);
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
@@ -147,22 +231,28 @@ export class TypeAvailabilityPolicyService {
 				);
 			}
 
-			const before = scope ? { defaultAction: scope.defaultAction, version: scope.version } : null;
+			if (!scope) {
+				const created = await this.createScopeOrConflict(
+					{ kind, projectId, defaultAction, updatedBy },
+					ctx,
+				);
+				return { before: null, after: created };
+			}
 
-			const after = scope
-				? ((await this.scopeRepository.updateDefaultAction(
-						scope.id,
-						defaultAction,
-						updatedBy,
-						ctx,
-					)) ?? scope)
-				: await this.scopeRepository.createScope(
-						{ kind, projectId, defaultAction, updatedBy },
-						ctx,
-					);
+			const before = { defaultAction: scope.defaultAction, version: scope.version };
+			const after =
+				(await this.scopeRepository.updateDefaultAction(scope.id, defaultAction, updatedBy, ctx)) ??
+				scope;
 
 			return { before, after };
 		});
+
+		// `updateDefaultAction` leaves the version alone when nothing changed, so that an
+		// env-bootstrap upsert repeated on every main during a rolling restart is a no-op.
+		// Refreshing here anyway would undo that.
+		if (result.before === null || result.before.version !== result.after.version) {
+			await this.snapshot.refreshAfterWrite();
+		}
 
 		this.eventService.emit('node-type-policy-scope-updated', {
 			updatedBy,
@@ -176,12 +266,53 @@ export class TypeAvailabilityPolicyService {
 		return result.after;
 	}
 
+	/**
+	 * `FOR UPDATE` finds nothing to lock when the scope has no row yet, so two first writes
+	 * can both pass the `expectedVersion: 0` check. Insert-or-ignore lets exactly one of them
+	 * create the row; the other learns it lost and reports the same conflict a stale version
+	 * would, instead of a raw unique-index error.
+	 */
+	private async createScopeOrConflict(
+		input: {
+			kind: string;
+			projectId: string | null;
+			defaultAction: PolicyAction;
+			updatedBy: string;
+		},
+		ctx: OperationContext,
+	): Promise<TypeAvailabilityPolicyScope> {
+		const { scope, created } = await this.scopeRepository.createScopeIfAbsent(input, ctx);
+		if (!created) {
+			throw new ConflictError(
+				`Policy scope was created concurrently (expected version ${UNCONFIGURED_VERSION}, found ${scope.version})`,
+			);
+		}
+
+		return scope;
+	}
+
+	/**
+	 * Rejects a rule that is malformed for this kind. A rule that only names something not
+	 * loaded saves, and comes back as a `notLoaded` warning.
+	 */
+	private validateAndLintRules(kind: string, rules: readonly PolicyRule[]): PolicyRuleWarning[] {
+		assertNoCredentialOnlyPackageRules(rules);
+		assertNoCredentialOnlyNodeRules(kind, rules);
+		assertExtendsSelectorsValid(kind, rules);
+
+		return lintPolicyRules(rules, {
+			resolvePackage: packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedType: policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
+			isLoaded: loadedCheckFor(kind, this.nodeTypes, this.loadNodesAndCredentials),
+		});
+	}
+
 	async createPolicyDocument(
 		kind: string,
 		rules: readonly PolicyRule[],
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		const warnings = lintRulesForShadowing(rules);
+		const warnings = this.validateAndLintRules(kind, rules);
 
 		const policy = await this.policyRepository.createPolicy({ kind, rules, updatedBy }, {});
 
@@ -189,62 +320,137 @@ export class TypeAvailabilityPolicyService {
 			updatedBy,
 			kind,
 			policyId: policy.id,
+			origin: 'document-api',
 			after: { rules: policy.rules, version: policy.version },
 		});
 
 		return { policy, warnings };
 	}
 
+	/**
+	 * Replaces a policy document's rules, guarded by optimistic concurrency: `expectedVersion`
+	 * must match the document's current version, checked and written inside one transaction
+	 * that (on Postgres) holds the document's row lock (see
+	 * `TypeAvailabilityPolicyRepository.findByIdAndKind`).
+	 *
+	 * Also bumps every scope this document is attached to, in the same transaction — a scope's
+	 * `version` is its clients' freshness signal for the *effective* policy, and this document's
+	 * rules are part of that even though the edit never touches the scope row directly. The
+	 * bump is skipped when the rules did not change, matching `updateRules`' own no-op.
+	 */
 	async updatePolicyDocument(
+		kind: string,
 		policyId: string,
 		rules: readonly PolicyRule[],
+		expectedVersion: number,
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
-		const warnings = lintRulesForShadowing(rules);
+		const warnings = this.validateAndLintRules(kind, rules);
 
-		const existing = await this.policyRepository.findById(policyId, {});
-		if (!existing) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+		const result = await this.transactionRunner.run({}, async (ctx) => {
+			let scopesChanged = false;
 
-		const updated = await this.policyRepository.updateRules(policyId, rules, updatedBy, {});
-		if (!updated) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+			// Scopes before the document: `setEffectivePolicy` locks its scope and then writes
+			// the document, and every path must take the two in the same order or they deadlock.
+			const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+				policyId,
+				ctx,
+			);
+			const lockedScopeIds = await this.scopeRepository.lockScopesByIds(attachedScopeIds, ctx);
+
+			// A document attached to a project scope is part of that project's policy, so the
+			// same `delegate` rejection as a direct project write applies to editing it.
+			if (
+				rulesContainDelegate(rules) &&
+				(await this.scopeRepository.containsProjectScope(lockedScopeIds, ctx))
+			) {
+				throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
+			}
+
+			const existing = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
+			if (!existing) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
+
+			if (existing.version !== expectedVersion) {
+				throw new ConflictError(
+					`Policy document has changed since it was last read (expected version ${expectedVersion}, found ${existing.version})`,
+				);
+			}
+
+			const updated = await this.policyRepository.updateRules(policyId, rules, updatedBy, ctx);
+			// Defensive: the row was found above, and on Postgres it is locked, so it cannot be
+			// gone here.
+			if (!updated) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
+
+			if (updated.version !== existing.version) {
+				// An attachment that committed between the scope read above and the document lock
+				// belongs to a scope this transaction does not hold. Locking it now would be
+				// document → scope, the order that deadlocks, so refuse and let the client retry.
+				const locked = new Set(lockedScopeIds);
+				const scopeIdsNow = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+					policyId,
+					ctx,
+				);
+				if (scopeIdsNow.some((id) => !locked.has(id))) {
+					throw new ConflictError(
+						'Policy document was attached to another scope while it was being updated',
+					);
+				}
+
+				await this.scopeRepository.bumpVersions(lockedScopeIds, ctx);
+				scopesChanged = lockedScopeIds.length > 0;
+			}
+
+			return { existing, updated, scopesChanged };
+		});
+
+		if (result.scopesChanged) await this.snapshot.refreshAfterWrite();
 
 		this.eventService.emit('node-type-policy-document-updated', {
 			updatedBy,
-			kind: existing.kind,
+			kind: result.existing.kind,
 			policyId,
-			before: { rules: existing.rules, version: existing.version },
-			after: { rules: updated.rules, version: updated.version },
+			origin: 'document-api',
+			before: { rules: result.existing.rules, version: result.existing.version },
+			after: { rules: result.updated.rules, version: result.updated.version },
 		});
 
-		return { policy: updated, warnings };
+		return { policy: result.updated, warnings };
 	}
 
 	/**
 	 * Refuses to delete a policy that is still attached to any scope — the attachment FK is
 	 * `RESTRICT`, so this checks first and reports a clean count instead of letting a raw SQL
 	 * constraint violation reach the caller.
+	 *
+	 * The check and the delete share one transaction that (on Postgres) holds the document's
+	 * row lock. An attachment insert takes a key-share lock on the document it points at, so a
+	 * concurrent attach waits for this transaction rather than landing between the two.
 	 */
-	async deletePolicyDocument(policyId: string, updatedBy: string): Promise<void> {
-		const existing = await this.policyRepository.findById(policyId, {});
-		if (!existing) {
-			throw new NotFoundError(`Policy document not found: ${policyId}`);
-		}
+	async deletePolicyDocument(kind: string, policyId: string, updatedBy: string): Promise<void> {
+		const existing = await this.transactionRunner.run({}, async (ctx) => {
+			const policy = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
+			if (!policy) {
+				throw new NotFoundError(`Policy document not found: ${policyId}`);
+			}
 
-		const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
-			policyId,
-			{},
-		);
-		if (attachedScopeIds.length > 0) {
-			throw new ConflictError(
-				`Cannot delete policy document: still attached to ${attachedScopeIds.length} scope(s)`,
+			const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+				policyId,
+				ctx,
 			);
-		}
+			if (attachedScopeIds.length > 0) {
+				throw new ConflictError(
+					`Cannot delete policy document: still attached to ${attachedScopeIds.length} scope(s)`,
+				);
+			}
 
-		await this.policyRepository.deletePolicy(policyId, {});
+			await this.policyRepository.deletePolicy(policyId, ctx);
+
+			return policy;
+		});
 
 		this.eventService.emit('node-type-policy-document-deleted', {
 			updatedBy,
@@ -254,12 +460,36 @@ export class TypeAvailabilityPolicyService {
 		});
 	}
 
-	async getPolicyDocument(policyId: string): Promise<TypeAvailabilityPolicy | null> {
-		return await this.policyRepository.findById(policyId, {});
+	async getPolicyDocument(kind: string, policyId: string): Promise<TypeAvailabilityPolicy | null> {
+		return await this.policyRepository.findByIdAndKind(policyId, kind, {});
 	}
 
 	async listPolicyDocuments(kind: string): Promise<TypeAvailabilityPolicy[]> {
 		return await this.policyRepository.findByKind(kind, {});
+	}
+
+	/** One page of policy documents, for the public API's cursor-paginated listing. */
+	async listPolicyDocumentsPage(
+		kind: string,
+		offset: number,
+		limit: number,
+	): Promise<{ items: TypeAvailabilityPolicy[]; count: number }> {
+		return await this.policyRepository.findPageByKind(kind, offset, limit, {});
+	}
+
+	async getAttachments(
+		kind: string,
+		scopeId: string,
+		ctx: OperationContext = {},
+	): Promise<ScopeAttachments> {
+		const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx);
+		if (!scope) {
+			throw new NotFoundError(`Policy scope not found: ${scopeId}`);
+		}
+
+		const attachments = await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx);
+
+		return { attachments: orderedAttachments(attachments), version: scope.version };
 	}
 
 	/**
@@ -268,22 +498,52 @@ export class TypeAvailabilityPolicyService {
 	 * `getEffectivePolicy`/`setDefaultAction` call, and a scope row is shared by both instance
 	 * and project scope, so this stays reusable without resolving `(kind, projectId)` again.
 	 *
-	 * No `expectedVersion` check: the real `ReplaceAttachmentsDto` from IAM-1328 carries no
-	 * version field (unlike `PutInstancePolicyDto`), so this endpoint is last-write-wins. The
-	 * write still runs in one transaction with the scope's version bump, so a concurrent
-	 * reader never observes the attachments changed without the version moving.
+	 * `kind` scopes that lookup the same way `getPolicyDocument` scopes its own id lookup: a
+	 * caller authorized for one kind (e.g. `credentialTypePolicy:manage`, not
+	 * `nodeTypePolicy:manage`) must not reach a scope of a different kind by id, even with an
+	 * empty or same-kind-only attachment list that `assertAttachableToScope` would not catch.
+	 *
+	 * `expectedVersion` must match the scope's current version. The locked read, attachment
+	 * replacement, and version bump share one transaction.
+	 *
+	 * Lock the scope before any policy row to keep the scope → policy order used by other writes.
 	 */
 	async replaceAttachments(
+		kind: string,
 		scopeId: string,
 		attachments: readonly AttachmentInput[],
+		expectedVersion: number,
 		updatedBy: string,
-	): Promise<{ attachments: readonly PolicyAttachment[]; version: number }> {
+	): Promise<ScopeAttachments> {
 		assertNoDuplicateAttachmentSlots(attachments);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeById(scopeId, ctx);
+			const scope = await this.scopeRepository.findScopeByIdAndKind(scopeId, kind, ctx, true);
 			if (!scope) {
 				throw new NotFoundError(`Policy scope not found: ${scopeId}`);
+			}
+
+			if (scope.version !== expectedVersion) {
+				throw new ConflictError(
+					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${scope.version})`,
+				);
+			}
+
+			// Attaching a document to a project scope makes its rules that project's policy, so
+			// a document carrying `delegate` is rejected the same way a direct project write is.
+			// The documents are read under the same row lock `updatePolicyDocument` takes, so a
+			// concurrent edit cannot slip a `delegate` in between this check and the attach: one
+			// of the two waits, and the loser either sees the new rules here or fails that path's
+			// own "attached while updating" conflict check.
+			if (scope.projectId !== null && attachments.length > 0) {
+				const policies = await this.policyRepository.findManyByIds(
+					attachments.map((a) => a.policyId),
+					ctx,
+					true,
+				);
+				if (policies.some((policy) => rulesContainDelegate(policy.rules))) {
+					throw new UserError(DELEGATE_RULE_AT_PROJECT_SCOPE);
+				}
 			}
 
 			const before = await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx);
@@ -312,6 +572,8 @@ export class TypeAvailabilityPolicyService {
 			};
 		});
 
+		await this.snapshot.refreshAfterWrite();
+
 		this.eventService.emit('node-type-policy-attachments-updated', {
 			updatedBy,
 			kind: result.kind,
@@ -321,7 +583,7 @@ export class TypeAvailabilityPolicyService {
 			after: { attachments: result.after, version: result.versionAfter },
 		});
 
-		return { attachments: result.after, version: result.versionAfter };
+		return { attachments: orderedAttachments(result.after), version: result.versionAfter };
 	}
 
 	/**
@@ -344,12 +606,18 @@ export class TypeAvailabilityPolicyService {
 		defaultAction: PolicyAction;
 		version: number;
 		rules: PolicyRule[];
-		warnings: readonly ShadowWarning[];
+		warnings: readonly PolicyRuleWarning[];
 	}> {
-		const warnings = lintRulesForShadowing(input.rules);
+		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
+		const warnings = this.validateAndLintRules(kind, input.rules);
 
 		const result = await this.transactionRunner.run({}, async (ctx) => {
-			const scope = await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx);
+			const scope = await this.scopeRepository.findScopeByKindAndProject(
+				kind,
+				projectId,
+				ctx,
+				true,
+			);
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
@@ -362,16 +630,64 @@ export class TypeAvailabilityPolicyService {
 				? { defaultAction: scope.defaultAction, version: scope.version }
 				: null;
 
+			const existingAttachments = scope
+				? await this.attachmentRepository.listAttachmentsForScope(scope.id, ctx)
+				: [];
+
+			// This write edits the scope's single document in place. It refuses when that would
+			// reach further than the scope itself: several attachments (editing only the first
+			// would silently leave the rest in force), or a document also attached elsewhere
+			// (editing it would change every other scope that uses it — at project scope, that
+			// would let a project admin rewrite the instance policy). Both states can only be
+			// produced through the instance-only attachment management, so the same admin can
+			// undo them there. Checked before any write, so a refusal leaves nothing to roll back.
+			if (existingAttachments.length > 1) {
+				throw new ConflictError(
+					`Cannot replace the policy of a scope with ${existingAttachments.length} attached documents; manage its attachments instead`,
+				);
+			}
+
+			const existingDocumentId = existingAttachments[0]?.policyId ?? null;
+
+			// Lock the document before checking who else uses it: an attach elsewhere key-shares
+			// the document row, so it waits for this transaction (or this one waits for it) and
+			// the check below cannot be overtaken between reading the attachments and the edit.
+			// Scope first, then document — the order every write path keeps.
+			const existingDocument = existingDocumentId
+				? await this.policyRepository.findByIdAndKind(existingDocumentId, kind, ctx, true)
+				: null;
+
+			// Second line of defense: `assertAttachableToScope` already refuses to attach across
+			// kinds, so a miss here means the rest of the write would edit a foreign document.
+			if (existingDocumentId && !existingDocument) {
+				throw new NotFoundError(`Policy document not found: ${existingDocumentId}`);
+			}
+
+			if (scope && existingDocumentId) {
+				const attachedScopeIds = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+					existingDocumentId,
+					ctx,
+				);
+				if (attachedScopeIds.some((id) => id !== scope.id)) {
+					throw new ConflictError(
+						'Cannot replace a policy document that is attached to other scopes; manage its attachments instead',
+					);
+				}
+			}
+
+			const scopeCreated = scope === null;
+			const defaultActionChanged = scope !== null && scope.defaultAction !== input.defaultAction;
+
 			const scopeId = scope
 				? scope.id
 				: (
-						await this.scopeRepository.createScope(
+						await this.createScopeOrConflict(
 							{ kind, projectId, defaultAction: input.defaultAction, updatedBy },
 							ctx,
 						)
 					).id;
 
-			if (scope && scope.defaultAction !== input.defaultAction) {
+			if (defaultActionChanged) {
 				await this.scopeRepository.updateDefaultAction(
 					scopeId,
 					input.defaultAction,
@@ -380,34 +696,28 @@ export class TypeAvailabilityPolicyService {
 				);
 			}
 
-			const existingAttachments = scope
-				? await this.attachmentRepository.listAttachmentsForScope(scopeId, ctx)
-				: [];
-			const existingDocumentId = existingAttachments[0]?.policyId ?? null;
-
 			let documentBefore: { rules: readonly PolicyRule[]; version: number } | null = null;
 			let documentAfter: { rules: readonly PolicyRule[]; version: number };
 			let documentCreated: boolean;
 			let policyId: string;
 
-			if (existingDocumentId) {
-				const before = await this.policyRepository.findById(existingDocumentId, ctx);
-				documentBefore = before ? { rules: before.rules, version: before.version } : null;
+			if (existingDocument) {
+				documentBefore = { rules: existingDocument.rules, version: existingDocument.version };
 
 				const updated = await this.policyRepository.updateRules(
-					existingDocumentId,
+					existingDocument.id,
 					input.rules,
 					updatedBy,
 					ctx,
 				);
-				// The attachment's FK guarantees the policy row exists.
+				// Defensive: the row was read under a lock above, so it cannot be gone here.
 				if (!updated) {
-					throw new NotFoundError(`Policy document not found: ${existingDocumentId}`);
+					throw new NotFoundError(`Policy document not found: ${existingDocument.id}`);
 				}
 
 				documentAfter = { rules: updated.rules, version: updated.version };
 				documentCreated = false;
-				policyId = existingDocumentId;
+				policyId = existingDocument.id;
 			} else {
 				const created = await this.policyRepository.createPolicy(
 					{ kind, rules: input.rules, updatedBy },
@@ -424,11 +734,12 @@ export class TypeAvailabilityPolicyService {
 				);
 			}
 
-			// This composed write always bumps the scope's freshness signal once, on top of
-			// whatever `updateDefaultAction` bumped on its own — a document-only edit (no
-			// `defaultAction` change) still must move the version, since it changes what the
-			// scope effectively enforces.
-			await this.scopeRepository.bumpVersion(scopeId, ctx);
+			// One accepted write moves the version by exactly one. The insert and
+			// `updateDefaultAction` each move it already, so bump here only when neither ran —
+			// a document-only edit still changes what the scope enforces and must move it too.
+			if (!scopeCreated && !defaultActionChanged) {
+				await this.scopeRepository.bumpVersion(scopeId, ctx);
+			}
 
 			const scopeAfterRow = await this.scopeRepository.findScopeById(scopeId, ctx);
 			const scopeAfter = {
@@ -447,6 +758,9 @@ export class TypeAvailabilityPolicyService {
 			};
 		});
 
+		// This path always moves the scope's version, so it always refreshes.
+		await this.snapshot.refreshAfterWrite();
+
 		this.eventService.emit('node-type-policy-scope-updated', {
 			updatedBy,
 			kind,
@@ -461,6 +775,7 @@ export class TypeAvailabilityPolicyService {
 				updatedBy,
 				kind,
 				policyId: result.policyId,
+				origin: 'composed-save',
 				after: result.documentAfter,
 			});
 		} else {
@@ -468,10 +783,24 @@ export class TypeAvailabilityPolicyService {
 				updatedBy,
 				kind,
 				policyId: result.policyId,
+				origin: 'composed-save',
 				before: result.documentBefore ?? { rules: [], version: UNCONFIGURED_VERSION },
 				after: result.documentAfter,
 			});
 		}
+
+		this.eventService.emit('node-type-policy-saved', {
+			updatedBy,
+			kind,
+			projectId,
+			scopeId: result.scopeId,
+			before: result.scopeBefore,
+			after: result.scopeAfter,
+			rulesBefore: result.documentBefore?.rules ?? null,
+			rulesAfter: result.documentAfter.rules,
+			shadowWarningCount: warnings.filter((warning) => warning.kind === 'shadowed').length,
+			notLoadedWarningCount: warnings.filter((warning) => warning.kind === 'notLoaded').length,
+		});
 
 		return {
 			scopeId: result.scopeId,
@@ -480,5 +809,134 @@ export class TypeAvailabilityPolicyService {
 			rules: [...result.documentAfter.rules],
 			warnings,
 		};
+	}
+
+	/**
+	 * Composes the instance and project verdicts for one type, per `evaluateComposedType`.
+	 */
+	async evaluateComposedType(
+		kind: string,
+		projectId: string,
+		typeName: string,
+	): Promise<ComposedVerdict> {
+		const { instance, project } = await this.readComposedScopes(kind, projectId);
+
+		return evaluateComposedType(
+			instance,
+			project,
+			policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials)(typeName),
+			packageResolverFor(kind, this.loadNodesAndCredentials),
+		);
+	}
+
+	/**
+	 * Composes the verdict for many types against one project, reading each scope once and
+	 * evaluating in memory. There is no materialized effective set — recomputing every loaded
+	 * type against a realistic rule list is cheaper than keeping a cached one fresh.
+	 */
+	async evaluateComposedTypes(
+		kind: string,
+		projectId: string,
+		typeNames: readonly string[],
+	): Promise<ComposedTypeVerdict[]> {
+		const { verdicts } = await this.evaluateComposedTypesFor(kind, projectId, typeNames);
+
+		return verdicts;
+	}
+
+	/**
+	 * Same composition as `evaluateComposedTypes`, plus the versions of the scopes it read, for
+	 * a caller that has to report which policy decided — a policy check writing
+	 * `policyVersions` on its result.
+	 *
+	 * `projectId: null` means no project scope applies. The instance scope still decides, so an
+	 * instance `deny` denies and an unsatisfied instance `delegate` denies: a context with no
+	 * project has nowhere to opt in.
+	 */
+	async evaluateComposedTypesFor(
+		kind: string,
+		projectId: string | null,
+		typeNames: readonly string[],
+	): Promise<ComposedTypeEvaluation> {
+		const { instance, project } = await this.readComposedScopes(kind, projectId);
+
+		return {
+			verdicts: this.verdictComposer(kind, typeNames)(instance, project),
+			versions: [
+				{ scope: 'instance', version: instance.version },
+				...(projectId === null ? [] : [{ scope: 'project' as const, version: project.version }]),
+			],
+		};
+	}
+
+	/** Every configured project at once. Before the snapshot loads, bulk reads keep the pool free. */
+	async evaluateComposedTypesForAllProjects(
+		kind: string,
+		typeNames: readonly string[],
+	): Promise<{
+		withoutProjectPolicy: ComposedTypeVerdict[];
+		byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
+	}> {
+		const [instance, projects] = await Promise.all([
+			this.readEnforcedScope(kind, null),
+			this.snapshot.projectScopes(kind) ?? this.readProjectScopes(kind),
+		]);
+		const composeVerdicts = this.verdictComposer(kind, typeNames);
+
+		return {
+			withoutProjectPolicy: composeVerdicts(instance, unconfiguredScope(kind, null)),
+			byProject: projects.map((project) => ({
+				projectId: project.projectId,
+				verdicts: composeVerdicts(instance, project),
+			})),
+		};
+	}
+
+	private verdictComposer(kind: string, typeNames: readonly string[]) {
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials));
+
+		return (instance: EffectivePolicy, project: EffectivePolicy): ComposedTypeVerdict[] =>
+			types.map((type) => ({
+				name: type.name,
+				...evaluateComposedType(instance, project, type, resolvePackage),
+			}));
+	}
+
+	/** With no project, nothing is read for it: an unconfigured project scope is allow-all. */
+	private async readComposedScopes(
+		kind: string,
+		projectId: string | null,
+	): Promise<{ instance: EffectivePolicy; project: EffectivePolicy }> {
+		const [instance, project] = await Promise.all([
+			this.readEnforcedScope(kind, null),
+			projectId === null ? unconfiguredScope(kind, null) : this.readEnforcedScope(kind, projectId),
+		]);
+
+		return { instance, project };
+	}
+
+	/**
+	 * The snapshot once it has loaded, so a decision under a 250 ms deadline does no I/O. Before
+	 * that, the database, which the caller's deadline still bounds.
+	 */
+	private async readEnforcedScope(
+		kind: string,
+		projectId: string | null,
+	): Promise<EffectivePolicy> {
+		return this.snapshot.read(kind, projectId) ?? (await this.getEffectivePolicy(kind, projectId));
+	}
+
+	private async readProjectScopes(kind: string): Promise<ProjectEffectivePolicy[]> {
+		const scopes = await this.scopeRepository.findProjectScopes(kind, {});
+		const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
+			scopes.map((scope) => scope.id),
+			{},
+		);
+
+		return scopes.map((scope) => ({
+			...toEffectivePolicy(scope, attachmentsByScope.get(scope.id) ?? []),
+			projectId: scope.projectId,
+		}));
 	}
 }

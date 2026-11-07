@@ -294,6 +294,9 @@ function appendNodeConfigOptions(configParts: string[], node: SemanticNode): voi
 	if (node.json.extendsCredential) {
 		configParts.push(`extendsCredential: '${escapeString(node.json.extendsCredential)}'`);
 	}
+	if (node.json.customTelemetryTags?.tag?.length) {
+		configParts.push(`customTelemetryTags: ${formatValue(node.json.customTelemetryTags)}`);
+	}
 }
 
 /**

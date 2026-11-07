@@ -1,3 +1,4 @@
+import type { WorkflowImportDecision } from './workflow-import.types';
 import {
 	WorkflowPublishingPolicy,
 	type PublishingAction,
@@ -8,9 +9,9 @@ import {
  * Decides whether to publish, unpublish, or leave publishing unchanged for one
  * imported workflow. Each policy is a pure function of import context — no writes.
  */
-const WORKFLOW_PUBLISHING_POLICIES: Record<
+const PUBLISHING_POLICIES: Record<
 	WorkflowPublishingPolicy,
-	(context: WorkflowPublishingContext) => PublishingAction
+	(context: Omit<WorkflowPublishingContext, 'isArchived'>) => PublishingAction
 > = {
 	[WorkflowPublishingPolicy.PreservePublishedState]: ({
 		status,
@@ -18,6 +19,7 @@ const WORKFLOW_PUBLISHING_POLICIES: Record<
 		sourcePublished,
 	}) => (status === 'updated' && currentlyPublished && sourcePublished ? 'publish' : 'noop'),
 	[WorkflowPublishingPolicy.MatchSource]: ({ status, sourcePublished, currentlyPublished }) => {
+		if (sourcePublished === undefined) return 'noop';
 		if (sourcePublished && (status === 'created' || status === 'updated')) {
 			return 'publish';
 		}
@@ -29,6 +31,7 @@ const WORKFLOW_PUBLISHING_POLICIES: Record<
 	[WorkflowPublishingPolicy.PublishAll]: () => 'publish',
 	[WorkflowPublishingPolicy.UnpublishAll]: ({ status, currentlyPublished }) =>
 		status === 'updated' && currentlyPublished ? 'unpublish' : 'noop',
+	[WorkflowPublishingPolicy.PreserveTargetState]: () => 'noop',
 };
 
 export function decideWorkflowPublishingAction(
@@ -43,5 +46,29 @@ export function decideWorkflowPublishingAction(
 		return context.currentlyPublished ? 'unpublish' : 'noop';
 	}
 
-	return WORKFLOW_PUBLISHING_POLICIES[policy](context);
+	return decidePublishingAction(policy, context);
+}
+
+export function decidePublishingAction(
+	policy: WorkflowPublishingPolicy,
+	context: Omit<WorkflowPublishingContext, 'isArchived'>,
+): PublishingAction {
+	if (context.status === 'skipped') return 'noop';
+	return PUBLISHING_POLICIES[policy](context);
+}
+
+/**
+ * Decides the publication action before writes. The archive step handles unpublishing
+ * archived workflows, so they need no action in the publication sweep.
+ */
+export function decidePlannedPublishingAction(
+	policy: WorkflowPublishingPolicy,
+	item: WorkflowImportDecision,
+): PublishingAction {
+	if (item.action === 'skip' || item.sourceArchived) return 'noop';
+	return decidePublishingAction(policy, {
+		status: item.action === 'create' ? 'created' : 'updated',
+		sourcePublished: item.sourcePublished,
+		currentlyPublished: item.action === 'update' && Boolean(item.existing.activeVersionId),
+	});
 }

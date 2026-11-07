@@ -33,6 +33,8 @@ export const OTEL_FIELD_ENV_VARS = {
 	tracesSampleRate: 'N8N_OTEL_TRACES_SAMPLE_RATE',
 	startupConnectivityTimeoutMs: 'N8N_OTEL_STARTUP_CONNECTIVITY_TIMEOUT_MS',
 	includeNodeSpans: 'N8N_OTEL_TRACES_INCLUDE_NODE_SPANS',
+	emitWorkflowStartSpan: 'N8N_OTEL_TRACES_EMIT_WORKFLOW_START_SPAN',
+	emitNodeStartSpan: 'N8N_OTEL_TRACES_EMIT_NODE_START_SPAN',
 	injectOutbound: 'N8N_OTEL_TRACES_INJECT_OUTBOUND',
 	productionExecutionsOnly: 'N8N_OTEL_TRACES_PRODUCTION_ONLY',
 } as const;

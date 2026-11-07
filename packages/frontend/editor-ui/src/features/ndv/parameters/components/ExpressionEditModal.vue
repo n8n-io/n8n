@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ExpressionEditorModalInput from './ExpressionEditorModal/ExpressionEditorModalInput.vue';
-import { computed, ref, toRaw, watch } from 'vue';
+import { computed, inject, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -22,6 +22,7 @@ import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
+import { ParameterInputModalContextKey } from '@/app/constants/injectionKeys';
 import { useThrottleFn } from '@vueuse/core';
 
 import { ElDialog } from 'element-plus';
@@ -36,6 +37,7 @@ import {
 import { useStyles } from '@n8n/composables/useStyles';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
+const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
 
 type Props = {
 	parameter: INodeProperties;
@@ -166,7 +168,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 <template>
 	<ElDialog
 		width="calc(100% - var(--spacing--3xl))"
-		:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+		:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
+		:append-to-body="parameterModalContext?.appendTo === 'body'"
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"
@@ -279,6 +282,8 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .modal {
 	--dialog--close--spacing--top: var(--spacing--md);
 	display: flex;

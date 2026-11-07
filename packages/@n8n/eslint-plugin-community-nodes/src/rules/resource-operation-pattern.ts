@@ -30,15 +30,12 @@ export const ResourceOperationPatternRule = createRule({
 		}
 
 		const analyzeNodeDescription = (descriptionValue: TSESTree.Expression | null): void => {
-			if (!descriptionValue || descriptionValue.type !== AST_NODE_TYPES.ObjectExpression) {
+			if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) {
 				return;
 			}
 
 			const propertiesProperty = findObjectProperty(descriptionValue, 'properties');
-			if (
-				!propertiesProperty?.value ||
-				propertiesProperty.value.type !== AST_NODE_TYPES.ArrayExpression
-			) {
+			if (propertiesProperty?.value?.type !== AST_NODE_TYPES.ArrayExpression) {
 				return;
 			}
 
@@ -48,7 +45,7 @@ export const ResourceOperationPatternRule = createRule({
 			let operationNode: TSESTree.Node | null = null;
 
 			for (const property of propertiesArray.elements) {
-				if (!property || property.type !== AST_NODE_TYPES.ObjectExpression) {
+				if (property?.type !== AST_NODE_TYPES.ObjectExpression) {
 					continue;
 				}
 

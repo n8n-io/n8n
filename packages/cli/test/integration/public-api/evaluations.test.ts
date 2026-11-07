@@ -5,7 +5,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { LICENSE_QUOTAS, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { TestRun, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
@@ -14,6 +14,7 @@ import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.servi
 import { Telemetry } from '@/telemetry';
 
 import { createTestCaseExecution, createTestRun } from '../shared/db/evaluation';
+import { createExecution } from '../shared/db/executions';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -48,7 +49,7 @@ beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'TestRun', 'TestCaseExecution']);
 });
 
-describe('GET /workflows/:id/test-runs', () => {
+describe('GET /workflows/:workflowId/test-runs', () => {
 	test('should return the test runs of a workflow', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const first = await createTestRun(workflow.id, { status: 'completed' });
@@ -101,9 +102,63 @@ describe('GET /workflows/:id/test-runs', () => {
 
 		await restrictedAgent.get(`/workflows/${workflow.id}/test-runs`).expect(403);
 	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should return 400 for a status outside the set', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ status: 'paused' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 404 for an unknown workflow', async () => {
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+
+		const response = await memberAgent.get('/workflows/does-not-exist/test-runs');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
+	});
+
+	test('should paginate test runs via cursor', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		await createTestRun(workflow.id, { status: 'completed' });
+		await createTestRun(workflow.id, { status: 'completed' });
+		await createTestRun(workflow.id, { status: 'completed' });
+
+		const firstPage = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ limit: 2 });
+
+		expect(firstPage.statusCode).toBe(200);
+		expect(firstPage.body.data).toHaveLength(2);
+		expect(firstPage.body.nextCursor).toEqual(expect.any(String));
+
+		const secondPage = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs`)
+			.query({ cursor: firstPage.body.nextCursor });
+
+		expect(secondPage.statusCode).toBe(200);
+		expect(secondPage.body.data).toHaveLength(1);
+		expect(secondPage.body.nextCursor).toBeNull();
+	});
 });
 
-describe('GET /workflows/:id/test-runs/:runId', () => {
+describe('GET /workflows/:workflowId/test-runs/:runId', () => {
 	test('should return a single test run summary with finalResult', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, {
@@ -136,14 +191,21 @@ describe('GET /workflows/:id/test-runs/:runId', () => {
 	});
 });
 
-describe('GET /workflows/:id/test-runs/:runId/test-cases', () => {
-	test('should return per-case results with sanitized fields', async () => {
+describe('GET /workflows/:workflowId/test-runs/:runId/test-cases', () => {
+	test('should return a completed case with every field populated', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const testRun = await createTestRun(workflow.id, { status: 'completed' });
-		await createTestCaseExecution(testRun.id, {
+		const execution = await createExecution({ status: 'success' }, workflow);
+		const runAt = new Date('2026-09-23T10:42:04.214Z');
+		const completedAt = new Date('2026-09-23T10:42:04.300Z');
+		const testCase = await createTestCaseExecution(testRun.id, {
 			status: 'success',
-			metrics: { accuracy: 1 },
-			executionId: undefined,
+			runAt,
+			completedAt,
+			metrics: { 'String similarity': 1, totalTokens: 0, executionTime: 65 },
+			inputs: { name: 'Charlie' },
+			outputs: { output: 'Charlie' },
+			executionId: execution.id,
 		});
 
 		const response = await authOwnerAgent.get(
@@ -151,15 +213,46 @@ describe('GET /workflows/:id/test-runs/:runId/test-cases', () => {
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data).toStrictEqual([
+			{
+				id: testCase.id,
+				status: 'success',
+				runAt: runAt.toISOString(),
+				completedAt: completedAt.toISOString(),
+				metrics: { 'String similarity': 1, totalTokens: 0, executionTime: 65 },
+				errorCode: null,
+				errorDetails: null,
+				inputs: { name: 'Charlie' },
+				outputs: { output: 'Charlie' },
+				executionId: Number(execution.id),
+			},
+		]);
+	});
 
-		const [testCase] = response.body.data;
-		expect(testCase).toMatchObject({ status: 'success', metrics: { accuracy: 1 } });
-		expect(testCase).toHaveProperty('inputs');
-		expect(testCase).toHaveProperty('outputs');
-		// sanitized: no internal relations/indexes leak
-		expect(testCase).not.toHaveProperty('testRun');
-		expect(testCase).not.toHaveProperty('runIndex');
+	test('should return a case that has not started with null fields', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const testRun = await createTestRun(workflow.id, { status: 'running' });
+		const testCase = await createTestCaseExecution(testRun.id, { status: 'new' });
+
+		const response = await authOwnerAgent.get(
+			`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`,
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toStrictEqual([
+			{
+				id: testCase.id,
+				status: 'new',
+				runAt: null,
+				completedAt: null,
+				metrics: {},
+				errorCode: null,
+				errorDetails: null,
+				inputs: null,
+				outputs: null,
+				executionId: null,
+			},
+		]);
 	});
 
 	test('should paginate per-case results via cursor', async () => {
@@ -196,6 +289,18 @@ describe('GET /workflows/:id/test-runs/:runId/test-cases', () => {
 			.get(`/workflows/${workflowA.id}/test-runs/${runB.id}/test-cases`)
 			.expect(404);
 	});
+
+	test('should return 400 for an invalid cursor', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const testRun = await createTestRun(workflow.id, { status: 'completed' });
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs/${testRun.id}/test-cases`)
+			.query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
 });
 
 describe('scope enforcement on read endpoints', () => {
@@ -209,6 +314,21 @@ describe('scope enforcement on read endpoints', () => {
 		await restrictedAgent
 			.get(`/workflows/${workflow.id}/test-runs/${run.id}/test-cases`)
 			.expect(403);
+	});
+
+	test('should return 404 on single-run and cases for an unknown workflow', async () => {
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+
+		for (const path of [
+			'/workflows/does-not-exist/test-runs/some-run',
+			'/workflows/does-not-exist/test-runs/some-run/test-cases',
+		]) {
+			const response = await memberAgent.get(path);
+
+			expect(response.statusCode).toBe(404);
+			expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
+		}
 	});
 
 	test('should let a member read runs of a workflow shared with them', async () => {
@@ -225,7 +345,7 @@ describe('scope enforcement on read endpoints', () => {
 	});
 });
 
-describe('POST /workflows/:id/test-runs', () => {
+describe('POST /workflows/:workflowId/test-runs', () => {
 	beforeEach(() => {
 		testRunner.startTestRun.mockReset();
 		// Evaluations licensed and unlimited by default; individual tests override.
@@ -333,14 +453,11 @@ describe('POST /workflows/:id/test-runs', () => {
 	});
 });
 
-describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
+describe('POST /workflows/:workflowId/test-runs/:runId/cancel', () => {
 	beforeEach(() => {
 		testRunner.cancelTestRun.mockReset();
 		testRunner.canBeCancelled.mockReset();
-		// Mirror the real (terminal-state) implementation.
-		testRunner.canBeCancelled.mockImplementation(
-			(run: TestRun) => run.status !== 'running' && run.status !== 'new',
-		);
+		testRunner.canBeCancelled.mockImplementation(TestRunnerService.prototype.canBeCancelled);
 		testServer.license.setQuota(
 			LICENSE_QUOTAS.WORKFLOWS_WITH_EVALUATION_LIMIT,
 			UNLIMITED_LICENSE_QUOTA,
@@ -356,7 +473,7 @@ describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
 		);
 
 		expect(response.statusCode).toBe(202);
-		expect(response.body).toEqual({ id: run.id, status: 'cancelled' });
+		expect(response.body).toStrictEqual({ id: run.id, status: 'cancelled' });
 		expect(testRunner.cancelTestRun).toHaveBeenCalledWith(run.id);
 	});
 
@@ -384,6 +501,17 @@ describe('POST /workflows/:id/test-runs/:runId/cancel', () => {
 		const run = await createTestRun(workflow.id, { status: 'running' });
 
 		await restrictedAgent.post(`/workflows/${workflow.id}/test-runs/${run.id}/cancel`).expect(403);
+		expect(testRunner.cancelTestRun).not.toHaveBeenCalled();
+	});
+
+	test('should return 404 for an unknown workflow', async () => {
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+
+		const response = await memberAgent.post('/workflows/does-not-exist/test-runs/run-1/cancel');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow with ID "does-not-exist" not found.');
 		expect(testRunner.cancelTestRun).not.toHaveBeenCalled();
 	});
 

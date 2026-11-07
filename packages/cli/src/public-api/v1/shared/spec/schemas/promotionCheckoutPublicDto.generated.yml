@@ -1,0 +1,20 @@
+type: object
+properties:
+  environmentId:
+    type: string
+    minLength: 1
+    maxLength: 36
+  direction:
+    type: string
+    enum:
+      - apply
+      - promote
+  branchName:
+    type: string
+  hasCheckout:
+    type: boolean
+required:
+  - environmentId
+  - direction
+  - branchName
+  - hasCheckout

@@ -3,7 +3,7 @@ import type { App, ComponentPublicInstance } from 'vue';
 /**
  * localStorage key that switches on app-wide component re-render counting.
  *
- * Set by the canvas performance benchmark (packages/testing/playwright) before
+ * Set by the canvas performance benchmark (packages/quality/testing/playwright) before
  * the SPA boots. Real users never set it, so the global mixin below is never
  * installed in normal use and the feature carries no runtime cost for them.
  */

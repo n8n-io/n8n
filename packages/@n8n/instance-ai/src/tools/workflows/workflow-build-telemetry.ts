@@ -1,4 +1,5 @@
 import type { WorkflowSourceFileBinding } from './workflow-file-bindings';
+import { emitBuilderMetric } from '../../tracing/builder-metric-event';
 import type { InstanceAiContext } from '../../types';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 
@@ -9,9 +10,11 @@ export type BuildTelemetryStage =
 	| 'hitl'
 	| 'parse'
 	| 'validation'
+	| 'grouping'
 	| 'name'
 	| 'save'
-	| 'conflict';
+	| 'conflict'
+	| 'folder';
 
 export function trackWorkflowSourceBuild(
 	context: InstanceAiContext,
@@ -28,6 +31,10 @@ export function trackWorkflowSourceBuild(
 		errorCount?: number;
 		warningCount?: number;
 		droppedGroupCount?: number;
+		topLevelItemCount?: number;
+		groupCount?: number;
+		groupingDecision?: 'grouped' | 'not_warranted' | 'under_ceiling' | 'missing';
+		groupingReasonProvided?: boolean;
 	},
 ): void {
 	const buildContext = context.workflowBuildContext;
@@ -46,6 +53,14 @@ export function trackWorkflowSourceBuild(
 		error_count: input.errorCount ?? 0,
 		warning_count: input.warningCount ?? 0,
 		dropped_group_count: input.droppedGroupCount ?? 0,
+		...(input.topLevelItemCount !== undefined
+			? {
+					top_level_item_count: input.topLevelItemCount,
+					group_count: input.groupCount ?? 0,
+					grouping_decision: input.groupingDecision ?? 'under_ceiling',
+					grouping_reason_provided: input.groupingReasonProvided === true,
+				}
+			: {}),
 		...(input.targetWorkflowId ? { target_workflow_id: input.targetWorkflowId } : {}),
 		...(input.savedWorkflowId ? { workflow_id: input.savedWorkflowId } : {}),
 		...(input.binding.sourceHash ? { source_hash: input.binding.sourceHash } : {}),
@@ -57,6 +72,19 @@ export function trackWorkflowSourceBuild(
 					...(input.remediation.reason ? { remediation_reason: input.remediation.reason } : {}),
 				}
 			: {}),
+	});
+	// A suspended save waits for approval and reports its real result after the resume.
+	if (input.result === 'suspended') return;
+	void emitBuilderMetric(context.tracing, 'workflow_build', {
+		success: input.result === 'success',
+		result: input.result,
+		stage: input.stage,
+		operation: input.saveOperation,
+		workflow_id: input.savedWorkflowId ?? input.targetWorkflowId,
+		work_item_id: buildContext?.workItemId,
+		is_supporting_workflow: input.isSupportingWorkflow === true,
+		error_count: input.errorCount ?? 0,
+		remediation_category: input.remediation?.category,
 	});
 }
 

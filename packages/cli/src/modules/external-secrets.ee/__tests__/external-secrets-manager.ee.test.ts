@@ -1,14 +1,16 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { SecretsProviderConnectionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DummyProvider, MockProviders } from '@test/external-secrets/utils';
 
+import { EXTERNAL_SECRETS_INITIAL_BACKOFF } from '../constants';
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import { ExternalSecretsProviderConnectionManager } from '../external-secrets-provider-connection-manager.ee';
-import type { ExternalSecretsConfig } from '../external-secrets.config';
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from '../provider-registry.service';
 import { ExternalSecretsRetryManager } from '../retry-manager.service';
@@ -26,6 +28,8 @@ const createDeferred = () => {
 };
 
 describe('ExternalSecretsManager', () => {
+	const connectTimeoutMs = Container.get(ExternalSecretsConfig).connectTimeout * 1000;
+	const signal = new AbortController().signal;
 	vi.useFakeTimers();
 
 	let manager: ExternalSecretsManager;
@@ -135,16 +139,6 @@ describe('ExternalSecretsManager', () => {
 			expect(manager.initialized).toBe(true);
 		});
 
-		it('should start secrets refresh interval', async () => {
-			await manager.init();
-
-			expect(mockSecretsCache.refreshAll).not.toHaveBeenCalled();
-
-			vi.advanceTimersByTime(60000); // 60 seconds
-
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(1);
-		});
-
 		it('should not initialize twice', async () => {
 			await manager.init();
 			await manager.init();
@@ -161,27 +155,13 @@ describe('ExternalSecretsManager', () => {
 	});
 
 	describe('shutdown', () => {
-		it('should stop refresh interval and disconnect all providers', async () => {
+		it('should disconnect all providers', async () => {
 			await manager.init();
 
 			manager.shutdown();
 
 			expect(mockProviderConnectionManager.shutdown).toHaveBeenCalled();
 			expect(manager.initialized).toBe(false);
-		});
-
-		it('should stop calling refresh after shutdown', async () => {
-			await manager.init();
-
-			const callsAfterInit = mockSecretsCache.refreshAll.mock.calls.length;
-
-			vi.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1);
-
-			manager.shutdown();
-
-			vi.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1); // No additional calls
 		});
 	});
 
@@ -736,7 +716,7 @@ describe('ExternalSecretsManager', () => {
 
 	describe('updateSecrets', () => {
 		it('should delegate to secrets cache', async () => {
-			await manager.updateSecrets();
+			await manager.updateSecrets(signal);
 
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
 		});
@@ -748,7 +728,7 @@ describe('ExternalSecretsManager', () => {
 
 			expect(manager.initialized).toBe(true);
 
-			await manager.updateSecrets();
+			await manager.updateSecrets(signal);
 
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
 
@@ -1128,7 +1108,11 @@ describe('ExternalSecretsManager', () => {
 					providersFactory,
 				);
 				const retryManager = new ExternalSecretsRetryManager(mockLogger());
-				const secretsCache = new ExternalSecretsSecretsCache(mockLogger(), providerRegistry);
+				const secretsCache = new ExternalSecretsSecretsCache(
+					mockLogger(),
+					providerRegistry,
+					Container.get(ExternalSecretsConfig),
+				);
 				const providerConnectionManager = new ExternalSecretsProviderConnectionManager(
 					mockLogger(),
 					providerRegistry,
@@ -1398,7 +1382,7 @@ describe('ExternalSecretsManager', () => {
 					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 					expect(retryManager.isRetrying('my-vault')).toBe(true);
 
-					await manager.updateSecrets();
+					await manager.updateSecrets(signal);
 					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 
 					await vi.advanceTimersToNextTimerAsync();
@@ -1413,7 +1397,7 @@ describe('ExternalSecretsManager', () => {
 					// The healed slot must take part in the refresh loop again, which only holds if
 					// its connected state was restored.
 					healed._updateSecrets = { test1: 'newest-value' };
-					await manager.updateSecrets();
+					await manager.updateSecrets(signal);
 					expect(manager.getSecret('my-vault', 'test1')).toBe('newest-value');
 				} finally {
 					manager.shutdown();
@@ -1444,6 +1428,215 @@ describe('ExternalSecretsManager', () => {
 				} finally {
 					manager.shutdown();
 				}
+			});
+
+			describe('recovery after a failed startup attempt', () => {
+				const connectionsFor = (...providerKeys: string[]) =>
+					providerKeys.map((providerKey) => ({
+						providerKey,
+						type: 'dummy',
+						encryptedSettings: 'encrypted-data',
+						isEnabled: true,
+					}));
+
+				it('should serve secrets as soon as a retried connect succeeds', async () => {
+					class FirstConnectBlackholeProvider extends DummyProvider {
+						private attempts = 0;
+
+						protected override async doConnect(): Promise<void> {
+							if (this.attempts++ === 0) await new Promise<void>(() => {});
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: FirstConnectBlackholeProvider,
+						connections: connectionsFor('my-vault'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(connectTimeoutMs);
+					await initPromise;
+
+					try {
+						expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+
+						await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+
+						expect(providerRegistry.get('my-vault')?.state).toBe('connected');
+						expect(manager.getSecret('my-vault', 'test1')).toBe('value1');
+					} finally {
+						manager.shutdown();
+					}
+				});
+
+				it('should not retry a slow but healthy first pull', async () => {
+					const refreshTimeoutMs = Container.get(ExternalSecretsConfig).refreshTimeout * 1000;
+
+					class SlowPullProvider extends DummyProvider {
+						updates = 0;
+
+						override async update(): Promise<void> {
+							this.updates++;
+							await new Promise<void>((r) => setTimeout(r, refreshTimeoutMs + 1000));
+							await super.update();
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: SlowPullProvider,
+						connections: connectionsFor('my-vault'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(refreshTimeoutMs);
+					await initPromise;
+
+					try {
+						const provider = providerRegistry.get('my-vault') as SlowPullProvider;
+						expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+
+						await vi.advanceTimersByTimeAsync(1000 + EXTERNAL_SECRETS_INITIAL_BACKOFF);
+
+						expect(provider.updates).toBe(1);
+						expect(manager.getSecret('my-vault', 'test1')).toBe('value1');
+					} finally {
+						manager.shutdown();
+					}
+				});
+
+				it('should retry a failed hydration without reconnecting', async () => {
+					class FirstUpdateFailsProvider extends DummyProvider {
+						connects = 0;
+
+						private updates = 0;
+
+						protected override async doConnect(): Promise<void> {
+							this.connects++;
+						}
+
+						override async update(): Promise<void> {
+							if (this.updates++ === 0) throw new Error('vault busy');
+							await super.update();
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: FirstUpdateFailsProvider,
+						connections: connectionsFor('my-vault'),
+					});
+
+					await manager.init();
+
+					try {
+						const provider = providerRegistry.get('my-vault') as FirstUpdateFailsProvider;
+						expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+
+						await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_INITIAL_BACKOFF);
+
+						expect(provider.connects).toBe(1);
+						expect(manager.getSecret('my-vault', 'test1')).toBe('value1');
+					} finally {
+						manager.shutdown();
+					}
+				});
+			});
+
+			describe('unreachable provider on startup', () => {
+				// A vault that silently drops packets, as a dead endpoint inside a VPC does: the
+				// connect never settles and never errors. Module init awaits this connect, so
+				// everything behind external secrets in the boot sequence waits with it, and
+				// /healthz/readiness stays 503 for as long as the OS lets the socket dangle.
+				const connectionsFor = (...providerKeys: string[]) =>
+					providerKeys.map((providerKey) => ({
+						providerKey,
+						type: 'dummy',
+						encryptedSettings: 'encrypted-data',
+						isEnabled: true,
+					}));
+
+				it('should finish initialization when a provider connect never answers', async () => {
+					class BlackholeConnectProvider extends DummyProvider {
+						protected override async doConnect(): Promise<void> {
+							await new Promise<void>(() => {});
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: BlackholeConnectProvider,
+						connections: connectionsFor('my-vault'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(connectTimeoutMs);
+
+					try {
+						await initPromise;
+
+						expect(manager.initialized).toBe(true);
+						// Left errored rather than absent, so the retry the timeout schedules has a
+						// registry slot to heal.
+						expect(providerRegistry.get('my-vault')?.state).toBe('error');
+						expect(manager.getSecret('my-vault', 'test1')).toBeUndefined();
+					} finally {
+						manager.shutdown();
+					}
+				});
+
+				it('should cost one connect timeout for the whole batch, not one per provider', async () => {
+					class BlackholeConnectProvider extends DummyProvider {
+						protected override async doConnect(): Promise<void> {
+							await new Promise<void>(() => {});
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: BlackholeConnectProvider,
+						connections: connectionsFor('vault-a', 'vault-b', 'vault-c'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(connectTimeoutMs);
+
+					try {
+						await initPromise;
+
+						expect(providerRegistry.get('vault-c')?.state).toBe('error');
+					} finally {
+						manager.shutdown();
+					}
+				});
+
+				it('should connect the providers behind one whose connect never answers', async () => {
+					let instances = 0;
+
+					class FirstConnectBlackholeProvider extends DummyProvider {
+						// The first instance stands for the dead vault, the second for a healthy one
+						// connecting alongside it.
+						private readonly blackholes = instances++ === 0;
+
+						protected override async doConnect(): Promise<void> {
+							if (this.blackholes) await new Promise<void>(() => {});
+						}
+					}
+
+					const { manager, providerRegistry } = createProviderReloadTestManager({
+						providerClass: FirstConnectBlackholeProvider,
+						connections: connectionsFor('dead-vault', 'live-vault'),
+					});
+
+					const initPromise = manager.init();
+					await vi.advanceTimersByTimeAsync(connectTimeoutMs);
+
+					try {
+						await initPromise;
+
+						expect(providerRegistry.get('dead-vault')?.state).toBe('error');
+						expect(providerRegistry.get('live-vault')?.state).toBe('connected');
+						expect(manager.getSecret('live-vault', 'test1')).toBe('value1');
+					} finally {
+						manager.shutdown();
+					}
+				});
 			});
 		});
 

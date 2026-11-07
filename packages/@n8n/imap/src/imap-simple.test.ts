@@ -1,394 +1,549 @@
+/* eslint-disable @typescript-eslint/naming-convention -- keys mirror imapflow's export and MIME part numbers */
 import { EventEmitter } from 'events';
-import Imap, { type Box, type MailBoxes } from 'imap';
-import { Readable } from 'stream';
-import type { Mocked } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import type { FetchMessageObject, MessageStructureObject } from 'imapflow';
 
-import { ImapSimple } from './imap-simple';
-import { PartData } from './part-data';
-import type { MessagePart } from './types';
+import type { ImapConnectionOptions } from './connection-options';
+import { ConnectionLostError } from './errors';
+import { ImapSimple, type ReconnectOptions } from './imap-simple';
 
-type MockImap = EventEmitter & {
-	connect: Mocked<() => unknown>;
-	fetch: Mocked<() => unknown>;
-	end: Mocked<() => unknown>;
-	search: Mocked<(...args: Parameters<Imap['search']>) => unknown>;
-	sort: Mocked<(...args: Parameters<Imap['sort']>) => unknown>;
-	openBox: Mocked<
-		(boxName: string, onOpen: (error: Error | null, box?: Box) => unknown) => unknown
-	>;
-	closeBox: Mocked<(...args: Parameters<Imap['closeBox']>) => unknown>;
-	getBoxes: Mocked<(onBoxes: (error: Error | null, boxes?: MailBoxes) => unknown) => unknown>;
-	addFlags: Mocked<(...args: Parameters<Imap['addFlags']>) => unknown>;
-};
+class FakeImapFlow extends EventEmitter {
+	usable = true;
 
-vi.mock('imap', () => {
-	return {
-		default: class InlineMockImap extends EventEmitter implements MockImap {
-			connect = vi.fn();
-			fetch = vi.fn();
-			end = vi.fn();
-			search = vi.fn();
-			sort = vi.fn();
-			openBox = vi.fn();
-			closeBox = vi.fn();
-			addFlags = vi.fn();
-			getBoxes = vi.fn();
-		},
-	};
-});
+	connect = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('./part-data', () => ({
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	PartData: { fromData: vi.fn(() => 'decoded') },
+	search = vi.fn();
+
+	fetch = vi.fn();
+
+	download = vi.fn();
+
+	downloadMany = vi.fn();
+
+	messageFlagsAdd = vi.fn();
+
+	list = vi.fn();
+
+	mailboxOpen = vi.fn();
+
+	logout = vi.fn().mockResolvedValue(true);
+
+	close = vi.fn();
+}
+
+const { clients } = vi.hoisted(() => ({ clients: [] as unknown[] }));
+
+vi.mock('imapflow', () => ({
+	ImapFlow: vi.fn(function () {
+		if (clients.length === 0) throw new Error('no fake transport queued');
+		// A single queued transport is reused, so only tests that care about a swap queue more.
+		return clients.length === 1 ? clients[0] : clients.shift();
+	}),
 }));
 
-describe('ImapSimple', () => {
-	function createImap() {
-		const imap = new Imap({ user: 'testuser', password: 'testpass' });
-		return { imapSimple: new ImapSimple(imap), mockImap: imap as unknown as MockImap };
-	}
+beforeEach(() => {
+	clients.length = 0;
+});
 
-	describe('constructor', () => {
-		it('should forward nonerror events', () => {
-			const { imapSimple, mockImap } = createImap();
-			const onMail = vi.fn();
-			imapSimple.on('mail', onMail);
-			mockImap.emit('mail', 3);
-			expect(onMail).toHaveBeenCalledWith(3);
-		});
+const CONNECTION_OPTIONS: ImapConnectionOptions = {
+	host: 'imap.test.com',
+	port: 993,
+	secure: true,
+	user: 'user',
+	password: 'password',
+};
 
-		it('should suppress errors after end() by removing forwarding listeners', () => {
-			const { imapSimple, mockImap } = createImap();
-			const onError = vi.fn();
-			imapSimple.on('error', onError);
-			imapSimple.end();
+/** Queues the transports `connect` will hand out, in order. */
+const queueTransports = (...transports: FakeImapFlow[]) => clients.push(...transports);
 
-			// After end(), forwarding listeners are removed so errors
-			// on the raw imap no longer propagate to imapSimple
-			mockImap.emit('error', { message: 'reset', code: 'ECONNRESET' });
-			expect(onError).not.toHaveBeenCalled();
-		});
+const setup = async (reconnect?: ReconnectOptions) => {
+	const client = new FakeImapFlow();
+	queueTransports(client);
+	const connection = await ImapSimple.connect(CONNECTION_OPTIONS, reconnect);
+	return { client, connection };
+};
 
-		it('should forward all errors before end() is called', () => {
-			const { imapSimple, mockImap } = createImap();
-			const onError = vi.fn();
-			imapSimple.on('error', onError);
+function* yielding<T>(...values: T[]) {
+	for (const value of values) yield value;
+}
 
-			const error = { message: 'reset', code: 'ECONNRESET' };
-			mockImap.emit('error', error);
-			expect(onError).toHaveBeenCalledWith(error);
-		});
+const aMessage = (uid: number, bodyStructure?: MessageStructureObject) =>
+	({ uid, flags: new Set(), bodyStructure }) as unknown as FetchMessageObject;
+
+describe('search', () => {
+	it('hands back what the fetch yielded', async () => {
+		const { client, connection } = await setup();
+		const fetched = { uid: 7, flags: new Set(['\\Seen']) };
+		client.search.mockResolvedValue([7]);
+		client.fetch.mockReturnValue(yielding(fetched));
+
+		const messages = await connection.search({ seen: false }, { uid: true });
+
+		expect(client.search).toHaveBeenCalledWith({ seen: false }, { uid: true });
+		expect(client.fetch).toHaveBeenCalledWith([7], { uid: true }, { uid: true });
+		expect(messages).toEqual([fetched]);
 	});
 
-	describe('event listener cleanup', () => {
-		it('should remove forwarding listeners and keep only close+error on end()', () => {
-			const { imapSimple, mockImap } = createImap();
+	it('fetches the oldest matches up to the limit', async () => {
+		const { client, connection } = await setup();
+		client.search.mockResolvedValue([1, 2, 3, 4]);
+		client.fetch.mockReturnValue(yielding({ uid: 1 }, { uid: 2 }));
 
-			// Verify listeners were added by ImapSimple constructor
-			expect(mockImap.listenerCount('mail')).toBe(1);
-			expect(mockImap.listenerCount('error')).toBe(1);
+		await connection.search({ all: true }, {}, 2);
 
-			imapSimple.end();
-
-			// All forwarding listeners should be removed
-			expect(mockImap.listenerCount('mail')).toBe(0);
-			expect(mockImap.listenerCount('alert')).toBe(0);
-
-			// A no-op error handler suppresses errors during disconnect
-			expect(mockImap.listenerCount('error')).toBe(1);
-
-			// A once-close handler forwards the final close event
-			expect(mockImap.listenerCount('close')).toBe(1);
-		});
-
-		it('should still forward the close event after end()', () => {
-			const { imapSimple, mockImap } = createImap();
-			const onClose = vi.fn();
-			imapSimple.on('close', onClose);
-
-			imapSimple.end();
-			mockImap.emit('close', false);
-
-			expect(onClose).toHaveBeenCalledWith(false);
-		});
-
-		it('should auto-remove the close handler after it fires once', () => {
-			const { imapSimple, mockImap } = createImap();
-
-			imapSimple.end();
-			mockImap.emit('close', false);
-
-			// once handler auto-removed after firing
-			expect(mockImap.listenerCount('close')).toBe(0);
-		});
+		expect(client.fetch).toHaveBeenCalledWith([1, 2], expect.anything(), { uid: true });
 	});
 
-	describe('search', () => {
-		it('should not throw if fetch emits error after end', async () => {
-			const { imapSimple, mockImap } = createImap();
+	it.each([undefined, 0])('fetches every match when the limit is %s', async (limit) => {
+		const { client, connection } = await setup();
+		client.search.mockResolvedValue([1, 2, 3]);
+		client.fetch.mockReturnValue(yielding({ uid: 1 }, { uid: 2 }, { uid: 3 }));
 
-			const fetchEmitter = new EventEmitter();
-			vi.mocked(mockImap.search).mockImplementation((_criteria, onResult) =>
-				onResult(null as unknown as Error, [1]),
-			);
-			mockImap.fetch = vi.fn(() => fetchEmitter);
+		await connection.search({ all: true }, {}, limit);
 
-			const searchPromise = imapSimple.search(['UNSEEN'], { bodies: ['BODY'] });
-
-			const messageEmitter = new EventEmitter();
-			const bodyStream = Readable.from('body');
-			fetchEmitter.emit('message', messageEmitter, 1);
-			messageEmitter.emit('body', bodyStream, { which: 'TEXT', size: 4 });
-			messageEmitter.emit('attributes', { uid: 1 });
-			await new Promise((resolve) => bodyStream.on('end', resolve));
-			messageEmitter.emit('end');
-			fetchEmitter.emit('end');
-
-			await searchPromise;
-
-			// Error after fetchOnEnd must not throw an uncaught exception
-			expect(() => fetchEmitter.emit('error', new Error('late error'))).not.toThrow();
-		});
-
-		it('should resolve with messages returned from fetch', async () => {
-			const { imapSimple, mockImap } = createImap();
-
-			const fetchEmitter = new EventEmitter();
-			const mockMessages = [{ uid: 1 }, { uid: 2 }, { uid: 3 }];
-			vi.mocked(mockImap.search).mockImplementation((_criteria, onResult) =>
-				onResult(
-					null as unknown as Error,
-					mockMessages.map((m) => m.uid),
-				),
-			);
-			mockImap.fetch = vi.fn(() => fetchEmitter);
-
-			const searchPromise = imapSimple.search(['UNSEEN', ['FROM', 'test@n8n.io']], {
-				bodies: ['BODY'],
-			});
-			expect(mockImap.search).toHaveBeenCalledWith(
-				['UNSEEN', ['FROM', 'test@n8n.io']],
-				expect.any(Function),
-			);
-
-			for (const message of mockMessages) {
-				const messageEmitter = new EventEmitter();
-				const body = 'body' + message.uid;
-				const bodyStream = Readable.from(body);
-				fetchEmitter.emit('message', messageEmitter, message.uid);
-				messageEmitter.emit('body', bodyStream, { which: 'TEXT', size: Buffer.byteLength(body) });
-				messageEmitter.emit('attributes', { uid: message.uid });
-				await new Promise((resolve) => {
-					bodyStream.on('end', resolve);
-				});
-				messageEmitter.emit('end');
-			}
-
-			fetchEmitter.emit('end');
-
-			const messages = await searchPromise;
-
-			expect(messages).toEqual([
-				{
-					attributes: { uid: 1 },
-					parts: [{ body: 'body1', size: 5, which: 'TEXT' }],
-					seqNo: 1,
-				},
-				{
-					attributes: { uid: 2 },
-					parts: [{ body: 'body2', size: 5, which: 'TEXT' }],
-					seqNo: 2,
-				},
-				{
-					attributes: { uid: 3 },
-					parts: [{ body: 'body3', size: 5, which: 'TEXT' }],
-					seqNo: 3,
-				},
-			]);
-		});
+		expect(client.fetch).toHaveBeenCalledWith([1, 2, 3], expect.anything(), { uid: true });
 	});
 
-	describe('getPartData', () => {
-		it('should not throw if fetch emits error after end', async () => {
-			const { imapSimple, mockImap } = createImap();
+	it('does not fetch when the search matched nothing', async () => {
+		const { client, connection } = await setup();
+		client.search.mockResolvedValue([]);
 
-			const fetchEmitter = new EventEmitter();
-			mockImap.fetch = vi.fn(() => fetchEmitter);
-
-			const message = { attributes: { uid: 123 } };
-			const part = mock<MessagePart>({ partID: '1.2', encoding: 'BASE64' });
-			const partDataPromise = imapSimple.getPartData(mock(message), part);
-
-			const messageEmitter = new EventEmitter();
-			const bodyStream = Readable.from('body');
-			fetchEmitter.emit('message', messageEmitter);
-			messageEmitter.emit('body', bodyStream, { which: part.partID, size: 4 });
-			messageEmitter.emit('attributes', {});
-			await new Promise((resolve) => bodyStream.on('end', resolve));
-			messageEmitter.emit('end');
-			fetchEmitter.emit('end');
-
-			await partDataPromise;
-
-			// Error after fetchOnEnd must not throw an uncaught exception
-			expect(() => fetchEmitter.emit('error', new Error('late error'))).not.toThrow();
-		});
-
-		it('should return decoded part data', async () => {
-			const { imapSimple, mockImap } = createImap();
-
-			const fetchEmitter = new EventEmitter();
-			mockImap.fetch = vi.fn(() => fetchEmitter);
-
-			const message = { attributes: { uid: 123 } };
-			const part = mock<MessagePart>({ partID: '1.2', encoding: 'BASE64' });
-
-			const partDataPromise = imapSimple.getPartData(mock(message), part);
-
-			const body = 'encoded-body';
-			const messageEmitter = new EventEmitter();
-			const bodyStream = Readable.from(body);
-
-			fetchEmitter.emit('message', messageEmitter);
-
-			messageEmitter.emit('body', bodyStream, {
-				which: part.partID,
-				size: Buffer.byteLength(body),
-			});
-			messageEmitter.emit('attributes', {});
-			await new Promise((resolve) => bodyStream.on('end', resolve));
-			messageEmitter.emit('end');
-
-			fetchEmitter.emit('end');
-
-			const result = await partDataPromise;
-			expect(PartData.fromData).toHaveBeenCalledWith('encoded-body', 'BASE64');
-			expect(result).toBe('decoded');
-		});
-
-		it('should default to 7BIT when the part encoding is missing', async () => {
-			const { imapSimple, mockImap } = createImap();
-
-			const fetchEmitter = new EventEmitter();
-			mockImap.fetch = vi.fn(() => fetchEmitter);
-
-			const message = { attributes: { uid: 123 } };
-			const part = mock<MessagePart>({ partID: '1.2', encoding: null });
-
-			const partDataPromise = imapSimple.getPartData(mock(message), part);
-
-			const body = 'plain-body';
-			const messageEmitter = new EventEmitter();
-			const bodyStream = Readable.from(body);
-
-			fetchEmitter.emit('message', messageEmitter);
-			messageEmitter.emit('body', bodyStream, {
-				which: part.partID,
-				size: Buffer.byteLength(body),
-			});
-			messageEmitter.emit('attributes', {});
-			await new Promise((resolve) => bodyStream.on('end', resolve));
-			messageEmitter.emit('end');
-
-			fetchEmitter.emit('end');
-
-			const result = await partDataPromise;
-			expect(PartData.fromData).toHaveBeenCalledWith('plain-body', '7BIT');
-			expect(result).toBe('decoded');
-		});
+		await expect(connection.search({ all: true }, {})).resolves.toEqual([]);
+		expect(client.fetch).not.toHaveBeenCalled();
 	});
 
-	describe('openBox', () => {
-		it('should open the mailbox', async () => {
-			const { imapSimple, mockImap } = createImap();
-			const box = mock<Box>({ name: 'INBOX' });
-			vi.mocked(mockImap.openBox).mockImplementation((_boxName, onOpen) =>
-				onOpen(null as unknown as Error, box),
-			);
-			await expect(imapSimple.openBox('INBOX')).resolves.toEqual(box);
-		});
+	it('returns nothing when the fetch yields nothing on a live connection', async () => {
+		const { client, connection } = await setup();
+		client.search.mockResolvedValue([1]);
+		client.fetch.mockReturnValue(yielding());
 
-		it('should reject on error', async () => {
-			const { imapSimple, mockImap } = createImap();
-			vi.mocked(mockImap.openBox).mockImplementation((_boxName, onOpen) =>
-				onOpen(new Error('nope')),
-			);
-			await expect(imapSimple.openBox('INBOX')).rejects.toThrow('nope');
-		});
+		await expect(connection.search({ all: true }, {})).resolves.toEqual([]);
 	});
 
-	describe('closeBox', () => {
-		it('should close the mailbox with default autoExpunge=true', async () => {
-			const { imapSimple, mockImap } = createImap();
-			vi.mocked(mockImap.closeBox).mockImplementation((_expunge, onClose) =>
-				onClose(null as unknown as Error),
-			);
-			await expect(imapSimple.closeBox()).resolves.toBeUndefined();
-			expect(mockImap.closeBox).toHaveBeenCalledWith(true, expect.any(Function));
-		});
+	it('throws ConnectionLostError when the fetch yields nothing on a dead connection', async () => {
+		const { client, connection } = await setup();
+		client.search.mockResolvedValue([1]);
+		client.fetch.mockReturnValue(yielding());
+		client.usable = false;
 
-		it('should close the mailbox with autoExpunge=false', async () => {
-			const { imapSimple, mockImap } = createImap();
-			vi.mocked(mockImap.closeBox).mockImplementation((_expunge, onClose) =>
-				onClose(null as unknown as Error),
-			);
-			await expect(imapSimple.closeBox(false)).resolves.toBeUndefined();
-			expect(mockImap.closeBox).toHaveBeenCalledWith(false, expect.any(Function));
-		});
-
-		it('should reject on error', async () => {
-			const { imapSimple, mockImap } = createImap();
-			vi.mocked(mockImap.closeBox).mockImplementation((_expunge, onClose) =>
-				onClose(new Error('fail')),
-			);
-			await expect(imapSimple.closeBox()).rejects.toThrow('fail');
-		});
+		await expect(connection.search({ all: true }, {})).rejects.toThrow(ConnectionLostError);
 	});
 
-	describe('addFlags', () => {
-		it('should add flags to messages and resolve', async () => {
-			const { imapSimple, mockImap } = createImap();
-			vi.mocked(mockImap.addFlags).mockImplementation((_uids, _flags, onAdd) =>
-				onAdd(null as unknown as Error),
-			);
+	it('throws ConnectionLostError when the search settles false on a dead connection', async () => {
+		const { client, connection } = await setup();
+		client.search.mockResolvedValue(false);
+		client.usable = false;
 
-			await expect(imapSimple.addFlags([1, 2], ['\\Seen'])).resolves.toBeUndefined();
-			expect(mockImap.addFlags).toHaveBeenCalledWith([1, 2], ['\\Seen'], expect.any(Function));
-		});
-
-		it('should reject on error', async () => {
-			const { imapSimple, mockImap } = createImap();
-			vi.mocked(mockImap.addFlags).mockImplementation((_uids, _flags, onAdd) =>
-				onAdd(new Error('add flags failed')),
-			);
-
-			await expect(imapSimple.addFlags([1], '\\Seen')).rejects.toThrow('add flags failed');
-		});
+		await expect(connection.search({ all: true }, {})).rejects.toThrow(ConnectionLostError);
 	});
 
-	describe('getBoxes', () => {
-		it('should resolve with list of mailboxes', async () => {
-			const { imapSimple, mockImap } = createImap();
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const boxes = mock<MailBoxes>({ INBOX: {}, Archive: {} });
+	it('names the command when the search settles false on a live connection', async () => {
+		const { client, connection } = await setup();
+		client.search.mockResolvedValue(false);
 
-			vi.mocked(mockImap.getBoxes).mockImplementation((onBoxes) =>
-				onBoxes(null as unknown as Error, boxes),
-			);
+		await expect(connection.search({ all: true }, {})).rejects.toThrow(
+			'IMAP SEARCH did not complete',
+		);
+	});
+});
 
-			await expect(imapSimple.getBoxes()).resolves.toEqual(boxes);
-			expect(mockImap.getBoxes).toHaveBeenCalledWith(expect.any(Function));
+describe('downloadText', () => {
+	const alternative = {
+		type: 'multipart/alternative',
+		childNodes: [
+			{ type: 'text/plain', part: '1' },
+			{ type: 'text/html', part: '2' },
+		],
+	} as MessageStructureObject;
+
+	it('downloads the part of the requested subtype', async () => {
+		const { client, connection } = await setup();
+		client.download.mockResolvedValue({
+			content: yielding(Buffer.from('<p>hello '), Buffer.from('world</p>')),
 		});
 
-		it('should reject on error', async () => {
-			const { imapSimple, mockImap } = createImap();
+		const text = await connection.downloadText(aMessage(42, alternative), 'html');
 
-			vi.mocked(mockImap.getBoxes).mockImplementation((onBoxes) =>
-				onBoxes(new Error('getBoxes failed')),
-			);
+		expect(client.download).toHaveBeenCalledWith('42', '2', expect.objectContaining({ uid: true }));
+		expect(text).toBe('<p>hello world</p>');
+	});
 
-			await expect(imapSimple.getBoxes()).rejects.toThrow('getBoxes failed');
+	it('accepts string chunks', async () => {
+		const { client, connection } = await setup();
+		client.download.mockResolvedValue({ content: yielding('hello world') });
+
+		expect(await connection.downloadText(aMessage(42, alternative), 'plain')).toBe('hello world');
+	});
+
+	it('returns nothing when the message has no such part', async () => {
+		const { client, connection } = await setup();
+
+		expect(await connection.downloadText(aMessage(42, alternative), 'calendar')).toBe('');
+		expect(client.download).not.toHaveBeenCalled();
+	});
+
+	it('returns nothing when the message has no structure', async () => {
+		const { connection } = await setup();
+
+		expect(await connection.downloadText(aMessage(42), 'plain')).toBe('');
+	});
+
+	it('returns nothing when the part cannot be downloaded', async () => {
+		const { client, connection } = await setup();
+		client.download.mockRejectedValue(new Error('NO [SERVERBUG]'));
+
+		expect(await connection.downloadText(aMessage(42, alternative), 'plain')).toBe('');
+	});
+
+	it('throws ConnectionLostError when the connection died under the download', async () => {
+		const { client, connection } = await setup();
+		client.download.mockRejectedValue(new Error('socket hang up'));
+		client.usable = false;
+
+		await expect(connection.downloadText(aMessage(42, alternative), 'plain')).rejects.toThrow(
+			ConnectionLostError,
+		);
+	});
+
+	it('throws ConnectionLostError when the stream ended because the connection went away', async () => {
+		const { client, connection } = await setup();
+		client.download.mockResolvedValue({ content: yielding(Buffer.from('<p>hello ')) });
+		client.usable = false;
+
+		await expect(connection.downloadText(aMessage(42, alternative), 'html')).rejects.toThrow(
+			ConnectionLostError,
+		);
+	});
+
+	it('propagates a ConnectionLostError raised by the download itself', async () => {
+		const { client, connection } = await setup();
+		client.download.mockRejectedValue(new ConnectionLostError());
+
+		await expect(connection.downloadText(aMessage(42, alternative), 'plain')).rejects.toThrow(
+			ConnectionLostError,
+		);
+	});
+});
+
+describe('downloadAttachments', () => {
+	const withAttachments = {
+		type: 'multipart/mixed',
+		childNodes: [
+			{ type: 'text/plain', part: '1' },
+			{
+				type: 'application/pdf',
+				part: '2',
+				disposition: 'attachment',
+				dispositionParameters: { filename: 'invoice.pdf' },
+			},
+			{ type: 'image/png', part: '3', disposition: 'attachment' },
+		],
+	} as MessageStructureObject;
+
+	it('fetches every attachment part at once, with the filename the server reported', async () => {
+		const { client, connection } = await setup();
+		client.downloadMany.mockResolvedValue({
+			'2': {
+				meta: { filename: 'invoice.pdf', contentType: 'application/pdf' },
+				content: Buffer.from('pdf bytes'),
+			},
+			'3': { meta: {}, content: Buffer.from('png bytes') },
 		});
+
+		const attachments = await connection.downloadAttachments(aMessage(42, withAttachments));
+
+		expect(client.downloadMany).toHaveBeenCalledWith('42', ['2', '3'], { uid: true });
+		expect(attachments).toEqual([
+			{
+				filename: 'invoice.pdf',
+				contentType: 'application/pdf',
+				content: Buffer.from('pdf bytes'),
+			},
+			{
+				filename: undefined,
+				contentType: undefined,
+				content: Buffer.from('png bytes'),
+			},
+		]);
+	});
+
+	// downloadMany would ask for BODY[1], which a server may answer with NIL - aborting the
+	// whole batch before the UID watermark advances, so the message is retried forever.
+	it('routes a message that is itself the attachment through download', async () => {
+		const { client, connection } = await setup();
+		const bareAttachment = {
+			type: 'application/pdf',
+			disposition: 'attachment',
+		} as MessageStructureObject;
+		client.download.mockResolvedValue({
+			meta: { filename: 'scan.pdf', contentType: 'application/pdf' },
+			content: yielding(Buffer.from('pdf bytes')),
+		});
+
+		const attachments = await connection.downloadAttachments(aMessage(42, bareAttachment));
+
+		expect(client.downloadMany).not.toHaveBeenCalled();
+		expect(client.download).toHaveBeenCalledWith('42', '1', expect.objectContaining({ uid: true }));
+		expect(attachments).toEqual([
+			{
+				filename: 'scan.pdf',
+				contentType: 'application/pdf',
+				content: Buffer.from('pdf bytes'),
+			},
+		]);
+	});
+
+	it('returns nothing when the message has no structure', async () => {
+		const { client, connection } = await setup();
+
+		expect(await connection.downloadAttachments(aMessage(42))).toEqual([]);
+		expect(client.downloadMany).not.toHaveBeenCalled();
+	});
+
+	it('returns nothing when the message has no attachment part', async () => {
+		const { client, connection } = await setup();
+		const inlineOnly = { type: 'text/plain' } as MessageStructureObject;
+
+		expect(await connection.downloadAttachments(aMessage(42, inlineOnly))).toEqual([]);
+		expect(client.downloadMany).not.toHaveBeenCalled();
+	});
+
+	it('throws ConnectionLostError when a part comes back empty on a dead connection', async () => {
+		const { client, connection } = await setup();
+		client.downloadMany.mockResolvedValue({ '2': { meta: {}, content: null } });
+		client.usable = false;
+
+		await expect(connection.downloadAttachments(aMessage(42, withAttachments))).rejects.toThrow(
+			ConnectionLostError,
+		);
+	});
+
+	it('names the command when a part comes back empty on a live connection', async () => {
+		const { client, connection } = await setup();
+		client.downloadMany.mockResolvedValue({});
+
+		await expect(connection.downloadAttachments(aMessage(42, withAttachments))).rejects.toThrow(
+			'IMAP FETCH did not complete',
+		);
+	});
+});
+
+describe('addFlags', () => {
+	it('stores the flags against the uids as a sequence set', async () => {
+		const { client, connection } = await setup();
+		client.messageFlagsAdd.mockResolvedValue(true);
+
+		await connection.addFlags([1, 2, 3], ['\\Seen']);
+
+		expect(client.messageFlagsAdd).toHaveBeenCalledWith('1,2,3', ['\\Seen'], { uid: true });
+	});
+
+	it('does nothing without uids', async () => {
+		const { client, connection } = await setup();
+
+		await connection.addFlags([], ['\\Seen']);
+
+		expect(client.messageFlagsAdd).not.toHaveBeenCalled();
+	});
+
+	it('reports a store the server refused, such as a read-only mailbox', async () => {
+		const { client, connection } = await setup();
+		client.messageFlagsAdd.mockResolvedValue(false);
+
+		await expect(connection.addFlags([1], ['\\Seen'])).rejects.toThrow('STORE');
+	});
+
+	it('throws ConnectionLostError on a false result from a dead connection', async () => {
+		const { client, connection } = await setup();
+		client.messageFlagsAdd.mockResolvedValue(false);
+		client.usable = false;
+
+		await expect(connection.addFlags([1], ['\\Seen'])).rejects.toThrow(ConnectionLostError);
+	});
+});
+
+describe('list', () => {
+	it('lists the mailboxes', async () => {
+		const { client, connection } = await setup();
+		client.list.mockResolvedValue([{ path: 'INBOX' }]);
+
+		await expect(connection.list()).resolves.toEqual([{ path: 'INBOX' }]);
+	});
+});
+
+describe('openBox', () => {
+	it('hands back the mailbox, backlog included', async () => {
+		const { client, connection } = await setup();
+		client.mailboxOpen.mockResolvedValue({ path: 'INBOX', exists: 3 });
+
+		await expect(connection.openBox('INBOX')).resolves.toEqual({ path: 'INBOX', exists: 3 });
+	});
+
+	it('names the command when the select does not complete', async () => {
+		const { client, connection } = await setup();
+		client.mailboxOpen.mockResolvedValue(false);
+
+		await expect(connection.openBox('INBOX')).rejects.toThrow('IMAP SELECT did not complete');
+	});
+
+	it('throws ConnectionLostError when the select does not complete on a dead connection', async () => {
+		const { client, connection } = await setup();
+		client.mailboxOpen.mockResolvedValue(false);
+		client.usable = false;
+
+		await expect(connection.openBox('INBOX')).rejects.toThrow(ConnectionLostError);
+	});
+});
+
+describe('events', () => {
+	it('forwards flag changes', async () => {
+		const { client, connection } = await setup();
+		const listener = vi.fn();
+		connection.onFlags(listener);
+		const event = { path: 'INBOX', seq: 1, flags: new Set(['\\Seen']) };
+
+		client.emit('flags', event);
+
+		expect(listener).toHaveBeenCalledWith(event);
+	});
+
+	it('forwards error', async () => {
+		const { client, connection } = await setup();
+		const listener = vi.fn();
+		connection.onError(listener);
+
+		client.emit('error', new Error('boom'));
+
+		expect(listener).toHaveBeenCalled();
+	});
+
+	// This used to be an EventEmitter, where an error with no listener throws ERR_UNHANDLED_ERROR
+	// — for a credential test that surfaced as an uncaughtException long after it had returned.
+	it('drops an error nobody asked to hear about instead of throwing', async () => {
+		const { client } = await setup();
+
+		expect(() => client.emit('error', new Error('boom'))).not.toThrow();
+	});
+
+	it('forwards close', async () => {
+		const { client, connection } = await setup();
+		const listener = vi.fn();
+		connection.onClose(listener);
+
+		client.emit('close');
+
+		expect(listener).toHaveBeenCalled();
+	});
+
+	it('reports a close nobody asked for as dropped', async () => {
+		const { client, connection } = await setup();
+		const listener = vi.fn();
+		connection.onClose(listener);
+
+		client.emit('close');
+
+		expect(listener).toHaveBeenCalledWith('dropped', undefined);
+	});
+
+	it('reports a close that follows an error as its consequence', async () => {
+		const { client, connection } = await setup();
+		const listener = vi.fn();
+		connection.onError(vi.fn());
+		connection.onClose(listener);
+
+		client.emit('error', new Error('read ECONNRESET'));
+		client.emit('close');
+
+		expect(listener).toHaveBeenCalledWith('error', undefined);
+	});
+
+	it('reports a close the caller asked for as ended', async () => {
+		const { client, connection } = await setup();
+		const listener = vi.fn();
+		connection.onClose(listener);
+
+		connection.end();
+		client.emit('close');
+
+		expect(listener).toHaveBeenCalledWith('ended', undefined);
+		expect(connection.endedByCaller).toBe(true);
+	});
+
+	it('stays silent once it has closed', async () => {
+		const { client, connection } = await setup();
+		const onError = vi.fn();
+		const onArrival = vi.fn().mockResolvedValue(undefined);
+		const onClose = vi.fn();
+		connection.onError(onError);
+		connection.onClose(onClose);
+		connection.onArrival(onArrival);
+
+		client.emit('close');
+		client.emit('close');
+		client.emit('error', new Error('too late'));
+		client.emit('exists', { path: 'INBOX', count: 1, prevCount: 0 });
+		await Promise.resolve();
+
+		expect(onClose).toHaveBeenCalledTimes(1);
+		expect(onError).not.toHaveBeenCalled();
+		expect(onArrival).not.toHaveBeenCalled();
+	});
+});
+
+describe('arrivals', () => {
+	const arrival = { path: 'INBOX', count: 2, prevCount: 1 };
+
+	it('runs the handler when the mailbox grows', async () => {
+		const { client, connection } = await setup();
+		const handler = vi.fn().mockResolvedValue(undefined);
+		connection.onArrival(handler);
+
+		client.emit('exists', arrival);
+		await vi.waitFor(() => expect(handler).toHaveBeenCalledWith({ count: 1 }));
+	});
+
+	it('ignores a report that only counts expunged messages', async () => {
+		const { client, connection } = await setup();
+		const handler = vi.fn().mockResolvedValue(undefined);
+		connection.onArrival(handler);
+
+		client.emit('exists', { path: 'INBOX', count: 1, prevCount: 3 });
+		await Promise.resolve();
+
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('runs one handler at a time, in the order the arrivals came', async () => {
+		const { client, connection } = await setup();
+		const order: string[] = [];
+		connection.onArrival(async ({ count }) => {
+			order.push(`${count}:start`);
+			await Promise.resolve();
+			order.push(`${count}:end`);
+		});
+
+		client.emit('exists', { path: 'INBOX', count: 1, prevCount: 0 });
+		client.emit('exists', { path: 'INBOX', count: 3, prevCount: 1 });
+		await vi.waitFor(() => expect(order).toHaveLength(4));
+
+		expect(order).toEqual(['1:start', '1:end', '2:start', '2:end']);
+	});
+
+	it('reports a handler that throws, and keeps taking arrivals', async () => {
+		const { client, connection } = await setup();
+		const onError = vi.fn();
+		connection.onError(onError);
+		const handler = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('boom'))
+			.mockResolvedValueOnce(undefined);
+		connection.onArrival(handler);
+
+		client.emit('exists', arrival);
+		await vi.waitFor(() =>
+			expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' })),
+		);
+
+		client.emit('exists', { path: 'INBOX', count: 3, prevCount: 2 });
+		await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(2));
 	});
 });

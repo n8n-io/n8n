@@ -82,12 +82,18 @@ const onBackClick = () => {
 };
 
 const scopeTypes = computed(() => {
-	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
-		return SCOPE_TYPES.filter(
-			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
-		);
+	let types = SCOPE_TYPES;
+	if (!settingsStore.isAppsEnabled) {
+		types = types.filter((type) => type !== 'app');
 	}
-	return SCOPE_TYPES;
+	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
+		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');
+	}
+	// Project skills exist only while the agents module is on.
+	if (!settingsStore.isModuleActive('agents')) {
+		types = types.filter((type) => type !== 'projectSkill');
+	}
+	return types;
 });
 const scopes = SCOPES;
 
@@ -121,6 +127,26 @@ function toggleScope(scope: string) {
 		if (form.value.scopes.includes('workflow:execute')) {
 			toggleScope('workflow:execute');
 		}
+	}
+
+	// Executions: viewing follows workflow viewing and cannot be toggled on its own
+	// (its checkbox is disabled); deleting requires viewing.
+	if (scope === 'workflow:read') {
+		if (isBeingAdded && !form.value.scopes.includes('execution:read')) {
+			toggleScope('execution:read');
+		}
+		if (!isBeingAdded) {
+			if (form.value.scopes.includes('execution:read')) toggleScope('execution:read');
+			if (form.value.scopes.includes('execution:delete')) toggleScope('execution:delete');
+		}
+	}
+
+	if (
+		scope === 'execution:delete' &&
+		isBeingAdded &&
+		!form.value.scopes.includes('workflow:read')
+	) {
+		toggleScope('workflow:read');
 	}
 
 	// Dependency: workflow:publish and workflow:unpublish are coupled
@@ -342,13 +368,13 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 				</N8nText>
 
 				<div class="mb-s" :class="$style.presetsContainer">
-					<N8nButton variant="subtle" @click="setPreset('project:admin')">
+					<N8nButton variant="outline" @click="setPreset('project:admin')">
 						{{ i18n.baseText('projectRoles.admin') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:editor')">
+					<N8nButton variant="outline" @click="setPreset('project:editor')">
 						{{ i18n.baseText('projectRoles.editor') }}
 					</N8nButton>
-					<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+					<N8nButton variant="outline" @click="setPreset('project:viewer')">
 						{{ i18n.baseText('projectRoles.viewer') }}
 					</N8nButton>
 				</div>
@@ -376,7 +402,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 										validate-on-blur
 										type="checkbox"
 										:class="$style.checkbox"
-										:disabled="isReadOnly"
+										:disabled="isReadOnly || scope === 'execution:read'"
 										@update:model-value="() => toggleScope(scope)"
 									/>
 								</N8nTooltip>

@@ -16,7 +16,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import type {
 	DragTarget,
 	DropTarget,
@@ -51,7 +51,8 @@ import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/tr
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { useAgentListStore } from '@/features/agents/agentList.store';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import type {
 	BaseFilters,
@@ -64,12 +65,14 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT } from '@/app/constants/experiments';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
@@ -79,9 +82,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import type { ToggleWorkflowsMcpAccessResponse } from '@/features/ai/mcpAccess/mcp.api';
+import {
+	MCP_SETTINGS_VIEW,
+	useMCPStore,
+	type ToggleWorkflowsMcpAccessResponse,
+} from '@n8n/frontend-module-mcp';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -92,6 +97,7 @@ import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
@@ -111,7 +117,6 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
@@ -168,6 +173,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
+const agentListStore = useAgentListStore();
 const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
@@ -398,10 +404,6 @@ const currentBreadcrumbsProjectName = computed(() => {
 		? i18n.baseText('projects.menu.personal')
 		: project.name;
 });
-
-const currentParentName = computed(
-	() => currentFolder.value?.name ?? currentBreadcrumbsProjectName.value,
-);
 
 const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	const project = currentBreadcrumbsProject.value;
@@ -647,12 +649,21 @@ watch([() => route.params?.projectId, () => route.name], async () => {
 	}
 });
 
+let isClearingSearchOnFolderChange = false;
+
 watch(
 	() => route.params?.folderId,
 	async (newVal) => {
 		currentFolderId.value = newVal as string;
 		filters.value.search = '';
-		saveFiltersOnQueryString();
+		// A route-name change can run initialize() before the URL drops the old
+		// search term. Stop it from restoring that term from the stale URL.
+		isClearingSearchOnFolderChange = true;
+		try {
+			await saveFiltersOnQueryString();
+		} finally {
+			isClearingSearchOnFolderChange = false;
+		}
 		await Promise.all([
 			fetchWorkflows(),
 			foldersStore.fetchTotalWorkflowsAndFoldersCount(
@@ -668,6 +679,11 @@ sourceControlStore.$onAction(({ name, after }) => {
 	after(async () => await initialize());
 });
 
+/** The project header leaves the page when the package removed this project. */
+async function onPromotionApplied() {
+	await initialize();
+}
+
 const refreshWorkflows = async () => {
 	await Promise.all([
 		fetchWorkflows(),
@@ -676,6 +692,11 @@ const refreshWorkflows = async () => {
 			currentFolderId.value ?? undefined,
 		),
 	]);
+};
+
+const onFolderCreated = async (payload: { projectId: string }) => {
+	if (currentBreadcrumbsProject.value?.id !== payload.projectId) return;
+	await refreshWorkflows();
 };
 
 const onFolderDeleted = async (payload: {
@@ -751,9 +772,12 @@ onMounted(async () => {
 	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.on('folder-created', onFolderCreated);
+	promotionEventBus.on('applied', onPromotionApplied);
 });
 
 onBeforeUnmount(() => {
+	promotionEventBus.off('applied', onPromotionApplied);
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
@@ -761,6 +785,7 @@ onBeforeUnmount(() => {
 	workflowListEventBus.off('folder-transferred', onFolderTransferred);
 	workflowListEventBus.off('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.off('workflow-transferred', onWorkflowTransferred);
+	foldersEventBus.off('folder-created', onFolderCreated);
 });
 
 /**
@@ -781,6 +806,7 @@ const fetchEmptyStateData = async () => {
 			credentialsStore.fetchAllCredentials(),
 			variablesEnabled ? environmentsStore.fetchAllVariables() : Promise.resolve(),
 			dataTablesEnabled ? dataTableStore.fetchDataTables('', 1, 1) : Promise.resolve(),
+			settingsStore.isAgentsEnabled ? agentListStore.fetchTotalCount() : Promise.resolve(),
 		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching.emptyStateData'));
@@ -968,7 +994,7 @@ const getParentFolderId = (routeId?: string) => {
 // Filter and sort methods
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
-	saveFiltersOnQueryString();
+	void saveFiltersOnQueryString();
 	if (!loading.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 	}
@@ -976,7 +1002,7 @@ const onFiltersUpdated = async () => {
 
 const onSearchUpdated = async (search: string) => {
 	currentPage.value = 1;
-	saveFiltersOnQueryString();
+	void saveFiltersOnQueryString();
 	if (search) {
 		await callDebounced(fetchWorkflows, { debounceTime: SEARCH_DEBOUNCE_TIME, trailing: true });
 	} else {
@@ -1008,14 +1034,14 @@ const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
 		currentPage.value = 1;
-		saveFiltersOnQueryString();
+		void saveFiltersOnQueryString();
 		await fetchWorkflows();
 	}
 };
 
 // Query string methods
 
-const saveFiltersOnQueryString = () => {
+const saveFiltersOnQueryString = async () => {
 	// Get current query parameters
 	const currentQuery = { ...route.query };
 
@@ -1050,12 +1076,13 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.homeProject;
 	}
 
-	void router.replace({
+	await router.replace({
 		query: Object.keys(currentQuery).length ? currentQuery : undefined,
 	});
 };
 
 const setFiltersFromQueryString = async () => {
+	const { fullPath } = route;
 	const newQuery: LocationQueryRaw = { ...route.query };
 	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
 
@@ -1077,7 +1104,7 @@ const setFiltersFromQueryString = async () => {
 	}
 
 	// Handle search
-	if (isValidString(search)) {
+	if (isValidString(search) && !isClearingSearchOnFolderChange) {
 		newQuery.search = search;
 		filters.value.search = search;
 	} else {
@@ -1126,7 +1153,13 @@ const setFiltersFromQueryString = async () => {
 		filters.value.showArchived = false;
 	}
 
-	void router.replace({ query: newQuery });
+	// The route changed while the stores loaded. Do not write this query onto the new route.
+	if (route.fullPath !== fullPath) return;
+
+	// A replace cancels any pending navigation, e.g. a tab click made while this view loads.
+	if (!isEqual(newQuery, route.query)) {
+		void router.replace({ query: newQuery });
+	}
 };
 
 // Misc methods
@@ -1280,6 +1313,19 @@ const onWorkflowUnpublished = async (data: { id: string }) => {
 	workflow.activeVersionId = null;
 	// A stale server-derived status would keep the card indicator lit; clear it too.
 	workflow.publicationStatus = undefined;
+};
+
+const onWorkflowPublished = async (data: { id: string }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+
+	// Refresh the item so activeVersionId reflects the newly published version.
+	// Publication status updates separately via the publication-status push.
+	const updated = await workflowsListStore.fetchWorkflow(data.id).catch(() => null);
+	if (!updated) return;
+	workflow.activeVersionId = updated.activeVersionId ?? null;
 };
 
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
@@ -2231,30 +2277,6 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="showRegisteredCommunityCTA" #add-button>
-			<N8nTooltip placement="top">
-				<template #content>
-					<span>
-						{{
-							currentParentName
-								? i18n.baseText('folders.add.to.parent.message', {
-										interpolate: { parent: currentParentName },
-									})
-								: i18n.baseText('folders.add.here.message')
-						}}
-					</span>
-				</template>
-				<N8nButton
-					variant="outline"
-					size="medium"
-					iconOnly
-					icon="folder-plus"
-					:aria-label="i18n.baseText('workflows.addFolder')"
-					data-test-id="add-folder-button"
-					@click="createFolderInCurrent"
-				/>
-			</N8nTooltip>
-		</template>
 		<template #callout>
 			<N8nCallout
 				v-if="showAIStarterCollectionCallout"
@@ -2266,7 +2288,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="createAIStarterWorkflows('callout')"
@@ -2304,7 +2326,7 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							data-test-id="easy-ai-button"
 							size="small"
 							@click="handleCreateReadyToRunWorkflows('callout')"
@@ -2448,6 +2470,7 @@ const onNameSubmit = async (name: string) => {
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
 					@workflow:unpublished="onWorkflowUnpublished"
+					@workflow:published="onWorkflowPublished"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
@@ -2575,6 +2598,8 @@ const onNameSubmit = async (name: string) => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .easy-ai-workflow-callout {
 	// Make the callout padding in line with workflow cards
 	margin-top: var(--spacing--xs);

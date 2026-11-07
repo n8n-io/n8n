@@ -3,8 +3,10 @@ import type { Mock } from 'vitest';
 import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
-import { createDataTablesTool } from '../data-tables.tool';
+import { createDataTableTool } from '../data-tables.tool';
+import { createDataTableToolRouter } from './data-table-tools-test-utils';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,13 +53,236 @@ function noSuspendCtx() {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe('data-tables tool', () => {
+describe('data table tools', () => {
+	it.each([true, false])(
+		'resumes a saved row deletion without display names when approved=%s',
+		async (approved) => {
+			const context = createMockContext();
+			const resolveTableReference = vi.fn().mockRejectedValue(new Error('Lookup unavailable'));
+			context.dataTableService.resolveTableReference = resolveTableReference;
+			const tool = createDataTableTool(context, 'delete-rows');
+			const savedInput = {
+				dataTableId: 'dt-1',
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'status', condition: 'eq', value: 'inactive' }],
+				},
+			};
+			const input: unknown = (tool.inputSchema as z.ZodType).parse(savedInput);
+			const suspend = vi.fn();
+			const result = await executeTool(tool, input, { resumeData: { approved }, suspend });
+
+			expect(input).toEqual(savedInput);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(resolveTableReference).not.toHaveBeenCalled();
+			if (approved) {
+				expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
+					'dt-1',
+					savedInput.filter,
+					{ projectId: undefined },
+				);
+			} else {
+				expect(result).toMatchObject({ denied: true });
+				expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it.each([
+		{ condition: 'like', value: 'Alice', description: 'contains "Alice" (matching case)' },
+		{ condition: 'ilike', value: 'Alice', description: 'contains "Alice" (ignoring case)' },
+		{ condition: 'like', value: 'Alice%', description: 'matches the text pattern "Alice%"' },
+		{
+			condition: 'ilike',
+			value: '%Alice',
+			description: 'matches the text pattern (ignoring case) "%Alice"',
+		},
+	])(
+		'describes $condition filters with value=$value',
+		async ({ condition, value, description }) => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTableToolRouter(context),
+				{
+					action: 'delete-rows',
+					dataTableId: 'dt-1',
+					filter: { type: 'and', filters: [{ columnName: 'name', condition, value }] },
+				},
+				{ suspend },
+			);
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({ message: `Delete rows where "name" ${description}` }),
+			);
+			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
+		},
+	);
+
+	it('builds the approval card from the input without a table lookup', async () => {
+		const context = createMockContext();
+		context.dataTableService.resolveTableReference = vi.fn();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTableToolRouter(context),
+			{ action: 'delete', dataTableId: 'dt-legacy' },
+			{ suspend },
+		);
+		expect(context.dataTableService.resolveTableReference).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Permanently delete the table and all its rows',
+				resourceName: 'dt-legacy',
+				severity: 'destructive',
+			}),
+		);
+		expect(context.dataTableService.delete).not.toHaveBeenCalled();
+	});
+
+	it('shows the column name passed by the agent in a column deletion', async () => {
+		const context = createMockContext();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTableToolRouter(context),
+			{
+				action: 'delete-column',
+				dataTableId: 'dt-1',
+				dataTableName: 'Contacts',
+				columnId: 'col-1',
+				currentColumnName: 'email',
+			},
+			{ suspend },
+		);
+		expect(context.dataTableService.getSchema).not.toHaveBeenCalled();
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Delete column "email" and its values',
+				resourceName: 'Contacts',
+			}),
+		);
+	});
+
+	it('describes cleared values and caps the listed columns in a row update', async () => {
+		const context = createMockContext();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTableToolRouter(context),
+			{
+				action: 'update-rows',
+				dataTableId: 'dt-1',
+				dataTableName: 'Contacts',
+				filter: { type: 'and', filters: [] },
+				data: { a: null, b: 1, c: 2, d: 3, e: 4, f: 5, g: 6 },
+			},
+			{ suspend },
+		);
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message:
+					'Set "a" to no value, "b" to 1, "c" to 2, "d" to 3, "e" to 4, 2 more columns in all rows',
+				resourceName: 'Contacts',
+			}),
+		);
+	});
+
+	it('states when a saved row update affects all rows', async () => {
+		const context = createMockContext();
+		const suspend = vi.fn();
+		await executeTool(
+			createDataTableToolRouter(context),
+			{
+				action: 'update-rows',
+				dataTableId: 'dt-1',
+				dataTableName: 'Contacts',
+				filter: { type: 'and', filters: [] },
+				data: { status: 'archived' },
+			},
+			{ suspend },
+		);
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: 'Set "status" to "archived" in all rows',
+				resourceName: 'Contacts',
+			}),
+		);
+		expect(context.dataTableService.updateRows).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ condition: 'eq', value: null, description: '"status" has no value' },
+		{ condition: 'neq', value: null, description: '"status" has a value' },
+		{ condition: 'eq', value: 'null', description: '"status" is "null"' },
+	])(
+		'distinguishes missing values from text in $condition filters',
+		async ({ condition, value, description }) => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTableToolRouter(context),
+				{
+					action: 'delete-rows',
+					dataTableId: 'dt-1',
+					dataTableName: 'Contacts',
+					filter: { type: 'and', filters: [{ columnName: 'status', condition, value }] },
+				},
+				{ suspend },
+			);
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: `Delete rows where ${description}`,
+					resourceName: 'Contacts',
+				}),
+			);
+		},
+	);
+
+	it.each([
+		{ input: { action: 'delete' }, method: 'delete' },
+		{ input: { action: 'add-column', columnName: 'email', type: 'string' }, method: 'addColumn' },
+		{ input: { action: 'delete-column', columnId: 'col-1' }, method: 'deleteColumn' },
+		{
+			input: { action: 'rename-column', columnId: 'col-1', newName: 'mail' },
+			method: 'renameColumn',
+		},
+		{ input: { action: 'insert-rows', rows: [{ email: 'a@b.c' }] }, method: 'insertRows' },
+		{
+			input: { action: 'update-rows', filter: { type: 'and', filters: [] }, data: { a: 1 } },
+			method: 'updateRows',
+		},
+		{
+			input: { action: 'delete-rows', filter: { type: 'and', filters: [] } },
+			method: 'deleteRows',
+		},
+	] as const)(
+		'rejects $input.action outside the thread project before asking for approval',
+		async ({ input, method }) => {
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+			const context = createMockContext({ assertInThreadProject });
+			const suspend = vi.fn();
+
+			await expect(
+				executeTool(
+					createDataTableToolRouter(context),
+					{ ...input, dataTableId: 'Contacts', projectId: 'proj-2' },
+					suspendCtx(suspend),
+				),
+			).rejects.toThrow(OutsideThreadProjectError);
+
+			expect(assertInThreadProject).toHaveBeenCalledWith({
+				kind: 'data-table',
+				id: 'Contacts',
+				projectId: 'proj-2',
+			});
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.dataTableService[method]).not.toHaveBeenCalled();
+		},
+	);
+
 	// ── Tool construction ──────────────────────────────────────────────────
 
 	describe('tool construction', () => {
 		it('should require loading data-table-manager before use', () => {
 			const context = createMockContext();
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableTool(context, 'list');
 
 			expect(tool.description).toContain('data tables');
 			expect(tool.description).toContain('data-table-manager');
@@ -71,7 +296,7 @@ describe('data-tables tool', () => {
 		// the "Always allow" grant would never reach the handler.
 		it('resume schema declares scope so the SDK preserves it on resume', () => {
 			const context = createMockContext();
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableTool(context, 'delete-rows');
 
 			const parsed: unknown = (tool.resumeSchema as z.ZodTypeAny).parse({
 				approved: true,
@@ -97,7 +322,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.list as Mock).mockResolvedValue(tables);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
 
 			expect(context.dataTableService.list).toHaveBeenCalledWith({ projectId: undefined });
@@ -108,7 +333,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.list as Mock).mockResolvedValue([]);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, { action: 'list' as const, projectId: 'proj-1' }, noSuspendCtx());
 
 			expect(context.dataTableService.list).toHaveBeenCalledWith({ projectId: 'proj-1' });
@@ -126,7 +351,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.getSchema as Mock).mockResolvedValue(columns);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'schema' as const, dataTableId: 'dt-1' },
@@ -153,7 +378,7 @@ describe('data-tables tool', () => {
 			});
 			(context.dataTableService.getSchema as Mock).mockResolvedValue(columns);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'schema' as const, dataTableId: 'Signups', projectId: 'proj-1' },
@@ -186,7 +411,7 @@ describe('data-tables tool', () => {
 				filters: [{ columnName: 'email', condition: 'eq' as const, value: 'a@b.com' }],
 			};
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', filter, limit: 10, offset: 0 },
@@ -211,7 +436,7 @@ describe('data-tables tool', () => {
 				filters: [{ columnName: 'name', condition: 'ilike' as const, value: '%Vivo%' }],
 			};
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', filter, limit: 5 },
@@ -231,7 +456,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1' },
@@ -241,7 +466,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '50 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '50 more rows available. Use additional paginated query_data_table calls for bulk operations.',
 			});
 		});
 
@@ -250,7 +475,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', offset: 20, limit: 10 },
@@ -260,7 +485,7 @@ describe('data-tables tool', () => {
 			expect(result).toEqual({
 				dataTableId: 'dt-1',
 				...queryResult,
-				hint: '70 more rows available. Use additional paginated data-tables queries for bulk operations.',
+				hint: '70 more rows available. Use additional paginated query_data_table calls for bulk operations.',
 			});
 		});
 
@@ -269,7 +494,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1' },
@@ -289,7 +514,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool<{ data: Array<Record<string, unknown>>; hint?: string }>(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1' },
@@ -314,7 +539,7 @@ describe('data-tables tool', () => {
 				filters: [{ columnName: 'name', condition: 'eq' as const, value: 'vivo y17' }],
 			};
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', filter, fullCellValues: true },
@@ -340,7 +565,7 @@ describe('data-tables tool', () => {
 				filters: [{ columnName: 'name', condition: 'like' as const, value: '%vivo%' }],
 			};
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', filter, fullCellValues: true, limit: 20 },
@@ -361,7 +586,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool<{ data: Array<Record<string, unknown>>; hint?: string }>(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', fullCellValues: true },
@@ -387,7 +612,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext();
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool<{ hint?: string }>(
 				tool,
 				{ action: 'query' as const, dataTableId: 'dt-1', limit: 5 },
@@ -412,7 +637,7 @@ describe('data-tables tool', () => {
 			});
 			(context.dataTableService.queryRows as Mock).mockResolvedValue(queryResult);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(
 				tool,
 				{
@@ -449,7 +674,7 @@ describe('data-tables tool', () => {
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({ permissions: { createDataTable: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, createInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
@@ -460,46 +685,18 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, createInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Create Contacts',
+					message: 'Create the table with 1 column: "email"',
+					resourceName: 'Contacts',
 					severity: 'info',
 				}),
 			);
 			expect(context.dataTableService.create).not.toHaveBeenCalled();
-		});
-
-		it('should include project name in message when projectId is provided', async () => {
-			const context = createMockContext({
-				permissions: {},
-				workspaceService: {
-					getProject: vi.fn().mockResolvedValue({ id: 'proj-1', name: 'My Project', type: 'team' }),
-					listProjects: vi.fn(),
-					tagWorkflow: vi.fn(),
-					listTags: vi.fn(),
-					createTag: vi.fn(),
-					cleanupTestExecutions: vi.fn(),
-				},
-			});
-			const suspendFn = vi.fn();
-
-			const tool = createDataTablesTool(context);
-			await executeTool(
-				tool,
-				{ ...createInput, projectId: 'proj-1' } as never,
-				suspendCtx(suspendFn),
-			);
-
-			expect(suspendFn).toHaveBeenCalled();
-			expect(suspendFn.mock.calls[0][0]).toEqual(
-				expect.objectContaining({
-					message: 'Create Contacts in project My Project',
-				}),
-			);
 		});
 
 		it('should execute immediately when permission is always_allow', async () => {
@@ -507,7 +704,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });
 			(context.dataTableService.create as Mock).mockResolvedValue(table);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, createInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.create).toHaveBeenCalledWith(
@@ -523,7 +720,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			(context.dataTableService.create as Mock).mockResolvedValue(table);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, createInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.create).toHaveBeenCalled();
@@ -536,7 +733,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
 			(context.dataTableService.create as Mock).mockResolvedValue(table);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, createInput as never, resumeCtx(true, 'session'));
 
 			expect(result).toEqual({ table });
@@ -549,7 +746,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {}, grantSessionToolApproval });
 			(context.dataTableService.create as Mock).mockResolvedValue(table);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, createInput as never, resumeCtx(true));
 
 			expect(grantSessionToolApproval).not.toHaveBeenCalled();
@@ -564,7 +761,7 @@ describe('data-tables tool', () => {
 			(context.dataTableService.create as Mock).mockResolvedValue(table);
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, createInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).not.toHaveBeenCalled();
@@ -575,7 +772,7 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, createInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
@@ -595,7 +792,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { createDataTable: 'always_allow' } });
 			(context.dataTableService.create as Mock).mockRejectedValue(wrappedError);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, createInput as never, noSuspendCtx());
 
 			expect(result.denied).toBe(true);
@@ -608,7 +805,7 @@ describe('data-tables tool', () => {
 				new Error('Database connection failed'),
 			);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 
 			await expect(executeTool(tool, createInput as never, noSuspendCtx())).rejects.toThrow(
 				'Database connection failed',
@@ -624,7 +821,7 @@ describe('data-tables tool', () => {
 		it('should return denied when deleteDataTable permission is blocked', async () => {
 			const context = createMockContext({ permissions: { deleteDataTable: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
@@ -635,13 +832,14 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, deleteInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete dt-1',
+					message: 'Permanently delete the table and all its rows',
+					resourceName: 'dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -652,7 +850,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(
 				tool,
 				{ ...deleteInput, dataTableName: 'Customer data' } as never,
@@ -661,7 +859,8 @@ describe('data-tables tool', () => {
 
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete Customer data (ID: dt-1)',
+					message: 'Permanently delete the table and all its rows',
+					resourceName: 'Customer data',
 				}),
 			);
 		});
@@ -669,7 +868,7 @@ describe('data-tables tool', () => {
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { deleteDataTable: 'always_allow' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1', {
@@ -681,7 +880,7 @@ describe('data-tables tool', () => {
 		it('should delete after user approves on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-1', {
@@ -693,7 +892,7 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
@@ -714,7 +913,7 @@ describe('data-tables tool', () => {
 		it('should return denied when mutateDataTableSchema permission is blocked', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, addColumnInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
@@ -725,13 +924,14 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, addColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Add age (number) to dt-1',
+					message: 'Add column "age" (number)',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -743,7 +943,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'always_allow' } });
 			(context.dataTableService.addColumn as Mock).mockResolvedValue(column);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, addColumnInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.addColumn).toHaveBeenCalledWith(
@@ -759,7 +959,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			(context.dataTableService.addColumn as Mock).mockResolvedValue(column);
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, addColumnInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.addColumn).toHaveBeenCalled();
@@ -769,7 +969,7 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, addColumnInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
@@ -789,7 +989,7 @@ describe('data-tables tool', () => {
 		it('should return denied when mutateDataTableSchema permission is blocked', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteColumnInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
@@ -800,13 +1000,14 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, deleteColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete col-1 from dt-1',
+					message: 'Delete column "col-1" and its values',
+					resourceName: 'dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -816,7 +1017,7 @@ describe('data-tables tool', () => {
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'always_allow' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteColumnInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1', {
@@ -828,7 +1029,7 @@ describe('data-tables tool', () => {
 		it('should delete column after user approves on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteColumnInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'col-1', {
@@ -840,7 +1041,7 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteColumnInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
@@ -861,7 +1062,7 @@ describe('data-tables tool', () => {
 		it('should return denied when mutateDataTableSchema permission is blocked', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, renameColumnInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
@@ -872,13 +1073,14 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, renameColumnInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Rename col-1 to full_name in dt-1',
+					message: 'Rename column "col-1" to "full_name"',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -888,7 +1090,7 @@ describe('data-tables tool', () => {
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableSchema: 'always_allow' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, renameColumnInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.renameColumn).toHaveBeenCalledWith(
@@ -903,7 +1105,7 @@ describe('data-tables tool', () => {
 		it('should rename column after user approves on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, renameColumnInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.renameColumn).toHaveBeenCalledWith(
@@ -918,7 +1120,7 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, renameColumnInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
@@ -938,7 +1140,7 @@ describe('data-tables tool', () => {
 		it('should return denied when mutateDataTableRows permission is blocked', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, insertRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
@@ -949,24 +1151,103 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, insertRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Insert 2 row(s) into dt-1',
+					message:
+						'Add 2 rows\n\nRow 1: set "email" to "a@b.com"\n\nRow 2: set "email" to "c@d.com"',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
 			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
 		});
 
+		it('describes the values in a single inserted row', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+			await executeTool(
+				createDataTableToolRouter(context),
+				{
+					action: 'insert-rows',
+					dataTableId: 'dt-1',
+					dataTableName: 'Contacts',
+					rows: [{ email: 'a@b.com', age: 42, active: false, notes: null }],
+				},
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Add 1 row\n\nRow 1: set "email" to "a@b.com", "age" to 42, "active" to false, "notes" to no value',
+					resourceName: 'Contacts',
+				}),
+			);
+			expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
+		});
+
+		it.each([4, 5])(
+			'bounds a preview of %s rows and inserts all values after approval',
+			async (rowCount) => {
+				const context = createMockContext();
+				const suspend = vi.fn();
+				const rows = Array.from({ length: rowCount }, (_, index) => ({
+					email: `contact-${index}@example.com`,
+					notes: 'x'.repeat(200),
+					age: 42,
+					active: true,
+					company: 'Acme',
+					extra: 'Keep this value',
+				}));
+				const input = { ...insertRowsInput, rows };
+				const tool = createDataTableToolRouter(context);
+				await executeTool(tool, input, suspendCtx(suspend));
+
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: expect.stringContaining(`Add ${rowCount} rows\n\n`),
+						approvalDetails: {
+							action: 'insert-rows',
+							count: rowCount,
+							rows: rows.slice(0, 3).map((row) => ({
+								values: [
+									{ column: 'email', value: JSON.stringify(row.email) },
+									{ column: 'notes', value: '"' + 'x'.repeat(99) + '…' },
+									{ column: 'age', value: '42' },
+									{ column: 'active', value: 'true' },
+									{ column: 'company', value: '"Acme"' },
+								],
+								remainingColumns: 1,
+							})),
+						},
+					}),
+				);
+				const message: unknown = suspend.mock.calls[0][0].message;
+				expect(message).toContain('\n\nRow 3:');
+				expect(message).not.toContain('Row 4:');
+				expect(message).toContain(rowCount === 4 ? '\n\n1 more row' : '\n\n2 more rows');
+				expect(message).toContain('1 more column');
+				expect(message).not.toContain('Keep this value');
+				expect(message).toContain('x'.repeat(99) + '…');
+				expect(message).not.toContain('x'.repeat(100));
+				expect(context.dataTableService.insertRows).not.toHaveBeenCalled();
+
+				await executeTool(tool, input, resumeCtx(true));
+				expect(context.dataTableService.insertRows).toHaveBeenCalledWith('dt-1', rows, {
+					projectId: undefined,
+				});
+			},
+		);
+
 		it('should execute immediately when permission is always_allow', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
 			(context.dataTableService.insertRows as Mock).mockResolvedValue({ insertedCount: 2 });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, insertRowsInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
@@ -981,7 +1262,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			(context.dataTableService.insertRows as Mock).mockResolvedValue({ insertedCount: 2 });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, insertRowsInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
@@ -995,7 +1276,7 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, insertRowsInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
@@ -1011,7 +1292,7 @@ describe('data-tables tool', () => {
 				projectId: 'proj-1',
 			});
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, insertRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({
@@ -1039,7 +1320,7 @@ describe('data-tables tool', () => {
 		it('should return denied when mutateDataTableRows permission is blocked', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, updateRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ denied: true, reason: 'Action blocked by admin' });
@@ -1050,13 +1331,14 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, updateRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Update rows in dt-1',
+					message: 'Set "status" to "archived" in rows where "status" is "active"',
+					resourceName: 'dt-1',
 					severity: 'warning',
 				}),
 			);
@@ -1067,7 +1349,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'always_allow' } });
 			(context.dataTableService.updateRows as Mock).mockResolvedValue({ updatedCount: 5 });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, updateRowsInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.updateRows).toHaveBeenCalledWith(
@@ -1083,7 +1365,7 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			(context.dataTableService.updateRows as Mock).mockResolvedValue({ updatedCount: 3 });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, updateRowsInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.updateRows).toHaveBeenCalledWith(
@@ -1098,7 +1380,7 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, updateRowsInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ denied: true, reason: 'User denied the action' });
@@ -1121,7 +1403,7 @@ describe('data-tables tool', () => {
 		it('should return denied when mutateDataTableRows permission is blocked', async () => {
 			const context = createMockContext({ permissions: { mutateDataTableRows: 'blocked' } });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteRowsInput as never, noSuspendCtx());
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
@@ -1132,13 +1414,14 @@ describe('data-tables tool', () => {
 			const context = createMockContext({ permissions: {} });
 			const suspendFn = vi.fn();
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, deleteRowsInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows from dt-1 where status eq inactive',
+					message: 'Delete rows where "status" is "inactive"',
+					resourceName: 'dt-1',
 					severity: 'destructive',
 				}),
 			);
@@ -1161,13 +1444,14 @@ describe('data-tables tool', () => {
 				},
 			};
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			await executeTool(tool, multiFilterInput as never, suspendCtx(suspendFn));
 
 			expect(suspendFn).toHaveBeenCalled();
 			expect(suspendFn.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
-					message: 'Delete rows from dt-1 where status eq inactive or age lt 18',
+					message: 'Delete rows where "status" is "inactive" or "age" is less than 18',
+					resourceName: 'dt-1',
 				}),
 			);
 		});
@@ -1181,7 +1465,7 @@ describe('data-tables tool', () => {
 				projectId: 'proj-1',
 			});
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteRowsInput as never, noSuspendCtx());
 
 			expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
@@ -1207,7 +1491,7 @@ describe('data-tables tool', () => {
 				projectId: 'proj-1',
 			});
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteRowsInput as never, resumeCtx(true));
 
 			expect(context.dataTableService.deleteRows).toHaveBeenCalledWith(
@@ -1227,11 +1511,161 @@ describe('data-tables tool', () => {
 		it('should return denied when user denies on resume', async () => {
 			const context = createMockContext({ permissions: {} });
 
-			const tool = createDataTablesTool(context);
+			const tool = createDataTableToolRouter(context);
 			const result = await executeTool(tool, deleteRowsInput as never, resumeCtx(false));
 
 			expect(result).toEqual({ success: false, denied: true, reason: 'User denied the action' });
 			expect(context.dataTableService.deleteRows).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('artifact changes', () => {
+		it('reports a created table with its name and project', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { createDataTable: 'always_allow' },
+			});
+			vi.mocked(context.dataTableService.create).mockResolvedValue({
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+				columns: [],
+				createdAt: '',
+				updatedAt: '',
+			});
+
+			const tool = createDataTableToolRouter(context);
+			await executeTool(
+				tool,
+				{
+					action: 'create',
+					name: 'Contacts',
+					columns: [{ name: 'email', type: 'string' }],
+				} as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports the table that rows were inserted into', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableRows: 'always_allow' },
+			});
+			vi.mocked(context.dataTableService.insertRows).mockResolvedValue({
+				insertedCount: 1,
+				dataTableId: 'dt-1',
+				tableName: 'Contacts',
+				projectId: 'proj-1',
+			});
+
+			const tool = createDataTableToolRouter(context);
+			await executeTool(
+				tool,
+				{ action: 'insert-rows', dataTableId: 'dt-1', rows: [{ email: 'a@example.com' }] } as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports the resolved table ID when a column action names the table', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'always_allow' },
+			});
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockResolvedValue({ id: 'dt-1', name: 'Contacts', projectId: 'proj-1' });
+
+			const tool = createDataTableToolRouter(context);
+			await executeTool(
+				tool,
+				{
+					action: 'add-column',
+					dataTableId: 'Contacts',
+					columnName: 'age',
+					type: 'number',
+				} as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports the table as given when the lookup fails after a column change', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'always_allow' },
+			});
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockRejectedValue(new Error('Lookup unavailable'));
+
+			const tool = createDataTableToolRouter(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'rename-column', dataTableId: 'dt-1', columnId: 'c-1', newName: 'age' } as never,
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(onArtifactChanged).toHaveBeenCalledWith({ type: 'data-table', id: 'dt-1' });
+		});
+
+		it('reports a table that the agent reads', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({ onArtifactChanged });
+
+			const tool = createDataTableToolRouter(context);
+			await executeTool(
+				tool,
+				{ action: 'query', dataTableId: 'dt-1', projectId: 'proj-1' } as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports nothing for a denied change', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'blocked' },
+			});
+
+			const tool = createDataTableToolRouter(context);
+			await executeTool(
+				tool,
+				{ action: 'add-column', dataTableId: 'dt-1', columnName: 'age', type: 'number' } as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
 		});
 	});
 });

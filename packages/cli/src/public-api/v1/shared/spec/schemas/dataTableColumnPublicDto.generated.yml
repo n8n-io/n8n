@@ -1,0 +1,38 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Column ID
+  name:
+    type: string
+    description: Column name
+  type:
+    type: string
+    description: Column data type
+    enum:
+      - string
+      - number
+      - boolean
+      - date
+  index:
+    type: integer
+    description: Column position
+  createdAt:
+    type: string
+    format: date-time
+    description: Timestamp when the column was created
+  updatedAt:
+    type: string
+    format: date-time
+    description: Timestamp when the column was last updated
+  dataTableId:
+    type: string
+    description: ID of the data table this column belongs to
+required:
+  - id
+  - name
+  - type
+  - index
+  - createdAt
+  - updatedAt
+  - dataTableId

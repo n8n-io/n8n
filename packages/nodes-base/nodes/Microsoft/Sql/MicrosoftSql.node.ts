@@ -13,8 +13,10 @@ import {
 } from 'n8n-workflow';
 
 import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
+import { resolveSqlQueryParameters } from '@utils/sql-query-parameters';
 
 import {
+	bindQueryParameters,
 	configurePool,
 	createTableStruct,
 	deleteOperation,
@@ -305,22 +307,7 @@ export class MicrosoftSql implements INodeType {
 						);
 					}
 
-					let queryValues: Array<string | number | IDataObject> = [];
-					let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '') as
-						| string
-						| string[];
-
-					if (typeof queryReplacement === 'string' && queryReplacement) {
-						queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
-					}
-					if (queryReplacement !== '' && !Array.isArray(queryReplacement)) {
-						// convert non-string single expression values to arrays
-						queryReplacement = [queryReplacement];
-					}
-
-					if (Array.isArray(queryReplacement)) {
-						queryValues = queryReplacement;
-					}
+					const queryValues = resolveSqlQueryParameters.call(this, i);
 
 					const results = await executeSqlQueryAndPrepareResults.call(
 						this,
@@ -352,10 +339,17 @@ export class MicrosoftSql implements INodeType {
 				let rawQuery = this.getNodeParameter('query', 0) as string;
 
 				for (const resolvable of getResolvables(rawQuery)) {
-					rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
+					rawQuery = rawQuery.replace(
+						resolvable,
+						() => this.evaluateExpression(resolvable, 0) as string,
+					);
 				}
 
-				const { recordsets }: IResult<any[]> = await pool.request().query(rawQuery);
+				const queryValues = resolveSqlQueryParameters.call(this, 0);
+
+				const request = pool.request();
+				const processedQuery = bindQueryParameters(this.getNode(), request, rawQuery, queryValues);
+				const { recordsets }: IResult<any[]> = await request.query(processedQuery);
 
 				const result = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
 

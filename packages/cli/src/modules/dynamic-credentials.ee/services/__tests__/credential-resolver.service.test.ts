@@ -7,7 +7,8 @@ import {
 } from '@n8n/decorators';
 import { Not, type UpdateResult } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
-import { CREDENTIAL_BLANKING_VALUE, UnexpectedError } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';

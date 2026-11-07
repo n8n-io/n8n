@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { CreateExecutionPayload, IExecutionDb } from '@n8n/db';
@@ -6,6 +7,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	IExecuteResponsePromiseData,
 	IRun,
@@ -14,11 +16,8 @@ import type {
 	StructuredChunk,
 	WebhookResponseMode,
 } from 'n8n-workflow';
-import {
-	ExecutionCancelledError,
-	OperationalError,
-	SystemShutdownExecutionCancelledError,
-} from 'n8n-workflow';
+import { ExecutionCancelledError, SystemShutdownExecutionCancelledError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
@@ -26,11 +25,11 @@ import { v4 as uuid } from 'uuid';
 
 import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import { EventService } from './events/event.service';
 
 import { AdmissionLimitError } from '@/errors/admission-limit.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IExecutingWorkflowData,
@@ -72,6 +71,9 @@ export class ActiveExecutions {
 	/** Response mode by execution ID, if webhook-initiated. */
 	private responseModes = new Map<string, WebhookResponseMode>();
 
+	/** True once `shutdown()` has started. A parked execution is then removed instead of retained for resume. */
+	private isDraining = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -79,6 +81,8 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly unsavedManualExecutionService: UnsavedManualExecutionService,
 	) {}
 
 	has(executionId: string) {
@@ -152,6 +156,7 @@ export class ActiveExecutions {
 
 				executionId = await this.executionPersistence.create(fullExecutionData);
 				assert(executionId);
+				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
 
 				if (!shouldActivateInBackground) {
 					if (shouldReserveCapacity) {
@@ -171,11 +176,15 @@ export class ActiveExecutions {
 					await capacityReservation.reserve({ mode, executionId });
 				}
 
-				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+				const execution: Pick<
+					IExecutionDb,
+					'id' | 'data' | 'waitTill' | 'status' | 'resumeAttempts'
+				> = {
 					id: executionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
+					resumeAttempts: 0,
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
@@ -253,8 +262,14 @@ export class ActiveExecutions {
 	 * Attaches an execution
 	 */
 
-	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
-		this.getExecutionOrFail(executionId).workflowExecution = workflowExecution;
+	attachWorkflowExecution(
+		executionId: string,
+		workflowExecution: PCancelable<IRun>,
+		options?: { isQueueJob?: boolean },
+	) {
+		const execution = this.getExecutionOrFail(executionId);
+		execution.workflowExecution = workflowExecution;
+		execution.isQueueJob = options?.isQueueJob;
 	}
 
 	async waitForActivation(executionId: string): Promise<void> {
@@ -310,9 +325,11 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				capacityReservation.release();
-				if (execution.status === 'waiting') {
+				execution.postExecuteSettled = true;
+				const mayResumeHere = !this.isDraining && !this.instanceSettings.isWorker;
+				if (execution.status === 'waiting' && mayResumeHere) {
 					delete execution.workflowExecution;
-				} else {
+				} else if (this.activeExecutions[executionId] === execution) {
 					delete this.activeExecutions[executionId];
 					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
@@ -440,9 +457,20 @@ export class ActiveExecutions {
 	}
 
 	getRunningExecutionIds(): string[] {
+		// An enqueued execution runs as a Bull job, which the queue drain tracks, so this only returns executions this process runs outside the queue.
 		return Object.keys(this.activeExecutions).filter(
-			(executionId) => this.activeExecutions[executionId].status === 'running',
+			(executionId) =>
+				this.activeExecutions[executionId].status === 'running' &&
+				!this.activeExecutions[executionId].isQueueJob,
 		);
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return {
+			executions: Object.keys(this.activeExecutions).length,
+			responseModes: this.responseModes.size,
+		};
 	}
 
 	/**
@@ -511,15 +539,25 @@ export class ActiveExecutions {
 		return this.responseModes.get(executionId);
 	}
 
-	/** Wait for all active executions to finish */
+	/**
+	 * Wait for all active executions to finish.
+	 *
+	 * A parked (waiting) execution keeps its entry so a resume can answer its original caller.
+	 * No resume happens during a drain, so a parked entry is dropped as soon as its run has
+	 * stopped writing: here for entries parked before the drain, and in the settle handler
+	 * for entries that park while the drain waits.
+	 */
 	async shutdown(cancelAll = false) {
+		this.isDraining = true;
 		const isRegularMode = this.executionsConfig.mode === 'regular';
 
+		const isWorker = this.instanceSettings.instanceType === 'worker';
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
 			const execution = this.activeExecutions[executionId];
-			const { status } = execution;
+			const { status, isQueueJob, postExecuteSettled } = execution;
+			const isParked = status === 'waiting' && postExecuteSettled === true;
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
@@ -532,9 +570,8 @@ export class ActiveExecutions {
 				execution.postExecutePromise.reject(new SystemShutdownExecutionCancelledError(executionId));
 				// The .finally() in attachCleanupHandlers will remove the entry from
 				// activeExecutions once the rejection propagates; we do not delete here.
-			} else if (status === 'waiting') {
-				// Waiting executions have no valid workflowExecution or live
-				// postExecutePromise (consistent with stopExecution), so delete directly.
+			} else if (isParked || (isWorker && isQueueJob)) {
+				// A parked execution or a queued worker job cannot resume during shutdown.
 				delete this.activeExecutions[executionId];
 			}
 		}
@@ -555,6 +592,11 @@ export class ActiveExecutions {
 			}
 
 			await sleep(500);
+			if (isWorker) {
+				for (const [executionId, { isQueueJob }] of Object.entries(this.activeExecutions)) {
+					if (isQueueJob) delete this.activeExecutions[executionId];
+				}
+			}
 			executionIds = Object.keys(this.activeExecutions);
 		}
 	}

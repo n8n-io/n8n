@@ -2,12 +2,12 @@ import type { CommandResult } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
-import { OperationalError, safeRegex } from 'n8n-workflow';
+import { safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError, OperationalError } from '@n8n/errors';
 
 import {
 	buildMirrorFinalizeCommand,
@@ -49,6 +49,7 @@ import {
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
 } from './agent-sandbox-runtime.service';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -119,7 +120,7 @@ function assertKnowledgeFilesDirectoryAvailable(
 
 @Service()
 export class AgentKnowledgeMirrorService {
-	private readonly pendingMirrorSyncs = new Map<string, Promise<void>>();
+	private readonly pendingMirrorSyncs = new Map<string, Promise<unknown>>();
 
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
@@ -128,6 +129,7 @@ export class AgentKnowledgeMirrorService {
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
 	) {}
 
 	async searchKnowledge(
@@ -144,15 +146,7 @@ export class AgentKnowledgeMirrorService {
 			return emptySearchKnowledgeResult(outputMode, limit);
 		}
 
-		const scopedFilesByPath = new Map<string, AgentKnowledgeFileReference>();
-		for (const path of validatedRequest.path ?? []) {
-			const file = this.resolveOptionalFile({ file: path }, references);
-			if (!file) {
-				throw new BadRequestError('Knowledge file not found');
-			}
-			scopedFilesByPath.set(file.file, file);
-		}
-		const scopedFiles = [...scopedFilesByPath.values()];
+		const scopedFiles = this.resolveSearchFiles(validatedRequest, references);
 		const command = buildSearchKnowledgeCommand(
 			validatedRequest,
 			scopedFiles.map((file) => file.file),
@@ -172,44 +166,7 @@ export class AgentKnowledgeMirrorService {
 			throw new OperationalError(formatSandboxCommandFailure('search', result));
 		}
 
-		if (outputMode === 'files_with_matches') {
-			const parsed = parseRipgrepFilesOutput(result.stdout, references.byFile);
-			const files = parsed.files.slice(0, limit);
-			return {
-				outputMode,
-				files,
-				limit,
-				hasMore: parsed.files.length > limit,
-				truncated: parsed.incomplete,
-			};
-		}
-
-		if (outputMode === 'count') {
-			const parsed = parseRipgrepCountOutput(result.stdout, references.byFile);
-			const counts = parsed.counts.slice(0, limit);
-			return {
-				outputMode,
-				counts,
-				limit,
-				hasMore: parsed.counts.length > limit,
-				truncated: parsed.incomplete,
-			};
-		}
-
-		const parsed = parseRipgrepOutput(
-			result.stdout,
-			references.byFile,
-			getSearchContextWindow(validatedRequest),
-		);
-		const matches = parsed.matches.slice(0, limit);
-
-		return {
-			outputMode,
-			matches,
-			limit,
-			hasMore: parsed.matches.length > limit,
-			truncated: parsed.incomplete,
-		};
+		return this.parseSearchResult(result.stdout, validatedRequest, references, outputMode, limit);
 	}
 
 	async globKnowledgeFiles(
@@ -258,10 +215,12 @@ export class AgentKnowledgeMirrorService {
 		}
 
 		const parsed = parseReadKnowledgeOutput(result.stdout, file, validatedRequest);
+
 		return {
 			file: file.file,
 			fileId: file.fileId,
 			displayName: file.displayName,
+			createdAt: file.createdAt,
 			ranges: parsed.ranges,
 			truncated: parsed.truncated,
 		};
@@ -274,9 +233,19 @@ export class AgentKnowledgeMirrorService {
 	 */
 	prewarmMirrorInBackground(projectId: string, agentId: string): void {
 		void (async () => {
-			const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
-			const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
-			await this.ensureMirrorSynced(runtime, references.files);
+			await this.projectDeletion.assertWritable(projectId);
+			try {
+				const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
+				const runtime = await this.acquireKnowledgeRuntime(projectId, agentId);
+				await this.ensureMirrorSynced(runtime, references.files);
+			} finally {
+				// Remote sync must not hold a database lock. Remove a mirror that finishes after deletion.
+				try {
+					await this.projectDeletion.assertWritable(projectId);
+				} catch {
+					await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+				}
+			}
 		})().catch((error) => {
 			this.logger.warn('Agent knowledge mirror pre-warm failed', {
 				projectId,
@@ -311,19 +280,11 @@ export class AgentKnowledgeMirrorService {
 		runtime: AgentKnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
 	): Promise<void> {
-		const previous = this.pendingMirrorSyncs.get(runtime.cacheKey) ?? Promise.resolve();
-		const next = previous
-			.catch(() => undefined)
-			.then(async () => await this.syncMirror(runtime, files));
-		this.pendingMirrorSyncs.set(runtime.cacheKey, next);
-
-		try {
-			await next;
-		} finally {
-			if (this.pendingMirrorSyncs.get(runtime.cacheKey) === next) {
-				this.pendingMirrorSyncs.delete(runtime.cacheKey);
-			}
-		}
+		await runSerially(
+			this.pendingMirrorSyncs,
+			runtime.cacheKey,
+			async () => await this.syncMirror(runtime, files),
+		);
 	}
 
 	private async syncMirror(
@@ -351,44 +312,9 @@ export class AgentKnowledgeMirrorService {
 		const stagingId = nanoid();
 		const stagingDir = `${runtime.paths.stagingDir}/${stagingId}`;
 		try {
-			const copiedNames = await this.uploadMirrorFiles(runtime, toCopy, stagingId);
-			const finalManifestFiles = files.filter(
-				(file) => copiedNames.has(file.file) || present.get(file.file) === file.fileId,
-			);
-			const staleFiles = toCopy
-				.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
-				.map((file) => file.file);
-
-			const syncResult = await this.agentSandboxRuntimeService.executeSandboxCommand(
-				runtime.sandbox,
-				buildMirrorFinalizeCommand(
-					[...copiedNames],
-					[...toDelete, ...staleFiles],
-					finalManifestFiles,
-					runtime.paths,
-					stagingId,
-				),
-				MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
-			);
-			if (syncResult.exitCode !== 0) {
-				throw new OperationalError(
-					`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(syncResult.stdout)}`,
-				);
-			}
+			await this.finalizeMirror(runtime, files, toCopy, toDelete, present, stagingId);
 		} finally {
-			if (toCopy.length > 0) {
-				try {
-					await runtime.filesystem.rmdir(stagingDir, { recursive: true, force: true });
-				} catch (error) {
-					this.logger.warn('Failed to clean agent knowledge mirror staging directory', {
-						sandboxName: runtime.cacheKey,
-						stagingId,
-						error: sanitizeSandboxErrorDetail(
-							error instanceof Error ? error.message : String(error),
-						),
-					});
-				}
-			}
+			if (toCopy.length > 0) await this.cleanMirrorStaging(runtime, stagingDir, stagingId);
 		}
 	}
 
@@ -460,7 +386,7 @@ export class AgentKnowledgeMirrorService {
 	private async loadKnowledgeFileReferences(
 		agentId: string,
 	): Promise<AgentKnowledgeFileReference[]> {
-		const files = await this.agentFileRepository.findByAgentId(agentId);
+		const files = await this.agentFileRepository.findByAgentId(agentId, {});
 		return files.map((file) => ({
 			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,
@@ -533,6 +459,118 @@ export class AgentKnowledgeMirrorService {
 			agentId,
 		);
 		return { ...runtime, paths: getAgentKnowledgePaths(runtime.provider) };
+	}
+
+	private resolveSearchFiles(
+		request: SearchKnowledgeRequest,
+		references: AgentKnowledgeReferenceLookup,
+	): AgentKnowledgeFileReference[] {
+		const scopedFilesByPath = new Map<string, AgentKnowledgeFileReference>();
+		for (const path of request.path ?? []) {
+			const file = this.resolveOptionalFile({ file: path }, references);
+			if (!file) {
+				throw new BadRequestError('Knowledge file not found');
+			}
+			scopedFilesByPath.set(file.file, file);
+		}
+		return [...scopedFilesByPath.values()];
+	}
+
+	private parseSearchResult(
+		stdout: string,
+		validatedRequest: SearchKnowledgeRequest,
+		references: AgentKnowledgeReferenceLookup,
+		outputMode: NonNullable<SearchKnowledgeRequest['output_mode']>,
+		limit: number,
+	): SearchKnowledgeResult {
+		if (outputMode === 'files_with_matches') {
+			const parsed = parseRipgrepFilesOutput(stdout, references.byFile);
+			const files = parsed.files.slice(0, limit);
+			return {
+				outputMode,
+				files,
+				limit,
+				hasMore: parsed.files.length > limit,
+				truncated: parsed.incomplete,
+			};
+		}
+
+		if (outputMode === 'count') {
+			const parsed = parseRipgrepCountOutput(stdout, references.byFile);
+			const counts = parsed.counts.slice(0, limit);
+			return {
+				outputMode,
+				counts,
+				limit,
+				hasMore: parsed.counts.length > limit,
+				truncated: parsed.incomplete,
+			};
+		}
+
+		const parsed = parseRipgrepOutput(
+			stdout,
+			references.byFile,
+			getSearchContextWindow(validatedRequest),
+		);
+		const matches = parsed.matches.slice(0, limit);
+
+		return {
+			outputMode,
+			matches,
+			limit,
+			hasMore: parsed.matches.length > limit,
+			truncated: parsed.incomplete,
+		};
+	}
+
+	private async finalizeMirror(
+		runtime: AgentKnowledgeMirrorRuntime,
+		files: AgentKnowledgeFileReference[],
+		toCopy: AgentKnowledgeFileReference[],
+		toDelete: string[],
+		present: Map<string, string>,
+		stagingId: string,
+	): Promise<void> {
+		const copiedNames = await this.uploadMirrorFiles(runtime, toCopy, stagingId);
+		const finalManifestFiles = files.filter(
+			(file) => copiedNames.has(file.file) || present.get(file.file) === file.fileId,
+		);
+		const staleFiles = toCopy
+			.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
+			.map((file) => file.file);
+
+		const syncResult = await this.agentSandboxRuntimeService.executeSandboxCommand(
+			runtime.sandbox,
+			buildMirrorFinalizeCommand(
+				[...copiedNames],
+				[...toDelete, ...staleFiles],
+				finalManifestFiles,
+				runtime.paths,
+				stagingId,
+			),
+			MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
+		);
+		if (syncResult.exitCode !== 0) {
+			throw new OperationalError(
+				`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(syncResult.stdout)}`,
+			);
+		}
+	}
+
+	private async cleanMirrorStaging(
+		runtime: AgentKnowledgeMirrorRuntime,
+		stagingDir: string,
+		stagingId: string,
+	): Promise<void> {
+		try {
+			await runtime.filesystem.rmdir(stagingDir, { recursive: true, force: true });
+		} catch (error) {
+			this.logger.warn('Failed to clean agent knowledge mirror staging directory', {
+				sandboxName: runtime.cacheKey,
+				stagingId,
+				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
+			});
+		}
 	}
 }
 
@@ -636,10 +674,9 @@ function containsTokenSequence(fileTokens: string[], patternTokens: string[]): b
 
 	let patternIndex = 0;
 	for (const fileToken of fileTokens) {
-		if (fileToken === patternTokens[patternIndex]) {
-			patternIndex++;
-			if (patternIndex === patternTokens.length) return true;
-		}
+		if (fileToken !== patternTokens[patternIndex]) continue;
+		patternIndex++;
+		if (patternIndex === patternTokens.length) return true;
 	}
 	return false;
 }

@@ -3,7 +3,8 @@ import 'fake-indexeddb/auto';
 import 'core-js/proposals/set-methods-v2';
 import englishBaseText from '@n8n/i18n/locales/en.json';
 import { loadLanguage, type LocaleMessages } from '@n8n/i18n';
-import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
+// Not the `@/app/constants` barrel: it pulls the full `@n8n/api-types` graph into every test file.
+import { APP_MODALS_ELEMENT_ID } from '@/app/constants/selectors';
 
 // Global stub for Reka UI Popover components used by N8nPopover.
 // Unlike Element+ popover which always renders content regardless of visibility,
@@ -102,6 +103,34 @@ Object.defineProperty(window, 'matchMedia', {
 		dispatchEvent: vi.fn(),
 	})),
 });
+
+// jsdom declares `HTMLDialogElement` but implements none of its methods, so a
+// component that opens its own `<dialog>` — NodeDetailsView calls
+// `dialogRef.show()` when a node becomes active — throws a TypeError that
+// escapes Vue and poisons the environment: every later test in the same file
+// then fails on a null component. Fill in the missing methods and keep `open`
+// in sync so `dialog[open]` selectors and assertions still behave.
+//
+// Each assignment is guarded, so a real implementation (a newer jsdom) wins;
+// a suite that stubs or spies on these per test still overrides the polyfill,
+// because it assigns later.
+if (!HTMLDialogElement.prototype.show) {
+	HTMLDialogElement.prototype.show = vi.fn(function (this: HTMLDialogElement) {
+		this.open = true;
+	});
+}
+
+if (!HTMLDialogElement.prototype.showModal) {
+	HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+		this.open = true;
+	});
+}
+
+if (!HTMLDialogElement.prototype.close) {
+	HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+		this.open = false;
+	});
+}
 
 // Create DOM containers for Element Plus components before each test
 beforeEach(() => {

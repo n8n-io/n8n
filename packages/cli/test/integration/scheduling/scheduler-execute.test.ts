@@ -1,5 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { ScheduledJob } from '@n8n/db';
+import type { ScheduledJob, ScheduledTask } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
@@ -7,7 +7,7 @@ import type { ClaimedTask, Scheduler, SchedulerPasses } from '@n8n/scheduler';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
-import { selfOwned } from './shared/job-factory';
+import { seedDueTask, selfOwned } from './shared/job-factory';
 
 /**
  * The composed path against a real database: the storage bindings
@@ -24,6 +24,8 @@ describe('scheduler execution over the storage bindings', () => {
 	let taskRepo: ScheduledTaskRepository;
 	let scheduler: Scheduler & SchedulerPasses;
 	const executed: ClaimedTask[] = [];
+	// When set, the handler waits for it, so a test can keep a task `running`.
+	let holdHandler: Promise<void> | null = null;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -41,6 +43,9 @@ describe('scheduler execution over the storage bindings', () => {
 		scheduler.registerTaskHandler(TASK_TYPE, {
 			execute: async (task, report) => {
 				executed.push(task);
+				if (holdHandler !== null) {
+					await holdHandler;
+				}
 				// The fake's effect is the push above; report it so the task carries its
 				// effect marker (`dispatchedAt`) like a real handler would.
 				return report.dispatched();
@@ -171,6 +176,37 @@ describe('scheduler execution over the storage bindings', () => {
 		expect(failed.claimedBy).toBe('main-dead');
 		expect(failed.errorMessage).toBe('Lease expired before completion');
 	});
+
+	it('runs at most concurrencyLimit occurrences of a job at once, then the held one', async () => {
+		const job = await createJob({ concurrencyLimit: 1 });
+		await seedDueTask(taskRepo, TASK_TYPE, job.id, 0);
+		await seedDueTask(taskRepo, TASK_TYPE, job.id, 1);
+		const countWithStatus = async (status: ScheduledTask['status']) =>
+			await taskRepo.countBy({ jobId: job.id, status });
+
+		let release: () => void = () => {};
+		holdHandler = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		try {
+			expect(await scheduler.execute()).toHaveLength(1);
+			await waitFor(async () => executed.length === 1);
+
+			// The second task stays pending while the first runs.
+			expect(await scheduler.execute()).toHaveLength(0);
+			expect(await countWithStatus('running')).toBe(1);
+			expect(await countWithStatus('pending')).toBe(1);
+		} finally {
+			release();
+			holdHandler = null;
+		}
+		await waitFor(async () => (await countWithStatus('succeeded')) === 1);
+
+		// Once the first task finishes, the second one runs.
+		expect(await scheduler.execute()).toHaveLength(1);
+		await waitFor(async () => (await countWithStatus('succeeded')) === 2);
+		expect(executed).toHaveLength(2);
+	}, 15_000);
 
 	// Last on purpose: it stops the shared scheduler's executor.
 	it('releases claimed but unfired tasks on stop', async () => {

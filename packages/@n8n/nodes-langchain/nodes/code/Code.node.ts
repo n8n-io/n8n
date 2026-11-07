@@ -238,6 +238,7 @@ export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain Code',
 		name: 'code',
+		deprecated: true,
 		icon: 'fa:code',
 		iconColor: 'black',
 		group: ['transform'],

@@ -1,15 +1,40 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { ensureUrlPathSuffix } from '@n8n/ai-utilities/model-discovery';
+import { AZURE_FOUNDRY_ANTHROPIC_PREFIX, splitModelId } from '@n8n/ai-utilities/agent-config';
+import {
+	AZURE_AI_FOUNDRY_AUDIENCE,
+	ensureUrlPathSuffix,
+	getAzureFoundryOrigin,
+	isOpenAiCustomEndpoint,
+} from '@n8n/ai-utilities/model-discovery';
+import type { ClientOAuth2Options } from '@n8n/client-oauth2';
+import { isRecord } from '@n8n/utils/is-record';
+import type * as AiSdk from 'ai';
 import type { EmbeddingModel, LanguageModel } from 'ai';
 import type * as Undici from 'undici';
 
+import { createGoogleVertexModel, parseGoogleVertexAuthOptions } from './google-vertex';
+import { loadAi } from './lazy-ai';
+import type { NativeToolDeferral } from './native-tool-deferral';
+import { anthropicToolDeferral } from './native-tool-deferral/anthropic';
+import { openAiToolDeferral } from './native-tool-deferral/openai';
+import { wrapOpenRouterModel } from './openrouter';
+import { isAnthropicMessagesProvider } from './prompt-cache';
+import {
+	endpointRouteKey,
+	guardOpenAiRoutes,
+	withChatCompletionsFallback,
+} from './openai-api-style';
 import {
 	PROVIDER_CREDENTIAL_SCHEMAS,
+	isAzureEntraCredential,
 	type ProviderId,
 	type ProviderCredentials,
 } from './provider-credentials';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { traceModelRequests } from '../telemetry/model-request-tracing';
 import type { ModelConfig } from '../../types/sdk/agent';
+import { getModelIdString } from '../../utils/model';
 
 /**
  * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
@@ -37,6 +62,12 @@ function isLanguageModel(config: unknown): config is LanguageModel {
  * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
  * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
  */
+/**
+ * Resolves `globalThis.fetch` per request, the same way the SDK does when no
+ * `fetch` is passed, so a transport installed after the model was built is used.
+ */
+const globalFetch: FetchFn = async (input, init) => await globalThis.fetch(input, init);
+
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
@@ -44,12 +75,12 @@ function getProxyFetch(): FetchFn | undefined {
 	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
 	const { ProxyAgent } = require('undici') as typeof Undici;
 	const dispatcher = new ProxyAgent(proxyUrl);
-	return (async (url, init) =>
+	return async (url, init) =>
 		await globalThis.fetch(url, {
 			...init,
 			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
 			dispatcher,
-		})) as FetchFn;
+		});
 }
 
 type EntryBuilder<P extends ProviderId> = (
@@ -60,6 +91,7 @@ type EntryBuilder<P extends ProviderId> = (
 
 type RegistryEntry<P extends ProviderId = ProviderId> = {
 	build: EntryBuilder<P>;
+	toolDeferral?: NativeToolDeferral;
 };
 
 type ProviderRegistry = {
@@ -73,33 +105,92 @@ type OpenAiCompatibleCreds = {
 };
 
 /**
- * Parse a Vertex service-account JSON string into `googleAuthOptions`.
- * Accepts either a full SA JSON blob or the subset `{ client_email, private_key }`.
- * Returns undefined when unset so ADC can take over.
+ * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
+ * `AZURE_OPENAI_SCOPE` and the `resource` claim the reference impl sends in the
+ * client-credentials token request.
  */
-function parseGoogleVertexAuthOptions(
-	googleCredentials: string | undefined,
-): { credentials: Record<string, unknown> } | undefined {
-	if (!googleCredentials?.trim()) return undefined;
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(googleCredentials);
-	} catch {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be valid JSON',
-		);
-	}
-	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-		throw new Error(
-			'Invalid credentials for provider "google-vertex-anthropic": googleCredentials must be a JSON object',
-		);
-	}
-	const credentials = { ...(parsed as Record<string, unknown>) };
-	// SA keys often arrive with literal `\n` escapes when pasted into env files.
-	if (typeof credentials.private_key === 'string') {
-		credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-	}
-	return { credentials };
+const AZURE_OPENAI_ENTRA_RESOURCE = 'https://cognitiveservices.azure.com/';
+
+/**
+ * Builds a `() => Promise<string>` bearer-token provider for an Azure Entra
+ * OAuth2 credential. Ports `N8nOAuth2TokenCredential.getToken` from the
+ * LangChain Azure node: mints a fresh token on every call via
+ * `@n8n/client-oauth2`'s client-credentials flow, gated on a stored
+ * `oauthTokenData.access_token` (proof the credential was connected).
+ *
+ * `@ai-sdk/azure`'s `createAzure` accepts this shape directly as `tokenProvider`;
+ * it must not be paired with `apiKey`.
+ */
+function createEntraTokenProvider(
+	creds: {
+		oauthClientId?: string;
+		oauthClientSecret?: string;
+		oauthAccessTokenUrl?: string;
+		oauthScope?: string;
+		oauthAuthentication?: 'body' | 'header';
+		oauthTokenData?: { access_token: string } & Record<string, unknown>;
+	},
+	options: { resource?: string; ssrfBridge?: ClientOAuth2Options['ssrfBridge'] } = {},
+): () => Promise<string> {
+	const {
+		oauthClientId,
+		oauthClientSecret,
+		oauthAccessTokenUrl,
+		oauthScope,
+		oauthAuthentication,
+		oauthTokenData,
+	} = creds;
+	return async () => {
+		if (!oauthTokenData?.access_token) {
+			throw new Error('Azure Entra OAuth2 credential is not connected');
+		}
+		if (!oauthClientId || !oauthAccessTokenUrl) {
+			throw new Error('Azure Entra OAuth2 credential is missing clientId or accessTokenUrl');
+		}
+		const { ClientOAuth2 } = require('@n8n/client-oauth2') as typeof import('@n8n/client-oauth2');
+		const client = new ClientOAuth2({
+			clientId: oauthClientId,
+			clientSecret: oauthClientSecret,
+			accessTokenUri: oauthAccessTokenUrl,
+			scopes: oauthScope?.split(' '),
+			authentication: oauthAuthentication,
+			additionalBodyProperties: { resource: options.resource ?? AZURE_OPENAI_ENTRA_RESOURCE },
+			ssrfBridge: options.ssrfBridge,
+		});
+		const token = await client.credentials.getToken();
+		return (token.data as { access_token: string }).access_token;
+	};
+}
+
+/**
+ * Mints an Entra ID token for the Foundry deployments-list call from a mapped
+ * `azure-openai` credential. The token URL is stored on the credential, so the
+ * caller passes the instance's SSRF bridge.
+ */
+export async function mintAzureFoundryDeploymentsToken(
+	creds: Record<string, unknown>,
+	ssrfBridge?: ClientOAuth2Options['ssrfBridge'],
+): Promise<string> {
+	const parsed = PROVIDER_CREDENTIAL_SCHEMAS['azure-openai'].parse(creds);
+	return await createEntraTokenProvider(parsed, {
+		resource: `${AZURE_AI_FOUNDRY_AUDIENCE}/`,
+		ssrfBridge,
+	})();
+}
+
+/**
+ * Wraps a `fetch` so each request carries an `Authorization: Bearer <token>`
+ * header resolved from a token provider. Used for Foundry Entra, where
+ * `buildOpenAiCompatible` has no `tokenProvider` slot.
+ */
+function withBearerAuth(fetch: FetchFn | undefined, tokenProvider: () => Promise<string>): FetchFn {
+	const base = fetch ?? globalFetch;
+	return async (input, init) => {
+		const token = await tokenProvider();
+		const headers = new Headers(init?.headers);
+		headers.set('Authorization', `Bearer ${token}`);
+		return await base(input, { ...init, headers });
+	};
 }
 
 /**
@@ -131,10 +222,121 @@ function buildOpenAiCompatible(
 	})(model);
 }
 
+/**
+ * Defaults a custom endpoint's Responses calls to `store: false`. The runtime
+ * replays the whole history each turn, but with the SDK default (`store: true`)
+ * earlier output goes out as `item_reference` items. Proxies such as LiteLLM
+ * serve /responses without storing them, so every turn after the first fails.
+ */
+function statelessResponses(
+	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
+): ReturnType<typeof AiSdk.wrapLanguageModel> {
+	const { wrapLanguageModel, defaultSettingsMiddleware } = loadAi();
+	return wrapLanguageModel({
+		model,
+		middleware: defaultSettingsMiddleware({
+			settings: { providerOptions: { openai: { store: false } } },
+		}),
+	});
+}
+
 type OpenAiCompatibleProviderId = 'nvidia';
 
-function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
+export function isOfficialOpenAiBaseUrl(baseURL: string | undefined): boolean {
 	return baseURL?.replace(/\/+$/, '') === 'https://api.openai.com/v1';
+}
+
+/** Whether a model accepts the stable and volatile prompt sections as separate system messages. */
+export function supportsSplitSystemMessages(model: ModelConfig): boolean {
+	const modelId = getModelIdString(model);
+	if (isAnthropicMessagesProvider(modelId)) return true;
+	switch (modelId.split('/')[0]) {
+		case 'openrouter':
+			return true;
+		case 'openai': {
+			if (typeof model === 'string') return true;
+			const baseURL =
+				'baseURL' in model && typeof model.baseURL === 'string'
+					? model.baseURL
+					: 'url' in model && typeof model.url === 'string'
+						? model.url
+						: undefined;
+			return !baseURL || isOfficialOpenAiBaseUrl(baseURL);
+		}
+		default:
+			return false;
+	}
+}
+
+/**
+ * Microsoft Foundry exposes an OpenAI-compatible `/openai/v1` base on
+ * `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the classic
+ * `*.openai.azure.com` shape (it appends `/openai` and injects
+ * `/deployments/{id}`), which mangles the Foundry URL into `…/openai/v1/openai`.
+ * Drive it as a plain OpenAI-compatible endpoint so the configured base is used
+ * verbatim. The model id is the deployment name, which Foundry matches against.
+ */
+function buildAzureFoundryModel(
+	creds: ProviderCredentials<'azure-openai'>,
+	model: string,
+	fetch: FetchFn | undefined,
+): LanguageModel {
+	const { baseURL, apiKey, catalogModelId } = creds;
+	// Neither SDK takes a token provider, so Entra ID wraps the transport to
+	// send a fresh `Authorization: Bearer <token>` on every request.
+	const isEntra = isAzureEntraCredential(creds);
+	const transport = isEntra
+		? withBearerAuth(fetch, createEntraTokenProvider(creds, { ssrfBridge: creds.ssrfBridge }))
+		: fetch;
+
+	if (model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX)) {
+		return buildAzureFoundryAnthropicModel(baseURL, isEntra ? undefined : apiKey, transport, {
+			deployment: model.slice(AZURE_FOUNDRY_ANTHROPIC_PREFIX.length),
+			servedModel: catalogModelId ? splitModelId(catalogModelId).model : undefined,
+		});
+	}
+	return buildOpenAiCompatible(
+		'azure-openai',
+		undefined,
+		isEntra ? { baseURL } : { apiKey, baseURL },
+		model,
+		transport,
+	);
+}
+
+/**
+ * Claude on Foundry answers on `<resource origin>/anthropic`; the SDK appends
+ * `/messages` to the versioned base. The SDK reads output limits, structured
+ * output and thinking support from the model id, so it gets the served model
+ * when known, and the request still names the deployment.
+ */
+function buildAzureFoundryAnthropicModel(
+	baseURL: string | undefined,
+	apiKey: string | undefined,
+	transport: FetchFn | undefined,
+	{ deployment, servedModel }: { deployment: string; servedModel?: string },
+): LanguageModel {
+	if (!baseURL) throw new Error('baseURL is required for a Microsoft Foundry credential');
+	const { createAnthropic } = require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
+	return createAnthropic({
+		baseURL: `${getAzureFoundryOrigin(baseURL)}/anthropic/v1`,
+		// Without an API key the SDK needs some credential. The placeholder bearer
+		// token also keeps it from reading ANTHROPIC_API_KEY off the host; the Entra
+		// transport replaces it on every request.
+		...(apiKey ? { apiKey } : { authToken: 'entra-id' }),
+		fetch: servedModel ? withRequestModel(transport, deployment) : transport,
+	})(servedModel ?? deployment);
+}
+
+/** Wraps a `fetch` so each JSON request body names `model` instead of the SDK's model id. */
+function withRequestModel(fetch: FetchFn | undefined, model: string): FetchFn {
+	const base = fetch ?? globalFetch;
+	return async (input, init) => {
+		if (typeof init?.body !== 'string') return await base(input, init);
+		const body: unknown = JSON.parse(init.body);
+		if (!isRecord(body)) return await base(input, init);
+		return await base(input, { ...init, body: JSON.stringify({ ...body, model }) });
+	};
 }
 
 function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
@@ -155,21 +357,39 @@ function openAiCompatibleEntry<P extends OpenAiCompatibleProviderId>(
  */
 const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	openai: {
+		toolDeferral: openAiToolDeferral,
 		build: (creds, model, fetch) => {
 			const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
 			const { apiStyle, ...providerCreds } = creds;
-			const provider = createOpenAI({ ...providerCreds, fetch });
-			// A custom baseURL usually means an OpenAI-COMPATIBLE server (LM Studio,
-			// vLLM, Ollama), which speaks /chat/completions; the provider's default
-			// model targets OpenAI's own Responses API (/responses) that those
-			// servers do not implement. OpenAI credentials also carry the official
-			// baseURL, so keep those on /responses. `apiStyle` handles proxies that
-			// explicitly support one API or the other.
-			const useChat =
-				apiStyle === 'chat' ||
-				(apiStyle === undefined &&
-					Boolean(providerCreds.baseURL && !isOfficialOpenAiBaseUrl(providerCreds.baseURL)));
-			return useChat ? provider.chat(model) : provider(model);
+			const { baseURL } = providerCreds;
+			// The official API serves /responses, which the provider's default model
+			// targets. OpenAI credentials also carry that base URL. `isOpenAiCustomEndpoint`
+			// reads the model-discovery host list, so a host added there to fix a model
+			// dropdown also stops this endpoint from being probed.
+			if (baseURL === undefined || !isOpenAiCustomEndpoint(baseURL)) {
+				const provider = createOpenAI({ ...providerCreds, fetch });
+				return apiStyle === 'chat' ? provider.chat(model) : provider(model);
+			}
+			// A custom baseURL can sit behind a reverse proxy whose catch-all answers
+			// 200 with an HTML page, which the SDK stream parser accepts as an empty
+			// stream. Every route through such an endpoint runs on the guarded
+			// transport, whichever API the user pinned.
+			const guarded = createOpenAI({
+				...providerCreds,
+				fetch: guardOpenAiRoutes(fetch ?? globalFetch),
+			});
+			// `apiStyle` is the explicit override and wins over the automatic choice:
+			// it pins the route, so a refusal on it surfaces instead of falling back.
+			if (apiStyle === 'chat') return guarded.chat(model);
+			if (apiStyle === 'responses') return guarded(model);
+			// Without it, only the endpoint knows whether it is a proxy for real
+			// OpenAI or an OpenAI-COMPATIBLE server, so both adapters share the
+			// transport and the first answer decides.
+			return withChatCompletionsFallback(
+				(headers) => endpointRouteKey(baseURL, providerCreds, headers),
+				statelessResponses(guarded(model)),
+				guarded.chat(model),
+			);
 		},
 	},
 	custom: {
@@ -179,6 +399,7 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			}),
 	},
 	anthropic: {
+		toolDeferral: anthropicToolDeferral,
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =
 				require('@ai-sdk/anthropic') as typeof import('@ai-sdk/anthropic');
@@ -225,6 +446,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			return createGoogle({ ...creds, baseURL: normalizedBaseURL, fetch })(model);
 		},
 	},
+	'google-vertex': {
+		build: createGoogleVertexModel,
+	},
 	xai: {
 		build: (creds, model, fetch) => {
 			const { createXai } = require('@ai-sdk/xai') as typeof import('@ai-sdk/xai');
@@ -265,7 +489,9 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		build: (creds, model, fetch) => {
 			const { createOpenRouter } =
 				require('@openrouter/ai-sdk-provider') as typeof import('@openrouter/ai-sdk-provider');
-			return createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model);
+			return wrapOpenRouterModel(
+				createOpenRouter({ apiKey: creds.apiKey, baseURL: creds.baseURL, fetch })(model),
+			);
 		},
 	},
 	nvidia: openAiCompatibleEntry('nvidia', 'https://integrate.api.nvidia.com/v1', {}),
@@ -301,16 +527,12 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
-			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+			const { baseURL, resourceName, apiVersion, apiKey, endpointType } = creds;
+			const isEntra = isAzureEntraCredential(creds);
 
-			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
-			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the
-			// classic `*.openai.azure.com` shape (it appends `/openai` and injects
-			// `/deployments/{id}`), which mangles the Foundry URL into
-			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
-			// so the configured base is used verbatim.
-			if (endpointType === 'foundry') {
-				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
+			if (endpointType === 'foundry') return buildAzureFoundryModel(creds, model, fetch);
+			if (model.startsWith(AZURE_FOUNDRY_ANTHROPIC_PREFIX)) {
+				throw new Error('Claude deployments need a Microsoft Foundry credential');
 			}
 
 			// Classic Azure OpenAI (`*.openai.azure.com`, or `resourceName` only).
@@ -321,9 +543,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// selects the Responses API + the `/v1/` path, which Azure rejects with
 			// "API version not supported" for date-based versions.
 			//
-			// Azure deployments are user-named and surfaced in the deployment-based
-			// URL path. The catalog model id is not the deployment id, so prefer the
-			// user's `deploymentName` when provided and fall back to the model id.
+			// Agents no longer accept new Classic credentials, but published agents
+			// keep running: the model id is used as the deployment name.
 			const { createAzure } = require('@ai-sdk/azure') as typeof import('@ai-sdk/azure');
 			let normalizedBaseURL = baseURL;
 			// SDK expects url like `https://resourceName.openai.azure.com/openai`
@@ -334,14 +555,20 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 					normalizedBaseURL = url.toString();
 				}
 			}
+			// `@ai-sdk/azure` rejects `apiKey + tokenProvider` together, so pass
+			// exactly one. Entra mints a Bearer via the token provider; apiKey
+			// drives the `api-key` header path.
+			const auth = isEntra
+				? { tokenProvider: createEntraTokenProvider(creds, { ssrfBridge: creds.ssrfBridge }) }
+				: { apiKey };
 			return createAzure({
 				resourceName,
-				apiKey,
 				baseURL: normalizedBaseURL,
 				apiVersion,
 				useDeploymentBasedUrls: true,
 				fetch,
-			}).chat(deploymentName ?? model);
+				...auth,
+			}).chat(model);
 		},
 	},
 	'aws-bedrock': {
@@ -349,6 +576,8 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			const { createAmazonBedrock } =
 				require('@ai-sdk/amazon-bedrock') as typeof import('@ai-sdk/amazon-bedrock');
 			return createAmazonBedrock({
+				// An empty key stops the SDK from reading AWS_BEARER_TOKEN_BEDROCK from the process env.
+				apiKey: '',
 				region: creds.region,
 				accessKeyId: creds.accessKeyId,
 				secretAccessKey: creds.secretAccessKey,
@@ -361,11 +590,25 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 
 const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
 
+export function resolveNativeToolDeferral(config: ModelConfig): NativeToolDeferral | undefined {
+	// A pre-built model does not expose its endpoint.
+	if (isLanguageModel(config)) return undefined;
+	const { provider, model } = splitModelId(getModelIdString(config));
+	const entry = Object.entries(LANGUAGE_PROVIDERS).find(([id]) => id === provider)?.[1];
+	const implementation = entry?.toolDeferral;
+	if (!implementation?.supports(model, config)) return undefined;
+	return implementation;
+}
+
 /**
  * Provider packages are loaded dynamically via require() so only the
  * provider needed at runtime must be installed.
  */
-export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
+export function createModel(
+	config: ModelConfig,
+	fetch?: FetchFn,
+	telemetry?: BuiltTelemetry,
+): LanguageModel {
 	if (isLanguageModel(config)) {
 		return config;
 	}
@@ -392,7 +635,7 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	// Collect credential fields: strip `id`, pass the rest to Zod validation.
 	let credFields: Record<string, unknown> = {};
 	if (typeof config !== 'string') {
-		const { id: _id, ...rest } = config as { id: string; [k: string]: unknown };
+		const { id: _id, ...rest } = config;
 		credFields = rest;
 	}
 	// Host configs (e.g. Instance AI's `{ id, url }` for OpenAI-compatible
@@ -415,13 +658,12 @@ export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel
 	}
 
 	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
-	const resolvedFetch = fetch ?? getProxyFetch();
+	const transport = fetch ?? getProxyFetch();
+	const resolvedFetch = telemetry?.traceModelRequests
+		? traceModelRequests(transport ?? globalFetch, telemetry, provider, modelName)
+		: transport;
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(
-		parsed.data as never,
-		modelName,
-		resolvedFetch,
-	);
+	return (entry.build as EntryBuilder<typeof provider>)(parsed.data, modelName, resolvedFetch);
 }
 
 /**
