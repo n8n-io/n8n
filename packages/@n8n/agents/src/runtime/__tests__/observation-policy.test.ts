@@ -19,6 +19,7 @@ describe('resolveObservationThresholds', () => {
 			observeNew: 30_000,
 			midRunSoft: 21_000,
 			midRunHard: 30_000,
+			replayLimit: 180_000,
 			reflect: 40_000,
 			source: 'fixed',
 		});
@@ -35,6 +36,7 @@ describe('resolveObservationThresholds', () => {
 			observeNew: 20_000,
 			midRunSoft: 120_000,
 			midRunHard: 180_000,
+			replayLimit: 180_000,
 			reflect: 120_000,
 			source: 'windowShare',
 		});
@@ -52,6 +54,12 @@ describe('resolveObservationThresholds', () => {
 			resolveObservationThresholds({ windowShares: { contextWindowTokens: 100_000 } }, 1_000_000)
 				?.observeFirst,
 		).toBe(20_000);
+	});
+
+	it('keeps the replay limit at the observer threshold when the window is unknown', () => {
+		expect(
+			resolveObservationThresholds({ observerThresholdTokens: 30_000 }, undefined)?.replayLimit,
+		).toBe(30_000);
 	});
 });
 
@@ -105,6 +113,20 @@ describe('decideHistoryReplay', () => {
 				thresholds,
 			}),
 		).toEqual({ kind: 'sinceCursor', reason: 'over-limit' });
+	});
+
+	// Regression: with fixed thresholds the Observer runs only once history passes
+	// the threshold, so a limit equal to it never replayed full history.
+	it('replays full history past the fixed observer threshold when the window is known', () => {
+		expect(
+			decideHistoryReplay({
+				config: { historyMode: 'cacheAware' },
+				now,
+				lastActivityAt: now,
+				fullHistoryTokens: 10_000,
+				thresholds: resolveObservationThresholds({ observerThresholdTokens: 4_000 }, 1_000_000)!,
+			}),
+		).toEqual({ kind: 'full' });
 	});
 });
 

@@ -31,12 +31,26 @@ const ReadHistoryOutputSchema = z.object({
 			role: z.string(),
 			createdAt: z.string().optional(),
 			text: z.string(),
+			/** Character position in the message where `text` starts. */
+			offset: z.number(),
 			truncated: z.boolean(),
 		}),
 	),
 });
 
 type ReadHistoryOutput = z.infer<typeof ReadHistoryOutputSchema>;
+
+/**
+ * Cut long messages to MAX_TEXT_CHARS. For a search hit, centre the excerpt on
+ * the match: a match deep inside a long message must not be cut off.
+ */
+export function excerpt(text: string, needle?: string) {
+	if (text.length <= MAX_TEXT_CHARS) return { text, offset: 0, truncated: false };
+	const at = needle ? text.toLowerCase().indexOf(needle) : -1;
+	const offset =
+		at < 0 ? 0 : Math.max(0, Math.min(at - MAX_TEXT_CHARS / 2, text.length - MAX_TEXT_CHARS));
+	return { text: text.slice(offset, offset + MAX_TEXT_CHARS), offset, truncated: true };
+}
 
 const INSTRUCTION =
 	'Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.';
@@ -71,8 +85,7 @@ export function createReadHistoryTool(opts: {
 					id: message.id,
 					role: 'role' in message ? message.role : 'custom',
 					createdAt: getCreatedAt(message)?.toISOString(),
-					text: text.slice(0, MAX_TEXT_CHARS),
-					truncated: text.length > MAX_TEXT_CHARS,
+					...excerpt(text, needle),
 				});
 			}
 			return { messages: matches.reverse() };

@@ -9,6 +9,17 @@ import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
+// Keep the tests off the network: the window is unknown unless a test sets it.
+const contextWindow = vi.hoisted(() => ({ value: undefined as number | undefined }));
+vi.mock('../../sdk/catalog', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getModelContextWindow: async () => await Promise.resolve(contextWindow.value),
+}));
+
+beforeEach(() => {
+	contextWindow.value = undefined;
+});
+
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
 const persistence = { threadId: THREAD_ID, resourceId: RESOURCE_ID };
@@ -99,6 +110,15 @@ describe('cacheAware history', () => {
 			observerThresholdTokens: 2,
 		});
 		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m3']);
+	});
+
+	it('replays full history past a fixed threshold when the window is known', async () => {
+		contextWindow.value = 1_000_000;
+		const list = await load(await seedObservedThread(60_000), {
+			historyMode: 'cacheAware',
+			observerThresholdTokens: 2,
+		});
+		expect(list.llmVisibleMessages().map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
 	});
 });
 

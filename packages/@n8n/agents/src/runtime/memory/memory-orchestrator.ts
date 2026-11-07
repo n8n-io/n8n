@@ -342,10 +342,14 @@ export class MemoryOrchestrator {
 	private async resolveThresholds(): Promise<ObservationThresholds | undefined> {
 		const observationalMemory = this.config.observationalMemory;
 		if (!observationalMemory) return undefined;
-		if (observationalMemory.windowShares && this.contextWindow === undefined) {
+		// cacheAware also needs the window, for its replay limit.
+		const needsWindow =
+			observationalMemory.windowShares !== undefined ||
+			observationalMemory.historyMode === 'cacheAware';
+		if (needsWindow && this.contextWindow === undefined) {
 			try {
 				this.contextWindow =
-					observationalMemory.windowShares.contextWindowTokens ??
+					observationalMemory.windowShares?.contextWindowTokens ??
 					(await getModelContextWindow(
 						getCatalogModelId(this.config.model),
 						this.config.modelFetch,
@@ -355,6 +359,10 @@ export class MemoryOrchestrator {
 				logger.warn('Context window lookup failed; using fixed thresholds', { error });
 				this.contextWindow = null;
 			}
+			logger.debug('Resolved observation context window', {
+				modelId: getCatalogModelId(this.config.model),
+				contextWindow: this.contextWindow,
+			});
 		}
 		return resolveObservationThresholds(observationalMemory, this.contextWindow ?? undefined);
 	}
@@ -783,7 +791,7 @@ export class MemoryOrchestrator {
 			if (
 				cursor &&
 				thresholds &&
-				(await this.estimateVisibleBudget(list)) >= thresholds.midRunHard
+				(await this.estimateVisibleBudget(list)) >= thresholds.replayLimit
 			) {
 				await this.activateObservations(list, persistence);
 			}

@@ -22,6 +22,12 @@ export interface ObservationThresholds {
 	midRunSoft: number;
 	/** Visible tokens at which the loop waits for observation. */
 	midRunHard: number;
+	/**
+	 * Visible tokens above which `cacheAware` drops observed messages. It is the
+	 * `waitAt` share of the context window when the window is known, so a warm
+	 * cache keeps full history well past the fixed observer threshold.
+	 */
+	replayLimit: number;
 	/** Active observation-log tokens that trigger the Reflector. */
 	reflect: number | undefined;
 	source: 'fixed' | 'windowShare';
@@ -40,11 +46,13 @@ export function resolveObservationThresholds(
 	if (shares && window !== undefined && window > 0) {
 		const at = (share: number | undefined, fallback: number) =>
 			Math.max(1, Math.floor(window * (share ?? fallback)));
+		const midRunHard = at(shares.waitAt, DEFAULT_WINDOW_SHARES.waitAt);
 		return {
 			observeFirst: at(shares.observeAt, DEFAULT_WINDOW_SHARES.observeAt),
 			observeNew: at(shares.observeNew, DEFAULT_WINDOW_SHARES.observeNew),
 			midRunSoft: at(shares.midRunAt, DEFAULT_WINDOW_SHARES.midRunAt),
-			midRunHard: at(shares.waitAt, DEFAULT_WINDOW_SHARES.waitAt),
+			midRunHard,
+			replayLimit: midRunHard,
 			reflect: config.reflect ? at(shares.reflectAt, DEFAULT_WINDOW_SHARES.reflectAt) : undefined,
 			source: 'windowShare',
 		};
@@ -57,6 +65,12 @@ export function resolveObservationThresholds(
 		observeNew: observer,
 		midRunSoft: Math.max(1, Math.floor(observer * FIXED_MID_RUN_SOFT_RATIO)),
 		midRunHard: observer,
+		// Fixed thresholds observe at `observer`, so a limit equal to it would
+		// never replay full history. Use the window when it is known.
+		replayLimit:
+			window !== undefined && window > 0
+				? Math.max(observer, Math.floor(window * DEFAULT_WINDOW_SHARES.waitAt))
+				: observer,
 		reflect: config.reflectorThresholdTokens,
 		source: 'fixed',
 	};
@@ -80,7 +94,7 @@ export function decideHistoryReplay(input: {
 }): HistoryReplay {
 	const { config, now, lastActivityAt, fullHistoryTokens, thresholds } = input;
 	if (config.historyMode !== 'cacheAware') return { kind: 'sinceCursor', reason: 'masked-mode' };
-	if (fullHistoryTokens >= thresholds.midRunHard) {
+	if (fullHistoryTokens >= thresholds.replayLimit) {
 		return { kind: 'sinceCursor', reason: 'over-limit' };
 	}
 	const ttl = config.cacheTtlMs ?? DEFAULT_OBSERVATION_CACHE_TTL_MS;
