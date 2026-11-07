@@ -246,12 +246,12 @@ const files = computed(() =>
 }
 
 .warning {
-	background-color: var(--color--warning--tint-2);
+	background-color: var(--callout--color--background--warning);
 	color: inherit;
 }
 
 .blocked {
-	background-color: var(--color--danger--tint-3);
+	background-color: var(--callout--color--background--danger);
 	color: inherit;
 }
 
