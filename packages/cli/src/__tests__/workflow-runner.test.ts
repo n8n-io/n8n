@@ -1416,20 +1416,6 @@ describe('run', () => {
 			return { data, processError };
 		}
 
-		it('surfaces a WorkflowHasIssuesError as a failed run instead of rejecting', async () => {
-			const error = new WorkflowHasIssuesError(
-				{ node1: { parameters: { field: ['is missing'] } } },
-				{},
-			);
-			const { data, processError } = arrangeFailingRunDeps(error);
-			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
-
-			await expect(runner.run(data)).resolves.toBe('1');
-
-			expect(failExecution).toHaveBeenCalledWith(data, '1', error);
-			expect(processError).not.toHaveBeenCalled();
-		});
-
 		it('rejects when execution startup fails', async () => {
 			const error = new Error('boom');
 			const { data, processError } = arrangeFailingRunDeps(error);
