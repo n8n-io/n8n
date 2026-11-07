@@ -455,15 +455,49 @@ describe('ToolWorkflowV1', () => {
 			expect(ctx.logAiEvent).not.toHaveBeenCalled();
 		});
 
-		it.each([false, true])(
-			'should pass only the schema fields to the sub-workflow when additionalProperties is %s',
-			async (additionalProperties) => {
+		const city = { type: 'string' };
+		const closedQuery = { city: 'Berlin' };
+		const openQuery = { chatInput: 'hi', city: 'Berlin', units: 'metric' };
+
+		it.each([
+			['additionalProperties unset', { properties: { city } }, closedQuery],
+			[
+				'additionalProperties false',
+				{ properties: { city }, additionalProperties: false },
+				closedQuery,
+			],
+			[
+				'additionalProperties false and allOf',
+				{
+					properties: { city },
+					additionalProperties: false,
+					allOf: [{ properties: { city: { minLength: 1 } } }],
+				},
+				closedQuery,
+			],
+			[
+				'additionalProperties false and a root default',
+				{ properties: { city }, additionalProperties: false, default: { city: 'Paris' } },
+				closedQuery,
+			],
+			[
+				'additionalProperties true',
+				{ properties: { city }, additionalProperties: true },
+				openQuery,
+			],
+			['no properties', {}, openQuery],
+			[
+				'patternProperties',
+				{ properties: { city }, patternProperties: { '^u': { type: 'string' } } },
+				openQuery,
+			],
+		])(
+			'should pass the engine item to the sub-workflow by the input schema with %s',
+			async (_, schema, query) => {
 				const ctx = createExecuteContext([
-					{ json: { chatInput: 'hi', city: 'Berlin', toolCallId: 'call_1' } },
+					{ json: { chatInput: 'hi', city: 'Berlin', units: 'metric', toolCallId: 'call_1' } },
 				]);
-				useInputSchema(ctx, () =>
-					JSON.stringify({ ...JSON.parse(citySchema), additionalProperties }),
-				);
+				useInputSchema(ctx, () => JSON.stringify({ type: 'object', ...schema }));
 				ctx.executeWorkflow.mockResolvedValueOnce({
 					data: [[{ json: { forecast: 'sunny' } }]],
 					executionId: 'sub-1',
@@ -472,7 +506,7 @@ describe('ToolWorkflowV1', () => {
 				const result = await node.execute.call(ctx);
 
 				expect(manual.execute).toHaveBeenCalledWith(
-					{ json: { query: { city: 'Berlin' } } },
+					{ json: { query } },
 					0,
 					expect.anything(),
 					expect.anything(),

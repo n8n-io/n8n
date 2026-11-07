@@ -1,5 +1,6 @@
 import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
@@ -31,14 +32,8 @@ import {
 	generateSchemaFromExample,
 	parseJsonSchemaParameter,
 } from '../../../../utils/schemaParsing';
+import { toToolInput } from './toolInput';
 import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
-
-const toToolInput = (tool: DynamicTool | DynamicStructuredTool, json: IDataObject) => {
-	const shape: unknown =
-		tool instanceof DynamicStructuredTool ? get(tool.schema, 'shape') : undefined;
-	if (!isObject(shape)) return json;
-	return Object.fromEntries(Object.entries(json).filter(([key]) => Object.hasOwn(shape, key)));
-};
 
 const toOutputJson = (response: string): IDataObject => {
 	const parsed = jsonParse<unknown>(response, { fallbackValue: null });
@@ -49,7 +44,7 @@ async function getTool(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	itemIndex: number,
 	log = true,
-): Promise<DynamicTool | DynamicStructuredTool> {
+): Promise<{ tool: DynamicTool | DynamicStructuredTool; jsonSchema?: JSONSchema7 }> {
 	const workflowProxy = ctx.getWorkflowDataProxy(0);
 
 	const name = ctx.getNodeParameter('name', itemIndex) as string;
@@ -233,6 +228,7 @@ async function getTool(
 		func: toolHandler,
 	};
 
+	let jsonSchema: JSONSchema7 | undefined;
 	if (useSchema) {
 		try {
 			// We initialize these even though one of them will always be empty
@@ -241,7 +237,7 @@ async function getTool(
 			const inputSchema = ctx.getNodeParameter('inputSchema', itemIndex, '') as unknown;
 
 			const schemaType = ctx.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
-			const jsonSchema =
+			jsonSchema =
 				schemaType === 'fromJson'
 					? generateSchemaFromExample(jsonExample)
 					: parseJsonSchemaParameter(inputSchema);
@@ -262,7 +258,7 @@ async function getTool(
 		tool = new DynamicTool(functionBase);
 	}
 
-	return tool;
+	return { tool, jsonSchema };
 }
 
 export class ToolWorkflowV1 implements INodeType {
@@ -276,7 +272,7 @@ export class ToolWorkflowV1 implements INodeType {
 	}
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		return { response: await getTool(this, itemIndex) };
+		return { response: (await getTool(this, itemIndex)).tool };
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -284,8 +280,10 @@ export class ToolWorkflowV1 implements INodeType {
 		const response: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const tool = await getTool(this, itemIndex, false);
-				const result = (await tool.invoke(toToolInput(tool, items[itemIndex].json))) as string;
+				const { tool, jsonSchema } = await getTool(this, itemIndex, false);
+				const result = (await tool.invoke(
+					toToolInput(jsonSchema, items[itemIndex].json),
+				)) as string;
 				response.push({ json: toOutputJson(result), pairedItem: { item: itemIndex } });
 			} catch (error) {
 				const nodeError = new NodeOperationError(this.getNode(), error as Error);
