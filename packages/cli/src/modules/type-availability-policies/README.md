@@ -100,12 +100,12 @@ own permission, because blocking `oAuth2Api` is a wider lever than blocking one 
 
 It implements all eight points:
 
-| Point                    | What it reads                                         |
-| ------------------------ | ----------------------------------------------------- |
+| Point                    | What it reads                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | the five workflow points | the keys of every node's `credentials` map, the type HTTP Request names by parameter, and `extendsCredential` |
-| `credentialSave`         | the type of the credential being written              |
-| `credentialTransfer`     | the credential's type, against the **target** project |
-| `credentialDecrypt`      | `credentialType` — the credential's own type          |
+| `credentialSave`         | the type of the credential being written                                                                      |
+| `credentialTransfer`     | the credential's type, against the **target** project                                                         |
+| `credentialDecrypt`      | `credentialType` — the credential's own type                                                                  |
 
 Two differences from the node check are the point of the whole thing:
 

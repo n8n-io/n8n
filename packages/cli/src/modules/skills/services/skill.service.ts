@@ -9,6 +9,7 @@ import {
 	type SaveSkillDto,
 	type SkillAgentOption,
 	type SkillDetail,
+	type SkillListCollapsedSource,
 	type SkillListItem,
 	type SkillListResponse,
 	type SkillNewNameQueryDto,
@@ -34,6 +35,7 @@ import { SkillSourceRepository } from '../database/repositories/skill-source.rep
 import {
 	SkillRepository,
 	type SkillListSort,
+	type SkillMatchFilter,
 	type SkillVisibility,
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
@@ -164,7 +166,8 @@ export class SkillService {
 			this.attachTarget(query.attachableTo),
 		]);
 		if (usedBySkillIds === null) return { count: 0, data: [] };
-		const { skills, count } = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
+		const visibility = visibilityOf(projectIds);
+		const match: SkillMatchFilter = {
 			scope: query.scope,
 			projectId: query.projectId || undefined,
 			attachableToProjectId,
@@ -172,10 +175,68 @@ export class SkillService {
 			createdById: query.createdById,
 			search: query.search,
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
+		};
+		if (query.groupBy === 'source') {
+			const page = await this.findGroupedPage(
+				visibility,
+				match,
+				new Set(query.collapsedSourceIds ?? []),
+				query.skip,
+				query.take,
+			);
+			return {
+				count: page.count,
+				data: await this.toListItems(user, page.skills),
+				collapsedSources: page.collapsedSources,
+			};
+		}
+		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+			...match,
 			skip: query.skip,
 			take: query.take,
 		});
 		return { count, data: await this.toListItems(user, skills) };
+	}
+
+	/**
+	 * One page of the source groups: each source by repository, then the skills that no source
+	 * syncs. A source that the user folded is one row in place of its skills. The pages cut
+	 * the rows in order, so a long open group continues on the next page, where the table
+	 * shows its group row again. The page reads the group sizes once, then one slice for each
+	 * open group on it.
+	 */
+	private async findGroupedPage(
+		visibility: SkillVisibility,
+		match: SkillMatchFilter,
+		collapsed: Set<string>,
+		skip: number,
+		take: number | undefined,
+	): Promise<{ skills: Skill[]; count: number; collapsedSources: SkillListCollapsedSource[] }> {
+		const groups = await this.skillRepository.findSourceGroupSizes(visibility, match);
+		const pageEnd = take === undefined ? Number.POSITIVE_INFINITY : skip + take;
+		const skills: Skill[] = [];
+		const collapsedSources: SkillListCollapsedSource[] = [];
+		let position = 0;
+		for (const { sourceId, count } of groups) {
+			const folded = sourceId !== null && collapsed.has(sourceId);
+			const start = position;
+			position += folded ? 1 : count;
+			if (position <= skip || start >= pageEnd) continue;
+			if (folded) {
+				collapsedSources.push({ sourceId, index: skills.length, skillCount: count });
+				continue;
+			}
+			const from = Math.max(skip, start) - start;
+			const to = Math.min(pageEnd, position) - start;
+			const slice = await this.skillRepository.findVisibleSlice(visibility, {
+				...match,
+				...(sourceId === null ? { withoutSource: true } : { sourceId }),
+				skip: from,
+				take: to - from,
+			});
+			skills.push(...slice);
+		}
+		return { skills, count: position, collapsedSources };
 	}
 
 	/** The users who created a skill that the user may see, for the creator filter. */
@@ -855,9 +916,8 @@ export class SkillService {
 				// Stop syncing needs the update permission of the scope that the skill shares with its source.
 				// The route answers 404 while the Skill Sync flag is off for the user.
 				canStopSyncing: skillSyncOn && synced.has(skill.id) && canEdit(skill),
-				syncState: synced.get(skill.id) ?? null,
-				// Check now needs the same permission as stop syncing.
-				canCheckForUpdates: skillSyncOn && synced.has(skill.id) && canEdit(skill),
+				syncState: synced.get(skill.id)?.state ?? null,
+				sourceId: synced.get(skill.id)?.sourceId ?? null,
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});

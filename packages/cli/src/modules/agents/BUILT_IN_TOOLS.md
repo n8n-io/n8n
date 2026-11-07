@@ -80,25 +80,25 @@ Attach condition: The sandbox is on and the agent is not an inline agent. The ru
 
 Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/src/workspace/tools/).
 
-| Tool | Purpose |
-| --- | --- |
-| `workspace_read_file` | Reads a file from the workspace. |
-| `workspace_read_files` | Reads several files, or line ranges of them, in one call. |
-| `workspace_read_tool_result` | Reads the full result of an earlier tool call. |
-| `workspace_write_file` | Writes a file to the workspace. |
-| `workspace_str_replace_file` | Replaces a string in a workspace file. |
-| `workspace_edit_files` | Applies several writes and replacements in one call, and reports each result. |
-| `workspace_append_file` | Appends content to a workspace file. |
-| `workspace_list_files` | Lists the files in the workspace. |
-| `workspace_file_stat` | Returns metadata for a workspace file. |
-| `workspace_mkdir` | Creates a directory in the workspace. |
-| `workspace_delete_file` | Deletes a file from the workspace. |
-| `workspace_copy_file` | Copies a file in the workspace. |
-| `workspace_move_file` | Moves a file in the workspace. |
-| `workspace_rmdir` | Removes a directory from the workspace. |
-| `workspace_execute_command` | Runs a shell command in the sandbox. |
-| `workspace_list_processes` | Lists the processes that run in the sandbox. |
-| `workspace_kill_process` | Stops a process in the sandbox. |
+| Tool                         | Purpose                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| `workspace_read_file`        | Reads a file from the workspace.                                              |
+| `workspace_read_files`       | Reads several files, or line ranges of them, in one call.                     |
+| `workspace_read_tool_result` | Reads the full result of an earlier tool call.                                |
+| `workspace_write_file`       | Writes a file to the workspace.                                               |
+| `workspace_str_replace_file` | Replaces a string in a workspace file.                                        |
+| `workspace_edit_files`       | Applies several writes and replacements in one call, and reports each result. |
+| `workspace_append_file`      | Appends content to a workspace file.                                          |
+| `workspace_list_files`       | Lists the files in the workspace.                                             |
+| `workspace_file_stat`        | Returns metadata for a workspace file.                                        |
+| `workspace_mkdir`            | Creates a directory in the workspace.                                         |
+| `workspace_delete_file`      | Deletes a file from the workspace.                                            |
+| `workspace_copy_file`        | Copies a file in the workspace.                                               |
+| `workspace_move_file`        | Moves a file in the workspace.                                                |
+| `workspace_rmdir`            | Removes a directory from the workspace.                                       |
+| `workspace_execute_command`  | Runs a shell command in the sandbox.                                          |
+| `workspace_list_processes`   | Lists the processes that run in the sandbox.                                  |
+| `workspace_kill_process`     | Stops a process in the sandbox.                                               |
 
 ### Knowledge retrieval tools
 
@@ -153,11 +153,13 @@ For example, a parent-run task completion needs only:
 
 ```json
 {
-  "planId": "<saved plan UUID>",
-  "expectedRevision": 4,
-  "document": {
-    "items": [{ "id": "<saved task UUID>", "status": "done", "resultSummary": "Reviewed the findings." }]
-  }
+	"planId": "<saved plan UUID>",
+	"expectedRevision": 4,
+	"document": {
+		"items": [
+			{ "id": "<saved task UUID>", "status": "done", "resultSummary": "Reviewed the findings." }
+		]
+	}
 }
 ```
 
@@ -211,11 +213,11 @@ Source: [`background/background-job-tools.ts`](./background/background-job-tools
 
 One tool covers all background job operations. The `action` input selects the operation:
 
-| Action | Purpose |
-| --- | --- |
-| `check` | Lists the background jobs of the conversation with their status, results and output files. `jobIds` limits the list. |
-| `cancel` | Cancels a running background job. `jobId` is required. |
-| `resume` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
+| Action   | Purpose                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------- |
+| `check`  | Lists the background jobs of the conversation with their status, results and output files. `jobIds` limits the list. |
+| `cancel` | Cancels a running background job. `jobId` is required.                                                               |
+| `resume` | Resumes selected stopped plan tasks, or the latest stop group outside a plan.                                        |
 
 Do not add a separate tool for a new background job operation. Add an action to this tool.
 

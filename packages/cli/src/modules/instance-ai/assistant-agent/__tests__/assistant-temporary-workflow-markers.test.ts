@@ -11,7 +11,9 @@ function createMemory(metadata: Record<string, unknown> = {}) {
 		patchThread: vi.fn(
 			async ({
 				update,
-			}: { update: (current: typeof thread) => { metadata?: Record<string, unknown> } | null }) => {
+			}: {
+				update: (current: typeof thread) => { metadata?: Record<string, unknown> } | null;
+			}) => {
 				const patch = update({ ...thread, metadata: { ...thread.metadata } });
 				if (patch?.metadata) thread.metadata = patch.metadata;
 				return thread;

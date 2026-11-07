@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { SkillListItem } from '@n8n/api-types';
+import { computed, useCssModule } from 'vue';
+import type { SkillListItem, SkillSourceListItem } from '@n8n/api-types';
 import {
 	N8nActionToggle,
 	N8nBadge,
 	N8nDataTableServer,
 	N8nIcon,
+	N8nSpinner,
 	N8nText,
 	N8nTooltip,
 	N8nUserInfo,
@@ -21,7 +22,9 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'timeline' | 'download' | 'checkForUpdates' | 'stopSyncing' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
+
+type SourceAction = 'checkNow' | 'openInGitHub';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -41,13 +44,27 @@ const props = defineProps<{
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
 	showMcpAvailability?: boolean;
+	/**
+	 * The connected sources the user can see. When set, each source heads its synced skills as
+	 * a group row, and the rows must arrive grouped, as `groupBy: 'source'` lists them.
+	 */
+	sources?: SkillSourceListItem[];
+	/** Sources with no synced skills, shown as rows of their own before the other rows. */
+	emptySources?: SkillSourceListItem[];
+	/** The sources that the user folded. */
+	collapsedSourceIds?: string[];
+	/** Where each folded source sits on the page, as the server placed it. */
+	collapsedSources?: Array<{ sourceId: string; index: number }>;
+	/** The sources with a check that runs, so their rows show progress. */
+	checkingSourceIds?: string[];
 }>();
 
 const emit = defineEmits<{
 	open: [skill: SkillListItem];
 	timeline: [skill: SkillListItem];
 	download: [skill: SkillListItem];
-	checkForUpdates: [skill: SkillListItem];
+	toggleSource: [sourceId: string];
+	checkSource: [source: SkillSourceListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -56,6 +73,7 @@ const emit = defineEmits<{
 const tableOptions = defineModel<TableOptions>('tableOptions', { default: () => ({}) });
 
 const i18n = useI18n();
+const $style = useCssModule();
 const { deleteBlockedReason } = useSkillDeleteRule();
 const usersStore = useUsersStore();
 
@@ -82,16 +100,6 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
 		},
-		// Only a synced skill that the user may change. It checks the whole source.
-		...(skill.canCheckForUpdates
-			? [
-					{
-						value: 'checkForUpdates' as const,
-						label: i18n.baseText('settings.context.skills.checkForUpdates.action'),
-						icon: 'refresh-cw' as const,
-					},
-				]
-			: []),
 		// Only a synced skill that the user may stop syncing.
 		...(skill.canStopSyncing
 			? [
@@ -117,7 +125,6 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	if (action === 'edit') emit('open', skill);
 	else if (action === 'timeline') emit('timeline', skill);
 	else if (action === 'download') emit('download', skill);
-	else if (action === 'checkForUpdates') emit('checkForUpdates', skill);
 	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
 }
@@ -132,6 +139,95 @@ function syncBadgeOf({ syncState }: SkillListItem) {
 	if (syncState !== 'update_available' && syncState !== 'update_blocked') return undefined;
 	const { variant, key } = SYNC_BADGES[syncState];
 	return { variant, label: i18n.baseText(key), tooltip: i18n.baseText(`${key}.tooltip`) };
+}
+
+const sourcesById = computed(
+	() =>
+		new Map(
+			[...(props.sources ?? []), ...(props.emptySources ?? [])].map((source) => [
+				source.id,
+				source,
+			]),
+		),
+);
+
+const collapsed = computed(() => new Set(props.collapsedSourceIds ?? []));
+
+const emptySourceIds = computed(() => new Set((props.emptySources ?? []).map(({ id }) => id)));
+
+/** The group of a row: its source. A skill that no source syncs has no group row. */
+function groupOf(skill: SkillListItem): string | undefined {
+	return skill.sourceId ?? undefined;
+}
+
+/** Empty sources come first. Folded sources sit where the server put them. */
+const extraGroups = computed(() => [
+	...(props.emptySources ?? []).map(({ id }) => ({ group: id, index: 0 })),
+	...(props.collapsedSources ?? []).map(({ sourceId, index }) => ({ group: sourceId, index })),
+]);
+
+/** A source with no synced skills has nothing to fold. */
+function canFold(sourceId: string): boolean {
+	return !emptySourceIds.value.has(sourceId);
+}
+
+function toggleSource(sourceId: string) {
+	if (canFold(sourceId)) emit('toggleSource', sourceId);
+}
+
+/** `owner/repository · branch`, the one format for a repository everywhere. */
+function sourceName(sourceId: string): string {
+	const source = sourcesById.value.get(sourceId);
+	// A source of a type that this build cannot read, or one that has not loaded yet.
+	if (!source) return i18n.baseText('settings.context.skills.sources.unknown');
+	return [source.label, source.ref].filter(Boolean).join(' · ');
+}
+
+/** The scope badge reads the fields of a skill. A source is never one agent's. */
+function scopeOf(source: SkillSourceListItem) {
+	return {
+		scope: source.projectId ? ('project' as const) : ('instance' as const),
+		projectId: source.projectId,
+		projectName: source.projectName,
+		projectType: source.projectType,
+		agentName: null,
+	};
+}
+
+/** The updates that wait for review. Users without update rights see no count. */
+function updateCount(source: SkillSourceListItem): number {
+	return source.canReview ? source.updatesAvailable + source.updatesBlocked : 0;
+}
+
+function sourceActions(source: SkillSourceListItem) {
+	const items: Array<{ value: SourceAction; label: string; icon: IconName }> = [];
+	if (source.canReview) {
+		items.push({
+			value: 'checkNow',
+			label: i18n.baseText('settings.context.skills.checkForUpdates.action'),
+			icon: 'refresh-cw',
+		});
+	}
+	items.push({
+		value: 'openInGitHub',
+		label: i18n.baseText('settings.context.skills.sources.openInGitHub'),
+		icon: 'external-link',
+	});
+	return items;
+}
+
+function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
+	if (action === 'checkNow') emit('checkSource', source);
+	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
+}
+
+/** A synced skill sits under the group row of its source, so its name is indented. */
+function isNested(skill: SkillListItem): boolean {
+	return !!props.sources && !!skill.sourceId;
+}
+
+function groupRowProps(sourceId: string) {
+	return { class: canFold(sourceId) ? $style.groupRowFoldable : undefined };
 }
 
 function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
@@ -193,15 +289,99 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			:loading="props.loading"
 			:page-sizes="PREFERENCES_PAGE_SIZES"
 			:row-props="{ class: $style.row }"
+			:group-by="props.sources ? groupOf : undefined"
+			:extra-groups="extraGroups"
+			:collapsed-groups="props.collapsedSourceIds ?? []"
+			:group-row-props="groupRowProps"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
+			@click:group="(_event: MouseEvent, { group }: { group: string }) => toggleSource(group)"
 		>
+			<!-- A source heads its synced skills. Its scope and its actions sit in their columns. -->
+			<template #[`group.name`]="{ group }">
+				<div :class="$style.group" data-test-id="skill-group-header">
+					<button
+						v-if="canFold(group)"
+						type="button"
+						:class="$style.groupToggle"
+						:aria-expanded="!collapsed.has(group)"
+						:aria-label="sourceName(group)"
+						data-test-id="skill-group-toggle"
+						@click.stop="toggleSource(group)"
+					>
+						<N8nIcon
+							:icon="collapsed.has(group) ? 'chevron-right' : 'chevron-down'"
+							size="small"
+							color="text-light"
+						/>
+					</button>
+					<span v-else :class="$style.groupToggleSpace" />
+					<N8nIcon icon="git-branch" size="small" color="text-light" />
+					<N8nText
+						size="small"
+						color="text-dark"
+						bold
+						:class="$style.groupTitle"
+						:title="sourceName(group)"
+						data-test-id="skill-group-title"
+					>
+						{{ sourceName(group) }}
+					</N8nText>
+					<N8nText
+						v-if="!canFold(group)"
+						size="small"
+						color="text-light"
+						:class="$style.groupNote"
+						data-test-id="skill-group-empty"
+					>
+						· {{ i18n.baseText('settings.context.skills.sources.noSyncedSkills') }}
+					</N8nText>
+				</div>
+			</template>
+
+			<template #[`group.scope`]="{ group }">
+				<SkillScopeBadge v-if="sourcesById.get(group)" :skill="scopeOf(sourcesById.get(group)!)" />
+			</template>
+
+			<!-- The update count and the progress sit in the empty cell of the source row, left of its menu. -->
+			<template #[`group.updatedAt`]="{ group }">
+				<div v-if="sourcesById.get(group)" :class="$style.sourceStatus">
+					<N8nSpinner
+						v-if="props.checkingSourceIds?.includes(group)"
+						size="small"
+						data-test-id="skill-group-checking"
+					/>
+					<N8nBadge
+						v-else-if="updateCount(sourcesById.get(group)!) > 0"
+						:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
+						data-test-id="skill-group-updates"
+					>
+						{{
+							i18n.baseText('settings.context.skills.sources.updates', {
+								interpolate: { count: updateCount(sourcesById.get(group)!) },
+								adjustToNumber: updateCount(sourcesById.get(group)!),
+							})
+						}}
+					</N8nBadge>
+				</div>
+			</template>
+
+			<template #[`group.actions`]="{ group }">
+				<div v-if="sourcesById.get(group)" :class="$style.actions" @click.stop>
+					<N8nActionToggle
+						:actions="sourceActions(sourcesById.get(group)!)"
+						data-test-id="skill-group-actions"
+						@action="(action: SourceAction) => onSourceAction(sourcesById.get(group)!, action)"
+					/>
+				</div>
+			</template>
+
 			<template v-if="props.showEmpty" #cover>
 				<slot name="empty" />
 			</template>
 
 			<template #[`item.name`]="{ item }">
-				<div :class="$style.skillCell">
+				<div :class="[$style.skillCell, isNested(item) && $style.nested]">
 					<div :class="$style.skillTitle">
 						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
 							{{ item.name }}
@@ -321,5 +501,51 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 .row {
 	cursor: pointer;
+}
+.nested {
+	padding-left: var(--spacing--lg);
+}
+
+.group {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+/* One line: the repository shortens with an ellipsis, and the note keeps its words. */
+.groupTitle {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.groupNote {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.groupToggle {
+	display: inline-flex;
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: pointer;
+}
+
+.groupToggleSpace {
+	display: inline-block;
+	width: var(--spacing--sm);
+}
+
+.groupRowFoldable {
+	cursor: pointer;
+}
+
+.sourceStatus {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>

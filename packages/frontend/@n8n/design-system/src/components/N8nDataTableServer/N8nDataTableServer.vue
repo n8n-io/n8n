@@ -91,6 +91,22 @@ const props = withDefaults(
 		 * @default 0
 		 */
 		pinColumns?: number;
+		/**
+		 * The group of a row. The table shows a group row before the first row of each group,
+		 * with one cell for each column, filled by the `group.<column>` slots. A row without a
+		 * group gets no group row. The rows must arrive sorted by group.
+		 */
+		groupBy?: (row: T) => string | undefined;
+		/**
+		 * Group rows with no rows of their own on this page, such as an empty group or a group
+		 * that the server folded. Each shows before the row at `index`, or after the last row
+		 * when `index` is past it.
+		 */
+		extraGroups?: Array<{ group: string; index: number }>;
+		/** Groups that the user folded. Their group rows stay, and their rows are not rendered. */
+		collapsedGroups?: string[];
+		/** Props of the group row of a group, such as a class. */
+		groupRowProps?: (group: string) => { class?: VueClass };
 	}>(),
 	{
 		itemSelectable: undefined,
@@ -100,6 +116,10 @@ const props = withDefaults(
 		showAll: false,
 		rowProps: undefined,
 		pinColumns: 0,
+		groupBy: undefined,
+		extraGroups: () => [],
+		collapsedGroups: () => [],
+		groupRowProps: undefined,
 	},
 );
 
@@ -108,6 +128,8 @@ defineSlots<{
 	[key: `item.${string}`]: (props: { value: unknown; item: T }) => void;
 	item: (props: { item: T; cells: Array<Cell<T, unknown>> }) => void;
 	cover?: () => void;
+	/** One cell of a group row. `item` is the first row of the group, or undefined for an extra group. */
+	[key: `group.${string}`]: (props: { item: T | undefined; group: string }) => void;
 }>();
 
 const emit = defineEmits<{
@@ -115,6 +137,7 @@ const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'click:row': [event: MouseEvent, payload: { item: T }];
+	'click:group': [event: MouseEvent, payload: { group: string }];
 }>();
 
 const data = shallowRef<T[]>(props.items.concat());
@@ -126,6 +149,55 @@ watch(
 	// the sync will NOT work without the deep watcher
 	{ deep: true },
 );
+
+/** The group whose group row shows before the row at `index`, if that row starts a group. */
+function groupStartingAt(rows: Array<Row<T>>, index: number): string | undefined {
+	if (!props.groupBy) return undefined;
+	const group = props.groupBy(rows[index].original);
+	if (group === undefined) return undefined;
+	return index > 0 && props.groupBy(rows[index - 1].original) === group ? undefined : group;
+}
+
+type BodyEntry =
+	| { kind: 'group'; key: string; group: string; item: T | undefined }
+	| { kind: 'row'; key: string; row: Row<T> };
+
+/** The rows of the body in order: the data rows, with each group row before its first row. */
+function bodyEntries(): BodyEntry[] {
+	const rows = table.getRowModel().rows;
+	const entries: BodyEntry[] = [];
+	const extrasAt = (index: number, last: boolean) =>
+		props.extraGroups
+			.filter((extra) => (last ? extra.index >= index : extra.index === index))
+			.map(
+				({ group }): BodyEntry => ({
+					kind: 'group',
+					key: `group-${group}`,
+					group,
+					item: undefined,
+				}),
+			);
+	rows.forEach((row, index) => {
+		entries.push(...extrasAt(index, false));
+		const group = groupStartingAt(rows, index);
+		if (group !== undefined) {
+			entries.push({ kind: 'group', key: `group-${group}-${row.id}`, group, item: row.original });
+		}
+		entries.push({ kind: 'row', key: row.id, row });
+	});
+	entries.push(...extrasAt(rows.length, true));
+	return entries;
+}
+
+function isRowCollapsed(row: T): boolean {
+	const group = props.groupBy?.(row);
+	return group !== undefined && props.collapsedGroups.includes(group);
+}
+
+function groupCellAlign(column: CoreColumn<T, unknown>) {
+	const align = getColumnMeta(column).cellProps.align;
+	return align ? `cell-align--${align}` : undefined;
+}
 
 function itemKeySlot(info: CellContext<T, unknown>) {
 	const slotName = `item.${info.column.id}` as const;
@@ -535,37 +607,66 @@ const table = useVueTable({
 								</td>
 							</tr>
 						</template>
-						<template v-else-if="table.getRowModel().rows.length">
-							<template v-for="row in table.getRowModel().rows" :key="row.id">
-								<slot name="item" v-bind="{ item: row.original, cells: row.getVisibleCells() }">
-									<tr
-										v-bind="getRowProps(row.original, row.index)"
-										@click="emit('click:row', $event, { item: row.original })"
+						<!-- Extra groups show with no rows too, such as a group with no rows of its own. -->
+						<template v-else>
+							<template v-for="entry in bodyEntries()" :key="entry.key">
+								<tr
+									v-if="entry.kind === 'group'"
+									class="group-row"
+									v-bind="groupRowProps?.(entry.group)"
+									data-test-id="data-table-group-row"
+									@click="emit('click:group', $event, { group: entry.group })"
+								>
+									<td
+										v-for="column in table.getVisibleFlatColumns()"
+										:key="column.id"
+										v-bind="getPinnedCellBindings(column)"
+										:style="{
+											width: `${column.getSize()}px`,
+											maxWidth: `${column.getSize()}px`,
+										}"
+										:class="groupCellAlign(column)"
 									>
-										<template v-for="cell in row.getVisibleCells()" :key="cell.id">
-											<td
-												v-bind="getPinnedCellBindings(cell.column)"
-												:style="{
-													width: `${cell.column.getSize()}px`,
-													maxWidth: `${cell.column.getSize()}px`,
-												}"
-												:class="{
-													'cell-select': cell.column.id === SELECT_COLUMN_ID,
-													[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
-														getColumnMeta(cell.column).cellProps.align,
-													),
-												}"
-											>
-												<div class="cell-content">
-													<FlexRender
-														:render="cell.column.columnDef.cell"
-														:props="cell.getContext()"
-													/>
-												</div>
-											</td>
-										</template>
-									</tr>
-								</slot>
+										<slot
+											:name="`group.${column.id}`"
+											v-bind="{ item: entry.item, group: entry.group }"
+										/>
+									</td>
+								</tr>
+								<template v-else-if="!isRowCollapsed(entry.row.original)">
+									<slot
+										name="item"
+										v-bind="{ item: entry.row.original, cells: entry.row.getVisibleCells() }"
+									>
+										<tr
+											v-bind="getRowProps(entry.row.original, entry.row.index)"
+											@click="emit('click:row', $event, { item: entry.row.original })"
+										>
+											<template v-for="cell in entry.row.getVisibleCells()" :key="cell.id">
+												<td
+													v-bind="getPinnedCellBindings(cell.column)"
+													:style="{
+														width: `${cell.column.getSize()}px`,
+														maxWidth: `${cell.column.getSize()}px`,
+													}"
+													:class="{
+														'cell-select': cell.column.id === SELECT_COLUMN_ID,
+														[`cell-align--${getColumnMeta(cell.column).cellProps.align}`]: Boolean(
+															getColumnMeta(cell.column).cellProps.align,
+														),
+													}"
+												>
+													<div class="cell-content">
+														<FlexRender
+															:render="cell.column.columnDef.cell"
+															:props="cell.getContext()"
+														/>
+													</div>
+												</td>
+											</template>
+										</tr>
+									</slot>
+								</template>
 							</template>
 						</template>
 					</tbody>
@@ -661,6 +762,12 @@ const table = useVueTable({
 		&:last-child {
 			border-color: transparent;
 		}
+	}
+
+	/* A group row heads the rows below it: a quiet colour and no hover. */
+	tbody > tr.group-row,
+	tbody > tr.group-row:hover {
+		background-color: var(--color--background--light-2);
 	}
 
 	td {

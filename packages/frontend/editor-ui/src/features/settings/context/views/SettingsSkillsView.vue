@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import {
 	MCP_SKILLS_EXTENSION_FLAG,
@@ -12,6 +12,7 @@ import {
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillSourceListItem,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -173,6 +174,15 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 		...(agentId ? { agentId } : {}),
 		...(createdById ? { createdById } : {}),
 		...(sortBy ? { sortBy } : {}),
+		// With Skill Sync, each source heads its synced skills.
+		...(skillSyncEnabled.value
+			? {
+					groupBy: 'source' as const,
+					...(collapsedSourceIds.value.length > 0
+						? { collapsedSourceIds: collapsedSourceIds.value.join(',') }
+						: {}),
+				}
+			: {}),
 	};
 }
 
@@ -404,7 +414,8 @@ async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSou
 		});
 	}
 	void loadCreators();
-	await load();
+	// The new source gets its group row.
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -633,7 +644,8 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
-	await load();
+	// The source of a synced skill counts one skill less.
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -668,17 +680,58 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
 		type: 'success',
 	});
+	// The source counts one synced skill less, and may have none left.
+	await Promise.all([load(), loadSources()]);
+}
+
+/** The sources that the user folded, kept in this browser, so the table opens as it was left. */
+const collapsedSourceIds = useLocalStorage<string[]>('n8n-skills-collapsed-sources', []);
+
+/** The sources with a check that runs, so their rows show progress. */
+const checkingSourceIds = ref<string[]>([]);
+
+const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
+
+/**
+ * Sources with no synced skills keep a row. With a filter on, only the sources with a match
+ * show, so an empty source shows only on the first page of the unfiltered list.
+ */
+const emptySources = computed(() => {
+	if (!skillSyncEnabled.value || loadedFiltered.value || (tableOptions.value.page ?? 0) > 0) {
+		return [];
+	}
+	// A source that the page shows folded has skills, whatever an older count says.
+	const folded = new Set(skillsStore.collapsedSources.map(({ sourceId }) => sourceId));
+	return skillsStore.sources.filter((source) => source.skillCount === 0 && !folded.has(source.id));
+});
+
+async function loadSources() {
+	if (!skillSyncEnabled.value) return;
+	try {
+		const sources = await skillsStore.fetchSources();
+		// Forget folds of sources that are gone, so the list stays within what the API accepts.
+		const known = new Set(sources.map(({ id }) => id));
+		const kept = collapsedSourceIds.value.filter((id) => known.has(id));
+		if (kept.length !== collapsedSourceIds.value.length) collapsedSourceIds.value = kept;
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.sources.error.load'));
+	}
+}
+
+async function onToggleSource(sourceId: string) {
+	const ids = new Set(collapsedSourceIds.value);
+	if (ids.has(sourceId)) ids.delete(sourceId);
+	else ids.add(sourceId);
+	collapsedSourceIds.value = [...ids];
 	await load();
 }
 
-/**
- * Check now: checks the whole source of the skill. The list reloads, so the badges of every
- * skill of the source show what the check found.
- */
-async function onCheckForUpdates(skill: SkillListItem) {
+/** Check for updates on a source: progress on its row, then a toast with the result. */
+async function onCheckSource(source: SkillSourceListItem) {
+	checkingSourceIds.value = [...checkingSourceIds.value, source.id];
 	let result;
 	try {
-		result = await skillsStore.checkForUpdates(skill.id);
+		result = await skillsStore.checkSource(source.id);
 	} catch (error) {
 		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
 		// The user cannot pick another credential here, so that reason gets its own text.
@@ -693,6 +746,8 @@ async function onCheckForUpdates(skill: SkillListItem) {
 			i18n.baseText('settings.context.skills.checkForUpdates.error'),
 		);
 		return;
+	} finally {
+		checkingSourceIds.value = checkingSourceIds.value.filter((id) => id !== source.id);
 	}
 	const { label, updatesFound, throttled } = result;
 	showMessage({
@@ -712,18 +767,23 @@ async function onCheckForUpdates(skill: SkillListItem) {
 					}),
 		type: 'success',
 	});
-	await load();
+	await Promise.all([load(), loadSources()]);
 }
 
 async function goBack() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT });
 }
 
+// The flags can arrive after the page: with Skill Sync on, the list groups and the sources load.
+watch(skillSyncEnabled, async (enabled) => {
+	if (enabled) await Promise.all([load(), loadSources()]);
+});
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	// The filter options are not needed for the first page or the deep links below.
 	void loadFilterOptions();
-	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	await Promise.all([load(), loadSources(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
@@ -879,13 +939,19 @@ onMounted(async () => {
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
 			:loading="showLoading"
-			:show-empty="emptyState !== 'none'"
+			:show-empty="emptyState !== 'none' && emptySources.length === 0"
 			:show-assistant-availability="assistantSkillsEnabled"
 			:show-mcp-availability="mcpSkillsEnabled"
+			:sources="tableSources"
+			:empty-sources="emptySources"
+			:collapsed-source-ids="collapsedSourceIds"
+			:collapsed-sources="skillsStore.collapsedSources"
+			:checking-source-ids="checkingSourceIds"
 			@open="openEditModal($event)"
 			@timeline="openEditModal($event, 'versions')"
 			@download="onDownload"
-			@check-for-updates="onCheckForUpdates($event)"
+			@toggle-source="onToggleSource"
+			@check-source="onCheckSource"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"

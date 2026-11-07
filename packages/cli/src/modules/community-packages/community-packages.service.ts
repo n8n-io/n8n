@@ -667,7 +667,11 @@ export class CommunityPackagesService {
 		packageName,
 		packageVersion,
 		checksum,
-	}: { packageName: string; packageVersion: string; checksum?: string }) {
+	}: {
+		packageName: string;
+		packageVersion: string;
+		checksum?: string;
+	}) {
 		let accepted = false;
 
 		try {

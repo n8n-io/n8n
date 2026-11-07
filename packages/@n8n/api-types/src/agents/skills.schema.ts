@@ -75,15 +75,27 @@ export type SkillListItem = {
 	canStopSyncing: boolean;
 	/** The sync state of a synced skill, for its badge. Null for a skill that is not synced. */
 	syncState: SkillSyncState | null;
-	/** Whether the skill is synced and the user may check its source for updates now. */
-	canCheckForUpdates: boolean;
+	/** The source that syncs the skill. Null for a skill that no source syncs. */
+	sourceId: string | null;
 	createdAt: string;
 	updatedAt: string;
 };
 
+/** A folded source: one row of the page in place of its skills. */
+export type SkillListCollapsedSource = {
+	sourceId: string;
+	/** Where its row goes in `data`: before the skill at this index, or last for `data.length`. */
+	index: number;
+	/** The skills of the source that match the filters, which its row stands for. */
+	skillCount: number;
+};
+
 export type SkillListResponse = {
+	/** The rows of all pages. With `groupBy: 'source'`, a folded source counts as one row. */
 	count: number;
 	data: SkillListItem[];
+	/** The folded sources on this page. Only with `groupBy: 'source'`. */
+	collapsedSources?: SkillListCollapsedSource[];
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
@@ -159,6 +171,13 @@ export const SKILLS_SORT_OPTIONS = [
 
 export type SkillSortOption = (typeof SKILLS_SORT_OPTIONS)[number];
 
+/** A comma-separated list of source ids in a query string. */
+const sourceIdList = z
+	.string()
+	.optional()
+	.transform((value) => (value ? value.split(',') : undefined))
+	.pipe(z.array(z.string().uuid()).max(SKILLS_MAX_PAGE_SIZE).optional());
+
 export class ListSkillsQueryDto extends Z.class({
 	skip: paginationSchema.skip,
 	take: optionalTake,
@@ -182,6 +201,16 @@ export class ListSkillsQueryDto extends Z.class({
 			message: `sortBy must be one of: ${SKILLS_SORT_OPTIONS.join(', ')}`,
 		})
 		.optional(),
+	/**
+	 * `source` puts the sources first, by repository, each one a group of its synced skills, and
+	 * then the skills that no source syncs. `sortBy` sorts the skills in each group.
+	 */
+	groupBy: z.enum(['source']).optional(),
+	/**
+	 * Comma-separated ids of the sources that the user folded: each is one row of the page in
+	 * place of its skills. Only with `groupBy: 'source'`.
+	 */
+	collapsedSourceIds: sourceIdList,
 }) {}
 
 export const SKILL_AGENTS_MAX_PAGE_SIZE = 50;
