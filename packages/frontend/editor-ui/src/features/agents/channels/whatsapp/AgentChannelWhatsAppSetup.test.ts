@@ -233,23 +233,27 @@ describe('AgentChannelWhatsAppSetup', () => {
 			expect(checkWhatsAppCredential).not.toHaveBeenCalled();
 		});
 
-		it.each(['incomplete', 'temporaryToken', 'mismatch', 'unreachable'] as const)(
-			'explains the %s failure and offers a recheck',
-			async (reason) => {
-				vi.mocked(checkWhatsAppCredential).mockResolvedValue({ status: 'failed', reason });
-				const { getByTestId, queryByTestId } = renderComponent({
-					props: props({ modelValue: 'cred-1' }),
-				});
+		it.each([
+			'incomplete',
+			'temporaryToken',
+			'employeeSystemUser',
+			'insufficientAccess',
+			'mismatch',
+			'unreachable',
+		] as const)('explains the %s failure and offers a recheck', async (reason) => {
+			vi.mocked(checkWhatsAppCredential).mockResolvedValue({ status: 'failed', reason });
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
 
-				await waitFor(() =>
-					expect(getByTestId('whatsapp-credential-problem')).toHaveTextContent(
-						`agents.channels.whatsapp.setup.credential.failed.${reason}`,
-					),
-				);
-				expect(getByTestId('whatsapp-credential-recheck')).toBeVisible();
-				expect(queryByTestId('whatsapp-credential-verified')).toBeNull();
-			},
-		);
+			await waitFor(() =>
+				expect(getByTestId('whatsapp-credential-problem')).toHaveTextContent(
+					`agents.channels.whatsapp.setup.credential.failed.${reason}`,
+				),
+			);
+			expect(getByTestId('whatsapp-credential-recheck')).toBeVisible();
+			expect(queryByTestId('whatsapp-credential-verified')).toBeNull();
+		});
 
 		it('reports a request that throws as unreachable', async () => {
 			vi.mocked(checkWhatsAppCredential).mockRejectedValue(new Error('network'));
@@ -523,7 +527,7 @@ describe('AgentChannelWhatsAppSetup', () => {
 			await flushPromises();
 
 			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(1);
-			expect(getWhatsAppWebhookStatus).toHaveBeenCalledWith(expect.anything(), 'p', 'a');
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
 			expect(getByTestId('whatsapp-webhook-waiting')).toBeVisible();
 
 			await vi.advanceTimersByTimeAsync(POLL_MS - 1);
@@ -540,6 +544,21 @@ describe('AgentChannelWhatsAppSetup', () => {
 
 			await vi.advanceTimersByTimeAsync(POLL_MS * 5);
 			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(3);
+		});
+
+		it('says so and keeps polling when the callback URL is in another Meta app', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			vi.mocked(getWhatsAppWebhookStatus).mockResolvedValue({ verified: true, appMismatch: true });
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await flushPromises();
+
+			expect(getByTestId('whatsapp-webhook-app-mismatch')).toBeVisible();
+			expect(queryByTestId('whatsapp-webhook-verified')).toBeNull();
+
+			await vi.advanceTimersByTimeAsync(POLL_MS);
+			expect(getWhatsAppWebhookStatus).toHaveBeenCalledTimes(2);
 		});
 
 		it('keeps polling after a failed request', async () => {
@@ -730,6 +749,8 @@ describe('AgentChannelWhatsAppSetup', () => {
 		it.each([
 			['incomplete', 'incomplete'],
 			['temporaryToken', 'temporary_token'],
+			['employeeSystemUser', 'employee_system_user'],
+			['insufficientAccess', 'insufficient_access'],
 			['mismatch', 'mismatch'],
 			['unreachable', 'unreachable'],
 		] as const)('tracks a %s credential as %s', async (reason, tracked) => {
