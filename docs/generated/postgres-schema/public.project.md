@@ -253,6 +253,7 @@ erDiagram
   uuid enabledById FK
   integer id
   boolean includeAllProjectMembers
+  boolean includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt
@@ -282,14 +283,12 @@ erDiagram
   timestamp_3__with_time_zone completedAt
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone dismissedAt
-  uuid dismissedById FK
   varchar_36_ executionId
   varchar_36_ id
   varchar_16_ outcome
   varchar_36_ projectId FK
   text report
-  varchar_36_ suggestionId FK
+  varchar_16_ reviewState
   text summary
   timestamp_3__with_time_zone updatedAt
   json usage
@@ -379,6 +378,7 @@ erDiagram
   json payload
   varchar_36_ projectId FK
   varchar_16_ resultKind
+  varchar_36_ selfHealingResultId FK
   varchar_16_ state
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK

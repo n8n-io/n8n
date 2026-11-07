@@ -394,6 +394,18 @@ describe('compileCandidateWorkflow', () => {
 		);
 	});
 
+	it.each([{ id: 'other-workflow' }, { id: undefined }])(
+		'rejects a candidate that declares workflow $id',
+		async ({ id }) => {
+			await writeCandidate({ ...generatedWorkflow(), id });
+
+			expect(await compile()).toMatchObject({
+				success: false,
+				reason: 'candidate_workflow_mismatch',
+			});
+		},
+	);
+
 	it('rejects a connection to a missing node', async () => {
 		const workflow = generatedWorkflow();
 		workflow.connections.Start = { main: [[{ node: 'Missing', type: 'main', index: 0 }]] };

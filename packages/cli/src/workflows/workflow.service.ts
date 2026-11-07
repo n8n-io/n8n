@@ -148,7 +148,7 @@ type WorkflowUpdateOptions = {
 	restoredFromVersionId?: string;
 };
 
-type PreparedWorkflowUpdate = {
+export type PreparedWorkflowUpdate = {
 	user: User;
 	previousWorkflow: WorkflowEntity;
 	workflow: WorkflowEntity;

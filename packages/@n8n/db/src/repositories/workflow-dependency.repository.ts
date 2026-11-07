@@ -68,6 +68,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		super(WorkflowDependency, dataSource.manager);
 	}
 
+	async isCalledBy(workflowId: string, publishedVersionIds: string[]) {
+		return await this.existsBy({
+			publishedVersionId: In(publishedVersionIds),
+			dependencyType: 'workflowCall',
+			dependencyKey: workflowId,
+		});
+	}
+
 	async findDependenciesForResources(
 		resourceIds: string[],
 		incomingTypes: Array<WorkflowDependency['dependencyType']>,
