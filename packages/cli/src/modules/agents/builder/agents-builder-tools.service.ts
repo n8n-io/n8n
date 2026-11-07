@@ -31,7 +31,7 @@ import {
 	AgentJsonConfigSchema,
 	isDraftAgentConfig,
 	isDraftIntegration,
-	isCredentialAgentIntegration,
+	integrationNeedsCredential,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -814,7 +814,7 @@ export class AgentsBuilderToolsService {
 		return (agent?.integrations ?? [])
 			.filter(
 				(integration) =>
-					isCredentialAgentIntegration(integration) && !isDraftIntegration(integration),
+					integrationNeedsCredential(integration) && !isDraftIntegration(integration),
 			)
 			.map((integration) => integration.credentialId);
 	}

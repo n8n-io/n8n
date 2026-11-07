@@ -87,6 +87,7 @@ describe('GlobalConfig', () => {
 		},
 		editorBaseUrl: '',
 		webhookUrl: '',
+		agentWebhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -308,6 +309,7 @@ describe('GlobalConfig', () => {
 				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
+			agentWebhook: 'agent-webhook',
 			disableProductionWebhooksOnMainProcess: false,
 			disableUi: false,
 			form: 'form',
@@ -1266,6 +1268,23 @@ describe('GlobalConfig', () => {
 
 			const globalConfig = Container.get(GlobalConfig);
 			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
+		});
+	});
+
+	describe('agent webhook endpoint', () => {
+		it.each(['', 'a/b', '(.*)', '.', '..', 'rest', 'Webhook', 'form-test', 'healthz', 'assets'])(
+			'should fall back to the default for %j',
+			(value) => {
+				process.env = { N8N_ENDPOINT_AGENT_WEBHOOK: value };
+
+				expect(Container.get(GlobalConfig).endpoints.agentWebhook).toEqual('agent-webhook');
+			},
+		);
+
+		it('should accept a path of its own', () => {
+			process.env = { N8N_ENDPOINT_AGENT_WEBHOOK: 'ai.agents' };
+
+			expect(Container.get(GlobalConfig).endpoints.agentWebhook).toEqual('ai.agents');
 		});
 	});
 
