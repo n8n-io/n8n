@@ -6,6 +6,7 @@ description: >-
   n8n hosts. Also load when the conversation lists app targets or a pending app.
 recommended_tools:
   - apps
+  - workspace_execute_command
 ---
 
 # App Builder
@@ -20,10 +21,9 @@ edit the files with the workspace tools.
 - Apps run in the browser. They reach n8n only through their bindings (see
   [Call n8n](#call-n8n)). Without a binding, keep data in component state or
   `localStorage`.
-- Use only the dependencies of the scaffold: `vue`, `vite` and
-  `@vitejs/plugin-vue`, plus `@n8n/app-sdk`, which n8n supplies. You cannot
-  change `package.json` or `package-lock.json`, so do not add `@n8n/app-sdk`
-  to them. Write routing, state and UI components yourself.
+- The scaffold includes Vue, Vue Router and Lucide icons. n8n supplies
+  `@n8n/app-sdk`, so never add it to `package.json`. Use plain CSS by default.
+  Install another public npm package only when the app needs it.
 - Use relative URLs or `location.origin`. Never hardcode a host: the preview
   and the published app run on different hosts.
 - Put styling in the source.
@@ -35,7 +35,7 @@ A new app starts from this source:
 - `index.html` loads `/src/main.js`.
 - `src/main.js` mounts `src/App.vue` on `#app`.
 - `vite.config.js` uses the Vue plugin.
-- `package.json` and `package-lock.json` are fixed.
+- `package.json` and `package-lock.json` use exact package versions.
 
 Add components under `src/`. Keep files small and focused.
 
@@ -80,12 +80,17 @@ Add components under `src/`. Keep files small and focused.
    call, not one call for each file. Use the single-file tools only for a single
    file. Read only what you need: use `grep` to find text, and read line ranges
    of large files. `workspace_edit_files` runs every operation and reports each
-   one, so fix only the operations that failed. Never change `package.json` or
-   `package-lock.json`.
-4. **Build before you commit.** In the app folder, run `npm ci` once, then
-   `npm run build`. Fix every error and build again until the build passes.
-   Use `npm ci`, not `npm install`: `npm install` can change
-   `package-lock.json`, and n8n then rejects the commit.
+   one, so fix only the operations that failed. To add a dependency, run
+   `npm install --save-exact --ignore-scripts --no-audit --no-fund --prefer-offline --registry=https://registry.npmjs.org <package>`
+   in the app folder. Install all required packages in one command. Use only
+   packages from the public npm registry. Do not use Git, URL, file, workspace
+   or custom-registry dependencies. Do not run install when the dependency
+   files did not change.
+4. **Build before you commit.** In the app folder, run
+   `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline` once, then
+   `npm run build`. After that, run only `npm run build` unless `package.json`
+   or `package-lock.json` changed. Fix every error and build again until the
+   build passes.
 5. **Commit once for each finished change.** A commit saves the folder (without
    `node_modules` and `dist`) as one version, and n8n builds it again. Never
    commit half-done work: every commit is a version.
@@ -95,8 +100,9 @@ Add components under `src/`. Keep files small and focused.
 
 If a commit reports that the app draft changed, someone else saved a newer
 version. Your folder is kept. Note your changes, call `discard` to load the
-newer draft, and apply your changes again. `discard` keeps `node_modules`, so
-you do not need to run `npm ci` again.
+newer draft, and apply your changes again. `discard` keeps `node_modules`. Run
+`npm ci --ignore-scripts --no-audit --no-fund --prefer-offline` only if the
+newer draft changed the package files.
 
 ## Call n8n
 
