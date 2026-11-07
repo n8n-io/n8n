@@ -21,9 +21,7 @@ export function skillPreview(content: SkillContent): {
 	truncated: boolean;
 } {
 	const skillMd = showHidden(skillMdText(content).text);
-	const files: SkillPreviewFile[] = [
-		{ path: SKILL_MD, text: skillMd.slice(0, SKILL_PREVIEW_MAX_LENGTH) },
-	];
+	const files: SkillPreviewFile[] = [{ path: SKILL_MD, text: cutAtLine(skillMd) }];
 	let length = skillMd.length;
 	let truncated = length > SKILL_PREVIEW_MAX_LENGTH;
 	for (const file of content.files) {
@@ -36,4 +34,14 @@ export function skillPreview(content: SkillContent): {
 		files.push({ path: file.path, text });
 	}
 	return { files, truncated };
+}
+
+/**
+ * The whole lines of a text that fit the limit. A cut inside a line could split the marker of a
+ * hidden character, and a finding on a line counts on the whole line.
+ */
+function cutAtLine(text: string): string {
+	if (text.length <= SKILL_PREVIEW_MAX_LENGTH) return text;
+	const lastBreak = text.lastIndexOf('\n', SKILL_PREVIEW_MAX_LENGTH);
+	return lastBreak < 0 ? '' : text.slice(0, lastBreak);
 }

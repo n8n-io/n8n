@@ -556,6 +556,61 @@ describe('SkillSourceConnectDialog', () => {
 			).toBeTruthy();
 		});
 
+		it('marks the most severe finding where two findings mark the same text', async () => {
+			const location = { line: 4, start: 0, end: 4 };
+			const skill = discovered({
+				previewFiles: [
+					{ path: 'SKILL.md', text: '---\nname: n\ndescription: d\nnote: "x"\n---\n\nBody.' },
+				],
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{ rule: 'new_url', severity: 'info', file: 'SKILL.md', detail: 'd', location },
+						{
+							rule: 'suspicious_phrase',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: 'd',
+							location,
+						},
+					],
+				},
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-finding-mark')).toHaveAttribute(
+				'title',
+				'Text that can change what the agent does',
+			);
+		});
+
+		it('lists a finding in a part of the skill that the preview leaves out above the files', async () => {
+			const skill = discovered({
+				previewTruncated: true,
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{
+							rule: 'hidden_unicode',
+							severity: 'needs_review',
+							file: 'references/late.md',
+							detail: 'd',
+							location: { line: 1, start: 0, end: 8 },
+						},
+					],
+				},
+			});
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [skill] }));
+			const view = render();
+			await review(view);
+
+			expect(view.getByTestId('skill-source-unplaced-finding')).toHaveTextContent(
+				'Hidden Unicode characters in references/late.md',
+			);
+		});
+
 		it('shows the files of the skill that the user clicks', async () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
 			const view = render();

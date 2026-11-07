@@ -66,13 +66,25 @@ describe('skillPreview', () => {
 		expect(truncated).toBe(true);
 	});
 
-	it('always shows SKILL.md, cut at the limit', () => {
-		const content = skill({ instructions: 'a'.repeat(SKILL_PREVIEW_MAX_LENGTH * 2) });
+	it('always shows SKILL.md, cut at the last whole line before the limit', () => {
+		const line = 'a'.repeat(99);
+		const content = skill({ instructions: Array(1000).fill(line).join('\n') });
 
 		const { files, truncated } = skillPreview(content);
 
 		expect(files).toHaveLength(1);
-		expect(files[0].text).toHaveLength(SKILL_PREVIEW_MAX_LENGTH);
+		expect(files[0].text.length).toBeLessThanOrEqual(SKILL_PREVIEW_MAX_LENGTH);
+		expect(files[0].text.endsWith(line)).toBe(true);
 		expect(truncated).toBe(true);
+	});
+
+	it('does not cut a marker of a hidden character in half', () => {
+		const content = skill({
+			instructions: `${'a'.repeat(SKILL_PREVIEW_MAX_LENGTH - 80)}\u200b${'b'.repeat(100)}`,
+		});
+
+		const { files } = skillPreview(content);
+
+		expect(files[0].text).not.toContain('\u27e6');
 	});
 });

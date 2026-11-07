@@ -40,9 +40,19 @@ const skippedFiles = computed(() =>
 	}),
 );
 
-/** Warnings and errors that mark no text, such as a size limit. They show above the files. */
+/** Whether the preview shows the text that a finding marks. A long skill shows its first files. */
+function isShown(finding: SkillScanFinding): boolean {
+	const file = props.skill.previewFiles.find((preview) => preview.path === finding.file);
+	if (!file || !finding.location) return false;
+	return finding.location.line <= file.text.split('\n').length;
+}
+
+/**
+ * Warnings and errors that the files do not show: a finding that marks no text, such as a size
+ * limit, and a finding in a part that the preview leaves out. They show above the files.
+ */
 const unplacedFindings = computed(() =>
-	findings.value.filter((finding) => finding.severity !== 'info' && !finding.location),
+	findings.value.filter((finding) => finding.severity !== 'info' && !isShown(finding)),
 );
 
 function unplacedText(finding: SkillScanFinding): string {
@@ -54,9 +64,18 @@ function unplacedText(finding: SkillScanFinding): string {
 		: text;
 }
 
-/** Splits one line at the marks of its findings. Marks that overlap an earlier one are dropped. */
+const SEVERITY_ORDER = { blocked: 0, needs_review: 1, info: 2 } as const;
+
+/**
+ * Splits one line at the marks of its findings. Where marks start at the same place, the most
+ * severe one shows. A mark that overlaps an earlier one is dropped.
+ */
 function segmentsOf(text: string, marks: SkillScanFinding[]): Segment[] {
-	const sorted = [...marks].sort((a, b) => (a.location?.start ?? 0) - (b.location?.start ?? 0));
+	const sorted = [...marks].sort(
+		(a, b) =>
+			(a.location?.start ?? 0) - (b.location?.start ?? 0) ||
+			SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity],
+	);
 	const segments: Segment[] = [];
 	let at = 0;
 	for (const finding of sorted) {
@@ -92,9 +111,12 @@ const files = computed(() =>
 	<div :class="$style.pane" data-test-id="skill-source-preview">
 		<ul v-if="unplacedFindings.length > 0" :class="$style.findings">
 			<li v-for="(finding, index) in unplacedFindings" :key="index">
-				<N8nText size="small" :color="finding.severity === 'blocked' ? 'danger' : 'warning'">{{
-					unplacedText(finding)
-				}}</N8nText>
+				<N8nText
+					size="small"
+					:color="finding.severity === 'blocked' ? 'danger' : 'warning'"
+					data-test-id="skill-source-unplaced-finding"
+					>{{ unplacedText(finding) }}</N8nText
+				>
 			</li>
 		</ul>
 		<section v-if="skippedFiles.length > 0" :class="$style.skipped">
