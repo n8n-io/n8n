@@ -5,8 +5,19 @@ import {
 	tryToParseDateTime,
 	tryToParseJsonToFormFields,
 	tryToParseUrl,
+	tryToParseJwt,
 	validateFieldType,
 } from '../src/type-validation';
+
+describe('tryToParseJwt', () => {
+	it.each(['header.payload.', 'a.b.'])('should reject a JWT with an empty signature segment (%s)', (token) => {
+		expect(() => tryToParseJwt(token)).toThrow();
+	});
+
+	it('should still accept a JWT with a non-empty signature segment', () => {
+		expect(tryToParseJwt('header.payload.signature')).toBe('header.payload.signature');
+	});
+});
 
 describe('Type Validation', () => {
 	describe('string-alphanumeric', () => {

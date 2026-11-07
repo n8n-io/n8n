@@ -323,7 +323,7 @@ export const tryToParseJwt = (value: unknown): string => {
 
 	if (!value) throw error;
 
-	const jwtPattern = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*$/;
+	const jwtPattern = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]+$/;
 
 	if (!jwtPattern.test(String(value))) throw error;
 
