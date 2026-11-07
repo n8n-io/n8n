@@ -1,5 +1,6 @@
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import { safeRegex, type IDataObject } from 'n8n-workflow';
+import type { ZodTypeAny } from 'zod';
 
 import { convertJsonSchemaToZod } from '../../../../utils/schemaParsing';
 
@@ -23,15 +24,24 @@ const limitsExtraKeys = (part: JSONSchema7) =>
 const keepsExtraKeys = (part: JSONSchema7) =>
 	acceptsAnyValue(part.additionalProperties) || (part.type === 'object' && !part.properties);
 
-const fits = (schema: JSONSchema7Definition, value: unknown) =>
-	typeof schema === 'boolean' ? schema : convertJsonSchemaToZod(schema).safeParse(value).success;
+const zodSchemas = new WeakMap<JSONSchema7, ZodTypeAny>();
+
+const fits = (schema: JSONSchema7Definition, value: unknown) => {
+	if (typeof schema === 'boolean') return schema;
+	const zodSchema = zodSchemas.get(schema) ?? convertJsonSchemaToZod(schema);
+	zodSchemas.set(schema, zodSchema);
+	return zodSchema.safeParse(value).success;
+};
 
 const allowsExtraKey = (part: JSONSchema7, key: string, value: unknown) => {
 	const patterns = Object.entries(part.patternProperties ?? {}).filter(([pattern]) =>
 		safeRegex.test(pattern, key),
 	);
 	if (patterns.length) return patterns.every(([, schema]) => fits(schema, value));
-	return part.additionalProperties !== undefined && fits(part.additionalProperties, value);
+	if (part.additionalProperties === undefined) {
+		return Object.values(part.patternProperties ?? {}).some((schema) => fits(schema, value));
+	}
+	return fits(part.additionalProperties, value);
 };
 
 export function toToolInput(schema: JSONSchema7 | undefined, json: IDataObject): IDataObject {
