@@ -4488,6 +4488,11 @@ describe('AgentChatPanel', () => {
 			) => void;
 			removeComposerAttachment: (id: string) => void;
 			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			sendHostMessage: (
+				message: string,
+				clientContext?: Record<string, unknown>,
+			) => Promise<'sent' | 'busy' | 'rejected'>;
+			composerAttachments: Array<{ chip: { id: string } }>;
 		};
 		const composerVm = (wrapper: ReturnType<typeof mountPanel>) =>
 			wrapper.vm as unknown as ComposerVm;
@@ -4682,6 +4687,45 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.emitted('message-accepted')).toEqual([
 				[{ text: 'use these', files: [], clientContext }],
 			]);
+		});
+
+		describe('sendHostMessage', () => {
+			it('sends past the composer, so the draft and the staged chips stay', async () => {
+				acceptOnSend();
+				const wrapper = mountPanel({ clientContext: () => ({ timeZone: 'Europe/Helsinki' }) });
+				const vm = composerVm(wrapper);
+				vm.setDraft('half-typed');
+				vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' }, { workflowId: 'wf-1' });
+				await nextTick();
+
+				const result = await vm.sendHostMessage('fix it', { attachments: [{ id: 'wf-2' }] });
+				await flushPromises();
+
+				expect(result).toBe('sent');
+				const clientContext = { timeZone: 'Europe/Helsinki', attachments: [{ id: 'wf-2' }] };
+				expect(sendMessageMock).toHaveBeenCalledWith(
+					'fix it',
+					undefined,
+					expect.any(Function),
+					clientContext,
+				);
+				expect(wrapper.emitted('message-accepted')).toEqual([
+					[{ text: 'fix it', files: [], clientContext }],
+				]);
+				expect(composer(wrapper).props('modelValue')).toBe('half-typed');
+				expect(vm.composerAttachments.map(({ chip }) => chip.id)).toEqual(['wf-1']);
+			});
+
+			it('does not answer an open card', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const wrapper = mountPanel();
+
+				const result = await composerVm(wrapper).sendHostMessage('fix it');
+
+				expect(result).toBe('busy');
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(cancelAndSteerMock).not.toHaveBeenCalled();
+			});
 		});
 
 		it('replaces a chip with the same id and drops a removed chip from the next send', async () => {
