@@ -36,6 +36,10 @@ export const communityPackagePublicSchema = z.object({
 		.boolean()
 		.optional()
 		.openapi({ description: 'Whether the package failed to load' }),
+	failedLoadingReason: z
+		.string()
+		.optional()
+		.openapi({ description: 'Why the package failed to load, when n8n knows the reason' }),
 });
 
 export type CommunityPackagePublic = z.infer<typeof communityPackagePublicSchema>;

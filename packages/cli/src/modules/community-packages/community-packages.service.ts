@@ -23,6 +23,7 @@ import { valid } from 'semver';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -225,10 +226,18 @@ export class CommunityPackagesService {
 	}
 
 	withLoadStatus(installedPackages: PublicInstalledPackage[]): PublicInstalledPackage[] {
-		return installedPackages.map((installedPackage) => ({
-			...installedPackage,
-			failedLoading: !this.areNodesLoaded(installedPackage.installedNodes),
-		}));
+		return installedPackages.map((installedPackage) => {
+			const failedLoading = !this.areNodesLoaded(installedPackage.installedNodes);
+			const failedLoadingReason = failedLoading
+				? this.loadNodesAndCredentials.getPackageLoadError(installedPackage.packageName)
+				: undefined;
+
+			return {
+				...installedPackage,
+				failedLoading,
+				...(failedLoadingReason && { failedLoadingReason }),
+			};
+		});
 	}
 
 	async checkNpmPackageStatus(packageName: string) {
@@ -583,6 +592,12 @@ export class CommunityPackagesService {
 					backupDirectory,
 					previousVersion,
 				});
+				// Its message names the clashing credential types, so keep it for the caller.
+				// Client errors are not logged in production, so log it here.
+				if (error instanceof CredentialTypeConflictError) {
+					this.logger.error(error.message);
+					throw error;
+				}
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});
@@ -825,6 +840,7 @@ export class CommunityPackagesService {
 			}
 
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			await this.loadNodesAndCredentials.reloadRejectedPackages();
 			await this.loadNodesAndCredentials.postProcessLoaders();
 			this.loadNodesAndCredentials.releaseTypes();
 			this.logger.info(`Community package uninstalled: ${packageName}`);
