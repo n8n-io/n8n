@@ -59,7 +59,14 @@ import {
 	notifyTargets,
 	statusChangeTargets,
 } from './bulkTargets';
-import { findingState, isBusy, isSelectable, isStale, type RowContext } from './findingState';
+import {
+	findingState,
+	isBusy,
+	isSelectable,
+	isStale,
+	type MigrationContext,
+	type RowContext,
+} from './findingState';
 import {
 	countQuickFilters,
 	DEFAULT_WORKFLOW_FILTERS,
@@ -238,8 +245,13 @@ const { notifyingWorkflowIds, onNotify, notifyMany } = useOwnerNotify({
 	isBusy: (workflow) => isBusy(workflow, rowContext.value),
 });
 
-const rowContext = computed<RowContext>(() => ({
+// Filtering and the quick counts read only this, so a save or a notification does not recompute them.
+const migrationContext = computed<MigrationContext>(() => ({
 	migratedIds: migratedWorkflowIds.value,
+}));
+
+const rowContext = computed<RowContext>(() => ({
+	...migrationContext.value,
 	savingIds: savingWorkflowIds.value,
 	notifyingIds: notifyingWorkflowIds.value,
 }));
@@ -391,7 +403,7 @@ const onSearchInput = (value: string) => {
 const currentUserId = computed(() => usersStore.currentUserId ?? undefined);
 
 const quickFilterCounts = computed(() =>
-	countQuickFilters(state.value.affectedWorkflows, rowContext.value, currentUserId.value),
+	countQuickFilters(state.value.affectedWorkflows, migrationContext.value, currentUserId.value),
 );
 
 const ownerFilterOptions = computed(() =>
@@ -407,7 +419,7 @@ const filteredWorkflows = computed(() =>
 		state.value.affectedWorkflows,
 		searchQuery.value,
 		workflowFilters.value,
-		rowContext.value,
+		migrationContext.value,
 	),
 );
 
