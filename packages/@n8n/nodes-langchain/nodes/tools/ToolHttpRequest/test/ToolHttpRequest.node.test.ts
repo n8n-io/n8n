@@ -1,3 +1,4 @@
+import type { DynamicTool } from '@langchain/core/tools';
 import type { INode, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -832,6 +833,43 @@ describe('ToolHttpRequest', () => {
 			const res = await invokeTool();
 
 			expect(res).toEqual('Hello World');
+		});
+	});
+
+	describe('Invalid model input', () => {
+		it('should return the error to the model without sending the request', async () => {
+			executeFunctions.getNode.mockReturnValue(
+				mock<INode>({ type: 'toolHttpRequest', name: 'HTTP Request', typeVersion: 1 }),
+			);
+			executeFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _: number, fallback?: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return 'https://example.com/users/{id}/{field}';
+						case 'placeholderDefinitions.values':
+							return [
+								{ name: 'id', type: 'string' },
+								{ name: 'field', type: 'string' },
+							];
+						default:
+							return fallback;
+					}
+				},
+			);
+			helpers.httpRequest.mockResolvedValue({ body: 'Ada', headers: {} });
+
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			const res = await (response as DynamicTool).invoke('not json');
+
+			expect(res).toEqual('Input provided by model is not valid');
+			expect(helpers.httpRequest).not.toHaveBeenCalled();
+			expect(executeFunctions.addOutputData).toHaveBeenCalledWith(
+				'ai_tool',
+				0,
+				expect.objectContaining({ message: expect.stringContaining('Input is not a valid JSON') }),
+			);
 		});
 	});
 });

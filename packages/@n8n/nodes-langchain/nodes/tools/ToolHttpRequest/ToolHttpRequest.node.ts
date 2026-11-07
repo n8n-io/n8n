@@ -1,5 +1,7 @@
-import { DynamicTool } from '@langchain/core/tools';
+import { type DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
 import type {
+	IExecuteFunctions,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
@@ -35,6 +37,181 @@ import {
 	updateParametersAndOptions,
 	makeToolInputSchema,
 } from './utils';
+
+async function getTool(
+	ctx: ISupplyDataFunctions | IExecuteFunctions,
+	itemIndex: number,
+	log = true,
+): Promise<DynamicTool | DynamicStructuredTool> {
+	const name = nodeNameToToolName(ctx.getNode());
+	try {
+		tryToParseAlphanumericString(name);
+	} catch (error) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'The name of this tool is not a valid alphanumeric string',
+			{
+				itemIndex,
+				description:
+					"Only alphanumeric characters and underscores are allowed in the tool's name, and the name cannot start with a number",
+			},
+		);
+	}
+
+	const toolDescription = ctx.getNodeParameter('toolDescription', itemIndex) as string;
+	const sendQuery = ctx.getNodeParameter('sendQuery', itemIndex, false) as boolean;
+	const sendHeaders = ctx.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+	const sendBody = ctx.getNodeParameter('sendBody', itemIndex, false) as boolean;
+
+	const requestOptions: IHttpRequestOptions = {
+		method: ctx.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods,
+		url: ctx.getNodeParameter('url', itemIndex) as string,
+		qs: {},
+		headers: {
+			// FIXME: This is a workaround to prevent the node from sending a default User-Agent (`n8n`) when the header is not set.
+			//  Needs to be replaced with a proper fix after NODE-1777 is resolved
+			'User-Agent': undefined,
+		},
+		body: {},
+		// We will need a full response object later to extract the headers and check the response's content type.
+		returnFullResponse: true,
+	};
+
+	const authentication = ctx.getNodeParameter('authentication', itemIndex, 'none') as
+		| 'predefinedCredentialType'
+		| 'genericCredentialType'
+		| 'none';
+
+	if (authentication !== 'none') {
+		const domain = new URL(requestOptions.url).hostname;
+		if (domain.includes('{') && domain.includes('}')) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				"Can't use a placeholder for the domain when using authentication",
+				{
+					itemIndex,
+					description:
+						'This is for security reasons, to prevent the model accidentally sending your credentials to an unauthorized domain',
+				},
+			);
+		}
+	}
+
+	const httpRequest = await configureHttpRequestFunction(ctx, authentication, itemIndex);
+	const optimizeResponse = configureResponseOptimizer(ctx, itemIndex);
+
+	const rawRequestOptions: { [key: string]: string } = {
+		qs: '',
+		headers: '',
+		body: '',
+	};
+
+	const placeholdersDefinitions = (
+		ctx.getNodeParameter('placeholderDefinitions.values', itemIndex, []) as PlaceholderDefinition[]
+	).map((p) => {
+		if (p.name.startsWith('{') && p.name.endsWith('}')) {
+			p.name = p.name.slice(1, -1);
+		}
+		return p;
+	});
+
+	const toolParameters: ToolParameter[] = [];
+
+	toolParameters.push(
+		...extractParametersFromText(placeholdersDefinitions, requestOptions.url, 'path'),
+	);
+
+	if (sendQuery) {
+		updateParametersAndOptions({
+			ctx,
+			itemIndex,
+			toolParameters,
+			placeholdersDefinitions,
+			requestOptions,
+			rawRequestOptions,
+			requestOptionsProperty: 'qs',
+			inputTypePropertyName: 'specifyQuery',
+			jsonPropertyName: 'jsonQuery',
+			parametersPropertyName: 'parametersQuery.values',
+		});
+	}
+
+	if (sendHeaders) {
+		updateParametersAndOptions({
+			ctx,
+			itemIndex,
+			toolParameters,
+			placeholdersDefinitions,
+			requestOptions,
+			rawRequestOptions,
+			requestOptionsProperty: 'headers',
+			inputTypePropertyName: 'specifyHeaders',
+			jsonPropertyName: 'jsonHeaders',
+			parametersPropertyName: 'parametersHeaders.values',
+		});
+	}
+
+	if (sendBody) {
+		updateParametersAndOptions({
+			ctx,
+			itemIndex,
+			toolParameters,
+			placeholdersDefinitions,
+			requestOptions,
+			rawRequestOptions,
+			requestOptionsProperty: 'body',
+			inputTypePropertyName: 'specifyBody',
+			jsonPropertyName: 'jsonBody',
+			parametersPropertyName: 'parametersBody.values',
+		});
+	}
+
+	for (const placeholder of placeholdersDefinitions) {
+		if (!toolParameters.find((parameter) => parameter.name === placeholder.name)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Misconfigured placeholder '${placeholder.name}'`,
+				{
+					itemIndex,
+					description:
+						"This placeholder is defined in the 'Placeholder Definitions' but isn't used anywhere. Either remove the definition, or add the placeholder to a part of the request.",
+				},
+			);
+		}
+	}
+
+	const func = configureToolFunction(
+		ctx,
+		itemIndex,
+		toolParameters,
+		requestOptions,
+		rawRequestOptions,
+		httpRequest,
+		optimizeResponse,
+		log,
+	);
+
+	let tool: DynamicTool | N8nTool;
+
+	// If the node version is 1.1 or higher, we use the N8nTool wrapper:
+	// it allows to use tool as a DynamicStructuredTool and have a fallback to DynamicTool
+	if (ctx.getNode().typeVersion >= 1.1) {
+		const schema = makeToolInputSchema(toolParameters);
+
+		tool = new N8nTool(ctx, {
+			name,
+			description: toolDescription,
+			func,
+			schema,
+		});
+	} else {
+		// Keep the old behavior for nodes with version 1.0
+		const description = prepareToolDescription(toolDescription, toolParameters);
+		tool = new DynamicTool({ name, description, func });
+	}
+
+	return tool;
+}
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -259,178 +436,23 @@ export class ToolHttpRequest implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const name = nodeNameToToolName(this.getNode());
-		try {
-			tryToParseAlphanumericString(name);
-		} catch (error) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'The name of this tool is not a valid alphanumeric string',
-				{
-					itemIndex,
-					description:
-						"Only alphanumeric characters and underscores are allowed in the tool's name, and the name cannot start with a number",
-				},
-			);
-		}
+		return { response: await getTool(this, itemIndex) };
+	}
 
-		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
-		const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
-		const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
-		const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
-
-		const requestOptions: IHttpRequestOptions = {
-			method: this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods,
-			url: this.getNodeParameter('url', itemIndex) as string,
-			qs: {},
-			headers: {
-				// FIXME: This is a workaround to prevent the node from sending a default User-Agent (`n8n`) when the header is not set.
-				//  Needs to be replaced with a proper fix after NODE-1777 is resolved
-				'User-Agent': undefined,
-			},
-			body: {},
-			// We will need a full response object later to extract the headers and check the response's content type.
-			returnFullResponse: true,
-		};
-
-		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
-			| 'predefinedCredentialType'
-			| 'genericCredentialType'
-			| 'none';
-
-		if (authentication !== 'none') {
-			const domain = new URL(requestOptions.url).hostname;
-			if (domain.includes('{') && domain.includes('}')) {
-				throw new NodeOperationError(
-					this.getNode(),
-					"Can't use a placeholder for the domain when using authentication",
-					{
-						itemIndex,
-						description:
-							'This is for security reasons, to prevent the model accidentally sending your credentials to an unauthorized domain',
-					},
-				);
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const response: INodeExecutionData[] = [];
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			try {
+				const tool = await getTool(this, itemIndex, false);
+				const result = (await tool.invoke(items[itemIndex].json)) as string;
+				response.push({ json: { response: result }, pairedItem: { item: itemIndex } });
+			} catch (error) {
+				const nodeError = new NodeOperationError(this.getNode(), error as Error);
+				nodeError.context.itemIndex = itemIndex;
+				throw nodeError;
 			}
 		}
-
-		const httpRequest = await configureHttpRequestFunction(this, authentication, itemIndex);
-		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
-
-		const rawRequestOptions: { [key: string]: string } = {
-			qs: '',
-			headers: '',
-			body: '',
-		};
-
-		const placeholdersDefinitions = (
-			this.getNodeParameter(
-				'placeholderDefinitions.values',
-				itemIndex,
-				[],
-			) as PlaceholderDefinition[]
-		).map((p) => {
-			if (p.name.startsWith('{') && p.name.endsWith('}')) {
-				p.name = p.name.slice(1, -1);
-			}
-			return p;
-		});
-
-		const toolParameters: ToolParameter[] = [];
-
-		toolParameters.push(
-			...extractParametersFromText(placeholdersDefinitions, requestOptions.url, 'path'),
-		);
-
-		if (sendQuery) {
-			updateParametersAndOptions({
-				ctx: this,
-				itemIndex,
-				toolParameters,
-				placeholdersDefinitions,
-				requestOptions,
-				rawRequestOptions,
-				requestOptionsProperty: 'qs',
-				inputTypePropertyName: 'specifyQuery',
-				jsonPropertyName: 'jsonQuery',
-				parametersPropertyName: 'parametersQuery.values',
-			});
-		}
-
-		if (sendHeaders) {
-			updateParametersAndOptions({
-				ctx: this,
-				itemIndex,
-				toolParameters,
-				placeholdersDefinitions,
-				requestOptions,
-				rawRequestOptions,
-				requestOptionsProperty: 'headers',
-				inputTypePropertyName: 'specifyHeaders',
-				jsonPropertyName: 'jsonHeaders',
-				parametersPropertyName: 'parametersHeaders.values',
-			});
-		}
-
-		if (sendBody) {
-			updateParametersAndOptions({
-				ctx: this,
-				itemIndex,
-				toolParameters,
-				placeholdersDefinitions,
-				requestOptions,
-				rawRequestOptions,
-				requestOptionsProperty: 'body',
-				inputTypePropertyName: 'specifyBody',
-				jsonPropertyName: 'jsonBody',
-				parametersPropertyName: 'parametersBody.values',
-			});
-		}
-
-		for (const placeholder of placeholdersDefinitions) {
-			if (!toolParameters.find((parameter) => parameter.name === placeholder.name)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Misconfigured placeholder '${placeholder.name}'`,
-					{
-						itemIndex,
-						description:
-							"This placeholder is defined in the 'Placeholder Definitions' but isn't used anywhere. Either remove the definition, or add the placeholder to a part of the request.",
-					},
-				);
-			}
-		}
-
-		const func = configureToolFunction(
-			this,
-			itemIndex,
-			toolParameters,
-			requestOptions,
-			rawRequestOptions,
-			httpRequest,
-			optimizeResponse,
-		);
-
-		let tool: DynamicTool | N8nTool;
-
-		// If the node version is 1.1 or higher, we use the N8nTool wrapper:
-		// it allows to use tool as a DynamicStructuredTool and have a fallback to DynamicTool
-		if (this.getNode().typeVersion >= 1.1) {
-			const schema = makeToolInputSchema(toolParameters);
-
-			tool = new N8nTool(this, {
-				name,
-				description: toolDescription,
-				func,
-				schema,
-			});
-		} else {
-			// Keep the old behavior for nodes with version 1.0
-			const description = prepareToolDescription(toolDescription, toolParameters);
-			tool = new DynamicTool({ name, description, func });
-		}
-
-		return {
-			response: tool,
-		};
+		return [response];
 	}
 }
