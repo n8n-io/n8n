@@ -8,7 +8,7 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import {
 	getTokenRequestClient,
