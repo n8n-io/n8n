@@ -1084,6 +1084,17 @@ onBeforeUnmount(() => {
 								:value="option.key"
 							/>
 						</N8nSelect>
+						<div :class="$style.engineTypeHint" data-test-id="workflow-settings-engine-type-hint">
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish') }}
+							</N8nText>
+							<N8nTooltip placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish.tooltip') }}
+								</template>
+								<N8nIcon icon="circle-help" size="small" />
+							</N8nTooltip>
+						</div>
 					</ElCol>
 				</ElRow>
 				<ElRow>
@@ -1958,6 +1969,13 @@ onBeforeUnmount(() => {
 .dataRedactionHint {
 	display: block;
 	padding: var(--spacing--5xs) 0 var(--spacing--2xs) var(--spacing--5xs);
+}
+
+.engineTypeHint {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding-top: var(--spacing--4xs);
 }
 
 .setting-name {

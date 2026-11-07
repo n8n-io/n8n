@@ -1,4 +1,9 @@
-import { pickVersionedSettings, versionedSettingsEqual } from '../src/workflow-settings-scope';
+import {
+	applyVersionedSettings,
+	omitVersionedSettings,
+	pickVersionedSettings,
+	versionedSettingsEqual,
+} from '../src/workflow-settings-scope';
 
 describe('pickVersionedSettings', () => {
 	it('returns only the version-scoped settings', () => {
@@ -36,5 +41,49 @@ describe('versionedSettingsEqual', () => {
 
 	it('treats missing and empty settings as equal', () => {
 		expect(versionedSettingsEqual(undefined, {})).toBe(true);
+	});
+});
+
+describe('omitVersionedSettings', () => {
+	it('removes the version-scoped settings', () => {
+		expect(omitVersionedSettings({ engineType: 'v2', availableInMCP: true })).toEqual({
+			availableInMCP: true,
+		});
+	});
+
+	it('returns null unchanged', () => {
+		expect(omitVersionedSettings(null)).toBeNull();
+	});
+
+	it('does not change the settings it receives', () => {
+		const settings = { engineType: 'v2' as const, availableInMCP: true };
+
+		omitVersionedSettings(settings);
+
+		expect(settings).toEqual({ engineType: 'v2', availableInMCP: true });
+	});
+});
+
+describe('applyVersionedSettings', () => {
+	it('takes the version-scoped settings from the version and keeps the others', () => {
+		expect(
+			applyVersionedSettings(
+				{ engineType: 'v2', availableInMCP: true },
+				{ engineType: 'v1', availableInMCP: false },
+			),
+		).toEqual({ engineType: 'v1', availableInMCP: true });
+	});
+
+	it('clears a version-scoped setting that the version does not set', () => {
+		const result = applyVersionedSettings({ engineType: 'v2' }, {});
+
+		expect(result).toHaveProperty('engineType', undefined);
+		expect({ engineType: 'v2', ...result }).toHaveProperty('engineType', undefined);
+	});
+
+	it('accepts null settings', () => {
+		expect(applyVersionedSettings(null, { engineType: 'v2' })).toEqual({
+			engineType: 'v2',
+		});
 	});
 });

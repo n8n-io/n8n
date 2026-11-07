@@ -3314,6 +3314,35 @@ describe('PUT /workflows/:id', () => {
 		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
 	});
 
+	test('should publish a pending engine change with the draft', async () => {
+		const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, member);
+		// An engine change saved in the editor is a draft version with the new engine.
+		const engineDraft = await createWorkflowHistoryItem(workflow.id, {
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			versionId: engineDraft.versionId,
+			settings: { engineType: 'v2' },
+		});
+
+		const updateResponse = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			staticData: workflow.staticData,
+			settings: {},
+		});
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.activeVersionId).not.toBe(workflow.versionId);
+		const activeVersion = await Container.get(WorkflowHistoryRepository).findOneByOrFail({
+			versionId: updateResponse.body.activeVersionId,
+		});
+		expect(activeVersion.settings).toEqual({ engineType: 'v2' });
+	});
+
 	test('should save as draft without republishing when publishIfActive=false', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
