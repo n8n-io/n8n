@@ -93,6 +93,8 @@ export const eventNamesAudit = [
 	'n8n.audit.user.credentials.updated',
 	'n8n.audit.user.credentials.deleted',
 	'n8n.audit.user.credentials.userDisconnected',
+	'n8n.audit.user.credentials.data.read',
+	'n8n.audit.user.credentials.list.data.read',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.user.api.rotated',

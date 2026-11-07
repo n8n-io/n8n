@@ -574,6 +574,23 @@ export type RelayEventMap = ModuleEventMap & {
 		projectId: string | undefined;
 	};
 
+	/** A user retrieved the decrypted data of a credential through `includeData=true`. */
+	'credentials-data-read': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		publicApi: boolean;
+	};
+
+	/** A user retrieved the decrypted data of several credentials at once through `includeData=true` on the list. */
+	'credentials-list-data-read': {
+		user: UserLike;
+		/** Ids of the credentials whose data was returned, capped to keep the payload bounded. */
+		credentialIds: string[];
+		credentialCount: number;
+		publicApi: boolean;
+	};
+
 	'credentials-user-disconnected': {
 		user: UserLike;
 		credentialType: string;

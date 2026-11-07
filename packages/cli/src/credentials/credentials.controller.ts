@@ -52,6 +52,9 @@ import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 
+/** Keeps the audit payload of a list read bounded; `credentialCount` carries the full number. */
+const AUDITED_CREDENTIAL_IDS_LIMIT = 100;
+
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(
@@ -109,6 +112,21 @@ export class CredentialsController {
 			// though. So to avoid leaking the information we just delete it.
 			delete c.shared;
 		});
+
+		if (query.includeData) {
+			// One event per request, not per credential: the editor asks for the data of every
+			// editable credential on each app load, so per-credential events would flood a SIEM.
+			const withData = credentials.filter((c) => 'data' in c && c.data !== undefined);
+			if (withData.length > 0) {
+				this.eventService.emit('credentials-list-data-read', {
+					user: req.user,
+					credentialIds: withData.slice(0, AUDITED_CREDENTIAL_IDS_LIMIT).map((c) => c.id),
+					credentialCount: withData.length,
+					publicApi: false,
+				});
+			}
+		}
+
 		return credentials;
 	}
 
@@ -158,6 +176,16 @@ export class CredentialsController {
 			: await this.credentialsService.getOne(req.user, credentialId, query.includeData, {
 					includeInstanceCredentials: true,
 				});
+
+		if (query.includeData && 'data' in credential && credential.data !== undefined) {
+			// Decrypted data is about to leave the server: audit the read.
+			this.eventService.emit('credentials-data-read', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				publicApi: false,
+			});
+		}
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
