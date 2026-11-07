@@ -382,6 +382,39 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
+	APPROVAL_MODE_CHANGED: {
+		name: 'User changed Instance AI approval mode',
+		description:
+			'The user picked an approval mode in the n8n Assistant chat. Manual shows an approval card for each action set to Ask first. Auto lets a judge model run the action or show the card.',
+		properties: z.object({
+			mode: z.enum(['manual', 'auto']),
+			previous_mode: z.enum(['manual', 'auto']),
+			thread_id: z.string().optional(),
+		}),
+	},
+	APPROVAL_DECIDED_IN_AUTO_MODE: {
+		name: 'Instance AI decided approval in auto mode',
+		description:
+			'Auto mode reviewed an action set to Ask first before its approval card showed. Fires once per reviewed action, with whether the action ran without a card or the card showed.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			run_id: z.string(),
+			tool_name: z.string(),
+			is_mcp_tool: z.boolean(),
+			severity: z.enum(['destructive', 'warning', 'info']),
+			route: z
+				.enum(['always-ask', 'low-risk', 'judge'])
+				.describe(
+					'always-ask and low-risk are fixed rules. judge is every other action: the judge model decides, except for an MCP call that is too long to check, which a rule sends to the card (decided_by rule)',
+				),
+			decision: z.enum(['approve', 'ask']).describe('approve ran the action without a card'),
+			decided_by: z.enum(['judge', 'rule']),
+			judge_failed: z.boolean().describe('The judge model failed or timed out, so the card showed'),
+			judge_duration_ms: z.number().optional(),
+			judge_model: z.string().optional(),
+		}),
+	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {
 		name: 'Default editor preference changed',
 		description: 'The user saved the default-editor preference on the n8n Assistant settings page.',

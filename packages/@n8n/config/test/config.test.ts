@@ -372,6 +372,7 @@ describe('GlobalConfig', () => {
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			memoryModel: '',
+			approvalJudgeModel: '',
 			reflectorObservationTokens: 40_000,
 			midRunObservation: false,
 			sandboxEnabled: false,

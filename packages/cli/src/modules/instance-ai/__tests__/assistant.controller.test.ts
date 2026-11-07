@@ -3,12 +3,13 @@ import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { InstanceAiApprovalModeService } from '../approval-review/approval-mode.service';
 import { AssistantController } from '../assistant.controller';
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
@@ -26,6 +27,7 @@ describe('AssistantController', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const publisher = mock<Publisher>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
+	const approvalModeService = mock<InstanceAiApprovalModeService>();
 
 	const controller = new AssistantController(
 		settingsService,
@@ -35,6 +37,7 @@ describe('AssistantController', () => {
 		moduleRegistry,
 		publisher,
 		instanceAiErrorReporter,
+		approvalModeService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
@@ -68,6 +71,48 @@ describe('AssistantController', () => {
 		'listInstanceModelCredentials',
 	])('should require instanceAi:manage scope for %s', (handlerName) => {
 		expect(scopeOf(handlerName)).toEqual({ scope: 'instanceAi:manage', globalOnly: true });
+	});
+
+	describe('user preferences', () => {
+		it.each(['getUserPreferences', 'updateUserPreferences'])(
+			'should require instanceAi:message scope for %s',
+			(handler) => {
+				expect(scopeOf(handler)).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			},
+		);
+
+		it('should return the approval mode of the user', async () => {
+			approvalModeService.getPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			await expect(controller.getUserPreferences(req)).resolves.toEqual({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+			expect(approvalModeService.getPreferences).toHaveBeenCalledWith(req.user);
+		});
+
+		it('should save the approval mode and return it', async () => {
+			approvalModeService.saveMode.mockResolvedValue({
+				approvalMode: 'manual',
+				approvalModesAvailable: true,
+			});
+
+			await expect(
+				controller.updateUserPreferences(req, res, { approvalMode: 'manual' }),
+			).resolves.toEqual({ approvalMode: 'manual', approvalModesAvailable: true });
+			expect(approvalModeService.saveMode).toHaveBeenCalledWith(req.user, 'manual');
+		});
+
+		it('should reject a save when approval modes are not available', async () => {
+			approvalModeService.saveMode.mockRejectedValue(new BadRequestError('not available'));
+
+			await expect(
+				controller.updateUserPreferences(req, res, { approvalMode: 'auto' }),
+			).rejects.toThrow(BadRequestError);
+		});
 	});
 
 	describe('getCredits', () => {

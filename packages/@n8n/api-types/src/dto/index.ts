@@ -52,6 +52,7 @@ export {
 } from './instance-ai/instance-ai-preference-card-request.dto';
 export { InstanceAiMcpCreateConnectionRequestDto } from './instance-ai/instance-ai-mcp-create-connection-request.dto';
 export { InstanceAiMcpUpdateConnectionRequestDto } from './instance-ai/instance-ai-mcp-update-connection-request.dto';
+export { InstanceAiUserPreferencesUpdateRequestDto } from './instance-ai/instance-ai-user-preferences-update-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';

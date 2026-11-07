@@ -47,6 +47,7 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED` | boolean | `false` | Force-enable folder exploration (folder attribution and folder scoping on `list_workflows`). `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Browser Use tooling, used for credential setup. |
+| `N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL` | string | `''` | Judge model of Auto approval mode, in `provider/model` format, for example `anthropic/claude-haiku-5-5`. It runs on the main model's provider and credentials. Empty, or a name that can't be resolved, uses the main model. See [tools](./tools.md#approval-modes). |
 | `N8N_INSTANCE_AI_PROMPT_VERSION` | string | `''` | Pin every run on this instance to one published prompt profile, e.g. `concise@1`. Empty keeps the backend experiment assignment. An unknown version fails the Instance AI run, not the instance. See [prompt profiles](./prompt-profiles.md). |
 
 The PostHog flag `118_instance_ai_setup_overhaul` selects the setup flow.

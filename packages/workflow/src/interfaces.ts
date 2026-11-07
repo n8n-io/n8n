@@ -4662,6 +4662,8 @@ export interface IUserSettings {
 	instanceAi?: {
 		credentialId?: string | null;
 		modelName?: string;
+		/** How the n8n Assistant treats actions set to Ask first. Unset means the rollout default. */
+		approvalMode?: 'manual' | 'auto';
 	};
 	mcpJsonNudge?: {
 		impressions: number;

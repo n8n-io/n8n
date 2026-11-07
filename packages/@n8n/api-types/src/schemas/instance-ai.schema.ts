@@ -1,5 +1,9 @@
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
-import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
+import {
+	autoApprovalPayloadSchema,
+	instanceAiApprovalDetailsSchema,
+} from './instance-ai-approval.schema';
+import type { InstanceAiAutoApprovalDecider } from './instance-ai-approval.schema';
 import { WorkflowExecuteModeList } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -277,6 +281,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tool-error',
 	'tool-interrupted',
 	'confirmation-request',
+	'auto-approval',
 	'instance-context',
 	'skill-update',
 	'tasks-update',
@@ -1391,6 +1396,7 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: confirmationRequestPayloadSchema,
 	}),
+	z.object({ type: z.literal('auto-approval'), ...eventBase, payload: autoApprovalPayloadSchema }),
 	z.object({
 		type: z.literal('instance-context'),
 		...eventBase,
@@ -1439,6 +1445,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'confirmation-request' }
 >;
+export type InstanceAiAutoApprovalEvent = Extract<InstanceAiEvent, { type: 'auto-approval' }>;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
 export type InstanceAiPreferencesAppliedEvent = Extract<
@@ -2019,6 +2026,8 @@ export interface InstanceAiToolCallState {
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
+	/** Set when Auto mode ran the call without showing its approval card. */
+	autoApproval?: { message: string; reason: string; decidedBy: InstanceAiAutoApprovalDecider };
 	/** Set by a `preference-card` fact; absent means the tool result is the state. */
 	preferenceCard?: {
 		state: 'edited' | 'undone';
@@ -2846,6 +2855,13 @@ export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
  */
 export const INSTANCE_AI_CONCISE_STYLE_FLAG = '124_instance_ai_concise_style';
 export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
+
+/**
+ * Rollout flag for approval modes: the Manual and Auto selector in the chat.
+ * Off means every user stays in Manual. On means a user without a saved
+ * choice gets Auto.
+ */
+export const INSTANCE_AI_APPROVAL_MODES_FLAG = '137_instance_ai_approval_modes';
 
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';

@@ -29,6 +29,27 @@ describe('AssistantEventSink', () => {
 		);
 	});
 
+	it('keeps an auto-approval as a host event keyed by its tool call', () => {
+		const { sink, emitHostEvent } = createSink();
+		const payload = {
+			toolCallId: 'call-1',
+			message: 'Publish "Lead router"',
+			reason: 'The user asked to publish it.',
+			decidedBy: 'judge' as const,
+		};
+
+		sink.publish('thread-1', {
+			type: 'auto-approval',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload,
+		});
+
+		expect(emitHostEvent).toHaveBeenCalledWith('auto-approval', payload, {
+			key: 'tool-call:call-1',
+		});
+	});
+
 	it('drops an event that has no reader on the Agents runtime', () => {
 		const { sink, emitHostEvent } = createSink();
 

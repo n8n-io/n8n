@@ -544,6 +544,16 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'auto-approval': {
+			if (!isSafeObjectKey(event.payload.toolCallId)) break;
+			const tc = state.toolCallsById[event.payload.toolCallId];
+			if (tc) {
+				const { message, reason, decidedBy } = event.payload;
+				tc.autoApproval = { message, reason, decidedBy };
+			}
+			break;
+		}
+
 		case 'instance-context': {
 			// Store the row on the root so history replay restores it.
 			const root = ensureAgent(state, state.rootAgentId);
