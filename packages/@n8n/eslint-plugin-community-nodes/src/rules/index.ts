@@ -21,6 +21,7 @@ import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-script
 import { NoHardcodedSecretsRule } from './no-hardcoded-secrets.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
+import { NoRawPaginationParametersRule } from './no-raw-pagination-parameters.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
@@ -68,6 +69,7 @@ export const rules = {
 	'no-hardcoded-secrets': NoHardcodedSecretsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
 	'no-overrides-field': NoOverridesFieldRule,
+	'no-raw-pagination-parameters': NoRawPaginationParametersRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
 	'no-silent-error-swallowing': NoSilentErrorSwallowingRule,
 	'no-template-placeholders': NoTemplatePlaceholdersRule,
