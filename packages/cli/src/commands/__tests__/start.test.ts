@@ -32,8 +32,9 @@ import { CommunityPackagesService } from '@/modules/community-packages/community
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { Push } from '@/push';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService, RoleCacheService } from '@n8n/backend-services';
+import { JwtService, PushProxy, RoleCacheService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -162,6 +163,7 @@ describe('Start - AuthRolesService initialization', () => {
 			mockInstance(WorkflowFailureNotificationEventRelay),
 		);
 		Container.set(MessageEventBus, mockInstance(MessageEventBus));
+		Container.set(Push, mockInstance(Push));
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
@@ -233,6 +235,22 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(roleCacheService.refreshCache).toHaveBeenCalledTimes(1);
 			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
 				authRolesService.init.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should register the push service on the push proxy before the modules initialize', async () => {
+			setupInstanceSettings('main', false, false);
+			const push = Container.get(Push);
+			const pushProxy = mockInstance(PushProxy);
+			const initModules = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected property for testing
+			start.moduleRegistry = { initModules };
+
+			await start.init();
+
+			expect(pushProxy.registerProvider).toHaveBeenCalledWith(push);
+			expect(pushProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
 			);
 		});
 

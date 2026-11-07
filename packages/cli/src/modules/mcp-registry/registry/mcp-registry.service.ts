@@ -4,9 +4,9 @@ import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
 import { InstanceSettings } from 'n8n-core';
 import type { McpRegistryConnection } from 'n8n-workflow';
+import { PushProxy } from '@n8n/backend-services';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -47,7 +47,7 @@ export class McpRegistryService {
 		private readonly capabilities: McpRegistryCapabilities,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly publisher: Publisher,
 		private readonly aiGatewayService: AiGatewayService,
 	) {

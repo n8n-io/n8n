@@ -1,10 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
+import type { PushProxy } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -59,7 +59,7 @@ function createService(options: CreateServiceOptions = {}) {
 		instanceType: options.instanceType ?? 'main',
 	});
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ loaders: {} });
-	const push = mock<Push>({ broadcast: vi.fn() });
+	const push = mock<PushProxy>({ broadcast: vi.fn() });
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 
 	if (options.storedServers === null) {

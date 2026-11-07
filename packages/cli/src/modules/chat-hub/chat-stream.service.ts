@@ -18,8 +18,8 @@ import { ExecutionsConfig } from '@n8n/config';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { PushProxy } from '@n8n/backend-services';
 
-import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { ChatStreamStateService } from './chat-stream-state.service';
@@ -51,7 +51,7 @@ export interface StartStreamParams {
 export class ChatStreamService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionsConfig: ExecutionsConfig,

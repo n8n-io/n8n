@@ -7,8 +7,8 @@ import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
+import { PushProxy } from '@n8n/backend-services';
 
-import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
 
@@ -59,7 +59,7 @@ export class InstanceAiCreditService {
 		private readonly aiService: AiService,
 		private readonly telemetry: Telemetry,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly threadRepo: InstanceAiThreadRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');

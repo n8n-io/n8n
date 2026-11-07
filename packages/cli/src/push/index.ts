@@ -1,5 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { inProduction, Logger, TypedEmitter } from '@n8n/backend-common';
+import type { PushSender } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -42,7 +43,7 @@ type PushEvents = {
  * @emits message when a message is received from a client
  */
 @Service()
-export class Push extends TypedEmitter<PushEvents> {
+export class Push extends TypedEmitter<PushEvents> implements PushSender {
 	private useWebSockets = this.config.backend === 'websocket';
 
 	isBidirectional = this.useWebSockets;

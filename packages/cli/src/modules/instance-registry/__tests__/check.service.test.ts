@@ -1,5 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { PushProxy } from '@n8n/backend-services';
 import type {
 	ClusterCheckContext,
 	ClusterCheckMetadata,
@@ -11,7 +12,6 @@ import type { MockInstance, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { Push } from '@/push';
 
 import { CheckService, computeDiff } from '../checks/check.service';
 import type { InstanceRegistryService } from '../instance-registry.service';
@@ -45,7 +45,7 @@ describe('CheckService', () => {
 	let registryService: Mocked<InstanceRegistryService>;
 	let clusterCheckMetadata: Mocked<ClusterCheckMetadata>;
 	let messageEventBus: Mocked<MessageEventBus>;
-	let push: Mocked<Push>;
+	let push: Mocked<PushProxy>;
 	let containerGet: MockInstance;
 	let service: CheckService | undefined;
 
@@ -57,7 +57,7 @@ describe('CheckService', () => {
 		registryService = mock<InstanceRegistryService>();
 		clusterCheckMetadata = mock<ClusterCheckMetadata>();
 		messageEventBus = mock<MessageEventBus>();
-		push = mock<Push>();
+		push = mock<PushProxy>();
 
 		clusterCheckMetadata.getClasses.mockReturnValue([]);
 		registryService.getAllInstances.mockResolvedValue([]);
