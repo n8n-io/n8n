@@ -287,10 +287,8 @@ export class UserRepository extends BaseRepository<User> {
 		const where = eligibleAccountsWhere(query);
 		if (!where) return [];
 
-		return await this.find({
-			where,
-			relations: { role: true, authIdentities: true },
-		});
+		// The string form reaches `authIdentities`, which only `Person` declares.
+		return await this.find({ where, relations: ['role', 'authIdentities'] });
 	}
 
 	/**
@@ -366,7 +364,7 @@ export class UserRepository extends BaseRepository<User> {
 
 	private applyUserListSelect(
 		queryBuilder: SelectQueryBuilder<User>,
-		select: Array<keyof User> | undefined,
+		select: Array<keyof Person> | undefined,
 	): SelectQueryBuilder<User> {
 		if (select !== undefined) {
 			if (!select.includes('id')) {

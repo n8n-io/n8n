@@ -1,6 +1,6 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
+import { type Person, ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import {
@@ -266,7 +266,7 @@ describe('UserRepository', () => {
 			const findOptions = findSpy.mock.calls[0][0];
 			findSpy.mockRestore();
 
-			const byId = new Map(users.map((user) => [user.id, user]));
+			const byId = new Map(users.map((user) => [user.id, user as Person]));
 			expect([...byId.keys()].sort()).toEqual(
 				[owner.id, member.id, ldapUser.id, pendingUser.id].sort(),
 			);
