@@ -114,8 +114,36 @@ describe('Microsoft Teams Trigger Node', () => {
 				new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
 			const throttled = (ctx: TriggerContext) =>
 				new NodeApiError(ctx.getNode(), { message: 'Too many requests', httpCode: '429' });
+			const NOW = Date.parse('2026-10-16T10:00:00.000Z');
+			const renewal = { expirationDateTime: new Date(NOW + 4318 * 60 * 1000).toISOString() };
+			// Answers by method and subscription id, for example `PATCH sub1`: an Error in the table is
+			// thrown. POST creates `new`. Anything else answers 404, which a DELETE counts as done.
+			const routeGraph = (answers: Record<string, unknown>) =>
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string, path: string) => {
+						if (method === 'POST' && path === '/v1.0/subscriptions') return { id: 'new' };
+						const answer = answers[`${method} ${path.slice('/v1.0/subscriptions/'.length)}`];
+						if (answer instanceof Error) throw answer;
+						if (answer === undefined) {
+							throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
+						}
+						return answer;
+					},
+				);
+			const proven = (id: string, resource = '/me/chats', expiresInMs = HOUR) => ({
+				...own(id, resource, expiresInMs),
+				clientState: 'secret',
+			});
 
-			it('adopts the stored live subscription without rewriting the static data', async () => {
+			beforeEach(() => {
+				vi.useFakeTimers({ toFake: ['Date'], now: NOW });
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('renews the stored live subscription to a full lifetime without rewriting the static data', async () => {
 				// The static-data proxy marks every set and delete as a change, and each change is a save.
 				const staticData = ObservableObject.create({
 					subscriptionIds: ['sub1'],
@@ -125,12 +153,17 @@ describe('Microsoft Teams Trigger Node', () => {
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
 					own('sub1', '/me/chats', HOUR),
 				]);
+				routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': {} });
 
 				const result = await checkExists(ctx);
 
 				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['PATCH', '/v1.0/subscriptions/sub1'],
+				]);
+				expect(calls('PATCH')[0][3]).toEqual(renewal);
 				expect((staticData as { __dataChanged?: boolean }).__dataChanged).toBe(false);
-				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 			});
 
 			it('clears a marked retry after a reconcile that settles', async () => {
@@ -143,9 +176,92 @@ describe('Microsoft Teams Trigger Node', () => {
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
 					own('sub1', '/me/chats', HOUR),
 				]);
+				routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': {} });
 
 				await expect(checkExists(ctx)).resolves.toBe(true);
 				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
+			});
+
+			it('replaces a kept subscription that is gone at its renewal in the same activation', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['sub1'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1') });
+
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['PATCH', '/v1.0/subscriptions/sub1'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				expect(calls('POST')[0][3]).toEqual(
+					expect.objectContaining({ resource: '/me/chats', clientState: 'secret' }),
+				);
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['new'] });
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('throws the create error when a kept subscription is gone at its renewal and cannot be replaced', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['sub1'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				const createError = forbidden(ctx);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1') });
+				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (callCtx: unknown, method: string, path: string, body?: unknown) => {
+						if (method === 'POST') throw createError;
+						return await baseline?.(callCtx, method, path, body);
+					},
+				);
+
+				await expect(checkExists(ctx)).rejects.toBe(createError);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['PATCH', '/v1.0/subscriptions/sub1'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				// Nothing gone stays stored, so core's cleanup has nothing stale to remove.
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: [] });
+			});
+
+			it('renews a kept subscription even when its expiry is already near the maximum', async () => {
+				const nearMax = 4317 * 60 * 1000;
+				const ctx = hookCtx(
+					{ subscriptionIds: ['sub1'], webhookSecret: 'secret' },
+					{ event: 'newChat' },
+				);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', nearMax),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1', '/me/chats', nearMax), 'PATCH sub1': {} });
+
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(calls('PATCH').map((call) => call.slice(2))).toEqual([
+					['/v1.0/subscriptions/sub1', renewal],
+				]);
+			});
+
+			it('sends no renewal on a fresh publish', async () => {
+				const ctx = hookCtx({}, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+				routeGraph({});
+
+				await expect(checkExists(ctx)).resolves.toBe(false);
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.create.call(ctx),
+				).resolves.toBe(true);
+				expect(graphCalls()).toEqual([['POST', '/v1.0/subscriptions']]);
 			});
 
 			// A read can fail for a reason about the transport, a 429 for example, so a stored
@@ -357,19 +473,6 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			describe('when the listing fails', () => {
-				// GET by id answers from the table and 404s for any other id.
-				const answerById = (answers: Record<string, unknown>) =>
-					(microsoftApiRequest.call as Mock).mockImplementation(
-						async (_ctx: unknown, method: string, path: string) => {
-							if (method !== 'GET') return {};
-							const answer = answers[path.slice('/v1.0/subscriptions/'.length)];
-							if (answer === undefined) {
-								throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
-							}
-							return answer;
-						},
-					);
-
 				it.each([
 					['a plain error', (_ctx: TriggerContext) => new Error('API request failed')],
 					['a 403', (ctx: TriggerContext) => forbidden(ctx)],
@@ -384,27 +487,58 @@ describe('Microsoft Teams Trigger Node', () => {
 					expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 				});
 
-				it('keeps the stored subscriptions and marks a retry when GET by id shows them live', async () => {
-					const ids = ['sub1'];
-					const staticData: Record<string, unknown> = {
-						subscriptionIds: ids,
-						webhookSecret: 'secret',
-					};
-					const ctx = hookCtx(staticData, { event: 'newChat' });
-					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
-					answerById({ sub1: { ...own('sub1', '/me/chats', HOUR), clientState: 'secret' } });
+				const S1 = '/v1.0/subscriptions/sub1';
 
-					await expect(checkExists(ctx)).resolves.toBe(true);
-					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
-					expect(graphCalls()).toEqual([['GET', '/v1.0/subscriptions/sub1']]);
-					expect(staticData.subscriptionIds).toBe(ids);
-					// The activation could not list, so the next lifecycle batch lists and reconciles.
-					expect(staticData.pendingReconcile).toBe(true);
-					expect(ctx.logger.warn).toHaveBeenCalledWith(
-						'Microsoft Teams Trigger: failed to list subscriptions, kept the stored ones',
-						expect.objectContaining({ workflowId: 'wf1', error: expect.any(String) }),
-					);
-				});
+				it.each([
+					[
+						'the stored secret',
+						['sub1'],
+						'secret',
+						[
+							['GET', S1],
+							['PATCH', S1],
+						],
+						[renewal],
+					],
+					['no clientState', ['sub1'], null, [['GET', S1]], []],
+					[
+						'the stored secret, with the id stored twice',
+						['sub1', 'sub1'],
+						'secret',
+						[
+							['GET', S1],
+							['GET', S1],
+							['PATCH', S1],
+						],
+						[renewal],
+					],
+				])(
+					'keeps the stored subscriptions and marks a retry when GET by id shows them live with %s',
+					async (_label, ids, answered, graph, bodies) => {
+						const staticData: Record<string, unknown> = {
+							subscriptionIds: ids,
+							webhookSecret: 'secret',
+						};
+						const ctx = hookCtx(staticData, { event: 'newChat' });
+						(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+						routeGraph({
+							'GET sub1': { ...own('sub1', '/me/chats', HOUR), clientState: answered },
+							'PATCH sub1': {},
+						});
+
+						await expect(checkExists(ctx)).resolves.toBe(true);
+						expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+						expect(graphCalls()).toEqual(graph);
+						expect(calls('PATCH').map((call) => call[3])).toEqual(bodies);
+						expect(staticData.subscriptionIds).toBe(ids);
+						// The activation could not list, so the next lifecycle batch lists and reconciles.
+						expect(staticData.pendingReconcile).toBe(true);
+						expect(ctx.logger.warn).toHaveBeenCalledWith(
+							'Microsoft Teams Trigger: failed to list subscriptions, kept the stored ones',
+							expect.objectContaining({ workflowId: 'wf1', error: expect.any(String) }),
+						);
+					},
+				);
 
 				it('throws the listing error and writes nothing when Graph does not show the stored id', async () => {
 					const staticData: Record<string, unknown> = {
@@ -414,12 +548,112 @@ describe('Microsoft Teams Trigger Node', () => {
 					const ctx = hookCtx(staticData, { event: 'newChat' });
 					const error = throttled(ctx);
 					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(error);
-					answerById({});
+					routeGraph({});
 
 					await expect(checkExists(ctx)).rejects.toBe(error);
+					expect(graphCalls()).toEqual([['GET', '/v1.0/subscriptions/sub1']]);
 					expect(calls('DELETE')).toHaveLength(0);
 					expect(calls('POST')).toHaveLength(0);
 					expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
+				});
+
+				it.each([
+					{
+						when: 'and it is the only stored one',
+						params: { event: 'newChat' },
+						storedIds: ['sub1'],
+						answers: () => ({ 'GET sub1': proven('sub1') }),
+						renewed: ['sub1'],
+					},
+					{
+						when: 'even when another stored one without a clientState still covers',
+						params: { event: 'newChat' },
+						storedIds: ['sub1', 'sub2'],
+						answers: () => ({
+							'GET sub1': proven('sub1'),
+							'GET sub2': { ...own('sub2', '/me/chats', HOUR), clientState: null },
+						}),
+						renewed: ['sub1'],
+					},
+					{
+						when: 'even when the renewal on the other resource succeeds',
+						params: { event: 'newChannel', watchAllTeams: true },
+						storedIds: ['a', 'b'],
+						answers: () => ({
+							'GET a': proven('a', '/teams/team1/channels'),
+							'GET b': proven('b', '/teams/team2/channels'),
+							'PATCH a': {},
+						}),
+						renewed: ['a', 'b'],
+					},
+				])(
+					'throws the listing error when a renewed stored subscription is gone, $when',
+					async ({ params, storedIds, answers, renewed }) => {
+						const staticData: Record<string, unknown> = {
+							subscriptionIds: storedIds,
+							webhookSecret: 'secret',
+						};
+						const ctx = hookCtx(staticData, params);
+						const error = throttled(ctx);
+						// Only the subscription listing fails: Watch All still reads the joined teams.
+						(microsoftApiRequestAllItems.call as Mock).mockImplementation(
+							async (_ctx: unknown, _property: string, _method: string, path: string) => {
+								if (path === '/v1.0/me/joinedTeams') return [{ id: 'team1' }, { id: 'team2' }];
+								throw error;
+							},
+						);
+						routeGraph(answers());
+
+						await expect(checkExists(ctx)).rejects.toBe(error);
+						expect(calls('PATCH').map((call) => call[2])).toEqual(
+							renewed.map((id) => `/v1.0/subscriptions/${id}`),
+						);
+						expect(calls('DELETE')).toHaveLength(0);
+						expect(calls('POST')).toHaveLength(0);
+						expect(staticData).toEqual({ subscriptionIds: storedIds, webhookSecret: 'secret' });
+						expect(ctx.logger.warn).not.toHaveBeenCalled();
+					},
+				);
+
+				it('warns, keeps the stored ids and marks a retry when a renewal fails for another reason', async () => {
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ['sub1'],
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+					routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': forbidden(ctx) });
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(staticData).toEqual({
+						subscriptionIds: ['sub1'],
+						webhookSecret: 'secret',
+						pendingReconcile: true,
+					});
+					expect(ctx.logger.warn).toHaveBeenCalledTimes(2);
+					expect(ctx.logger.warn).toHaveBeenCalledWith(
+						'Microsoft Teams Trigger: failed to renew subscription',
+						expect.objectContaining({ subscriptionId: 'sub1' }),
+					);
+					expect(ctx.logger.warn).toHaveBeenCalledWith(
+						'Microsoft Teams Trigger: failed to list subscriptions, kept the stored ones',
+						expect.objectContaining({ error: expect.any(String) }),
+					);
+				});
+
+				it('saves nothing when it renews and the retry mark is already set', async () => {
+					const staticData = ObservableObject.create({
+						subscriptionIds: ['sub1'],
+						webhookSecret: 'secret',
+						pendingReconcile: true,
+					});
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+					routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': {} });
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(calls('PATCH')).toHaveLength(1);
+					expect((staticData as { __dataChanged?: boolean }).__dataChanged).toBe(false);
 				});
 			});
 
@@ -430,7 +664,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				};
 				const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
 				pagedGraph([own('a', '/teams/team1/channels', HOUR)]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
+				routeGraph({ 'GET a': proven('a', '/teams/team1/channels'), 'PATCH a': {} });
 
 				const result = await checkExists(ctx);
 
@@ -439,6 +673,8 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(calls('POST').map((call) => call[3])).toEqual([
 					expect.objectContaining({ resource: '/teams/team2/channels', clientState: 'secret' }),
 				]);
+				// The subscription created in this activation gets no renewal.
+				expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/a']);
 				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['a', 'new'] });
 			});
 
@@ -596,13 +832,12 @@ describe('Microsoft Teams Trigger Node', () => {
 					own('a', '/me/chats', HOUR),
 					own('x', '/me/chats', HOUR),
 				]);
-				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, method: string, path: string) => {
-						if (method !== 'GET') throw forbidden(ctx);
-						const id = path.slice('/v1.0/subscriptions/'.length);
-						return { ...own(id, '/me/chats', HOUR), clientState: id === 'a' ? 'secret' : 'other' };
-					},
-				);
+				routeGraph({
+					'GET a': proven('a'),
+					'GET x': { ...own('x', '/me/chats', HOUR), clientState: 'other' },
+					'PATCH a': {},
+					'DELETE x': forbidden(ctx),
+				});
 
 				const result = await checkExists(ctx);
 
@@ -611,9 +846,14 @@ describe('Microsoft Teams Trigger Node', () => {
 					['GET', '/v1.0/subscriptions/a'],
 					['GET', '/v1.0/subscriptions/x'],
 					['DELETE', '/v1.0/subscriptions/x'],
+					['PATCH', '/v1.0/subscriptions/a'],
 				]);
 				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
-				expect(staticData.subscriptionIds).toEqual(['a']);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove subscription',
+					expect.objectContaining({ subscriptionId: 'x' }),
+				);
+				expect(staticData).toEqual({ subscriptionIds: ['a'], webhookSecret: 'secret' });
 			});
 
 			it('throws the create error after every create settled', async () => {
