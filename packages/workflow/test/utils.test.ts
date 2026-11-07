@@ -425,6 +425,35 @@ describe('deepCopy', () => {
 		expect(copy[0]).toBe(copy);
 	});
 
+	it('should avoid max call stack with indirectly circular arrays', () => {
+		const a: any[] = [];
+		const b: any[] = [a];
+		a.push(b);
+
+		const copy = deepCopy(a);
+
+		expect(copy).not.toBe(a);
+		expect(copy[0]).not.toBe(b);
+		expect(copy[0][0]).toBe(copy);
+	});
+
+	it('should preserve reference identity for shared nested arrays in a circular structure', () => {
+		const shared = [1, 2];
+		const source: { a: number[]; nested: { b: number[] }; self?: unknown } = {
+			a: shared,
+			nested: { b: shared },
+		};
+		source.self = source;
+
+		const copy = deepCopy(source);
+
+		expect(copy).not.toBe(source);
+		expect(copy.a).toEqual(shared);
+		expect(copy.a).not.toBe(shared);
+		expect(copy.a).toBe(copy.nested.b);
+		expect(copy.self).toBe(copy);
+	});
+
 	it('should not promote an own __proto__ key onto the clone', () => {
 		// An object literal `{ __proto__: ... }` sets the prototype; only parsed
 		// JSON produces an own enumerable `__proto__` property, as a request body would.
