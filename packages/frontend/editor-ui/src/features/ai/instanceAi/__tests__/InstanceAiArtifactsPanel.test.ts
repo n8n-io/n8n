@@ -1,10 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
 import { nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { InstanceAiAgentNode, InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiHandoffContext,
+	InstanceAiMessage,
+	TaskList,
+} from '@n8n/api-types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -19,6 +25,10 @@ const storeState = reactive({
 		context?: Record<string, unknown>;
 		agentTree?: InstanceAiAgentNode;
 	}>,
+	get artifactTurns() {
+		// The fixtures fill only the fields that the panel reads.
+		return toArtifactTurns(this.messages as InstanceAiMessage[]);
+	},
 	projectId: undefined as string | undefined,
 	hydrationStatus: 'ready' as 'idle' | 'hydrating' | 'ready',
 });
@@ -515,22 +525,17 @@ describe('InstanceAiArtifactsPanel', () => {
 					status: 'active',
 					textContent: '',
 					reasoning: '',
-					toolCalls: [],
-					timeline: [],
-					children: [
+					toolCalls: [
 						{
-							agentId: 'builder-1',
-							kind: 'agent-builder',
-							role: 'agent-builder',
-							status: 'active',
-							textContent: '',
-							reasoning: '',
-							toolCalls: [],
-							timeline: [],
-							children: [],
-							targetResource: { type: 'agent', id: 'agent-1' },
+							toolCallId: 'tc-select',
+							toolName: 'agent_builder_select_agent',
+							args: {},
+							result: { ok: true, agentId: 'agent-1' },
+							isLoading: false,
 						},
 					],
+					timeline: [],
+					children: [],
 				} as InstanceAiAgentNode,
 			},
 		];

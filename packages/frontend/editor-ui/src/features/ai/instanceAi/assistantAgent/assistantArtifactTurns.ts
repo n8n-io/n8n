@@ -1,27 +1,25 @@
 import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+	setupItemsPayloadSchema,
 	tasksUpdatePayloadSchema,
 	workflowsArchivedPayloadSchema,
-	type InstanceAiAgentNode,
-	type InstanceAiMessage,
-	type InstanceAiToolCallState,
 	type TaskList,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { DeepReadonly } from 'vue';
 
-import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
+import { TOOL_CALL_STATE } from '@/features/ai/shared/agentsChat/constants';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+
+import type { ArtifactToolCall, ArtifactTurn } from '../artifactTurns';
 
 /** The chat panel exposes its messages read-only. */
 type ReadonlyChatMessages = ReadonlyArray<DeepReadonly<ChatMessage>>;
 
 /**
- * Maps Agents chat messages to the Assistant message shape that the artifacts
- * panel and the artifact previews read. The Agents chat has no sub-agent tree,
- * so each assistant message becomes one orchestrator node with the flat tool
- * calls of the message. The tool names, inputs and outputs are the same as in
- * the Assistant runtime.
+ * Maps Agents chat messages to the input of the artifact readers: the
+ * artifacts panel, the previews and the resource registry. The tool names,
+ * inputs and outputs are the same as in the Assistant runtime.
  */
 
 const IN_FLIGHT_STATES = new Set<ToolCall['state']>([
@@ -29,10 +27,6 @@ const IN_FLIGHT_STATES = new Set<ToolCall['state']>([
 	TOOL_CALL_STATE.RUNNING,
 	TOOL_CALL_STATE.SUSPENDED,
 ]);
-
-function toIsoString(epochMs: number | undefined): string | undefined {
-	return epochMs === undefined ? undefined : new Date(epochMs).toISOString();
-}
 
 function toolCallError(toolCall: DeepReadonly<ToolCall>): string | undefined {
 	if (toolCall.state !== TOOL_CALL_STATE.ERROR) return undefined;
@@ -43,7 +37,7 @@ function toolCallError(toolCall: DeepReadonly<ToolCall>): string | undefined {
 	return 'Tool call failed';
 }
 
-export function toAssistantToolCall(toolCall: DeepReadonly<ToolCall>): InstanceAiToolCallState {
+export function toArtifactToolCall(toolCall: DeepReadonly<ToolCall>): ArtifactToolCall {
 	const error = toolCallError(toolCall);
 	return {
 		toolCallId: toolCall.toolCallId,
@@ -85,58 +79,38 @@ export function findArchivedAssistantWorkflowIds(messages: ReadonlyChatMessages)
 	return workflowIds;
 }
 
-function toAgentTree(message: DeepReadonly<ChatMessage>, isLive: boolean): InstanceAiAgentNode {
-	const status: InstanceAiAgentNode['status'] = isLive
-		? 'active'
-		: message.status === CHAT_MESSAGE_STATUS.ERROR
-			? 'error'
-			: 'completed';
-	return {
-		// The readers match tool calls, not agent ids. The message id keeps each node unique.
-		agentId: message.id,
-		role: 'orchestrator',
-		status,
-		// The readers do not use the text. Without it, a streamed text delta does
-		// not change the tree.
-		textContent: '',
-		reasoning: '',
-		toolCalls: (message.toolCalls ?? []).map(toAssistantToolCall),
-		children: [],
-		timeline: [],
-	};
+/** The latest workflow of the turn's `setup-items` host events. */
+function findAnnouncedWorkflowId(message: DeepReadonly<ChatMessage>): string | undefined {
+	const events = message.hostEvents ?? [];
+	for (let i = events.length - 1; i >= 0; i--) {
+		if (events[i].name !== 'setup-items') continue;
+		const parsed = setupItemsPayloadSchema.safeParse(events[i].payload);
+		if (parsed.success) return parsed.data.workflowId;
+	}
+	return undefined;
 }
 
 /**
- * Builds Assistant messages from Agents chat messages. While the chat streams,
+ * Builds the artifact turns from Agents chat messages. While the chat streams,
  * the latest assistant message is the live one.
  */
-export function toAssistantArtifactMessages(
+export function toAssistantArtifactTurns(
 	messages: ReadonlyChatMessages,
 	isStreaming: boolean,
-): InstanceAiMessage[] {
+): ArtifactTurn[] {
 	const liveIndex = isStreaming ? messages.findLastIndex((m) => m.role === 'assistant') : -1;
 
-	return messages.map((message, index): InstanceAiMessage => {
-		const createdAt = toIsoString(message.createdAt) ?? new Date(0).toISOString();
+	return messages.map((message, index): ArtifactTurn => {
 		if (message.role === 'user') {
-			return {
-				id: message.id,
-				role: 'user',
-				createdAt,
-				content: message.content,
-				reasoning: '',
-				isStreaming: false,
-			};
+			return { id: message.id, role: 'user', isLive: false, toolCalls: [] };
 		}
-		const isLive = index === liveIndex;
+		const announcedWorkflowId = findAnnouncedWorkflowId(message);
 		return {
 			id: message.id,
 			role: 'assistant',
-			createdAt,
-			content: '',
-			reasoning: '',
-			isStreaming: isLive,
-			agentTree: toAgentTree(message, isLive),
+			isLive: index === liveIndex,
+			toolCalls: (message.toolCalls ?? []).map(toArtifactToolCall),
+			...(announcedWorkflowId ? { announcedWorkflowId } : {}),
 		};
 	});
 }

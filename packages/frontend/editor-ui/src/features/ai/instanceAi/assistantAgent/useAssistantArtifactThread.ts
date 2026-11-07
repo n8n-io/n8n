@@ -5,13 +5,13 @@ import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 import { createArtifactPreviewMemory } from '../artifactPreviewMemory';
-import type { ArtifactThread } from '../artifactThread';
+import type { ArtifactSendMessageOptions, ArtifactThread } from '../artifactThread';
 import { useResourceRegistry } from '../useResourceRegistry';
 import {
 	findArchivedAssistantWorkflowIds,
 	findLatestAssistantTasks,
-	toAssistantArtifactMessages,
-} from './assistantArtifactMessages';
+	toAssistantArtifactTurns,
+} from './assistantArtifactTurns';
 
 interface UseAssistantArtifactThreadOptions {
 	threadId: string;
@@ -30,21 +30,20 @@ interface UseAssistantArtifactThreadOptions {
 
 /**
  * The artifact thread of an Assistant agent thread, derived from its Agents
- * chat messages, so the artifacts panel and the previews work as in the
- * Assistant runtime.
+ * chat messages and host events.
  */
 export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOptions) {
 	const workflowsListStore = useWorkflowsListStore();
 
-	const messages = computed(() =>
-		toAssistantArtifactMessages(options.messages(), options.isStreaming()),
+	const artifactTurns = computed(() =>
+		toAssistantArtifactTurns(options.messages(), options.isStreaming()),
 	);
 	const currentTasks = computed(() => findLatestAssistantTasks(options.messages()));
 	const isHydratingThread = computed(() => options.isLoadingHistory());
 
 	const archivedWorkflowIds = computed(() => findArchivedAssistantWorkflowIds(options.messages()));
 
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(() => messages.value, {
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(() => artifactTurns.value, {
 		workflowNameLookup: (id) => workflowsListStore.getWorkflowById(id)?.name,
 		archivedWorkflowIds: () => archivedWorkflowIds.value,
 		pendingWorkflowAttachment: () => options.pendingWorkflowAttachment,
@@ -53,7 +52,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 	const thread: ArtifactThread = reactive({
 		id: options.threadId,
 		projectId: options.projectId,
-		messages,
+		artifactTurns,
 		producedArtifacts,
 		resourceNameIndex,
 		pendingWorkflowAttachment: options.pendingWorkflowAttachment ?? null,
@@ -65,7 +64,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		currentTasks,
 		// The editor snapshot seeds only current-runtime threads. The preview fetches the workflow.
 		consumePendingHandoff: () => undefined,
-		sendMessage: async (text: string, opts: Parameters<ArtifactThread['sendMessage']>[1]) => {
+		sendMessage: async (text: string, opts: ArtifactSendMessageOptions) => {
 			options.sendMessage(text, opts.handoffContext);
 			return true;
 		},

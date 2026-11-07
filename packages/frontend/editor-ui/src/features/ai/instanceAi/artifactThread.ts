@@ -1,32 +1,47 @@
+import type {
+	InstanceAiHandoffContext,
+	InstanceAiWorkflowAttachment,
+	TaskList,
+} from '@n8n/api-types';
 import { inject, provide, type InjectionKey } from 'vue';
 
-import { useThread, type ThreadRuntime } from './instanceAi.store';
+import type { createArtifactPreviewMemory } from './artifactPreviewMemory';
+import type { ArtifactTurn } from './artifactTurns';
+import { useThread } from './instanceAi.store';
+import type { PendingHandoff } from './instanceAi.threadRuntime';
+import type { InstanceAiMessageAuthorship } from './prefills';
+import type { ResourceEntry } from './useResourceRegistry';
+
+type ArtifactPreviewMemory = ReturnType<typeof createArtifactPreviewMemory>;
+
+/** The options of a message that a preview sends, e.g. a credential question. */
+export interface ArtifactSendMessageOptions {
+	authorship: InstanceAiMessageAuthorship;
+	pushRef?: string;
+	handoffContext?: InstanceAiHandoffContext;
+}
 
 /**
- * The part of a thread that the artifacts panel and the artifact previews read.
- * The thread runtime has all of it. A host without a thread runtime (the
- * Assistant agent view) provides its own, derived from its chat messages.
+ * The part of a thread that the artifacts panel and the artifact previews
+ * read. The thread runtime and the Assistant agent view each provide it from
+ * their own thread data.
  */
-export type ArtifactThread = Pick<
-	ThreadRuntime,
-	| 'id'
-	| 'projectId'
-	| 'messages'
-	| 'producedArtifacts'
-	| 'resourceNameIndex'
-	| 'pendingWorkflowAttachment'
-	| 'hydrationStatus'
-	| 'isHydratingThread'
-	| 'isStreaming'
-	| 'isSendingMessage'
-	| 'currentTasks'
-	| 'consumePendingHandoff'
-	| 'sendMessage'
-	| 'rememberManualExecution'
-	| 'getRememberedManualExecution'
-	| 'forgetManualExecution'
-	| 'logsPanelMemory'
->;
+export interface ArtifactThread extends ArtifactPreviewMemory {
+	id: string;
+	projectId: string | undefined;
+	/** The messages of the thread, in the shape that the artifact readers read. */
+	artifactTurns: readonly ArtifactTurn[];
+	producedArtifacts: ReadonlyMap<string, ResourceEntry>;
+	resourceNameIndex: ReadonlyMap<string, ResourceEntry>;
+	pendingWorkflowAttachment: InstanceAiWorkflowAttachment | null;
+	hydrationStatus: 'idle' | 'hydrating' | 'ready';
+	isHydratingThread: boolean;
+	isStreaming: boolean;
+	isSendingMessage: boolean;
+	currentTasks: TaskList | null;
+	consumePendingHandoff: (workflowId: string) => Omit<PendingHandoff, 'workflowId'> | undefined;
+	sendMessage: (message: string, opts: ArtifactSendMessageOptions) => Promise<boolean>;
+}
 
 const ArtifactThreadKey: InjectionKey<ArtifactThread> = Symbol('ArtifactThread');
 
