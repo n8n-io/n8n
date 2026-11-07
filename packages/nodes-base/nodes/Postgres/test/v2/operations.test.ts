@@ -479,6 +479,30 @@ describe('Test PostgresV2, executeQuery operation', () => {
 		expect(utils.stringToArray).toHaveBeenCalledTimes(0);
 	});
 
+	it.each([
+		['$&', "select '1$&2'"],
+		['$$', "select '1$$2'"],
+		["$'", "select '1$'2'"],
+		['$`', "select '1$`2'"],
+		['regex anchor', "select '^[0-9]+$'"],
+	])('should insert resolved expression values literally (%s)', async (_name, resolvedValue) => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: '={{ placeholder }}',
+			options: {},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+		const mockExecute = createMockExecuteFunction(nodeParameters);
+		mockExecute.evaluateExpression = vi.fn().mockReturnValue(resolvedValue);
+
+		await executeQuery.execute.call(mockExecute, runQueries, items, nodeOptions);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: `=${resolvedValue}`, values: [], options: { partial: true } }],
+			nodeOptions,
+		);
+	});
+
 	it('should parse out expressions if is invalid JSON in query parameters', async () => {
 		const query = 'SELECT *\nFROM users\nWHERE username IN ($1, $2, $3)';
 		const nodeParameters: IDataObject = {
