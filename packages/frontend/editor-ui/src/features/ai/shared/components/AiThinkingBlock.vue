@@ -1,7 +1,6 @@
 <script lang="ts" setup>
-import { N8nAiActivityStepChevron, N8nAnimatedCollapsibleContent } from '@n8n/design-system';
+import { N8nAiActivityStepGroup } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { firstSentence } from '../thinking.utils';
 
@@ -117,41 +116,45 @@ const title = computed<{ key: string; text: string }>(() => {
 </script>
 
 <template>
-	<CollapsibleRoot
+	<N8nAiActivityStepGroup
 		:open="expanded"
+		:nested="false"
+		:announce-label="false"
+		:class="$style.group"
+		header-test-id="thinking-block-header"
 		:data-test-id="props.testId"
 		@update:open="(value) => (userToggled = value)"
 	>
-		<CollapsibleTrigger as-child>
-			<button
-				type="button"
-				:class="$style.header"
-				:aria-expanded="expanded"
-				data-test-id="thinking-block-header"
-			>
-				<Transition name="thinking-title" mode="out-in">
-					<span :key="title.key" :class="$style.title">{{ title.text }}</span>
-				</Transition>
-				<span v-if="expanded && isCounting && elapsedLabel" :class="$style.headerElapsed">
-					{{ elapsedLabel }}
+		<template #label>
+			<Transition name="thinking-title" mode="out-in">
+				<span :key="title.key" :class="$style.title">
+					{{ title.text }}
 				</span>
-				<N8nAiActivityStepChevron :open="expanded" />
-			</button>
-		</CollapsibleTrigger>
-		<div
-			v-if="props.active && !props.awaitingInput && !expanded"
-			:class="$style.subline"
-			data-test-id="thinking-block-subline"
-		>
-			<span :class="$style.sublineLabel">
-				{{ props.activityLabel ?? i18n.baseText('ai.thinking.active') }}
+			</Transition>
+		</template>
+		<template #header-trailing="{ open }">
+			<span v-if="open && isCounting && elapsedLabel" :class="$style.headerElapsed">
+				{{ elapsedLabel }}
 			</span>
-			<span v-if="elapsedLabel" :class="$style.sublineElapsed"> &middot; {{ elapsedLabel }} </span>
-		</div>
-		<N8nAnimatedCollapsibleContent>
+		</template>
+		<template #collapsed-preview>
+			<div
+				v-if="props.active && !props.awaitingInput"
+				:class="$style.subline"
+				data-test-id="thinking-block-subline"
+			>
+				<span :class="$style.sublineLabel">
+					{{ props.activityLabel ?? i18n.baseText('ai.thinking.active') }}
+				</span>
+				<span v-if="elapsedLabel" :class="$style.sublineElapsed">
+					&middot; {{ elapsedLabel }}
+				</span>
+			</div>
+		</template>
+		<template #default>
 			<div :class="$style.content"><slot /></div>
-		</N8nAnimatedCollapsibleContent>
-	</CollapsibleRoot>
+		</template>
+	</N8nAiActivityStepGroup>
 </template>
 
 <style lang="scss" scoped>
@@ -167,27 +170,14 @@ const title = computed<{ key: string; text: string }>(() => {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 
-.header {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	max-width: 90%;
-	border: 0;
-	background: transparent;
-	padding: var(--spacing--4xs) 0;
-	cursor: pointer;
-	text-align: left;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--lg);
-
-	&:hover {
-		color: var(--text-color--subtle);
-	}
+.group {
+	--ai-activity-step--padding: var(--spacing--4xs) 0;
+	--ai-activity-step--height: auto;
 }
 
 .title {
+	display: block;
+	line-height: var(--line-height--lg);
 	flex: 1;
 	min-width: 0;
 	overflow: hidden;
