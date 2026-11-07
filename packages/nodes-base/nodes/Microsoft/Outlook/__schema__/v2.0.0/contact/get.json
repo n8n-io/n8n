@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
         "businessPhones": {
             "type": "array",
             "items": {
@@ -34,5 +28,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

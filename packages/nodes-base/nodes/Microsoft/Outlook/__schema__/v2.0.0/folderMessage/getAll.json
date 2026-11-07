@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.etag": {
-            "type": "string"
-        },
         "bccRecipients": {
             "type": "array",
             "items": {
@@ -201,5 +198,5 @@
             "type": "string"
         }
     },
-    "version": 11
+    "version": 12
 }

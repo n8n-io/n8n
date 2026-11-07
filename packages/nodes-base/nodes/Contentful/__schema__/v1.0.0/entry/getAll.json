@@ -40,110 +40,18 @@
                                                     "type": "array",
                                                     "items": {
                                                         "type": "object",
-                                                        "properties": {
-                                                            "content": {
-                                                                "type": "array",
-                                                                "items": {
-                                                                    "type": "object",
-                                                                    "properties": {
-                                                                        "content": {
-                                                                            "type": "array",
-                                                                            "items": {
-                                                                                "type": "object",
-                                                                                "properties": {
-                                                                                    "marks": {
-                                                                                        "type": "array",
-                                                                                        "items": {
-                                                                                            "type": "object",
-                                                                                            "properties": {
-                                                                                                "type": {
-                                                                                                    "type": "string"
-                                                                                                }
-                                                                                            }
-                                                                                        }
-                                                                                    },
-                                                                                    "nodeType": {
-                                                                                        "type": "string"
-                                                                                    },
-                                                                                    "value": {
-                                                                                        "type": "string"
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        },
-                                                                        "data": {
-                                                                            "type": "object",
-                                                                            "properties": {
-                                                                                "uri": {
-                                                                                    "type": "string"
-                                                                                }
-                                                                            }
-                                                                        },
-                                                                        "marks": {
-                                                                            "type": "array",
-                                                                            "items": {
-                                                                                "type": "object",
-                                                                                "properties": {
-                                                                                    "type": {
-                                                                                        "type": "string"
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        },
-                                                                        "nodeType": {
-                                                                            "type": "string"
-                                                                        },
-                                                                        "value": {
-                                                                            "type": "string"
-                                                                        }
-                                                                    }
-                                                                }
-                                                            },
-                                                            "data": {
-                                                                "type": "object",
-                                                                "properties": {
-                                                                    "uri": {
-                                                                        "type": "string"
-                                                                    }
-                                                                }
-                                                            },
-                                                            "marks": {
-                                                                "type": "array",
-                                                                "items": {
-                                                                    "type": "object",
-                                                                    "properties": {
-                                                                        "type": {
-                                                                            "type": "string"
-                                                                        }
-                                                                    }
-                                                                }
-                                                            },
-                                                            "nodeType": {
-                                                                "type": "string"
-                                                            },
-                                                            "value": {
-                                                                "type": "string"
-                                                            }
-                                                        }
+                                                        "properties": {}
                                                     }
                                                 },
                                                 "data": {
                                                     "type": "object",
-                                                    "properties": {
-                                                        "uri": {
-                                                            "type": "string"
-                                                        }
-                                                    }
+                                                    "properties": {}
                                                 },
                                                 "marks": {
                                                     "type": "array",
                                                     "items": {
                                                         "type": "object",
-                                                        "properties": {
-                                                            "type": {
-                                                                "type": "string"
-                                                            }
-                                                        }
+                                                        "properties": {}
                                                     }
                                                 },
                                                 "nodeType": {
@@ -160,22 +68,7 @@
                                         "properties": {
                                             "target": {
                                                 "type": "object",
-                                                "properties": {
-                                                    "sys": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "id": {
-                                                                "type": "string"
-                                                            },
-                                                            "linkType": {
-                                                                "type": "string"
-                                                            },
-                                                            "type": {
-                                                                "type": "string"
-                                                            }
-                                                        }
-                                                    }
-                                                }
+                                                "properties": {}
                                             }
                                         }
                                     },
@@ -370,5 +263,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

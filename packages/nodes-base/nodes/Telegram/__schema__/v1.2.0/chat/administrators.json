@@ -13,6 +13,9 @@
         "can_delete_stories": {
             "type": "boolean"
         },
+        "can_edit_messages": {
+            "type": "boolean"
+        },
         "can_edit_stories": {
             "type": "boolean"
         },
@@ -20,6 +23,9 @@
             "type": "boolean"
         },
         "can_manage_chat": {
+            "type": "boolean"
+        },
+        "can_manage_direct_messages": {
             "type": "boolean"
         },
         "can_manage_topics": {
@@ -34,6 +40,9 @@
         "can_pin_messages": {
             "type": "boolean"
         },
+        "can_post_messages": {
+            "type": "boolean"
+        },
         "can_post_stories": {
             "type": "boolean"
         },
@@ -41,6 +50,9 @@
             "type": "boolean"
         },
         "can_restrict_members": {
+            "type": "boolean"
+        },
+        "can_send_welcome_messages": {
             "type": "boolean"
         },
         "is_anonymous": {
@@ -73,5 +85,5 @@
             }
         }
     },
-    "version": 1
+    "version": 2
 }

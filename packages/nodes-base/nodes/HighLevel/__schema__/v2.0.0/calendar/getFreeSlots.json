@@ -1,20 +1,9 @@
 {
     "type": "object",
     "properties": {
-        "2026-02-19": {
-            "type": "object",
-            "properties": {
-                "slots": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "traceId": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

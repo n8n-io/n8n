@@ -13,6 +13,17 @@
         "isArchived": {
             "type": "boolean"
         },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "aiBuilderAssisted": {
+                    "type": "boolean"
+                },
+                "builderVariant": {
+                    "type": "string"
+                }
+            }
+        },
         "name": {
             "type": "string"
         },
@@ -70,6 +81,9 @@
                             },
                             "resource": {
                                 "type": "string"
+                            },
+                            "sendBody": {
+                                "type": "boolean"
                             },
                             "url": {
                                 "type": "string"
@@ -158,5 +172,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

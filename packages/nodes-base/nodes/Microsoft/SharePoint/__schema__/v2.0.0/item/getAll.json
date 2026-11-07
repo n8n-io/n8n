@@ -7,13 +7,61 @@
         "fields": {
             "type": "object",
             "properties": {
+                "_ComplianceFlags": {
+                    "type": "string"
+                },
+                "_ComplianceTag": {
+                    "type": "string"
+                },
+                "_ComplianceTagUserId": {
+                    "type": "string"
+                },
+                "_ComplianceTagWrittenTime": {
+                    "type": "string"
+                },
+                "_UIVersionString": {
+                    "type": "string"
+                },
+                "Attachments": {
+                    "type": "boolean"
+                },
+                "AuthorLookupId": {
+                    "type": "string"
+                },
+                "ContentType": {
+                    "type": "string"
+                },
+                "Created": {
+                    "type": "string"
+                },
+                "Edit": {
+                    "type": "string"
+                },
+                "EditorLookupId": {
+                    "type": "string"
+                },
+                "FolderChildCount": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ItemChildCount": {
+                    "type": "string"
+                },
+                "LinkTitle": {
+                    "type": "string"
+                },
+                "LinkTitleNoMenu": {
+                    "type": "string"
+                },
+                "Modified": {
+                    "type": "string"
+                },
                 "Title": {
                     "type": "string"
                 }
             }
-        },
-        "fields@odata.context": {
-            "type": "string"
         },
         "id": {
             "type": "string"
@@ -25,5 +73,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

@@ -1,0 +1,34 @@
+{
+    "type": "object",
+    "properties": {
+        "meta": {
+            "type": "object",
+            "properties": {
+                "requestId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "usage": {
+                    "type": "object",
+                    "properties": {
+                        "credits": {
+                            "type": "integer"
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "sessionId": {
+            "type": "string"
+        },
+        "windowId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}
