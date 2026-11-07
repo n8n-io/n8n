@@ -299,6 +299,11 @@ export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
 			});
 		}
 	});
+	// `seen` tracks the path from the root, not everything visited: entries
+	// have to leave it on the way back up, otherwise a plain shared
+	// reference in a sibling position is mistaken for a cycle and its data
+	// is overwritten. `replaceCircularReferences` above already does this.
+	seen.delete(obj);
 };
 
 export function updateDisplayOptions(
