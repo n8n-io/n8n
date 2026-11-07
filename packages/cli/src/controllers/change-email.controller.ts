@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { AuthenticatedRequest, isPerson, PersonRepository, UserRepository } from '@n8n/db';
+import { AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
 import {
 	Body,
 	createUserKeyedRateLimiter,
@@ -32,7 +32,6 @@ export class ChangeEmailController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
-		private readonly userRepository: UserRepository,
 		private readonly personRepository: PersonRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly emailChangeService: EmailChangeService,
@@ -165,9 +164,9 @@ export class ChangeEmailController {
 		return { success: true };
 	}
 
-	/** Reject when another account of either kind already owns the target email. */
+	/** Reject when another person already owns the target email. A service account has no email. */
 	private async assertEmailAvailable(email: string): Promise<void> {
-		const existing = await this.userRepository.findOneBy({ email });
+		const existing = await this.personRepository.findByEmail(email);
 		if (existing) {
 			throw new BadRequestError('This email address is already in use');
 		}

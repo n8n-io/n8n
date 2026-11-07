@@ -7,8 +7,8 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { User, PublicUser, AuthIdentity } from '@n8n/db';
-import { UserRepository, AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
+import type { User, Person, PublicUser, AuthIdentity } from '@n8n/db';
+import { AuthenticatedRequest, isPerson, PersonRepository } from '@n8n/db';
 import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
@@ -34,7 +34,6 @@ export class MeController {
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
 		private readonly personRepository: PersonRepository,
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
@@ -116,6 +115,7 @@ export class MeController {
 		const { instanceSettingsLoader } = this.globalConfig;
 		return (
 			instanceSettingsLoader.ownerManagedByEnv &&
+			isPerson(user) &&
 			!!user.email &&
 			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
 		);
@@ -256,17 +256,12 @@ export class MeController {
 		req: AuthenticatedRequest,
 		_: Response,
 		@Body payload: UserSelfSettingsUpdateRequestDto,
-	): Promise<User['settings']> {
+	): Promise<Person['settings']> {
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userRepository.findOneOrFail({
-			// TypeORM needs `id` here because `ServiceAccount.details` is an eager join.
-			select: ['id', 'settings'],
-			where: { id },
-		});
-
-		return user.settings;
+		const person = await this.personRepository.findById(id);
+		return person?.settings ?? null;
 	}
 }

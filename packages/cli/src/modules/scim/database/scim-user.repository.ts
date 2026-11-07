@@ -67,12 +67,12 @@ export class ScimUserRepository extends BaseRepository<User> {
 	 * identity that lets them sign in.
 	 */
 	async createProvisioned(
-		user: DeepPartial<User>,
+		person: DeepPartial<Person>,
 		identity: { providerId: string; providerType: AuthProviderType } | undefined,
 		ctx: OperationContext,
-	): Promise<User> {
+	): Promise<Person> {
 		return await this.runInTransaction(ctx, async (tx) => {
-			const { user: created } = await this.userRepository.createUserWithProject(user, tx);
+			const { user: created } = await this.userRepository.createUserWithProject(person, tx);
 
 			if (identity) {
 				await tx.save(tx.create(AuthIdentity, { ...identity, userId: created.id }));

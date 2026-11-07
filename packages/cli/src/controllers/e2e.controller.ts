@@ -654,17 +654,11 @@ export class E2EController {
 		const [newOwner] = await Promise.all(userCreatePromises);
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
-			const { encryptedRecoveryCodes, encryptedSecret } =
-				await this.mfaService.encryptSecretAndRecoveryCodes(
-					owner.mfaSecret,
-					owner.mfaRecoveryCodes,
-				);
-
-			// oxlint-disable-next-line typescript/no-deprecated
-			await this.userRepository.update(newOwner.user.id, {
-				mfaSecret: encryptedSecret,
-				mfaRecoveryCodes: encryptedRecoveryCodes,
-			});
+			await this.mfaService.saveSecretAndRecoveryCodes(
+				newOwner.user.id,
+				owner.mfaSecret,
+				owner.mfaRecoveryCodes,
+			);
 		}
 	}
 
