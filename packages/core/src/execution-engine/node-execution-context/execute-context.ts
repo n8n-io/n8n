@@ -17,7 +17,8 @@ import type {
 	WorkflowExecuteMode,
 	EngineResponse,
 } from 'n8n-workflow';
-import { UnexpectedError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseExecuteContext } from './base-execute-context';
 import { SupplyDataContext } from './supply-data-context';
