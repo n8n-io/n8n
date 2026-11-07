@@ -4,6 +4,8 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 
+import { getCredentialTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
+
 import type { INodeUi } from '@/Interface';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -17,7 +19,8 @@ export interface AutoSelectedCredential {
 
 /**
  * For a node with no credentials set, pick the most recently updated usable
- * credential across its displayed credential types.
+ * credential across its displayed credential types. A policy-blocked type is
+ * never picked, because its row in the dropdown is disabled.
  *
  * `overrideCredentials` must match what the host's dropdown renders from, so
  * "nothing to auto-select" and "dropdown is empty" stay the same condition.
@@ -38,7 +41,9 @@ export function getAutoSelectedCredential(
 		overrideCredentials,
 	);
 
-	const allOptions = credentialTypesNodeDescriptionDisplayed.value.flatMap((type) => type.options);
+	const allOptions = credentialTypesNodeDescriptionDisplayed.value
+		.flatMap((type) => type.options)
+		.filter((option) => !getCredentialTypeRestriction(option.type));
 	if (allOptions.length === 0) return undefined;
 
 	const mostRecent = allOptions.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));

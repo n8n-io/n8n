@@ -2938,6 +2938,8 @@
 	"typeAvailabilityPolicies.restrictedCredentialType.popover.description": "An administrator blocked this credential type. Workflows can't use credentials of this type until an instance administrator grants access.",
 	"typeAvailabilityPolicies.restrictedCredentialType.popover.description.project": "An administrator blocked this credential type in this project. Workflows can't use credentials of this type until a project admin grants access.",
 	"typeAvailabilityPolicies.restrictedCredentialType.popover.description.optIn": "This credential type needs approval in each project. A project admin can allow it for this project.",
+	"typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.scope": "Restricted nodes",
+	"typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.description": "You can create this credential, but workflows can't use it. An administrator blocked every node that uses it: {nodeTypes}.",
 	"typeAvailabilityPolicies.contactAdmin.title": "Instance admins",
 	"typeAvailabilityPolicies.contactAdmin.description": "Instance admins manage which nodes are available. Contact one of them to request access to '{nodeType}'.",
 	"typeAvailabilityPolicies.contactAdmin.mailSubject": "Access request for the {nodeType} node",
