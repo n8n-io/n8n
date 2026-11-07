@@ -10,12 +10,12 @@ import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/node
 import {
 	jsonParse,
 	NodeConnectionTypes,
-	UserError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
