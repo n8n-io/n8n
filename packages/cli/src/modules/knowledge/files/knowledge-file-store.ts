@@ -13,7 +13,7 @@ import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
 /** Where a knowledge file's bytes live, as recorded on its `agent_files` row. */
-export type StoredAgentKnowledgeFile = {
+export type StoredKnowledgeFile = {
 	storedAt: ExecutionDataStorageLocation;
 	storageKey: string;
 };
@@ -34,7 +34,7 @@ const LEGACY_KEY_SEGMENT = '/binary_data/';
  * BinaryDataService layout keep resolving under their original key.
  */
 @Service()
-export class AgentKnowledgeFileStore {
+export class KnowledgeFileStore {
 	private readonly byteStores: ByteStoreRegistry;
 
 	constructor(
@@ -54,7 +54,7 @@ export class AgentKnowledgeFileStore {
 		ref: { agentId: string; fileId: string },
 		body: Buffer | Readable,
 		metadata: PreWriteBlobMetadata,
-	): Promise<StoredAgentKnowledgeFile> {
+	): Promise<StoredKnowledgeFile> {
 		const storedAt = this.storageConfig.modeTag;
 
 		if (storedAt === 'db') {
@@ -77,7 +77,7 @@ export class AgentKnowledgeFileStore {
 		return { storedAt, storageKey };
 	}
 
-	async readAsBuffer(file: StoredAgentKnowledgeFile): Promise<Buffer | null> {
+	async readAsBuffer(file: StoredKnowledgeFile): Promise<Buffer | null> {
 		if (file.storedAt === 'db') {
 			return await this.binaryDataRepository.findContentByFileId(file.storageKey);
 		}
@@ -85,10 +85,10 @@ export class AgentKnowledgeFileStore {
 		return await this.byteStores.get(file.storedAt).read(file.storageKey);
 	}
 
-	async delete(files: StoredAgentKnowledgeFile[]): Promise<void> {
+	async delete(files: StoredKnowledgeFile[]): Promise<void> {
 		if (files.length === 0) return;
 
-		const groups = new Map<ExecutionDataStorageLocation, StoredAgentKnowledgeFile[]>();
+		const groups = new Map<ExecutionDataStorageLocation, StoredKnowledgeFile[]>();
 		for (const file of files) {
 			const group = groups.get(file.storedAt) ?? [];
 			group.push(file);
@@ -112,7 +112,7 @@ export class AgentKnowledgeFileStore {
 		);
 	}
 
-	private keysToDelete(loc: StorageLocation, files: StoredAgentKnowledgeFile[]): string[] {
+	private keysToDelete(loc: StorageLocation, files: StoredKnowledgeFile[]): string[] {
 		// s3 and az keep metadata on the object itself, so only fs has a companion.
 		if (loc !== 'fs') return files.map((file) => file.storageKey);
 
