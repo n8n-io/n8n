@@ -608,6 +608,45 @@ describe('BackgroundTaskManager', () => {
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
 		});
 
+		it('skips tasks detached from their turn when asked', () => {
+			manager.spawn(
+				makeSpawnOptions({ taskId: 't1', run: async () => await new Promise(() => {}) }),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 't2',
+					detachedFromTurn: true,
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+
+			const cancelled = manager.cancelThread('thread-1', undefined, {
+				skipTasksDetachedFromTurn: true,
+			});
+
+			expect(cancelled.map((task) => task.taskId)).toEqual(['t1']);
+			expect(manager.getRunningTasks('thread-1').map((task) => task.taskId)).toEqual(['t2']);
+		});
+
+		it('cancels tasks detached from their turn when not asked to skip them', () => {
+			manager.spawn(
+				makeSpawnOptions({ taskId: 't1', run: async () => await new Promise(() => {}) }),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 't2',
+					detachedFromTurn: true,
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+
+			const cancelled = manager.cancelThread('thread-1');
+
+			expect(cancelled.map((task) => task.taskId)).toEqual(['t1', 't2']);
+			expect(cancelled[1].abortController.signal.aborted).toBe(true);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
+		});
+
 		it('aborts running tasks with the supplied reason and leaves other threads running', () => {
 			const started = manager.spawn(
 				makeSpawnOptions({
