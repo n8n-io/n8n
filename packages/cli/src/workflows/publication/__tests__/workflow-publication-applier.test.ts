@@ -468,6 +468,36 @@ describe('WorkflowPublicationApplier', () => {
 		});
 	});
 
+	test('re-registers unchanged triggers with current settings for a settings refresh', async () => {
+		const trigger = triggerNode('schedule');
+		setTriggerSets([trigger], [{ ...trigger }]);
+		const workflow = makeWorkflow({
+			activeVersionId: oldVersion.versionId,
+			settings: { timezone: 'Europe/Berlin' },
+		});
+		workflowRepository.findOneBy.mockResolvedValue(workflow);
+		workflowHistoryRepository.findOneBy.mockResolvedValue(oldVersion);
+
+		await applier.apply(
+			makeRecord({ reason: 'settings-update', publishedVersionId: oldVersion.versionId }),
+			abort,
+		);
+
+		expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
+			workflow,
+			oldVersion,
+			new Set(['schedule']),
+			abort,
+		);
+		expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+			workflow,
+			oldVersion,
+			new Set(['schedule']),
+			'update',
+			abort,
+		);
+	});
+
 	test('registers only added triggers', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 
@@ -497,6 +527,7 @@ describe('WorkflowPublicationApplier', () => {
 	describe('activation mode from the record reason', () => {
 		test.each([
 			['publish', 'update'],
+			['settings-update', 'update'],
 			['startup', 'init'],
 			['leadership-takeover', 'leadershipChange'],
 			['reconcile', 'update'],
@@ -533,19 +564,22 @@ describe('WorkflowPublicationApplier', () => {
 				workflowPublishedVersionRepository.findOne.mockResolvedValue(null);
 			});
 
-			test('reason publish activates with mode activate', async () => {
-				setTriggerSets([], [triggerNode('a')]);
+			test.each(['publish', 'settings-update'] as const)(
+				'reason %s activates with mode activate',
+				async (reason) => {
+					setTriggerSets([], [triggerNode('a')]);
 
-				await applier.apply(makeRecord({ reason: 'publish' }), abort);
+					await applier.apply(makeRecord({ reason }), abort);
 
-				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'wf-1' }),
-					newVersion,
-					new Set(['a']),
-					'activate',
-					abort,
-				);
-			});
+					expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+						expect.objectContaining({ id: 'wf-1' }),
+						newVersion,
+						new Set(['a']),
+						'activate',
+						abort,
+					);
+				},
+			);
 
 			test('a record without a reason (pre-migration row) activates with mode activate', async () => {
 				setTriggerSets([], [triggerNode('a')]);

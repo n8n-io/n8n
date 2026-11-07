@@ -1,3 +1,4 @@
+import { LockService } from '@n8n/backend-common';
 import {
 	mockInstance,
 	testDb,
@@ -585,6 +586,9 @@ describe('--activeState flag', () => {
 	// It was introduced after refactoring the ImportService used by the import command
 	// from using the ActiveWorkflowManager to activate/deactivate workflows to the WorkflowService.
 	beforeEach(() => {
+		// Keep leases in process because this suite does not start Redis.
+		vi.spyOn(Container.get(LockService), 'setProvider').mockImplementation(() => undefined);
+
 		// Bypass webhook conflict detection to avoid infrastructure dependencies
 		// (getWorkflowExecutionData → VariablesService.getAllCached → CacheService/Redis)
 		vi.spyOn(Container.get(WorkflowService) as any, '_findConflictingWebhooks').mockResolvedValue(

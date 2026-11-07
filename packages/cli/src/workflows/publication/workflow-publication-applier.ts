@@ -60,11 +60,12 @@ type PartitionedVersion = { runnable: WorkflowTriggerVersion; unresolvable: Unre
  * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
  * leader's startup pass. Records from before the `reason` column existed
  * default to `publish` at the DB level, i.e. today's `update` behavior.
- * A first publication overrides `publish` → `activate`; see
+ * A first publication uses `activate` for `publish` and `settings-update`; see
  * {@link WorkflowPublicationApplier.resolveActivationMode}.
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
 	[WorkflowPublicationReason.Publish]: 'update',
+	[WorkflowPublicationReason.SettingsUpdate]: 'update',
 	[WorkflowPublicationReason.Startup]: 'init',
 	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
 	[WorkflowPublicationReason.Reconcile]: 'update',
@@ -180,6 +181,11 @@ export class WorkflowPublicationApplier {
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
 			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
 		});
+		// Settings are not versioned. Rebuild registrations that can retain old settings.
+		if (record.reason === WorkflowPublicationReason.SettingsUpdate) {
+			oldTriggerCandidates.forEach((node) => toRemove.add(node.id));
+			desiredTriggerNodes.forEach((node) => toAdd.add(node.id));
+		}
 
 		this.logger.debug(
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
@@ -500,7 +506,13 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
 		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
+		if (
+			oldVersion === null &&
+			(reason === WorkflowPublicationReason.Publish ||
+				reason === WorkflowPublicationReason.SettingsUpdate)
+		) {
+			return 'activate';
+		}
 		return ACTIVATION_MODE_BY_REASON[reason];
 	}
 
