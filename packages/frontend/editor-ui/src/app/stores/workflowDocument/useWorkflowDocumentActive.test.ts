@@ -15,6 +15,7 @@ function createVersion(versionId: string): WorkflowHistory {
 		workflowPublishHistory: [],
 		name: `Version ${versionId}`,
 		description: null,
+		settings: {},
 	};
 }
 

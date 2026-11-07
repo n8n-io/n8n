@@ -121,6 +121,7 @@ describe('WorkflowPublishModal', () => {
 				workflowPublishHistory: [],
 				name: 'Published Version',
 				description: null,
+				settings: {},
 			},
 		});
 
@@ -162,6 +163,7 @@ describe('WorkflowPublishModal', () => {
 				workflowPublishHistory: [],
 				name: 'Published Version',
 				description: null,
+				settings: {},
 			},
 		});
 	}
