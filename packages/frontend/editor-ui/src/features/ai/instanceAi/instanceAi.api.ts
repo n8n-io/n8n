@@ -127,6 +127,40 @@ export async function fetchCloudBrowserLiveView(
 }
 
 /**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-take-over
+ * The user takes control of a cloud browser task's browser. The agent's calls wait for them.
+ */
+export async function postCloudBrowserTakeOver(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-take-over`,
+	);
+}
+
+/**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-return-control
+ * The user gives the browser back to the agent, with what they changed.
+ */
+export async function postCloudBrowserReturnControl(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+	note?: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-return-control`,
+		note ? { note } : {},
+	);
+}
+
+/**
  * POST /instance-ai/confirm/:requestId -> 200 OK
  * Resolve a confirmation request (HITL). The request body is a discriminated
  * union on `kind`.

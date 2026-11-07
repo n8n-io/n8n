@@ -532,6 +532,31 @@ describe('executeResumableStream', () => {
 		expect(onActivity).toHaveBeenCalledTimes(2);
 	});
 
+	it('acknowledges input boundaries without publishing them', async () => {
+		const eventBus = createEventBus();
+		const acknowledge = vi.fn();
+
+		await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([{ type: 'input-boundary', acknowledge }, textChunk('Done.')]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(acknowledge).toHaveBeenCalledTimes(1);
+		expect(eventBus.publish.mock.calls.map(([, event]) => event.type)).toEqual(['text-delta']);
+	});
+
 	it('calls onResponseChunk for text, reasoning and tool calls, before publishing', async () => {
 		const eventBus = createEventBus();
 		const order: string[] = [];
