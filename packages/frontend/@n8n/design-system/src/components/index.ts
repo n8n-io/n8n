@@ -10,6 +10,21 @@ export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
+export {
+	N8nAccordion,
+	N8nAccordionContent,
+	N8nAccordionHeader,
+	N8nAccordionItem,
+	N8nAccordionTrigger,
+} from './N8nAccordion';
+export type {
+	AccordionContentProps,
+	AccordionHeaderProps,
+	AccordionItemProps,
+	AccordionRootEmits,
+	AccordionRootProps,
+	AccordionTriggerProps,
+} from './N8nAccordion';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
 export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';

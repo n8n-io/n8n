@@ -8,7 +8,6 @@
  * `CollapsibleRoot` and `CollapsibleContent`.
  */
 export const pendingRekaPrefixes = [
-	'Accordion',
 	'Collapsible',
 	'ContextMenu',
 	'DropdownMenu',
