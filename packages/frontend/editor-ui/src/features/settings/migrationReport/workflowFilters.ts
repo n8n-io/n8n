@@ -8,7 +8,7 @@ import {
 	isUnresolved,
 	isUnresolvedState,
 	type FindingState,
-	type RowContext,
+	type MigrationContext,
 } from './findingState';
 
 export type AgeFilter = 'any' | 'under30Days' | 'under6Months' | 'over12Months';
@@ -124,7 +124,7 @@ export function filterWorkflows(
 	rows: BreakingChangeRuleDetailWorkflow[],
 	query: string,
 	filters: WorkflowFilters,
-	context: RowContext,
+	context: MigrationContext,
 	now = Date.now(),
 ): BreakingChangeRuleDetailWorkflow[] {
 	const search = query.toLowerCase();
@@ -138,7 +138,7 @@ export function filterWorkflows(
 /** The counts on the quick filters. Won't fix counts as resolved, so `open` leaves it out. */
 export function countQuickFilters(
 	rows: BreakingChangeRuleDetailWorkflow[],
-	context: RowContext,
+	context: MigrationContext,
 	currentUserId: string | undefined,
 ) {
 	return {
