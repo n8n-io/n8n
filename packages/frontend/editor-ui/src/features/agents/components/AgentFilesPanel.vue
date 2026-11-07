@@ -7,10 +7,10 @@ import {
 	N8nTableBase,
 	N8nEmptyState,
 	N8nBadge,
+	N8nLoading,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { ElSkeletonItem } from 'element-plus';
 import { ALLOWED_AGENT_FILE_EXTENSIONS, type AgentFileDto } from '@n8n/api-types';
 
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -194,7 +194,7 @@ function onFilesSelected(event: Event) {
 					<template v-if="props.loading && props.files.length === 0">
 						<tr v-for="item in 5" :key="item">
 							<td v-for="col in 6" :key="col">
-								<ElSkeletonItem />
+								<N8nLoading variant="text" :animated="false" />
 							</td>
 						</tr>
 					</template>

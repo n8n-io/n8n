@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import { ElSkeleton, ElSkeletonItem } from 'element-plus';
-
 const VARIANT = [
 	'custom',
 	'p',
@@ -32,18 +30,22 @@ withDefaults(defineProps<LoadingProps>(), {
 	shrinkLast: true,
 	variant: 'p',
 });
+
+// Callers and skeleton.scss size the bars through these class names.
+// A bare Element Plus item uses the text variant.
+const textItemClass = ['el-skeleton__item', 'el-skeleton__text'];
 </script>
 
 <template>
-	<ElSkeleton
-		:loading="loading"
-		:animated="animated"
-		:class="['n8n-loading', `n8n-loading-${variant}`]"
+	<div
+		v-if="loading"
+		aria-hidden="true"
+		:class="['n8n-loading', `n8n-loading-${variant}`, 'el-skeleton', { 'is-animated': animated }]"
 	>
-		<template v-if="cols" #template>
-			<ElSkeletonItem v-for="i in cols" :key="i" />
+		<template v-if="cols">
+			<div v-for="i in cols" :key="i" :class="textItemClass" />
 		</template>
-		<template v-else #template>
+		<template v-else>
 			<div v-if="variant === 'h1'">
 				<div
 					v-for="(item, index) in rows"
@@ -52,7 +54,7 @@ withDefaults(defineProps<LoadingProps>(), {
 						[$style.h1Last]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<ElSkeletonItem :variant="variant" />
+					<div :class="['el-skeleton__item', 'el-skeleton__h1']" />
 				</div>
 			</div>
 			<div v-else-if="variant === 'p'">
@@ -63,15 +65,15 @@ withDefaults(defineProps<LoadingProps>(), {
 						[$style.pLast]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<ElSkeletonItem :variant="variant" />
+					<div :class="['el-skeleton__item', 'el-skeleton__p']" />
 				</div>
 			</div>
 			<div v-else-if="variant === 'custom'" :class="$style.custom">
-				<ElSkeletonItem />
+				<div :class="textItemClass" />
 			</div>
-			<ElSkeletonItem v-else :variant="variant" />
+			<div v-else :class="['el-skeleton__item', `el-skeleton__${variant}`]" />
 		</template>
-	</ElSkeleton>
+	</div>
 </template>
 
 <style lang="scss" module>

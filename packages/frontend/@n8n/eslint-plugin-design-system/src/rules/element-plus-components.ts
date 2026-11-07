@@ -131,8 +131,6 @@ export const allowedElementPlusComponents = [
 	'ElRow',
 	'ElScrollbar',
 	'ElSelect',
-	'ElSkeleton',
-	'ElSkeletonItem',
 	'ElSwitch',
 	'ElTable',
 	'ElTableColumn',

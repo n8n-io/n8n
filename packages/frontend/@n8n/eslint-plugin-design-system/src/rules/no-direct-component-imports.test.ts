@@ -272,6 +272,20 @@ ruleTester.run('no-direct-component-imports', NoDirectComponentImportsRule, {
 			],
 		},
 		{
+			name: 'element-plus skeleton components are not allowlisted',
+			code: "import { ElSkeleton, ElSkeletonItem } from 'element-plus';",
+			errors: [
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElSkeleton', library: 'element-plus' },
+				},
+				{
+					messageId: 'noDirectPrimitiveImport',
+					data: { name: 'ElSkeletonItem', library: 'element-plus' },
+				},
+			],
+		},
+		{
 			name: 'an element-plus component that is not migrated and not allowlisted',
 			code: "import { ElButton } from 'element-plus';",
 			errors: [
