@@ -27,6 +27,6 @@ export class WorkflowVersionedSettings {
 	): IWorkflowSettings | undefined {
 		if (!this.isEnabled()) return workflowSettings;
 
-		return applyVersionedSettings(workflowSettings, publishedVersion.settings);
+		return applyVersionedSettings(workflowSettings ?? null, publishedVersion.settings);
 	}
 }
