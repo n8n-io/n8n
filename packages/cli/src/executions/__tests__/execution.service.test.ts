@@ -1,5 +1,10 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
-import type { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import type { ModuleRegistry } from '@n8n/backend-common';
+import {
+	type EventService,
+	type ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettings,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -64,6 +69,7 @@ describe('ExecutionService', () => {
 	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
 	const engineDataPlane = mock<EngineDataPlaneProxyService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const moduleRegistry = mock<ModuleRegistry>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -86,6 +92,7 @@ describe('ExecutionService', () => {
 		ownershipService,
 		engineV2ExecutionReader,
 		engineDataPlane,
+		new WorkflowVersionedSettings(moduleRegistry),
 	);
 
 	beforeEach(() => {
@@ -266,6 +273,7 @@ describe('ExecutionService', () => {
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(moduleRegistry),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -349,6 +357,7 @@ describe('ExecutionService', () => {
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(moduleRegistry),
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');
@@ -612,6 +621,49 @@ describe('ExecutionService', () => {
 			 */
 			expect(result).toBeUndefined();
 			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+		});
+
+		describe('with the engine-v2 module', () => {
+			const workflowId = 'workflow-123';
+			const mockUser = mock<User>();
+			const v1Execution = mock<IExecutionResponse>({
+				id: 'v1-execution',
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+			});
+			const v2Execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				startedAt: new Date('2025-01-15T11:00:00Z'),
+			});
+
+			beforeEach(() => {
+				moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+				executionRedactionServiceProxy.processExecution.mockImplementation(
+					async (execution) => execution,
+				);
+			});
+
+			afterEach(() => {
+				moduleRegistry.isActive.mockReset();
+			});
+
+			it('should return the newest success of both engines', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v2Execution);
+				expect(workflowRepository.findSettings).not.toHaveBeenCalled();
+			});
+
+			it('should return the success of the engine that has one', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(undefined);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v1Execution);
+			});
 		});
 
 		describe('for a workflow on engine v2', () => {

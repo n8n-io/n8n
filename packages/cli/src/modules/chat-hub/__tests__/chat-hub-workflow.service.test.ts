@@ -1,6 +1,7 @@
 import type { ChatHubConversationModel, ChatProviderSettingsDto } from '@n8n/api-types';
 import type { PolicyCleared } from '@n8n/decorators';
-import type { Logger } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { WorkflowVersionedSettings } from '@n8n/backend-services';
 import type { Project, WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Cipher, BinaryDataService } from 'n8n-core';
@@ -42,6 +43,8 @@ describe('ChatHubWorkflowService', () => {
 	const mockCipher = mock<Cipher>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const deprecatedNodesValidationService = mock<DeprecatedNodesValidationService>();
+	const moduleRegistry = mock<ModuleRegistry>();
+	const workflowVersionedSettings = new WorkflowVersionedSettings(moduleRegistry);
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -77,6 +80,7 @@ describe('ChatHubWorkflowService', () => {
 			mockCipher,
 			policyEnforcementService,
 			deprecatedNodesValidationService,
+			workflowVersionedSettings,
 		);
 
 		// Mock repository methods
@@ -1208,6 +1212,62 @@ describe('ChatHubWorkflowService', () => {
 		});
 	});
 
+	describe('engine of a workflow agent run', () => {
+		const chatTrigger = {
+			id: 'chat-trigger',
+			name: 'Chat Trigger',
+			type: CHAT_TRIGGER_NODE_TYPE,
+			typeVersion: 1.4,
+			position: [0, 0],
+			parameters: { availableInChat: true, options: { responseMode: 'lastNode' } },
+		} as INode;
+
+		const runEngine = async (manual: boolean) => {
+			// A plain object: a deep mock answers every unknown key, which fails the trigger parameter check.
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({
+				id: 'agent-workflow',
+				nodes: [chatTrigger],
+				connections: {},
+				settings: { engineType: 'v2' },
+				activeVersion: { nodes: [chatTrigger], connections: {}, settings: { engineType: 'v1' } },
+			} as never);
+
+			const prepared = await service.prepareReplyWorkflow(
+				mock<User>({ id: 'user-1' }),
+				'session-1',
+				{},
+				{ provider: 'n8n', workflowId: 'agent-workflow' },
+				[],
+				'Hello',
+				[],
+				[],
+				'UTC',
+				{},
+				{ authToken: 'token', browserId: undefined, method: 'POST', endpoint: '/chat' },
+				manual,
+			);
+			return prepared.workflowData.settings?.engineType;
+		};
+
+		it('runs on the engine of the published version with the engine-v2 module', async () => {
+			moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+
+			expect(await runEngine(false)).toBe('v1');
+		});
+
+		it('runs a manual chat on the draft engine', async () => {
+			moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+
+			expect(await runEngine(true)).toBe('v2');
+		});
+
+		it('runs on the draft engine without the engine-v2 module, as before', async () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			expect(await runEngine(false)).toBe('v2');
+		});
+	});
+
 	describe('prepareExecutionData', () => {
 		it('should encrypt executionMetadata before adding to trigger item', async () => {
 			const triggerNode = {
@@ -1395,6 +1455,7 @@ describe('ChatHubWorkflowService', () => {
 				mockCipher,
 				policyEnforcementService,
 				deprecatedNodesValidationService,
+				workflowVersionedSettings,
 			);
 
 			const mockTrx = mock<EntityManager>();

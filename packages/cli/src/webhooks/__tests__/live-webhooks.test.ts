@@ -1,3 +1,4 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
@@ -32,7 +33,10 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import type { WorkflowPublishedDataService } from '@n8n/backend-services';
+import {
+	type WorkflowPublishedDataService,
+	WorkflowVersionedSettings,
+} from '@n8n/backend-services';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -54,6 +58,7 @@ describe('LiveWebhooks', () => {
 		allowWebhookIsolateSkip: true,
 	});
 	const workflowPublisherService = mock<WorkflowPublisherService>();
+	const moduleRegistry = mock<ModuleRegistry>();
 
 	let liveWebhooks: LiveWebhooks;
 
@@ -61,6 +66,7 @@ describe('LiveWebhooks', () => {
 		vi.clearAllMocks();
 		// `clearAllMocks` resets call history, not properties set on a mock
 		expressionEngineConfig.allowWebhookIsolateSkip = true;
+		moduleRegistry.isActive.mockReturnValue(false);
 		liveWebhooks = new LiveWebhooks(
 			mockLogger(),
 			nodeTypes,
@@ -71,6 +77,7 @@ describe('LiveWebhooks', () => {
 			workflowPublishedDataService,
 			expressionEngineConfig,
 			workflowPublisherService,
+			new WorkflowVersionedSettings(moduleRegistry),
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
@@ -233,6 +240,33 @@ describe('LiveWebhooks', () => {
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});
 		}
+
+		describe('engine of the run', () => {
+			const runEngine = async () => {
+				const workflowEntity = publishedWorkflowEntity();
+				workflowEntity.settings = { engineType: 'v2' };
+				workflowEntity.activeVersion!.settings = { engineType: 'v1' };
+
+				const engines: Array<string | undefined> = [];
+				const request = setupExecuteWebhookMocks(workflowEntity, {
+					onExecuteWebhook: ({ workflow, workflowData }) => {
+						engines.push(workflowData.settings?.engineType, workflow.settings.engineType);
+					},
+				});
+				await liveWebhooks.executeWebhook(request, mock<Response>());
+				return engines;
+			};
+
+			it('runs the engine of the published version with the engine-v2 module', async () => {
+				moduleRegistry.isActive.mockImplementation((name) => name === 'engine-v2');
+
+				expect(await runEngine()).toEqual(['v1', 'v1']);
+			});
+
+			it('runs the draft engine without the engine-v2 module, as before', async () => {
+				expect(await runEngine()).toEqual(['v2', 'v2']);
+			});
+		});
 
 		// A production webhook is fired by a third party, so the run is attributed
 		// to whoever published the workflow.
