@@ -15,9 +15,10 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeTypeDescription,
+	NodeConnectionType,
 	NodeHint,
 } from 'n8n-workflow';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -627,6 +628,7 @@ export function calculateNodeSize(
 	mainInputCount: number,
 	mainOutputCount: number,
 	nonMainInputCount: number,
+	nonMainOutputCount: number,
 	isExperimentalNdvActive: boolean,
 ): { width: number; height: number } {
 	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
@@ -634,7 +636,8 @@ export function calculateNodeSize(
 	const widthScale = isExperimentalNdvActive ? 1.5 : 1;
 
 	if (isConfigurable) {
-		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount);
+		// Non-main inputs sit at the bottom and non-main outputs at the top: the busier side sets the width
+		const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, nonMainInputCount, nonMainOutputCount);
 
 		return {
 			// Configuration node has extra width so that its centered port aligns to the grid
@@ -651,4 +654,28 @@ export function calculateNodeSize(
 	}
 
 	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
+}
+
+/**
+ * Returns the size of a default-rendered node from its port types, with the rule
+ * of the canvas node: a non-main output makes it a configuration node, and a
+ * configurable node is as wide as its busier side of non-main ports.
+ */
+export function getNodeSizeFromPorts(
+	inputTypes: NodeConnectionType[],
+	outputTypes: NodeConnectionType[],
+): { width: number; height: number } {
+	const isMain = (type: NodeConnectionType) => type === NodeConnectionTypes.Main;
+	const nonMainInputCount = inputTypes.filter((type) => !isMain(type)).length;
+	const nonMainOutputCount = outputTypes.filter((type) => !isMain(type)).length;
+
+	return calculateNodeSize(
+		nonMainOutputCount > 0,
+		nonMainInputCount > 0,
+		inputTypes.filter(isMain).length,
+		outputTypes.filter(isMain).length,
+		nonMainInputCount,
+		nonMainOutputCount,
+		false,
+	);
 }

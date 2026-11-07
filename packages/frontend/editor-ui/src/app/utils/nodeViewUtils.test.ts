@@ -13,6 +13,7 @@ import {
 	snapPositionToGrid,
 	snapToGrid,
 	calculateNodeSize,
+	getNodeSizeFromPorts,
 	GRID_SIZE,
 	NODE_X_SPACING,
 	HORIZONTAL_NODE_STEP,
@@ -21,7 +22,7 @@ import {
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -515,6 +516,7 @@ describe('calculateNodeSize', () => {
 			1,
 			1,
 			0,
+			0,
 			false,
 		);
 		// width = GRID_SIZE * 5 = 16 * 5 = 80
@@ -531,7 +533,7 @@ describe('calculateNodeSize', () => {
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 96 + 32 = 128
 		expect(
-			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount, false),
+			calculateNodeSize(false, true, mainInputCount, mainOutputCount, nonMainInputCount, 0, false),
 		).toEqual({ width: 272, height: 128 });
 	});
 
@@ -539,7 +541,7 @@ describe('calculateNodeSize', () => {
 		const nonMainInputCount = 2;
 		// width = 80 + 16 + (max(4, 2) - 1) * 16 * 3 = 240
 		// height = CONFIGURATION_NODE_SIZE[1] = 16 * 5 = 80
-		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount, false)).toEqual({
+		expect(calculateNodeSize(true, true, 1, 1, nonMainInputCount, 0, false)).toEqual({
 			width: 240,
 			height: 80,
 		});
@@ -551,7 +553,7 @@ describe('calculateNodeSize', () => {
 		// width = 96
 		// maxVerticalHandles = 3
 		// height = 96 + (3 - 2) * 32 = 128
-		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, false)).toEqual({
+		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, 0, false)).toEqual({
 			width: 96,
 			height: 128,
 		});
@@ -562,9 +564,9 @@ describe('calculateNodeSize', () => {
 		const mainOutputCount = 4;
 		// maxVerticalHandles = 6
 		// height = 96 + (6 - 2) * 32 = 96 + 128 = 224
-		expect(calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, false).height).toBe(
-			224,
-		);
+		expect(
+			calculateNodeSize(false, false, mainInputCount, mainOutputCount, 0, 0, false).height,
+		).toBe(224);
 	});
 
 	it('should respect the minimum width for configurable nodes', () => {
@@ -573,7 +575,7 @@ describe('calculateNodeSize', () => {
 		// height = default path, mainInputCount = 1, mainOutputCount = 1
 		// maxVerticalHandles = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
-		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount, false)).toEqual({
+		expect(calculateNodeSize(false, true, 1, 1, nonMainInputCount, 0, false)).toEqual({
 			width: 224,
 			height: 96,
 		});
@@ -582,7 +584,58 @@ describe('calculateNodeSize', () => {
 	it('should handle edge case when mainInputCount and mainOutputCount are 0', () => {
 		// maxVerticalHandles = max(0,0,1) = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
-		expect(calculateNodeSize(false, false, 0, 0, 0, false).height).toBe(96);
+		expect(calculateNodeSize(false, false, 0, 0, 0, 0, false).height).toBe(96);
+	});
+});
+
+describe('getNodeSizeFromPorts', () => {
+	const { Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever } =
+		NodeConnectionTypes;
+
+	it('should return the default size for a node with main ports only', () => {
+		expect(getNodeSizeFromPorts([Main], [Main])).toEqual({ width: 96, height: 96 });
+	});
+
+	it('should return the configurable size for an AI Agent', () => {
+		expect(getNodeSizeFromPorts([Main, AiLanguageModel, AiMemory, AiTool], [Main])).toEqual({
+			width: 224,
+			height: 96,
+		});
+	});
+
+	it('should make a configurable node wider for each non-main input above four', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever],
+				[Main],
+			),
+		).toEqual({ width: 272, height: 96 });
+	});
+
+	it('should make a node taller for four main inputs', () => {
+		expect(getNodeSizeFromPorts([Main, Main, Main, Main], [Main])).toEqual({
+			width: 96,
+			height: 160,
+		});
+	});
+
+	it('should return the configurable configuration size for a HITL tool', () => {
+		expect(getNodeSizeFromPorts([AiTool], [AiTool])).toEqual({ width: 240, height: 80 });
+	});
+
+	it('should not count non-main outputs as ports for an AI Agent Tool with an output parser', () => {
+		expect(
+			getNodeSizeFromPorts([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool]),
+		).toEqual({ width: 240, height: 80 });
+	});
+
+	it('should make a node wider for each non-main output at the top above four', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel],
+				[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
+			),
+		).toEqual({ width: 336, height: 80 });
 	});
 });
 
