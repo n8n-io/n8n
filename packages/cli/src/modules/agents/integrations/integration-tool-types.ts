@@ -204,12 +204,21 @@ export interface IntegrationActionParams {
 	runId?: string;
 	toolCallId?: string;
 	currentMessageContext?: IntegrationMessageContext;
+	/** Memory scope of the run. It shows what started the run. */
+	resourceId?: string;
 	/** Read scope for `input.fileIds`. Undefined when the run has no thread. */
 	fileScope?: { projectId: string; threadId: string };
 }
 
+export type IntegrationRecipientCheckParams = Pick<
+	IntegrationActionParams,
+	'descriptor' | 'action' | 'input' | 'resourceId' | 'currentMessageContext'
+>;
+
 export interface IntegrationActionExecutor {
 	execute(params: IntegrationActionParams): Promise<IntegrationActionResult>;
+	/** Returns the reason when the integration refuses the recipient, or undefined to allow it. */
+	checkRecipient?(params: IntegrationRecipientCheckParams): string | undefined;
 }
 
 export type IntegrationActionResult =

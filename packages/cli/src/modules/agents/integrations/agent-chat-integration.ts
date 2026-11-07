@@ -29,6 +29,7 @@ import type {
 	IntegrationContextQuery,
 	IntegrationContextQueryDefinition,
 	IntegrationContextQueryParams,
+	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
@@ -588,6 +589,17 @@ export abstract class AgentChatIntegration {
 	normalizeChannelId(channelId: string, _adapter: unknown): string {
 		return normalizePlatformId(this.type, channelId);
 	}
+
+	/**
+	 * Refuses a send to a recipient that the run may not message. Return the
+	 * reason in words the agent can act on, or undefined to allow the send.
+	 */
+	checkActionRecipient?(params: {
+		action: IntegrationAction;
+		input: Record<string, unknown>;
+		resourceId?: string;
+		currentMessageContext?: IntegrationMessageContext;
+	}): string | undefined;
 
 	/**
 	 * Explains a failed send in words the agent can act on, for errors where the

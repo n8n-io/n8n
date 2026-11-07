@@ -19,6 +19,7 @@ import type { NormalizeComponentsContext, SuspendComponent } from '../../../comp
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
+	taskRunMemoryResourceId,
 } from '../../../../utils/agent-memory-scope';
 import {
 	createWhatsAppIntegration,
@@ -627,6 +628,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					action: 'send_dm',
 					input: { userId: fixtures.contact.wa_id, message: { text: 'Your order shipped' } },
 					awaitResponse: false,
+					resourceId: taskRunMemoryResourceId('task-1'),
 				});
 
 				expect(result).toMatchObject({
@@ -655,6 +657,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					action: 'send_dm',
 					input: { userId: `+${fixtures.contact.wa_id}`, message: { text: 'Your order shipped' } },
 					awaitResponse: false,
+					resourceId: taskRunMemoryResourceId('task-1'),
 				});
 
 				expect(result).toMatchObject({ ok: true });
@@ -676,6 +679,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					action: 'send_dm',
 					input: { userId: 'not-a-number', message: { text: 'Hello' } },
 					awaitResponse: false,
+					resourceId: taskRunMemoryResourceId('task-1'),
 				});
 
 				expect(result).toMatchObject({ ok: false });
@@ -1055,6 +1059,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				action: 'send_template',
 				input,
 				awaitResponse: false,
+				resourceId: taskRunMemoryResourceId('task-1'),
 			});
 
 		const templatePosts = (ctx: Awaited<ReturnType<typeof createWhatsAppReplayContext>>) =>
