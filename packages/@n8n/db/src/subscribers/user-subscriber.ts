@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { EntitySubscriberInterface, UpdateEvent } from '@n8n/typeorm';
 import { EventSubscriber } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { Project, User } from '../entities';
 import { UserRepository } from '../repositories/user.repository';

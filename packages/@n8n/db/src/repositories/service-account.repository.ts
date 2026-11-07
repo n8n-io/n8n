@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
 import { type Role, ServiceAccount, ServiceAccountDetails } from '../entities';
