@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import { NodeApiError } from 'n8n-workflow';
 import type { JsonObject, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
 
@@ -32,6 +33,14 @@ async function getMessagesOldestFirst(
 		if (!nextLink) return { messages, capped: false };
 	}
 	return { messages, capped: true };
+}
+
+/** Whether the message sender's address is in `domain` or in one of its subdomains. */
+function isFromDomain(message: IDataObject, domain: string) {
+	const address: unknown = get(message, 'from.emailAddress.address');
+	if (typeof address !== 'string') return false;
+	const senderDomain = address.slice(address.lastIndexOf('@') + 1).toLowerCase();
+	return senderDomain === domain || senderDomain.endsWith(`.${domain}`);
 }
 
 /**
@@ -80,8 +89,24 @@ export async function getPollResponse(
 		// resource: https://learn.microsoft.com/en-us/graph/api/resources/message), so
 		// folder scoping must use GET /me/mailFolders/{id}/messages per folder instead:
 		// https://learn.microsoft.com/en-us/graph/api/mailfolder-list-messages
-		const { foldersToInclude: rawFolderIds, ...otherFilters } = filters;
+		const {
+			foldersToInclude: rawFolderIds,
+			senderDomain: rawSenderDomain,
+			...otherFilters
+		} = filters;
 		const folderIds = ((rawFolderIds as string[] | undefined) ?? []).filter((id) => id !== '');
+
+		// Graph cannot filter messages by sender domain, so the domain is matched after the fetch.
+		// Users also write a domain as '@example.com' or '*.example.com'.
+		const senderDomain = String(rawSenderDomain ?? '')
+			.trim()
+			.toLowerCase()
+			.replace(/^(@|\*\.)/, '');
+		const addFrom =
+			!!senderDomain && !!qs.$select && !String(qs.$select).split(',').includes('from');
+		if (addFrom) {
+			qs.$select = `${qs.$select},from`;
+		}
 
 		const filterString = prepareFilterString({ filters: otherFilters });
 		if (filterString) {
@@ -146,11 +171,16 @@ export async function getPollResponse(
 			}
 			responseData.sort((a, b) => receivedAt(a) - receivedAt(b));
 
+			if (senderDomain) {
+				responseData = responseData.filter((message) => isFromDomain(message, senderDomain));
+			}
+
 			if (addReceivedDateTime && output === 'fields') {
 				responseData = responseData.map(({ receivedDateTime, ...message }) => message);
 			}
 		} else {
-			qs.$top = 1;
+			// The sender domain is matched after the fetch, so read a page to find the newest match.
+			qs.$top = senderDomain ? 100 : 1;
 			// Graph does not guarantee any ordering without $orderby, so request the
 			// newest message explicitly. When $orderby is combined with $filter, Graph
 			// requires the ordered property to appear first in the filter, so prepend
@@ -170,7 +200,15 @@ export async function getPollResponse(
 						await microsoftApiRequest.call(this, 'GET', endpoint, 0, undefined, { ...qs }),
 				),
 			);
-			responseData = results.flatMap((result) => (result.value as IDataObject[]) ?? []).slice(0, 1);
+			responseData = results.flatMap((result) => (result.value as IDataObject[]) ?? []);
+			if (senderDomain) {
+				responseData = responseData.filter((message) => isFromDomain(message, senderDomain));
+			}
+			responseData = responseData.slice(0, 1);
+		}
+
+		if (addFrom) {
+			responseData = responseData.map(({ from, ...message }) => message);
 		}
 
 		if (output === 'simple') {
