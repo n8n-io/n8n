@@ -288,11 +288,9 @@ export class ToolWorkflowV1 implements INodeType {
 				const result = (await tool.invoke(toToolInput(tool, items[itemIndex].json))) as string;
 				response.push({ json: toOutputJson(result), pairedItem: { item: itemIndex } });
 			} catch (error) {
-				if (!(error instanceof NodeOperationError)) {
-					throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
-				}
-				error.context.itemIndex = itemIndex;
-				throw error;
+				const nodeError = new NodeOperationError(this.getNode(), error as Error);
+				nodeError.context.itemIndex = itemIndex;
+				throw nodeError;
 			}
 		}
 		return [response];

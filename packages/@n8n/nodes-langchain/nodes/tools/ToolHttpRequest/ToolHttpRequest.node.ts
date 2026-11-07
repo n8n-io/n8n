@@ -448,11 +448,9 @@ export class ToolHttpRequest implements INodeType {
 				const result = (await tool.invoke(items[itemIndex].json)) as string;
 				response.push({ json: { response: result }, pairedItem: { item: itemIndex } });
 			} catch (error) {
-				if (!(error instanceof NodeOperationError)) {
-					throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
-				}
-				error.context.itemIndex = itemIndex;
-				throw error;
+				const nodeError = new NodeOperationError(this.getNode(), error as Error);
+				nodeError.context.itemIndex = itemIndex;
+				throw nodeError;
 			}
 		}
 		return [response];
