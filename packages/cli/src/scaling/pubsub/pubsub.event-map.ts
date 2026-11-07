@@ -446,6 +446,21 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// #region Promotions
+
+	/**
+	 * Not a self-send command: the main that handled the request already reacted.
+	 * Each receiver reads the database before it removes anything, so a late or
+	 * duplicate message cannot remove a checkout that is still current.
+	 */
+	'promotion-environment-changed': {
+		environmentIds: string[];
+		/** `updated` also covers a provider host URL change, because it changes the remote of each environment. */
+		change: 'deleted' | 'updated' | 'checkout-disconnected';
+	};
+
+	// #endregion
+
 	// #region Policies
 
 	/**
