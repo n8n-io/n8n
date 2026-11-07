@@ -6,6 +6,7 @@ import {
 	DependencyListPublicDto,
 	DeprecatedWorkflowVersionPublicDto,
 	GetWorkflowQueryDto,
+	PUBLIC_API_IGNORED_NODE_FIELDS,
 	ListDependenciesQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
@@ -440,6 +441,8 @@ export class WorkflowsPublicController {
 					forceSave: true, // Skip version conflict check for public API
 					publicApi: true,
 					publishIfActive: query.publishIfActive,
+					rejectReadOnlyNodeEdits: true,
+					unsentNodeFields: PUBLIC_API_IGNORED_NODE_FIELDS,
 					// A save can publish, so the key's publish scope has to be enforced too
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',

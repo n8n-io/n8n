@@ -146,6 +146,13 @@ type WorkflowUpdateOptions = {
 	allowUnresolvedErrorWorkflow?: boolean;
 	/** The history version this update restores, so its nodes keep their credentials. */
 	restoredFromVersionId?: string;
+	/** Fail the save instead of restoring when the user edits a node whose credential they have no access to. */
+	rejectReadOnlyNodeEdits?: boolean;
+	/**
+	 * Node fields the caller's payload never carries, for example fields its request schema strips.
+	 * The credential guard leaves them out when it compares a submitted node with the stored node.
+	 */
+	unsentNodeFields?: readonly string[];
 };
 
 type PreparedWorkflowUpdate = {
@@ -593,6 +600,8 @@ export class WorkflowService {
 			allowArchivedUpdate = false,
 			allowUnresolvedErrorWorkflow = false,
 			restoredFromVersionId,
+			rejectReadOnlyNodeEdits = false,
+			unsentNodeFields = [],
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -636,7 +645,8 @@ export class WorkflowService {
 
 		// Central credential guard for every workflow write path. With sharing
 		// enabled, reject new nodes that reference credentials the acting user
-		// cannot access and revert edits to existing read-only credential nodes.
+		// cannot access and revert edits to existing read-only credential nodes. A caller that
+		// sets `rejectReadOnlyNodeEdits` fails the save instead, because it cannot see the restore.
 		// Runs after replaceInvalidCredentials so old-format/name references are
 		// already resolved to IDs before the check.
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
@@ -668,6 +678,7 @@ export class WorkflowService {
 				workflowId,
 				user,
 				restoredNodes,
+				{ rejectReadOnlyNodeEdits, unsentNodeFields },
 			);
 		}
 
