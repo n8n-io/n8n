@@ -276,8 +276,8 @@ export class ToolWorkflowV1 implements INodeType {
 		const items = this.getInputData();
 		const response: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const tool = await getTool(this, itemIndex, false);
 			try {
+				const tool = await getTool(this, itemIndex, false);
 				const result = (await tool.invoke(items[itemIndex].json)) as string;
 				response.push({ json: toOutputJson(result), pairedItem: { item: itemIndex } });
 			} catch (error) {

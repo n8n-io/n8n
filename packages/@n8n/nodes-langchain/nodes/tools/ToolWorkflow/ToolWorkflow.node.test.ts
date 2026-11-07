@@ -395,6 +395,33 @@ describe('ToolWorkflowV1', () => {
 
 		const node = new ToolWorkflow().nodeVersions[1.3] as ToolWorkflowV1;
 
+		const useInputSchema = (
+			ctx: IExecuteFunctions,
+			inputSchemaFor: (itemIndex: number) => string,
+		) => {
+			const parameter = vi.mocked(ctx.getNodeParameter).getMockImplementation()!;
+			vi.mocked(ctx.getNodeParameter).mockImplementation(
+				(paramName: string, itemIndex: number, fallback?: unknown) => {
+					switch (paramName) {
+						case 'specifyInputSchema':
+							return true;
+						case 'schemaType':
+							return 'manual';
+						case 'inputSchema':
+							return inputSchemaFor(itemIndex);
+						default:
+							return parameter(paramName, itemIndex, fallback);
+					}
+				},
+			);
+		};
+
+		const citySchema = JSON.stringify({
+			type: 'object',
+			properties: { city: { type: 'string' } },
+			required: ['city'],
+		});
+
 		it('should run the sub-workflow once per input item and pair each result', async () => {
 			const ctx = createExecuteContext([
 				{ json: { input: 'first' } },
@@ -460,6 +487,21 @@ describe('ToolWorkflowV1', () => {
 				message: 'Workflow execution failed',
 				context: { itemIndex: 1 },
 			});
+		});
+
+		it('should report the index of the item whose tool could not be built', async () => {
+			const ctx = createExecuteContext([{ json: { city: 'Berlin' } }, { json: { city: 'Paris' } }]);
+			useInputSchema(ctx, (itemIndex) => (itemIndex === 1 ? 'not json' : citySchema));
+			ctx.executeWorkflow.mockResolvedValue({
+				data: [[{ json: { forecast: 'sunny' } }]],
+				executionId: 'sub-1',
+			});
+
+			await expect(node.execute.call(ctx)).rejects.toMatchObject({
+				message: expect.stringContaining('Error during parsing of JSON Schema'),
+				context: { itemIndex: 1 },
+			});
+			expect(ctx.executeWorkflow).toHaveBeenCalledTimes(1);
 		});
 	});
 });
