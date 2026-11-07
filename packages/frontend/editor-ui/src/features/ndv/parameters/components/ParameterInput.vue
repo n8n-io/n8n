@@ -118,8 +118,9 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
-import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
+import { ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
+	N8nColorPicker,
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
@@ -2018,13 +2019,14 @@ onUpdated(async () => {
 			</div>
 
 			<div v-else-if="parameter.type === 'color'" ref="inputField" class="color-input">
-				<ElColorPicker
+				<N8nColorPicker
 					size="small"
 					class="color-picker"
+					:show-input="false"
 					:model-value="displayValue"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					:show-alpha="getTypeOption('showAlpha')"
+					:show-alpha="getTypeOption('showAlpha') === true"
 					@focus="setFocus"
 					@blur="onBlur"
 					@update:model-value="valueChanged"
@@ -2290,10 +2292,8 @@ onUpdated(async () => {
 
 	:deep(.color-input) {
 		display: flex;
-
-		.el-color-picker__trigger {
-			border: none;
-		}
+		align-items: center;
+		gap: var(--spacing--3xs);
 	}
 }
 </style>

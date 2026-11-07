@@ -119,7 +119,6 @@ export type ElementPlusComponentName = (typeof elementPlusComponents)[number];
 export const allowedElementPlusComponents = [
 	'ElCol',
 	'ElCollapseTransition',
-	'ElColorPicker',
 	'ElDatePicker',
 	'ElDialog',
 	'ElDrawer',
