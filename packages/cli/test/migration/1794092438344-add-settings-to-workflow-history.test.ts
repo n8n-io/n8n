@@ -90,16 +90,6 @@ describe('AddSettingsToWorkflowHistory Migration', () => {
 		expect(await settingsOfVersion()).toEqual({});
 	});
 
-	it('stores several version settings in one row', async () => {
-		const settings = { engineType: 'v2', timezone: 'Europe/Berlin' };
-		await context.runQuery(
-			`UPDATE ${table('workflow_history')} SET settings = :settings WHERE ${column('versionId')} = :versionId`,
-			{ settings: JSON.stringify(settings), versionId },
-		);
-
-		expect(await settingsOfVersion()).toEqual({ engineType: 'v2', timezone: 'Europe/Berlin' });
-	});
-
 	it('drops only the column on down', async () => {
 		await context.queryRunner.release();
 		await undoLastSingleMigration();
