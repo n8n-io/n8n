@@ -117,6 +117,88 @@ describe('CloudBrowserTaskStorage', () => {
 		expect(await storage.list(THREAD_ID)).toEqual([]);
 	});
 
+	it('marks a running task alive, and leaves a finished one', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+		await storage.add(THREAD_ID, makeRecord());
+		await storage.add(THREAD_ID, makeRecord({ taskId: 'task-2' }));
+		await storage.markFinished(THREAD_ID, 'task-2', { outcome: 'succeeded', summary: '$20' });
+
+		await storage.markAlive(THREAD_ID, 'task-1');
+		await storage.markAlive(THREAD_ID, 'task-2');
+
+		const [running, finished] = await storage.list(THREAD_ID);
+		expect(running.aliveAt).toEqual(expect.any(String));
+		expect(finished.aliveAt).toBeUndefined();
+	});
+
+	it('records and clears the card of a running task, and leaves a finished one', async () => {
+		const { memory } = makeMemory();
+		const storage = new CloudBrowserTaskStorage(memory);
+		await storage.add(THREAD_ID, makeRecord());
+		await storage.add(THREAD_ID, makeRecord({ taskId: 'task-2' }));
+		await storage.markFinished(THREAD_ID, 'task-2', { outcome: 'succeeded', summary: '$20' });
+
+		expect(await storage.setPendingConfirmation(THREAD_ID, 'task-1', 'request-1')).toBe(true);
+		expect(await storage.setPendingConfirmation(THREAD_ID, 'task-2', 'request-2')).toBe(false);
+
+		const [running, finished] = await storage.list(THREAD_ID);
+		expect(running.pendingConfirmationRequestId).toBe('request-1');
+		expect(finished.pendingConfirmationRequestId).toBeUndefined();
+
+		await storage.setPendingConfirmation(THREAD_ID, 'task-1', null);
+
+		expect((await storage.list(THREAD_ID))[0].pendingConfirmationRequestId).toBeNull();
+	});
+
+	describe('failStale', () => {
+		const stopped = { outcome: 'failed', summary: 'Stopped' };
+
+		it('fails a running task that was not marked alive since the given time', async () => {
+			const { memory } = makeMemory();
+			const storage = new CloudBrowserTaskStorage(memory);
+			await storage.add(THREAD_ID, makeRecord({ startedAt: '2026-10-22T10:00:00.000Z' }));
+
+			const failed = await storage.failStale(
+				THREAD_ID,
+				new Date('2026-10-22T11:00:00.000Z'),
+				stopped,
+			);
+
+			expect(failed.map((task) => task.taskId)).toEqual(['task-1']);
+			expect(await storage.list(THREAD_ID)).toEqual([
+				expect.objectContaining({ status: 'finished', ...stopped }),
+			]);
+		});
+
+		it('leaves a task that was marked alive since, and a task that already finished', async () => {
+			const { memory, saves } = makeMemory();
+			const storage = new CloudBrowserTaskStorage(memory);
+			await storage.add(
+				THREAD_ID,
+				makeRecord({
+					startedAt: '2026-10-22T10:00:00.000Z',
+					aliveAt: '2026-10-22T11:30:00.000Z',
+				}),
+			);
+			await storage.add(
+				THREAD_ID,
+				makeRecord({ taskId: 'task-2', startedAt: '2026-10-22T10:00:00.000Z' }),
+			);
+			await storage.markFinished(THREAD_ID, 'task-2', { outcome: 'succeeded', summary: '$20' });
+			const savesBefore = saves();
+
+			const failed = await storage.failStale(
+				THREAD_ID,
+				new Date('2026-10-22T11:00:00.000Z'),
+				stopped,
+			);
+
+			expect(failed).toEqual([]);
+			expect(saves()).toBe(savesBefore);
+		});
+	});
+
 	describe('claimUndelivered', () => {
 		/** A store with one finished task. */
 		async function withFinishedTask() {

@@ -21,4 +21,5 @@ export interface CloudBrowserSessionScope {
 export interface CloudBrowserSessionProvider {
 	createSession(scope: CloudBrowserSessionScope): Promise<CloudBrowserSession>;
 	releaseSession(scope: CloudBrowserSessionScope, sessionId: string): Promise<void>;
+	getSessionLiveViewUrl(scope: CloudBrowserSessionScope, sessionId: string): Promise<string>;
 }

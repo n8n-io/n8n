@@ -1,4 +1,9 @@
-import type { McpTool, McpToolCallRequest, McpToolCallResult } from '@n8n/api-types';
+import type {
+	InstanceAiCloudBrowserLiveViewResponse,
+	McpTool,
+	McpToolCallRequest,
+	McpToolCallResult,
+} from '@n8n/api-types';
 import { mcpToolSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { LocalMcpServer } from '@n8n/instance-ai';
@@ -140,6 +145,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	 */
 	private isReleased = false;
 
+	/** Set while a session opens, so the live view can tell an opening browser from none. */
+	private isOpeningSession = false;
+
 	/**
 	 * Session starts and releases hold this lock, so they run one at a time and two
 	 * starts cannot both open a session and leak one. Action tools wait for a start or
@@ -196,6 +204,34 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		}
 	}
 
+	/**
+	 * The live view of the session the agent works in, or why there is none. The link lets anyone who
+	 * has it control the browser, so callers must never log or store it.
+	 */
+	async getLiveView(): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+		if (this.isReleased) return { status: 'not-found' };
+		if (this.isOpeningSession) return { status: 'starting' };
+
+		const session = this.activeSession;
+		// The next tool call notices the lost connection and releases the session.
+		if (session && !session.connection.isConnected) {
+			return { status: 'disconnected', reason: 'connectionLost' };
+		}
+		if (!session) {
+			return this.sessionUnavailableReason === 'notStarted'
+				? { status: 'no-session' }
+				: { status: 'disconnected', reason: this.sessionUnavailableReason };
+		}
+
+		const { scope, sessionProvider } = this.options;
+		// The agent has no tab tools, so it always works in the session's first tab.
+		const liveViewUrl = await sessionProvider.getSessionLiveViewUrl(scope, session.id);
+		// The session can end or change before we get the live url response.
+		// Then this link is old, and we need the client to ask again.
+		if (this.activeSession?.id !== session.id) return { status: 'starting' };
+		return { status: 'live', liveViewUrl };
+	}
+
 	/** A new session only loads its URL, so it touches the URL's host. */
 	private getAffectedResourcesForStartSessionTool(host: string): AffectedResource[] {
 		return [
@@ -249,12 +285,15 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			this.sessionUnavailableReason = 'notStarted';
 
 			let session: ActiveSession;
+			this.isOpeningSession = true;
 			try {
 				session = await this.openSession();
 			} catch (error) {
 				return browserErrorResult(
 					`Could not open a browser session: ${ensureError(error).message}`,
 				);
+			} finally {
+				this.isOpeningSession = false;
 			}
 			this.activeSession = session;
 
