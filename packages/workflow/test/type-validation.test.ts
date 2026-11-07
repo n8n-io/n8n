@@ -212,6 +212,7 @@ describe('Type Validation', () => {
 			'1.1',
 			1.1,
 			'"a"',
+			'null',
 			'["apples", "oranges"]',
 			[{ name: 'john' }, { name: 'bob' }],
 			'[ { name: "john" }, { name: "bob" } ]',
