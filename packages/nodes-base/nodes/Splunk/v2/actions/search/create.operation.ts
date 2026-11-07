@@ -250,7 +250,14 @@ export async function execute(
 	const endpoint = '/services/search/jobs';
 	const responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
 
-	const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
+	// Every exec_mode except 'oneshot' returns a job id to poll for results. 'oneshot' blocks and
+	// returns the results directly instead, with no `response.sid` (or `response` key) at all.
+	const sid = responseData?.response?.sid;
+	if (!sid) {
+		return responseData;
+	}
+
+	const getEndpoint = `/services/search/jobs/${sid}`;
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', getEndpoint);
 	return returnData;
 }
