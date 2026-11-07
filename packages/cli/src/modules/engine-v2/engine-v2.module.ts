@@ -41,7 +41,7 @@ export class EngineV2Module implements ModuleInterface {
 			engineConfig.authSecret = randomBytes(32).toString('hex');
 		}
 
-		// Before the engine, so nothing is reported with no server to receive it.
+		// Before the engine, so its first step can resolve credentials.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
@@ -153,7 +153,7 @@ export class EngineV2Module implements ModuleInterface {
 			await Promise.all([this.channelPublisher?.stop(), this.channelSubscriber?.stop()]);
 		}
 
-		// After the engine, so its final flush still has somewhere to land.
+		// After the engine, so a step that still runs can resolve credentials.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).stop();
 	}
