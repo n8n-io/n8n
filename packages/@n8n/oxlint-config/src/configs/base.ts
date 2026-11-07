@@ -173,7 +173,7 @@ export const baseConfig = defineConfig({
 		// ----------------------------------
 		//              import
 		// ----------------------------------
-		'import/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
+		'import/no-cycle': ['error', { ignoreExternal: false, ignoreTypes: true }],
 		'import/no-duplicates': 'error',
 		'import-x-alias/no-extraneous-dependencies': [
 			'error',
