@@ -300,7 +300,14 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: IntegrationActionParams,
 		files: AgentChatAttachment[],
 	): Promise<IntegrationActionResult> {
-		const input = sendDmInputSchema.parse(params.input);
+		const parsedInput = sendDmInputSchema.parse(params.input);
+		const input = {
+			...parsedInput,
+			userId:
+				this.integrationRegistry
+					.get(params.descriptor.integration.type)
+					?.normalizeUserId?.(parsedInput.userId) ?? parsedInput.userId,
+		};
 		// The Chat SDK guesses the adapter from the user ID's shape and knows one
 		// shape per platform, so a Teams Entra object ID would not reach Teams.
 		const adapter = chat.getAdapter(params.descriptor.integration.type);

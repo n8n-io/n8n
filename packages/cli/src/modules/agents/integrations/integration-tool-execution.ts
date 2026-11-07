@@ -323,6 +323,12 @@ export async function executeActionToolOperation(params: {
 			await messageContextStore.bindSession(
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				{
+					recipientId: getRecipientId(descriptor, messageContext.target),
+					outboundText:
+						getOutboundText(message) ??
+						(operation.action === 'send_template' ? getTemplateText(operation.input) : undefined),
+				},
 			);
 		}
 		// A delivery failure arrives later and names only the message. This lets
@@ -385,6 +391,77 @@ function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
 		query === 'get_current_user' ||
 		query === 'get_current_channel_info'
 	);
+}
+
+/**
+ * The person or channel a message went to, whatever thread it started. The
+ * connection is part of the key, as two connections can share platform IDs.
+ */
+function getRecipientId(
+	descriptor: IntegrationToolConnectionDescriptor,
+	target: IntegrationMessageTarget,
+): string | undefined {
+	const scope = descriptor.integrationConnectionId;
+	if (target.type === 'channel') return `${scope}:channel:${target.channelId}`;
+	if (target.userId) return `${scope}:user:${target.userId}`;
+	return target.type === 'thread' && target.channelId
+		? `${scope}:channel:${target.channelId}`
+		: undefined;
+}
+
+/** A template send has no message body, so the reply session gets a summary of the payload. */
+function getTemplateText(input: Record<string, unknown>): string | undefined {
+	const { templateName, parameters } = input;
+	if (typeof templateName !== 'string' || templateName.length === 0) return undefined;
+	const values = isRecord(parameters)
+		? Object.entries(parameters).map(([key, value]) => `${key}: ${String(value)}`)
+		: [];
+	return [`Template message: ${templateName}`, ...values].join('\n');
+}
+
+/**
+ * Plain-text copy of a sent message, stored so a split reply session can see
+ * what the recipient received. A card carries its content in `components`, so
+ * every component is rendered, not only the title and message.
+ */
+function getOutboundText(message: z.infer<typeof messageSchema> | undefined): string | undefined {
+	const card = message?.card;
+	const lines = [
+		message?.text,
+		card?.title,
+		card?.message,
+		...(card?.components.flatMap(describeCardComponent) ?? []),
+	].filter((line): line is string => typeof line === 'string' && line.length > 0);
+	return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+function describeCardComponent(component: IntegrationCardComponent): string[] {
+	switch (component.type) {
+		case 'section':
+			return [component.text, ...(component.button ? [describeButton(component.button)] : [])];
+		case 'fields':
+			return (component.fields ?? component.items ?? []).map(
+				({ label, value }) => `${label}: ${value}`,
+			);
+		case 'image':
+			return [component.alt ?? component.altText ?? ''];
+		case 'button':
+			return [describeButton(component)];
+		case 'select':
+		case 'radio_select':
+			return [
+				component.label ?? '',
+				...component.options.map((option) =>
+					option.description ? `- ${option.label}: ${option.description}` : `- ${option.label}`,
+				),
+			];
+		default:
+			return [];
+	}
+}
+
+function describeButton(button: { label?: string; text?: string; value: string }): string {
+	return `[${button.label ?? button.text ?? button.value}]`;
 }
 
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
