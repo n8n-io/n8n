@@ -583,7 +583,17 @@ export class WorkflowRunner {
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		establishContextError?: ExecutionError & { node?: INode },
 	): Promise<void> {
-		await this.activeExecutions.waitForActivation(executionId);
+		try {
+			await this.activeExecutions.waitForActivation(executionId);
+		} catch (error) {
+			await this.failExecution(
+				data,
+				executionId,
+				error as ExecutionError & { node?: INode },
+				responsePromise,
+			);
+			return;
+		}
 		if (!this.activeExecutions.has(executionId)) return;
 
 		if (establishContextError) {

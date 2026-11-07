@@ -1192,6 +1192,29 @@ describe('run', () => {
 			expect(permissionCheckSpy).not.toHaveBeenCalled();
 		});
 
+		it('fails an onReceived execution when background activation rejects', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			const activationError = new Error('set running failed');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockRejectedValue(activationError);
+			const failExecutionSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+			await flushPromises();
+
+			expect(failExecutionSpy).toHaveBeenCalledWith(
+				data,
+				'execution-id',
+				activationError,
+				undefined,
+			);
+		});
+
 		it.each<WebhookResponseMode>(['responseNode', 'lastNode', 'formPage'])(
 			'keeps %s execution startup synchronous',
 			async (responseMode) => {

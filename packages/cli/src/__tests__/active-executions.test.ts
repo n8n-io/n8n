@@ -582,7 +582,9 @@ describe('ActiveExecutions', () => {
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
 			void activeExecutions.getPostExecutePromise(executionId).catch(() => {});
 
-			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
+			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
+				'reserve failed',
+			);
 			await flushPromises();
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
@@ -606,9 +608,12 @@ describe('ActiveExecutions', () => {
 			executionRepository.setRunning.mockRejectedValueOnce(new Error('set running failed'));
 
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
-			void activeExecutions.getPostExecutePromise(executionId).catch(() => {});
+			const postExecutePromise = activeExecutions.getPostExecutePromise(executionId);
 
-			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
+			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
+				'set running failed',
+			);
+			await expect(postExecutePromise).rejects.toThrow('set running failed');
 
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
@@ -635,13 +640,15 @@ describe('ActiveExecutions', () => {
 
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
 			await flushPromises();
+			const activationPromise = activeExecutions.waitForActivation(executionId);
+			const activationRejection = activationPromise.catch((error: unknown) => error);
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 			await activeExecutions.shutdown();
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 			expect(removeAllSpy).toHaveBeenCalledWith([]);
-			await expect(activeExecutions.waitForActivation(executionId)).resolves.toBeUndefined();
+			expect(await activationRejection).toBeInstanceOf(SystemShutdownExecutionCancelledError);
 		});
 	});
 
@@ -1503,6 +1510,8 @@ describe('ActiveExecutions', () => {
 
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
 			await flushPromises();
+			const activationPromise = activeExecutions.waitForActivation(executionId);
+			const activationRejection = activationPromise.catch((error: unknown) => error);
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(1);
 
@@ -1511,7 +1520,9 @@ describe('ActiveExecutions', () => {
 			const postExecuteRejection = postExecutePromise.catch((error: unknown) => error);
 
 			// Trigger shutdown while execution is queued in concurrency throttle
+			vi.mocked(sleep).mockResolvedValue();
 			await activeExecutions.shutdown();
+			expect(await activationRejection).toBeInstanceOf(SystemShutdownExecutionCancelledError);
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 			expect(removeAllSpy).toHaveBeenCalledWith([]);

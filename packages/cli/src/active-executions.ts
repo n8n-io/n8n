@@ -67,6 +67,7 @@ export class ActiveExecutions {
 	} = {};
 
 	private activationPromises = new Map<string, Promise<void>>();
+	private activationCancellationPromises = new Map<string, IDeferredPromise<void>>();
 
 	/** Response mode by execution ID, if webhook-initiated. */
 	private responseModes = new Map<string, WebhookResponseMode>();
@@ -229,6 +230,8 @@ export class ActiveExecutions {
 		this.attachCleanupHandlers(executionId, execution, capacityReservation);
 
 		if (shouldActivateInBackground && tempReservationId) {
+			const activationCancellationPromise = createDeferredPromise<void>();
+			this.activationCancellationPromises.set(executionId, activationCancellationPromise);
 			// Replace temporary reservation with actual activation promise
 			const activationPromise = this.reserveCapacityAndActivate(
 				executionId,
@@ -243,11 +246,12 @@ export class ActiveExecutions {
 						error: executionError,
 					});
 					postExecutePromise.reject(executionError);
+					throw executionError;
 				})
 				.finally(() => {
 					this.activationPromises.delete(executionId);
+					this.activationCancellationPromises.delete(executionId);
 				});
-
 			// Replace temp reservation with real promise using executionId
 			this.activationPromises.delete(tempReservationId);
 			this.activationPromises.set(executionId, activationPromise);
@@ -273,7 +277,11 @@ export class ActiveExecutions {
 	}
 
 	async waitForActivation(executionId: string): Promise<void> {
-		await this.activationPromises.get(executionId);
+		const activationPromise = this.activationPromises.get(executionId);
+		const cancellationPromise = this.activationCancellationPromises.get(executionId)?.promise;
+		await (cancellationPromise
+			? Promise.race([activationPromise, cancellationPromise])
+			: activationPromise);
 	}
 
 	private async reserveCapacityAndActivate(
@@ -567,7 +575,9 @@ export class ActiveExecutions {
 				// getPostExecutePromise() is unblocked rather than hung forever.
 				// Note: The postExecutePromise from createDeferredPromise is idempotent on
 				// double-settle, so rejecting it again in the activation catch path is safe.
-				execution.postExecutePromise.reject(new SystemShutdownExecutionCancelledError(executionId));
+				const shutdownError = new SystemShutdownExecutionCancelledError(executionId);
+				execution.postExecutePromise.reject(shutdownError);
+				this.activationCancellationPromises.get(executionId)?.reject(shutdownError);
 				// The .finally() in attachCleanupHandlers will remove the entry from
 				// activeExecutions once the rejection propagates; we do not delete here.
 			} else if (isParked || (isWorker && isQueueJob)) {
