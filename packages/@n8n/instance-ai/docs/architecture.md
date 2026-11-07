@@ -338,16 +338,17 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
   `search_models`, `research`, `n8n-docs`, and `parse-file`. `workflow_builder_verify_built_workflow`, `agents`,
   `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
   context or feature is available.
-- **Deferred tools** (behind ToolSearchProcessor): everything else, including
-  the rest of the orchestration surface — discovered
-  on-demand via `search_tools` and activated via `load_tool`
+- **Deferred tools** (behind the `@n8n/agents` tool catalog): everything else,
+  including the rest of the orchestration surface. The prompt lists their names
+  by namespace (MCP tools are grouped by server). The model reads schemas with
+  `find_tools` and runs a tool with `call_tool`, with no load step
 
 Two entries in the always-loaded set are pinned for reasons worth knowing before
 changing the list. `n8n-docs` sits next to `research` because the research tool
-directs the model to n8n's own docs for n8n questions; deferring docs priced that
-route at `search_tools` + `load_tool` while web search stayed one call away.
+directs the model to n8n's own docs for n8n questions; deferring docs put that
+route behind tool discovery while web search stayed one call away.
 `mcp-servers` is pinned because it exists for the case where nothing is
-connected, which is exactly when `search_tools` surfaces no MCP tool and the
+connected, which is exactly when the catalog lists no MCP tool and the
 model concludes the integration is unavailable.
 
 This follows Anthropic's guidance on tool search for agents with large tool sets.

@@ -47,7 +47,7 @@ function getToolDiscoverySection(
 	if (!toolSearchEnabled) return '';
 
 	const mcpSearchGuidance = mcpToolSearchEnabled
-		? 'You have access to connected MCP integrations. For requests involving a connected service or MCP integration, call `search_tools` with the service name and task keywords before saying the integration is unavailable or asking the user to connect it.\n'
+		? 'You have access to connected MCP integrations. For requests involving a connected service or MCP integration, call `find_tools` with the service name and task keywords before saying the integration is unavailable or asking the user to connect it.\n'
 		: '';
 	const mcpExamples = mcpToolSearchEnabled
 		? 'search "notion page" or "linear issue" for the corresponding MCP tool, '
@@ -56,7 +56,7 @@ function getToolDiscoverySection(
 	return `
 ## Tool Discovery
 
-${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. Use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation. When a loaded skill names a tool you do not see, search for that tool name and load it before proceeding.
+${mcpSearchGuidance}When the available tools do not cover the user's request, remember that you have access to more tools. The tool catalog lists their names. Use \`find_tools\` to get a tool's input schema (by name, or by keyword query when you do not know the name), then run it with \`call_tool\`. There is no load step. When a loaded skill names a tool you do not see, run it through \`call_tool\`.
 
 Example: ${mcpExamples}search "verify workflow" for \`workflow_builder_verify_built_workflow\`.
 
@@ -260,7 +260,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			setupPanelEnabled,
 		} = options;
 
-		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
+		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
 
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}

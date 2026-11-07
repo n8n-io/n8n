@@ -6,6 +6,7 @@ const mockAgentInstances: Array<{
 	instructions: Mock;
 	tool: Mock;
 	deferredTool: Mock;
+	toolDeferral: Mock;
 	skills: Mock;
 	checkpoint: Mock;
 	memory: Mock;
@@ -34,6 +35,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.instructions = vi.fn().mockReturnThis();
 		this.tool = vi.fn().mockReturnThis();
 		this.deferredTool = vi.fn().mockReturnThis();
+		this.toolDeferral = vi.fn().mockReturnThis();
 		this.skills = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
@@ -184,8 +186,8 @@ function getDeferredTools(agentIndex = 0) {
 	const calls = (instance?.deferredTool.mock.calls ?? []) as unknown as Array<
 		[Array<Record<string, unknown>>, unknown]
 	>;
-	const tools = calls[0]?.[0];
-	return Object.fromEntries((tools ?? []).map((tool) => [getToolKey(tool), tool]));
+	const tools = calls.flatMap(([group]) => group);
+	return Object.fromEntries(tools.map((tool) => [getToolKey(tool), tool]));
 }
 
 function getToolKey(tool: Record<string, unknown>) {
@@ -691,6 +693,19 @@ describe('createInstanceAgent', () => {
 				{ slug: 'linear', toolNames: ['mcp_linear_create_issue'] },
 				{ slug: 'notion', toolNames: [] },
 			]);
+		});
+
+		it('lists deferred MCP tools under their server namespace', async () => {
+			await buildWith();
+
+			const calls = mockAgentInstances[0].deferredTool.mock.calls as Array<
+				[Array<{ name: string }>, { namespace: string } | undefined]
+			>;
+			const linearCall = calls.find(([tools]) =>
+				tools.some((tool) => tool.name === 'mcp_linear_create_issue'),
+			);
+			expect(linearCall?.[1]).toEqual({ namespace: 'mcp_linear' });
+			expect(linearCall?.[0]).toHaveLength(1);
 		});
 
 		it('reports no tools for a service whose only tool has an unsafe name', async () => {

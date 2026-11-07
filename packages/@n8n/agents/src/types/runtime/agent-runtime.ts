@@ -29,6 +29,7 @@ import type {
 	ModelConfig,
 	NativeToolDeferralConfig,
 	PromptCachingConfig,
+	ToolDeferralConfig,
 } from '../sdk/agent';
 
 export interface VolatileInstructionsContext {
@@ -62,6 +63,11 @@ export interface AgentRuntimeConfig {
 	/** Starts preparing the agent's workspace. Called for tools with `requiresWorkspace`. */
 	prewarmWorkspace?: () => void;
 	nativeToolDeferral?: NativeToolDeferralConfig;
+	/** How `deferredTools` reach the model. Default: provider tool search, else the catalog. */
+	toolDeferral?: ToolDeferralConfig;
+	/** Catalog mode: the namespace each deferred tool is listed under, by tool name. */
+	deferredToolNamespaces?: Record<string, string>;
+	/** Catalog mode: the most tools a `find_tools` query returns. */
 	toolSearch?: {
 		topK?: number;
 	};

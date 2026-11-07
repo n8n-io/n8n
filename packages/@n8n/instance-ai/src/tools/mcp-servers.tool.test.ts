@@ -504,7 +504,7 @@ describe('mcp-servers tool', () => {
 			);
 
 			expect(output.connectedSlugs).toEqual(['notion']);
-			expect(output.message).toContain('search_tools');
+			expect(output.message).toContain('find_tools');
 			expect(output.message).toContain('available now');
 		});
 

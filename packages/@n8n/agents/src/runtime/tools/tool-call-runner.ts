@@ -4,7 +4,7 @@ import type { JSONSchema7 } from 'json-schema';
 import {
 	executeTool,
 	isSuspendedToolResult,
-	resolveToolForCall,
+	resolveToolCallTarget,
 	type SuspendedToolResult,
 } from './tool-adapter';
 import {
@@ -98,13 +98,19 @@ export class ToolCallRunner {
 	 * error tool-result message to the list so the LLM can self-correct, and returns
 	 * `{ outcome: 'error' }` — never re-throws.
 	 */
-	async processToolCall(params: ProcessToolCallParams): Promise<ToolCallOutcome> {
-		const { toolName, toolMap, list, toolCallId, resumeData } = params;
-		const builtTool = resolveToolForCall(toolMap, toolName, params.input);
+	async processToolCall(callParams: ProcessToolCallParams): Promise<ToolCallOutcome> {
+		const { toolName, toolMap, list, toolCallId, resumeData } = callParams;
+		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
-		if (!builtTool) {
-			return await this.toolError(params, new Error(`Tool ${toolName} not found`));
+		if (!target) {
+			return await this.toolError(callParams, new Error(`Tool ${toolName} not found`));
 		}
+		// A dispatcher (the catalog's call_tool) hands the call to the tool it
+		// names. That tool's schema, approval, and suspension then apply.
+		const builtTool = target.tool;
+		const params: ProcessToolCallParams = target.dispatchedBy
+			? { ...callParams, input: target.input as JSONValue }
+			: callParams;
 
 		// Already settled by the AI SDK (e.g. provider-executed tools): emit the
 		// lifecycle end and skip re-execution.
@@ -371,7 +377,14 @@ export class ToolCallRunner {
 		if (!result.success) {
 			const reason = result.schemaInvalid
 				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
-				: `Invalid tool input: ${result.error}`;
+				: params.toolName === builtTool.name
+					? `Invalid tool input: ${result.error}`
+					: // Dispatched calls carry no schema in the request, so return it to retry with.
+						`Invalid arguments for ${builtTool.name}: ${result.error}\nInput schema: ${JSON.stringify(
+							isZodSchema(builtTool.inputSchema)
+								? zodSchemaToJsonSchema(builtTool.inputSchema)
+								: builtTool.inputSchema,
+						)}`;
 			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };

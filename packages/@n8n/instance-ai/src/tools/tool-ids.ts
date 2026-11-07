@@ -125,7 +125,7 @@ export const AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES: readonly string[] = Object.v
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
 	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
-	// Deferring it would price the user's "let me out" at search_tools + load_tool.
+	// Deferring it would route the user's "let me out" through `call_tool`.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
 	DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
 	DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
@@ -146,30 +146,30 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
-	// n8n's own docs for n8n questions, but deferring n8n-docs priced that route at
-	// search_tools + load_tool while web search stayed one call away — so the agent
+	// n8n's own docs for n8n questions, but deferring n8n-docs put that route behind
+	// tool discovery while web search stayed one call away — so the agent
 	// web-searched things the docs answer (INS-749).
 	DOMAIN_TOOL_IDS.N8N_DOCS,
 	// Agent research, session diagnosis, and every Agent build read through this tool.
 	DOMAIN_TOOL_IDS.AGENT_CONTEXT,
 	// Deferring this one defeats its purpose: it exists for the case where
-	// nothing is connected, which is exactly when `search_tools` has no MCP tool
+	// nothing is connected, which is exactly when `find_tools` has no MCP tool
 	// to surface and the agent concludes the integration is unavailable.
 	DOMAIN_TOOL_IDS.MCP_SERVERS,
 	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 	// The instance-context block hands the agent ids and tells it to expand them, so deferring
-	// this would price every expand at search_tools + load_tool. It is only registered when the
+	// this would route every expand through `call_tool`. It is only registered when the
 	// reader is enabled, so an instance without the feature pays nothing for the entry.
 	DOMAIN_TOOL_IDS.ACTIVITY,
 	// A user can state a preference at any point in a conversation. Deferring this
-	// behind search_tools would mean the model has to know the tool exists before it
+	// behind `find_tools` would mean the model has to know the tool exists before it
 	// can react, which is exactly the moment it does not. Registered only when the
 	// preferences service is wired, so an instance without the feature pays nothing.
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
 	'web-search',
 	'fetch-url',
-	// The orchestrator builds Agents with these tools directly. Deferring them would cost
-	// 2 LLM rounds (search_tools + load_tool) per tool and a prompt-cache rewrite on
+	// The orchestrator builds Agents with these tools directly. Deferring them would add
+	// a `find_tools` round per tool and route every call through `call_tool` on
 	// every agent build. Registered only when the host provides a builder delegate
 	// (Agents module active), so an instance without it pays nothing.
 	...AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES,

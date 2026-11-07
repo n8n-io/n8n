@@ -22,14 +22,14 @@ describe('Instance AI skills', () => {
 		}
 	});
 
-	// `load_tool` only resolves DEFERRED tools, so a gate that names an always-loaded
-	// tool can only answer `not_found`. The model then falls back to `search_tools`,
-	// which costs 2 to 4 full-context round trips (INS-1394). This caught the
+	// `call_tool` only dispatches to DEFERRED tools, so a gate that sends an always-loaded
+	// tool through it can only answer `not_found`. The model then falls back to `find_tools`,
+	// which costs extra full-context round trips (INS-1394). This caught the
 	// `n8n-docs` gates that went stale when INS-749 made the tool always-loaded.
 	it('never tells the model to load an always-loaded tool', () => {
 		const gatePatterns = [
-			/load\s+`?([\w.-]+)`?\s+via\s+`?load_tool/gi,
-			/calling\s+`?([\w.-]+)`?,\s+load it via\s+`?load_tool/gi,
+			/(?:load|call|run)\s+`?([\w.-]+)`?\s+(?:via|through|with)\s+`?(?:load_tool|call_tool)/gi,
+			/calling\s+`?([\w.-]+)`?,\s+(?:load|call|run) it (?:via|through|with)\s+`?(?:load_tool|call_tool)/gi,
 		];
 		const offenders: string[] = [];
 
@@ -39,7 +39,7 @@ describe('Instance AI skills', () => {
 			for (const pattern of gatePatterns) {
 				for (const match of content.matchAll(pattern)) {
 					const toolName = match[1];
-					// "load it via load_tool" names the tool earlier; the second pattern catches it.
+					// "call it via call_tool" names the tool earlier; the second pattern catches it.
 					if (toolName === 'it') continue;
 					if (ALWAYS_LOADED_TOOL_NAMES.has(toolName)) {
 						offenders.push(`${file} tells the model to load "${toolName}"`);
