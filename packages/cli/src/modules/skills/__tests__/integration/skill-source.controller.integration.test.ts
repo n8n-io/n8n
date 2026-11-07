@@ -184,6 +184,9 @@ describe('SkillSourceController', () => {
 						severity: 'needs_review',
 						file: 'SKILL.md',
 						detail: expect.any(String),
+						// "Follow⟦U+200B⟧ this." is the first line of the instructions, after the
+						// license line.
+						location: { line: 7, start: 6, end: 14 },
 					},
 				],
 			});

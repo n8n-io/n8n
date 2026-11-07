@@ -108,6 +108,18 @@ export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
 
 export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
 
+/**
+ * Where a finding is in the preview text of its file (`SkillPreviewFile.text`), so the review
+ * can mark it. `start` and `end` are offsets in that line, and they count the visible markers
+ * of hidden characters. A finding over several lines is marked to the end of its first line.
+ */
+export type SkillScanLocation = {
+	/** From 1. */
+	line: number;
+	start: number;
+	end: number;
+};
+
 export type SkillScanFinding = {
 	rule: SkillScanRule;
 	severity: SkillScanSeverity;
@@ -117,6 +129,8 @@ export type SkillScanFinding = {
 	detail: string;
 	/** The linked domain of a `new_url` finding. */
 	domain?: string;
+	/** Set for a rule that finds text. A frontmatter finding marks its top-level key. */
+	location?: SkillScanLocation;
 };
 
 /** The most severe finding gives the verdict. No one can override `blocked`. */

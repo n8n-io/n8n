@@ -1,10 +1,11 @@
-import { agentSkillSchema, type SkillScanFinding } from '@n8n/api-types';
+import { agentSkillSchema, type SkillScanFinding, type SkillScanLocation } from '@n8n/api-types';
 import { kebabCase } from 'change-case';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
 import type { SkillContent } from './skill-content-hash';
 import { SKILL_MD } from './skill-md';
+import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
 import type { SkillSourceFidelityWarning } from '../sources/skill-source-client';
 
 /**
@@ -63,54 +64,19 @@ export function listSkippedFiles({ skippedFiles }: SkillScanInput): SkillScanFin
 	}));
 }
 
-/**
- * Characters that a reviewer cannot see but a model reads: zero-width and format characters,
- * bidirectional controls, Unicode tags, and C0 and C1 controls other than tab and line breaks.
- * Binary data read as text has controls too. The zero-width joiner and the variation
- * selectors U+FE00 to U+FE0F stay allowed, because emoji use them.
- */
-const HIDDEN_RANGES: Array<[number, number]> = [
-	[0x0000, 0x0008],
-	[0x000b, 0x000c],
-	[0x000e, 0x001f],
-	[0x007f, 0x009f],
-	[0x00ad, 0x00ad], // soft hyphen
-	[0x034f, 0x034f], // combining grapheme joiner
-	[0x061c, 0x061c], // Arabic letter mark
-	[0x115f, 0x1160], // Hangul fillers
-	[0x17b4, 0x17b5],
-	[0x180e, 0x180e],
-	[0x200b, 0x200c], // zero-width space and non-joiner
-	[0x200e, 0x200f], // left-to-right and right-to-left marks
-	[0x202a, 0x202e], // bidirectional embeddings and overrides
-	[0x2060, 0x2064],
-	[0x2066, 0x206f], // bidirectional isolates and deprecated format characters
-	[0x3164, 0x3164],
-	[0xfeff, 0xfeff],
-	[0xffa0, 0xffa0],
-	[0xfff9, 0xfffb],
-	[0x1bca0, 0x1bca3], // shorthand format controls
-	[0x1d173, 0x1d17a], // musical symbol format controls
-	[0xe0000, 0xe007f], // Unicode tags
-	[0xe0100, 0xe01ef], // variation selectors supplement
-];
-
-const toClassRange = ([first, last]: [number, number]) =>
-	`\\u{${first.toString(16)}}-\\u{${last.toString(16)}}`;
-
-/** The ranges as one character class, so a scan collects only the hidden characters. */
-const HIDDEN_PATTERN = new RegExp(`[${HIDDEN_RANGES.map(toClassRange).join('')}]`, 'gu');
-
 export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 	return textsByFile(input.content).flatMap(({ file, texts }) => {
-		const found = texts.flatMap((text) => text.match(HIDDEN_PATTERN) ?? []);
+		const found = texts.flatMap(({ text }) => text.match(HIDDEN_PATTERN) ?? []);
 		if (found.length === 0) return [];
+		const first = texts.find(({ text }) => text.search(HIDDEN_PATTERN) >= 0);
+		const index = first?.text.search(HIDDEN_PATTERN) ?? 0;
 		return [
 			{
 				rule: 'hidden_unicode',
 				severity: 'needs_review',
 				file,
 				detail: `${found.length} invisible or control characters. The first is ${codePointOf(found[0])}.`,
+				...(first ? { location: first.locate(index, index + found[0].length) } : {}),
 			},
 		];
 	});
@@ -132,7 +98,7 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 	const known = previous ? new Set(domainsByFile(previous).keys()) : new Set<string>();
 	return [...domainsByFile(content)]
 		.filter(([domain]) => !known.has(domain))
-		.map(([domain, file]) =>
+		.map(([domain, { file, location }]) =>
 			previous
 				? {
 						rule: 'new_url',
@@ -140,6 +106,7 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 						file,
 						domain,
 						detail: `The update links to ${domain}, a domain that the current version does not use.`,
+						location,
 					}
 				: {
 						rule: 'new_url',
@@ -147,17 +114,24 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 						file,
 						domain,
 						detail: `The skill links to ${domain}.`,
+						location,
 					},
 		);
 }
 
-/** Each domain that the skill links to, with the first file that has it. */
-function domainsByFile(content: SkillContent): Map<string, string> {
-	const domains = new Map<string, string>();
+/** Each domain that the skill links to, with the first file and place that has it. */
+function domainsByFile(
+	content: SkillContent,
+): Map<string, { file: string; location: SkillScanLocation }> {
+	const domains = new Map<string, { file: string; location: SkillScanLocation }>();
 	for (const { file, texts } of textsByFile(content)) {
-		for (const match of texts.flatMap((text) => text.match(URL_PATTERN) ?? [])) {
-			const domain = domainOf(match);
-			if (domain && !domains.has(domain)) domains.set(domain, file);
+		for (const entry of texts) {
+			for (const match of entry.text.matchAll(URL_PATTERN)) {
+				const domain = domainOf(match[0]);
+				if (!domain || domains.has(domain)) continue;
+				const index = match.index;
+				domains.set(domain, { file, location: entry.locate(index, index + match[0].length) });
+			}
 		}
 	}
 	return domains;
@@ -203,6 +177,7 @@ export function findPermissionChanges({ content, previous }: SkillScanInput): Sk
 			severity: 'info',
 			file: SKILL_MD,
 			detail: `The skill sets the frontmatter key ${key}.`,
+			location: locateKey(content, key),
 		}));
 	}
 	const before = permissionKeys(previous);
@@ -219,7 +194,11 @@ export function findPermissionChanges({ content, previous }: SkillScanInput): Sk
 			: !current.has(key)
 				? `The update removes the frontmatter key ${key}.`
 				: `The update changes the frontmatter key ${key}.`;
-		return [{ rule: 'permission_change', severity: 'needs_review', file: SKILL_MD, detail }];
+		// A removed key is not in the update, so the finding has no place in it.
+		const location = current.has(key) ? { location: locateKey(content, key) } : {};
+		return [
+			{ rule: 'permission_change', severity: 'needs_review', file: SKILL_MD, detail, ...location },
+		];
 	});
 }
 
@@ -337,18 +316,24 @@ function findDataImageLink(text: string): string | undefined {
  */
 export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFinding[] {
 	return textsByFile(content).flatMap(({ file, texts }) => {
-		const joined = texts.map(joinSoftBreaks);
-		return SUSPICIOUS_PHRASES.flatMap(({ label, find }) => {
-			const match = joined.map((text) => find(text)).find((found) => found !== undefined);
-			if (match === undefined) return [];
-			return [
-				{
-					rule: 'suspicious_phrase',
-					severity: 'needs_review',
-					file,
-					detail: `The text has ${label}: "${excerpt(match)}".`,
-				},
-			];
+		// Joining keeps the length, so an offset in the joined text is an offset in the text.
+		const joined = texts.map((entry) => ({ entry, text: joinSoftBreaks(entry.text) }));
+		return SUSPICIOUS_PHRASES.flatMap(({ label, find }): SkillScanFinding[] => {
+			for (const { entry, text } of joined) {
+				const match = find(text);
+				if (match === undefined) continue;
+				const index = text.indexOf(match);
+				return [
+					{
+						rule: 'suspicious_phrase',
+						severity: 'needs_review',
+						file,
+						detail: `The text has ${label}: "${excerpt(match)}".`,
+						location: entry.locate(index, index + match.length),
+					},
+				];
+			}
+			return [];
 		});
 	});
 }
@@ -375,20 +360,48 @@ export function listFidelityWarnings({ fidelity }: SkillScanInput): SkillScanFin
 	}));
 }
 
+/** One text that the rules read, and how to place a range of it in the file that the review shows. */
+type ScanText = { text: string; locate: (start: number, end: number) => SkillScanLocation };
+
 /** Every text of a skill, by file. SKILL.md holds the name, description, frontmatter and instructions. */
-function textsByFile(content: SkillContent): Array<{ file: string; texts: string[] }> {
+function textsByFile(content: SkillContent): Array<{ file: string; texts: ScanText[] }> {
+	const md = skillMdText(content);
+	const inSkillMd = (text: string, offset: number): ScanText => ({
+		text,
+		locate: (start, end) => locate(md.text, offset + start, offset + end),
+	});
+	// A frontmatter value shows as JSON, which escapes some characters, so a finding in it
+	// marks its top-level key.
+	const frontmatter = Object.entries(content.frontmatter ?? {}).flatMap(([key, value]) =>
+		[key, ...stringsIn(value)].map((text) => ({ text, locate: () => locateKey(content, key) })),
+	);
 	return [
 		{
 			file: SKILL_MD,
 			texts: [
-				content.name,
-				content.description,
-				...stringsIn(content.frontmatter),
-				content.instructions,
+				inSkillMd(content.name, md.name),
+				inSkillMd(content.description, md.description),
+				...frontmatter,
+				inSkillMd(content.instructions, md.instructions),
 			],
 		},
-		...content.files.map((file) => ({ file: file.path, texts: [file.content] })),
+		...content.files.map((file) => ({
+			file: file.path,
+			texts: [
+				{
+					text: file.content,
+					locate: (start: number, end: number) => locate(file.content, start, end),
+				},
+			],
+		})),
 	];
+}
+
+/** A top-level frontmatter key on its line of SKILL.md. */
+function locateKey(content: SkillContent, key: string): SkillScanLocation {
+	const md = skillMdText(content);
+	const offset = md.keys.get(key) ?? 0;
+	return locate(md.text, offset, offset + key.length);
 }
 
 /** The keys and string values of a frontmatter value, at every level. */
@@ -399,10 +412,6 @@ function stringsIn(value: unknown): string[] {
 		return Object.entries(value).flatMap(([key, entry]) => [key, ...stringsIn(entry)]);
 	}
 	return [];
-}
-
-function codePointOf(character: string): string {
-	return `U+${(character.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}`;
 }
 
 /**
