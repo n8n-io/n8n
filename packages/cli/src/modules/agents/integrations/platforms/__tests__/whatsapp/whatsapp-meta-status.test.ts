@@ -29,8 +29,8 @@ describe('resolveWhatsAppMetaState', () => {
 		],
 		['a number that Meta disconnected', { numberStatus: 'DISCONNECTED' }, 'numberUnavailable'],
 		['a number that Meta banned', { numberStatus: 'BANNED' }, 'numberUnavailable'],
-		['a number that was deleted', { numberStatus: 'DELETED' }, 'numberUnavailable'],
-		['a number that moved to another account', { numberStatus: 'MIGRATED' }, 'numberUnavailable'],
+		['a number that was deleted', { numberStatus: 'DELETED' }, 'numberDeleted'],
+		['a number that moved to another account', { numberStatus: 'MIGRATED' }, 'numberMigrated'],
 		[
 			'a number that cannot send, over a name in review',
 			{ numberStatus: 'BANNED', nameStatus: 'PENDING_REVIEW' },

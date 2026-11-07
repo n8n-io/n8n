@@ -21,6 +21,18 @@ const PROTOTYPE_WORDING: Array<
 	[Exclude<WhatsAppMetaState, 'connected' | 'unknown'>, string, string, string | undefined]
 > = [
 	[
+		'numberDeleted',
+		`Your number ${NUMBER} was deleted from your WhatsApp account`,
+		'The agent can’t send or receive messages. To keep using WhatsApp, set it up again.',
+		undefined,
+	],
+	[
+		'numberMigrated',
+		`Your number ${NUMBER} moved to another WhatsApp account`,
+		'The agent can’t send or receive messages. To keep using it, set up WhatsApp again with a credential for that account.',
+		undefined,
+	],
+	[
 		'numberPending',
 		`Your number ${NUMBER} is pending activation`,
 		'The agent can’t send or receive messages until Meta activates the number, which can take a few days.',
@@ -104,13 +116,15 @@ describe('WhatsApp Meta callout wording', () => {
 			`Your number ${NUMBER} can’t send messages`,
 		);
 		expect(i18n.baseText(presentation!.descriptionKey)).toBe(
-			'Meta shows this number as disconnected, banned, deleted or moved. The agent can’t send or receive messages. Check the number in WhatsApp Manager.',
+			'Meta shows this number as disconnected or banned. The agent can’t send or receive messages. Check the number in WhatsApp Manager.',
 		);
 		expect(i18n.baseText(presentation!.action!.labelKey)).toBe('Open WhatsApp Manager ↗');
 	});
 
 	it.each([
 		['numberUnavailable', 'Your number can’t send messages'],
+		['numberDeleted', 'Your number was deleted from your WhatsApp account'],
+		['numberMigrated', 'Your number moved to another WhatsApp account'],
 		['numberPending', 'Your number is pending activation'],
 		['dailyLimit', 'Your number reached its daily message limit'],
 		['nameInReviewBlocked', 'Your display name is in review'],
