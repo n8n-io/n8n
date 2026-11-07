@@ -73,7 +73,7 @@ export class McpDiscoveryEnrollmentService {
 	private async getMcpState(userId: string) {
 		const [connected, keys, used] = await Promise.all([
 			this.consents.findConnectedClients({ userId, now: Date.now() }),
-			this.apiKeys.find({ where: { userId, audience: 'mcp-server-api' }, select: ['id'] }),
+			this.apiKeys.findAllForUser(userId, 'mcp-server-api'),
 			this.settings.findByKey(discoveryUserKey(userId, 'claudeMcpUsedAt')),
 		]);
 		// Only observations tied to credentials that still exist count as connected.

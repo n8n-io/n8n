@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ApiKey, ApiKeyRepository, User } from '@n8n/db';
+import type { ApiKey, ApiKeyRepository, TransactionRunner, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,7 +20,13 @@ describe('PublicApiKeyService', () => {
 	const mailer = mock<UserManagementMailer>();
 	const logger = mock<Logger>();
 
-	const service = new PublicApiKeyService(apiKeyRepository, jwtService, mailer, logger);
+	const service = new PublicApiKeyService(
+		apiKeyRepository,
+		jwtService,
+		mailer,
+		logger,
+		mock<TransactionRunner>(),
+	);
 
 	const hasGlobalScopeMock = vi.mocked(hasGlobalScope);
 
@@ -41,8 +47,8 @@ describe('PublicApiKeyService', () => {
 
 		it('does not send an email when the owner deletes their own key', async () => {
 			hasGlobalScopeMock.mockReturnValue(false);
-			apiKeyRepository.findOne.mockResolvedValue(apiKey);
-			apiKeyRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
+			apiKeyRepository.findWithOwner.mockResolvedValue(apiKey);
+			apiKeyRepository.deleteById.mockResolvedValue({ deleted: 1 });
 
 			const result = await service.deleteApiKey(owner, 'key-1');
 
@@ -52,8 +58,8 @@ describe('PublicApiKeyService', () => {
 
 		it('delegates the revocation email to the mailer when an admin revokes another user’s key', async () => {
 			hasGlobalScopeMock.mockReturnValue(true);
-			apiKeyRepository.findOne.mockResolvedValue(apiKey);
-			apiKeyRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
+			apiKeyRepository.findWithOwner.mockResolvedValue(apiKey);
+			apiKeyRepository.deleteById.mockResolvedValue({ deleted: 1 });
 
 			const result = await service.deleteApiKey(admin, 'key-1');
 
@@ -63,8 +69,8 @@ describe('PublicApiKeyService', () => {
 
 		it('logs and swallows when the revocation email fails to send', async () => {
 			hasGlobalScopeMock.mockReturnValue(true);
-			apiKeyRepository.findOne.mockResolvedValue(apiKey);
-			apiKeyRepository.delete.mockResolvedValue({ affected: 1, raw: [] });
+			apiKeyRepository.findWithOwner.mockResolvedValue(apiKey);
+			apiKeyRepository.deleteById.mockResolvedValue({ deleted: 1 });
 			mailer.notifyApiKeyRevoked.mockRejectedValueOnce(new Error('smtp down'));
 
 			const result = await service.deleteApiKey(admin, 'key-1');
@@ -84,7 +90,7 @@ describe('PublicApiKeyService', () => {
 
 		it('throws NotFoundError when the API key does not exist', async () => {
 			hasGlobalScopeMock.mockReturnValue(false);
-			apiKeyRepository.findOne.mockResolvedValue(null);
+			apiKeyRepository.findWithOwner.mockResolvedValue(null);
 
 			await expect(service.deleteApiKey(owner, 'missing')).rejects.toThrow(NotFoundError);
 			expect(mailer.notifyApiKeyRevoked).not.toHaveBeenCalled();
@@ -103,7 +109,7 @@ describe('PublicApiKeyService', () => {
 				lastUsedAt: new Date(),
 			});
 
-			apiKeyRepository.findOne.mockResolvedValue(existingKey);
+			apiKeyRepository.findOwnedById.mockResolvedValue(existingKey);
 			jwtService.decodeUnverified.mockReturnValue({ exp: futureExp });
 			jwtService.sign.mockReturnValue('new-token');
 
@@ -115,33 +121,33 @@ describe('PublicApiKeyService', () => {
 				expect.objectContaining({ expiresIn: expect.any(Number) }),
 			);
 			// Update is scoped to the owner, mirroring updateApiKeyForUser.
-			expect(apiKeyRepository.update).toHaveBeenCalledWith(
-				{ id: 'key-1', userId: 'owner-1' },
-				{ apiKey: 'new-token', lastUsedAt: null },
-			);
+			expect(apiKeyRepository.updateOwnedKey).toHaveBeenCalledWith('key-1', 'owner-1', {
+				apiKey: 'new-token',
+				lastUsedAt: null,
+			});
 			// The loaded entity is mutated and returned — no extra re-read query.
-			expect(apiKeyRepository.findOneByOrFail).not.toHaveBeenCalled();
+			expect(apiKeyRepository.findByIdOrFail).not.toHaveBeenCalled();
 			expect(result).toBe(existingKey);
 			expect(result.apiKey).toBe('new-token');
 			expect(result.lastUsedAt).toBeNull();
 		});
 
 		it('throws NotFoundError for a missing or non-owned key', async () => {
-			apiKeyRepository.findOne.mockResolvedValue(null);
+			apiKeyRepository.findOwnedById.mockResolvedValue(null);
 
 			await expect(service.rotateApiKey(owner, 'missing')).rejects.toThrow(NotFoundError);
-			expect(apiKeyRepository.update).not.toHaveBeenCalled();
+			expect(apiKeyRepository.updateOwnedKey).not.toHaveBeenCalled();
 		});
 
 		it('throws BadRequestError and leaves the token untouched when the key is expired', async () => {
 			const pastExp = Math.floor(Date.now() / 1000) - 3600;
-			apiKeyRepository.findOne.mockResolvedValue(
+			apiKeyRepository.findOwnedById.mockResolvedValue(
 				mock<ApiKey>({ id: 'key-1', userId: 'owner-1', apiKey: 'old-token' }),
 			);
 			jwtService.decodeUnverified.mockReturnValue({ exp: pastExp });
 
 			await expect(service.rotateApiKey(owner, 'key-1')).rejects.toThrow(BadRequestError);
-			expect(apiKeyRepository.update).not.toHaveBeenCalled();
+			expect(apiKeyRepository.updateOwnedKey).not.toHaveBeenCalled();
 		});
 	});
 });
