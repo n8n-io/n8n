@@ -364,8 +364,9 @@ a conflict and do not save or publish again. An outdated suggestion returns `out
 Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. When one suggestion becomes outdated, every pending
-suggestion of its result closes as outdated. When a workflow with a pending suggestion is deleted,
-the result and its other pending suggestions also close as outdated. When the triggering workflow or a
+suggestion of its result closes as outdated. When a sub-workflow with a pending suggestion is deleted,
+the result and its other pending suggestions also close as outdated. Deletion of the triggering
+workflow removes the result. When the triggering workflow or a
 workflow with a pending suggestion moves to another project, the open result closes as outdated. If Apply fails, keep the review open and show the error.
 
 The Discard and close button calls `POST /:resultId/dismiss`.
@@ -402,7 +403,8 @@ Saved review services do not require Assistant model availability. Recovery of e
 investigations remains available when the flag is off.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
-It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
+It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership of every
+suggestion workflow.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
 Open and Closed derive from `reviewState`.

@@ -1,14 +1,20 @@
 import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
-import { SelfHealingResultRepository } from '../../database/self-healing-result.repository';
+import {
+	SelfHealingResultRepository,
+	type CreateSelfHealingResult,
+} from '../../database/self-healing-result.repository';
 import { createConfiguration } from './configuration';
 
-export async function createResult({
-	workflowId,
-	projectId,
-	backgroundUserId,
-}: Pick<WorkflowSuggestionBaseline, 'workflowId' | 'projectId' | 'backgroundUserId'>) {
+export async function createResult(
+	{
+		workflowId,
+		projectId,
+		backgroundUserId,
+	}: Pick<WorkflowSuggestionBaseline, 'workflowId' | 'projectId' | 'backgroundUserId'>,
+	outcome: CreateSelfHealingResult['outcome'] = 'fix_ready',
+) {
 	const configuration = await createConfiguration(projectId, backgroundUserId);
 	return await Container.get(SelfHealingResultRepository).createResult(
 		{
@@ -16,7 +22,7 @@ export async function createResult({
 			workflowId,
 			projectId,
 			backgroundUserId,
-			outcome: 'fix_ready',
+			outcome,
 			summary: 'Fix the workflow.',
 			report: 'The workflow failed.',
 			completedAt: new Date(),

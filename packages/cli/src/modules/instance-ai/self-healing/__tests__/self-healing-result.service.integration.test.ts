@@ -1690,6 +1690,22 @@ describe('grouped completion', () => {
 		expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 1 });
 	});
 
+	it('hides an applied result after its sub-workflow moves to another project', async () => {
+		const { investigation, user, project, original, subWorkflow, completion } =
+			await groupCompletion();
+		const result = await completeResult({ investigationId: investigation.id, ...completion });
+		await service.act(user, project.id, original.id, result.id, 'apply');
+
+		const destination = await createTeamProject(undefined, user);
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: subWorkflow.id, projectId: project.id },
+			{ projectId: destination.id },
+		);
+
+		expect(await service.listForInbox(user, { state: 'closed', limit: 10 })).toEqual([]);
+		expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 0 });
+	});
+
 	it.each([
 		['the triggering workflow and the sub-workflow', false],
 		['only the sub-workflow', true],

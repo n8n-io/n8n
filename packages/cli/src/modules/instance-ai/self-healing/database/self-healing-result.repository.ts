@@ -83,8 +83,15 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 			.subQuery()
 			.select('1')
 			.from(WorkflowSuggestion, 'target')
+			.leftJoin(
+				SharedWorkflow,
+				'targetOwner',
+				'targetOwner.workflowId = target.workflowId AND targetOwner.projectId = result.projectId AND targetOwner.role = :resultOwnerRole',
+			)
 			.where('target.selfHealingResultId = result.id')
-			.andWhere(`target.workflowId NOT IN (${accessible.getQuery()})`)
+			.andWhere(
+				`(target.workflowId NOT IN (${accessible.getQuery()}) OR targetOwner.workflowId IS NULL)`,
+			)
 			.getQuery();
 		query.andWhere(`NOT EXISTS ${inaccessibleSuggestion}`).setParameter('reviewerId', user.id);
 		return whereReviewer(query, 'configuration', ':reviewerId');

@@ -43,7 +43,7 @@ afterEach(async () => {
 	await suggestions.createQueryBuilder().delete().execute();
 });
 
-async function fixture() {
+async function fixture(outcome?: 'needs_you') {
 	const user = await createUser();
 	const workflow = await createWorkflowWithHistory({}, user);
 	const workflows = Container.get(WorkflowRepository);
@@ -64,7 +64,7 @@ async function fixture() {
 		nodes: saved.nodes.map((node) => ({ ...node, position: [100, 100] as [number, number] })),
 		connections: saved.connections,
 	};
-	const { id: resultId } = await createResult(baseline);
+	const { id: resultId } = await createResult(baseline, outcome);
 	return { user, saved, workflows, project, baseline, graph, resultId };
 }
 
@@ -167,7 +167,7 @@ it('keeps reads unchanged and closes an outdated suggestion during reconciliatio
 });
 
 it('stores proposed changes that still need credential configuration', async () => {
-	const { resultId, user, saved, workflows, project, baseline, graph } = await fixture();
+	const { resultId, user, saved, workflows, project, baseline, graph } = await fixture('needs_you');
 	graph.nodes.push({
 		id: 'request',
 		name: 'Request',
