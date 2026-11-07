@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseRegexLiteral, resetSafeRegexEngine, safeRegex, setSafeRegexEngine } from '../src';
+import {
+	parseRegexLiteral,
+	resetInternalRegexEngine,
+	safeInternalRegex,
+	setInternalRegexEngine,
+} from '../src';
 
-describe('safeRegex', () => {
+describe('safeInternalRegex', () => {
 	afterEach(() => {
-		resetSafeRegexEngine();
+		resetInternalRegexEngine();
 	});
 
 	it('parses slash-delimited regex literals', () => {
@@ -13,7 +18,7 @@ describe('safeRegex', () => {
 	});
 
 	it('delegates operations to the configured engine', () => {
-		setSafeRegexEngine({
+		setInternalRegexEngine({
 			exec: vi.fn(() => ['match'] as unknown as RegExpExecArray),
 			test: vi.fn(() => true),
 			replace: vi.fn(() => 'replaced'),
@@ -21,15 +26,15 @@ describe('safeRegex', () => {
 			split: vi.fn(() => ['a', 'b']),
 		});
 
-		expect(safeRegex.exec('source', 'input')).toEqual(['match']);
-		expect(safeRegex.test('source', 'input')).toBe(true);
-		expect(safeRegex.replace('source', 'input', 'g', 'replacement')).toBe('replaced');
-		expect(safeRegex.matchAll('source', 'input')).toEqual([['match']]);
-		expect(safeRegex.split('source', 'input')).toEqual(['a', 'b']);
+		expect(safeInternalRegex.exec('source', 'input')).toEqual(['match']);
+		expect(safeInternalRegex.test('source', 'input')).toBe(true);
+		expect(safeInternalRegex.replace('source', 'input', 'g', 'replacement')).toBe('replaced');
+		expect(safeInternalRegex.matchAll('source', 'input')).toEqual([['match']]);
+		expect(safeInternalRegex.split('source', 'input')).toEqual(['a', 'b']);
 	});
 
 	it('throws when a regex test times out', () => {
-		expect(() => safeRegex.test('(a+)+$', `${'a'.repeat(30)}b`)).toThrow(
+		expect(() => safeInternalRegex.test('(a+)+$', `${'a'.repeat(30)}b`)).toThrow(
 			'Regular expression execution timed out',
 		);
 	});
