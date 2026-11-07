@@ -95,7 +95,7 @@ export function jsonToDocument(
 	} else if (value === null) {
 		return { nullValue: null };
 	} else if (typeof value === 'number' && !Number.isNaN(value)) {
-		if (value.toString().indexOf('.') !== -1) {
+		if (!Number.isInteger(value)) {
 			return { doubleValue: value };
 		} else {
 			return { integerValue: value };
