@@ -94,6 +94,7 @@ export const SKILL_SCAN_RULES = [
 	'invalid_skill',
 	'over_limit',
 	'file_skipped',
+	'file_unstorable',
 	'hidden_unicode',
 	'new_url',
 	'permission_change',

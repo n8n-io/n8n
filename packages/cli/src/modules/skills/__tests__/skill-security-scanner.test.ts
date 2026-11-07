@@ -146,6 +146,29 @@ describe('SkillSecurityScanner', () => {
 				],
 			});
 		});
+
+		it('says which skipped files n8n cannot store, and still passes', () => {
+			const result = scanner.scan({
+				...fetched(skill(), { skippedFiles: ['references/a.md', 'scripts/deploy.sh'] }),
+				unstorableFiles: ['references/a.md'],
+			});
+
+			expect(result).toEqual({
+				verdict: 'pass',
+				findings: [
+					expect.objectContaining({
+						rule: 'file_unstorable',
+						severity: 'info',
+						file: 'references/a.md',
+					}),
+					expect.objectContaining({
+						rule: 'file_skipped',
+						severity: 'info',
+						file: 'scripts/deploy.sh',
+					}),
+				],
+			});
+		});
 	});
 
 	describe('rule hidden_unicode: invisible or bidirectional characters', () => {

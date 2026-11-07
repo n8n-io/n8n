@@ -624,6 +624,47 @@ describe('SkillSourceController', () => {
 			expect(await countSources()).toBe(0);
 		});
 
+		// Postgres stores no NUL character, so such content must never reach the import write.
+		it('leaves out a reference that n8n cannot store, and blocks a SKILL.md it cannot store', async () => {
+			github.push('acme/binary', {
+				'binary/SKILL.md': skillMd('binary'),
+				'binary/references/data.md': 'PNG\0data',
+				'binary/references/notes.md': '# Notes\n',
+				'broken/SKILL.md': skillMd('broken', 'Broken', 'Use\0 this.'),
+			});
+			const url = 'https://github.com/acme/binary';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const binary = discovery.skills.find((skill) => skill.location === 'binary');
+			expect(binary?.skippedFiles).toEqual(['references/data.md']);
+			expect(binary?.check?.findings).toEqual([
+				expect.objectContaining({ rule: 'file_unstorable', file: 'references/data.md' }),
+			]);
+			const broken = discovery.skills.find((skill) => skill.location === 'broken');
+			expect(broken?.check).toEqual({
+				verdict: 'blocked',
+				findings: [
+					expect.objectContaining({
+						rule: 'invalid_skill',
+						detail: 'SKILL.md has a NUL character, which n8n cannot store.',
+					}),
+				],
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: discovery.skills.map((skill) => skill.key),
+			});
+
+			expect(data.imported).toEqual([expect.objectContaining({ name: 'binary' })]);
+			expect(data.failed).toEqual([{ key: broken?.key, name: null, reason: 'blocked_by_check' }]);
+			const { body: detail } = await owner.get(`/skills/${data.imported[0].skillId}`).expect(200);
+			expect(detail.data.skill.references).toEqual([
+				{ path: 'references/notes.md', content: '# Notes\n' },
+			]);
+		});
+
 		it('imports one of two picked skills with the same name, and reports the other', async () => {
 			github.push('acme/twins', {
 				'one/SKILL.md': skillMd('twin', 'The first'),

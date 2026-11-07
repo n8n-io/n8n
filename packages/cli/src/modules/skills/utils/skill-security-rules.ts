@@ -18,6 +18,8 @@ const FRONTMATTER_MAX_LENGTH = 16_384;
 export type SkillScanInput = {
 	content: SkillContent;
 	skippedFiles: string[];
+	/** The skipped files that n8n cannot store, such as a reference with a NUL character. */
+	unstorableFiles?: string[];
 	fidelity: SkillSourceFidelityWarning[];
 	/** The content of the latest version. Null at import. */
 	previous: SkillContent | null;
@@ -55,13 +57,25 @@ export function checkShape({ content }: SkillScanInput): SkillScanFinding[] {
  * A skill keeps only SKILL.md and `references/*.md`. The SKILL.md reader leaves out every other
  * file, scripts and binaries included, so n8n never stores or runs them. The user sees the list.
  */
-export function listSkippedFiles({ skippedFiles }: SkillScanInput): SkillScanFinding[] {
-	return skippedFiles.map((file) => ({
-		rule: 'file_skipped',
-		severity: 'info',
-		file,
-		detail: 'n8n leaves this file out. A skill keeps only SKILL.md and references/*.md.',
-	}));
+export function listSkippedFiles({
+	skippedFiles,
+	unstorableFiles = [],
+}: SkillScanInput): SkillScanFinding[] {
+	return skippedFiles.map((file) =>
+		unstorableFiles.includes(file)
+			? {
+					rule: 'file_unstorable',
+					severity: 'info',
+					file,
+					detail: 'n8n leaves this file out. It has a NUL character, which n8n cannot store.',
+				}
+			: {
+					rule: 'file_skipped',
+					severity: 'info',
+					file,
+					detail: 'n8n leaves this file out. A skill keeps only SKILL.md and references/*.md.',
+				},
+	);
 }
 
 export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {

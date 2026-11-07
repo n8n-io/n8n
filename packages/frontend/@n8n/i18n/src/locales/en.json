@@ -4032,6 +4032,7 @@
 	"settings.context.skills.connect.check.rule.invalidSkill": "Not a valid skill",
 	"settings.context.skills.connect.check.rule.overLimit": "Over the size limits",
 	"settings.context.skills.connect.check.rule.fileSkipped": "A file that n8n leaves out",
+	"settings.context.skills.connect.check.rule.fileUnstorable": "A file that n8n cannot store, because it has a NUL character",
 	"settings.context.skills.connect.check.rule.hiddenUnicode": "Hidden Unicode characters",
 	"settings.context.skills.connect.check.rule.newUrl": "Links to a new domain",
 	"settings.context.skills.connect.check.rule.permissionChange": "A change to permission settings",

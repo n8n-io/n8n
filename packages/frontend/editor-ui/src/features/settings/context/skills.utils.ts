@@ -125,6 +125,7 @@ const SKILL_SCAN_RULE_KEYS = {
 	invalid_skill: 'settings.context.skills.connect.check.rule.invalidSkill',
 	over_limit: 'settings.context.skills.connect.check.rule.overLimit',
 	file_skipped: 'settings.context.skills.connect.check.rule.fileSkipped',
+	file_unstorable: 'settings.context.skills.connect.check.rule.fileUnstorable',
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
 	permission_change: 'settings.context.skills.connect.check.rule.permissionChange',
