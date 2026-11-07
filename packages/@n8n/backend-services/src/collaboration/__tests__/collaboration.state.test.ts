@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@n8n/backend-services';
+import type { CacheService } from '../../services/cache/cache.service';
 
 import { CollaborationState } from '../collaboration.state';
 
@@ -65,7 +65,7 @@ describe('CollaborationState', () => {
 
 			// Assert
 			expect(mockCacheService.getHash).toHaveBeenCalledWith('collaboration:workflow');
-			expect(users).toBeEmptyArray();
+			expect(users).toEqual([]);
 		});
 
 		it('should get workflow collaborators that are not expired', async () => {
@@ -184,7 +184,7 @@ describe('CollaborationState', () => {
 
 			// Assert
 			expect(mockCacheService.getHash).toHaveBeenCalledWith('collaboration:agent:agent-1');
-			expect(users).toBeEmptyArray();
+			expect(users).toEqual([]);
 		});
 	});
 

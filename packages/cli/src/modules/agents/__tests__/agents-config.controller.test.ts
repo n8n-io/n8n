@@ -1,7 +1,7 @@
 import { budgetMonthKey } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { AgentConfigService } from '../agent-config.service';
@@ -42,7 +42,7 @@ describe('AgentsConfigController getValidation', () => {
 			agentValidationService,
 			mock<CredentialsService>(),
 			agentRepository,
-			mock<CollaborationService>(),
+			mock<AgentWriteLockService>(),
 			mock<AgentSpendLedger>(),
 		);
 
@@ -69,7 +69,7 @@ describe('AgentsConfigController getBudget', () => {
 			mock<AgentValidationService>(),
 			mock<CredentialsService>(),
 			agentRepository,
-			mock<CollaborationService>(),
+			mock<AgentWriteLockService>(),
 			agentSpendLedger,
 		);
 
