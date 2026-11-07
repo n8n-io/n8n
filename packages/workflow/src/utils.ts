@@ -74,7 +74,10 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 	}
 	// Array
 	if (Array.isArray(source)) {
-		const clone = [];
+		// Explicit element type: a bare `const clone = []` fails with TS7034/TS7005
+		// (noImplicitAny) once hash.set precedes the loop, because inference can no longer evolve.
+		const clone: unknown[] = [];
+		hash.set(source, clone);
 		const len = source.length;
 		for (let i = 0; i < len; i++) {
 			clone[i] = deepCopy(source[i], hash, path + `[${i}]`);
