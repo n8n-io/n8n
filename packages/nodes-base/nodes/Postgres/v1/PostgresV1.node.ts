@@ -15,6 +15,7 @@ import { oldVersionNotice } from '@utils/descriptions';
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 import { configurePostgres } from '../transport';
 import type { PgpConnection, PostgresNodeCredentials } from '../v2/helpers/interfaces';
+import { parsePostgresError, prepareErrorItem } from '../v2/helpers/utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
@@ -336,57 +337,65 @@ export class PostgresV1 implements INodeType {
 			'',
 		) as string;
 
-		const { db, pgp } = await configurePostgres.call(this, credentials, {
-			largeNumbersOutput:
-				largeNumbersOutput === 'numbers' || largeNumbersOutput === 'text'
-					? largeNumbersOutput
-					: undefined,
-		});
-
-		let returnItems: INodeExecutionData[] = [];
-
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0);
-
-		if (operation === 'executeQuery') {
-			// ----------------------------------
-			//         executeQuery
-			// ----------------------------------
-
-			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
-				resolveExpression: true,
+		try {
+			const { db, pgp } = await configurePostgres.call(this, credentials, {
+				largeNumbersOutput:
+					largeNumbersOutput === 'numbers' || largeNumbersOutput === 'text'
+						? largeNumbersOutput
+						: undefined,
 			});
-			returnItems = queryResult as INodeExecutionData[];
-		} else if (operation === 'insert') {
-			// ----------------------------------
-			//         insert
-			// ----------------------------------
 
-			const insertData = await pgInsertV2.call(this, pgp, db, items, this.continueOnFail());
+			let returnItems: INodeExecutionData[] = [];
 
-			// returnItems = this.helpers.returnJsonArray(insertData);
-			returnItems = insertData as INodeExecutionData[];
-		} else if (operation === 'update') {
-			// ----------------------------------
-			//         update
-			// ----------------------------------
+			const operation = this.getNodeParameter('operation', 0);
 
-			const updateItems = await pgUpdate(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			if (operation === 'executeQuery') {
+				// ----------------------------------
+				//         executeQuery
+				// ----------------------------------
 
-			returnItems = wrapData(updateItems);
-		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				`The operation "${operation}" is not supported!`,
-			);
+				const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+					resolveExpression: true,
+				});
+				returnItems = queryResult as INodeExecutionData[];
+			} else if (operation === 'insert') {
+				// ----------------------------------
+				//         insert
+				// ----------------------------------
+
+				const insertData = await pgInsertV2.call(this, pgp, db, items, this.continueOnFail());
+
+				// returnItems = this.helpers.returnJsonArray(insertData);
+				returnItems = insertData as INodeExecutionData[];
+			} else if (operation === 'update') {
+				// ----------------------------------
+				//         update
+				// ----------------------------------
+
+				const updateItems = await pgUpdate(
+					this.getNodeParameter,
+					pgp,
+					db,
+					items,
+					this.continueOnFail(),
+				);
+
+				returnItems = wrapData(updateItems);
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
+			}
+
+			return [returnItems];
+		} catch (err) {
+			if (!this.continueOnFail()) throw err;
+			const error = parsePostgresError(this.getNode(), err, []);
+			return [
+				items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index)),
+			];
 		}
-
-		return [returnItems];
 	}
 }
