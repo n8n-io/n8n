@@ -1,14 +1,23 @@
 import type {
 	ICredentialDataDecryptedObject,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { readCustomModelEndpointCredential } from '../../utils/custom-model-endpoint/credential-data';
 import { CustomModelEndpointApi } from '../CustomModelEndpointApi.credentials';
 
 describe('CustomModelEndpointApi Credential', () => {
 	const credential = new CustomModelEndpointApi();
+
+	const OAUTH2: ICredentialDataDecryptedObject = {
+		authentication: 'oauth2',
+		tokenUrl: 'https://login.example.com/oauth2/token',
+		clientId: 'client-1',
+		clientSecret: 'cs-9f2a71c4ab',
+	};
 
 	const findProperty = (name: string) =>
 		credential.properties.find((property) => property.name === name);
@@ -24,9 +33,9 @@ describe('CustomModelEndpointApi Credential', () => {
 			expect(findProperty('url')).toMatchObject({ required: true, default: '' });
 		});
 
-		const loginMethods = ['bearer', 'header', 'basic', 'none'] as const;
+		const loginMethods = ['bearer', 'header', 'basic', 'oauth2', 'none'] as const;
 
-		it('offers four login methods', () => {
+		it('offers five login methods', () => {
 			const options = (findProperty('authentication')?.options ?? []) as INodePropertyOptions[];
 
 			expect(options.map(({ value }) => value)).toEqual(loginMethods);
@@ -135,5 +144,109 @@ describe('CustomModelEndpointApi Credential', () => {
 
 			expect(result.headers).toEqual({ authorization: 'Bearer sk-test' });
 		});
+
+		it('sends the token that preAuthentication minted, beside the gateway headers', async () => {
+			const result = await authenticate({
+				...OAUTH2,
+				sessionToken: 'tok-abc',
+				gatewayHeaders: { headers: [{ name: 'x-gateway-team', value: 'platform' }] },
+			});
+
+			expect(result.headers).toEqual({
+				authorization: 'Bearer tok-abc',
+				'x-gateway-team': 'platform',
+			});
+		});
+
+		it('sends no Authorization header before a token has been minted', async () => {
+			const result = await authenticate(OAUTH2);
+
+			expect(result.headers).toEqual({});
+		});
+	});
+
+	it('declares the expirable slot the engine needs before it will run preAuthentication', () => {
+		const slot = credential.properties.find(
+			(property) => property.type === 'hidden' && property.typeOptions?.expirable === true,
+		);
+
+		expect(slot?.name).toBe('sessionToken');
+	});
+
+	describe('preAuthentication', () => {
+		const minting = (response: unknown) => {
+			const httpRequest = vi.fn(async () => response);
+			const helper = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
+			return {
+				httpRequest,
+				mint: async (credentials: ICredentialDataDecryptedObject) =>
+					await credential.preAuthentication.call(helper, credentials),
+			};
+		};
+
+		it('asks the login server for a token and hands it to authenticate', async () => {
+			const { httpRequest, mint } = minting({ access_token: 'tok-abc', expires_in: 3600 });
+
+			expect(await mint(OAUTH2)).toEqual({ sessionToken: 'tok-abc' });
+			expect(httpRequest).toHaveBeenCalledWith({
+				method: 'POST',
+				url: 'https://login.example.com/oauth2/token',
+				headers: {
+					accept: 'application/json',
+					authorization: `Basic ${Buffer.from('client-1:cs-9f2a71c4ab').toString('base64')}`,
+					'content-type': 'application/x-www-form-urlencoded',
+				},
+				body: 'grant_type=client_credentials',
+				// A redirect would re-POST the secret somewhere else
+				disableFollowRedirect: true,
+			});
+		});
+
+		it('never surfaces the transport failure, which repeats the request that caused it', async () => {
+			const pair = Buffer.from('client-1:cs-9f2a71c4ab').toString('base64');
+			const httpRequest = vi.fn(async () => {
+				throw new Error(`401 on POST with authorization: Basic ${pair}`);
+			});
+			const helper = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
+
+			const error = await credential.preAuthentication.call(helper, OAUTH2).then(
+				() => undefined,
+				(reason: Error) => reason,
+			);
+
+			expect(error?.message).toBe('Could not sign in to the gateway');
+			expect(JSON.stringify(error)).not.toContain(pair);
+			expect(JSON.stringify(error)).not.toContain('cs-9f2a71c4ab');
+		});
+
+		it('keeps a refusal that names the host it turned down', async () => {
+			const refusal = new UserError(
+				'Domain not allowed: This credential is restricted from accessing login.example.com',
+			);
+			const httpRequest = vi.fn(async () => {
+				throw refusal;
+			});
+			const helper = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
+
+			await expect(credential.preAuthentication.call(helper, OAUTH2)).rejects.toThrow(
+				'login.example.com',
+			);
+		});
+
+		it('fails when the login server returns no access token', async () => {
+			const { mint } = minting({ token_type: 'Bearer' });
+
+			await expect(mint(OAUTH2)).rejects.toThrow('no access token');
+		});
+
+		it.each(['bearer', 'header', 'basic', 'none'] as const)(
+			'asks for nothing when the login method is "%s"',
+			async (authentication) => {
+				const { httpRequest, mint } = minting({});
+
+				expect(await mint({ authentication })).toEqual({});
+				expect(httpRequest).not.toHaveBeenCalled();
+			},
+		);
 	});
 });

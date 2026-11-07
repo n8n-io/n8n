@@ -15,6 +15,9 @@ function getLoginHeader(login: LoginMethod): Record<string, string> {
 			};
 		case 'none':
 			return {};
+		// The token is fetched per request, so the auth fetch adds this one
+		case 'oauth2':
+			return {};
 	}
 }
 
@@ -30,11 +33,14 @@ export function toHeaderRecord(headers: IDataObject | undefined): Record<string,
 export function buildRequestHeaders(options: {
 	endpoint: Pick<EndpointCredential, 'login' | 'gatewayHeaders'>;
 	requestHeaders?: Record<string, string>;
+	/** Minted per request, so OAuth2 is the one login whose header cannot come from the credential. */
+	bearerToken?: string;
 }): Record<string, string> {
-	const { endpoint, requestHeaders = {} } = options;
+	const { endpoint, requestHeaders = {}, bearerToken } = options;
+	const minted = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {};
 
 	const headers = new Headers();
-	[endpoint.gatewayHeaders, requestHeaders, getLoginHeader(endpoint.login)]
+	[endpoint.gatewayHeaders, requestHeaders, getLoginHeader(endpoint.login), minted]
 		.flatMap((layer) => Object.entries(layer))
 		.forEach(([name, value]) => {
 			try {

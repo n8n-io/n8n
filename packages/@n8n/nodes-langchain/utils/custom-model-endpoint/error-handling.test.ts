@@ -17,9 +17,9 @@ const failingWith = (body: string, status = 401) =>
 	(async () => new Response(body, { status, statusText: 'Unauthorized' })) as typeof fetch;
 
 const surfaced = async (body: string, secrets: string[] = []) => {
-	const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), { secrets })(
-		BASE_URL,
-	);
+	const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
+		secrets: () => secrets,
+	})(BASE_URL);
 	const parsed: unknown = JSON.parse(await response.text());
 	return (parsed as { error?: { message?: unknown } }).error?.message;
 };
@@ -68,9 +68,9 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		['an empty one', ''],
 		['JSON that is not an object', '[1,2,3]'],
 	])('passes through %s unchanged', async (_name, body) => {
-		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), { secrets: [] })(
-			BASE_URL,
-		);
+		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
+			secrets: () => [],
+		})(BASE_URL);
 
 		expect(await response.text()).toBe(body);
 	});
@@ -78,7 +78,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 	it('hands back the very same response when there is nothing to hide', async () => {
 		const ok = new Response('{"choices":[]}', { status: 200 });
 		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
-			secrets: [],
+			secrets: () => [],
 		});
 
 		expect(await wrapped(BASE_URL)).toBe(ok);
@@ -86,7 +86,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 
 	it('keeps the status the gateway sent', async () => {
 		const wrapped = wrapCustomModelEndpointErrorFetch(failingWith('Too many requests', 429), {
-			secrets: [],
+			secrets: () => [],
 		});
 
 		expect((await wrapped(BASE_URL)).status).toBe(429);
@@ -107,7 +107,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		],
 	])('redacts a secret the gateway echoed into %s', async (_name, body) => {
 		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
-			secrets: [KEY],
+			secrets: () => [KEY],
 		})(BASE_URL);
 
 		expect(await response.text()).not.toContain(KEY);
@@ -120,7 +120,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 	])('redacts a secret that JSON escapes, here %s', async (_name, secret) => {
 		const body = JSON.stringify({ error: { message: `Rejected ${secret}` } });
 		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
-			secrets: [secret],
+			secrets: () => [secret],
 		})(BASE_URL);
 		const text = await response.text();
 
@@ -144,9 +144,9 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 				)) as typeof fetch;
 
 		const drain = async (chunks: string[], secrets: string[]) => {
-			const response = await wrapCustomModelEndpointErrorFetch(streaming(chunks), { secrets })(
-				BASE_URL,
-			);
+			const response = await wrapCustomModelEndpointErrorFetch(streaming(chunks), {
+				secrets: () => secrets,
+			})(BASE_URL);
 			const reader = response.body!.getReader();
 			const decoder = new TextDecoder();
 			const seen: string[] = [];
@@ -186,7 +186,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 	it('redacts a secret nested anywhere in a pass-through body', async () => {
 		const body = JSON.stringify({ error: { message: 'Denied', meta: { sent: [KEY] } } });
 		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
-			secrets: [KEY],
+			secrets: () => [KEY],
 		})(BASE_URL);
 
 		expect(await response.text()).not.toContain(KEY);
@@ -198,7 +198,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 			headers: { 'content-type': 'application/json' },
 		});
 		const wrapped = wrapCustomModelEndpointErrorFetch((async () => ok) as typeof fetch, {
-			secrets: [KEY],
+			secrets: () => [KEY],
 		});
 
 		expect(await (await wrapped(BASE_URL)).text()).not.toContain(KEY);
@@ -207,7 +207,7 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 	it('keeps the fields beside the message when it redacts in place', async () => {
 		const body = JSON.stringify({ error: { message: `Rejected ${KEY}`, type: 'auth_error' } });
 		const response = await wrapCustomModelEndpointErrorFetch(failingWith(body), {
-			secrets: [KEY],
+			secrets: () => [KEY],
 		})(BASE_URL);
 
 		expect(JSON.parse(await response.text())).toEqual({
@@ -268,14 +268,14 @@ describe('a rejected login', () => {
 		}) as typeof fetch;
 		const endpoint = endpointWith({ type: 'header', name: 'X-Api-Key', prefix: '', key: KEY });
 
-		const authFetch = createCustomModelEndpointAuthFetch(
+		const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
 			ctx,
 			{},
 			{
 				endpoint,
 				egressFilter: allowAll,
 				baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, {
-					secrets: endpointSecrets(endpoint),
+					secrets: () => endpointSecrets(endpoint),
 				}),
 			},
 		);
