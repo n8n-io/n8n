@@ -483,6 +483,29 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.body.data[credential.id]).toEqual({
 			dependencies: [],
 			inaccessibleCount: 1,
+			inaccessibleAffectedCount: 1,
+		});
+	});
+
+	it('should count an inaccessible caller once across both parent relationships', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+		const workflow = await createWorkflow({ name: 'Target workflow' }, member);
+		const caller = await createWorkflow({ name: 'Private caller' }, owner);
+
+		await seedDep(caller.id, 'workflowCall', workflow.id);
+		await seedDep(caller.id, 'errorWorkflow', workflow.id);
+
+		const resp = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds: [workflow.id], resourceType: 'workflow' });
+
+		expect(resp.statusCode).toBe(200);
+		expect(resp.body.data[workflow.id]).toEqual({
+			dependencies: [],
+			inaccessibleCount: 2,
+			inaccessibleAffectedCount: 1,
 		});
 	});
 
@@ -731,6 +754,7 @@ describe('Workflow and credential ID collisions', () => {
 		expect.soft(details.body.data[workflow.id]).toEqual({
 			dependencies: [{ id: caller.id, name: caller.name, type: 'workflowParent' }],
 			inaccessibleCount: 1,
+			inaccessibleAffectedCount: 1,
 		});
 
 		if (batch) {

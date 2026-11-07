@@ -22,6 +22,8 @@ export interface ResolvedDependenciesResult {
 	dependencies: ResolvedDependency[];
 	/** Number of dependencies the user does not have access to view */
 	inaccessibleCount: number;
+	/** Unique inaccessible workflow parents and agents affected by unpublishing */
+	inaccessibleAffectedCount?: number;
 }
 
 export type DependenciesBatchResponse = Record<string, ResolvedDependenciesResult>;
