@@ -34,6 +34,7 @@ import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
 import { OperationNameRepeatsResourceRule } from './operation-name-repeats-resource.js';
 import { OperationStandardActionRule } from './operation-standard-action.js';
+import { OptionalFieldsInCollectionRule } from './optional-fields-in-collection.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -58,6 +59,7 @@ export const rules = {
 	'no-emoji-in-options': NoEmojiInOptionsRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
 	'open-ended-node-fields': OpenEndedNodeFieldsRule,
+	'optional-fields-in-collection': OptionalFieldsInCollectionRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'credential-unnecessary-password': CredentialUnnecessaryPasswordRule,
