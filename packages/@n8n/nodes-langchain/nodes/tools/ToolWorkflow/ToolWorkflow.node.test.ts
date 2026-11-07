@@ -456,8 +456,10 @@ describe('ToolWorkflowV1', () => {
 		});
 
 		const city = { type: 'string' };
+		const units = { type: 'string' };
 		const closedQuery = { city: 'Berlin' };
-		const openQuery = { chatInput: 'hi', city: 'Berlin', units: 'metric' };
+		const unitsQuery = { city: 'Berlin', units: 'metric' };
+		const openQuery = { chatInput: 'hi', city: 'Berlin', units: 'metric', turn: 2 };
 
 		it.each([
 			['additionalProperties unset', { properties: { city } }, closedQuery],
@@ -489,13 +491,56 @@ describe('ToolWorkflowV1', () => {
 			[
 				'patternProperties',
 				{ properties: { city }, patternProperties: { '^u': { type: 'string' } } },
-				openQuery,
+				closedQuery,
+			],
+			[
+				'no root properties and a strict allOf member',
+				{ allOf: [{ properties: { city, units }, additionalProperties: false }] },
+				unitsQuery,
+			],
+			[
+				'an allOf member key',
+				{ properties: { city }, allOf: [{ properties: { units } }] },
+				unitsQuery,
+			],
+			[
+				'an anyOf member key',
+				{ properties: { city }, anyOf: [{ properties: { units } }] },
+				unitsQuery,
+			],
+			[
+				'a oneOf member key',
+				{ properties: { city }, oneOf: [{ properties: { units } }] },
+				unitsQuery,
+			],
+			[
+				'a nested allOf member key',
+				{ properties: { city }, allOf: [{ allOf: [{ properties: { units } }] }] },
+				unitsQuery,
+			],
+			[
+				'typed additionalProperties',
+				{ properties: { city }, additionalProperties: { type: 'string' } },
+				closedQuery,
+			],
+			[
+				'additionalProperties not',
+				{ properties: { city }, additionalProperties: { not: {} } },
+				closedQuery,
 			],
 		])(
 			'should pass the engine item to the sub-workflow by the input schema with %s',
 			async (_, schema, query) => {
 				const ctx = createExecuteContext([
-					{ json: { chatInput: 'hi', city: 'Berlin', units: 'metric', toolCallId: 'call_1' } },
+					{
+						json: {
+							chatInput: 'hi',
+							city: 'Berlin',
+							units: 'metric',
+							turn: 2,
+							toolCallId: 'call_1',
+						},
+					},
 				]);
 				useInputSchema(ctx, () => JSON.stringify({ type: 'object', ...schema }));
 				ctx.executeWorkflow.mockResolvedValueOnce({
