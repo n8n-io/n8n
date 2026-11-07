@@ -33,6 +33,13 @@ import {
 } from '../../../../utils/schemaParsing';
 import { SUB_WORKFLOW_WAITING_PLACEHOLDER } from '../constants';
 
+const toToolInput = (tool: DynamicTool | DynamicStructuredTool, json: IDataObject) => {
+	const shape: unknown =
+		tool instanceof DynamicStructuredTool ? get(tool.schema, 'shape') : undefined;
+	if (!isObject(shape)) return json;
+	return Object.fromEntries(Object.entries(json).filter(([key]) => Object.hasOwn(shape, key)));
+};
+
 const toOutputJson = (response: string): IDataObject => {
 	const parsed = jsonParse<unknown>(response, { fallbackValue: null });
 	return isObject(parsed) && !Array.isArray(parsed) ? (parsed as IDataObject) : { response };
@@ -278,7 +285,7 @@ export class ToolWorkflowV1 implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const tool = await getTool(this, itemIndex, false);
-				const result = (await tool.invoke(items[itemIndex].json)) as string;
+				const result = (await tool.invoke(toToolInput(tool, items[itemIndex].json))) as string;
 				response.push({ json: toOutputJson(result), pairedItem: { item: itemIndex } });
 			} catch (error) {
 				if (!(error instanceof NodeOperationError)) {

@@ -455,25 +455,32 @@ describe('ToolWorkflowV1', () => {
 			expect(ctx.logAiEvent).not.toHaveBeenCalled();
 		});
 
-		it('should pass the structured input to the sub-workflow when an input schema is set', async () => {
-			const ctx = createExecuteContext([{ json: { city: 'Berlin' } }]);
-			useInputSchema(ctx, () => citySchema);
-			ctx.executeWorkflow.mockResolvedValueOnce({
-				data: [[{ json: { forecast: 'sunny' } }]],
-				executionId: 'sub-1',
-			});
+		it.each([false, true])(
+			'should pass only the schema fields to the sub-workflow when additionalProperties is %s',
+			async (additionalProperties) => {
+				const ctx = createExecuteContext([
+					{ json: { chatInput: 'hi', city: 'Berlin', toolCallId: 'call_1' } },
+				]);
+				useInputSchema(ctx, () =>
+					JSON.stringify({ ...JSON.parse(citySchema), additionalProperties }),
+				);
+				ctx.executeWorkflow.mockResolvedValueOnce({
+					data: [[{ json: { forecast: 'sunny' } }]],
+					executionId: 'sub-1',
+				});
 
-			const result = await node.execute.call(ctx);
+				const result = await node.execute.call(ctx);
 
-			expect(manual.execute).toHaveBeenCalledWith(
-				{ json: { query: { city: 'Berlin' } } },
-				0,
-				expect.anything(),
-				expect.anything(),
-				expect.anything(),
-			);
-			expect(result).toEqual([[{ json: { forecast: 'sunny' }, pairedItem: { item: 0 } }]]);
-		});
+				expect(manual.execute).toHaveBeenCalledWith(
+					{ json: { query: { city: 'Berlin' } } },
+					0,
+					expect.anything(),
+					expect.anything(),
+					expect.anything(),
+				);
+				expect(result).toEqual([[{ json: { forecast: 'sunny' }, pairedItem: { item: 0 } }]]);
+			},
+		);
 
 		it('should return the waiting placeholder when the sub-workflow is waiting', async () => {
 			const ctx = createExecuteContext([{ json: { input: 'hello' } }]);
