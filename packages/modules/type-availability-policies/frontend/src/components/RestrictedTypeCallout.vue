@@ -5,13 +5,15 @@ import { computed, ref } from 'vue';
 
 import ContactAdminModal from './ContactAdminModal.vue';
 import {
-	describeAgentToolRestriction,
+	describeTypeRestriction,
 	useRestrictionContact,
 	type OptionalVerdict,
+	type RestrictedCalloutSurface,
 } from '../composables/useNodeTypeRestriction';
 
-const { nodeTypeName, restriction } = defineProps<{
-	nodeTypeName: string;
+const { surface, typeName, restriction } = defineProps<{
+	surface: RestrictedCalloutSurface;
+	typeName: string;
 	restriction?: OptionalVerdict;
 }>();
 
@@ -20,18 +22,18 @@ const i18n = useI18n();
 const isContactAdminOpen = ref(false);
 
 const { copy: contactCopy } = useRestrictionContact(() => restriction);
-const description = computed(() => describeAgentToolRestriction(nodeTypeName, restriction));
+const description = computed(() => describeTypeRestriction(surface, typeName, restriction));
 </script>
 
 <template>
 	<div>
-		<N8nCallout theme="warning" data-test-id="restricted-tool-callout">
+		<N8nCallout theme="warning" :data-test-id="`restricted-${surface}-callout`">
 			{{ description }}
 			<template #trailingContent>
 				<N8nButton
 					variant="ghost"
 					size="small"
-					data-test-id="restricted-tool-contact-admin"
+					:data-test-id="`restricted-${surface}-contact-admin`"
 					@click="isContactAdminOpen = true"
 				>
 					{{ i18n.baseText(contactCopy.action) }}
@@ -40,7 +42,8 @@ const description = computed(() => describeAgentToolRestriction(nodeTypeName, re
 		</N8nCallout>
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
-			:node-type-name="nodeTypeName"
+			:kind="surface === 'credential' ? 'credential' : 'node'"
+			:node-type-name="typeName"
 			:audience="contactCopy.audience"
 		/>
 	</div>
