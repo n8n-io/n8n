@@ -15,6 +15,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { getAiGatewayBalancePill } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	type AgentModelsUnavailableReason,
@@ -143,19 +144,7 @@ const isResolvingDefaultModel = computed(
 	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
 );
 
-const aiGatewayBalancePill = computed(() => {
-	const balance = aiGateway.balance.value;
-	if (balance === undefined) return undefined;
-	const depleted = balance <= 0;
-	return {
-		text: depleted
-			? i18n.baseText('aiGateway.wallet.noCredits')
-			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
-					interpolate: { balance: `$${Number(balance).toFixed(2)}` },
-				}),
-		type: depleted ? ('danger' as const) : ('default' as const),
-	};
-});
+const aiGatewayBalancePill = computed(() => getAiGatewayBalancePill(aiGateway.balance.value, i18n));
 
 onMounted(() => {
 	// Load the gateway config so `isCredentialTypeSupported` can gate the managed

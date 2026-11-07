@@ -2,7 +2,6 @@
 import { useI18n } from '@n8n/i18n';
 
 import {
-	N8nBadge,
 	N8nIcon,
 	N8nOption,
 	N8nSelect,
@@ -14,6 +13,9 @@ import {
 import { nextTick, ref, computed } from 'vue';
 import type { PermissionsRecord } from '@n8n/permissions';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import AiGatewayBalanceIndicator from '@/features/credentials/components/AiGatewayCredits/AiGatewayBalanceIndicator.vue';
+import type { AiGatewayBalancePillValue } from '@/features/credentials/components/AiGatewayCredits/AiGatewayBalancePill.vue';
+import AiGatewayCredentialOption from '@/features/credentials/components/AiGatewayCredits/AiGatewayCredentialOption.vue';
 
 export type CredentialOption = {
 	id: string;
@@ -30,7 +32,7 @@ export type CredentialOption = {
 export type ManagedCredentialOption = {
 	value: string;
 	label: string;
-	pill?: { text: string; type: 'default' | 'danger' | 'info' };
+	pill?: AiGatewayBalancePillValue;
 };
 
 const props = defineProps<{
@@ -143,22 +145,11 @@ const onCreateNewCredential = async () => {
 				:value="managedOption.value"
 				@click="closeSelect"
 			>
-				<div :class="$style.credentialOption">
-					<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
-					<N8nText :class="$style.optionName">{{ managedOption.label }}</N8nText>
-					<N8nBadge
-						v-if="managedOption.pill"
-						size="xxsmall"
-						:variant="
-							managedOption.pill.type === 'danger' || managedOption.pill.type === 'info'
-								? managedOption.pill.type
-								: 'success'
-						"
-					>
-						{{ managedOption.pill.text }}
-					</N8nBadge>
-					<N8nIcon v-if="isManagedSelected" icon="check" size="large" :class="$style.checkIcon" />
-				</div>
+				<AiGatewayCredentialOption
+					:label="managedOption.label"
+					:pill="managedOption.pill"
+					:selected="isManagedSelected"
+				/>
 			</N8nOption>
 			<N8nOption
 				v-for="item in filteredOptions"
@@ -209,25 +200,11 @@ const onCreateNewCredential = async () => {
 				</N8nTooltip>
 			</template>
 		</N8nSelect>
-		<div
+		<AiGatewayBalanceIndicator
 			v-if="isManagedSelected && managedOption?.pill && !filter"
-			data-test-id="credential-balance-indicator"
-			:class="$style.balanceIndicator"
-		>
-			<!-- Invisible copy of the selected label reserves its rendered width so the
-			     badge sits the same gap after it as in the dropdown row. -->
-			<span :class="$style.balanceLabelSizer" aria-hidden="true">{{ managedOption.label }}</span>
-			<N8nBadge
-				size="xxsmall"
-				:variant="
-					managedOption.pill.type === 'danger' || managedOption.pill.type === 'info'
-						? managedOption.pill.type
-						: 'success'
-				"
-			>
-				{{ managedOption.pill.text }}
-			</N8nBadge>
-		</div>
+			:label="managedOption.label"
+			:pill="managedOption.pill"
+		/>
 	</div>
 </template>
 
@@ -240,6 +217,8 @@ const onCreateNewCredential = async () => {
 		var(--credential-select-side-padding) + var(--credential-select-icon-size) +
 			var(--credential-select-icon-gap)
 	);
+	--credential-select-balance-gap: var(--spacing--xs);
+	--credential-select-balance-space: 44px;
 
 	position: relative;
 	flex: 1;
@@ -247,8 +226,7 @@ const onCreateNewCredential = async () => {
 	grid-template-areas: 'control';
 	width: 100%;
 
-	> :global(.n8n-select),
-	.balanceIndicator {
+	> :global(.n8n-select) {
 		grid-area: control;
 	}
 
@@ -271,7 +249,7 @@ const onCreateNewCredential = async () => {
 
 .selectWithBalance {
 	:global(.el-input__inner) {
-		padding-right: 44px;
+		padding-right: var(--credential-select-balance-space);
 	}
 }
 
@@ -380,42 +358,6 @@ const onCreateNewCredential = async () => {
 	flex-shrink: 0;
 	margin-left: auto;
 	color: var(--color--text--shade-1);
-}
-
-// Non-interactive balance pill rendered over the collapsed select.
-.balanceIndicator {
-	display: flex;
-	align-items: center;
-	align-self: center;
-	justify-self: start;
-	gap: var(--spacing--xs);
-	padding-left: var(--credential-select-label-padding);
-	max-width: calc(100% - 44px);
-	z-index: 1;
-	pointer-events: none;
-}
-
-// Mirrors the el-select trigger label width so the badge lands right after it.
-.balanceLabelSizer {
-	flex-shrink: 0;
-	font-size: var(--font-size--2xs);
-	white-space: nowrap;
-	visibility: hidden;
-}
-
-// Re-skin the balance/pill spans to a neutral badge, matching NodeCredentials.
-.balanceIndicator > span:not(.balanceLabelSizer),
-.credentialOption > .optionName + span {
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border-radius: var(--radius);
-	// N8nBadge draws a 1px border tinted to its variant; keep it transparent so the
-	// re-skinned pill stays fully neutral (box size unchanged).
-	border-color: transparent;
-	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
-	color: light-dark(var(--color--neutral-750), var(--color--neutral-150));
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--sm);
 }
 
 .newCredential {

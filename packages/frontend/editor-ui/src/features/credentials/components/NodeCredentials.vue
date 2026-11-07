@@ -74,11 +74,14 @@ import {
 } from '@n8n/api-types';
 import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
+import AiGatewayBalanceIndicator from './AiGatewayCredits/AiGatewayBalanceIndicator.vue';
+import AiGatewayBalancePill from './AiGatewayCredits/AiGatewayBalancePill.vue';
+import AiGatewayCredentialOption from './AiGatewayCredits/AiGatewayCredentialOption.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+import { getAiGatewayBalancePill } from '@/app/utils/formatters/aiGatewayBalanceFormatter';
 
 import {
-	N8nBadge,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
@@ -208,19 +211,7 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 const aiGateway = useAiGateway();
 const { openTopUp } = useAiGatewayTopUp();
 
-const balancePill = computed(() => {
-	const balance = aiGateway.balance.value;
-	if (balance === undefined) return undefined;
-	const depleted = balance <= 0;
-	return {
-		text: depleted
-			? i18n.baseText('aiGateway.wallet.noCredits')
-			: i18n.baseText('aiGateway.wallet.balanceRemaining', {
-					interpolate: { balance: `$${Number(balance).toFixed(2)}` },
-				}),
-		type: depleted ? ('danger' as const) : ('default' as const),
-	};
-});
+const balancePill = computed(() => getAiGatewayBalancePill(aiGateway.balance.value, i18n));
 
 function entryPlaceholder(credentialType: string): string {
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
@@ -1572,14 +1563,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						<div :class="$style.aiGatewayOnly" data-test-id="node-credentials-ai-gateway-only">
 							<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
 							<N8nText size="small">{{ N8N_CREDITS_LABEL }}</N8nText>
-							<N8nBadge
-								v-if="balancePill"
-								size="xxsmall"
-								:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
-								:class="$style.aiGatewayOnlyPill"
-							>
-								{{ balancePill.text }}
-							</N8nBadge>
+							<AiGatewayBalancePill v-if="balancePill" :pill="balancePill" />
 						</div>
 					</N8nTooltip>
 					<div :class="$style.edit">
@@ -1656,25 +1640,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							:label="N8N_CREDITS_LABEL"
 							:value="AI_GATEWAY_MANAGED_TAG"
 						>
-							<div :class="$style.credentialOption">
-								<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
-								<span :class="$style.entryText">
-									<N8nText :class="$style.optionName">
-										{{ i18n.baseText('aiGateway.picker.useN8nCredits') }}
-									</N8nText>
-									<N8nText :class="$style.entrySubtitle">
-										{{ i18n.baseText('aiGateway.picker.readyToRun') }}
-									</N8nText>
-								</span>
-								<N8nBadge
-									v-if="balancePill"
-									size="xxsmall"
-									:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
-									:class="$style.entryPill"
-								>
-									{{ balancePill.text }}
-								</N8nBadge>
-							</div>
+							<AiGatewayCredentialOption
+								:label="i18n.baseText('aiGateway.picker.useN8nCredits')"
+								:subtitle="i18n.baseText('aiGateway.picker.readyToRun')"
+								:pill="balancePill"
+							/>
 						</N8nOption>
 						<template #empty> </template>
 						<template #footer>
@@ -1758,25 +1728,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								:label="N8N_CREDITS_LABEL"
 								:value="AI_GATEWAY_MANAGED_TAG"
 							>
-								<div :class="$style.credentialOption">
-									<N8nIcon icon="wallet" size="large" :class="$style.optionIcon" />
-									<N8nText :class="$style.optionName">
-										{{ N8N_CREDITS_LABEL }}
-									</N8nText>
-									<N8nBadge
-										v-if="balancePill"
-										size="xxsmall"
-										:variant="balancePill.type === 'danger' ? 'danger' : 'success'"
-									>
-										{{ balancePill.text }}
-									</N8nBadge>
-									<N8nIcon
-										v-if="isAiGatewayManagedCredentials(type.name)"
-										icon="check"
-										size="large"
-										:class="$style.checkIcon"
-									/>
-								</div>
+								<AiGatewayCredentialOption
+									:label="N8N_CREDITS_LABEL"
+									:pill="balancePill"
+									:selected="isAiGatewayManagedCredentials(type.name)"
+								/>
 							</N8nOption>
 							<template v-for="row in buildCredentialRows(type.name, options)" :key="row.key">
 								<N8nOption
@@ -1890,27 +1846,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								</button>
 							</template>
 						</N8nSelect>
-						<div
-							v-if="showBalanceIndicator(type.name)"
-							data-test-id="credential-balance-indicator"
-							:class="[
-								$style.balanceIndicator,
-								{ [$style.balanceIndicatorMuted]: isBalanceIndicatorMuted(type.name) },
-							]"
-						>
-							<!-- Invisible copy of the selected label reserves its exact rendered
-							     width so the badge sits the same spacing--2xs gap after it as in
-							     the dropdown row, instead of a hardcoded label-width guess. -->
-							<span :class="$style.balanceLabelSizer" aria-hidden="true">{{
-								N8N_CREDITS_LABEL
-							}}</span>
-							<N8nBadge
-								size="xxsmall"
-								:variant="balancePill?.type === 'danger' ? 'danger' : 'success'"
-							>
-								{{ balancePill?.text }}
-							</N8nBadge>
-						</div>
+						<AiGatewayBalanceIndicator
+							v-if="showBalanceIndicator(type.name) && balancePill"
+							:label="N8N_CREDITS_LABEL"
+							:pill="balancePill"
+							:muted="isBalanceIndicatorMuted(type.name)"
+						/>
 						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
 							<N8nTooltip placement="top">
 								<template #content>{{ i18n.baseText('credentials.private.tooltip') }}</template>
@@ -2112,14 +2053,15 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 		var(--credential-select-side-padding) + var(--credential-select-icon-size) +
 			var(--credential-select-icon-gap)
 	);
+	--credential-select-balance-gap: var(--spacing--2xs);
+	--credential-select-balance-space: 35px;
 
 	position: relative;
 	flex: 1;
 	display: grid;
 	grid-template-areas: 'control';
 
-	> :global(.n8n-select),
-	.balanceIndicator {
+	> :global(.n8n-select) {
 		grid-area: control;
 	}
 
@@ -2225,10 +2167,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 	white-space: nowrap;
 }
 
-.entryPill {
-	margin-left: auto;
-}
-
 // Give the menu a comfortable floor width (wider than the compact trigger) so
 // the right-aligned balance badge clears the longest option text with a gap;
 // grows past this if content is longer. el-select pins the popper min-width
@@ -2299,52 +2237,8 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .selectWithBalance {
 	:global(.el-input__inner) {
-		padding-right: 35px;
+		padding-right: var(--credential-select-balance-space);
 	}
-}
-
-// Non-interactive status pill rendered over the select, like .dynamicIndicator.
-// The invisible sizer reserves the label's width so the pill lands the same
-// spacing--2xs gap after it as the dropdown row (see .balanceLabelSizer).
-.balanceIndicator {
-	display: flex;
-	align-items: center;
-	align-self: center;
-	justify-self: start;
-	gap: var(--spacing--2xs);
-	padding-left: var(--credential-select-label-padding);
-	max-width: calc(100% - 35px);
-	z-index: 1;
-	pointer-events: none;
-}
-
-// Mirrors the el-select trigger label (size small = 12px) so its width matches
-// the rendered selection exactly; hidden but still occupies layout space.
-.balanceLabelSizer {
-	flex-shrink: 0;
-	font-size: var(--font-size--2xs);
-	white-space: nowrap;
-	visibility: hidden;
-}
-
-.balanceIndicator > span:not(.balanceLabelSizer),
-.credentialOption > .optionName + span,
-.aiGatewayOnlyPill,
-.entryPill {
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border-radius: var(--radius);
-	// N8nBadge draws a 1px border tinted to its variant; keep it transparent so the
-	// re-skinned pill stays fully neutral (box size unchanged).
-	border-color: transparent;
-	background-color: light-dark(var(--color--neutral-200), var(--color--neutral-700));
-	color: light-dark(var(--color--neutral-750), var(--color--neutral-150));
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--sm);
-}
-
-.balanceIndicatorMuted {
-	opacity: 0.6;
 }
 
 .dynamicIndicator {
