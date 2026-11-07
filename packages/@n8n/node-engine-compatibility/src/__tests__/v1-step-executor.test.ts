@@ -30,6 +30,7 @@ import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
 import {
 	items,
+	noSubWorkflows,
 	stepRequest,
 	testAdditionalDataFactory,
 	testNodeTypes,
@@ -108,6 +109,7 @@ describe('V1StepExecutor', () => {
 		});
 		const resumeToken = vi.fn(() => 'minted');
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: testNodeTypes,
 			resumeToken,
 			additionalDataFactory: testAdditionalDataFactory,
@@ -134,6 +136,7 @@ describe('V1StepExecutor', () => {
 		const graph = graphWith('test.echoParam', { message: 'hi' });
 		const additionalDataFactory = vi.fn(testAdditionalDataFactory);
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: testNodeTypes,
 			additionalDataFactory,
 			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
@@ -497,6 +500,7 @@ describe('V1StepExecutor', () => {
 			const graph = graphWith('test.waitsUntil', { waitTill: '2026-10-01T12:00:00.000Z' });
 			const setExecutionStatus = vi.fn();
 			const executor = new V1StepExecutor({
+				resolveSubWorkflow: noSubWorkflows,
 				nodeTypes: testNodeTypes,
 				additionalDataFactory: async (context) => ({
 					...(await testAdditionalDataFactory(context)),
@@ -566,6 +570,7 @@ describe('V1StepExecutor', () => {
 			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
 			const execute = vi.spyOn(echo, 'execute');
 			const executor = new V1StepExecutor({
+				resolveSubWorkflow: noSubWorkflows,
 				nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => echo },
 				additionalDataFactory: testAdditionalDataFactory,
 				loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
@@ -766,14 +771,6 @@ describe('sub-workflows', () => {
 		expect(resolveSubWorkflow).toHaveBeenCalledTimes(1);
 	});
 
-	it('refuses the call when the host resolves no sub-workflows', async () => {
-		const graph = graphWith(EXECUTE_WORKFLOW_TYPE);
-
-		await expect(testStepExecutor(graph).execute(stepRequest(graph, 'n', input))).rejects.toThrow(
-			'This host cannot run sub-workflows',
-		);
-	});
-
 	it('refuses the call from any node but the Execute Sub-workflow node, asking the host for nothing', async () => {
 		const graph = graphWith('test.runsSubWorkflow');
 		const resolveSubWorkflow = vi.fn().mockResolvedValue(resolved);
@@ -820,6 +817,7 @@ describe('the v1 execution mode a node sees', () => {
 		} as unknown as INodeType;
 
 		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
 			nodeTypes: { ...testNodeTypes, getByNameAndVersion: () => reportsMode },
 			additionalDataFactory: async (): Promise<IWorkflowExecuteAdditionalData> =>
 				await testAdditionalDataFactory({

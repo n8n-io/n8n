@@ -113,8 +113,8 @@ export interface V1StepExecutorDeps {
 	 * Without it, the URLs carry a random token that the engine cannot verify.
 	 */
 	resumeToken?: (context: { executionId: string }) => string;
-	/** Absent in a host that runs no sub-workflows, where a call fails the node. */
-	resolveSubWorkflow?: SubWorkflowResolver;
+	/** Resolves the sub-workflow a node calls. */
+	resolveSubWorkflow: SubWorkflowResolver;
 }
 
 export type ExecutableNodeType = INodeType & { execute: NonNullable<INodeType['execute']> };
