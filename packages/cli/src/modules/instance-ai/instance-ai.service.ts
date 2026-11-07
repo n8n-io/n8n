@@ -63,6 +63,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createThreadApprovalContext,
 	orchestratorAgentId,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -863,12 +864,16 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
+			// Lets the SDK approval gate read and save "Always allow" grants of the thread.
+			...(approvalContext ? { approvalContext } : {}),
 			abortSignal: signal,
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
@@ -901,12 +906,16 @@ export class InstanceAiService {
 		agentRunId: string,
 		toolCallId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			runId: agentRunId,
+			// Mirrors the stream options: a decision on an SDK approval card can save a grant.
+			...(approvalContext ? { approvalContext } : {}),
 			toolCallId,
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
@@ -2746,7 +2755,13 @@ export class InstanceAiService {
 				tracing,
 			);
 
-			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(
+				user,
+				threadId,
+				runId,
+				signal,
+				environment.context,
+			);
 
 			streamReached = true;
 			await this.turnInput.onInputAccepted(environment, turnInputRuntime, turnInput, {
@@ -3855,6 +3870,7 @@ export class InstanceAiService {
 					opts.agentRunId,
 					opts.toolCallId,
 					opts.signal,
+					opts.orchestrationContext?.domainContext,
 				),
 				onResumeClaimed,
 			};
