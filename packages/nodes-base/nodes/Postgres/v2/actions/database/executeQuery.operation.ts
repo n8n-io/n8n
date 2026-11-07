@@ -73,17 +73,34 @@ export async function execute(
 
 		const nodeVersion = nodeOptions.nodeVersion as number;
 
-		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
+		const node = this.getNode();
+
+		const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
+
+		// For node version 2.5+ the values below are computed from the raw configured
+		// value, so resolving the whole option string here first evaluates every
+		// expression twice. When the raw value is a string with literal text outside
+		// its expressions, resolving it is guaranteed to produce a non-empty string,
+		// so the resolved value is not needed for the checks below and the resolution
+		// is skipped. Otherwise the value is still resolved, so single expressions
+		// that may resolve to a non-string value (array, number, null) keep their
+		// existing behavior.
+		const rawWithoutMarker =
+			typeof rawReplacements === 'string' ? rawReplacements.replace(/^=+/, '') : '';
+		const skipQueryReplacementResolution =
+			nodeVersion >= 2.5 &&
+			typeof rawReplacements === 'string' &&
+			getResolvables(rawWithoutMarker).join('') !== rawWithoutMarker;
+
+		let queryReplacement = skipQueryReplacementResolution
+			? rawReplacements
+			: this.getNodeParameter('options.queryReplacement', index, '');
 
 		if (typeof queryReplacement === 'number') {
 			queryReplacement = String(queryReplacement);
 		}
 
 		if (typeof queryReplacement === 'string') {
-			const node = this.getNode();
-
-			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
-
 			if (rawReplacements) {
 				if (nodeVersion >= 2.5) {
 					const rawValues = rawReplacements.replace(/^=+/, '');
