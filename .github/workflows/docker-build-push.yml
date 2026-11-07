@@ -758,6 +758,58 @@ jobs:
           DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
         run: node .github/scripts/attest-image-sbom.mjs
 
+  # The attestation jobs above write to GHCR only. This job copies their tags
+  # to Docker Hub, so users can verify the image they pull from there.
+  mirror-attestations-docker-hub:
+    name: Mirror Attestations to Docker Hub
+    needs:
+      [
+        determine-build-context,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-n8n-pc,
+        provenance-runners,
+        provenance-runners-distroless,
+        vex-attestation,
+        sbom-attestation,
+      ]
+    if: |
+      always() &&
+      inputs.create_attestations &&
+      needs.create_multi_arch_manifest.result == 'success' &&
+      needs.determine-build-context.outputs.push_to_docker == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout CI helpers
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Login to Docker registries
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: true
+          login-dockerhub: true
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Copy attestation tags from GHCR to Docker Hub
+        env:
+          DOCKER_HUB_NAMESPACE: ${{ secrets.DOCKER_USERNAME }}
+          N8N_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
+          N8N_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
+          N8N_PC_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_image }}
+          N8N_PC_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.n8n_pc_digest }}
+          RUNNERS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
+          RUNNERS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
+          DISTROLESS_IMAGE: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
+          DISTROLESS_DIGEST: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
+        run: node .github/scripts/docker/mirror-attestations.mjs
+
   security-scan:
     name: Security Scan
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]

@@ -491,7 +491,8 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  │   ├─ Build the application once on amd64                                │
 │  │   ├─ Build/push images on native amd64 + arm64 runners                  │
 │  │   └─ Merge manifests, then add release provenance                       │
-│  │       └─ Release VEX/SBOM attestations follow provenance                 │
+│  │       ├─ Release VEX/SBOM attestations follow provenance                 │
+│  │       └─ Attestation tags are copied from GHCR to Docker Hub             │
 │  ├─ create-github-release                                                  │
 │  ├─ create-sentry-release (sourcemaps)                                     │
 │  ├─ generate-sbom ────────────────▶ sbom-generation-callable.yml           │
@@ -804,6 +805,7 @@ Scripts in `.github/scripts/`:
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
+| `docker/mirror-attestations.mjs`| Copy image attestation tags from GHCR to Docker Hub | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
@@ -1048,7 +1050,7 @@ There are two, with different subjects and different consumers. They are not dup
 | **Scans** | the deployed npm closure in `compiled/` (`cdxgen -t pnpm`) | each pushed image, by digest (`syft`) |
 | **Covers** | npm only | OS packages **and** npm, as laid down in the image |
 | **Signing** | GitHub Attestation API, subject `./package.json` | `cosign attest`, subject = image digest |
-| **Output** | `sbom-source.cdx.json`, `THIRD_PARTY_LICENSES.md`, `vex.openvex.json` on the GitHub Release | attestation in the registry beside the image |
+| **Output** | `sbom-source.cdx.json`, `THIRD_PARTY_LICENSES.md`, `vex.openvex.json` on the GitHub Release | attestation beside the image on GHCR and Docker Hub |
 | **Consumer** | humans — legal/license compliance; backs `/third-party-licenses` | machines — `cosign verify-attestation`, admission control |
 
 Format is CycloneDX JSON 1.6 for both. Each pipeline pins the schema version, so a
@@ -1145,6 +1147,12 @@ cosign verify-attestation --type openvex \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ghcr.io/n8n-io/n8n:VERSION
 ```
+
+The attestation jobs sign the GHCR image. The `mirror-attestations-docker-hub` job then
+copies the attestation tags (`sha256-<hex>.att` from cosign, `sha256-<hex>` from
+`actions/attest`) to Docker Hub. Both registries publish the same index digest, so the
+same command works with `n8nio/n8n:VERSION` or `n8nio/runners:VERSION`. The job fails if
+the two digests differ, because the copied attestations would then match nothing.
 
 **Adding a CVE statement to security/vex.openvex.json:**
 ```json
