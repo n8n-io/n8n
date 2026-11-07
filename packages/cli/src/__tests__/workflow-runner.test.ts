@@ -1306,13 +1306,13 @@ describe('run', () => {
 				.mockResolvedValue();
 			const data = buildWebhookRunData();
 
+			// lastNode is synchronous: startup errors propagate so executeWebhook
+			// can respond with an error response. See webhook-helpers.ts:1634.
 			await expect(
-				runner.run(data, false, false, undefined, undefined, 'onReceived'),
-			).resolves.toBe('execution-id');
+				runner.run(data, false, false, undefined, undefined, 'lastNode'),
+			).rejects.toThrow(error);
 
-			await flushPromises();
-
-			expect(failExecutionSpy).toHaveBeenCalledWith(data, 'execution-id', error, undefined);
+			expect(failExecutionSpy).not.toHaveBeenCalled();
 		});
 
 		it('clears streaming heartbeat on execution/startup failures', async () => {
@@ -1321,7 +1321,6 @@ describe('run', () => {
 			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess').mockRejectedValue(
 				error,
 			);
-			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution').mockResolvedValue();
 
 			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
@@ -1336,10 +1335,8 @@ describe('run', () => {
 			};
 
 			await expect(
-				runner.run(data, false, false, undefined, undefined, 'onReceived'),
-			).resolves.toBe('execution-id');
-
-			await flushPromises();
+				runner.run(data, false, false, undefined, undefined, 'lastNode'),
+			).rejects.toThrow(error);
 
 			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
 			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
