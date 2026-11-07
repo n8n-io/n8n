@@ -79,7 +79,7 @@ function makeSandbox(
 function makeRuntime(
 	sandbox: TestWorkspaceSandbox,
 	filesystem: WorkspaceFilesystem,
-): AgentSandboxRuntime {
+): AgentSandboxRuntime<SandboxProvider> {
 	return {
 		provider: sandbox.provider,
 		sandbox,
@@ -91,7 +91,7 @@ function makeRuntime(
 }
 
 function makeRuntimeService(
-	runtime: AgentSandboxRuntime,
+	runtime: AgentSandboxRuntime<SandboxProvider>,
 ): ReturnType<typeof mock<AgentSandboxRuntimeService>> {
 	const service = mock<AgentSandboxRuntimeService>();
 	service.acquireKnowledgeSandbox.mockResolvedValue(runtime);

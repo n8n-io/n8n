@@ -305,6 +305,7 @@ catalog:
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
   '@microsoft/opentelemetry': 1.5.0
+  '@microsoft/mxc-sdk': 1.0.0
 
 catalogMode: strict
 
@@ -562,9 +563,11 @@ allowBuilds:
   esbuild: false
   eslint-plugin-n8n-nodes-base: false
   isolated-vm: true
+  koffi: false
   lefthook: false
   libpq: false
   msgpackr-extract: false
+  node-pty: false
   oracledb: false
   protobufjs: false
   puppeteer: false

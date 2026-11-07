@@ -1,7 +1,11 @@
 import {
+	canonicalizePath,
 	createFilesystem,
 	createSandbox,
 	getPromptWorkspaceRoot,
+	MxcLocalFilesystem,
+	MxcSandbox,
+	type MxcSandboxOptions,
 	type CommandResult,
 	type DaytonaSandboxConfig,
 	type FilesystemLifecycleHook,
@@ -16,6 +20,8 @@ import { Service } from '@n8n/di';
 import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from '@n8n/errors';
+import { homedir } from 'node:os';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { v5 as uuidv5 } from 'uuid';
 
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
@@ -57,8 +63,18 @@ interface SandboxStartOptions {
 	onFilesystemInit?: FilesystemLifecycleHook;
 }
 
-export interface AgentSandboxRuntime {
-	provider: SandboxProvider;
+function isInsideFolder(path: string, folder: string): boolean {
+	const fromFolder = relative(folder, path);
+	return fromFolder !== '..' && !fromFolder.startsWith(`..${sep}`) && !isAbsolute(fromFolder);
+}
+
+/** `mxc` runs agent workspaces on this host. Only agent workspaces can use it. */
+export type AgentSandboxProvider = SandboxProvider | 'mxc';
+
+export interface AgentSandboxRuntime<
+	TProvider extends AgentSandboxProvider = AgentSandboxProvider,
+> {
+	provider: TProvider;
 	sandbox: WorkspaceSandbox;
 	filesystem: WorkspaceFilesystem;
 	workspaceRoot: string;
@@ -122,7 +138,10 @@ export function sanitizeSandboxErrorDetail(value: string): string {
 
 @Service()
 export class AgentSandboxRuntimeService {
-	private readonly pendingSandboxAcquisitions = new Map<string, Promise<AgentSandboxRuntime>>();
+	private readonly pendingSandboxAcquisitions = new Map<
+		string,
+		Promise<AgentSandboxRuntime<SandboxProvider>>
+	>();
 
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
@@ -130,7 +149,18 @@ export class AgentSandboxRuntimeService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentRepository: AgentRepository,
 		private readonly sandboxSettingsService: SandboxSettingsService,
-	) {}
+	) {
+		const configured = this.agentsConfig.sandboxProvider.trim();
+		if (configured && configured !== 'mxc') {
+			this.logger.warn(
+				`Ignoring N8N_AGENTS_AI_SANDBOX_PROVIDER="${configured}". The only supported value is "mxc".`,
+			);
+		}
+	}
+
+	private isMxcWorkspaceProvider(): boolean {
+		return this.agentsConfig.sandboxProvider.trim() === 'mxc';
+	}
 
 	async warmKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
 		this.assertSandboxConfiguration(projectId, agentId);
@@ -155,6 +185,8 @@ export class AgentSandboxRuntimeService {
 			sandboxId,
 			buildWorkspaceLabels(projectId, agentId, principalHash),
 		);
+		if (this.isMxcWorkspaceProvider())
+			await this.destroyMxcWorkspace(projectId, agentId, sandboxId);
 	}
 
 	async destroyKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
@@ -178,6 +210,9 @@ export class AgentSandboxRuntimeService {
 		principalHash: AgentSandboxPrincipalHash,
 		options?: { onFilesystemInit?: FilesystemLifecycleHook },
 	): Promise<AgentSandboxRuntime> {
+		if (this.isMxcWorkspaceProvider()) {
+			return await this.acquireMxcWorkspace(projectId, agentId, principalHash, options);
+		}
 		const provider = this.sandboxSettingsService.getProvider();
 		const sandboxId = buildWorkspaceSandboxId({
 			instanceId: this.instanceSettings.instanceId,
@@ -208,7 +243,10 @@ export class AgentSandboxRuntimeService {
 		);
 	}
 
-	async acquireKnowledgeSandbox(projectId: string, agentId: string): Promise<AgentSandboxRuntime> {
+	async acquireKnowledgeSandbox(
+		projectId: string,
+		agentId: string,
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		const provider = this.sandboxSettingsService.getProvider();
 		const sandboxId = buildKnowledgeSandboxId({
 			instanceId: this.instanceSettings.instanceId,
@@ -246,7 +284,7 @@ export class AgentSandboxRuntimeService {
 		cacheKey: string,
 		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
-	): Promise<AgentSandboxRuntime> {
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
 		if (!pending) {
@@ -278,6 +316,93 @@ export class AgentSandboxRuntimeService {
 			throw new OperationalError('Agent knowledge sandbox does not support command execution');
 		}
 		return await sandbox.executeCommand(command, [], { timeout });
+	}
+
+	/**
+	 * Local agent workspace in Microsoft Execution Containers. The sandbox and its filesystem
+	 * are cheap to build and start lazily on first use, like the remote workspace sandboxes.
+	 */
+	private async acquireMxcWorkspace(
+		projectId: string,
+		agentId: string,
+		principalHash: AgentSandboxPrincipalHash,
+		options?: { onFilesystemInit?: FilesystemLifecycleHook },
+	): Promise<AgentSandboxRuntime<'mxc'>> {
+		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const sandboxId = buildWorkspaceSandboxId({
+			instanceId: this.instanceSettings.instanceId,
+			projectId,
+			agentId,
+			principalHash,
+		});
+		const sandbox = new MxcSandbox(await this.resolveMxcSandboxOptions(sandboxId));
+		const filesystem = new MxcLocalFilesystem(
+			sandbox,
+			options?.onFilesystemInit ? { onInit: options.onFilesystemInit } : undefined,
+		);
+		return {
+			provider: 'mxc',
+			sandbox,
+			filesystem,
+			workspaceRoot: sandbox.workspaceDir,
+			cacheKey: `mxc:workspace:${sandboxId}`,
+		};
+	}
+
+	private async destroyMxcWorkspace(
+		projectId: string,
+		agentId: string,
+		sandboxId: string,
+	): Promise<void> {
+		try {
+			await new MxcSandbox(await this.resolveMxcSandboxOptions(sandboxId)).deleteRemote();
+		} catch (error) {
+			this.logger.warn('Failed to delete local mxc agent workspace', {
+				projectId,
+				agentId,
+				sandboxId,
+				error: sanitizeSandboxErrorDetail(error instanceof Error ? error.message : String(error)),
+			});
+		}
+	}
+
+	private async resolveMxcSandboxOptions(sandboxId: string): Promise<MxcSandboxOptions> {
+		const { mxcWorkspaceRoot, mxcReadonlyPaths, mxcDenialsReportDir, sandboxTimeout } =
+			this.agentsConfig;
+		// Compare real paths, so that a symlinked root cannot point into the n8n user folder.
+		const workspaceRoot = await canonicalizePath(
+			resolve(mxcWorkspaceRoot.trim() || join(homedir(), 'n8n-agent-workspaces')),
+		);
+		const userFolder = await canonicalizePath(resolve(this.instanceSettings.n8nFolder));
+		if (isInsideFolder(workspaceRoot, userFolder)) {
+			// Agent commands are denied access to the n8n user folder, so no workspace could work.
+			throw new OperationalError(
+				`N8N_AGENTS_MXC_WORKSPACE_ROOT must be outside the n8n user folder (${this.instanceSettings.n8nFolder}).`,
+			);
+		}
+		// Grant real paths only, so that a symlink alias cannot expose the n8n user folder.
+		const readonlyPaths = await Promise.all(
+			mxcReadonlyPaths
+				.split(',')
+				.map((path) => path.trim())
+				.filter(Boolean)
+				.map(async (path) => await canonicalizePath(resolve(path))),
+		);
+		if (readonlyPaths.some((path) => isInsideFolder(path, userFolder))) {
+			throw new OperationalError(
+				`N8N_AGENTS_MXC_READONLY_PATHS must not include the n8n user folder (${this.instanceSettings.n8nFolder}).`,
+			);
+		}
+		return {
+			id: sandboxId,
+			workspaceRoot,
+			readonlyPaths,
+			// The n8n user folder holds the encryption key and the database.
+			deniedPaths: [userFolder],
+			...(mxcDenialsReportDir.trim() ? { denialsReportDir: mxcDenialsReportDir.trim() } : {}),
+			timeout: sandboxTimeout,
+			logger: this.logger,
+		};
 	}
 
 	isEnabled(): boolean {
@@ -348,7 +473,7 @@ export class AgentSandboxRuntimeService {
 		cacheKey: string,
 		lifecycle: SandboxLifecycle,
 		startOptions: SandboxStartOptions,
-	): Promise<AgentSandboxRuntime> {
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const config =
@@ -364,7 +489,7 @@ export class AgentSandboxRuntimeService {
 		agentId: string,
 		cacheKey: string,
 		startOptions: SandboxStartOptions,
-	): Promise<AgentSandboxRuntime> {
+	): Promise<AgentSandboxRuntime<SandboxProvider>> {
 		const { provider } = config;
 		const sandbox = await createSandbox(config, { logger: this.logger });
 		if (!sandbox?._start) {

@@ -1,3 +1,4 @@
+import { canonicalizePath, MxcLocalFilesystem, MxcSandbox } from '@n8n/agents/sandbox';
 import type {
 	DaytonaSandboxConfig,
 	SandboxProvider,
@@ -7,6 +8,9 @@ import type {
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { SandboxSettingsService } from '../../../services/sandbox-settings.service';
@@ -78,7 +82,7 @@ function makeSandboxSettingsService(
 function makeService({
 	configOverrides = {},
 	logger = mock<Logger>(),
-	instanceSettings = mock<InstanceSettings>({ instanceId }),
+	instanceSettings = mock<InstanceSettings>({ instanceId, n8nFolder: '/home/node/.n8n' }),
 	agentRepository = makeAgentRepository(),
 	sandboxSettingsService = makeSandboxSettingsService(),
 }: {
@@ -95,6 +99,10 @@ function makeService({
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
+			sandboxProvider: '',
+			mxcWorkspaceRoot: '',
+			mxcReadonlyPaths: '',
+			mxcDenialsReportDir: '',
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -356,5 +364,125 @@ describe('AgentSandboxRuntimeService', () => {
 			`agent-kb-${knowledgeSandboxId}`,
 			knowledgeSandboxId,
 		]);
+	});
+
+	describe('with N8N_AGENTS_AI_SANDBOX_PROVIDER=mxc', () => {
+		const mxcConfig: Partial<AgentsConfig> = {
+			sandboxProvider: 'mxc',
+			mxcWorkspaceRoot: '/srv/agent-workspaces',
+			mxcReadonlyPaths: '/data/reports, /data/exports',
+		};
+		const n8nFolder = '/home/node/.n8n';
+
+		it('builds a local mxc workspace without the shared sandbox factory', async () => {
+			const service = makeService({
+				configOverrides: mxcConfig,
+				instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder }),
+			});
+
+			const runtime = await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
+
+			// Paths are compared as real paths. On macOS, /home is itself a link.
+			const root = await canonicalizePath('/srv/agent-workspaces');
+			expect(createSandboxMock).not.toHaveBeenCalled();
+			expect(runtime.provider).toBe('mxc');
+			expect(runtime.sandbox).toBeInstanceOf(MxcSandbox);
+			expect(runtime.filesystem).toBeInstanceOf(MxcLocalFilesystem);
+			expect(runtime.workspaceRoot).toBe(join(root, workspaceSandboxId));
+			const sandbox = runtime.sandbox as MxcSandbox;
+			expect(sandbox.readonlyPaths).toEqual(['/data/reports', '/data/exports']);
+			expect(sandbox.deniedPaths).toContain(await canonicalizePath(n8nFolder));
+		});
+
+		it('refuses a workspace root inside the n8n user folder', async () => {
+			const service = makeService({
+				configOverrides: { ...mxcConfig, mxcWorkspaceRoot: `${n8nFolder}/workspaces` },
+				instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder }),
+			});
+
+			await expect(
+				service.acquireWorkspaceSandbox(projectId, agentId, principalHash),
+			).rejects.toThrow(/must be outside the n8n user folder/);
+		});
+
+		it('refuses a workspace root that is a symlink into the n8n user folder', async () => {
+			const base = mkdtempSync(join(tmpdir(), 'mxc-root-test-'));
+			try {
+				const userFolder = join(base, '.n8n');
+				mkdirSync(join(userFolder, 'inner'), { recursive: true });
+				symlinkSync(join(userFolder, 'inner'), join(base, 'workspaces'));
+				const service = makeService({
+					configOverrides: { ...mxcConfig, mxcWorkspaceRoot: join(base, 'workspaces') },
+					instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder: userFolder }),
+				});
+
+				await expect(
+					service.acquireWorkspaceSandbox(projectId, agentId, principalHash),
+				).rejects.toThrow(/must be outside the n8n user folder/);
+			} finally {
+				rmSync(base, { recursive: true, force: true });
+			}
+		});
+
+		it('refuses a read-only path that is a symlink into the n8n user folder', async () => {
+			const base = mkdtempSync(join(tmpdir(), 'mxc-readonly-test-'));
+			try {
+				const userFolder = join(base, '.n8n');
+				mkdirSync(userFolder);
+				symlinkSync(userFolder, join(base, 'reports'));
+				const service = makeService({
+					configOverrides: {
+						...mxcConfig,
+						mxcWorkspaceRoot: join(base, 'workspaces'),
+						mxcReadonlyPaths: join(base, 'reports'),
+					},
+					instanceSettings: mock<InstanceSettings>({ instanceId, n8nFolder: userFolder }),
+				});
+
+				await expect(
+					service.acquireWorkspaceSandbox(projectId, agentId, principalHash),
+				).rejects.toThrow(/must not include the n8n user folder/);
+			} finally {
+				rmSync(base, { recursive: true, force: true });
+			}
+		});
+
+		it('keeps the knowledge sandbox on the n8n Assistant provider', async () => {
+			const service = makeService({ configOverrides: mxcConfig });
+
+			await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(createSandboxMock).toHaveBeenCalledWith(
+				expect.objectContaining({ provider: 'daytona' }),
+				expect.anything(),
+			);
+		});
+
+		it('deletes the local workspace folder with the workspace sandbox only', async () => {
+			const root = mkdtempSync(join(tmpdir(), 'mxc-teardown-test-'));
+			try {
+				const workspace = join(await canonicalizePath(root), workspaceSandboxId);
+				mkdirSync(workspace);
+				const service = makeService({
+					configOverrides: { ...mxcConfig, mxcWorkspaceRoot: root },
+				});
+
+				await service.destroyKnowledgeSandbox(projectId, agentId);
+				expect(existsSync(workspace)).toBe(true);
+
+				await service.destroyWorkspaceSandbox(projectId, agentId, principalHash);
+				expect(existsSync(workspace)).toBe(false);
+			} finally {
+				rmSync(root, { recursive: true, force: true });
+			}
+		});
+	});
+
+	it('warns about an unsupported N8N_AGENTS_AI_SANDBOX_PROVIDER value', () => {
+		const logger = mock<Logger>();
+
+		makeService({ configOverrides: { sandboxProvider: 'docker' }, logger });
+
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('"docker"'));
 	});
 });
