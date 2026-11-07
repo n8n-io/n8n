@@ -174,7 +174,9 @@ function removeMarkdown(value: string): string {
 }
 
 function removeTags(value: string): string {
-	return value.replace(/<[^>]*>?/gm, '');
+	// Like an HTML parser, only treat < as the start of a tag when a letter, /, ! or ?
+	// follows it, so text such as "price < 100" keeps everything after the <.
+	return value.replace(/<[a-zA-Z/!?][^>]*>?/g, '');
 }
 
 function toDate(value: string): Date {
