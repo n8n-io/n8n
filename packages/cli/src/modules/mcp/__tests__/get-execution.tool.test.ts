@@ -349,10 +349,81 @@ describe('get-execution MCP tool', () => {
 				const data = (result.structuredContent as Record<string, unknown>).data as {
 					resultData: { runData: Record<string, unknown> };
 				};
-				expect(Object.keys(data.resultData.runData)).toEqual(['Node1']);
-			});
+			expect(Object.keys(data.resultData.runData)).toEqual(['Node1']);
+		});
 
-			test('truncates data items per node output', async () => {
+		test('does not leak the failing node input data when nodeNames is set', async () => {
+			const tool = createGetExecutionTool(
+				user,
+				executionRepository,
+				workflowFinderService,
+				telemetry,
+				executionRedactionServiceProxy,
+			);
+
+			const mockExecutionData = createEmptyRunExecutionData();
+			mockExecutionData.resultData.runData = {
+				Start: [
+					{
+						executionIndex: 0,
+						startTime: 0,
+						executionTime: 100,
+						source: [],
+						data: { main: [[{ json: {} }]] },
+					},
+				],
+			};
+			// A failed execution keeps the node that threw, together with its full
+			// input items, on the execution stack.
+			mockExecutionData.executionData = {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack: [
+					{
+						node: { name: 'Throw error' },
+						data: { main: [[{ json: { dummy_secret: 'DUMMY-SECRET-12345' } }]] },
+						source: null,
+					},
+				],
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			} as unknown as NonNullable<IRunExecutionData['executionData']>;
+
+			const mockExecution = {
+				id: 'execution-1',
+				workflowId: 'workflow-1',
+				mode: 'manual',
+				status: 'error',
+				startedAt: new Date('2025-01-01T00:00:00.000Z'),
+				stoppedAt: new Date('2025-01-01T00:01:00.000Z'),
+				retryOf: null,
+				retrySuccessId: null,
+				waitTill: null,
+				data: mockExecutionData,
+			};
+
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(mockWorkflow);
+			(executionPersistence.findWithUnflattenedData as Mock).mockResolvedValue(mockExecution);
+
+			const result = await tool.handler(
+				{
+					workflowId: 'workflow-1',
+					executionId: 'execution-1',
+					includeData: true,
+					nodeNames: ['Start'],
+					truncateData: 1,
+				},
+				{} as never,
+			);
+
+			expect(JSON.stringify(result.structuredContent)).not.toContain('DUMMY-SECRET-12345');
+			const data = (result.structuredContent as Record<string, unknown>).data as {
+				executionData: { nodeExecutionStack: unknown[] };
+			};
+			expect(data.executionData.nodeExecutionStack).toEqual([]);
+		});
+
+		test('truncates data items per node output', async () => {
 				const tool = createGetExecutionTool(
 					user,
 					executionRepository,
