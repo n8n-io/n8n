@@ -184,6 +184,7 @@ describe('useWorkflowsListStore', () => {
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			workflowPublishHistory: [],
+			settings: {},
 		};
 
 		it('should add workflow to activeWorkflows array', () => {

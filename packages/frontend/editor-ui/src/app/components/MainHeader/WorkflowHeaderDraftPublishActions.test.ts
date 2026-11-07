@@ -155,6 +155,7 @@ const createMockActiveVersion = (versionId: string) => ({
 	workflowPublishHistory: [],
 	name: 'Published Version',
 	description: null,
+	settings: {},
 });
 
 const triggerNode: INodeUi = {

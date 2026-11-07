@@ -352,6 +352,7 @@ describe('workflowDocument.store orchestration', () => {
 				workflowPublishHistory: [],
 				name: 'v1',
 				description: 'first',
+				settings: {},
 			};
 
 			const homeProject = { id: 'p-home' } as ProjectSharingData;
@@ -762,6 +763,7 @@ describe('workflowDocument.store orchestration', () => {
 				workflowPublishHistory: [],
 				name: 'v1',
 				description: null,
+				settings: {},
 			};
 
 			store.hydrate({
