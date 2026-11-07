@@ -354,6 +354,34 @@ describe('McpServer', () => {
 		});
 	});
 
+	describe('tools/call without arguments', () => {
+		it('should call the tool with no arguments when `arguments` is omitted', async () => {
+			const sessionId = 'session-no-args';
+			const tool = createMockTool('no_args_tool');
+			const server = createMockServer();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				setupHandlers(server: unknown): void;
+			};
+			await internals.sessionManager.registerSession(
+				sessionId,
+				server,
+				createMockTransport(sessionId),
+				[tool],
+			);
+			internals.setupHandlers(server);
+			const callTool = server.setRequestHandler.mock.calls[1][1] as unknown as (
+				request: { params: { name: string } },
+				extra: { sessionId?: string; requestId?: string },
+			) => Promise<{ isError?: boolean }>;
+
+			const result = await callTool({ params: { name: tool.name } }, { sessionId, requestId: '1' });
+
+			expect(result.isError).toBeFalsy();
+			expect(tool.invoke).toHaveBeenCalledWith({});
+		});
+	});
+
 	describe('handleDeleteRequest', () => {
 		it('should return 400 when no sessionId provided', async () => {
 			const response = createMockResponse();
