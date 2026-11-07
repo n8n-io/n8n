@@ -14,6 +14,7 @@ import type {
 	SandboxConfig,
 } from '@n8n/instance-ai';
 
+import type { InstanceAiCloudBrowserTaskService } from '../browser/instance-ai-cloud-browser-task.service';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 
 /** The thread memory that the turn setup reads and the agent writes. */
@@ -85,4 +86,9 @@ export interface AssistantTurnRuntime
 	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 	/** Detached background tasks of the thread that still run. */
 	getRunningBackgroundTasks?(): ManagedBackgroundTask[];
+	/** Starts browser tasks on the cloud browser, when the instance has it. */
+	cloudBrowser?: {
+		isAvailable(): Promise<boolean>;
+		startTask: InstanceAiCloudBrowserTaskService['startTask'];
+	};
 }

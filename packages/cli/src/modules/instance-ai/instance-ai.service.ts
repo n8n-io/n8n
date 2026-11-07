@@ -114,6 +114,8 @@ import { assertNever } from '@/utils';
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { InstanceAiCloudBrowserTaskService } from './browser/instance-ai-cloud-browser-task.service';
+import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -422,6 +424,8 @@ export class InstanceAiService {
 
 	private readonly terminalOutcome: InstanceAiTerminalOutcomeService;
 
+	private readonly cloudBrowserTaskService: InstanceAiCloudBrowserTaskService;
+
 	private readonly liveness: InstanceAiLivenessService<SuspendedRunState<User>>;
 
 	/** Owns DB persistence of suspended runs + orphan-confirmation restoration. */
@@ -467,6 +471,7 @@ export class InstanceAiService {
 		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
+		private readonly cloudBrowserService: InstanceAiCloudBrowserService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -572,6 +577,32 @@ export class InstanceAiService {
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
 			},
+		});
+		this.cloudBrowserTaskService = new InstanceAiCloudBrowserTaskService({
+			logger: this.logger,
+			eventBus: this.eventBus,
+			backgroundTaskManager: this.backgroundTasks,
+			cloudBrowserService: this.cloudBrowserService,
+			creditService: this.creditService,
+			tracing: this.tracing,
+			resolveTracingProxyConfig: async (user) =>
+				(await this.createProxyRunConfig(user)).tracingProxyConfig,
+			createRunDebugStepHooks: ({ taskId, threadId, title }) => {
+				if (!this.isRunDebugEnabled()) return undefined;
+				this.runDebugBuffer.ensure(taskId, threadId, `cloud browser: ${title}`);
+				return createRunDebugStepHooks(this.runDebugBuffer, { runId: taskId, threadId });
+			},
+			agentMemory: this.agentMemory,
+			runState: this.runState,
+			suspendedThreads: this.suspendedThreads,
+			startFollowUpRun: async (user, threadId, message, messageGroupId) =>
+				await this.startInternalFollowUpRun(
+					user,
+					threadId,
+					message,
+					messageGroupId,
+					'background_task_completed',
+				),
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -1687,6 +1718,7 @@ export class InstanceAiService {
 
 	async shutdown(): Promise<void> {
 		this.liveness.shutdown();
+		this.cloudBrowserTaskService.shutdown();
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);
@@ -2072,6 +2104,11 @@ export class InstanceAiService {
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
+			cloudBrowser: {
+				isAvailable: async () => await this.cloudBrowserService.isAvailable(),
+				startTask: async (input, runOptions) =>
+					await this.cloudBrowserTaskService.startTask(input, runOptions),
+			},
 		};
 	}
 
@@ -2170,6 +2207,25 @@ export class InstanceAiService {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Delivers pending cloud browser task results to the thread's orchestrator after a run ends.
+	 * This handles tasks that finished while the run was active. Every run calls this method when
+	 * it ends, but the method skips delivery if the cloud browser is disabled or unavailable.
+	 * It logs errors without propagating them to the calling run.
+	 */
+	private async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
+		try {
+			if (!this.settingsService.isCloudBrowserEnabled()) return;
+			if (!(await this.cloudBrowserService.isAvailable())) return;
+			await this.cloudBrowserTaskService.deliverPendingResults(user, threadId);
+		} catch (error) {
+			this.logger.error('Failed to deliver the cloud browser task results', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/**
@@ -3261,6 +3317,7 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+					await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {
@@ -4402,6 +4459,7 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+					await this.maybeDeliverCloudBrowserTaskResults(opts.user, opts.threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {
