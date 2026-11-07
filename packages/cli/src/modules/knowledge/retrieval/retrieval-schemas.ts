@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
 
-import { hasControlCharacter } from './agent-knowledge-storage';
+import { hasControlCharacter } from '@/modules/agents/agent-knowledge-storage';
 
 const MAX_SEARCH_PATTERN_LENGTH = 500;
 const MAX_GLOB_PATTERN_LENGTH = 255;

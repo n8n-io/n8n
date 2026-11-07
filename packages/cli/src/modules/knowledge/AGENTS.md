@@ -6,19 +6,19 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 
 The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation is moving here from `packages/cli/src/modules/agents/` in steps, with no user-facing change.
 
-Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. File upload, storage and retrieval implementation still live in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
+Vector-store construction, embedding credential resolution and connection testing now live in this module. Agents calls them and supplies the credential provider. The retrieval shell commands, their parsers and the request and result schemas live in `retrieval/`. File upload, storage and the sandbox mirror still live in Agents. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
 ## Boundary
 
 Three contracts at the module root define the file knowledge boundary. File knowledge code that moves into this module implements against them. Change them by agreement of everyone working on the module, not in a review comment.
 
 - `knowledge-consumer-scope.ts`: identifies the consumer a call is made for and bounds the knowledge it can reach. `KnowledgeConsumerScope` is `{ kind: 'agent', projectId, agentId }`. Keep `projectId`: the sandbox id is derived from the instance id, the project id and the agent id, and it must stay byte-identical.
-- `knowledge-retriever.ts`: what the module offers to consumers. `hasFiles`, `findFiles`, `searchText` and `readFile` take a scope and the request types the agents module uses, and return its result types unchanged, because tool outputs must stay identical.
+- `knowledge-retriever.ts`: what the module offers to consumers. `hasFiles`, `findFiles`, `searchText` and `readFile` take a scope and the request types in `retrieval/retrieval-schemas.ts`, and return its result types unchanged, because tool outputs must stay identical.
 - `knowledge-sandbox-provider.ts`: what the module needs from a consumer. A sandbox to mirror files into, command execution in it, warm-up and teardown. The agents module implements it over its sandbox runtime.
 
 The agents module keeps the controllers, `getAgentOrThrow` and every user and project permission check, the three `Tool` definitions, the workspace half of the sandbox runtime, and the `AgentKnowledgeService` facade. The knowledge module never checks project membership. Ownership is the caller's job.
 
-The contracts are compile-time only; nothing binds them at runtime yet. The change that first implements each one adds its binding: a concrete `@Service` for `KnowledgeRetriever` that consumers inject by class, and a registry `@Service` in this module for `KnowledgeSandboxProvider` that the agents module registers its adapter with during `init()` (the pattern of `workflow-index/agent-usage-provider-proxy.service.ts`). Until the retrieval schemas move here, `knowledge-retriever.ts` takes its request and result types from the agents module through `import type`, which is erased at runtime.
+`KnowledgeSandboxProvider` is bound at runtime through `knowledge-sandbox-provider-registry.ts`. `KnowledgeSandboxProviderRegistry` is a `@Service` that implements the contract and delegates to the provider a consumer registers with it (the pattern of `workflow-index/agent-usage-provider-proxy.service.ts`). The agents module registers `AgentKnowledgeSandboxProvider`, its adapter over `AgentSandboxRuntimeService`, during `init()`. Code in this module injects the registry class, never the adapter. A call before any registration throws: the module cannot mirror or search files without a sandbox, so that is a wiring mistake, not a state to degrade into. `destroy` is the exception: teardown never throws, and without a provider there is no sandbox to delete. `KnowledgeRetriever` has no runtime binding yet; the change that first implements it adds a concrete `@Service` that consumers inject by class.
 
 Vector-store operations use a caller-supplied `CredentialProvider` from `@n8n/agents`. Agents supplies its `AgentsCredentialProvider` adapter.
 

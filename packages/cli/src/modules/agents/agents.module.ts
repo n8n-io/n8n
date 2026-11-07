@@ -15,6 +15,12 @@ export class AgentsModule implements ModuleInterface {
 		const { registerSkillUsage } = await import('./register-skill-usage.js');
 		registerSkillUsage();
 
+		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
+		const { registerKnowledgeSandboxProvider } = await import(
+			'./register-knowledge-sandbox-provider.js'
+		);
+		registerKnowledgeSandboxProvider();
+
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
 		await import('./agent-workflow-tool-resume.service.js');

@@ -21,8 +21,7 @@ import {
 	parseRipgrepCountOutput,
 	parseRipgrepFilesOutput,
 	parseRipgrepOutput,
-} from './agent-knowledge-commands';
-import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
+} from '@/modules/knowledge/retrieval/commands';
 import {
 	assertValidKnowledgeFilePath,
 	DEFAULT_GLOB_FILES_LIMIT,
@@ -37,7 +36,9 @@ import {
 	type ReadKnowledgeResult,
 	type SearchKnowledgeRequest,
 	type SearchKnowledgeResult,
-} from './agent-knowledge-retrieval';
+} from '@/modules/knowledge/retrieval/retrieval-schemas';
+
+import { AgentKnowledgeFileStore } from './agent-knowledge-file-store';
 import {
 	assertKnowledgePathSegment,
 	getAgentKnowledgePaths,
