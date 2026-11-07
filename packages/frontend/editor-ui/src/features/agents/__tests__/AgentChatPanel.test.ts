@@ -435,6 +435,7 @@ describe('AgentChatPanel', () => {
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			attachmentCapabilities: ProviderAttachmentCapabilities;
+			acceptedMimeTypes: string;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
 			increaseBudget: (payload: {
@@ -4235,6 +4236,74 @@ describe('AgentChatPanel', () => {
 			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
 				'',
 				[supported],
+				expect.any(Function),
+				undefined,
+			);
+		});
+
+		it('shows a toast for a file that the composer rejects by type', async () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				acceptedMimeTypes: 'text/csv,.csv',
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+			const zip = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+
+			chatInput.vm.$emit('files-rejected', [zip]);
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledExactlyOnceWith({
+				type: 'error',
+				title: 'archive.zip is not a supported file type',
+			});
+		});
+
+		it('uses the accepted types of the host instead of the capabilities', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: false, pdf: false, audio: false },
+				acceptedMimeTypes: 'text/csv,.csv',
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(true);
+			expect(chatInput.props('acceptedMimeTypes')).toBe('text/csv,.csv');
+		});
+
+		it('hides the attach button when the host accepts no types', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: true, pdf: true, audio: false },
+				acceptedMimeTypes: '',
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(false);
+		});
+
+		it('accepts a file by the accepted types of the host, and rejects other files', async () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				acceptedMimeTypes: 'text/csv,.csv',
+			});
+			// Some browsers report a CSV file as an Excel file.
+			const csv = new File(['a,b'], 'data.csv', { type: 'application/vnd.ms-excel' });
+			const zip = new File(['zip'], 'archive.zip', { type: 'application/zip' });
+
+			(
+				wrapper.vm as unknown as {
+					sendMessageFromOutside: (message: string, files?: File[]) => void;
+				}
+			).sendMessageFromOutside('', [csv, zip]);
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledExactlyOnceWith({
+				type: 'error',
+				title: 'archive.zip is not a supported file type',
+			});
+			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+				'',
+				[csv],
 				expect.any(Function),
 				undefined,
 			);

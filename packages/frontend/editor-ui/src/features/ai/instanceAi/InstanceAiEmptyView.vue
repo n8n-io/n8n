@@ -125,7 +125,7 @@ import {
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import {
-	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	clearAssistantAgentLaunch,
 	discardPendingAssistantAgentMessage,
 	stashAssistantAgentLaunch,
@@ -713,6 +713,11 @@ const composerAttachOnlyMimeTypes = computed(() =>
 		: undefined,
 );
 
+// The Assistant agent accepts only the files it can read. Check them on drop, not at send.
+const composerAcceptedMimeTypes = computed(() =>
+	settingsStore.isAssistantAgentEnabled ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
+);
+
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 // Layout changes mount a new, empty composer.
 watch(chatInputRef, () => {
@@ -962,7 +967,7 @@ async function startAssistantAgentThread(
 	restoreDraft: () => boolean,
 	acceptDraft: () => void,
 ) {
-	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
+	const acceptString = ASSISTANT_AGENT_ACCEPTED_MIME_TYPES;
 	const fileAttachments: InstanceAiFileAttachment[] = [];
 	for (const attachment of attachments ?? []) {
 		if (attachment.type !== 'file') continue;
@@ -1207,6 +1212,7 @@ async function handleWorkflowPreviewExampleUse(
 						:mention-project-id="selectedProject"
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
 						:attach-only-mime-types="composerAttachOnlyMimeTypes"
+						:accepted-mime-types="composerAcceptedMimeTypes"
 						v-bind="
 							// Experiment cleanup (124_workflow_previews_above_assistant)
 							showWorkflowPreviewsAboveAssistant
