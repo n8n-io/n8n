@@ -66,7 +66,9 @@ export async function execute(
 		let query = this.getNodeParameter('query', index) as string;
 
 		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
+			// Replacer function so `$` patterns (e.g. `$&`, `$$`) in the value are inserted literally
+			const resolved = this.evaluateExpression(resolvable, index) as string;
+			query = query.replace(resolvable, () => resolved);
 		}
 
 		let values: QueryValue[] = [];
