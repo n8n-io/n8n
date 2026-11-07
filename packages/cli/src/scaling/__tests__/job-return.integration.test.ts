@@ -1,5 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import Bull from 'bull';
+import Bull from '@n8n/bull';
 import { Redis } from 'ioredis';
 import { once } from 'node:events';
 

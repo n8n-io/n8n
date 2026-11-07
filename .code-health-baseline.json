@@ -2000,6 +2000,28 @@
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "b44bfdcf5ae3"
 			}
+		],
+		"packages/@n8n/bull/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 28,
+				"message": "cron-parser@^4.2.1 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
+				"hash": "8ba647babdbf"
+			},
+			{
+				"rule": "catalog-violations",
+				"line": 29,
+				"message": "get-port appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "f10b2bee9ad2"
+			}
+		],
+		"packages/quality/environments/containers/package.json": [
+			{
+				"rule": "catalog-violations",
+				"line": 43,
+				"message": "get-port appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "9722a6664d25"
+			}
 		]
 	}
 }

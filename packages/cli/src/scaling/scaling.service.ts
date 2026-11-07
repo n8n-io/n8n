@@ -103,7 +103,7 @@ export class ScalingService {
 	async setupQueue() {
 		if (this.queueByName.size > 0) return;
 
-		const { default: BullQueue } = await import('bull');
+		const { default: BullQueue } = await import('@n8n/bull');
 		const { RedisClientService } = await import('@n8n/backend-services');
 
 		const service = Container.get(RedisClientService);

@@ -1,5 +1,5 @@
 import type { RunningJobSummary } from '@n8n/api-types';
-import type Bull from 'bull';
+import type Bull from '@n8n/bull';
 import type {
 	ExecutionError,
 	ExecutionStatus,
