@@ -241,6 +241,7 @@ export class ActiveExecutions {
 			)
 				.catch((error: unknown) => {
 					const executionError = error instanceof Error ? error : new Error(getErrorMessage(error));
+					this.responseModes.delete(executionId);
 					this.logger.error('Failed to reserve capacity for onReceived execution', {
 						executionId,
 						error: executionError,

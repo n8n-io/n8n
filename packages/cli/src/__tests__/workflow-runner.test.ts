@@ -121,7 +121,6 @@ beforeEach(async () => {
 	vi.restoreAllMocks();
 	const activeExecutions = Container.get(ActiveExecutions);
 	vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
-	vi.spyOn(activeExecutions, 'has').mockReturnValue(true);
 	vi.spyOn(activeExecutions, 'getStatus').mockReturnValue('new');
 	vi.clearAllMocks();
 	vi.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
@@ -890,7 +889,7 @@ describe('run', () => {
 		await runner.run(data, undefined, false, existingExecution);
 
 		// ASSERT
-		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution, undefined);
 	});
 
 	describe('storedAt', () => {
@@ -1021,7 +1020,7 @@ describe('run', () => {
 			// ASSERT
 			expect(executionId).toBe('1');
 			expect(startSpy).not.toHaveBeenCalled();
-			expect(addSpy).toHaveBeenCalledWith(data, undefined);
+			expect(addSpy).toHaveBeenCalledWith(data, undefined, undefined);
 		});
 	});
 
@@ -1145,6 +1144,9 @@ describe('run', () => {
 	});
 
 	describe('webhook response modes', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(ActiveExecutions), 'has').mockReturnValue(true);
+		});
 		const buildWebhookRunData = () =>
 			mock<IWorkflowExecutionDataProcess>({
 				executionMode: 'webhook',
@@ -1192,6 +1194,21 @@ describe('run', () => {
 			expect(permissionCheckSpy).not.toHaveBeenCalled();
 		});
 
+		it('starts an onReceived execution after activation completes', async () => {
+			mockRunnerStartDeps();
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			const runMainProcessSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+			await flushPromises();
+
+			expect(runMainProcessSpy).toHaveBeenCalledTimes(1);
+		});
 		it('fails an onReceived execution when background activation rejects', async () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
@@ -1269,7 +1286,13 @@ describe('run', () => {
 
 			await flushPromises();
 
-			expect(failExecutionSpy).toHaveBeenCalledWith(data, 'execution-id', error, undefined);
+			expect(failExecutionSpy).toHaveBeenCalledWith(
+				data,
+				'execution-id',
+				error,
+				undefined,
+				undefined,
+			);
 		});
 
 		it('fails the execution when workflow startup throws', async () => {
@@ -1283,9 +1306,9 @@ describe('run', () => {
 				.mockResolvedValue();
 			const data = buildWebhookRunData();
 
-			await expect(runner.run(data, false, false, undefined, undefined, 'lastNode')).resolves.toBe(
-				'execution-id',
-			);
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
 
 			await flushPromises();
 
@@ -1312,9 +1335,9 @@ describe('run', () => {
 				httpResponse: mockResponse,
 			};
 
-			await expect(runner.run(data, false, false, undefined, undefined, 'lastNode')).resolves.toBe(
-				'execution-id',
-			);
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
 
 			await flushPromises();
 
@@ -1360,7 +1383,14 @@ describe('run', () => {
 				workflowData: plainWorkflowData,
 			};
 
-			await (runner as unknown as WorkflowRunnerInternals).runMainProcess('execution-id', data);
+			await (runner as unknown as WorkflowRunnerInternals).runMainProcess(
+				'execution-id',
+				data,
+				undefined,
+				undefined,
+				undefined,
+				true,
+			);
 
 			expect(setRunningSpy).not.toHaveBeenCalled();
 		});

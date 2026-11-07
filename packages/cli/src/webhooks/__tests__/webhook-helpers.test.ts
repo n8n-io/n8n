@@ -783,23 +783,14 @@ describe('executeWebhook', () => {
 	});
 
 	it('maps pending onReceived admission limit errors to HTTP 429', async () => {
-		mockInstance(AuthService);
-		mockInstance(WebhookService, {
-			runWebhook: vi.fn().mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] }),
-		});
-		mockInstance(WorkflowStatisticsService, {
-			emit: vi.fn(),
-		});
-		mockInstance(OwnershipService, {
-			getWorkflowProjectCached: vi.fn().mockResolvedValue(undefined),
-		});
+		webhookService.runWebhook.mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] });
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(undefined);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 			{} as IWorkflowExecuteAdditionalData,
 		);
 
 		// Mock WorkflowRunner.run via Container
-		const mockWorkflowRunner = mockInstance(WorkflowRunner);
-		mockWorkflowRunner.run.mockRejectedValue(new AdmissionLimitError());
+		workflowRunner.run.mockRejectedValue(new AdmissionLimitError());
 
 		const workflowStartNode = mock<INode>({
 			name: 'Webhook',

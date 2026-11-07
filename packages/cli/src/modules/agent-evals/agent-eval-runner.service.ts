@@ -16,7 +16,7 @@ import type {
 	JsonObject,
 	JsonValue,
 } from 'n8n-workflow';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify, ManualExecutionCancelledError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -530,19 +530,38 @@ export class AgentEvalRunnerService {
 		// Keep the raw throttle promise: the aborted branch reacts to it rather
 		// than to a flag, which a grant racing the abort could leave stale.
 		const acquire = this.concurrencyControl.throttle({ mode: 'evaluation', executionId });
-		const outcome = await Promise.race([acquire.then(() => 'acquired' as const), aborted]);
+		const outcome = await Promise.race([
+			acquire.then(
+				() => ({ type: 'acquired' }) as const,
+				(error: unknown) => {
+					if (error instanceof ManualExecutionCancelledError) return { type: 'cancelled' } as const;
+					this.logger.warn('Failed to acquire evaluation concurrency slot', {
+						executionId,
+						error,
+					});
+					return { type: 'error', error } as const;
+				},
+			),
+			aborted.then(() => ({ type: 'aborted' }) as const),
+		]);
 		if (onAbort) signal.removeEventListener('abort', onAbort);
 
-		if (outcome === 'aborted') {
+		if (outcome.type === 'cancelled') return false;
+		if (outcome.type === 'error') throw outcome.error;
+
+		if (outcome.type === 'aborted') {
 			// Every enqueue must be balanced exactly once. The queue array is the
 			// single source of truth: `remove` evicts the entry if it is still
 			// queued (a no-op otherwise); the `.then` releases if the slot was — or
 			// gets — granted, which happens when a concurrent `release` dequeues us
 			// at the same tick the abort fires. The two are mutually exclusive: a
-			// removed entry's throttle promise never resolves, so the `.then` never
-			// runs for it — no double release, and no leaked slot.
+			// Removing a queued entry rejects its promise. Handle that rejection
+			// while still releasing the slot if a concurrent dequeue grants it.
 			this.concurrencyControl.remove({ mode: 'evaluation', executionId });
-			void acquire.then(() => this.concurrencyControl.release({ mode: 'evaluation' }));
+			void acquire.then(
+				() => this.concurrencyControl.release({ mode: 'evaluation' }),
+				() => undefined,
+			);
 			return false;
 		}
 		return true;

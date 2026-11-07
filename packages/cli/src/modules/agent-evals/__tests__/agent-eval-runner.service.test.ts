@@ -9,6 +9,7 @@ import type {
 	User,
 } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
+import { ManualExecutionCancelledError } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -937,7 +938,18 @@ describe('AgentEvalRunnerService', () => {
 			);
 			// Never granted a slot: on a 1-concurrency plan this is the run that would
 			// otherwise sit here until the process restarts.
-			concurrencyControl.throttle.mockImplementation(async () => await new Promise<void>(() => {}));
+			let rejectThrottle = (_error: Error) => {
+				throw new Error('Throttle was not queued');
+			};
+			concurrencyControl.throttle.mockImplementation(
+				async () =>
+					await new Promise<void>((_resolve, reject) => {
+						rejectThrottle = reject;
+					}),
+			);
+			concurrencyControl.remove.mockImplementation(({ executionId }) => {
+				rejectThrottle(new ManualExecutionCancelledError(executionId));
+			});
 
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await vi.advanceTimersByTimeAsync(30 * 60_000);

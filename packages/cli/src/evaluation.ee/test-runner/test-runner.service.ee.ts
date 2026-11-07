@@ -865,17 +865,29 @@ export class TestRunnerService {
 							});
 							const acquireRace = this.concurrencyControlService
 								.throttle({ mode: 'evaluation', executionId: caseTrackingId })
-								.then(() => {
-									throttleAcquired = true;
-									return 'acquired' as const;
-								});
+								.then(
+									() => {
+										throttleAcquired = true;
+										return 'acquired' as const;
+									},
+									(error: unknown) => {
+										if (error instanceof ManualExecutionCancelledError) return 'cancelled' as const;
+										this.logger.warn(
+											'Failed to acquire evaluation concurrency slot for test case',
+											{
+												workflowId,
+												testRunId: testRun.id,
+												error,
+											},
+										);
+										throw error;
+									},
+								);
 							const acquired = await Promise.race([acquireRace, abortRace]);
 
-							if (acquired === 'aborted') {
-								// Abort won the race. If throttle was already acquired (queue had
-								// immediate capacity, microtask beat abort), release the slot;
-								// otherwise remove() the possibly-queued entry (no-op if not
-								// queued). Both defensive against scheduler ordering quirks.
+							if (acquired !== 'acquired') {
+								// Abort or queue removal won the race. Release a slot that was
+								// granted before abort; otherwise remove the queued entry.
 								if (throttleAcquired) {
 									this.concurrencyControlService.release({ mode: 'evaluation' });
 								} else {

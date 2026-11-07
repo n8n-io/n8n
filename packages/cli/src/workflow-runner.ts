@@ -530,6 +530,7 @@ export class WorkflowRunner {
 					shouldReloadStaticData,
 					existingExecution,
 					executionWorkflow,
+					this.executionsConfig.mode === 'regular' || existingExecution !== undefined,
 				);
 			}
 		} catch (error) {
@@ -632,7 +633,14 @@ export class WorkflowRunner {
 			if (shouldEnqueue) {
 				await this.enqueueExecution(executionId, workflowId, data, loadStaticData, realtime);
 			} else {
-				await this.runMainProcess(executionId, data, false, undefined, executionWorkflow);
+				await this.runMainProcess(
+					executionId,
+					data,
+					false,
+					undefined,
+					executionWorkflow,
+					this.executionsConfig.mode === 'regular',
+				);
 			}
 		} catch (error) {
 			heartbeat?.stop();
@@ -708,6 +716,7 @@ export class WorkflowRunner {
 		loadStaticData?: boolean,
 		existingExecution?: ResumableExecution,
 		executionWorkflow?: Workflow,
+		executionAlreadyMarkedRunning = false,
 	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
@@ -762,7 +771,7 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
-		if (this.activeExecutions.getStatus(executionId) !== 'running') {
+		if (!executionAlreadyMarkedRunning) {
 			await this.executionRepository.setRunning(executionId);
 		}
 

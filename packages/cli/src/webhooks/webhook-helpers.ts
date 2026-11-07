@@ -1642,10 +1642,12 @@ export async function executeWebhook(
 
 		const error = ensureError(e);
 		if (error instanceof AdmissionLimitError) {
-			responder.respondWith({
-				data: { message: error.message },
-				responseCode: 429,
-			});
+			if (!responder.hasResponded) {
+				responder.respondWith({
+					data: { message: error.message },
+					responseCode: 429,
+				});
+			}
 			return;
 		}
 		let responseError: Error;

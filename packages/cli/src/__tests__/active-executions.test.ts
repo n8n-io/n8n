@@ -608,6 +608,7 @@ describe('ActiveExecutions', () => {
 			executionRepository.setRunning.mockRejectedValueOnce(new Error('set running failed'));
 
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
+			activeExecutions.setResponseMode(executionId, 'onReceived');
 			const postExecutePromise = activeExecutions.getPostExecutePromise(executionId);
 
 			await expect(activeExecutions.waitForActivation(executionId)).rejects.toThrow(
@@ -617,6 +618,7 @@ describe('ActiveExecutions', () => {
 
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(activeExecutions.getResponseMode(executionId)).toBeUndefined();
 
 			const nextExecutionId = 'next-webhook';
 			await realConcurrencyControl.throttle({ mode: 'webhook', executionId: nextExecutionId });
