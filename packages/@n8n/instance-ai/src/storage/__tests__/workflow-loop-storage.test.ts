@@ -5,6 +5,7 @@ import type {
 	WorkflowLoopState,
 	AttemptRecord,
 } from '../../workflow-loop/workflow-loop-state';
+import { prepareVerificationRun } from '../../tools/orchestration/verification/prepare-run';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
 import { WorkflowLoopStorage } from '../workflow-loop-storage';
@@ -159,6 +160,37 @@ describe('WorkflowLoopStorage', () => {
 	});
 
 	describe('getWorkItem', () => {
+		it('reads stored verification pins and drops the unused pin-data flag', async () => {
+			const state = makeState();
+			vi.mocked(memory.getThread).mockResolvedValue({
+				...baseThread,
+				metadata: {
+					instanceAiWorkflowLoop: {
+						'wi-1': {
+							state,
+							attempts: [],
+							lastBuildOutcome: {
+								...makeOutcome(),
+								verificationPinData: { 'Old Node': [{ _mockedCredential: 'test' }] },
+								usesWorkflowPinDataForVerification: true,
+							},
+						},
+					},
+				},
+			});
+
+			const record = await storage.getWorkItem('thread-1', 'wi-1');
+			expect(record?.lastBuildOutcome).not.toHaveProperty('usesWorkflowPinDataForVerification');
+			if (!record?.lastBuildOutcome) throw new Error('Missing stored outcome');
+			const result = prepareVerificationRun(record.lastBuildOutcome, {});
+			expect(result.kind).toBe('ready');
+			if (result.kind === 'ready') {
+				expect(result.prepared.verificationPinData).toEqual({
+					'Old Node': [{ _mockedCredential: 'test' }],
+				});
+			}
+		});
+
 		it('returns work item from thread metadata', async () => {
 			const state = makeState();
 			const attempts = [makeAttempt()];

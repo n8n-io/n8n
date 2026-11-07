@@ -31,4 +31,4 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
   Example: \`sessionKey: nodeJson(telegramTrigger, 'message.chat.id')\`
 
 - Additional subnode factories (all follow the same pattern as \`languageModel()\` and \`tool()\`):
-  \`memory()\`, \`outputParser()\`, \`embeddings()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\``;
+  \`memory()\`, \`outputParser()\`, \`embedding()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\``;
