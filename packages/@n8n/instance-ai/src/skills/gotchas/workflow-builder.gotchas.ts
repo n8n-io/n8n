@@ -81,6 +81,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'insert-node-replaces-payload',
+			phase: 'editing',
 			text: "Inserting a write/create/send node into A→B replaces what B receives with that node's API response. Branch it in parallel, move it upstream, or make B read `$('Data Node')`.",
 			appliesWhen:
 				'Editing an existing workflow to insert a new create, write, log or send node between two connected nodes.',
@@ -205,6 +206,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'keep-node-ids-and-layout',
+			phase: 'editing',
 			text: 'When editing a saved workflow, keep every `config.id` exactly as `get_workflow_as_code` wrote it, omit `id` on new nodes, and never add `position`.',
 			appliesWhen: 'Editing, fixing or extending an existing saved workflow from its code.',
 			fixes: 'Edits changed node ids or positions, which reset state and layout.',
@@ -255,6 +257,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'resolved-credentials-are-connected',
+			phase: 'after-build',
 			text: 'When `workflow_builder_build_workflow` returns `resolvedCredentialsByNode`, those credentials (including Gateway credits) are connected: do not route them to setup.',
 			appliesWhen:
 				'A workflow build finished and its result lists credentials that were resolved or attached to nodes.',
@@ -264,6 +267,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'no-raw-credential-objects',
+			phase: 'editing',
 			text: 'Never write raw credential objects (`{ id, name }`) in SDK code; replace them with `newCredential()` when editing.',
 			appliesWhen:
 				'Editing workflow code that already contains credential references on its nodes.',
@@ -300,6 +304,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'no-dismissing-live-errors',
+			phase: 'after-build',
 			text: 'Never dismiss a live execution error as a harness or stale-state artifact without re-running.',
 			appliesWhen:
 				'A workflow execution or verification run returned an error that may look unrelated to the change.',
@@ -345,6 +350,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'no-auto-publish',
+			phase: 'after-build',
 			text: "Do not publish the main workflow automatically. Publishing is the user's decision.",
 			appliesWhen:
 				'The workflow build and verification are done and the workflow could be published or activated.',

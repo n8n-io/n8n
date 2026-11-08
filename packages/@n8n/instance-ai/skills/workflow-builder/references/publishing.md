@@ -33,7 +33,7 @@ publish approval prompt, so a summary that contradicts them is visible to them.
 Execution evidence can come from a run you started or a run the user started.
 If the user says they ran the workflow manually, call
 `list_executions( workflowId)`, identify the relevant run, and inspect
-it with `get_execution( executionId)`. The user's statement alone is
+it by running `get_execution` through `call_tool` with `executionId`. The user's statement alone is
 not execution evidence. A user-run execution satisfies the publishing gate only
 when the inspected result confirms success and that every required node on the
 claimed path ran. Do not count it if mocked, simulated, fixture, or pinned output
@@ -41,7 +41,7 @@ was used. You may offer publishing after that confirmation.
 
 ## When to publish
 
-Only call `publish_workflow` when the user explicitly asks to
+Only run `publish_workflow` through `call_tool` when the user explicitly asks to
 publish. Never publish automatically or proactively offer publishing before
 the publish-readiness requirement above is met. A repair of a workflow that
 is already published is the exception: you may ask whether to publish the fix

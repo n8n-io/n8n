@@ -5,6 +5,7 @@ import { MockEmbeddingModelV3 } from 'ai/test';
 import {
 	buildStepQuery,
 	createGotchaNotesProvider,
+	detectGotchaPhases,
 	gotchaNoteId,
 	type GotchaRetrievalTrace,
 } from '../gotcha-notes';
@@ -65,9 +66,102 @@ describe('buildStepQuery', () => {
 		const query = buildStepQuery(messages);
 		expect(query.intent).toBe('Send a Slack message for each new row');
 		expect(query.step).toContain('Building it.');
-		expect(query.step).toContain('workflow_builder_build_workflow({"filePath":"a.ts"})');
+		expect(query.step).toContain('Called workflow_builder_build_workflow with filePath');
 		expect(query.step).toContain('Error: Mock output missing field');
 		expect(query.step).not.toContain('old answer');
+	});
+
+	it('takes the request that follows a thread-context block in the same text part', () => {
+		const context = `<thread-context>\n${'Recent change: fix it, carry on. '.repeat(200)}\n</thread-context>`;
+		const query = buildStepQuery([
+			{
+				role: 'user',
+				content: [{ type: 'text', text: `${context}\n\nReply to WhatsApp messages with Gemini` }],
+			},
+		]);
+		expect(query.intent).toBe('Reply to WhatsApp messages with Gemini');
+	});
+
+	it('keeps code, markup and tool results out of the query', () => {
+		const query = buildStepQuery([
+			{ role: 'user', content: [{ type: 'text', text: 'Build it' }] },
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'c1',
+						toolName: 'find_tools',
+						input: { tools: ['search_nodes'] },
+						state: 'resolved',
+						output: { tools: [{ name: 'search_nodes', inputSchema: 'SCHEMA' }] },
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'c2',
+						toolName: 'call_tool',
+						input: { tool: 'search_nodes' },
+						state: 'resolved',
+						output: 'NODE RESULT',
+					},
+				],
+			},
+		]);
+		expect(query.step).toContain('Called find_tools with tools');
+		expect(query.step).toContain('Called search_nodes');
+		expect(query.step).not.toContain('SCHEMA');
+		expect(query.step).not.toContain('NODE RESULT');
+
+		const withCode = buildStepQuery([
+			{
+				role: 'user',
+				content: [
+					{
+						type: 'text',
+						text: 'Insert rows <script>x</script> using {{ $json.id }}\n```sql\nSELECT 1;\n```',
+					},
+				],
+			},
+		]);
+		expect(withCode.intent).toBe('Insert rows x using');
+	});
+});
+
+describe('detectGotchaPhases', () => {
+	const call = (tool: string, state: 'resolved' | 'rejected'): AgentMessage => ({
+		role: 'assistant',
+		content: [
+			state === 'resolved'
+				? {
+						type: 'tool-call',
+						toolCallId: tool,
+						toolName: 'call_tool',
+						input: { tool },
+						state,
+						output: {},
+					}
+				: {
+						type: 'tool-call',
+						toolCallId: tool,
+						toolName: tool,
+						input: {},
+						state,
+						error: 'failed',
+					},
+		],
+	});
+
+	it('starts with no phase', () => {
+		expect(detectGotchaPhases([call('get_workflow_as_code', 'rejected')])).toEqual(new Set());
+	});
+
+	it('reads phases from successful calls through call_tool', () => {
+		expect(detectGotchaPhases([call('get_workflow_as_code', 'resolved')])).toEqual(
+			new Set(['editing']),
+		);
+		expect(detectGotchaPhases([call('workflow_builder_build_workflow', 'resolved')])).toEqual(
+			new Set(['after-build', 'editing']),
+		);
 	});
 });
 
@@ -105,6 +199,28 @@ describe('createGotchaNotesProvider', () => {
 		expect(await provider(request())).toEqual([
 			{ id: gotchaNoteId('workflow-builder', 'a'), content: 'Rule A' },
 		]);
+	});
+
+	it('switches to BM25 once when embedding fails', async () => {
+		const doEmbed = vi.fn(async () => {
+			throw new Error('Forbidden');
+		});
+		const failing = new MockEmbeddingModelV3({ doEmbed }) as unknown as EmbeddingModel;
+		const onEmbeddingFailure = vi.fn();
+		const methods: string[] = [];
+		const provider = createGotchaNotesProvider({
+			sets,
+			embeddingModel: failing,
+			onEmbeddingFailure,
+			onRetrieval: (trace) => methods.push(trace.method),
+		});
+		await expect(provider(request())).resolves.toBeInstanceOf(Array);
+		await provider(
+			request({ messages: [{ role: 'user', content: [{ type: 'text', text: 'beta now' }] }] }),
+		);
+		expect(onEmbeddingFailure).toHaveBeenCalledTimes(1);
+		expect(methods).toEqual(['bm25', 'bm25']);
+		expect(doEmbed.mock.calls.length).toBeLessThanOrEqual(2);
 	});
 
 	it('returns nothing when the skill is not active', async () => {
@@ -161,6 +277,52 @@ describe('createGotchaNotesProvider', () => {
 			}),
 		);
 		expect(notes).toEqual([]);
+	});
+
+	it('holds a phase gotcha back until its phase starts, then sends it', async () => {
+		const phased: SkillGotchaSet[] = [
+			{
+				skillId: 'workflow-builder',
+				gotchas: [
+					{
+						id: 'a',
+						phase: 'after-build',
+						text: 'Rule A',
+						appliesWhen: 'alpha',
+						fixes: '',
+						origin: '',
+						evalCases: [],
+					},
+				],
+			},
+		];
+		const provider = createGotchaNotesProvider({
+			sets: phased,
+			embeddingModel: model,
+			threshold: 0.8,
+		});
+		expect(await provider(request())).toEqual([]);
+		const built = await provider(
+			request({
+				messages: [
+					{ role: 'user', content: [{ type: 'text', text: 'about alpha' }] },
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'c1',
+								toolName: 'call_tool',
+								input: { tool: 'workflow_builder_build_workflow' },
+								state: 'resolved',
+								output: {},
+							},
+						],
+					},
+				],
+			}),
+		);
+		expect(built.map((note) => note.id)).toEqual([gotchaNoteId('workflow-builder', 'a')]);
 	});
 
 	it('reports matches and near misses', async () => {

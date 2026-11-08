@@ -39,7 +39,7 @@ can target rows with narrow filters.
 
 1. Classify the job: inspect, design/create, import, seed, query, schema
    change, row mutation, row delete, table delete, or cleanup.
-2. Resolve the target first. Call `list_data_tables` before creating
+2. Resolve the target first. Run `list_data_tables` through `call_tool` before creating
    a table, acting on a table name, or choosing a project. If there is more
    than one plausible match, ask one concise clarification.
 3. Use table IDs after discovery. Include `projectId` whenever list results or

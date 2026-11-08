@@ -292,6 +292,10 @@ export async function createInstanceAgent(
 				sets: [WORKFLOW_BUILDER_GOTCHAS],
 				embeddingModel: options.gotchaRetrieval?.embeddingModel,
 				onRetrieval: options.gotchaRetrieval?.onRetrieval,
+				onEmbeddingFailure: (error) =>
+					context.logger.warn('Gotcha embedding failed; ranking gotchas with BM25 for this run', {
+						error: error instanceof Error ? error.message : String(error),
+					}),
 				// Eval-only overrides: tune the threshold and ablate gotchas without a code change.
 				threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : undefined,
 				ablated: parseAblatedGotchas(process.env.N8N_INSTANCE_AI_SKILL_ABLATE),

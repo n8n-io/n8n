@@ -1,14 +1,36 @@
-import type {
-	AgentMessage,
-	ContextNote,
-	ContextNoteProvider,
-	ContextNoteRequest,
+import {
+	type AgentMessage,
+	type ContextNote,
+	type ContextNoteProvider,
+	type ContextNoteRequest,
 } from '@n8n/agents';
 import type { EmbeddingModel } from 'ai';
 import { cosineSimilarity, embedMany } from 'ai';
 
 import { createBm25Index } from './gotcha-bm25';
-import { isGotchaAblated, type SkillGotcha, type SkillGotchaSet } from './skill-gotchas';
+import {
+	isGotchaAblated,
+	type GotchaPhase,
+	type SkillGotcha,
+	type SkillGotchaSet,
+} from './skill-gotchas';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
+
+const CALL_TOOL_TOOL_NAME = 'call_tool';
+
+/** A successful call to one of these means a workflow exists in this conversation. */
+const AFTER_BUILD_TOOLS = new Set<string>([
+	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+	DOMAIN_TOOL_IDS.RUN_WORKFLOW,
+	DOMAIN_TOOL_IDS.DEBUG_EXECUTION,
+]);
+
+/** A successful call to one of these means the agent edits saved workflow code. */
+const EDITING_TOOLS = new Set<string>([
+	DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
+	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+]);
 
 /** Not tuned yet. Calibrate with eval traces (scores of notes that helped vs. noise). */
 export const DEFAULT_GOTCHA_SCORE_THRESHOLD = 0.4;
@@ -18,7 +40,6 @@ export const DEFAULT_GOTCHA_TOP_K = 3;
 
 const MAX_INTENT_CHARS = 1_500;
 const MAX_STEP_CHARS = 2_500;
-const MAX_TOOL_INPUT_CHARS = 600;
 const MAX_TOOL_OUTPUT_CHARS = 300;
 
 export interface GotchaMatch {
@@ -46,6 +67,8 @@ export interface GotchaNotesOptions {
 	topK?: number;
 	ablated?: ReadonlySet<string>;
 	onRetrieval?: (trace: GotchaRetrievalTrace) => void;
+	/** Called once when embedding fails and the provider switches to BM25 for good. */
+	onEmbeddingFailure?: (error: unknown) => void;
 }
 
 export interface StepQuery {
@@ -64,22 +87,76 @@ function truncate(text: string, max: number): string {
 	return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
-function stringify(value: unknown): string {
-	if (typeof value === 'string') return value;
-	try {
-		return JSON.stringify(value) ?? '';
-	} catch {
-		return '';
-	}
-}
-
 function isLlmMessage(message: AgentMessage): message is Extract<AgentMessage, { role: string }> {
 	return 'role' in message && Array.isArray(message.content);
 }
 
-/** Runtime-added text (skill bodies, reminders, context) is not user intent. */
-function isInjectedText(text: string): boolean {
-	return /^\s*<(system-reminder|context|skill)[\s>]/i.test(text);
+const INJECTED_TAGS = 'thread-context|system-reminder|context|skill';
+const INJECTED_BLOCK = new RegExp(`<(${INJECTED_TAGS})(?:\\s[^>]*)?>[\\s\\S]*?</\\1>`, 'gi');
+const INJECTED_START = new RegExp(`^\\s*<(${INJECTED_TAGS})[\\s>]`, 'i');
+
+/**
+ * Removes runtime-added blocks (thread context, skill bodies, reminders) from
+ * message text. The service puts `<thread-context>` in the same text part as
+ * the user's request, so a whole-part check would keep the context and cut the
+ * request off at the length limit.
+ */
+function stripInjectedText(text: string): string {
+	const stripped = text.replace(INJECTED_BLOCK, '').trim();
+	// An unclosed block is runtime text all the way to the end.
+	return INJECTED_START.test(stripped) ? '' : stripped;
+}
+
+const CODE_FENCE = /```[\s\S]*?(```|$)/g;
+const MARKUP_TAG = /<\/?[a-z][^>]*>/gi;
+const EXPRESSION = /\{\{[\s\S]*?\}\}/g;
+
+/**
+ * Removes code and markup from query text. They add little meaning to the
+ * match, and the AI proxy firewall blocks requests that contain them (403).
+ */
+function toPlainQueryText(text: string): string {
+	return text
+		.replace(CODE_FENCE, ' ')
+		.replace(MARKUP_TAG, ' ')
+		.replace(EXPRESSION, ' ')
+		.replace(/[<>{}`$;|\\]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+/** Short form of a tool call: the tool name and the top-level input keys. */
+function describeToolCall(toolName: string, input: unknown): string {
+	const name = calledToolName(toolName, input);
+	const keys = isPlainObject(input) ? Object.keys(input).filter((key) => key !== 'tool') : [];
+	return keys.length ? `${name} with ${keys.join(', ')}` : name;
+}
+
+/** Name of the tool a call runs, looking through the catalog dispatcher. */
+function calledToolName(toolName: string, input: unknown): string {
+	if (toolName === CALL_TOOL_TOOL_NAME && isPlainObject(input) && typeof input.tool === 'string') {
+		return input.tool;
+	}
+	return toolName;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Phases the conversation has reached, from the tools that succeeded so far. */
+export function detectGotchaPhases(messages: readonly AgentMessage[]): Set<GotchaPhase> {
+	const phases = new Set<GotchaPhase>();
+	for (const message of messages) {
+		if (!isLlmMessage(message)) continue;
+		for (const part of message.content) {
+			if (part.type !== 'tool-call' || part.state !== 'resolved') continue;
+			const name = calledToolName(part.toolName, part.input);
+			if (AFTER_BUILD_TOOLS.has(name)) phases.add('after-build');
+			if (EDITING_TOOLS.has(name)) phases.add('editing');
+		}
+	}
+	return phases;
 }
 
 /**
@@ -94,7 +171,10 @@ export function buildStepQuery(messages: readonly AgentMessage[]): StepQuery {
 		const message = llmMessages[i];
 		if (message.role !== 'user') continue;
 		intent = message.content
-			.flatMap((part) => (part.type === 'text' && !isInjectedText(part.text) ? [part.text] : []))
+			.flatMap((part) =>
+				part.type === 'text' ? [toPlainQueryText(stripInjectedText(part.text))] : [],
+			)
+			.filter(Boolean)
 			.join('\n')
 			.trim();
 	}
@@ -107,16 +187,16 @@ export function buildStepQuery(messages: readonly AgentMessage[]): StepQuery {
 		const parts: string[] = [];
 		for (const part of message.content) {
 			if (part.type === 'text' || part.type === 'reasoning') {
-				if (!isInjectedText(part.text)) parts.push(part.text);
+				const text = toPlainQueryText(stripInjectedText(part.text));
+				if (text) parts.push(text);
 			} else if (part.type === 'tool-call') {
-				parts.push(`${part.toolName}(${truncate(stringify(part.input), MAX_TOOL_INPUT_CHARS)})`);
+				// Inputs and results hold workflow code, SQL and HTML: keep only what was called.
+				parts.push(`Called ${describeToolCall(part.toolName, part.input)}`);
 				if (part.state === 'rejected') {
-					parts.push(`Error: ${truncate(part.error, MAX_TOOL_OUTPUT_CHARS)}`);
-				} else if (part.state === 'resolved') {
-					parts.push(`Result: ${truncate(stringify(part.output), MAX_TOOL_OUTPUT_CHARS)}`);
+					parts.push(`Error: ${truncate(toPlainQueryText(part.error), MAX_TOOL_OUTPUT_CHARS)}`);
 				}
 			} else if (part.type === 'invalid-tool-call') {
-				parts.push(`Invalid call ${part.name ?? ''}: ${part.error ?? ''}`);
+				parts.push(`Invalid call ${part.name ?? ''}: ${toPlainQueryText(part.error ?? '')}`.trim());
 			}
 		}
 		if (parts.length) stepParts.unshift(parts.join('\n'));
@@ -211,10 +291,9 @@ function createBm25Scorer(candidates: readonly Candidate[]): GotchaScorer {
  * repeated model calls with no new activity reuse the last result.
  */
 export function createGotchaNotesProvider(options: GotchaNotesOptions): ContextNoteProvider {
-	const method: GotchaRetrievalMethod = options.embeddingModel ? 'embedding' : 'bm25';
-	const threshold =
+	let threshold =
 		options.threshold ??
-		(method === 'embedding' ? DEFAULT_GOTCHA_SCORE_THRESHOLD : DEFAULT_GOTCHA_BM25_THRESHOLD);
+		(options.embeddingModel ? DEFAULT_GOTCHA_SCORE_THRESHOLD : DEFAULT_GOTCHA_BM25_THRESHOLD);
 	const topK = options.topK ?? DEFAULT_GOTCHA_TOP_K;
 	const ablated = options.ablated ?? new Set<string>();
 
@@ -224,9 +303,27 @@ export function createGotchaNotesProvider(options: GotchaNotesOptions): ContextN
 			.map((gotcha) => ({ skillId: set.skillId, gotcha })),
 	);
 
-	const scorer = options.embeddingModel
+	let method: GotchaRetrievalMethod = options.embeddingModel ? 'embedding' : 'bm25';
+	let bm25Scorer: GotchaScorer | undefined;
+	const getBm25Scorer = () => (bm25Scorer ??= createBm25Scorer(candidates));
+	const embeddingScorer = options.embeddingModel
 		? createEmbeddingScorer(options.embeddingModel, candidates)
-		: createBm25Scorer(candidates);
+		: undefined;
+
+	// If embedding fails (blocked proxy, bad key), rank with BM25 for the rest of the run.
+	const scorer: GotchaScorer = async (queries, abortSignal) => {
+		if (method === 'embedding' && embeddingScorer) {
+			try {
+				return await embeddingScorer(queries, abortSignal);
+			} catch (error) {
+				if (abortSignal?.aborted) throw error;
+				method = 'bm25';
+				threshold = options.threshold ?? DEFAULT_GOTCHA_BM25_THRESHOLD;
+				options.onEmbeddingFailure?.(error);
+			}
+		}
+		return await getBm25Scorer()(queries, abortSignal);
+	};
 
 	let lastQueryKey: string | undefined;
 	let lastScores: GotchaMatch[] = [];
@@ -252,11 +349,18 @@ export function createGotchaNotesProvider(options: GotchaNotesOptions): ContextN
 			lastQueryKey = queryKey;
 		}
 
+		// A gotcha for a later phase stays unsent, so it can still fire once that phase starts.
+		const phases = detectGotchaPhases(request.messages);
+		const phaseByKey = new Map(
+			candidates.map(({ skillId, gotcha }) => [`${skillId}:${gotcha.id}`, gotcha.phase]),
+		);
 		const ranked = lastScores
-			.filter(
-				({ skillId, gotchaId }) =>
-					active.has(skillId) && !request.sentNoteIds.has(gotchaNoteId(skillId, gotchaId)),
-			)
+			.filter(({ skillId, gotchaId }) => {
+				if (!active.has(skillId)) return false;
+				if (request.sentNoteIds.has(gotchaNoteId(skillId, gotchaId))) return false;
+				const phase = phaseByKey.get(`${skillId}:${gotchaId}`);
+				return phase === undefined || phases.has(phase);
+			})
 			.sort((a, b) => b.score - a.score);
 		const matches = ranked.filter(({ score }) => score >= threshold).slice(0, topK);
 		options.onRetrieval?.({

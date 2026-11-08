@@ -30,7 +30,7 @@ for a comparable tool.
 The `categories` list and search *rank* don't prioritize Gateway credits coverage
 (individual search results still flag it). When the user asks for a capability
 they have no usable credential for, search that
-capability — or run `search_nodes(gatewayCreditsOnly=true)` — before
+capability — or run `search_nodes` through `call_tool` with `gatewayCreditsOnly: true` — before
 committing, and prefer a covered result.
 
 Respect the constraints it reports:

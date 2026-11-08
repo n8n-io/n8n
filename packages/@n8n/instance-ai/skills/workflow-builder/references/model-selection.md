@@ -48,7 +48,7 @@ call `search_models` before writing the workflow.** Do not substitute a remember
    edit. If evidence shows it cannot meet the request, explain that evidence and
    agree on an alternative before changing it.
 2. For a new choice, check relevant credentials, including Gateway credits.
-   Use `get_node_parameter_options` with that credential and the parameter path (or lookup
+   Run `get_node_parameter_options` through `call_tool` with that credential and the parameter path (or lookup
    method from the node definition). Its available models take precedence
    over builder hints and public catalogs. Choose one that fits the operation,
    task, and budget. Explain access constraints if they require an older model.

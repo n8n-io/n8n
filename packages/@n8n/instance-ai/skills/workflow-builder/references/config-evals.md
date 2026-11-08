@@ -47,7 +47,7 @@ build a config eval instead and briefly say that is how you set up evaluations.
      workflow this is usually the agent node (often the same as `endNodeName`).
    - `endNodeName` is the node whose output you want scored (usually the AI agent
      or the final response node).
-3. Resolve the dataset. Call `list_data_tables` to find an existing
+3. Resolve the dataset. Run `list_data_tables` through `call_tool` to find an existing
    dataset, or create and seed one with `create_data_table` and
    `insert_data_table_rows` before creating the config.
    Never invent a `dataTableId`; use one returned by the data table tools.

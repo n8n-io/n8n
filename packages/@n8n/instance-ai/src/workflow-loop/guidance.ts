@@ -66,7 +66,7 @@ function isVerifiedClaim(claim: VerificationClaim | undefined): boolean {
 
 function formatSourceFileInstruction(sourceFilePath: string | undefined): string {
 	if (!sourceFilePath) {
-		return 'edit the workspace source file, then call `workflow_builder_build_workflow` with that filePath';
+		return 'edit the workspace source file, then run `workflow_builder_build_workflow` through `call_tool` with that filePath';
 	}
 
 	return `edit workspace source file "${sourceFilePath}", then call \`workflow_builder_build_workflow\` with filePath "${sourceFilePath}"`;
@@ -130,7 +130,7 @@ export function formatWorkflowLoopGuidance(
 				(options.workItemId ? ` and workItemId "${options.workItemId}"` : '') +
 				'; it reuses the build outcome simulation plan and is safe to call multiple times. ' +
 				'For alternate deterministic scenarios, pass `fixtureOverrides` for nodes already classified as simulated. ' +
-				'If it fails, use `debug_execution` to diagnose. ' +
+				'If it fails, run `debug_execution` through `call_tool` to diagnose. ' +
 				'If the saved graph or run evidence is not good enough, report `needs_patch` or `needs_rebuild` and keep repairing the same workflow source file. ' +
 				`Then call \`workflow_builder_report_verification_verdict\` with workItemId "${options.workItemId ?? 'unknown'}", \`workflowInspection\`, and your findings.`
 			);

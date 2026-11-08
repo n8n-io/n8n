@@ -9,8 +9,17 @@
  * pass rate does not drop beyond normal variance, delete the gotcha.
  */
 
+/**
+ * The point in a conversation from which a gotcha can apply.
+ * - `after-build`: a workflow was built, verified or run in this conversation.
+ * - `editing`: the agent works on saved workflow code (fetched or built).
+ */
+export type GotchaPhase = 'after-build' | 'editing';
+
 export interface SkillGotcha {
 	id: string;
+	/** Retrieval skips the gotcha until the conversation reaches this phase. Omit for any time. */
+	phase?: GotchaPhase;
 	/** The correction the model sees. */
 	text: string;
 	/** The situation the gotcha is for, in one sentence. Retrieval embeds this text. */
