@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import N8nIcon from '../N8nIcon';
 import type { ListboxItemEmits, ListboxItemProps, ListboxItemSlots } from './ListboxItem.types';
 import { ListboxItem } from './reka-ui';
 
@@ -24,10 +23,8 @@ function onSelect(event: Event) {
 		:class="$style.item"
 		@select="onSelect"
 	>
-		<span v-if="icon || $slots.leading" :class="$style.leading">
-			<slot name="leading">
-				<N8nIcon v-if="icon" :icon="icon" size="large" />
-			</slot>
+		<span v-if="$slots.leading" :class="$style.leading">
+			<slot name="leading" />
 		</span>
 		<span :class="$style.content">
 			<slot />

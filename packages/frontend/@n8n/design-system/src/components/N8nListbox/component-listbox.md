@@ -1,6 +1,6 @@
 # Component specification
 
-A single-select list. Arrow keys move a highlight over the whole item. Pointer movement moves the highlight. Enter or Space selects the highlighted item. Built on Reka UI `Listbox`.
+A single-select list. Arrow keys move a highlight over the whole item. Pointer movement moves the highlight. A click selects the item under the pointer. Enter or Space selects the highlighted item. Tab from a control inside an item moves the highlight to the next enabled item. Built on Reka UI `Listbox`.
 
 - **Component Name:** N8nListbox, N8nListboxItem
 - **Reka UI Component:** [Listbox](https://reka-ui.com/docs/components/listbox)
@@ -20,7 +20,6 @@ A single-select list. Arrow keys move a highlight over the whole item. Pointer m
 
 - `value: string` Value this item selects. Unique among the items in the list.
 - `disabled?: boolean` The user cannot highlight or select this item. Arrow keys skip it. Tab from another item skips it when an enabled item follows. A click does not change the value. | `default: false`
-- `icon?: IconName` Icon before the row content. The leading slot replaces this icon.
 
 **Events**
 
@@ -37,8 +36,8 @@ A single-select list. Arrow keys move a highlight over the whole item. Pointer m
 **Item slots**
 
 - `default` Row content. Direct children stack in a column. Set `--n8n-listbox-item--content-gap` to change the space between those children. Wrap children in one element when they sit on one line.
-- `leading` Content before the row content. This slot replaces `icon`.
-- `trailing` Content after the row content.
+- `leading` Content before the row content. Put an icon in this slot.
+- `trailing` Content after the row content. A control in this slot sits inside the item. Stop `click`, Enter, and Space on that control when the control must not select the item.
 
 The item sets the padding, the gap, and the minimum height. The highlight covers the item, including that padding.
 
@@ -54,8 +53,8 @@ Set a token on the list or on an item. The item uses the token. When the token i
 
 Set `--n8n-listbox-item--color--background--highlight` and `--n8n-listbox-item--color--background--selected` to `transparent` when the slot paints its own highlight and selected fill. Set `--n8n-listbox-item--padding` to `0` when that slot also sets its own padding. The item keeps selection and keyboard behavior.
 
-- `--n8n-listbox-item--color--background--highlight` Background of the highlighted item. The same fill as a highlighted dropdown or context-menu row. | default: `--background--hover`
-- `--n8n-listbox-item--color--background--selected` Background of the selected item. This fill stays when the highlight moves. | default: `--background--active`
+- `--n8n-listbox-item--color--background--highlight` Background of a highlighted item that is not selected. The same fill as a highlighted dropdown or context-menu row. | default: `--background--hover`
+- `--n8n-listbox-item--color--background--selected` Background of the selected item. This fill covers the item while it is highlighted. This fill stays when the highlight moves. | default: `--background--active`
 - `--n8n-listbox-item--color--text--disabled` Text color of a disabled item. | default: `--text-color--disabled`
 - `--n8n-listbox-item--radius` Corner radius of the item. | default: `--radius`
 - `--n8n-listbox-item--padding` Padding inside the item. | default: `--spacing--2xs` `--spacing--xs` (8px on the top and the bottom, 12px on the left and the right)
@@ -96,7 +95,6 @@ type ListboxItemProps = {
    * @default false
    */
   disabled?: boolean;
-  icon?: IconName;
 };
 ```
 
@@ -107,7 +105,7 @@ type ListboxItemProps = {
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
-import { N8nListbox, N8nListboxItem } from '@n8n/design-system'
+import { N8nIcon, N8nListbox, N8nListboxItem } from '@n8n/design-system'
 
 const version = ref<string | undefined>('v2')
 </script>
@@ -118,7 +116,10 @@ const version = ref<string | undefined>('v2')
     label="Versions"
     selection-behavior="toggle"
   >
-    <N8nListboxItem value="v2" icon="check">
+    <N8nListboxItem value="v2">
+      <template #leading>
+        <N8nIcon icon="check" />
+      </template>
       v2
       <template #trailing>Latest</template>
     </N8nListboxItem>

@@ -284,7 +284,7 @@ export const LeadingAndTrailing: Story = {
 		docs: {
 			description: {
 				story:
-					'The icon prop puts an N8nIcon before the row content. The leading slot replaces that icon. Put an N8nIcon in the leading slot. Put an N8nBadge in the trailing slot. Use the actions menu story for a trailing control.',
+					'Put an icon in the leading slot. Put an N8nBadge in the trailing slot. Use the actions menu story for a trailing control.',
 			},
 		},
 	},
@@ -297,14 +297,20 @@ export const LeadingAndTrailing: Story = {
 		template: `
 			<div style="width: 24rem">
 				<N8nListbox v-model="value" label="Workflows" style="flex: none">
-					<N8nListboxItem value="sync" icon="refresh-cw">
+					<N8nListboxItem value="sync">
+						<template #leading>
+							<N8nIcon icon="refresh-cw" size="large" />
+						</template>
 						<N8nText bold size="small" color="text-dark">Sync contacts</N8nText>
 						<N8nText size="small" color="text-light">Runs every hour</N8nText>
 						<template #trailing>
 							<N8nBadge variant="success">Active</N8nBadge>
 						</template>
 					</N8nListboxItem>
-					<N8nListboxItem value="digest" icon="copy">
+					<N8nListboxItem value="digest">
+						<template #leading>
+							<N8nIcon icon="copy" size="large" />
+						</template>
 						<N8nText bold size="small" color="text-dark">Weekly digest</N8nText>
 						<N8nText size="small" color="text-light">Sends on Monday</N8nText>
 						<template #trailing>
@@ -336,7 +342,7 @@ const workflowActions: Array<ActionDropdownItem<string>> = [
 export const ActionsMenu: Story = {
 	name: 'Actions Menu',
 	render: () => ({
-		components: { N8nListbox, N8nListboxItem, N8nActionDropdown, N8nText },
+		components: { N8nListbox, N8nListboxItem, N8nActionDropdown, N8nIcon, N8nText },
 		setup() {
 			const workflows: Array<{ id: string; name: string; detail: string; icon: IconName }> = [
 				{ id: 'sync', name: 'Sync contacts', detail: 'Runs every hour', icon: 'refresh-cw' },
@@ -370,8 +376,10 @@ export const ActionsMenu: Story = {
 						v-for="workflow in workflows"
 						:key="workflow.id"
 						:value="workflow.id"
-						:icon="workflow.icon"
 					>
+						<template #leading>
+							<N8nIcon :icon="workflow.icon" size="large" />
+						</template>
 						<N8nText bold size="small" color="text-dark">{{ workflow.name }}</N8nText>
 						<N8nText size="small" color="text-light">{{ workflow.detail }}</N8nText>
 						<template #trailing>

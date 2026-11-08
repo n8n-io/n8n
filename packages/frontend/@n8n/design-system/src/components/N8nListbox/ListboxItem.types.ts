@@ -1,4 +1,3 @@
-import type { IconName } from '../N8nIcon/icons';
 import type { ListboxValue } from './Listbox.types';
 
 export type ListboxItemProps = {
@@ -11,11 +10,6 @@ export type ListboxItemProps = {
 	 * @default false
 	 */
 	disabled?: boolean;
-	/**
-	 * Icon before the row content.
-	 * The leading slot replaces this icon.
-	 */
-	icon?: IconName;
 };
 
 export type ListboxItemEmits = {
@@ -31,9 +25,13 @@ export type ListboxItemSlots = {
 	default(): unknown;
 	/**
 	 * Content before the row content.
-	 * This slot replaces the icon.
+	 * Put an icon in this slot.
 	 */
 	leading(): unknown;
-	/** Content after the row content. */
+	/**
+	 * Content after the row content.
+	 * A control in this slot sits inside the item.
+	 * Stop click, Enter, and Space on that control when the control must not select the item.
+	 */
 	trailing(): unknown;
 };

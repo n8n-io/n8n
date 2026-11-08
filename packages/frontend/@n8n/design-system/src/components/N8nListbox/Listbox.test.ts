@@ -2,6 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
 import { defineComponent, nextTick, ref } from 'vue';
 
+import N8nIcon from '../N8nIcon';
 import N8nListbox from './Listbox.vue';
 import N8nListboxItem from './ListboxItem.vue';
 
@@ -180,16 +181,19 @@ const TabHarness = defineComponent({
 });
 
 const LayoutHarness = defineComponent({
-	components: { N8nListbox, N8nListboxItem },
+	components: { N8nListbox, N8nListboxItem, N8nIcon },
 	template: `
 		<N8nListbox label="Workflows">
-			<N8nListboxItem value="sync" icon="copy">
+			<N8nListboxItem value="sync">
+				<template #leading>
+					<N8nIcon icon="copy" size="large" />
+				</template>
 				<span data-test-id="sync-body">Sync</span>
 				<template #trailing>
 					<button type="button">Actions</button>
 				</template>
 			</N8nListboxItem>
-			<N8nListboxItem value="custom" icon="archive">
+			<N8nListboxItem value="custom">
 				<template #leading>
 					<span data-test-id="custom-leading">Lead</span>
 				</template>
