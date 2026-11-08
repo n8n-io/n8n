@@ -706,7 +706,10 @@ describe('createInstanceAgent', () => {
 			const linearCall = calls.find(([tools]) =>
 				tools.some((tool) => tool.name === 'mcp_linear_create_issue'),
 			);
-			expect(linearCall?.[1]).toEqual({ namespace: 'mcp_linear' });
+			expect(linearCall?.[1]).toEqual({
+				namespace: 'mcp_linear',
+				namespaceDescription: 'tools from the mcp_linear MCP server',
+			});
 			expect(linearCall?.[0]).toHaveLength(1);
 		});
 

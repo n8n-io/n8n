@@ -54,11 +54,11 @@ function getToolDiscoverySection(
 		: '';
 
 	return `
-## Tool Discovery
+## Tool Catalog
 
-${mcpSearchGuidance}Many of your tools are in the tool catalog, not in your toolset. This includes most tools that skills name. The catalog lists names only, not arguments. Before your first \`call_tool\` to a catalog tool, get its input schema with \`find_tools\`, even when you already know the tool's name. Do not guess arguments. One \`find_tools\` call can return the schemas of several tools. When you do not know a tool's name, search by keywords.
+${mcpSearchGuidance}Most of your tools, including most tools that skills name, are in the tool catalog. The <tool_catalog> section lists them and gives the rules: look them up with \`find_tools\`, then run them with \`call_tool\`. Do not guess arguments.
 
-Example: ${mcpExamples}search "verify workflow" for \`workflow_builder_verify_built_workflow\`.
+Example: before you build a workflow, call \`find_tools\` once with \`tools: ["search_nodes", "get_node_types"]\`. ${mcpExamples ? `To find a tool by task, ${mcpExamples}or ` : 'To find a tool by task, '}search "verify workflow" for \`workflow_builder_verify_built_workflow\`.
 
 For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` (already available in your toolset) and the node type definitions from the catalog tool \`get_node_types\` over web search, which is for third-party services and APIs.
 `;

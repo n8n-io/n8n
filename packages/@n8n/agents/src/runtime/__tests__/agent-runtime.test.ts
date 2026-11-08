@@ -4342,7 +4342,7 @@ describe('AgentRuntime — deferred tool loading', () => {
 		});
 	});
 
-	it('resumes a suspended deferred tool after it has been loaded', async () => {
+	it('resumes a suspended deferred tool run through call_tool', async () => {
 		const deferredTool = makeSuspendingTool('deferred_approval', async (input, ctx) => {
 			if (!ctx.resumeData) {
 				return await ctx.suspend({ reason: 'approve deferred action?' });
@@ -4367,9 +4367,9 @@ describe('AgentRuntime — deferred tool loading', () => {
 			.mockResolvedValueOnce(
 				makeGenerateWithToolCalls([
 					{
-						toolCallId: 'tc-load',
-						toolName: 'load_tool',
-						args: { toolName: 'deferred_approval' },
+						toolCallId: 'tc-find',
+						toolName: 'find_tools',
+						args: { tools: ['deferred_approval'] },
 					},
 				]),
 			)
@@ -4377,8 +4377,8 @@ describe('AgentRuntime — deferred tool loading', () => {
 				makeGenerateWithToolCalls([
 					{
 						toolCallId: 'tc-deferred',
-						toolName: 'deferred_approval',
-						args: { value: 'needs approval' },
+						toolName: 'call_tool',
+						args: { tool: 'deferred_approval', arguments: { value: 'needs approval' } },
 					},
 				]),
 			);
@@ -4404,11 +4404,34 @@ describe('AgentRuntime — deferred tool loading', () => {
 		expect(resumeResult.toolCalls).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
-					tool: 'deferred_approval',
 					output: { approved: true, value: 'needs approval' },
 				}),
 			]),
 		);
+	});
+
+	it('fails a catalog tool called by its own name and says to use find_tools', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ ok: true }));
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [makeSuspendingTool('deferred_lookup', handler)],
+			toolDeferral: { mode: 'catalog' },
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-direct', toolName: 'deferred_lookup', args: { value: 'x' } },
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const result = await runtime.generate('look it up');
+
+		expect(handler).not.toHaveBeenCalled();
+		expect(JSON.stringify(result)).toContain('is in the tool catalog, not in your toolset');
 	});
 });
 

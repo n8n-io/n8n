@@ -3,10 +3,12 @@ import type { JSONSchema7 } from 'json-schema';
 
 import {
 	executeTool,
+	isDirectCatalogCall,
 	isSuspendedToolResult,
 	resolveToolCallTarget,
 	type SuspendedToolResult,
 } from './tool-adapter';
+import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME } from './tool-catalog';
 import {
 	guardToolErrorForModel,
 	guardToolMessageForModel,
@@ -100,6 +102,17 @@ export class ToolCallRunner {
 	 */
 	async processToolCall(callParams: ProcessToolCallParams): Promise<ToolCallOutcome> {
 		const { toolName, toolMap, list, toolCallId, resumeData } = callParams;
+		// A catalog tool called by its own name fails, so the model learns to read
+		// the schema first. A resume still runs it: an older conversation may have
+		// suspended a call made that way.
+		if (resumeData === undefined && isDirectCatalogCall(toolMap, toolName, callParams.input)) {
+			return await this.toolError(
+				callParams,
+				new Error(
+					`"${toolName}" is in the tool catalog, not in your toolset. Get its input schema with ${FIND_TOOLS_TOOL_NAME}, then run it with ${CALL_TOOL_TOOL_NAME}.`,
+				),
+			);
+		}
 		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
 		if (!target) {

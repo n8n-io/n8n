@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, resolveToolCallTarget } from '../tools/tool-adapter';
+import { buildToolMap, isDirectCatalogCall, resolveToolCallTarget } from '../tools/tool-adapter';
 import { CALL_TOOL_TOOL_NAME, FIND_TOOLS_TOOL_NAME, ToolCatalog } from '../tools/tool-catalog';
 import { filterTools, rankTools, tokenize } from '../tools/tool-search';
 
@@ -123,7 +123,7 @@ describe('ToolCatalog', () => {
 		);
 	});
 
-	it('repairs a direct call to a catalog tool into call_tool', async () => {
+	it('leaves a direct call to a catalog tool unrepaired', async () => {
 		const map = buildToolMap(catalog().getControllerTools());
 		const repaired = await fixToolCall(
 			{
@@ -132,11 +132,22 @@ describe('ToolCatalog', () => {
 			},
 			map,
 		);
-		expect(repaired).toEqual(
-			expect.objectContaining({
-				toolName: CALL_TOOL_TOOL_NAME,
-				input: JSON.stringify({ tool: 'get_cell', arguments: { id: 'c1' } }),
-			}),
-		);
+		expect(repaired).toBeNull();
+	});
+
+	it('detects a catalog tool called by its own name', () => {
+		const map = buildToolMap(catalog().getControllerTools());
+		expect(isDirectCatalogCall(map, 'get_cell', { id: 'c1' })).toBe(true);
+		expect(isDirectCatalogCall(map, CALL_TOOL_TOOL_NAME, { tool: 'get_cell' })).toBe(false);
+		expect(isDirectCatalogCall(map, 'not_a_tool', {})).toBe(false);
+	});
+
+	it('shows namespace descriptions and says direct calls fail', () => {
+		const described = new ToolCatalog(tools, {
+			namespaces: { send_message: 'slack' },
+			namespaceDescriptions: { slack: 'send and read Slack messages' },
+		}).renderCatalog();
+		expect(described).toContain('- slack (send and read Slack messages): send_message');
+		expect(described).toContain('by its own name fails');
 	});
 });

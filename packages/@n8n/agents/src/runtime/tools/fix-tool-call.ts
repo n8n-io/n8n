@@ -2,11 +2,7 @@ import type { ToolCall } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils/is-record';
 import type { InvalidToolInputError, NoSuchToolError, ToolCallRepairFunction, ToolSet } from 'ai';
 
-import {
-	findDispatcherForCall,
-	isResolvedByLegacyAction,
-	resolveToolForCall,
-} from './tool-adapter';
+import { isResolvedByLegacyAction, resolveToolForCall } from './tool-adapter';
 import type { BuiltTool } from '../../types';
 import { isZodSchema } from '../../utils/zod';
 
@@ -50,7 +46,9 @@ export const fixToolCall = async (
 ): ReturnType<ToolCallRepairFunction<NoInfer<ToolSet>>> => {
 	if (options.toolCall.providerExecuted) return null;
 	const tool = resolveToolForCall(toolMap, options.toolCall.toolName, options.toolCall.input);
-	if (!tool) return routeToDispatcher(options.toolCall, options.error, toolMap);
+	// A direct call to a catalog tool stays unrepaired. The tool runner answers
+	// it with an error that says to use find_tools and call_tool.
+	if (!tool) return null;
 
 	// The tool map also registers former tool names. A model can still call a
 	// tool by a former name, for example after it reads an older conversation.
@@ -84,25 +82,3 @@ export const fixToolCall = async (
 	}
 	return null;
 };
-
-/**
- * A model can call a catalog tool by its own name, for example after an older
- * conversation loaded it. Send that call through the dispatcher that owns it.
- */
-function routeToDispatcher(
-	toolCall: ToolCall<string, unknown>,
-	error: NoSuchToolError | InvalidToolInputError,
-	toolMap: Map<string, BuiltTool>,
-): ReturnType<ToolCallRepairFunction<NoInfer<ToolSet>>> extends Promise<infer R> ? R : never {
-	if (error.name !== 'AI_NoSuchToolError') return null;
-	const routed = findDispatcherForCall(toolMap, toolCall.toolName, toolCall.input);
-	if (!routed) return null;
-	return {
-		type: 'tool-call' as const,
-		toolCallId: toolCall.toolCallId,
-		toolName: routed.dispatcher.name,
-		input: JSON.stringify(routed.input),
-		providerExecuted: false,
-		dynamic: toolCall.dynamic,
-	};
-}

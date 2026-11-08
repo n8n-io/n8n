@@ -118,6 +118,8 @@ interface DeferredToolOptions {
 	};
 	/** Catalog mode: the namespace these tools are listed under. Default: `tools`. */
 	namespace?: string;
+	/** Catalog mode: one line on what the namespace holds, shown next to its tool names. */
+	namespaceDescription?: string;
 }
 
 type ActiveRuntime = {
@@ -194,6 +196,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private toolDeferralConfig?: ToolDeferralConfig;
 
 	private deferredToolNamespaces: Record<string, string> = {};
+
+	private deferredToolNamespaceDescriptions: Record<string, string> = {};
 
 	private providerTools: BuiltProviderTool[] = [];
 
@@ -366,6 +370,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			this.assertReservedSdkBuiltInToolName(built);
 			this.deferredTools.push(built);
 			if (options?.namespace) this.deferredToolNamespaces[built.name] = options.namespace;
+		}
+		if (options?.namespace && options.namespaceDescription) {
+			this.deferredToolNamespaceDescriptions[options.namespace] = options.namespaceDescription;
 		}
 		if (options?.search?.topK !== undefined) {
 			this.deferredToolSearchTopK = options.search.topK;
@@ -1215,6 +1222,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			nativeToolDeferral: this.nativeToolDeferralConfig,
 			toolDeferral: this.toolDeferralConfig,
 			deferredToolNamespaces: this.deferredToolNamespaces,
+			deferredToolNamespaceDescriptions: this.deferredToolNamespaceDescriptions,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
@@ -1368,6 +1376,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				nativeToolDeferral: this.nativeToolDeferralConfig,
 				toolDeferral: this.toolDeferralConfig,
 				deferredToolNamespaces: this.deferredToolNamespaces,
+				deferredToolNamespaceDescriptions: this.deferredToolNamespaceDescriptions,
 				runState: options.runState,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(this.reasoningLevel !== undefined ? { reasoning: this.reasoningLevel } : {}),

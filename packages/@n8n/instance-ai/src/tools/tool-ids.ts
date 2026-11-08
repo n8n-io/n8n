@@ -193,6 +193,22 @@ const TOOL_NAMESPACE_BY_NAME = new Map<string, string>([
 	]),
 ]);
 
+/** One line on what each n8n catalog namespace holds, shown next to its tool names. */
+const NAMESPACE_DESCRIPTIONS: Readonly<Record<string, string>> = {
+	workflows: 'build, read, change, run and set up workflows',
+	executions: 'read and manage workflow executions',
+	data_tables: 'create, read and change data tables and their rows',
+	credentials: 'set up, test and manage credentials',
+	nodes: 'search node types and read their parameter definitions',
+	agents: 'build and configure standalone n8n Agents',
+	workspace: 'read and write files in the agent workspace',
+};
+
+/** Returns the description of a catalog namespace, or undefined when it has none. */
+export function getToolNamespaceDescription(namespace: string): string | undefined {
+	return NAMESPACE_DESCRIPTIONS[namespace];
+}
+
 /** Returns the catalog namespace of a deferred n8n tool, or undefined for the default one. */
 export function getToolNamespace(toolName: string): string | undefined {
 	return TOOL_NAMESPACE_BY_NAME.get(toolName);

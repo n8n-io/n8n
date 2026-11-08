@@ -67,6 +67,8 @@ export interface AgentRuntimeConfig {
 	toolDeferral?: ToolDeferralConfig;
 	/** Catalog mode: the namespace each deferred tool is listed under, by tool name. */
 	deferredToolNamespaces?: Record<string, string>;
+	/** Catalog mode: one line on what each namespace holds, by namespace. */
+	deferredToolNamespaceDescriptions?: Record<string, string>;
 	/** Catalog mode: the most tools a `find_tools` query returns. */
 	toolSearch?: {
 		topK?: number;

@@ -22,7 +22,11 @@ import {
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
 import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, getToolNamespace } from '../tools/tool-ids';
+import {
+	ALWAYS_LOADED_TOOL_NAMES,
+	getToolNamespace,
+	getToolNamespaceDescription,
+} from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -257,7 +261,13 @@ export async function createInstanceAgent(
 			byNamespace.set(namespace, group);
 		}
 		for (const [namespace, group] of byNamespace) {
-			agent.deferredTool(toolRegistryValues(group), namespace ? { namespace } : undefined);
+			const namespaceDescription = namespace
+				? (getToolNamespaceDescription(namespace) ?? `tools from the ${namespace} MCP server`)
+				: undefined;
+			agent.deferredTool(
+				toolRegistryValues(group),
+				namespace ? { namespace, namespaceDescription } : undefined,
+			);
 		}
 	}
 	// The agents module owns the builder skills that are generated from its config schema.

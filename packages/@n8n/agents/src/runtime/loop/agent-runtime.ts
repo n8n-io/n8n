@@ -237,6 +237,7 @@ export class AgentRuntime {
 				this.toolCatalog = new ToolCatalog(config.deferredTools, {
 					...config.toolSearch,
 					namespaces: config.deferredToolNamespaces,
+					namespaceDescriptions: config.deferredToolNamespaceDescriptions,
 					// A lookup for an always-available tool says to call it directly.
 					activeTools: config.tools,
 				});

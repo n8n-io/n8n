@@ -23,7 +23,9 @@ const findToolsInputSchema = z.object({
 	tools: z
 		.array(z.string())
 		.optional()
-		.describe('Tool names to get in full. Name several at once when you will need several.'),
+		.describe(
+			'Tool names to get in full, with their input schemas. Name every tool you will need in one lookup.',
+		),
 	query: z
 		.string()
 		.optional()
@@ -49,6 +51,8 @@ export interface ToolCatalogOptions {
 	topK?: number;
 	/** Namespace of each deferred tool by name. Tools not listed use `tools`. */
 	namespaces?: Readonly<Record<string, string>>;
+	/** One line on what each namespace holds, by namespace. */
+	namespaceDescriptions?: Readonly<Record<string, string>>;
 	/** Always-available tools, so a lookup for one says to call it directly. */
 	activeTools?: BuiltTool[];
 }
@@ -93,6 +97,8 @@ export class ToolCatalog {
 
 	private readonly topK: number;
 
+	private readonly namespaceDescriptions: Readonly<Record<string, string>>;
+
 	private readonly findTool: BuiltTool;
 
 	private readonly callTool: BuiltTool;
@@ -127,6 +133,7 @@ export class ToolCatalog {
 		}
 		this.activeToolNames = new Set((options.activeTools ?? []).map((tool) => tool.name));
 		this.topK = options.topK ?? DEFAULT_TOP_K;
+		this.namespaceDescriptions = options.namespaceDescriptions ?? {};
 		this.findTool = this.createFindTool();
 		this.callTool = this.createCallTool();
 	}
@@ -159,10 +166,18 @@ export class ToolCatalog {
 		}
 		const lines = [...byNamespace.entries()]
 			.sort(([left], [right]) => left.localeCompare(right))
-			.map(([namespace, names]) => `- ${namespace}: ${names.sort().join(', ')}`);
+			.map(([namespace, names]) => {
+				const description = this.namespaceDescriptions[namespace];
+				const label = description ? `${namespace} (${description})` : namespace;
+				return `- ${label}: ${names.sort().join(', ')}`;
+			});
 		return [
 			'<tool_catalog>',
-			`These tools are not in your toolset. This list gives their names only, not their arguments. Before your first ${CALL_TOOL_TOOL_NAME} to one of them, get its input schema with ${FIND_TOOLS_TOOL_NAME}, even when you already know its name. When you do not know a tool's name, search with a query.`,
+			'Most of your tools are not in your toolset. They are in this catalog, listed by namespace with their names only, not their arguments.',
+			`- To use one, get its input schema with ${FIND_TOOLS_TOOL_NAME}, then run it with ${CALL_TOOL_TOOL_NAME}. Do this even when you know the name, and even when a skill names the tool.`,
+			`- Look up every tool you will need in one ${FIND_TOOLS_TOOL_NAME} call, not one at a time.`,
+			"- When you do not know a tool's name, search by query or list a namespace.",
+			`- Calling a catalog tool by its own name fails. Use ${CALL_TOOL_TOOL_NAME}.`,
 			...lines,
 			'</tool_catalog>',
 		].join('\n');
@@ -180,8 +195,14 @@ export class ToolCatalog {
 	private createFindTool(): BuiltTool {
 		return {
 			name: FIND_TOOLS_TOOL_NAME,
-			description:
-				'Look up tools from the tool catalog: their descriptions and input schemas. Pass tools for named tools, namespace alone to list a namespace, query to search by keywords, or pattern for a regular expression. A lookup that returns 5 tools or fewer includes their full schemas.',
+			description: [
+				'Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.',
+				'- tools: the full description and input schema of each named tool.',
+				'- namespace alone: every tool in that namespace, briefly.',
+				'- query, optionally with namespace: the tools that best match the keywords, best first.',
+				'- pattern, optionally with namespace: tools whose name or description matches the regular expression.',
+				`A lookup that returns ${FULL_SCHEMA_LIMIT} tools or fewer includes their full schemas.`,
+			].join('\n'),
 			inputSchema: findToolsInputSchema,
 			systemInstruction: this.renderCatalog(),
 			handler: async (input) => await Promise.resolve(this.find(findToolsInputSchema.parse(input))),
@@ -192,7 +213,7 @@ export class ToolCatalog {
 		return {
 			name: CALL_TOOL_TOOL_NAME,
 			description:
-				'Run a tool from the tool catalog. You must get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.',
+				'Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.',
 			inputSchema: callToolInputSchema,
 			dispatch: {
 				resolve: (input) => {
