@@ -28,12 +28,6 @@ const withDataTable =
 		),
 	});
 
-/**
- * The Data Table node reaches its tables through helpers the host wires in.
- * On engine v2 the data plane has no control plane database, so the helpers
- * go over the control plane API instead. The same spec covers both engines:
- * on a stack without engine v2 the node uses the in-process service.
- */
 test.describe(
 	'Data Table node',
 	{
