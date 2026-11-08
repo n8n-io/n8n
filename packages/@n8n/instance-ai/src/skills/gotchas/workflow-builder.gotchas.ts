@@ -273,7 +273,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'gateway-covered-before-asking',
-			text: 'When the user did not name a service for a capability (web search, scraping), discover coverage with `search_nodes(gatewayCreditsOnly=true)` and use a Gateway credits–covered node instead of asking.',
+			text: 'When the user did not name a service for a capability (web search, scraping), discover coverage by running `search_nodes` through `call_tool` with `gatewayCreditsOnly: true` and use a Gateway credits–covered node instead of asking.',
 			appliesWhen:
 				'The user wants web search, scraping, enrichment or another capability without naming which service to use.',
 			fixes: 'The builder asked which search or scraping service to use.',

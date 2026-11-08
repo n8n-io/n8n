@@ -26,6 +26,7 @@ export const TOOL_CATALOG_GUIDANCE = [
 	'<tool_catalog_rules>',
 	'Most of your tools are not in your toolset. The "Tool catalog" section in the conversation lists them by namespace, with their names only, not their arguments. When that section changes, a newer one replaces it.',
 	`- To use one, get its input schema with ${FIND_TOOLS_TOOL_NAME}, then run it with ${CALL_TOOL_TOOL_NAME}. Do this even when you know the name, and even when a skill names the tool.`,
+	`- Skills and instructions often name a catalog tool directly, such as "call \`some_tool\` with the IDs". Read that as ${CALL_TOOL_TOOL_NAME} with tool "some_tool" and those arguments. Never emit a tool call whose name is a catalog tool.`,
 	`- Look up every tool the task will need in one ${FIND_TOOLS_TOOL_NAME} call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.`,
 	"- When you do not know a tool's name, search by query or list a namespace.",
 	`- Calling a catalog tool by its own name fails. Use ${CALL_TOOL_TOOL_NAME}.`,

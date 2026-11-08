@@ -18,13 +18,14 @@ When the workflow creates or writes Data Tables, load `data-table-manager`
 first (if not already loaded this turn), then this skill.
 
 You write TypeScript with `@n8n/workflow-sdk`. All work goes through one
-workspace source file and `workflow_builder_build_workflow({ filePath })`:
+workspace source file and the `workflow_builder_build_workflow` catalog tool
+(argument: `filePath`):
 
 - **New workflow:** write the complete source with `workspace_write_file`
   (typically `src/workflows/main.workflow.ts`), then build.
 - **Edit or repair of a saved workflow:** reuse the source file already in
-  context. If you only have a workflow ID, call
-  `get_workflow_as_code(workflowId)`: it writes the source to a bound
+  context. If you only have a workflow ID, run `get_workflow_as_code` with
+  `workflowId` through `call_tool`: it writes the source to a bound
   `src/workflows/<name>.workflow.ts` file and returns the `filePath` plus a
   `nodes` index with line numbers. Read only the lines you need, make the
   smallest edit with `workspace_str_replace_file`, then build with the same
@@ -38,28 +39,34 @@ When the needed node types are already obvious from the request, make one
 `load_skill` call for this skill. Each extra sequential turn resends the whole
 context.
 
+All tools this skill names, except `load_skill` and `ask_user`, are catalog
+tools. Run each one through `call_tool`, never by its own name. "Call
+`search_nodes`" below means `call_tool` with tool `search_nodes`.
+
 ## Process
 
-1. **Find nodes.** If unsure which nodes fit, call
-   `search_nodes` with `categories` (`notification`, `data_persistence`, `chatbot`, `scheduling`,
+1. **Find nodes.** If unsure which nodes fit, run `search_nodes` through
+   `call_tool` with `categories` (`notification`, `data_persistence`, `chatbot`, `scheduling`,
    `data_transformation`, `data_extraction`, `document_processing`,
-   `form_input`, `content_generation`, `triage`, `scraping_and_research`). Use
-   `search_nodes` with `query`/`queries` and short service names ("Gmail") for
+   `form_input`, `content_generation`, `triage`, `scraping_and_research`). Run
+   `search_nodes` through `call_tool` with `query`/`queries` and short service names ("Gmail") for
    service-specific nodes.
-2. **Read definitions.** Call `get_node_types` with the exact node IDs and
+2. **Read definitions.** Run `get_node_types` through `call_tool` with the exact node IDs and
    discriminators you will use (up to ten per call). Follow `@builderHint`,
    `@default`, enum values, credential types and display conditions.
 3. **Resolve real values.** For each `searchListMethod`, `loadOptionsMethod` or
-   `resourceLocator` parameter, call `get_node_parameter_options` when a
+   `resourceLocator` parameter, run `get_node_parameter_options` through
+   `call_tool` when a
    credential is available. For new model choices, follow `model-selection`.
 4. **Announce credentials early.** When the `setup_credentials` schema offers
-   `filePath`, call it with the complete list of known credential types right
+   `filePath`, run it through `call_tool` with the complete list of known credential types right
    after the first node definitions, as the only tool call in that response.
    Wait for `preBuild: true`, then continue. Otherwise use the post-build setup.
 5. **Write the source.** Decide node groups now (see [Node Groups](#node-groups)).
    When a live or nondeterministic node feeds IF/Switch logic whose branches
    need verification, declare `output` fixtures on it.
-6. **Build.** Call `workflow_builder_build_workflow` with the `filePath`.
+6. **Build.** Run `workflow_builder_build_workflow` through `call_tool` with
+   the `filePath`.
    Do not run a separate validation command before the build: the build runs the
    graph checks, the SDK source lint and the node schema checks.
    - For new workflows, fix every blocking error.
@@ -127,7 +134,7 @@ The inlined `postBuildFlow.instructions` decide who verifies and how. This
 section applies only when they or the current turn make you responsible.
 
 Build/save success is not workflow-quality evidence. Inspect the persisted
-workflow (the bound source file, or `get_workflow_as_code(workflowId)` when it
+workflow (the bound source file, or `get_workflow_as_code` with `workflowId` when it
 may have changed outside this conversation) and judge it against the user's
 requested outcome. Claim a workflow works only from a
 `workflow_builder_verify_built_workflow` or `run_workflow` run that exercised
@@ -140,13 +147,13 @@ make one batched repair in the source file and rebuild with the same `filePath`.
 
 ## Credential Rules
 
-- Call `list_credentials` early when the task touches external services.
+- Run `list_credentials` through `call_tool` early when the task touches external services.
 - Use `newCredential('Credential Name', 'credential-id')` only when the user
   selected a credential, exactly one unambiguous match exists, or the workflow
   already had it. Otherwise use `newCredential('Suggested Credential Name')`;
   setup collects real ones later.
-- When `list_credentials` has no suitable instance, call
-  `search_credential_types` and prefer a dedicated credential type.
+- When `list_credentials` has no suitable instance, run
+  `search_credential_types` through `call_tool` and prefer a dedicated credential type.
 
 ## SDK Code Rules
 
