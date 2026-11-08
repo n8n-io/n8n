@@ -10,11 +10,19 @@ import type {
 import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { draftFields, draftOperations } from './DraftDescription';
+import { filterFields, filterOperations } from './FilterDescription';
 import { labelFields, labelOperations } from './LabelDescription';
-import { getGmailAliases, getLabels, getThreadMessages } from './loadOptions';
+import { getGmailAliases, getLabels, getThreadMessages, getUserLabels } from './loadOptions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { threadFields, threadOperations } from './ThreadDescription';
 import { addThreadHeadersToEmail } from './utils/draft';
+import { buildFilterBody, filterMatchesBody } from './utils/filter';
+import {
+	buildLabelCreateBody,
+	buildLabelUpdateBody,
+	parseLabelHierarchy,
+	resolveParentLabels,
+} from './utils/label';
 import { configureWaitTillDate } from '../../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
 import type { IEmail } from '../../../../utils/sendAndWait/interfaces';
@@ -36,7 +44,17 @@ import {
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
+import type { Label } from '../types';
 import { replyToEmail } from '../utils/replyToEmail';
+
+function isHttpStatus(error: unknown, status: number): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'httpCode' in error &&
+		String(error.httpCode) === String(status)
+	);
+}
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -99,16 +117,20 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Message',
-					value: 'message',
+					name: 'Draft',
+					value: 'draft',
+				},
+				{
+					name: 'Filter',
+					value: 'filter',
 				},
 				{
 					name: 'Label',
 					value: 'label',
 				},
 				{
-					name: 'Draft',
-					value: 'draft',
+					name: 'Message',
+					value: 'message',
 				},
 				{
 					name: 'Thread',
@@ -127,6 +149,11 @@ const versionDescription: INodeTypeDescription = {
 		//-------------------------------
 		...labelOperations,
 		...labelFields,
+		//-------------------------------
+		// Filter Operations
+		//-------------------------------
+		...filterOperations,
+		...filterFields,
 		//-------------------------------
 		// Message Operations
 		//-------------------------------
@@ -164,6 +191,7 @@ export class GmailV2 implements INodeType {
 	methods = {
 		loadOptions: {
 			getLabels,
+			getUserLabels,
 			getThreadMessages,
 			getGmailAliases,
 		},
@@ -210,6 +238,7 @@ export class GmailV2 implements INodeType {
 					if (operation === 'create') {
 						//https://developers.google.com/gmail/api/v1/reference/users/labels/create
 						const labelName = this.getNodeParameter('name', i) as string;
+						const parentLabelName = this.getNodeParameter('parentLabelName', i, '') as string;
 						const labelListVisibility = this.getNodeParameter(
 							'options.labelListVisibility',
 							i,
@@ -220,12 +249,53 @@ export class GmailV2 implements INodeType {
 							i,
 							'show',
 						) as string;
+						const textColor = this.getNodeParameter('options.textColor', i, '') as string;
+						const backgroundColor = this.getNodeParameter(
+							'options.backgroundColor',
+							i,
+							'',
+						) as string;
 
-						const body = {
-							labelListVisibility,
-							messageListVisibility,
-							name: labelName,
-						};
+						let body: IDataObject;
+						try {
+							body = buildLabelCreateBody({
+								name: labelName,
+								parentName: parentLabelName || undefined,
+								labelListVisibility,
+								messageListVisibility,
+								color: textColor && backgroundColor ? { textColor, backgroundColor } : undefined,
+							});
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), (error as Error).message, {
+								itemIndex: i,
+							});
+						}
+
+						const nameParts = (body.name as string).split('/');
+						if (nameParts.length > 1) {
+							const { labels = [] } = (await googleApiRequest.call(
+								this,
+								'GET',
+								'/gmail/v1/users/me/labels',
+							)) as { labels?: Label[] };
+							const { parentPath, missing } = resolveParentLabels(
+								labels.map((label) => label.name),
+								nameParts.slice(0, -1).join('/'),
+							);
+							for (const parentName of missing) {
+								try {
+									await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/labels', {
+										name: parentName,
+										labelListVisibility,
+										messageListVisibility,
+									});
+								} catch (error) {
+									// A parallel execution may have just created it; that's the state we want.
+									if (!isHttpStatus(error, 409)) throw error;
+								}
+							}
+							body.name = `${parentPath}/${nameParts[nameParts.length - 1]}`;
+						}
 
 						responseData = await googleApiRequest.call(
 							this,
@@ -251,10 +321,136 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
+						const simplifyHierarchy = this.getNodeParameter(
+							'getAllOptions.simplifyHierarchy',
+							i,
+							false,
+						) as boolean;
 
 						responseData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 
-						responseData = this.helpers.returnJsonArray(responseData.labels as IDataObject[]);
+						let labels = (responseData.labels as Label[]) || [];
+						if (simplifyHierarchy) {
+							labels = labels.map((label) => parseLabelHierarchy(label));
+						}
+
+						responseData = this.helpers.returnJsonArray(labels as IDataObject[]);
+
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
+							responseData = responseData.splice(0, limit);
+						}
+					}
+					if (operation === 'update') {
+						// https://developers.google.com/gmail/api/reference/rest/v1/users.labels/patch
+						const labelId = this.getNodeParameter('labelId', i) as string;
+						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
+						let body: IDataObject;
+						try {
+							body = buildLabelUpdateBody(updateFields);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), (error as Error).message, {
+								itemIndex: i,
+							});
+						}
+
+						responseData = await googleApiRequest.call(
+							this,
+							'PATCH',
+							`/gmail/v1/users/me/labels/${labelId}`,
+							body,
+						);
+					}
+				}
+				//------------------------------------------------------------------//
+				//                            filters                               //
+				//------------------------------------------------------------------//
+				if (resource === 'filter') {
+					if (operation === 'create' || operation === 'replace') {
+						// https://developers.google.com/gmail/api/reference/rest/v1/users.settings.filters/create
+						const criteria = this.getNodeParameter('criteria', i, {}) as IDataObject;
+						const action = this.getNodeParameter('action', i, {}) as IDataObject;
+
+						let body: IDataObject;
+						try {
+							body = buildFilterBody(criteria, action);
+						} catch (error) {
+							throw new NodeOperationError(this.getNode(), (error as Error).message, {
+								itemIndex: i,
+							});
+						}
+
+						if (operation === 'replace') {
+							// Gmail has no filter update. Create the new filter before deleting the
+							// old one so a rejected filter never leaves the user with neither.
+							const filterId = this.getNodeParameter('filterId', i) as string;
+							const existing = await googleApiRequest.call(
+								this,
+								'GET',
+								`/gmail/v1/users/me/settings/filters/${filterId}`,
+							);
+							if (filterMatchesBody(existing, body)) {
+								responseData = existing;
+							} else {
+								responseData = await googleApiRequest.call(
+									this,
+									'POST',
+									'/gmail/v1/users/me/settings/filters',
+									body,
+								);
+								try {
+									await googleApiRequest.call(
+										this,
+										'DELETE',
+										`/gmail/v1/users/me/settings/filters/${filterId}`,
+									);
+								} catch (error) {
+									// Already removed elsewhere: the new filter is in place, which is the goal.
+									if (!isHttpStatus(error, 404)) throw error;
+								}
+							}
+						} else {
+							responseData = await googleApiRequest.call(
+								this,
+								'POST',
+								'/gmail/v1/users/me/settings/filters',
+								body,
+							);
+						}
+					}
+					if (operation === 'delete') {
+						// https://developers.google.com/gmail/api/reference/rest/v1/users.settings.filters/delete
+						const filterId = this.getNodeParameter('filterId', i) as string;
+						await googleApiRequest.call(
+							this,
+							'DELETE',
+							`/gmail/v1/users/me/settings/filters/${filterId}`,
+						);
+						responseData = { success: true };
+					}
+					if (operation === 'get') {
+						// https://developers.google.com/gmail/api/reference/rest/v1/users.settings.filters/get
+						const filterId = this.getNodeParameter('filterId', i) as string;
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							`/gmail/v1/users/me/settings/filters/${filterId}`,
+						);
+					}
+					if (operation === 'getAll') {
+						// https://developers.google.com/gmail/api/reference/rest/v1/users.settings.filters/list
+						const returnAll = this.getNodeParameter('returnAll', i);
+
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							'/gmail/v1/users/me/settings/filters',
+						);
+
+						responseData = this.helpers.returnJsonArray(
+							(responseData.filter as IDataObject[]) || [],
+						);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
