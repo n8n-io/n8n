@@ -8,6 +8,7 @@ import {
 	type INodeExecutionData,
 	type IWorkflowDataProxyData,
 	type WorkflowExecuteMode,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -539,6 +540,24 @@ describe('ToolWorkflowV1', () => {
 				message: 'Workflow execution failed',
 				context: { itemIndex: 1 },
 			});
+		});
+
+		it('should report the index of the item whose input does not match the schema', async () => {
+			const ctx = createExecuteContext([
+				{ json: { city: 'Berlin' } },
+				{ json: { units: 'metric' } },
+			]);
+			useInputSchema(ctx, () => citySchema);
+			ctx.executeWorkflow.mockResolvedValueOnce({
+				data: [[{ json: { forecast: 'sunny' } }]],
+				executionId: 'sub-1',
+			});
+
+			const error = await node.execute.call(ctx).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect(error).toMatchObject({ context: { itemIndex: 1 } });
+			expect(ctx.executeWorkflow).toHaveBeenCalledTimes(1);
 		});
 
 		it('should report the index of the item whose tool could not be built', async () => {
