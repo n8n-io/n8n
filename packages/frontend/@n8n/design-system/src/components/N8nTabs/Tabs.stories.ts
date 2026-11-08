@@ -1,8 +1,9 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { ref } from 'vue';
 
-import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
+import { N8nTabs, N8nTabsContent, N8nTabsList, N8nTabsRoot, N8nTabsTrigger } from './index';
 
 export default {
 	title: 'Core/Tabs',
@@ -11,7 +12,8 @@ export default {
 	parameters: {
 		docs: {
 			description: {
-				component: 'A tab navigation component for switching between content panels.',
+				component:
+					'A tab navigation component for switching between content panels. Use N8nTabsRoot, N8nTabsList, N8nTabsTrigger, and N8nTabsContent when the strip needs custom tab controls.',
 			},
 		},
 		backgrounds: { default: '--color--background--light-3' },
@@ -190,5 +192,23 @@ export const Sizes: StoryFn = () => ({
 			<n8n-tabs v-model="val" variant="modern" size="medium" :options="options" />
 			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
 		</div>
+	`,
+});
+
+export const Headless: StoryFn = () => ({
+	components: { N8nTabsRoot, N8nTabsList, N8nTabsTrigger, N8nTabsContent },
+	setup() {
+		const value = ref('overview');
+		return { value };
+	},
+	template: `
+		<N8nTabsRoot v-model="value">
+			<N8nTabsList aria-label="Example tabs" style="display: flex; gap: var(--spacing--xs);">
+				<N8nTabsTrigger value="overview">Overview</N8nTabsTrigger>
+				<N8nTabsTrigger value="settings">Settings</N8nTabsTrigger>
+			</N8nTabsList>
+			<N8nTabsContent value="overview">Overview content</N8nTabsContent>
+			<N8nTabsContent value="settings">Settings content</N8nTabsContent>
+		</N8nTabsRoot>
 	`,
 });

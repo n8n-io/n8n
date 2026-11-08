@@ -12,6 +12,7 @@ import {
 	N8nIconButton,
 	N8nLink,
 	N8nResizeWrapper,
+	N8nTabsRoot,
 	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
@@ -20,7 +21,6 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
-import { TabsRoot } from 'reka-ui';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -626,7 +626,7 @@ function removeStagedNodes(chipId: string): void {
 				:grid-size="8"
 				@resize="handlePreviewResize"
 			>
-				<TabsRoot
+				<N8nTabsRoot
 					:model-value="preview.activeTabId.value"
 					orientation="horizontal"
 					:class="$style.previewPanel"
@@ -683,7 +683,7 @@ function removeStagedNodes(chipId: string): void {
 							</N8nLink>
 						</div>
 					</div>
-				</TabsRoot>
+				</N8nTabsRoot>
 			</N8nResizeWrapper>
 		</div>
 	</div>
