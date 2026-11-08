@@ -80,7 +80,7 @@ function onOperation(value: string | undefined) {
 <template>
 	<N8nDialog
 		v-model:open="visible"
-		size="small"
+		size="xlarge"
 		:header="
 			locale.baseText('projects.settings.delete.title', {
 				interpolate: { projectName: props.currentProject?.name ?? '' },
@@ -92,7 +92,9 @@ function onOperation(value: string | undefined) {
 				locale.baseText('projects.settings.delete.message.empty')
 			}}</N8nText>
 			<div v-else-if="hasMovableResources">
-				<N8nText color="text-base">{{ locale.baseText('projects.settings.delete.message') }}</N8nText>
+				<N8nText color="text-base">{{
+					locale.baseText('projects.settings.delete.message')
+				}}</N8nText>
 				<div class="pt-l">
 					<N8nRadioGroup :model-value="operation ?? undefined" @update:model-value="onOperation">
 						<N8nRadioGroupItem value="transfer">
