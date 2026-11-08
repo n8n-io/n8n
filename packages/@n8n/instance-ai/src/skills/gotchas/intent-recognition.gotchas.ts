@@ -31,16 +31,16 @@ export const INTENT_RECOGNITION_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'chat-trigger-is-not-an-agent',
-			text: 'Never satisfy an agent-anchored request with a Chat Trigger + AI Agent node workflow. A Chat Trigger workflow is right only when chat only starts a fixed graph (paste an input, run fixed steps, reply).',
+			text: 'Never satisfy an agent-anchored request with a Chat Trigger + AI Agent node workflow. A Chat Trigger workflow is right when chat only starts a fixed graph (paste an input, run fixed steps, reply). It is also right when the user explicitly asks for a workflow or names a Chat Trigger or an AI Agent node: build that workflow and do not ask.',
 			appliesWhen:
-				'People chat with it, ask it questions or send it messages, and it answers or acts on each message.',
+				'The user asks for an agent, assistant or bot that people chat with, and does not ask for a workflow or name its nodes.',
 			fixes: 'Built Chat Trigger + AI Agent node workflows for chat assistants.',
 			origin: '#34086',
 			evalCases: [],
 		},
 		{
 			id: 'close-pair-chat-workflow',
-			text: 'When the user names a workflow but people message it over time and each reply needs judgment or memory, it fits the Agent / chat-workflow close pair: ask whether it should hold a conversation and decide its replies, or run fixed steps on every message, before you build either.',
+			text: 'When the user names a workflow but people message it over time and each reply needs judgment or memory, it fits the Agent / chat-workflow close pair: ask whether it should hold a conversation and decide its replies, or run fixed steps on every message, before you build either. Do not ask when the user names the nodes (Chat Trigger, AI Agent node), pastes a workflow, or explicitly asks for a workflow with a chat-triggered agent: build that workflow.',
 			appliesWhen:
 				'The user asks for a workflow that talks to customers, shoppers or users in chat, DMs or a messaging channel.',
 			fixes: 'Built a chat workflow when the user needed an Agent, or the reverse, without asking.',
