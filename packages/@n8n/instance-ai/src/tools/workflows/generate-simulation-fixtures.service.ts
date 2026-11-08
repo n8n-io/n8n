@@ -81,7 +81,7 @@ const FixturesResponseSchema = z.record(z.string(), z.array(z.unknown()));
 
 const SYSTEM_INSTRUCTIONS = `You generate realistic mock output for n8n workflow nodes whose real execution is being simulated (their operation would create, update, send, or delete data in an external system, would wait for an outside event, or would pause the workflow for user action).
 
-For each node, return the output items the node would naturally emit after a SUCCESSFUL run of its operation — matching the response shape of the underlying service (e.g. a Slack message post returns "ok", "ts" and "channel"; a row insert returns the row including its new "id"). Base the field values on the node's parameters so the data is plausible in context, and keep values consistent across nodes (same fictional users, ids, timestamps).
+For each node, return the output items the n8n node would naturally emit after a SUCCESSFUL run of its operation (e.g. a Slack message post returns "ok", "ts" and "channel"; a row insert returns the row including its new "id"). Emit what the n8n node outputs, not the raw API response: many nodes reshape the response, and options such as Simplify Output (often on by default, also when the parameter is absent) change it. Example: Google Gemini "Message a Model" with Simplify Output on emits one item per candidate, shaped { "content": { "parts": [{ "text": ... }], "role": "model" }, "finishReason": ... }, not a { "candidates": [...] } envelope. Base the field values on the node's parameters so the data is plausible in context, and keep values consistent across nodes (same fictional users, ids, timestamps).
 
 When a node block includes an "Output JSON Schema", it is the node's real recorded output shape — follow its structure exactly (field names and types); only invent fields the schema doesn't cover when the node's parameters clearly require them.
 
@@ -363,6 +363,31 @@ function findUpstreamShape(
 	return undefined;
 }
 
+const GEMINI_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
+
+/**
+ * The fixture model often copies a provider's raw API envelope. Where the real
+ * node unwraps that envelope, do the same, so the workflow is verified against
+ * the shape it gets in production.
+ * Google Gemini "Message a Model" with Simplify Output on (the default) emits
+ * one item per candidate.
+ */
+export function toNodeOutputShape(
+	node: NamedNode | undefined,
+	items: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+	if (node?.type !== GEMINI_NODE_TYPE) return items;
+	const params = isRecord(node.parameters) ? node.parameters : {};
+	const resource = params.resource ?? 'text';
+	const operation = params.operation ?? 'message';
+	if (resource !== 'text' || operation !== 'message' || params.simplify === false) return items;
+	return items.flatMap((item) =>
+		Array.isArray(item.candidates) && item.candidates.length > 0
+			? item.candidates.filter(isRecord)
+			: [item],
+	);
+}
+
 function placeholderFixtures(
 	nodeNames: string[],
 	schemaContextByName: Map<string, NodeSchemaContext>,
@@ -476,14 +501,16 @@ export async function generateSimulationFixtures(
 	let pinData = parsePinDataResponse(JSON.stringify(result.data), nodeNames);
 	pinData = repairStructuredOutput(pinData, input.workflow, schemaContexts);
 
+	const nodeByName = new Map(nodes.map((node) => [node.name, node] as const));
 	const fixtures: SimulationFixtures = {};
 	for (const name of nodeNames) {
 		// An omitted node, an empty array, or items that unwrap to nothing all
 		// leave the branch below this node unreached, so each falls back to the
 		// schema-shaped floor.
-		const items = (pinData[name] ?? [])
-			.map((item) => (isRecord(item.json) ? item.json : {}))
-			.filter((item) => Object.keys(item).length > 0);
+		const items = toNodeOutputShape(
+			nodeByName.get(name),
+			(pinData[name] ?? []).map((item) => (isRecord(item.json) ? item.json : {})),
+		).filter((item) => Object.keys(item).length > 0);
 		fixtures[name] = items.length
 			? items
 			: [buildSchemaPlaceholderItem(schemaContextByName.get(name), { now })];
