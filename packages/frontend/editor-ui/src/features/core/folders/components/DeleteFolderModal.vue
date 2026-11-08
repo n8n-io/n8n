@@ -165,88 +165,103 @@ function onDialogOpenUpdate(open: boolean) {
 
 <template>
 	<N8nDialog :open="modalOpen" size="xlarge" :header="title" @update:open="onDialogOpenUpdate">
-		<N8nDialogBody>
-			<div>
-				<div v-if="isPending">
-					<N8nText color="text-base">{{ i18n.baseText('folders.delete.confirm.message') }}</N8nText>
-				</div>
-				<div v-else :class="$style.content">
-					<div>
-						<N8nText color="text-base">{{ folderContentWarningMessage }}</N8nText>
+		<form :class="$style.form" novalidate @submit.prevent="onSubmit">
+			<N8nDialogBody>
+				<div>
+					<div v-if="isPending">
+						<N8nText color="text-base">{{
+							i18n.baseText('folders.delete.confirm.message')
+						}}</N8nText>
 					</div>
-					<N8nRadioGroup v-model="operation">
-						<N8nRadioGroupItem value="transfer" data-test-id="transfer-content-radio">
-							<template #label>
-								<N8nText v-if="currentProjectName">{{
-									i18n.baseText('folders.transfer.action', {
-										interpolate: { projectName: currentProjectName },
-									})
-								}}</N8nText>
-								<N8nText v-else color="text-dark">{{
-									i18n.baseText('folders.transfer.action.noProject')
-								}}</N8nText>
-							</template>
-							<template #content>
-								<div v-if="operation === 'transfer'" class="pt-2xs">
-									<N8nText color="text-dark">{{
-										i18n.baseText('folders.transfer.selectFolder')
+					<div v-else :class="$style.content">
+						<div>
+							<N8nText color="text-base">{{ folderContentWarningMessage }}</N8nText>
+						</div>
+						<N8nRadioGroup v-model="operation">
+							<N8nRadioGroupItem value="transfer" data-test-id="transfer-content-radio">
+								<template #label>
+									<N8nText v-if="currentProjectName">{{
+										i18n.baseText('folders.transfer.action', {
+											interpolate: { projectName: currentProjectName },
+										})
 									}}</N8nText>
-									<MoveToFolderDropdown
-										v-if="projectsStore.currentProject"
-										:selected-location="selectedFolder"
-										:selected-project-id="projectsStore.currentProject?.id"
-										:current-project-id="projectsStore.currentProject?.id"
-										:current-folder-id="props.activeId"
-										:parent-folder-id="folderToDelete?.parentFolder"
-										@location:selected="onFolderSelected"
-									/>
-								</div>
-							</template>
-						</N8nRadioGroupItem>
-						<N8nRadioGroupItem value="delete" data-test-id="delete-content-radio">
-							<template #label>
-								<N8nText color="text-dark">{{ i18n.baseText('folders.delete.action') }}</N8nText>
-							</template>
-							<template #content>
-								<div v-if="operation === 'delete'" class="pt-2xs" data-test-id="delete-data-input">
-									<N8nInputLabel
-										:label="
-											i18n.baseText('folders.delete.confirmation.message', {
-												interpolate: { folderName: folderToDelete?.name ?? '' },
-											})
-										"
+									<N8nText v-else color="text-dark">{{
+										i18n.baseText('folders.transfer.action.noProject')
+									}}</N8nText>
+								</template>
+								<template #content>
+									<div v-if="operation === 'transfer'" class="pt-2xs">
+										<N8nText color="text-dark">{{
+											i18n.baseText('folders.transfer.selectFolder')
+										}}</N8nText>
+										<MoveToFolderDropdown
+											v-if="projectsStore.currentProject"
+											:selected-location="selectedFolder"
+											:selected-project-id="projectsStore.currentProject?.id"
+											:current-project-id="projectsStore.currentProject?.id"
+											:current-folder-id="props.activeId"
+											:parent-folder-id="folderToDelete?.parentFolder"
+											@location:selected="onFolderSelected"
+										/>
+									</div>
+								</template>
+							</N8nRadioGroupItem>
+							<N8nRadioGroupItem value="delete" data-test-id="delete-content-radio">
+								<template #label>
+									<N8nText color="text-dark">{{ i18n.baseText('folders.delete.action') }}</N8nText>
+								</template>
+								<template #content>
+									<div
+										v-if="operation === 'delete'"
+										class="pt-2xs"
+										data-test-id="delete-data-input"
 									>
-										<N8nInput
-											v-model="deleteConfirmText"
-											data-test-id="delete-data-input"
-											:placeholder="
-												i18n.baseText('folders.delete.typeToConfirm', {
+										<N8nInputLabel
+											:label="
+												i18n.baseText('folders.delete.confirmation.message', {
 													interpolate: { folderName: folderToDelete?.name ?? '' },
 												})
 											"
-										/>
-									</N8nInputLabel>
-								</div>
-							</template>
-						</N8nRadioGroupItem>
-					</N8nRadioGroup>
+										>
+											<N8nInput
+												v-model="deleteConfirmText"
+												data-test-id="delete-data-input"
+												:placeholder="
+													i18n.baseText('folders.delete.typeToConfirm', {
+														interpolate: { folderName: folderToDelete?.name ?? '' },
+													})
+												"
+											/>
+										</N8nInputLabel>
+									</div>
+								</template>
+							</N8nRadioGroupItem>
+						</N8nRadioGroup>
+					</div>
 				</div>
-			</div>
-		</N8nDialogBody>
-		<N8nDialogFooter>
-			<N8nButton
-				:loading="loading"
-				:disabled="!enabled"
-				:label="i18n.baseText('generic.delete')"
-				float="right"
-				data-test-id="confirm-delete-folder-button"
-				@click="onSubmit"
-			/>
-		</N8nDialogFooter>
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<N8nButton
+					type="submit"
+					:loading="loading"
+					:disabled="!enabled"
+					:label="i18n.baseText('generic.delete')"
+					float="right"
+					data-test-id="confirm-delete-folder-button"
+				/>
+			</N8nDialogFooter>
+		</form>
 	</N8nDialog>
 </template>
 
 <style lang="scss" module>
+.form {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-height: 0;
+}
+
 .content {
 	> *:not(:last-child) {
 		margin-bottom: var(--spacing--sm);
