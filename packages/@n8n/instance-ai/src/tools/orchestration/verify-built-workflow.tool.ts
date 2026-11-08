@@ -420,6 +420,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				logger: context.logger,
 			});
 			const simulationNote = [
+				prepared.ignoredGateOverrideNote,
 				analysis.simulationNote,
 				buildResolvedParameterNote(
 					resolvedParameterWarnings,
