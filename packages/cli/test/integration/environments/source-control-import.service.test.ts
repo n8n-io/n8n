@@ -2115,6 +2115,10 @@ describe('SourceControlImportService', () => {
 					{ id: workflowId, name: 'Test Workflow', versionId, nodes, connections: {} },
 					importingUser,
 				);
+				const { authors } = await workflowHistoryRepository.findOneByOrFail({
+					versionId,
+					workflowId,
+				});
 
 				const workflow = makeWorkflowImport({
 					id: workflowId,
@@ -2133,7 +2137,7 @@ describe('SourceControlImportService', () => {
 				const historyRecord = await workflowHistoryRepository.findOneOrFail({
 					where: { versionId, workflowId },
 				});
-				expect(historyRecord.settings).toEqual({ engineType: 'v2' });
+				expect(historyRecord).toMatchObject({ settings: { engineType: 'v2' }, authors });
 			});
 
 			it('should update workflow history when versionId exists but nodes changed', async () => {

@@ -259,7 +259,6 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			[
 				this.makeSkipActiveAndNamedVersionsRule(protectedVersions),
 				SKIP_RULES.skipDifferentUsers,
-				SKIP_RULES.skipDifferentVersionedSettings,
 				...skipRules,
 			],
 			metaData,

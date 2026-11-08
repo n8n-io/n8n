@@ -83,7 +83,6 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 
@@ -91,19 +90,6 @@ describe('GET /workflow-history/:workflowId', () => {
 		expect(resp.status).toBe(200);
 		expect(resp.body.data).toHaveLength(10);
 		expect(resp.body.data[0]).toEqual(expected);
-	});
-
-	test('should return the version-scoped settings of each version', async () => {
-		const workflow = await createWorkflow(undefined, owner);
-		const version = await createWorkflowHistoryItem(workflow.id, {
-			settings: { engineType: 'v2' },
-		});
-
-		const resp = await authOwnerAgent.get('/workflow-history/workflow/' + workflow.id);
-		expect(resp.status).toBe(200);
-		expect(resp.body.data).toEqual([
-			expect.objectContaining({ versionId: version.versionId, settings: { engineType: 'v2' } }),
-		]);
 	});
 
 	test('should return versions only for workflow id provided', async () => {
@@ -133,7 +119,6 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 
@@ -165,7 +150,6 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 
@@ -250,7 +234,6 @@ describe('GET /workflow-history/:workflowId', () => {
 			createdAt: last.createdAt.toISOString(),
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
-			settings: {},
 			workflowPublishHistory: last.workflowPublishHistory,
 		};
 

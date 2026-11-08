@@ -2353,13 +2353,17 @@ export class SourceControlImportService {
 			const nodeGroupsChanged = !isEqual(existingVersion.nodeGroups, nodeGroups);
 			const settingsChanged = !versionedSettingsEqual(existingVersion.settings, settings);
 
-			if (nodesChanged || connectionsChanged || nodeGroupsChanged || settingsChanged) {
+			if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
 				await this.workflowHistoryService.updateVersion(id, versionId, {
 					nodes,
 					connections,
 					nodeGroups,
 					settings: pickVersionedSettings(settings),
 					authors,
+				});
+			} else if (settingsChanged) {
+				await this.workflowHistoryService.updateVersion(id, versionId, {
+					settings: pickVersionedSettings(settings),
 				});
 			}
 		} else {

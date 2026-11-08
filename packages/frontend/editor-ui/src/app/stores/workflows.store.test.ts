@@ -352,7 +352,6 @@ describe('useWorkflowsStore', () => {
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				workflowPublishHistory: [],
-				settings: {},
 			};
 
 			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
@@ -376,7 +375,6 @@ describe('useWorkflowsStore', () => {
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				workflowPublishHistory: [],
-				settings: {},
 			};
 
 			workflowsStore.setWorkflowActive('1', mockActiveVersion, true);
@@ -399,7 +397,6 @@ describe('useWorkflowsStore', () => {
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				workflowPublishHistory: [],
-				settings: {},
 			};
 
 			workflowsStore.setWorkflowActive('2', mockActiveVersion, true);

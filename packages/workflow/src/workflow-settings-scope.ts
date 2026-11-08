@@ -51,8 +51,17 @@ const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = 
 	.filter(isVersionedEntry)
 	.map(([key]) => key);
 
-export function pickVersionedSettings(settings?: IWorkflowSettings): VersionedWorkflowSettings {
-	const result: VersionedWorkflowSettings = {};
+/** The value of a version-scoped setting that the workflow settings do not set. */
+const VERSIONED_SETTING_DEFAULTS: Required<VersionedWorkflowSettings> = { engineType: 'v1' };
+
+/**
+ * Returns the version-scoped settings, with the default for each setting that is not set.
+ * So a new version always stores its engine, and `v1` compares equal to no engine.
+ */
+export function pickVersionedSettings(
+	settings?: IWorkflowSettings,
+): Required<VersionedWorkflowSettings> {
+	const result = { ...VERSIONED_SETTING_DEFAULTS };
 	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) {
 		const value = settings?.[key];
 		if (value === undefined || value === null) continue;

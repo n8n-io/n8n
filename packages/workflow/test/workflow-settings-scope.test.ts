@@ -1,4 +1,11 @@
+import type { VersionedWorkflowSettingKey } from '../src/workflow-settings-scope';
 import { pickVersionedSettings, versionedSettingsEqual } from '../src/workflow-settings-scope';
+
+describe('VersionedWorkflowSettingKey', () => {
+	it('versions only the engine', () => {
+		expectTypeOf<VersionedWorkflowSettingKey>().toEqualTypeOf<'engineType'>();
+	});
+});
 
 describe('pickVersionedSettings', () => {
 	it('returns only the version-scoped settings', () => {
@@ -11,8 +18,8 @@ describe('pickVersionedSettings', () => {
 		['undefined settings', undefined],
 		['empty settings', {}],
 		['only live settings', { availableInMCP: true }],
-	])('returns an empty object for %s', (_, settings) => {
-		expect(pickVersionedSettings(settings)).toEqual({});
+	])('returns the default engine for %s', (_, settings) => {
+		expect(pickVersionedSettings(settings)).toEqual({ engineType: 'v1' });
 	});
 });
 
@@ -30,8 +37,8 @@ describe('versionedSettingsEqual', () => {
 		expect(versionedSettingsEqual({ engineType: 'v1' }, { engineType: 'v2' })).toBe(false);
 	});
 
-	it('treats an unset engine as different from a set one', () => {
-		expect(versionedSettingsEqual({}, { engineType: 'v1' })).toBe(false);
+	it('treats an unset engine as v1', () => {
+		expect(versionedSettingsEqual({}, { engineType: 'v1' })).toBe(true);
 	});
 
 	it('treats missing and empty settings as equal', () => {

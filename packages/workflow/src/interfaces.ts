@@ -21,7 +21,6 @@ import type {
 	LOG_LEVELS,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
-	WORKFLOW_ENGINE_TYPES,
 } from './constants';
 
 import type {
@@ -4199,8 +4198,6 @@ export namespace WorkflowSettings {
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
 
-export type WorkflowEngineType = (typeof WORKFLOW_ENGINE_TYPES)[number];
-
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
 	errorWorkflow?: 'DEFAULT' | string;
@@ -4212,7 +4209,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
-	engineType?: WorkflowEngineType;
+	engineType?: 'v1' | 'v2';
 	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';

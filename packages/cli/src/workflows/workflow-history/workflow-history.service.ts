@@ -79,7 +79,6 @@ export class WorkflowHistoryService {
 				'name',
 				'description',
 				'autosaved',
-				'settings',
 			],
 			order: { createdAt: 'DESC', versionId: 'ASC' },
 		});
