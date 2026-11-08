@@ -1,7 +1,10 @@
+import type { IDataObject } from 'n8n-workflow';
+
 import type { WorkflowBuildOutcome } from '../../../../workflow-loop/workflow-loop-state';
 import {
 	analyzeVerificationResult,
 	buildEmptyOutputNote,
+	buildMissingFieldNote,
 	INJECTED_TRIGGER_SIMULATION_REASON,
 	WORKFLOW_PIN_SIMULATION_REASON,
 } from '../analyze-result';
@@ -703,5 +706,82 @@ describe('analyzeVerificationResult — redacted runs', () => {
 
 		expect(analysis.remediation).toMatchObject({ reason: 'runtime_failure', shouldEdit: true });
 		expect(analysis.redactionNote).toBeUndefined();
+	});
+});
+
+describe('buildMissingFieldNote', () => {
+	const wrap = (value: unknown) =>
+		`<untrusted_data source="execution-output" label="node:test">\n${JSON.stringify(value, null, 2)}\n</untrusted_data>`;
+	const workflowWith = (type: string, parameters: IDataObject) => ({
+		nodes: [
+			{
+				id: '1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			},
+			{
+				id: '2',
+				name: 'Score',
+				type,
+				typeVersion: 3,
+				position: [200, 0] as [number, number],
+				parameters,
+			},
+		],
+		connections: {
+			Webhook: { main: [[{ node: 'Score', type: 'main' as const, index: 0 }]] },
+		},
+	});
+
+	it('names a field that no input item has, with close matches', () => {
+		const note = buildMissingFieldNote(
+			{ Webhook: wrap([{ body: { timeline: '3m', Date: 'x' } }]), Score: wrap([{}]) },
+			workflowWith('n8n-nodes-base.set', {
+				value: '={{ $json.body.timeline_months }} {{ $json.body.timeline }}',
+				date: '={{ $json.body.date }}',
+			}),
+			new Set(),
+		);
+		expect(note).toContain('Score reads `$json.body.timeline_months`');
+		expect(note).toContain('close match: timeline');
+		expect(note).toContain('close match: Date');
+		expect(note).not.toContain('`$json.body.timeline`,');
+	});
+
+	it('points to Split Out when the field is on entries of a wrapped array', () => {
+		const note = buildMissingFieldNote(
+			{ Webhook: wrap([{ orders: [{ id: 'ord-1' }] }]), Score: wrap([{}]) },
+			workflowWith('n8n-nodes-base.set', { id: '={{ $json.id }}' }),
+			new Set(),
+		);
+		expect(note).toContain('split that array into items (Split Out)');
+	});
+
+	it('skips Code nodes, simulated nodes and resolved fields', () => {
+		const data = { Webhook: wrap([{ body: { a: 1 } }]), Score: wrap([{}]) };
+		expect(
+			buildMissingFieldNote(
+				data,
+				workflowWith('n8n-nodes-base.code', { jsCode: '={{ $json.x }}' }),
+				new Set(),
+			),
+		).toBeUndefined();
+		expect(
+			buildMissingFieldNote(
+				data,
+				workflowWith('n8n-nodes-base.set', { v: '={{ $json.x }}' }),
+				new Set(['Score']),
+			),
+		).toBeUndefined();
+		expect(
+			buildMissingFieldNote(
+				data,
+				workflowWith('n8n-nodes-base.set', { v: '={{ $json.body.a }}' }),
+				new Set(),
+			),
+		).toBeUndefined();
 	});
 });

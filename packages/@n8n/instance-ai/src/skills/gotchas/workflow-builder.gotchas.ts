@@ -152,6 +152,54 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 			evalCases: [],
 		},
 		{
+			id: 'outside-payload-contract',
+			text: 'When an outside system calls the workflow (a voice or chat platform, a form tool, a partner webhook) and the request does not give its field names, tool names or value formats, do not invent them. Ask the user for the payload, or for a sample call, before you write the nodes that read it. Match the case of field names exactly: `$json.date` and `$json.Date` are different fields. Verify warns when an expression reads a field that no input item has.',
+			appliesWhen:
+				'A Webhook, Form or chat trigger receives data from an outside system, and later nodes read fields, tool names or values from it.',
+			fixes:
+				'The builder guessed argument names, tool names and date formats for a voice agent backend, so scoring, routing and booking read empty values.',
+			origin: 'r11 voice-agent-crm-backend, form-entry-to-excel',
+			evalCases: ['voice-agent-crm-backend', 'form-entry-to-excel'],
+		},
+		{
+			id: 'split-wrapped-arrays',
+			text: 'An HTTP Request or API node that returns one object with a list inside (`{ orders: [...] }`, `{ data: [...] }`) outputs one item, not one item per entry. Add a Split Out node on that field before nodes that work on each entry, and read entry fields from the Split Out output.',
+			appliesWhen:
+				'A node fetches a list from an API, and later nodes act on each entry or read entry fields such as `$json.id`.',
+			fixes:
+				'Per-order nodes read `$json.id` from a `{ orders: [...] }` response, which was undefined.',
+			origin: 'r11 loop-anti-nested-batches',
+			evalCases: ['loop-anti-nested-batches'],
+		},
+		{
+			id: 'expression-sandbox-limits',
+			text: "n8n expressions block `Object.prototype`, `.call(`, `.apply(`, `constructor` and any property named `arguments`. To check for a key, write `'key' in $json` or `$json.key !== undefined`. Put anything more complex in a Code node.",
+			appliesWhen:
+				'Writing an n8n expression that checks keys, calls prototype methods, or reads a property named `arguments`.',
+			fixes:
+				'An expression used `Object.prototype.hasOwnProperty.call`, which the sandbox rejects.',
+			origin: 'r11 carry-accumulated-facts',
+			evalCases: ['carry-accumulated-facts'],
+		},
+		{
+			id: 'pinned-model-ids',
+			text: 'When the user names a model version (for example Gemini 3 Flash), set the pinned model ID for that version. Do not use a moving alias such as `-latest` or `models/gemini-flash-latest`, which can point to a different model.',
+			appliesWhen: 'Choosing the model ID for an AI or chat model node.',
+			fixes:
+				'The builder set `models/gemini-flash-latest` when the user asked for a 3.x Gemini model.',
+			origin: 'r11 gemini-model-hint-compliance',
+			evalCases: ['gemini-model-hint-compliance'],
+		},
+		{
+			id: 'code-in-reply-fenced',
+			phase: 'after-build',
+			text: 'When the final reply shows Code node code, put it in a fenced block with its language, for example ```javascript.',
+			appliesWhen: 'The final reply includes code from a Code node.',
+			fixes: 'The reply showed Code node code without a fenced ```javascript block.',
+			origin: 'r11 code-node-syntax-survives-formatting-edit',
+			evalCases: ['code-node-syntax-survives-formatting-edit'],
+		},
+		{
 			id: 'openai-output-shape',
 			text: 'OpenAI node output: v2+ text is `$json.output[0].content[0].text`, v1 is `$json.message.content`, and `json_schema` output is already parsed. Read `knowledge-base/reference/open-ai-output-shape.md` before mapping it.',
 			appliesWhen:
