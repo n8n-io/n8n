@@ -270,6 +270,59 @@ describe('runAgent - iteration count tracking', () => {
 		expect(result).not.toHaveProperty('actions');
 		expect(result).not.toHaveProperty('metadata');
 	});
+
+	it("should compute previousCount using only this item's steps and untagged steps when saving memory", async () => {
+		const mockInvoke = vi.fn().mockResolvedValue({
+			returnValues: { output: 'Final answer' },
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockMemory = mock<BaseChatMemory>();
+
+		const item0Step = {
+			action: { tool: 't0', toolInput: {}, log: '', toolCallId: 'c0', type: 'tool_call' },
+			observation: 'o0',
+			itemIndex: 0,
+		};
+		const otherItemStep = {
+			action: { tool: 't1', toolInput: {}, log: '', toolCallId: 'c1', type: 'tool_call' },
+			observation: 'o1',
+			itemIndex: 1,
+		};
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [item0Step, { ...item0Step, action: { ...item0Step.action, toolCallId: 'c0_2' } }],
+			tools: [],
+			prompt: mock(),
+			options: { maxIterations: 10 },
+			outputParser: undefined,
+		};
+
+		const response = {
+			actionResponses: [],
+			metadata: {
+				previousRequests: [item0Step, otherItemStep],
+			},
+		};
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		const saveToMemorySpy = vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await runAgent(mockContext, mockExecutor, itemContext, mockModel, mockMemory, response as any);
+
+		expect(saveToMemorySpy).toHaveBeenCalledWith(
+			'test input',
+			'Final answer',
+			mockMemory,
+			itemContext.steps,
+			1,
+		);
+	});
 });
 
 describe('runAgent - tracing configuration', () => {

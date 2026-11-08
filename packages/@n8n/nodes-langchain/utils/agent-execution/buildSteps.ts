@@ -418,9 +418,9 @@ export function buildSteps(
 		// executeBatch's batch merge), so only carry forward the ones that
 		// belong to this item, or untagged steps persisted before upgrade.
 		steps.push(
-			...response.metadata.previousRequests.filter(
-				(step) => step.itemIndex === undefined || step.itemIndex === itemIndex,
-			),
+			...response.metadata.previousRequests
+				.filter((step) => step.itemIndex === undefined || step.itemIndex === itemIndex)
+				.map((step) => ({ ...step, action: { ...step.action } })),
 		);
 	}
 

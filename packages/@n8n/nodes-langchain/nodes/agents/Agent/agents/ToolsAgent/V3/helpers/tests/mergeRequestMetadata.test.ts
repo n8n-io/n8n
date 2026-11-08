@@ -63,4 +63,25 @@ describe('mergeRequestMetadata', () => {
 			previousRequests: [step0, step1],
 		});
 	});
+
+	it('should deduplicate untagged legacy steps across merged requests', () => {
+		const legacyStep: ToolCallData = {
+			action: {
+				tool: 'legacy_tool',
+				toolInput: { input: 'legacy' },
+				log: 'legacy log',
+				toolCallId: 'call_legacy_1',
+				type: 'tool_call',
+			},
+			observation: 'legacy result',
+		};
+
+		const into = { previousRequests: [legacyStep, step0], iterationCount: 1 };
+		const from = { previousRequests: [legacyStep, step1], iterationCount: 1 };
+
+		expect(mergeRequestMetadata(into, from)).toEqual({
+			iterationCount: 1,
+			previousRequests: [legacyStep, step0, step1],
+		});
+	});
 });
