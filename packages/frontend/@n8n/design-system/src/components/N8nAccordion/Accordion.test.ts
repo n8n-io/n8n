@@ -45,6 +45,8 @@ describe('N8nAccordion', () => {
 
 		expect(screen.getByText('First section content')).toBeInTheDocument();
 		expect(screen.queryByText('Second section content')).not.toBeInTheDocument();
+		const firstTrigger = screen.getByRole('button', { name: 'First section' });
+		expect(firstTrigger.querySelector('[data-icon="chevron-down"]')).not.toBeNull();
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Second section' }));
 

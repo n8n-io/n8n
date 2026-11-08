@@ -10,7 +10,6 @@ import {
 	N8nAccordionHeader,
 	N8nAccordionItem,
 	N8nAccordionTrigger,
-	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
 
@@ -37,12 +36,11 @@ const expanded = defineModel<string | undefined>('expanded');
 			:class="$style.item"
 			data-test-id="workflow-review-changes-item"
 		>
-			<N8nAccordionHeader :class="$style.header">
+			<N8nAccordionHeader>
 				<N8nAccordionTrigger
 					:class="$style.trigger"
 					data-test-id="workflow-review-changes-item-trigger"
 				>
-					<N8nIcon icon="chevron-down" size="small" :class="$style.chevron" />
 					<N8nText bold size="medium" color="text-dark" :class="$style.name">
 						{{ workflow.workflowName }}
 					</N8nText>
@@ -71,6 +69,11 @@ const expanded = defineModel<string | undefined>('expanded');
 	gap: var(--spacing--2xs);
 	/* A definite height, so the diff canvas can size itself with percentages. */
 	height: 100%;
+	/* Each workflow is its own card. Drop the grouped border from N8nAccordion. */
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	overflow: visible;
 }
 
 .item {
@@ -88,39 +91,13 @@ const expanded = defineModel<string | undefined>('expanded');
 	}
 }
 
-.header {
-	margin: 0;
-}
-
 .trigger {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: none;
 	background: var(--color--background--light-3);
-	text-align: left;
-	cursor: pointer;
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-		outline-offset: calc(-1 * var(--focus--border-width));
-	}
-
-	&[data-state='open'] {
-		border-bottom: var(--border);
-	}
 }
 
-.chevron {
-	flex-shrink: 0;
-	color: var(--color--text--tint-1);
-	transition: transform 0.15s ease;
-
-	[data-state='closed'] > & {
-		transform: rotate(-90deg);
-	}
+.name {
+	flex: 1;
+	min-width: 0;
 }
 
 .name,
@@ -140,5 +117,8 @@ const expanded = defineModel<string | undefined>('expanded');
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
+	/* The diff canvas sizes itself. The shared content padding and height animation do not apply. */
+	--accordion--content--padding: 0;
+	--animation--collapsible-slide--duration: 0s;
 }
 </style>

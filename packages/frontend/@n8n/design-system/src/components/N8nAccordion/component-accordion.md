@@ -1,6 +1,6 @@
 # Component specification
 
-A group of sections. Each section has a heading that shows or hides its content. The parts are headless. Product code owns the layout and the styles.
+A group of sections. Each section has a heading that shows or hides its content. The parts ship with the accordion layout: border, trigger, chevron, and content padding.
 
 - **Component Name:** N8nAccordion
 - **Figma Component:** TBD
@@ -22,6 +22,16 @@ N8nAccordion
 `N8nAccordion` and `N8nAccordionRoot` are the same component. The package barrel exports `N8nAccordion`.
 
 Import the parts from `@n8n/design-system`. Do not import `AccordionRoot` or the other Accordion parts from `reka-ui`.
+
+## Appearance
+
+- The root draws a border, a radius, and a surface background.
+- Vertical items draw a top border between sections. Horizontal items sit in a row and draw a right border between sections.
+- The trigger is a full-width button. It includes a chevron. Put the section name in the trigger slot.
+- The chevron points down when the section is open and turns when the section is closed.
+- Open content has padding. Set `--accordion--content--padding` on `N8nAccordionContent` to change it. Use `0` when the section must sit flush with the trigger.
+- Open and close animate the content height. The animation uses `collapsible-slide-down` and `collapsible-slide-up`. Set `--animation--collapsible-slide--duration: 0s` on `N8nAccordionContent` to turn the animation off.
+- Pass `class` on a part when a screen needs a local override. The component class stays on the element.
 
 ## Public API Definition
 
@@ -65,7 +75,7 @@ Import the parts from `@n8n/design-system`. Do not import `AccordionRoot` or the
 **N8nAccordionTrigger props**
 
 - `as?: string | Component` — The element that the trigger renders. Default: `'button'`.
-- `asChild?: boolean` — Merge the trigger props onto the child element. The child must be a button, or another control that toggles the section.
+- `asChild?: boolean` — Merge the trigger props onto the child element. The child must be a button, or another control that toggles the section. `asChild` skips the chevron. The child draws its own icon.
 
 **N8nAccordionContent props**
 
@@ -168,79 +178,13 @@ const expanded = ref<string[]>(['details']);
 </template>
 ```
 
-**Trigger with a chevron**
+**Trigger with extra text**
 
-Rotate the icon from `data-state` on the trigger. Do not store a separate open flag for the icon.
+The chevron stays on the trigger. Put the extra text in the slot.
 
 ```vue
-<N8nAccordionTrigger class="trigger">
+<N8nAccordionTrigger>
 	<span>Details</span>
-	<span class="chevron">
-		<N8nIcon icon="chevron-down" size="small" />
-	</span>
+	<span>Version 4</span>
 </N8nAccordionTrigger>
-```
-
-```css
-.chevron {
-	display: inline-flex;
-	transition: transform var(--duration--snappy) ease;
-}
-
-.trigger[data-state='closed'] .chevron {
-	transform: rotate(-90deg);
-}
-```
-
-**Open and close animation**
-
-`N8nAccordionContent` sets `--reka-accordion-content-height` while it opens and closes. Animate that variable.
-
-The `collapsible-slide-down` and `collapsible-slide-up` mixins read `--reka-collapsible-content-height`.
-Those mixins do not animate accordion content.
-`N8nAnimatedCollapsibleContent` uses those mixins.
-Use that component for one collapsible region.
-Use the rules below for an accordion section.
-
-```vue
-<N8nAccordionContent class="section">Section content</N8nAccordionContent>
-```
-
-```css
-.section {
-	overflow: hidden;
-}
-
-.section[data-state='open'] {
-	animation: accordion-slide-down var(--duration--snappy) var(--easing--ease-out);
-}
-
-.section[data-state='closed'] {
-	animation: accordion-slide-up var(--duration--snappy) var(--easing--ease-out);
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.section[data-state='open'],
-	.section[data-state='closed'] {
-		animation: none;
-	}
-}
-
-@keyframes accordion-slide-down {
-	from {
-		height: 0;
-	}
-	to {
-		height: var(--reka-accordion-content-height);
-	}
-}
-
-@keyframes accordion-slide-up {
-	from {
-		height: var(--reka-accordion-content-height);
-	}
-	to {
-		height: 0;
-	}
-}
 ```

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nText from '../N8nText/Text.vue';
 import {
 	N8nAccordion,
@@ -58,135 +57,6 @@ const reviewSections: DemoItem[] = [
 	},
 ];
 
-/**
- * Story-only layout. N8nAccordion is headless, so the canvas needs its own chrome
- * to show open, closed, and disabled states.
- */
-const demoCss = `
-.n8n-accordion-demo {
-	max-width: 28rem;
-	border: var(--border);
-	border-radius: var(--radius);
-	background: var(--background--surface);
-	overflow: hidden;
-}
-.n8n-accordion-demo__header {
-	margin: 0;
-}
-.n8n-accordion-demo__trigger {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border: 0;
-	background: var(--background--surface);
-	color: var(--text-color);
-	font: inherit;
-	text-align: left;
-	cursor: pointer;
-}
-.n8n-accordion-demo__trigger:focus-visible {
-	outline: var(--focus--border-width) solid var(--focus--outline-color);
-	outline-offset: calc(-1 * var(--focus--border-width));
-}
-.n8n-accordion-demo__trigger[data-disabled] {
-	color: var(--text-color--disabled);
-	cursor: not-allowed;
-}
-.n8n-accordion-demo:not(.n8n-accordion-demo--horizontal) .n8n-accordion-demo__item + .n8n-accordion-demo__item {
-	border-top: var(--border);
-}
-.n8n-accordion-demo:not(.n8n-accordion-demo--horizontal) .n8n-accordion-demo__trigger[data-state='open'] {
-	border-bottom: var(--border);
-}
-.n8n-accordion-demo__label {
-	min-width: 0;
-}
-.n8n-accordion-demo__chevron {
-	display: inline-flex;
-	margin-left: auto;
-	flex-shrink: 0;
-	color: var(--color--text--tint-1);
-	transition: transform var(--duration--snappy) ease;
-}
-.n8n-accordion-demo__chevron--leading {
-	margin-left: 0;
-}
-.n8n-accordion-demo__trigger[data-state='closed'] .n8n-accordion-demo__chevron {
-	transform: rotate(-90deg);
-}
-.n8n-accordion-demo__meta {
-	margin-left: auto;
-	flex-shrink: 0;
-}
-.n8n-accordion-demo__content {
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--sm);
-}
-.n8n-accordion-demo__content[data-state='open'] {
-	padding: var(--spacing--sm);
-}
-.n8n-accordion-demo__content--animated {
-	overflow: hidden;
-	/* Reset. The open rule above sets padding, and a height animation must not include it. */
-	padding: 0;
-}
-.n8n-accordion-demo__content--animated[data-state='open'] {
-	padding: 0;
-	animation: n8n-accordion-demo-slide-down var(--duration--snappy) var(--easing--ease-out);
-}
-.n8n-accordion-demo__content--animated[data-state='closed'] {
-	animation: n8n-accordion-demo-slide-up var(--duration--snappy) var(--easing--ease-out);
-}
-.n8n-accordion-demo__body {
-	padding: var(--spacing--sm);
-}
-@media (prefers-reduced-motion: reduce) {
-	.n8n-accordion-demo__content--animated[data-state='open'],
-	.n8n-accordion-demo__content--animated[data-state='closed'] {
-		animation: none;
-	}
-}
-@keyframes n8n-accordion-demo-slide-down {
-	from {
-		height: 0;
-	}
-	to {
-		height: var(--reka-accordion-content-height);
-	}
-}
-@keyframes n8n-accordion-demo-slide-up {
-	from {
-		height: var(--reka-accordion-content-height);
-	}
-	to {
-		height: 0;
-	}
-}
-.n8n-accordion-demo__note {
-	display: block;
-	margin-bottom: var(--spacing--xs);
-}
-.n8n-accordion-demo--horizontal {
-	display: flex;
-	align-items: flex-start;
-	max-width: none;
-}
-.n8n-accordion-demo--horizontal .n8n-accordion-demo__item {
-	border-right: var(--border);
-}
-.n8n-accordion-demo--horizontal .n8n-accordion-demo__item:last-child {
-	border-right: 0;
-}
-.n8n-accordion-demo--horizontal .n8n-accordion-demo__trigger {
-	width: auto;
-}
-.n8n-accordion-demo--horizontal .n8n-accordion-demo__content {
-	width: 16rem;
-}
-`;
-
 type Story = StoryObj;
 
 type AccordionStoryOptions = {
@@ -194,36 +64,22 @@ type AccordionStoryOptions = {
 	items?: DemoItem[];
 	before?: string;
 	trigger?: 'label' | 'meta';
-	animate?: boolean;
 	setup?: () => Record<string, unknown>;
 };
 
 function createRender(options: AccordionStoryOptions): Story['render'] {
 	const items = options.items ?? sections;
-	const contentClass = options.animate
-		? 'n8n-accordion-demo__content n8n-accordion-demo__content--animated'
-		: 'n8n-accordion-demo__content';
-	const body = options.animate
-		? '<div class="n8n-accordion-demo__body">{{ item.body }}</div>'
-		: '{{ item.body }}';
-	// N8nIcon does not forward class to its svg, so the rotation target is a span.
 	const trigger =
 		options.trigger === 'meta'
 			? `
-				<N8nAccordionTrigger class="n8n-accordion-demo__trigger">
-					<span class="n8n-accordion-demo__chevron n8n-accordion-demo__chevron--leading">
-						<N8nIcon icon="chevron-down" size="small" />
-					</span>
-					<N8nText bold size="small" class="n8n-accordion-demo__label">{{ item.title }}</N8nText>
-					<N8nText v-if="item.meta" size="small" color="text-light" class="n8n-accordion-demo__meta">{{ item.meta }}</N8nText>
+				<N8nAccordionTrigger>
+					<N8nText bold size="small">{{ item.title }}</N8nText>
+					<N8nText v-if="item.meta" size="small" color="text-light" style="margin-left: auto;">
+						{{ item.meta }}
+					</N8nText>
 				</N8nAccordionTrigger>`
 			: `
-				<N8nAccordionTrigger class="n8n-accordion-demo__trigger">
-					<N8nText size="small" class="n8n-accordion-demo__label">{{ item.title }}</N8nText>
-					<span class="n8n-accordion-demo__chevron">
-						<N8nIcon icon="chevron-down" size="small" />
-					</span>
-				</N8nAccordionTrigger>`;
+				<N8nAccordionTrigger>{{ item.title }}</N8nAccordionTrigger>`;
 
 	return function renderAccordionStory() {
 		return {
@@ -233,7 +89,6 @@ function createRender(options: AccordionStoryOptions): Story['render'] {
 				N8nAccordionHeader,
 				N8nAccordionTrigger,
 				N8nAccordionContent,
-				N8nIcon,
 				N8nText,
 			},
 			setup: function setupAccordionStory() {
@@ -247,13 +102,12 @@ function createRender(options: AccordionStoryOptions): Story['render'] {
 						:key="item.value"
 						:value="item.value"
 						:disabled="item.disabled"
-						class="n8n-accordion-demo__item"
 					>
-						<N8nAccordionHeader class="n8n-accordion-demo__header">
+						<N8nAccordionHeader>
 							${trigger}
 						</N8nAccordionHeader>
-						<N8nAccordionContent class="${contentClass}">
-							${body}
+						<N8nAccordionContent>
+							{{ item.body }}
 						</N8nAccordionContent>
 					</N8nAccordionItem>
 				</N8nAccordion>
@@ -270,29 +124,23 @@ function storyDescription(story: string): Story['parameters'] {
 	};
 }
 
-/**
- * AccordionRoot is a generic reka-ui component. Storybook Meta.component
- * rejects that shape, so keep the story typed as a plain Meta.
- */
 const meta: Meta = {
 	title: 'Core/Accordion',
 	parameters: {
 		docs: {
 			description: {
 				component:
-					'Headless accordion primitives. Compose N8nAccordion, N8nAccordionItem, N8nAccordionHeader, N8nAccordionTrigger, and N8nAccordionContent. Product code owns the layout and the styles. Use N8nInfoAccordion for one information block. Use N8nCollapsiblePanel for one titled panel. See component-accordion.md for the public API.',
+					'Styled accordion. The trigger includes the chevron. ' +
+					'Use N8nInfoAccordion for one information block. ' +
+					'Use N8nCollapsiblePanel for one titled panel. ' +
+					'See component-accordion.md for the public API.',
 			},
 		},
 	},
 	decorators: [
-		function withAccordionDemoFrame() {
+		function withAccordionFrame() {
 			return {
-				template: `
-					<div style="padding: var(--spacing--md);">
-						<component is="style">${demoCss}</component>
-						<story />
-					</div>
-				`,
+				template: '<div style="padding: var(--spacing--md);"><story /></div>',
 			};
 		},
 	],
@@ -300,15 +148,12 @@ const meta: Meta = {
 
 export default meta;
 
-const demoClass = 'class="n8n-accordion-demo"';
-const horizontalClass = 'class="n8n-accordion-demo n8n-accordion-demo--horizontal"';
-
 export const Single: Story = {
 	parameters: storyDescription(
 		'One section stays open. A click on the open trigger does not close it.',
 	),
 	render: createRender({
-		rootAttrs: `type="single" default-value="one" ${demoClass}`,
+		rootAttrs: 'type="single" default-value="one"',
 	}),
 };
 
@@ -316,14 +161,14 @@ export const SingleCollapsible: Story = {
 	name: 'Single, collapsible',
 	parameters: storyDescription('One section stays open. A click on the open trigger closes it.'),
 	render: createRender({
-		rootAttrs: `type="single" collapsible default-value="one" ${demoClass}`,
+		rootAttrs: 'type="single" collapsible default-value="one"',
 	}),
 };
 
 export const Multiple: Story = {
 	parameters: storyDescription('More than one section can stay open.'),
 	render: createRender({
-		rootAttrs: `type="multiple" :default-value="defaultValue" ${demoClass}`,
+		rootAttrs: 'type="multiple" :default-value="defaultValue"',
 		setup: function setupMultiple() {
 			return { defaultValue: ['one'] };
 		},
@@ -332,12 +177,16 @@ export const Multiple: Story = {
 
 export const Controlled: Story = {
 	parameters: storyDescription(
-		'The parent owns the open value with v-model. The line above the accordion shows that value.',
+		'The parent owns the open value with v-model. The line above shows that value.',
 	),
 	render: createRender({
-		rootAttrs: `v-model="expanded" type="single" collapsible ${demoClass}`,
+		rootAttrs: 'v-model="expanded" type="single" collapsible',
 		before: `
-			<N8nText size="small" color="text-light" class="n8n-accordion-demo__note">
+			<N8nText
+				size="small"
+				color="text-light"
+				style="display: block; margin-bottom: var(--spacing--xs);"
+			>
 				Open section: {{ expanded || 'None' }}
 			</N8nText>
 		`,
@@ -351,7 +200,7 @@ export const Controlled: Story = {
 export const Disabled: Story = {
 	parameters: storyDescription('The accordion ignores clicks.'),
 	render: createRender({
-		rootAttrs: `type="single" collapsible default-value="one" disabled ${demoClass}`,
+		rootAttrs: 'type="single" collapsible default-value="one" disabled',
 	}),
 };
 
@@ -359,7 +208,7 @@ export const DisabledItem: Story = {
 	name: 'Disabled item',
 	parameters: storyDescription('One section ignores clicks. The other sections still open.'),
 	render: createRender({
-		rootAttrs: `type="single" collapsible default-value="one" ${demoClass}`,
+		rootAttrs: 'type="single" collapsible default-value="one"',
 		items: sections.map((item) =>
 			item.value === 'two' ? { ...item, title: 'Second section (disabled)', disabled: true } : item,
 		),
@@ -371,17 +220,17 @@ export const Horizontal: Story = {
 		'The sections sit in a row. ArrowLeft and ArrowRight move focus between triggers.',
 	),
 	render: createRender({
-		rootAttrs: `type="single" collapsible default-value="one" orientation="horizontal" ${horizontalClass}`,
+		rootAttrs: 'type="single" collapsible default-value="one" orientation="horizontal"',
 	}),
 };
 
 export const CustomTrigger: Story = {
 	name: 'Custom trigger',
 	parameters: storyDescription(
-		'The trigger can hold an icon, a label, and extra text. Product code owns this layout.',
+		'The trigger slot holds the section name and extra text. The chevron stays on the trigger.',
 	),
 	render: createRender({
-		rootAttrs: `type="single" collapsible default-value="contacts" ${demoClass}`,
+		rootAttrs: 'type="single" collapsible default-value="contacts"',
 		items: reviewSections,
 		trigger: 'meta',
 	}),
@@ -390,32 +239,24 @@ export const CustomTrigger: Story = {
 export const StartsClosed: Story = {
 	name: 'Starts closed',
 	parameters: storyDescription(
-		'No section is open. Set collapsible and omit default-value when every section starts closed.',
+		'No section is open. Omit default-value so every section starts closed.',
 	),
 	render: createRender({
-		rootAttrs: `type="single" collapsible ${demoClass}`,
-	}),
-};
-
-export const Animated: Story = {
-	parameters: storyDescription(
-		'Section height animates with --reka-accordion-content-height.',
-	),
-	render: createRender({
-		rootAttrs: `type="single" collapsible default-value="one" ${demoClass}`,
-		animate: true,
+		rootAttrs: 'type="single" collapsible',
 	}),
 };
 
 export const KeepMounted: Story = {
 	name: 'Content stays mounted',
-	parameters: storyDescription(
-		'Closed content stays in the page. Set unmount-on-hide to false when closed text must stay available.',
-	),
+	parameters: storyDescription('Closed content stays in the page when unmount-on-hide is false.'),
 	render: createRender({
-		rootAttrs: `type="single" collapsible default-value="one" :unmount-on-hide="false" ${demoClass}`,
+		rootAttrs: 'type="single" collapsible default-value="one" :unmount-on-hide="false"',
 		before: `
-			<N8nText size="small" color="text-light" class="n8n-accordion-demo__note">
+			<N8nText
+				size="small"
+				color="text-light"
+				style="display: block; margin-bottom: var(--spacing--xs);"
+			>
 				Closed sections stay in the page.
 			</N8nText>
 		`,

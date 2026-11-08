@@ -11,6 +11,8 @@ export {
 	AccordionItem,
 	AccordionRoot,
 	AccordionTrigger,
+	useForwardProps,
+	useForwardPropsEmits,
 } from 'reka-ui';
 
 export type {
