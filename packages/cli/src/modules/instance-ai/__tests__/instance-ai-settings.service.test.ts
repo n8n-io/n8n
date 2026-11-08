@@ -1,35 +1,30 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { type EventService, type CredentialsFinderService } from '@n8n/backend-services';
 import type { InstanceAiConfig } from '@n8n/config';
-import type {
-	CredentialsEntity,
-	DbLockService,
-	SettingsRepository,
-	User,
-	UserRepository,
-} from '@n8n/db';
+import type { CredentialsEntity, DbLockService, SettingsRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import type { EventService } from '@/events/event.service';
+import { UnprocessableRequestError } from '@n8n/errors';
 import type { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 	type SandboxSettingsService,
 } from '@/services/sandbox-settings.service';
-import type { UserService } from '@/services/user.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import type { License } from '@/license';
 
 import {
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 	InstanceAiSettingsService,
 } from '../instance-ai-settings.service';
+import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 type CredentialOperationContext = NonNullable<
 	Parameters<InstanceCredentialBroker['clearForUse']>[1]
@@ -53,21 +48,20 @@ describe('InstanceAiSettingsService', () => {
 			sandboxTimeout: 60,
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
-			localGatewayDisabled: false,
 		} as unknown as InstanceAiConfig,
 		deployment: { type: 'default' },
 	});
 	const operationContext: CredentialOperationContext = {};
 	const dbLockService = mock<DbLockService>();
 	const settingsRepository = mock<SettingsRepository>();
-	const userRepository = mock<UserRepository>();
-	const userService = mock<UserService>();
 	const aiService = mock<AiService>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
 	const sandboxSettingsService = mock<SandboxSettingsService>();
 	const eventService = mock<EventService>();
+	const license = mock<License>();
+	const threadRepository = mock<InstanceAiThreadRepository>();
 	const logger = mock<Logger>();
 
 	let service: InstanceAiSettingsService;
@@ -77,14 +71,14 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig as never,
 			dbLockService,
 			settingsRepository,
-			userRepository,
-			userService,
 			aiService,
 			credentialsService,
 			credentialsFinderService,
 			instanceCredentialBroker,
 			sandboxSettingsService,
 			eventService,
+			license,
+			threadRepository,
 		);
 
 	beforeEach(() => {
@@ -114,8 +108,11 @@ describe('InstanceAiSettingsService', () => {
 			vertexProjectId: '',
 			vertexLocation: '',
 			vertexServiceAccountJson: '',
+			enabled: undefined,
 		});
 		globalConfig.deployment.type = 'default';
+		license.isEnterprisePlan.mockReturnValue(false);
+		threadRepository.exists.mockResolvedValue(false);
 		instanceCredentialBroker.listForUse.mockResolvedValue([]);
 		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
 		sandboxSettingsService.getProvider.mockImplementation(() =>
@@ -1166,9 +1163,9 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
 
 			await expect(
-				service.updateAdminSettings({ localGatewayDisabled: true }),
+				service.updateAdminSettings({ browserUseEnabled: false }),
 			).resolves.toMatchObject({
-				localGatewayDisabled: true,
+				browserUseEnabled: false,
 			});
 		});
 
@@ -1274,6 +1271,110 @@ describe('InstanceAiSettingsService', () => {
 			);
 			expect(getAdminSettings).not.toHaveBeenCalled();
 			getAdminSettings.mockRestore();
+		});
+	});
+
+	describe('enabled', () => {
+		it('is on for a non-Enterprise plan when nothing is saved', async () => {
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+			expect(service.isAgentEnabled()).toBe(true);
+			expect((await service.getAdminSettings()).enabled).toBe(true);
+		});
+
+		it('is off on Enterprise without threads and saves nothing', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+			expect((await service.getAdminSettings()).enabled).toBe(false);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
+		it('saves enabled for Enterprise with threads and keeps it after the threads are gone', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+			threadRepository.exists.mockResolvedValue(true);
+			persistedSettingsValue = JSON.stringify({ mcpAccessEnabled: false });
+
+			await service.loadFromDb();
+
+			expect(jsonParse(persistedSettingsValue)).toEqual({
+				mcpAccessEnabled: false,
+				enabled: true,
+			});
+			expect(service.isInstanceAiEnabled()).toBe(true);
+
+			threadRepository.exists.mockResolvedValue(false);
+			service = createService();
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+		});
+
+		it('does not overwrite a choice saved before it got the lock', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+			threadRepository.exists.mockResolvedValue(true);
+			settingsRepository.findByKeyInContext.mockResolvedValueOnce({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ enabled: false }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(service.isInstanceAiEnabled()).toBe(false);
+		});
+
+		it('prefers a saved choice over the env var and the plan', async () => {
+			globalConfig.instanceAi.enabled = true;
+			persistedSettingsValue = JSON.stringify({ enabled: false });
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+
+			globalConfig.instanceAi.enabled = false;
+			license.isEnterprisePlan.mockReturnValue(true);
+			persistedSettingsValue = JSON.stringify({ enabled: true });
+			await service.reloadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+		});
+
+		it('prefers the env var over the plan and saves nothing', async () => {
+			license.isEnterprisePlan.mockReturnValue(true);
+			threadRepository.exists.mockResolvedValue(true);
+			globalConfig.instanceAi.enabled = false;
+
+			await service.loadFromDb();
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+
+			globalConfig.instanceAi.enabled = true;
+
+			expect(service.isInstanceAiEnabled()).toBe(true);
+		});
+
+		it('follows a plan change after load without a reload', async () => {
+			await service.loadFromDb();
+
+			license.isEnterprisePlan.mockReturnValue(true);
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
+			expect(service.isAgentEnabled()).toBe(false);
+		});
+
+		it('does not save enabled when another setting is saved', async () => {
+			await service.updateAdminSettings({ mcpAccessEnabled: false });
+
+			expect(jsonParse(persistedSettingsValue ?? '{}')).not.toHaveProperty('enabled');
+
+			license.isEnterprisePlan.mockReturnValue(true);
+
+			expect(service.isInstanceAiEnabled()).toBe(false);
 		});
 	});
 
@@ -1403,6 +1504,7 @@ describe('InstanceAiSettingsService', () => {
 			);
 
 			expect(result).toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-4.1',
 				url: '',
 				apiKey: 'admin-key',
@@ -1419,6 +1521,45 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it.each([
+			['no URL', '', 'model-x', { id: 'openai/model-x' }],
+			['the official OpenAI URL', 'https://api.openai.com/v1', 'model-x', { id: 'openai/model-x' }],
+			['a self-hosted URL', 'https://kimi.example/v1', 'model-x', { id: 'custom/model-x' }],
+			[
+				'a self-hosted URL and a known model',
+				'https://kimi.example/v1',
+				'moonshotai/Kimi-K3',
+				{ id: 'custom/moonshotai/Kimi-K3', supportsStructuredOutputs: true },
+			],
+		])('builds an OpenAI credential with %s', async (_, url, modelName, expected) => {
+			const credential = mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Admin model',
+				type: 'openAiApi',
+				usageScope: 'instance',
+			});
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: { apiKey: 'admin-key', url },
+			});
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+			});
+
+			await service.updateAdminSettings({ modelCredentialId: credential.id, modelName });
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
+				...expected,
+				url,
+				apiKey: 'admin-key',
+			});
+		});
+
 		it('uses the environment model connection without resolving stored credentials', async () => {
 			Object.assign(globalConfig.instanceAi, {
 				model: 'openai/gpt-5',
@@ -1432,6 +1573,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-5',
 				url: '',
 				apiKey: 'environment-key',
@@ -1459,6 +1601,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/model-y',
 				url: '',
 				apiKey: 'updated-key',
@@ -1493,7 +1636,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 		});
 
 		it('falls back to the user credential when the admin credential data is incomplete', async () => {
@@ -1525,7 +1668,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Could not resolve the configured model credential; using environment fallback',
 				{
@@ -1559,7 +1702,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Could not resolve the configured model credential; using environment fallback',
 				{ credentialUseId: 'instance-ai:model', error: 'gone' },
@@ -1586,7 +1729,7 @@ describe('InstanceAiSettingsService', () => {
 						},
 					}),
 				),
-			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			).resolves.toEqual({ kind: 'endpoint', id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
 			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
 		});
 		it('reads the configured model credential from the broker', async () => {
@@ -1930,14 +2073,29 @@ describe('InstanceAiSettingsService', () => {
 			['openai/original', 'replacement', 'openai/replacement'],
 			['original', 'replacement', 'custom/replacement'],
 			[
-				{ id: 'anthropic/original', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'anthropic/original', url: '', apiKey: 'key' },
 				'replacement',
-				{ id: 'anthropic/replacement', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'anthropic/replacement', url: '', apiKey: 'key' },
 			],
 			[
-				{ id: 'original', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'original', url: '', apiKey: 'key' },
 				'replacement',
-				{ id: 'custom/replacement', url: '', apiKey: 'key' },
+				{ kind: 'endpoint', id: 'custom/replacement', url: '', apiKey: 'key' },
+			],
+			[
+				{
+					kind: 'vertex-anthropic',
+					id: 'google-vertex-anthropic/original',
+					project: 'acme',
+					location: 'us-east5',
+				},
+				'replacement',
+				{
+					kind: 'vertex-anthropic',
+					id: 'google-vertex-anthropic/replacement',
+					project: 'acme',
+					location: 'us-east5',
+				},
 			],
 		] as const)(
 			'replaces the selected model while keeping its provider',
@@ -1972,7 +2130,7 @@ describe('InstanceAiSettingsService', () => {
 					{ type: 'openAiApi', data: { apiKey: 'key' } },
 					'gpt-5.4',
 				),
-			).toEqual({ id: 'openai/gpt-5.4', url: '', apiKey: 'key' });
+			).toEqual({ kind: 'endpoint', id: 'openai/gpt-5.4', url: '', apiKey: 'key' });
 
 			expect(() =>
 				service.buildModelConfigForConnection(
@@ -1994,6 +2152,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-4',
 				url: 'https://model.example.com/v1',
 				apiKey: 'model-key',
@@ -2001,6 +2160,7 @@ describe('InstanceAiSettingsService', () => {
 
 			globalConfig.instanceAi.modelUrl = '';
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'endpoint',
 				id: 'openai/gpt-4',
 				url: '',
 				apiKey: 'model-key',
@@ -2023,6 +2183,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'vertex-anthropic',
 				id: 'google-vertex-anthropic/claude-opus-4-8',
 				project: 'instance-ai-494613',
 				location: 'global',
@@ -2044,6 +2205,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
+				kind: 'vertex-anthropic',
 				id: 'google-vertex-anthropic/claude-opus-4-8',
 				project: 'from-json',
 				location: 'global',
@@ -2250,31 +2412,51 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
-	describe('executeMcpTool permission', () => {
+	describe('MCP tool permissions', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 		});
 
-		it('defaults to require_approval', async () => {
-			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe(
-				'require_approval',
-			);
+		it('defaults read tools to always allow and write tools to require approval', async () => {
+			expect(service.getMcpToolPermissions()).toEqual({
+				categories: { read: 'always_allow', write: 'require_approval' },
+			});
 		});
 
 		it('persists and reflects an update', async () => {
 			const result = await service.updateAdminSettings({
-				permissions: { executeMcpTool: 'always_allow' },
+				permissions: { mcpRead: 'blocked', mcpWrite: 'always_allow' },
 			});
 
-			expect(result.permissions.executeMcpTool).toBe('always_allow');
-			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe('always_allow');
+			expect(result.permissions).toMatchObject({
+				mcpRead: 'blocked',
+				mcpWrite: 'always_allow',
+			});
+			expect(service.getMcpToolPermissions()).toEqual({
+				categories: { read: 'blocked', write: 'always_allow' },
+			});
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
-					value: expect.stringContaining('"executeMcpTool":"always_allow"'),
+					value: expect.stringContaining('"mcpRead":"blocked","mcpWrite":"always_allow"'),
 				}),
 				['key'],
 			);
+		});
+
+		it('loads persisted category permissions without global tool overrides', async () => {
+			persistedSettingsValue = JSON.stringify({
+				permissions: {
+					mcpRead: 'blocked',
+					mcpWrite: 'require_approval',
+				},
+			});
+
+			await service.loadFromDb();
+
+			expect(service.getMcpToolPermissions()).toEqual({
+				categories: { read: 'blocked', write: 'require_approval' },
+			});
 		});
 	});
 
@@ -2388,6 +2570,17 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it('flags mcpSettingsChanged when MCP tool permissions change', async () => {
+			await service.updateAdminSettings({
+				permissions: { mcpRead: 'blocked' },
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-ai-settings-updated',
+				expect.objectContaining({ mcpSettingsChanged: true }),
+			);
+		});
+
 		it('does not flag mcpSettingsChanged when mcpAccessEnabled is set to the same value', async () => {
 			await service.updateAdminSettings({ mcpAccessEnabled: true });
 
@@ -2405,58 +2598,6 @@ describe('InstanceAiSettingsService', () => {
 			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).resolves.toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith('Failed to apply local settings event', {
 				error: 'listener failed',
-			});
-		});
-	});
-
-	describe('updateUserPreferences', () => {
-		const user = mock<User>({ id: 'user-1' });
-
-		it('should reject env-managed preference fields on self-hosted', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(service.updateUserPreferences(user, { credentialId: 'cred-1' })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
-			await expect(service.updateUserPreferences(user, { modelName: 'gpt-4' })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
-		});
-
-		it('should include offending field names in the error message', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(
-				service.updateUserPreferences(user, {
-					credentialId: 'cred-1',
-					modelName: 'gpt-4',
-				}),
-			).rejects.toThrow(/credentialId.*modelName|modelName.*credentialId/);
-		});
-
-		it('should allow localGatewayDisabled', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-
-			await expect(
-				service.updateUserPreferences(user, { localGatewayDisabled: true }),
-			).resolves.toBeDefined();
-
-			expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
-				instanceAi: { localGatewayDisabled: true },
-			});
-		});
-
-		it('should merge new preference fields with existing instanceAi settings on update', async () => {
-			aiService.isProxyEnabled.mockReturnValue(false);
-			const existingUser = mock<User>({
-				id: 'user-2',
-				settings: { instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5' } },
-			});
-
-			await service.updateUserPreferences(existingUser, { localGatewayDisabled: true });
-
-			expect(userService.updateSettings).toHaveBeenCalledWith('user-2', {
-				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5', localGatewayDisabled: true },
 			});
 		});
 	});
@@ -2520,38 +2661,12 @@ describe('InstanceAiSettingsService', () => {
 				).resolves.toBeDefined();
 			});
 
-			it('should allow localGatewayDisabled on cloud', async () => {
+			it('should allow browserUseEnabled on cloud', async () => {
 				settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 				await expect(
-					service.updateAdminSettings({ localGatewayDisabled: true }),
+					service.updateAdminSettings({ browserUseEnabled: false }),
 				).resolves.toBeDefined();
-			});
-		});
-
-		describe('updateUserPreferences', () => {
-			const user = mock<User>({ id: 'user-1' });
-
-			it('should reject credentialId on cloud', async () => {
-				await expect(
-					service.updateUserPreferences(user, { credentialId: 'cred-1' }),
-				).rejects.toThrow(UnprocessableRequestError);
-			});
-
-			it('should reject modelName on cloud', async () => {
-				await expect(service.updateUserPreferences(user, { modelName: 'gpt-4' })).rejects.toThrow(
-					UnprocessableRequestError,
-				);
-			});
-
-			it('should allow localGatewayDisabled on cloud', async () => {
-				await expect(
-					service.updateUserPreferences(user, { localGatewayDisabled: true }),
-				).resolves.toBeDefined();
-
-				expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
-					instanceAi: { localGatewayDisabled: true },
-				});
 			});
 		});
 	});

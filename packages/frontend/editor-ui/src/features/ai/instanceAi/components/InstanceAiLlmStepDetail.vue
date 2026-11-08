@@ -2,10 +2,12 @@
 import {
 	type InstanceAiRunDebugStep,
 	type InstanceAiRunDebugWorkflowCodeSnapshot,
+	type StepCacheBreak,
 	parseInputExtras,
 	parseMessageBlocks,
 	parseOutputDisplayBlocks,
 	parseOutputExtras,
+	parseStepConfig,
 	parseSystemPromptForDisplay,
 	parseUsageSummary,
 	stepInstructions,
@@ -16,12 +18,15 @@ import { computed, ref } from 'vue';
 import { mapWorkflowSnapshotsByToolCallId } from '../utils/workflow-code-match';
 import InstanceAiDebugJsonPanel from './InstanceAiDebugJsonPanel.vue';
 import InstanceAiDebugMessageBody from './InstanceAiDebugMessageBody.vue';
+import InstanceAiDebugStepConfig from './InstanceAiDebugStepConfig.vue';
+import InstanceAiDebugUsage from './InstanceAiDebugUsage.vue';
 
 const props = defineProps<{
 	input?: Record<string, unknown>;
 	output?: Record<string, unknown>;
 	runSteps?: InstanceAiRunDebugStep[];
 	workflowCode?: InstanceAiRunDebugWorkflowCodeSnapshot[];
+	cacheBreak?: StepCacheBreak;
 }>();
 
 const i18n = useI18n();
@@ -34,6 +39,7 @@ const systemBlocks = computed(() => parsedSystemPrompt.value.systemBlocks);
 const systemObservations = computed(() => parsedSystemPrompt.value.observations);
 const messageBlocks = computed(() => parseMessageBlocks(props.input?.messages));
 const inputExtras = computed(() => parseInputExtras(props.input));
+const stepConfig = computed(() => parseStepConfig(props.input));
 const outputDisplayBlocks = computed(() => parseOutputDisplayBlocks(props.output));
 const usageSummary = computed(() => parseUsageSummary(props.output?.usage));
 const outputExtras = computed(() => parseOutputExtras(props.output));
@@ -51,6 +57,7 @@ const hasInputContent = computed(
 		systemBlocks.value.length > 0 ||
 		Boolean(systemObservations.value) ||
 		messageBlocks.value.length > 0 ||
+		Boolean(stepConfig.value) ||
 		Boolean(inputExtras.value),
 );
 const hasOutputContent = computed(
@@ -167,6 +174,8 @@ defineExpose({ scrollToOutput });
 					</article>
 				</template>
 
+				<InstanceAiDebugStepConfig v-if="stepConfig" :config="stepConfig" />
+
 				<InstanceAiDebugJsonPanel
 					v-if="inputExtras"
 					:value="inputExtras"
@@ -217,11 +226,7 @@ defineExpose({ scrollToOutput });
 					</div>
 				</article>
 
-				<InstanceAiDebugJsonPanel
-					v-if="usageSummary"
-					:value="usageSummary.metadata"
-					:label="i18n.baseText('instanceAi.debug.runDebug.usage')"
-				/>
+				<InstanceAiDebugUsage v-if="usageSummary" :usage="usageSummary" :cache-break="cacheBreak" />
 
 				<InstanceAiDebugJsonPanel
 					v-if="outputExtras"

@@ -102,6 +102,102 @@ describe('AgentChannelListItem', () => {
 		});
 	});
 
+	describe('a channel with a configured-state menu (n8n Chat)', () => {
+		const n8nChatIntegration = {
+			type: 'n8n_chat',
+			label: 'n8n Chat',
+			icon: 'message-square',
+			credentialTypes: [],
+		};
+		const menuItems = [
+			{ id: 'edit', label: 'agents.channels.n8nChat.edit' },
+			{ id: 'remove', label: 'agents.channels.n8nChat.makeUnavailable' },
+		];
+
+		function mountN8nChatItem() {
+			const dropdownMenuStub = {
+				name: 'N8nDropdownMenu',
+				props: ['items'],
+				emits: ['select'],
+				template: `
+					<div data-testid="channel-actions">
+						<slot name="trigger" />
+						<button
+							v-for="item in items"
+							:key="item.id"
+							:data-testid="'menu-item-' + item.id"
+							@click="$emit('select', item.id)"
+						>
+							{{ item.label }}
+						</button>
+					</div>
+				`,
+			};
+			return mount(AgentChannelListItem, {
+				props: {
+					integration: n8nChatIntegration,
+					configured: true,
+					connected: false,
+					connectAction: { label: 'agents.channels.n8nChat.makeAvailable' },
+					configuredLabel: 'agents.channels.n8nChat.available',
+					menuItems,
+				},
+				global: {
+					stubs: {
+						N8nButton: { template: '<button><slot /></button>' },
+						// The real component's internal name is `DropdownMenu`, not the
+						// `N8nDropdownMenu` it's re-exported as — stub matching needs both.
+						N8nDropdownMenu: dropdownMenuStub,
+						DropdownMenu: dropdownMenuStub,
+						N8nIcon: { props: ['icon'], template: '<i :data-icon="icon" />' },
+						N8nText: { template: '<span><slot /></span>' },
+						N8nTooltip: { template: '<div><slot /></div>' },
+					},
+				},
+			});
+		}
+
+		it('shows "Available" regardless of connected state', () => {
+			const wrapper = mountN8nChatItem();
+
+			expect(wrapper.text()).toContain('agents.channels.n8nChat.available');
+			expect(wrapper.text()).not.toContain('agents.channels.modal.configured');
+		});
+
+		it('opens a menu instead of emitting edit directly on click', async () => {
+			const wrapper = mountN8nChatItem();
+
+			expect(wrapper.find('[data-testid="channel-actions"]').exists()).toBe(true);
+			await wrapper.get('[data-testid="agent-channel-connected-trigger"]').trigger('click');
+
+			expect(wrapper.emitted('edit')).toBeUndefined();
+		});
+
+		it('emits edit when the Edit item is selected', async () => {
+			const wrapper = mountN8nChatItem();
+
+			await wrapper.get('[data-testid="menu-item-edit"]').trigger('click');
+
+			expect(wrapper.emitted('edit')).toEqual([['n8n_chat']]);
+		});
+
+		it('emits remove when Make unavailable is selected', async () => {
+			const wrapper = mountN8nChatItem();
+
+			await wrapper.get('[data-testid="menu-item-remove"]').trigger('click');
+
+			expect(wrapper.emitted('remove')).toEqual([['n8n_chat']]);
+		});
+	});
+
+	it('still emits edit directly for a channel with no menu', async () => {
+		const wrapper = mountItem(true, true);
+
+		await wrapper.get('[data-testid="agent-channel-connected-indicator"]').trigger('click');
+
+		expect(wrapper.emitted('edit')).toEqual([['slack']]);
+	});
+
 	it('renders registry-provided connect action metadata', () => {
 		const wrapper = mount(AgentChannelListItem, {
 			props: {

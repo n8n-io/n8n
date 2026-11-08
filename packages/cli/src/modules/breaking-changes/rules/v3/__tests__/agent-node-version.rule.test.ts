@@ -91,8 +91,8 @@ describe('AgentNodeVersionRule', () => {
 	});
 
 	describe('getMetadata()', () => {
-		it('should report a medium severity for nodes that keep working', () => {
-			expect(rule.getMetadata().severity).toBe('medium');
+		it('should report a behaviorChanges impact for nodes that keep working', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
 		});
 	});
 

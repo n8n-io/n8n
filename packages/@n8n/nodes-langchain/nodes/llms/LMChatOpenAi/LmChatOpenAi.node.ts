@@ -1,10 +1,7 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
-import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
-	jsonParse,
 	NodeConnectionTypes,
-	NodeOperationError,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -17,12 +14,14 @@ import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
+import { parseExtraBody } from '../shared/extra-body';
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getProxyAgent,
+	aiClientFetch,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
@@ -88,7 +87,8 @@ export class LmChatOpenAi implements INodeType {
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],
-		description: 'For advanced usage with an AI chain',
+		description:
+			'Run GPT models, with optional Responses API for web search, file search, and code execution',
 		defaults: {
 			name: 'OpenAI Chat Model',
 		},
@@ -145,7 +145,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {
@@ -767,6 +767,7 @@ export class LmChatOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			defaultHeaders,
 		};
 
@@ -807,24 +808,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		if (options.extraBody) {
-			let extraBody: Record<string, unknown>;
-			try {
-				extraBody = jsonParse<Record<string, unknown>>(options.extraBody);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field is not valid JSON',
-					{ itemIndex, description: error instanceof Error ? error.message : String(error) },
-				);
-			}
-			if (!isPlainObject(extraBody)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field must be a JSON object',
-					{ itemIndex },
-				);
-			}
-			Object.assign(modelKwargs, extraBody);
+			Object.assign(modelKwargs, parseExtraBody(this, options.extraBody, itemIndex));
 		}
 
 		const includedOptions = pick(options, [

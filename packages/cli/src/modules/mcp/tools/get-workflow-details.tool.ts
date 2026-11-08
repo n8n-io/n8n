@@ -4,7 +4,7 @@ import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -87,6 +87,7 @@ export const createWorkflowDetailsTool = (
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	telemetry: Telemetry,
@@ -130,6 +131,7 @@ export const createWorkflowDetailsTool = (
 					baseWebhookUrl,
 					workflowFinderService,
 					credentialsService,
+					credentialsFinderService,
 					nodeTypes,
 					endpoints,
 					roleService,
@@ -166,6 +168,7 @@ export async function getWorkflowDetails(
 	baseWebhookUrl: string,
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
+	credentialsFinderService: CredentialsFinderService,
 	nodeTypes: INodeTypes,
 	endpoints: WebhookEndpoints,
 	roleService: RoleService,
@@ -182,7 +185,12 @@ export async function getWorkflowDetails(
 		user,
 		['workflow:read'],
 		workflowFinderService,
-		{ includeActiveVersion: true, includeTags: true, includeParentFolder: true },
+		{
+			includeActiveVersion: true,
+			includeTags: true,
+			includeParentFolder: true,
+			publishHistory: 'none',
+		},
 	);
 
 	// Compute user scopes for this workflow
@@ -200,6 +208,7 @@ export async function getWorkflowDetails(
 			unsupported,
 			baseWebhookUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflow.id,

@@ -3,31 +3,31 @@
 $input-sizes: (
 	'xlarge': (
 		height: var(--height--xl),
-		radius: var(--radius--2xs),
+		radius: var(--radius--md),
 		font-size: var(--font-size--md),
 		padding: var(--spacing--xs),
 	),
 	'large': (
 		height: var(--height--lg),
-		radius: var(--radius--2xs),
+		radius: var(--radius--xs),
 		font-size: var(--font-size--sm),
 		padding: var(--spacing--xs),
 	),
 	'medium': (
 		height: var(--height--md),
-		radius: var(--radius--3xs),
+		radius: var(--radius),
 		font-size: var(--font-size--sm),
 		padding: var(--spacing--xs),
 	),
 	'small': (
 		height: var(--height--sm),
-		radius: var(--radius--3xs),
+		radius: var(--radius),
 		font-size: var(--font-size--xs),
 		padding: var(--spacing--2xs),
 	),
 	'mini': (
 		height: var(--height--xs),
-		radius: var(--radius--3xs),
+		radius: var(--radius),
 		font-size: var(--font-size--2xs),
 		padding: var(--spacing--2xs),
 	),

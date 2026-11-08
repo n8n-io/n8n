@@ -5,11 +5,12 @@ import type {
 	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestSummary,
 } from '@n8n/api-types';
+import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	DbLock,
 	DbLockService,
+	PersonRepository,
 	SharedWorkflowRepository,
-	UserRepository,
 	WorkflowHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -17,16 +18,14 @@ import {
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type OperationContext,
+	type Person,
 	type User,
 	type WorkflowReviewRequest,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
@@ -56,7 +55,7 @@ export class WorkflowReviewRequestSubmissionService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly eventService: EventService,
@@ -64,20 +63,21 @@ export class WorkflowReviewRequestSubmissionService {
 		private readonly stateNotifier: WorkflowReviewStateNotifier,
 	) {}
 
-	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
+	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<Person[]> {
 		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
 			this.roleService.rolesWithScope('project', ['workflow:read']),
 			this.roleService.rolesWithScope('global', ['workflow:read']),
 		]);
 
-		const users = await this.userRepository.findEligibleByProjectOrGlobalRoles({
+		// Only a person can review a workflow.
+		const people = await this.personRepository.findEligibleByProjectOrGlobalRoles({
 			projectId,
 			projectRoleSlugs,
 			globalRoleSlugs,
 		});
 
-		return users
-			.filter((user) => !user.isPending && user.id !== excludeUserId)
+		return people
+			.filter((person) => !person.isPending && person.id !== excludeUserId)
 			.sort((a, b) => a.email.localeCompare(b.email));
 	}
 

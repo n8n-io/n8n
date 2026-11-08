@@ -6,13 +6,15 @@ import {
 	AllowAllAdmittance,
 	createDataSource,
 	createEngineRuntime,
+	mintResumeToken,
 	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
-import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
+import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
+import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 
@@ -23,6 +25,7 @@ import { NodeTypes } from '@/node-types';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneClient } from './engine-control-plane-client';
 import { EngineCredentialsClient } from './engine-credentials-client';
+import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 
 /**
@@ -54,9 +57,11 @@ export class EngineV2Runtime {
 		private readonly logger: Logger,
 		private readonly controlPlaneClient: EngineControlPlaneClient,
 		private readonly credentialsClient: EngineCredentialsClient,
+		private readonly subWorkflowClient: EngineSubWorkflowClient,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
+		private readonly binaryDataService: BinaryDataService,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
@@ -108,19 +113,35 @@ export class EngineV2Runtime {
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			logger: this.logger,
 			responseSender,
+			resumeSecret: this.engineConfig.resumeSecret,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: async (events, signal) =>
 					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
+				// The same call the v1 hard delete makes: one prefix per run, safe to repeat.
+				deleteExecutionFiles: async ({ workflowId, executionId }) =>
+					await this.binaryDataService.deleteMany([
+						FileLocation.ofExecution(workflowId, executionId),
+					]),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
 					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
 					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+					resumeToken: this.resumeTokenMinter(),
+					resolveSubWorkflow: async (request) =>
+						await this.subWorkflowClient.resolve(request, stopping.signal),
 				}),
 			}),
 		});
 		engine.start();
 
 		this.engine = engine;
+	}
+
+	private resumeTokenMinter(): V1StepExecutorDeps['resumeToken'] {
+		const { resumeSecret } = this.engineConfig;
+		if (!resumeSecret) return undefined;
+
+		return ({ executionId }) => mintResumeToken(resumeSecret, executionId);
 	}
 
 	private buildAdditionalData(

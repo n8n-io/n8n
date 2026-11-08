@@ -4,10 +4,10 @@ import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 const KEY = 'redaction.enforcement';
 

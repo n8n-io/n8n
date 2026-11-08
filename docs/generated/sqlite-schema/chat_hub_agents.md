@@ -79,6 +79,7 @@ erDiagram
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  DATETIME pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_32_ type
@@ -129,6 +130,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

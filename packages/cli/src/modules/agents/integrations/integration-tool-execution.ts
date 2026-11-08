@@ -33,13 +33,52 @@ import type { RawActionToolOperation, RawContextToolOperation } from './integrat
 /** Resume shape for the action tool, including a follow-up interactive card. */
 export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
 
+/**
+ * True when an action tool result reports that no reply will be sent
+ * (`do_not_respond`), on its own or inside a batch.
+ */
+export function isSilentActionOutput(output: unknown): boolean {
+	if (!isRecord(output)) return false;
+	if (output.silent === true) return true;
+	// Batched action calls nest per-operation results under `results`.
+	return (
+		Array.isArray(output.results) &&
+		output.results.some(
+			(entry) =>
+				isRecord(entry) &&
+				entry.action === 'do_not_respond' &&
+				isRecord(entry.result) &&
+				entry.result.ok === true &&
+				entry.result.silent === true,
+		)
+	);
+}
+
+/** File IDs that a respond queued for the final reply, on its own or inside a batch. */
+export function readQueuedFileIds(output: unknown): string[] {
+	if (!isRecord(output) || output.ok !== true) return [];
+	if (Array.isArray(output.queuedFileIds)) {
+		return output.queuedFileIds.filter((fileId): fileId is string => typeof fileId === 'string');
+	}
+	if (!Array.isArray(output.results)) return [];
+	return output.results.flatMap((entry) =>
+		isRecord(entry) ? readQueuedFileIds(entry.result) : [],
+	);
+}
+
+export function integrationActionApprovalKey(connectionId: string, action: string): string {
+	return JSON.stringify(['integration_action', connectionId, action]);
+}
+
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;
 	descriptor: IntegrationToolConnectionDescriptor;
 	queryExecutor: IntegrationContextQueryExecutor;
 	persistence: ToolContext['persistence'];
+	abortSignal?: AbortSignal;
 }): Promise<unknown> {
-	const { operation, descriptor, queryExecutor, persistence } = params;
+	const { operation, descriptor, queryExecutor, persistence, abortSignal } = params;
+	abortSignal?.throwIfAborted();
 
 	if (isCurrentContextQuery(operation.query)) {
 		if (!persistence) {
@@ -88,6 +127,7 @@ export async function executeContextToolOperation(params: {
 				query: 'get_user',
 				input: { userId: context.interactingUserId },
 				persistence,
+				abortSignal,
 			});
 		}
 
@@ -106,6 +146,7 @@ export async function executeContextToolOperation(params: {
 			query: 'get_channel_info',
 			input: { channelId },
 			persistence,
+			abortSignal,
 		});
 	}
 
@@ -114,6 +155,7 @@ export async function executeContextToolOperation(params: {
 		query: operation.query,
 		input: operation.input,
 		persistence,
+		abortSignal,
 	});
 }
 
@@ -123,8 +165,9 @@ export async function executeActionToolBatch(params: {
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
+	projectId?: string;
 }): Promise<unknown> {
-	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
+	const { operations, descriptor, messageContextStore, actionExecutor, ctx, projectId } = params;
 	let currentMessageContext = getOptionalCurrentContext({
 		descriptor,
 		persistence: ctx.persistence,
@@ -138,6 +181,7 @@ export async function executeActionToolBatch(params: {
 			messageContextStore,
 			actionExecutor,
 			ctx,
+			projectId,
 			currentMessageContext,
 			allowSuspend: false,
 		});
@@ -158,6 +202,8 @@ export async function executeActionToolOperation(params: {
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
 	interruptCtx?: InterruptibleToolContext;
+	/** Project of the agent. `input.fileIds` resolve in this project only. */
+	projectId?: string;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
 	/** Action the user just approved, so the gate below lets it through once. */
@@ -172,6 +218,7 @@ export async function executeActionToolOperation(params: {
 		interruptCtx,
 		allowSuspend,
 		approvedAction,
+		projectId,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -191,7 +238,10 @@ export async function executeActionToolOperation(params: {
 
 	const needsApproval =
 		operation.action !== approvedAction &&
-		actionNeedsApproval(descriptor.approval, operation.action);
+		actionNeedsApproval(descriptor.approval, operation.action) &&
+		!ctx.approvalContext?.approvedKeys.has(
+			integrationActionApprovalKey(descriptor.integrationConnectionId, operation.action),
+		);
 
 	if (needsApproval) {
 		// A batch cannot suspend, so a gated action inside one has to be refused
@@ -210,8 +260,11 @@ export async function executeActionToolOperation(params: {
 			{
 				type: 'approval',
 				toolName: operation.action,
+				...(ctx.approvalContext ? { supportsSessionApproval: true } : {}),
 				displayName: describeActionForApproval(operation),
-				args: actionInput,
+				args: ctx.approvalContext?.getDisplayArgs
+					? ctx.approvalContext.getDisplayArgs(descriptor.actionToolName, actionInput)
+					: actionInput,
 			},
 			// The card's buttons are shaped from this schema, so the decision comes
 			// back as `{ approved }` rather than the tool's own resume shape.
@@ -240,6 +293,9 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		...(projectId && persistence
+			? { fileScope: { projectId, threadId: persistence.threadId } }
+			: {}),
 	});
 
 	if (!result.ok) return result;
@@ -257,7 +313,9 @@ export async function executeActionToolOperation(params: {
 		// that task session. Chat mentions stay on their own thread.
 		// respond/edit/reaction operate on existing threads and do not bind.
 		if (
-			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
 			descriptor.agentId &&
 			messageContext.target.threadId &&
 			isTaskRunMemoryResourceId(persistence.resourceId)
@@ -266,6 +324,27 @@ export async function executeActionToolOperation(params: {
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 			);
+		}
+		// A delivery failure arrives later and names only the message. This lets
+		// it reach the session that sent the message.
+		if (
+			descriptor.integration.type === 'whatsapp' &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
+			descriptor.agentId &&
+			messageContext.messageId &&
+			messageContext.target.threadId
+		) {
+			try {
+				await messageContextStore.recordSentMessage(
+					`${descriptor.agentId}:${messageContext.target.threadId}`,
+					messageContext.messageId,
+					{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				);
+			} catch {
+				// The send worked. Without the record, a failure goes to the bound session.
+			}
 		}
 		actionResult = { ...result, messageContext };
 	}

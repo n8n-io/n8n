@@ -1,11 +1,9 @@
 import type { SsrfProtectionService } from '@n8n/backend-network';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UnimplementedError } from '@n8n/engine';
 import type { ICredentialsHelper } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
-import type { UrlService } from '@/services/url.service';
 
 import { EngineAdditionalDataBuilder } from '../engine-additional-data';
 
@@ -160,12 +158,15 @@ describe('EngineAdditionalDataBuilder', () => {
 		});
 	});
 
+	it('reads no run data of another execution, so paired items fall back to index matching', async () => {
+		await expect(build().getRunExecutionData('sub-1')).resolves.toBeUndefined();
+	});
+
 	describe('control plane capabilities', () => {
 		it.each([
 			['executeWorkflow', 'Sub-workflows'],
 			['executeAgent', 'Agents'],
 			['listAgents', 'Agents'],
-			['getRunExecutionData', 'Reading another execution'],
 			['getRuntimeCredential', 'Runtime credentials'],
 		] as const)('%s rejects and names the feature', async (method, feature) => {
 			const data = build() as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;

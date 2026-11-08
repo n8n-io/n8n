@@ -2,7 +2,7 @@ import { Role, RoleRepository, Scope, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope as ScopeType } from '@n8n/permissions';
 
-import { RoleCacheService } from '@/services/role-cache.service';
+import { RoleCacheService } from '@n8n/backend-services';
 
 /**
  * Creates a test role with given parameters
@@ -154,6 +154,14 @@ export async function createTestScopes(): Promise<{
 	]);
 
 	return { readScope, writeScope, deleteScope, adminScope };
+}
+
+/** Leaves every role without scopes, like a database that `n8n start` never synced. */
+export async function removeAllRoleScopes(): Promise<void> {
+	const roleRepository = Container.get(RoleRepository);
+	const roles = await roleRepository.find();
+	for (const role of roles) role.scopes = [];
+	await roleRepository.save(roles);
 }
 
 /**

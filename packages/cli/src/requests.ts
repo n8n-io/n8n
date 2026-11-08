@@ -114,7 +114,7 @@ export declare namespace CredentialRequest {
 		{},
 		{},
 		{},
-		{ workflowId: string } | { projectId: string }
+		({ workflowId: string } | { projectId: string }) & { forAgent?: 'true' | 'false' }
 	>;
 }
 
@@ -189,7 +189,22 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<
+			{},
+			{},
+			{},
+			// `admin_consent` arrives when an administrator approves the app for an
+			// organisation, which reuses the same reply URL. The error pair arrives with
+			// it, or when the authorization server refuses the request (RFC 6749 4.1.2.1).
+			{
+				code: string;
+				state: string;
+				admin_consent?: string;
+				error?: string;
+				error_description?: string;
+				iss?: string;
+			}
+		>;
 	}
 }
 
@@ -211,15 +226,7 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<
-		{},
-		{},
-		{ name?: string; verify?: boolean; version?: string; checksum?: string }
-	>;
-
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
-
-	type Update = Post;
 }
 
 // ----------------------------------

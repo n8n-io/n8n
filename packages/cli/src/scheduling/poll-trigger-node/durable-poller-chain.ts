@@ -14,6 +14,7 @@ export function isDurablePollerChainEnabled(
 	workflowsConfig: WorkflowsConfig,
 ): boolean {
 	return (
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		schedulerConfig.enabled &&
 		schedulerConfig.enabledForPollTriggers &&
 		workflowsConfig.useWorkflowPublicationService

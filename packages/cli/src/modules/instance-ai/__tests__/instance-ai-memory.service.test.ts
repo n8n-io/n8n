@@ -167,6 +167,46 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 	});
 });
 
+describe('InstanceAiMemoryService internal thread ownership', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+	afterEach(() => {
+		mockGetThread.mockReset();
+	});
+
+	it.each(['user-1', 'other-user'])('keeps producer threads hidden from %s', async (userId) => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('internal-thread', '2026-02-01T00:00:00.000Z'),
+			resourceId: 'ia-self-healing:user-1',
+		});
+		const service = createService();
+
+		expect(await service.checkThreadOwnership(userId, 'internal-thread')).toBe('other_user');
+		expect(await service.getThreadMetadata(userId, 'internal-thread')).toBeUndefined();
+		await expect(
+			service.ensureThread(userId, 'internal-thread', 'project-1', {
+				source: 'assistant_page',
+				origin: 'internal',
+			}),
+		).rejects.toThrow('not owned');
+		expect(mockSaveThreadWithProject).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ resourceId: 'user-1', actorId: 'user-1' },
+		{ resourceId: 'ia-self-healing:user-1', actorId: 'user-1' },
+		{ resourceId: 'ia-self-healing:', actorId: undefined },
+	])('resolves the workspace cleanup actor for $resourceId', async ({ resourceId, actorId }) => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('thread', '2026-02-01T00:00:00.000Z'),
+			resourceId,
+		});
+
+		expect(await createService().getThreadActorId('thread')).toBe(actorId);
+	});
+});
+
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -1346,14 +1386,15 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 		vi.clearAllMocks();
 	});
 
-	it('delegates to the agent memory and returns the number of deleted threads', async () => {
-		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+	it('deletes the actor chat and internal threads with their existing resource cleanup', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3).mockResolvedValueOnce(2);
 		const service = createService();
 
 		const deleted = await service.deleteThreadsForUser('user-1');
 
-		expect(deleted).toBe(3);
+		expect(deleted).toBe(5);
 		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('ia-self-healing:user-1');
 	});
 });
 

@@ -1,8 +1,8 @@
+import type { EventService } from '@n8n/backend-services';
 import type { CrashedExecution, ExecutionRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
@@ -173,6 +173,41 @@ describe('ExecutionCrashService', () => {
 		expect(executionRepository.markAsCrashed).toHaveBeenCalledWith('1', expect.any(Function));
 		expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
 		expect(announced()).toEqual([announcementOf(first, 'stall')]);
+	});
+
+	test('announces the stop time the caller gives instead of the claim time', async () => {
+		const first = crashedExecution('1');
+		const lastNodeStoppedAt = new Date('2025-01-01T00:00:30.000Z');
+		transitions([first]);
+
+		const crashed = await crashService.markAsCrashedWithoutCounting('1', 'startup-recovery', {
+			stoppedAt: lastNodeStoppedAt,
+		});
+
+		expect(crashed).toEqual([first]);
+		expect(announced()).toEqual([
+			announcementOf({ ...first, stoppedAt: lastNodeStoppedAt }, 'startup-recovery'),
+		]);
+	});
+
+	test('counts and announces a waiting execution it transitioned', async () => {
+		const waiting = crashedExecution('1', { mode: 'webhook' });
+		executionRepository.markAsCrashedFrom.mockImplementation(async (_id, _status, options) => {
+			options?.onTransitioned?.([waiting]);
+
+			return await Promise.resolve([waiting]);
+		});
+
+		const crashed = await crashService.markAsCrashedFrom('1', 'waiting', 'resume-limit', 2);
+
+		expect(crashed).toEqual([waiting]);
+		expect(executionRepository.markAsCrashedFrom).toHaveBeenCalledWith(
+			'1',
+			'waiting',
+			expect.objectContaining({ expectedAttempts: 2 }),
+		);
+		expect(emitted()).toEqual([['executionsCrashed', { executions: [waiting] }]]);
+		expect(announced()).toEqual([announcementOf(waiting, 'resume-limit')]);
 	});
 
 	test('reports the executions it transitioned for a whole workflow', async () => {

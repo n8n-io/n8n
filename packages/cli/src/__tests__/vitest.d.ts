@@ -7,6 +7,6 @@ interface CustomMatchers<R = unknown> {
 }
 
 declare module 'vitest' {
-	interface Matchers<T = unknown> extends CustomMatchers<T> {}
+	interface Matchers<R, T> extends CustomMatchers<R> {}
 	interface AsymmetricMatchersContaining extends CustomMatchers {}
 }

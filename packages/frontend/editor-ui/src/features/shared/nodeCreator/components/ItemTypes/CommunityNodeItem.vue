@@ -20,7 +20,7 @@ const i18n = useI18n();
 
 		<div v-else :class="$style.marginLeft">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="medium"
 				icon="plus"
 				:label="i18n.baseText('communityNodeItem.label')"

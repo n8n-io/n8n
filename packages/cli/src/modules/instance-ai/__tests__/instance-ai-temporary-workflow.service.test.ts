@@ -46,12 +46,14 @@ function createService() {
 		configEvalsEnabled: false,
 		conversationHistoryEnabled: false,
 		progressiveBuildingEnabled: false,
+		conciseStyleEnabled: false,
 		setupPanelEnabled: false,
 		nodeUsageEnabled: false,
 		nodeContextEnabled: false,
 		folderExplorationEnabled: false,
 		aiPreferencesEnabled: false,
 		instanceContextEnabled: false,
+		assistantSkillsEnabled: false,
 	});
 
 	const service = new InstanceAiTemporaryWorkflowService(

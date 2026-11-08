@@ -23,10 +23,12 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError, setUnauthorizedHandler } from '@n8n/rest-api-client';
 import { handleSessionExpired } from '@/app/utils/handleSessionExpired';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import {
 	canManageInstanceAi,
 	canMessageInstanceAi,
@@ -63,8 +65,6 @@ const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
 	await import('@/features/settings/apiKeys/views/SettingsApiView.vue');
-const SettingsLogStreamingView = async () =>
-	await import('@/features/integrations/logStreaming.ee/views/SettingsLogStreamingView.vue');
 const SetupView = async () => await import('@/features/core/auth/views/SetupView.vue');
 const SigninView = async () => await import('@/features/core/auth/views/SigninView.vue');
 const SignupView = async () => await import('@/features/core/auth/views/SignupView.vue');
@@ -79,6 +79,8 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
+const SettingsAuthentication = async () =>
+	await import('@/features/settings/sso/views/SettingsAuthenticationView.vue');
 const SettingsEncryptionKeys = async () =>
 	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
@@ -140,21 +142,6 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 }
 
 const RESOURCE_CENTER_FLAG_WAIT_TIMEOUT = 2000;
-
-const waitForPendingFeatureFlags = async (posthogStore: ReturnType<typeof usePostHog>) => {
-	let timeoutId: number | undefined;
-
-	await Promise.race([
-		posthogStore.waitForFeatureFlags(),
-		new Promise<void>((resolve) => {
-			timeoutId = window.setTimeout(resolve, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT);
-		}),
-	]);
-
-	if (timeoutId !== undefined) {
-		window.clearTimeout(timeoutId);
-	}
-};
 
 const allowResourceCenterRoute = (
 	posthogStore: ReturnType<typeof usePostHog>,
@@ -323,14 +310,14 @@ export const routes: RouteRecordRaw[] = [
 				return;
 			}
 
-			if (!posthogStore.hasPendingFeatureFlags()) {
-				next({ name: VIEWS.HOMEPAGE });
-				return;
-			}
-
-			void waitForPendingFeatureFlags(posthogStore).then(() => {
-				allowResourceCenterRoute(posthogStore, next);
-			});
+			// `waitForFeatureFlagsWithTimeout` resolves immediately when nothing is
+			// pending, so re-checking the variant below still redirects right away
+			// for a user whose flags were already resolved as "off".
+			void waitForFeatureFlagsWithTimeout(posthogStore, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT).then(
+				() => {
+					allowResourceCenterRoute(posthogStore, next);
+				},
+			);
 		},
 	},
 
@@ -986,6 +973,8 @@ export const routes: RouteRecordRaw[] = [
 				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
 				component: SettingsSourceControl,
+				beforeEnter: () =>
+					!usePromotionsEnabled().isEnabled.value || { name: PROMOTIONS_SETTINGS_VIEW },
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -1025,25 +1014,76 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				// SSO and LDAP are children of the Authentication overview so its sidebar link
+				// stays active while a method is open. The old flat paths redirect below.
+				path: 'authentication',
+				component: RouterView,
+				children: [
+					{
+						path: '',
+						name: VIEWS.AUTHENTICATION_SETTINGS,
+						component: SettingsAuthentication,
+						meta: {
+							middleware: ['authenticated', 'rbac'],
+							middlewareOptions: {
+								rbac: {
+									// Managing any one sign-in method is enough to see the overview.
+									scope: ['saml:manage', 'ldap:manage'],
+								},
+							},
+							telemetry: {
+								pageCategory: 'settings',
+								getProperties() {
+									return {
+										feature: 'authentication',
+									};
+								},
+							},
+						},
+					},
+					{
+						path: 'sso',
+						name: VIEWS.SSO_SETTINGS,
+						component: SettingsSso,
+						meta: {
+							middleware: ['authenticated', 'rbac'],
+							middlewareOptions: {
+								rbac: {
+									scope: 'saml:manage',
+								},
+							},
+							telemetry: {
+								pageCategory: 'settings',
+								getProperties() {
+									return {
+										feature: 'sso',
+									};
+								},
+							},
+						},
+					},
+					{
+						path: 'ldap',
+						name: VIEWS.LDAP_SETTINGS,
+						component: SettingsLdapView,
+						meta: {
+							middleware: ['authenticated', 'rbac'],
+							middlewareOptions: {
+								rbac: {
+									scope: 'ldap:manage',
+								},
+							},
+						},
+					},
+				],
+			},
+			{
 				path: 'sso',
-				name: VIEWS.SSO_SETTINGS,
-				component: SettingsSso,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'saml:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'sso',
-							};
-						},
-					},
-				},
+				redirect: { name: VIEWS.SSO_SETTINGS },
+			},
+			{
+				path: 'ldap',
+				redirect: { name: VIEWS.LDAP_SETTINGS },
 			},
 			{
 				path: 'encryption-keys',
@@ -1069,22 +1109,6 @@ export const routes: RouteRecordRaw[] = [
 								feature: 'encryption-keys',
 							};
 						},
-					},
-				},
-			},
-			{
-				path: 'log-streaming',
-				name: VIEWS.LOG_STREAMING_SETTINGS,
-				component: SettingsLogStreamingView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'logStreaming:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
 					},
 				},
 			},
@@ -1118,19 +1142,6 @@ export const routes: RouteRecordRaw[] = [
 					},
 					telemetry: {
 						pageCategory: 'settings',
-					},
-				},
-			},
-			{
-				path: 'ldap',
-				name: VIEWS.LDAP_SETTINGS,
-				component: SettingsLdapView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'ldap:manage',
-						},
 					},
 				},
 			},

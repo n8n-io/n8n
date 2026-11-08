@@ -2,6 +2,8 @@
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
@@ -11,7 +13,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
-import { parseStepSummary } from '@n8n/api-types';
+import { parseStepCacheBreaks, parseStepSummary } from '@n8n/api-types';
+import { describeCacheBreak } from '../utils/cache-break';
 import InstanceAiLlmStepDetail from './InstanceAiLlmStepDetail.vue';
 import InstanceAiRunWorkflowCodeSection from './InstanceAiRunWorkflowCodeSection.vue';
 
@@ -37,12 +40,24 @@ const selectedStep = computed(() => {
 	return steps.value.find((step) => step.stepNumber === selectedStepNumber.value);
 });
 
+const cacheBreaks = computed(() => parseStepCacheBreaks(steps.value));
+
 const stepSummaries = computed(() =>
-	steps.value.map((step) => ({
-		stepNumber: step.stepNumber,
-		summary: parseStepSummary(step.input, step.output),
-	})),
+	steps.value.map((step, index) => {
+		const cacheBreak = cacheBreaks.value[index];
+		return {
+			stepNumber: step.stepNumber,
+			summary: parseStepSummary(step.input, step.output),
+			cacheBreak,
+			cacheBreakDescription: cacheBreak ? describeCacheBreak(i18n, cacheBreak) : undefined,
+		};
+	}),
 );
+
+const selectedCacheBreak = computed(() => {
+	const index = steps.value.findIndex((step) => step.stepNumber === selectedStepNumber.value);
+	return index >= 0 ? cacheBreaks.value[index] : undefined;
+});
 
 watch(
 	() => props.open,
@@ -104,6 +119,10 @@ function formatTimestamp(ms: number): string {
 	}
 }
 
+function formatCompactTokens(tokens: number): string {
+	return tokens < 1000 ? tokens.toString() : `${(tokens / 1000).toFixed(1)}k`;
+}
+
 function formatStepCount(count: number): string {
 	return i18n.baseText('instanceAi.debug.runDebug.stepCount', {
 		interpolate: { count: String(count) },
@@ -118,128 +137,154 @@ function formatStepCount(count: number): string {
 		data-test-id="instance-ai-llm-steps-modal"
 		@update:open="handleOpenChange"
 	>
-		<div :class="$style.shell">
-			<N8nDialogHeader :class="$style.header">
-				<div :class="$style.headerMain">
-					<div :class="$style.headerTitleRow">
-						<N8nDialogTitle>
-							{{ i18n.baseText('instanceAi.debug.runDebug.stepsModalTitle') }}
-						</N8nDialogTitle>
-						<span v-if="steps.length > 0" :class="$style.stepCount">
-							{{ formatStepCount(steps.length) }}
-						</span>
-					</div>
-					<N8nText v-if="selectedRunId" size="small" color="text-light" :class="$style.runId">
-						{{ selectedRunId }}
-					</N8nText>
+		<N8nDialogHeader :class="$style.header">
+			<div :class="$style.headerMain">
+				<div :class="$style.headerTitleRow">
+					<N8nDialogTitle>
+						{{ i18n.baseText('instanceAi.debug.runDebug.stepsModalTitle') }}
+					</N8nDialogTitle>
+					<span v-if="steps.length > 0" :class="$style.stepCount">
+						{{ formatStepCount(steps.length) }}
+					</span>
 				</div>
-			</N8nDialogHeader>
-
-			<div v-if="debugStore.threadDebugRuns.length === 0" :class="$style.emptyState">
-				{{ i18n.baseText('instanceAi.debug.runDebug.noRuns') }}
+				<N8nText v-if="selectedRunId" size="small" color="text-light" :class="$style.runId">
+					{{ selectedRunId }}
+				</N8nText>
 			</div>
+		</N8nDialogHeader>
+		<N8nDialogBody>
+			<div :class="$style.shell">
+				<div v-if="debugStore.threadDebugRuns.length === 0" :class="$style.emptyState">
+					{{ i18n.baseText('instanceAi.debug.runDebug.noRuns') }}
+				</div>
 
-			<div v-else :class="$style.layout">
-				<aside :class="[$style.sidebar, $style.runsSidebar]">
-					<div :class="$style.sidebarHeader">
-						{{ i18n.baseText('instanceAi.debug.runDebug.runs') }}
-						<span :class="$style.sidebarCount">{{ debugStore.threadDebugRuns.length }}</span>
-					</div>
-					<div :class="$style.runList">
-						<button
-							v-for="(run, index) in debugStore.threadDebugRuns"
-							:key="run.runId"
-							type="button"
-							:class="[$style.runButton, selectedRunId === run.runId && $style.runButtonSelected]"
-							data-test-id="instance-ai-llm-steps-modal-run"
-							@click="selectRun(run.runId)"
-						>
-							<div :class="$style.runTopRow">
-								<span :class="$style.runNumber">{{ index + 1 }}</span>
-								<div :class="$style.runTopRowRight">
-									<span v-if="run.runId === currentThread.activeRunId" :class="$style.currentBadge">
-										{{ i18n.baseText('instanceAi.debug.threads.current') }}
-									</span>
-									<span :class="$style.runIdShort">{{ run.runId.slice(0, 12) }}</span>
+				<div v-else :class="$style.layout">
+					<aside :class="[$style.sidebar, $style.runsSidebar]">
+						<div :class="$style.sidebarHeader">
+							{{ i18n.baseText('instanceAi.debug.runDebug.runs') }}
+							<span :class="$style.sidebarCount">{{ debugStore.threadDebugRuns.length }}</span>
+						</div>
+						<div :class="$style.runList">
+							<button
+								v-for="(run, index) in debugStore.threadDebugRuns"
+								:key="run.runId"
+								type="button"
+								:class="[$style.runButton, selectedRunId === run.runId && $style.runButtonSelected]"
+								data-test-id="instance-ai-llm-steps-modal-run"
+								@click="selectRun(run.runId)"
+							>
+								<div :class="$style.runTopRow">
+									<span :class="$style.runNumber">{{ index + 1 }}</span>
+									<div :class="$style.runTopRowRight">
+										<span
+											v-if="run.runId === currentThread.activeRunId"
+											:class="$style.currentBadge"
+										>
+											{{ i18n.baseText('instanceAi.debug.threads.current') }}
+										</span>
+										<span :class="$style.runIdShort">{{ run.runId.slice(0, 12) }}</span>
+									</div>
 								</div>
-							</div>
-							<span v-if="run.label" :class="$style.runLabel">{{ run.label }}</span>
-							<span :class="$style.runMeta">
-								{{ formatStepCount(run.stepCount) }} · {{ formatTimestamp(run.startedAt) }}
-							</span>
-						</button>
-					</div>
-				</aside>
-
-				<aside :class="[$style.sidebar, $style.stepsSidebar]">
-					<div :class="$style.sidebarHeader">
-						{{ i18n.baseText('instanceAi.debug.tab.llmSteps') }}
-						<span :class="$style.sidebarCount">{{ steps.length }}</span>
-					</div>
-					<div v-if="steps.length === 0" :class="$style.sidebarEmpty">
-						{{ i18n.baseText('instanceAi.debug.runDebug.noSteps') }}
-					</div>
-					<div v-else :class="$style.stepList">
-						<button
-							v-for="{ stepNumber, summary } in stepSummaries"
-							:key="stepNumber"
-							type="button"
-							:class="[
-								$style.stepButton,
-								selectedStepNumber === stepNumber && $style.stepButtonSelected,
-							]"
-							@click="selectStep(stepNumber)"
-						>
-							<div :class="$style.stepTopRow">
-								<span :class="$style.stepNumber">{{ stepNumber + 1 }}</span>
-								<span v-if="summary.finishReason" :class="$style.finishReason">
-									{{ summary.finishReason }}
+								<span v-if="run.label" :class="$style.runLabel">{{ run.label }}</span>
+								<span :class="$style.runMeta">
+									{{ formatStepCount(run.stepCount) }} · {{ formatTimestamp(run.startedAt) }}
 								</span>
-							</div>
-							<span v-if="summary.toolNames.length > 0" :class="$style.stepTools">
-								{{ summary.toolNames.join(', ') }}
-							</span>
-							<span v-else-if="summary.messagePreview" :class="$style.stepPreview">
-								{{ summary.messagePreview }}
-							</span>
-							<span v-if="summary.usageLabel" :class="$style.stepUsage">
-								{{ summary.usageLabel }}
-							</span>
-						</button>
-					</div>
-				</aside>
+							</button>
+						</div>
+					</aside>
 
-				<div ref="detailPaneRef" :class="$style.detail">
-					<div v-if="debugStore.isLoadingRunDebug" :class="$style.loadingState">
-						<N8nIcon icon="spinner" color="primary" spin size="small" />
-					</div>
-					<div v-else-if="selectedStep || runWorkflowCode.length > 0" :class="$style.detailContent">
-						<InstanceAiLlmStepDetail
-							v-if="selectedStep"
-							ref="stepDetailRef"
-							:input="selectedStep.input"
-							:output="selectedStep.output"
-							:run-steps="steps"
-							:workflow-code="runWorkflowCode"
-						/>
-						<InstanceAiRunWorkflowCodeSection
-							v-if="runWorkflowCode.length > 0"
-							:snapshots="runWorkflowCode"
-							:show-divider="Boolean(selectedStep)"
-						/>
-					</div>
-					<div v-else :class="$style.emptyState">
-						{{ i18n.baseText('instanceAi.debug.runDebug.noStepDetail') }}
+					<aside :class="[$style.sidebar, $style.stepsSidebar]">
+						<div :class="$style.sidebarHeader">
+							{{ i18n.baseText('instanceAi.debug.tab.llmSteps') }}
+							<span :class="$style.sidebarCount">{{ steps.length }}</span>
+						</div>
+						<div v-if="steps.length === 0" :class="$style.sidebarEmpty">
+							{{ i18n.baseText('instanceAi.debug.runDebug.noSteps') }}
+						</div>
+						<div v-else :class="$style.stepList">
+							<button
+								v-for="{ stepNumber, summary, cacheBreak, cacheBreakDescription } in stepSummaries"
+								:key="stepNumber"
+								type="button"
+								:class="[
+									$style.stepButton,
+									cacheBreak && $style.stepButtonCacheBreak,
+									selectedStepNumber === stepNumber && $style.stepButtonSelected,
+								]"
+								@click="selectStep(stepNumber)"
+							>
+								<div :class="$style.stepTopRow">
+									<span :class="[$style.stepNumber, cacheBreak && $style.stepNumberCacheBreak]">
+										{{ stepNumber + 1 }}
+									</span>
+									<span v-if="summary.finishReason" :class="$style.finishReason">
+										{{ summary.finishReason }}
+									</span>
+									<span
+										v-if="cacheBreak"
+										:class="$style.cacheBreakBadge"
+										:title="cacheBreakDescription"
+										data-test-id="instance-ai-llm-step-cache-break"
+									>
+										<N8nIcon icon="triangle-alert" />
+										{{ i18n.baseText('instanceAi.debug.runDebug.cacheBreak') }}
+										<span :class="$style.cacheBreakTokens">
+											{{
+												i18n.baseText('instanceAi.debug.runDebug.cacheBreakLostTokens', {
+													interpolate: { count: formatCompactTokens(cacheBreak.lostTokens) },
+												})
+											}}
+										</span>
+									</span>
+								</div>
+								<span v-if="summary.toolNames.length > 0" :class="$style.stepTools">
+									{{ summary.toolNames.join(', ') }}
+								</span>
+								<span v-else-if="summary.messagePreview" :class="$style.stepPreview">
+									{{ summary.messagePreview }}
+								</span>
+								<span v-if="summary.usageLabel" :class="$style.stepUsage">
+									{{ summary.usageLabel }}
+								</span>
+							</button>
+						</div>
+					</aside>
+
+					<div ref="detailPaneRef" :class="$style.detail">
+						<div v-if="debugStore.isLoadingRunDebug" :class="$style.loadingState">
+							<N8nIcon icon="spinner" color="primary" spin size="small" />
+						</div>
+						<div
+							v-else-if="selectedStep || runWorkflowCode.length > 0"
+							:class="$style.detailContent"
+						>
+							<InstanceAiLlmStepDetail
+								v-if="selectedStep"
+								ref="stepDetailRef"
+								:input="selectedStep.input"
+								:output="selectedStep.output"
+								:run-steps="steps"
+								:workflow-code="runWorkflowCode"
+								:cache-break="selectedCacheBreak"
+							/>
+							<InstanceAiRunWorkflowCodeSection
+								v-if="runWorkflowCode.length > 0"
+								:snapshots="runWorkflowCode"
+								:show-divider="Boolean(selectedStep)"
+							/>
+						</div>
+						<div v-else :class="$style.emptyState">
+							{{ i18n.baseText('instanceAi.debug.runDebug.noStepDetail') }}
+						</div>
 					</div>
 				</div>
 			</div>
-
-			<div :class="$style.footer">
-				<N8nButton variant="outline" size="medium" @click="handleOpenChange(false)">
-					{{ i18n.baseText('generic.close') }}
-				</N8nButton>
-			</div>
-		</div>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton variant="outline" size="medium" @click="handleOpenChange(false)">
+				{{ i18n.baseText('generic.close') }}
+			</N8nButton>
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
@@ -257,7 +302,6 @@ function formatStepCount(count: number): string {
 .header {
 	flex-shrink: 0;
 	margin: 0;
-	padding-right: var(--spacing--xl);
 }
 
 .headerMain {
@@ -397,13 +441,48 @@ function formatStepCount(count: number): string {
 	border-radius: var(--radius--xl);
 	background: var(--color--foreground--tint-2);
 	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
 .runButtonSelected .runNumber,
 .stepButtonSelected .stepNumber {
 	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
+}
+
+.stepButtonCacheBreak:not(.stepButtonSelected) {
+	border-left: 2px solid var(--color--danger);
+	background: color-mix(in srgb, var(--color--danger) 6%, transparent);
+
+	&:hover {
+		background: color-mix(in srgb, var(--color--danger) 10%, var(--background--surface));
+	}
+}
+
+.cacheBreakBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	flex-shrink: 0;
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border: 1px solid color-mix(in srgb, var(--color--danger) 30%, transparent);
+	border-radius: var(--radius--xl);
+	background: color-mix(in srgb, var(--color--danger) 12%, transparent);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--medium);
+	line-height: 1;
+	white-space: nowrap;
+	color: var(--color--danger);
+}
+
+.cacheBreakTokens {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.8;
+}
+
+.stepNumber.stepNumberCacheBreak {
+	background: var(--color--danger);
+	color: var(--color--neutral-white);
 }
 
 .currentBadge {
@@ -479,12 +558,5 @@ function formatStepCount(count: number): string {
 	text-align: center;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
-}
-
-.footer {
-	display: flex;
-	flex-shrink: 0;
-	justify-content: flex-end;
-	padding-top: var(--spacing--4xs);
 }
 </style>

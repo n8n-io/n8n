@@ -1,4 +1,7 @@
+import { isGenAiAttributeKey } from '@n8n/ai-utilities/gen-ai';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import { WorkflowRepository, type Project } from '@n8n/db';
 import { OnLifecycleEvent, OnPubSubEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -8,13 +11,14 @@ import type {
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import type { ICustomTelemetryTag, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ICustomTelemetryTag, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
+import { toExecutionIdentity } from './execution-identity';
 import { ExecutionLevelTracer } from './execution-level-tracer';
-import type { CustomAttributes } from './execution-level-tracer.types';
+import { buildNodeGenAiAttributes } from './gen-ai-attributes';
+import type { CustomAttributes, ProjectContext } from './execution-level-tracer.types';
 import { OtelSettingsService } from './otel-settings.service';
 import { OtelService } from './otel.service';
 import { TraceContextService } from './tracing-context';
@@ -47,6 +51,7 @@ export class OtelLifecycleHandler {
 		private readonly otelService: OtelService,
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly logger: Logger,
 		private readonly licenseState: LicenseState,
 		private readonly eventService: EventService,
@@ -60,8 +65,9 @@ export class OtelLifecycleHandler {
 	}
 
 	@OnPubSubEvent('reload-otel-config')
+	@OnPubSubEvent('pubsub-reconnected')
 	async onReloadOtelConfig(): Promise<void> {
-		await this.otelService.restart();
+		await this.otelService.reloadSettings();
 	}
 
 	private shouldTrace(ctx: { type: string; mode: WorkflowExecuteMode }): boolean {
@@ -96,18 +102,22 @@ export class OtelLifecycleHandler {
 				return undefined;
 			});
 
+		// In queue mode, main runs this hook, not the resume hook, when a waiting execution resumes.
+		const savedIdentity = parentExecutionId
+			? undefined
+			: toExecutionIdentity(tracingContext?.identity);
+
 		const spanContext = this.tracer.startWorkflow({
 			executionId: ctx.executionId,
 			tracingContext,
-			project: project
-				? {
-						id: project.id,
-						customAttributes: this.buildProjectCustomAttributes(project.customTelemetryTags),
-					}
-				: undefined,
+			savedIdentity,
+			emitStartSpan: this.otelSettingsService.getSettings().emitWorkflowStartSpan,
+			project: this.buildProjectContext(project),
 			workflow: {
 				id: ctx.workflow.id,
-				name: ctx.workflow.name,
+				name: savedIdentity
+					? await this.getCurrentWorkflowName(ctx.workflow, ctx.executionId)
+					: ctx.workflow.name,
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
 				customAttributes: this.buildWorkflowCustomAttributes(
@@ -144,15 +154,12 @@ export class OtelLifecycleHandler {
 			// `n8n.continuation.reason`.
 			tracingContext: previousWorkflowExecution,
 			linkTo: previousWorkflowExecution,
-			project: project
-				? {
-						id: project.id,
-						customAttributes: this.buildProjectCustomAttributes(project.customTelemetryTags),
-					}
-				: undefined,
+			savedIdentity: toExecutionIdentity(previousWorkflowExecution?.identity),
+			emitStartSpan: this.otelSettingsService.getSettings().emitWorkflowStartSpan,
+			project: this.buildProjectContext(project),
 			workflow: {
 				id: ctx.workflow.id,
-				name: ctx.workflow.name,
+				name: await this.getCurrentWorkflowName(ctx.workflow, ctx.executionId),
 				versionId: ctx.workflow.versionId,
 				nodeCount: ctx.workflow.nodes.length,
 				customAttributes: this.buildWorkflowCustomAttributes(
@@ -212,6 +219,7 @@ export class OtelLifecycleHandler {
 		this.tracer.startNode({
 			executionId: ctx.executionId,
 			node,
+			emitStartSpan: this.otelSettingsService.getSettings().emitNodeStartSpan,
 		});
 	}
 
@@ -229,6 +237,12 @@ export class OtelLifecycleHandler {
 			outputItemCount: countOutputItems(ctx.taskData.data),
 			error: ctx.taskData.error ?? undefined,
 			customAttributes: this.buildNodeCustomAttributes(ctx),
+			genAiAttributes: buildNodeGenAiAttributes(
+				node,
+				ctx.taskData.metadata?.tracing,
+				ctx.executionData.resultData.runData,
+				ctx.workflow.connections,
+			),
 		});
 	}
 
@@ -257,6 +271,37 @@ export class OtelLifecycleHandler {
 		return customAttributes;
 	}
 
+	// A later segment runs the workflow saved at the start, so its name can predate a rename.
+	private async getCurrentWorkflowName(
+		workflow: IWorkflowBase,
+		executionId: string,
+	): Promise<string> {
+		try {
+			const [current] = await this.workflowRepository.findByIds([workflow.id], {
+				fields: ['name'],
+			});
+			return current?.name ?? workflow.name;
+		} catch (error) {
+			this.logger.warn('Failed to fetch workflow name for OTEL span', {
+				workflowId: workflow.id,
+				executionId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return workflow.name;
+		}
+	}
+
+	private buildProjectContext(project: Project | undefined): ProjectContext | undefined {
+		if (!project) return undefined;
+
+		return {
+			id: project.id,
+			// Personal project names hold the owner's name and email.
+			name: project.type === 'team' ? project.name : undefined,
+			customAttributes: this.buildProjectCustomAttributes(project.customTelemetryTags),
+		};
+	}
+
 	private buildProjectCustomAttributes(
 		tags: Array<{ key: string; value: string }> | undefined,
 	): Record<string, string> | undefined {
@@ -275,7 +320,9 @@ export class OtelLifecycleHandler {
 		if (!this.areCustomSpanAttributesLicensed()) return undefined;
 
 		return Object.fromEntries(
-			Object.entries(ctx.taskData.metadata.tracing).map(([key, value]) => [key, String(value)]),
+			Object.entries(ctx.taskData.metadata.tracing)
+				.filter(([key]) => !isGenAiAttributeKey(key))
+				.map(([key, value]) => [key, String(value)]),
 		);
 	}
 }

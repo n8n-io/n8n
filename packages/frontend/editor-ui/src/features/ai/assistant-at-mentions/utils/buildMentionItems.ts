@@ -8,6 +8,10 @@ import type {
 	WorkflowArtifactReference,
 } from '../assistantAtMentions.types';
 
+/**
+ * Row cap for the first browse level and for flat search results. Sub-menus
+ * (workflow contents, group contents) are not capped and list every child.
+ */
 export const MAX_MENTION_RESULTS = 10;
 
 export function buildMentionKey(
@@ -75,7 +79,6 @@ function buildGroupMentionItem(
 					(item): item is AssistantMentionItem =>
 						item !== undefined && !excludedKeys?.has(item.key),
 				)
-				.slice(0, MAX_MENTION_RESULTS)
 		: undefined;
 
 	return {
@@ -112,13 +115,11 @@ function buildArtifactWorkflowItem(
 					...index.nodes
 						.filter((node) => !index.nodeIdToGroupId.has(node.id))
 						.map((node) => buildNodeMentionItem(index, node.id)),
-				]
-					.filter(
-						(item): item is AssistantMentionItem =>
-							item !== undefined &&
-							(!excludedKeys?.has(item.key) || Boolean(item.hasChildren && item.children?.length)),
-					)
-					.slice(0, MAX_MENTION_RESULTS)
+				].filter(
+					(item): item is AssistantMentionItem =>
+						item !== undefined &&
+						(!excludedKeys?.has(item.key) || Boolean(item.hasChildren && item.children?.length)),
+				)
 			: undefined;
 
 	return {

@@ -45,6 +45,59 @@ describe('MetadataUtils', () => {
 			expect(metadata?.subExecutionsCount).toBe(3);
 			expect(metadata?.tokenUsage).toEqual({ inputTokens: 100, outputTokens: 50 });
 		});
+
+		it.each<[string, unknown]>([
+			['undefined', undefined],
+			['NaN', Number.NaN],
+			['Infinity', Number.POSITIVE_INFINITY],
+			['a negative count', -350],
+		])('should ignore %s and keep the previous total', (_label, badCount) => {
+			const context = createMockContext({
+				tokenUsage: { inputTokens: 100, outputTokens: 50 },
+			});
+			accumulateTokenUsage(context, badCount as number, badCount as number);
+			expect(context.getExecuteData().metadata?.tokenUsage).toEqual({
+				inputTokens: 100,
+				outputTokens: 50,
+			});
+		});
+
+		it('should accumulate a later valid call from the last usable total', () => {
+			const context = createMockContext();
+			accumulateTokenUsage(context, 100, 50);
+			accumulateTokenUsage(context, Number.NaN, undefined as unknown as number);
+			accumulateTokenUsage(context, 200, 80);
+			expect(context.getExecuteData().metadata?.tokenUsage).toEqual({
+				inputTokens: 300,
+				outputTokens: 130,
+			});
+		});
+
+		it('should keep a valid side when the other side is not usable', () => {
+			const context = createMockContext();
+			accumulateTokenUsage(context, 100, Number.NaN);
+			expect(context.getExecuteData().metadata?.tokenUsage).toEqual({
+				inputTokens: 100,
+				outputTokens: 0,
+			});
+
+			accumulateTokenUsage(context, -5, 40);
+			expect(context.getExecuteData().metadata?.tokenUsage).toEqual({
+				inputTokens: 100,
+				outputTokens: 40,
+			});
+		});
+
+		it('should replace a stored NaN total with the next usable count', () => {
+			const context = createMockContext({
+				tokenUsage: { inputTokens: Number.NaN, outputTokens: Number.NaN },
+			});
+			accumulateTokenUsage(context, 200, 80);
+			expect(context.getExecuteData().metadata?.tokenUsage).toEqual({
+				inputTokens: 200,
+				outputTokens: 80,
+			});
+		});
 	});
 
 	describe('parseMetadataFromError', () => {

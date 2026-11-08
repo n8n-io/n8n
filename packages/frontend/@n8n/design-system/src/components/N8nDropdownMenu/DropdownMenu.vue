@@ -132,8 +132,9 @@ const focusExternalTarget = (allowClosed = false) => {
 };
 
 const focusTrigger = () => {
-	const trigger = triggerRef.value?.$el as HTMLElement | undefined;
-	if (!trigger) return;
+	const root: unknown = triggerRef.value?.$el;
+	const trigger = root instanceof CharacterData ? root.nextElementSibling : root;
+	if (!(trigger instanceof HTMLElement)) return;
 	const focusTarget =
 		trigger.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]') ??
 		(trigger.matches('button, [href], input, select, textarea, [tabindex]') ? trigger : undefined);
@@ -606,7 +607,6 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 	overflow-y: auto;
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
-	--shadow-color--outline: var(--border-color);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);

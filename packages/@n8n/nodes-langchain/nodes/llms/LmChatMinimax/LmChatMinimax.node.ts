@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
+	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -29,7 +30,7 @@ export class LmChatMinimax implements INodeType {
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
 		defaultVersion: 1.2,
-		description: 'For advanced usage with an AI chain',
+		description: 'Run MiniMax models, with options to hide or show reasoning',
 		defaults: {
 			name: 'MiniMax Chat Model',
 		},
@@ -215,6 +216,7 @@ export class LmChatMinimax implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: aiClientFetch,
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					credentials.url,

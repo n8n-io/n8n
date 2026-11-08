@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
@@ -12,8 +13,6 @@ import {
 	IWorkflowSettings,
 	isNodeWithWorkflowSelector,
 } from 'n8n-workflow';
-
-import { EventService } from '@/events/event.service';
 
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
@@ -67,6 +66,10 @@ export class WorkflowIndexService {
 			// At activation time, the draft nodes are the published nodes.
 			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
+		this.eventService.on('workflow-deactivated', async ({ workflow, workflowId }) => {
+			if (workflow.activeVersionId !== null) return;
+			await this.removePublishedDependenciesForWorkflow(workflowId);
+		});
 	}
 
 	async buildIndex() {
@@ -85,8 +88,14 @@ export class WorkflowIndexService {
 					'published',
 				);
 
+				const unpublishedWorkflowIds =
+					await this.dependencyRepository.findUnpublishedWorkflowIdsWithPublishedDependencies();
+				for (const workflowId of unpublishedWorkflowIds) {
+					await this.removePublishedDependenciesForWorkflow(workflowId);
+				}
+
 				this.logger.info(
-					`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
+					`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows, ${unpublishedWorkflowIds.length} unpublished workflows.`,
 				);
 				span.setStatus({ code: SpanStatus.ok });
 			},
@@ -185,6 +194,18 @@ export class WorkflowIndexService {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	async removePublishedDependenciesForWorkflow(workflowId: string) {
+		try {
+			await this.dependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(workflowId);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(
+				`Failed to remove published dependency index for workflow ${workflowId}: ${error.message}`,
+			);
+			this.errorReporter.error(error);
+		}
 	}
 
 	/**

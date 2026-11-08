@@ -1,25 +1,9 @@
-import { isRecord } from '@n8n/utils/is-record';
-
-import type { ModelConfig } from '../types';
+import type { EndpointModelConfig, ModelConfig } from '../types';
 
 export const MODAL_SESSION_HEADER = 'Modal-Session-ID';
 
-export function isEndpointModelConfig(modelId: ModelConfig): modelId is {
-	id: `${string}/${string}`;
-	url: string;
-	apiKey?: string;
-	headers?: Record<string, string>;
-	supportsStructuredOutputs?: boolean;
-} {
-	if (!isRecord(modelId)) return false;
-	if ('doGenerate' in modelId || 'specificationVersion' in modelId) return false;
-	if (!('url' in modelId) || !('id' in modelId)) return false;
-
-	const id = modelId.id;
-	const url = modelId.url;
-	if (typeof id !== 'string' || !id.includes('/')) return false;
-	if (typeof url !== 'string') return false;
-	return true;
+export function isEndpointModelConfig(modelId: ModelConfig): modelId is EndpointModelConfig {
+	return typeof modelId === 'object' && 'kind' in modelId && modelId.kind === 'endpoint';
 }
 
 export function isModalModelEndpoint(url: string | undefined): boolean {

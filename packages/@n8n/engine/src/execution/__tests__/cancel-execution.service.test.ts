@@ -1,0 +1,231 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
+import type { StepMessage, WorkQueue } from '../../queue';
+import type { ExecutionResponseSender } from '../../response-channel';
+import { CancelExecutionService } from '../cancel-execution.service';
+import {
+	ExecutionNotFoundError,
+	type ExecutionRecord,
+	type ExecutionStore,
+} from '../execution-store';
+import type { ExecutionStatus } from '../execution.types';
+import type { StepStore } from '../step-store';
+
+const execution: ExecutionRecord = {
+	id: 'exec-1',
+	workflowId: 'wf-1',
+	status: 'running',
+	mode: 'production',
+	graph: { nodes: [], edges: [], seeded: [] },
+	workflow: {},
+	triggerOutputs: null,
+	callerContext: { hostMode: 'trigger' },
+	responseExpectation: { kind: 'none' },
+	parent: null,
+	lifecycleEventSubscription: { kind: 'all' },
+	finishedAt: null,
+};
+
+function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
+	return {
+		createExecution: vi.fn(),
+		loadExecution: vi
+			.fn()
+			.mockResolvedValue({ ...execution, status: 'cancelled', finishedAt: new Date() }),
+		loadExecutionStatus: vi.fn(),
+		transitionStatus: vi.fn(),
+		finishExecution: vi.fn(),
+		cancelExecution: vi
+			.fn()
+			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
+		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		refreshLiveStatus: vi.fn(),
+		...overrides,
+	};
+}
+
+/** Only the sweep and the parent resume are reachable from a cancel. */
+function makeStepStore(): StepStore {
+	return {
+		cancelPendingSteps: vi.fn(),
+		resumeStep: vi.fn().mockResolvedValue(true),
+	} as unknown as StepStore;
+}
+
+function makeService(executionStore: ExecutionStore) {
+	const stepStore = makeStepStore();
+	const publisher: LifecycleEventPublisher = { publish: vi.fn(), stop: vi.fn() };
+	const responseSender: ExecutionResponseSender = {
+		send: vi.fn(),
+		stop: vi.fn(),
+	};
+	const stepQueue: WorkQueue<StepMessage> = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	const service = new CancelExecutionService(
+		executionStore,
+		stepStore,
+		new LifecycleEventPublisherFactory(publisher),
+		responseSender,
+		stepQueue,
+	);
+	return { service, stepStore, publisher, responseSender, stepQueue };
+}
+
+describe('CancelExecutionService', () => {
+	it('ends the execution, sweeps its pending steps, and announces the end once', async () => {
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue({
+				...execution,
+				status: 'cancelled',
+				finishedAt: new Date('2026-09-30T08:00:00.000Z'),
+				responseExpectation: { kind: 'runEnd' },
+			}),
+		});
+		const { service, stepStore, publisher, responseSender } = makeService(executionStore);
+
+		const result = await service.cancel('exec-1');
+
+		expect(result).toEqual({
+			status: 'cancelled',
+			finishedAt: new Date('2026-09-30T08:00:00.000Z'),
+		});
+		expect(executionStore.cancelExecution).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(publisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'execution:cancelled',
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			at: '2026-09-30T08:00:00.000Z',
+		});
+		expect(responseSender.send).toHaveBeenCalledExactlyOnceWith({
+			type: 'ended',
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			status: 'cancelled',
+			lastStep: null,
+		});
+	});
+
+	it('sends no ended message when the caller expects none', async () => {
+		const executionStore = makeExecutionStore();
+		const { service, publisher, responseSender } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		// The run still ends: only the response is left out.
+		expect(publisher.publish).toHaveBeenCalledTimes(1);
+		expect(responseSender.send).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['is missing', { lifecycleEventSubscription: undefined }],
+		['is null', { lifecycleEventSubscription: null }],
+		['is none', { lifecycleEventSubscription: { kind: 'none' as const } }],
+	])('announces nothing when the subscription %s', async (_name, overrides) => {
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue({
+				...execution,
+				...overrides,
+				status: 'cancelled',
+				finishedAt: new Date(),
+				responseExpectation: { kind: 'runEnd' },
+			}),
+		});
+		const { service, stepStore, publisher, responseSender } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(publisher.publish).not.toHaveBeenCalled();
+		// The run still ends, and the response channel is not affected.
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledOnce();
+		expect(responseSender.send).toHaveBeenCalledOnce();
+	});
+
+	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
+		'reports the status of an execution that already ended %s and announces nothing',
+		async (status) => {
+			const executionStore = makeExecutionStore({
+				cancelExecution: vi.fn().mockResolvedValue(null),
+				loadExecution: vi.fn().mockResolvedValue({ ...execution, status }),
+			});
+			const { service, stepStore, publisher, responseSender } = makeService(executionStore);
+
+			const result = await service.cancel('exec-1');
+
+			expect(result).toMatchObject({ status });
+			expect(stepStore.cancelPendingSteps).not.toHaveBeenCalled();
+			expect(publisher.publish).not.toHaveBeenCalled();
+			expect(responseSender.send).not.toHaveBeenCalled();
+		},
+	);
+
+	it('resumes the awaiting parent step with a cancelled cause when a sub-execution is cancelled on its own', async () => {
+		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue({ ...execution, parent, status: 'cancelled', finishedAt: new Date() }),
+		});
+		const { service, stepStore, stepQueue } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(stepStore.resumeStep).toHaveBeenCalledExactlyOnceWith('step-call', {
+			kind: 'subExecution',
+			executionId: 'exec-1',
+			status: 'cancelled',
+			error: { name: 'ExecutionCancelledError', message: 'Execution exec-1 was cancelled' },
+		});
+		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:ready',
+			executionId: 'exec-parent',
+			stepId: 'step-call',
+		});
+		expect(executionStore.refreshLiveStatus).toHaveBeenCalledWith('exec-parent');
+	});
+
+	it('resumes no parent for a sub-execution it does not wait for', async () => {
+		const parent = { executionId: 'exec-parent', stepId: 'step-fire', awaited: false };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue({ ...execution, parent, status: 'cancelled', finishedAt: new Date() }),
+		});
+		const { service, stepStore, stepQueue } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('announces no resume when the parent step no longer waits', async () => {
+		// The parent ended first, and its waiting step was cancelled with it.
+		const parent = { executionId: 'exec-parent', stepId: 'step-call', awaited: true };
+		const executionStore = makeExecutionStore({
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue({ ...execution, parent, status: 'cancelled', finishedAt: new Date() }),
+		});
+		const { service, stepStore, stepQueue } = makeService(executionStore);
+		vi.mocked(stepStore.resumeStep).mockResolvedValue(false);
+
+		await service.cancel('exec-1');
+
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('throws for an unknown execution', async () => {
+		const executionStore = makeExecutionStore({
+			cancelExecution: vi.fn().mockResolvedValue(null),
+			loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-404')),
+		});
+		const { service, stepStore } = makeService(executionStore);
+
+		await expect(service.cancel('exec-404')).rejects.toThrow(ExecutionNotFoundError);
+		expect(stepStore.cancelPendingSteps).not.toHaveBeenCalled();
+	});
+});

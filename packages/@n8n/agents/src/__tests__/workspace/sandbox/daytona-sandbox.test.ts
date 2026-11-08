@@ -67,6 +67,7 @@ const {
 			fs: {
 				downloadFile: vi.fn(),
 				uploadFile: vi.fn(),
+				uploadFiles: vi.fn(),
 				deleteFile: vi.fn(),
 				createFolder: vi.fn(),
 				listFiles: vi.fn(),
@@ -832,6 +833,47 @@ describe('DaytonaSandbox (creation strategies)', () => {
 	});
 });
 
+describe('DaytonaSandbox (fresh creation)', () => {
+	function makeSandbox(): DaytonaSandbox {
+		return new DaytonaSandbox({ id: 'sandbox-id', name: 'sandbox-name', apiKey: 'api-key' });
+	}
+
+	it('reports a fresh sandbox when start() creates the remote', async () => {
+		queueNotFound('not found');
+		const sandbox = makeSandbox();
+
+		await sandbox.start();
+
+		expect(sandbox.createdFreshSandbox).toBe(true);
+	});
+
+	it('does not report a fresh sandbox when start() finds an existing remote', async () => {
+		queuedGetResults.push(makeMockSandbox('remote-existing'));
+		const sandbox = makeSandbox();
+
+		await sandbox.start();
+
+		expect(sandbox.createdFreshSandbox).toBe(false);
+	});
+
+	it('does not report a fresh sandbox when start() reattaches after a name conflict', async () => {
+		queueNotFound('not found');
+		queuedCreateResults.push(
+			new DaytonaError('Sandbox with name sandbox-name already exists', 409),
+		);
+		queuedGetResults.push(makeMockSandbox('remote-existing'));
+		const sandbox = makeSandbox();
+
+		await sandbox.start();
+
+		expect(sandbox.createdFreshSandbox).toBe(false);
+	});
+
+	it('does not report a fresh sandbox before start()', () => {
+		expect(makeSandbox().createdFreshSandbox).toBe(false);
+	});
+});
+
 describe('DaytonaSandbox (destroy ownership)', () => {
 	it('does not delete a sandbox by name when start() never acquired one', async () => {
 		queuedGetErrors.push(
@@ -1197,6 +1239,26 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 
 		await expect(filesystem.exists('/workspace/missing')).resolves.toBe(false);
 		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+	});
+
+	it('DaytonaFilesystem.writeFiles() uploads every file in one request', async () => {
+		const handle = makeMockSandbox('sb-1', 'started');
+		queuedGetResults.push(handle);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const filesystem = new DaytonaFilesystem(sandbox);
+
+		await filesystem.writeFiles([
+			{ path: '/workspace/a.txt', content: 'a' },
+			{ path: '/workspace/nested/b.txt', content: Buffer.from('b') },
+		]);
+
+		expect(handle.fs.uploadFiles).toHaveBeenCalledTimes(1);
+		expect(handle.fs.uploadFiles).toHaveBeenCalledWith([
+			{ source: Buffer.from('a'), destination: '/workspace/a.txt' },
+			{ source: Buffer.from('b'), destination: '/workspace/nested/b.txt' },
+		]);
+		expect(handle.fs.uploadFile).not.toHaveBeenCalled();
 	});
 
 	it('DaytonaFilesystem.appendFile() treats a genuine 404 as an empty file', async () => {

@@ -24,6 +24,7 @@ const result = (overrides: Partial<AgentEvalResultRecord> = {}): AgentEvalResult
 	output: { finalText: 'Here are three options in Shinjuku.' },
 	toolCalls: null,
 	metrics: null,
+	verdict: null,
 	runAt: '2026-01-01T00:00:00.000Z',
 	completedAt: '2026-01-01T00:00:30.000Z',
 	errorCode: null,

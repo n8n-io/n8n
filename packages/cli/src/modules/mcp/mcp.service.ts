@@ -5,10 +5,19 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import {
+	EventService,
+	UrlService,
+	RoleService,
+	FolderFinderService,
+	InstanceWriteAccessService,
+	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
+	AiPreferenceService,
+	CredentialsFinderService,
+} from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -18,6 +27,7 @@ import {
 	WORKFLOW_PREVIEW_APP_URI,
 	type McpAppTelemetryConfig,
 } from '@n8n/mcp-apps/server';
+import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
@@ -28,42 +38,46 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableProxyService } from '@n8n/backend-module-data-table';
+import { SkillsGate } from '@/modules/skills';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
 import { McpConfig } from './mcp.config';
 import {
 	INSTALL_COMMUNITY_NODE_TOOL,
+	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	MCP_SKILLS_EXTENSION_FLAG,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
-import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
+import {
+	areAgentToolsAvailable,
+	arePreferenceToolsEnabled,
+	isCommunityNodeInstallAvailable,
+} from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
 	McpAuthContext,
@@ -106,6 +120,7 @@ import {
 	createGetInstanceActivityTool,
 } from './tools/instance-activity.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
+import { createUpdateCredentialDescriptionTool } from './tools/update-credential-description.tool';
 import { createListN8nGatewayServicesTool } from './tools/list-n8n-gateway-services.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createMoveWorkflowsToFolderTool } from './tools/move-workflows-to-folder.tool';
@@ -158,6 +173,7 @@ export type McpFeatureFlags = {
 	instanceContextEnabled: boolean;
 	/** The `get_user_preferences` tool. */
 	aiPreferencesEnabled: boolean;
+	skillsExtensionEnabled?: boolean;
 };
 
 type McpAppTelemetryResolution = {
@@ -237,6 +253,7 @@ export class McpService {
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
@@ -261,7 +278,7 @@ export class McpService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
-		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly postSaveMetrics: McpPostSaveMetricsService,
 		private readonly moduleRegistry: ModuleRegistry,
@@ -269,7 +286,19 @@ export class McpService {
 		private readonly folderService: FolderService,
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly mcpConfig: McpConfig,
+		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
+
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	recordDiscoveryConnection(
+		userId: string,
+		clientName?: string,
+		caller?: McpAuthContext['caller'],
+	) {
+		this.eventService.emit('experiment-mcp-client-connected', { userId, clientName, caller });
+	}
+	// EOF Experiment cleanup
 
 	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
@@ -285,8 +314,8 @@ export class McpService {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
-			// Multivariate flag: only the `variant` arm enables the feature.
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			aiPreferencesEnabled: arePreferenceToolsEnabled(flags),
+			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
 		};
 	}
 
@@ -358,6 +387,10 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
 	) {
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		const caller = auth?.caller;
+		const telemetryCaller = caller?.authType === 'api_key' ? { authType: caller.authType } : caller;
+		// EOF Experiment cleanup
 		return (tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
@@ -367,8 +400,36 @@ export class McpService {
 				const workflowId = getWorkflowId(handlerArgs[0]);
 
 				try {
-					const result = await invoke(...handlerArgs);
+					const isProductionExecution =
+						tool.name === 'execute_workflow' &&
+						isRecord(handlerArgs[0]) &&
+						handlerArgs[0].executionMode === 'production';
+					const isBlocked =
+						this.instanceWriteAccess.isReadOnly() &&
+						tool.config.annotations?.readOnlyHint !== true &&
+						!isProductionExecution;
+					const result: ToolHandlerResult = isBlocked
+						? {
+								isError: true,
+								content: [{ type: 'text', text: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE }],
+							}
+						: await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
+					// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+					if (
+						(tool.name === 'create_workflow_from_code' || tool.name === 'update_workflow') &&
+						result &&
+						!isInputRequired(result)
+					) {
+						this.eventService.emit('experiment-mcp-workflow-write-completed', {
+							userId: user.id,
+							toolName: tool.name,
+							status,
+							workflowId: getWorkflowId(result.structuredContent),
+							structuredContent: result.structuredContent,
+						});
+					}
+					// EOF Experiment cleanup
 					this.eventService.emit('mcp-tool-called', {
 						user,
 						toolName: tool.name,
@@ -377,7 +438,8 @@ export class McpService {
 							(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
 						status,
 						errorMessage,
-						...auth?.caller,
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
+						...telemetryCaller,
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -388,7 +450,8 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
-						...auth?.caller,
+						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
+						...telemetryCaller,
 						clientName: clientInfo?.name,
 					});
 					throw error;
@@ -521,6 +584,7 @@ export class McpService {
 			this.executionRepository,
 			this.workflowFinderService,
 			this.telemetry,
+			this.executionRedactionServiceProxy,
 		);
 		registerIfAllowed(getExecutionTool);
 
@@ -540,6 +604,7 @@ export class McpService {
 			this.urlService.getWebhookBaseUrl(),
 			this.workflowFinderService,
 			this.credentialsService,
+			this.credentialsFinderService,
 			this.nodeTypes,
 			{
 				webhook: this.globalConfig.endpoints.webhook,
@@ -612,6 +677,7 @@ export class McpService {
 			this.nodeTypes,
 			this.telemetry,
 			this,
+			this.logger,
 		);
 		registerIfAllowed(testWorkflowTool);
 
@@ -629,6 +695,12 @@ export class McpService {
 			this.telemetry,
 		);
 		registerIfAllowed(listCredentialsTool);
+		if (featureFlags.credentialDescriptionsEnabled === true) {
+			registerIfAllowed(
+				createUpdateCredentialDescriptionTool(user, this.credentialsService, this.telemetry),
+			);
+		}
+
 		registerIfAllowed(listN8nGatewayServicesTool);
 
 		if (!this.globalConfig.tags.disabled) {
@@ -817,6 +889,21 @@ export class McpService {
 				user,
 				allowedToolNames,
 			);
+		}
+
+		if (Container.get(SkillsGate).isEnabled) {
+			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
+			await Container.get(McpSkillToolsService).registerTools(
+				registerIfAllowed,
+				user,
+				featureFlags.skillsExtensionEnabled === true,
+			);
+			if (featureFlags.skillsExtensionEnabled && (allowedToolNames?.has('get_skill') ?? true)) {
+				const { McpSkillExtensionService } = await import(
+					'./tools/skills/skill-extension.service.js'
+				);
+				Container.get(McpSkillExtensionService).register(server, user);
+			}
 		}
 
 		return server;
@@ -1055,8 +1142,7 @@ export class McpService {
 			dataTableOps,
 			this.tagService,
 			this.globalConfig,
-			this.subworkflowPolicyChecker,
-			this.workflowPublishedDataService,
+			this.errorWorkflowValidationService,
 			this.aiGatewayService,
 			uninstalledNodeOptions,
 			this.logger,
