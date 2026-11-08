@@ -239,12 +239,8 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	}
 
 	/**
-	 * Sends one call for `node` and returns its result, parsed with `schema`.
-	 * A refusal, on the refusal status only, becomes the v1 error it names.
-	 * Any other non-2xx status, a body of neither shape, and a result the
-	 * schema rejects are transport failures. Those errors omit the response
-	 * body, because it could contain row data that would then end up in node
-	 * output and logs.
+	 * Send one call to the control plane and return its parsed result.
+	 * Error messages omit the response body since it may contain row data.
 	 */
 	private async call<T>(
 		node: INode,
@@ -264,11 +260,9 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 			},
 			json: true,
 			returnFullResponse: true,
-			// Inspect the status here rather than catching a generic request error.
 			ignoreHttpStatusErrors: true,
 			// A redirect would forward the token to whatever host it names.
 			disableFollowRedirect: true,
-			// The step owns the deadline. A client timeout would fire first.
 			abortSignal: this.signal,
 		});
 
@@ -279,7 +273,6 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 			throw toV1Error(node, response.body.error);
 		}
 
-		// 3xx too: redirects are not followed, so one is a misconfiguration.
 		if (response.statusCode >= 300) {
 			throw new OperationalError(
 				`Control plane refused data table call "${call.kind}" with ${response.statusCode}`,
