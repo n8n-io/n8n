@@ -754,7 +754,9 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.int()
 				.positive()
-				.describe('One-based position in the current search list, browse section, or submenu'),
+				.describe(
+					'One-based position in the list the user picked from: search results, the browse list (open workflow tabs first, then recent workflows), or a submenu. A submenu starts again at 1.',
+				),
 			query_length: z.number().int().nonnegative(),
 			already_artifact: z.boolean(),
 			artifact_origin: z

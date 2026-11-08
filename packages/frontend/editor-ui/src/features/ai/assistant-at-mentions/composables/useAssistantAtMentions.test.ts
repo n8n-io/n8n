@@ -158,7 +158,7 @@ describe('useAssistantAtMentions', () => {
 		expect(text.value).toBe('@foo ');
 	});
 
-	it('removes only the active typed query and preserves trailing text', async () => {
+	it('removes a typed query between words and leaves one space', async () => {
 		const { text, input, mentions } = setup('Compare @ with the current workflow');
 		input.value = 'Compare @ with the current workflow';
 		input.setSelectionRange(9, 9);
@@ -170,8 +170,30 @@ describe('useAssistantAtMentions', () => {
 		await mentions.handleTextChange(value);
 		await mentions.clearActiveRange();
 
-		expect(text.value).toBe('Compare  with the current workflow');
+		expect(text.value).toBe('Compare with the current workflow');
 		expect(input.selectionStart).toBe(8);
+	});
+
+	it('collapses the doubled space when a typed trigger sits between words', async () => {
+		const { text, input, mentions } = setup('Something @ here');
+		input.value = 'Something @ here';
+		input.setSelectionRange(11, 11);
+		await mentions.handleTextChange(input.value);
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Something here');
+		expect(input.selectionStart).toBe(10);
+	});
+
+	it('keeps the space after a typed trigger at the start of the draft', async () => {
+		const { text, input, mentions } = setup('@ here');
+		input.value = '@ here';
+		input.setSelectionRange(1, 1);
+		await mentions.handleTextChange(input.value);
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe(' here');
+		expect(input.selectionStart).toBe(0);
 	});
 
 	it('leaves the draft unchanged when the picker was opened from the button', async () => {
