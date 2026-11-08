@@ -79,11 +79,8 @@ function toV1Error(node: INode, error: DataTableCallErrorResponse['error']): Err
  */
 export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	constructor(
-		/** A client the transport scoped to `data-tables:use`. */
 		private readonly http: HttpRequestClient,
 		private readonly context: AdditionalDataContext,
-		// Aborted when the runtime stops, not when the step is cancelled: the engine
-		// has no per-step signal yet. TODO(CAT-4526): pass the step signal.
 		private readonly signal: AbortSignal,
 	) {}
 
