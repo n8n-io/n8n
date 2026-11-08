@@ -5,63 +5,28 @@ import { nanoid } from 'nanoid';
 import { test, expect } from '../../../fixtures/base';
 
 const TRIGGER_NAME = 'Manual Trigger';
-const INSERT_NAME = 'Insert row';
 const GET_NAME = 'Get rows';
 
+/** The date the fixture's insert node writes, so the spec can check it survives both engines. */
 const JOINED = '2026-10-27T10:00:00.000Z';
 
-/** A table reference as the node stores it: by id, so the spec can create the table first. */
-const tableById = (dataTableId: string) => ({ __rl: true, mode: 'id', value: dataTableId });
-
-/** Manual Trigger -> Data Table (insert one row) -> Data Table (get every row). */
-const dataTableWorkflow = (dataTableId: string): Partial<IWorkflowBase> => ({
-	name: `Data Table node ${nanoid(8)}`,
-	nodes: [
-		{
-			id: '1',
-			name: TRIGGER_NAME,
-			type: 'n8n-nodes-base.manualTrigger',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		},
-		{
-			id: '2',
-			name: INSERT_NAME,
-			type: 'n8n-nodes-base.dataTable',
-			typeVersion: 1.1,
-			position: [300, 0],
-			parameters: {
-				resource: 'row',
-				operation: 'insert',
-				dataTableId: tableById(dataTableId),
-				columns: {
-					mappingMode: 'defineBelow',
-					value: { name: 'Ada', age: 36, joined: JOINED },
-					schema: [],
-				},
-			},
-		},
-		{
-			id: '3',
-			name: GET_NAME,
-			type: 'n8n-nodes-base.dataTable',
-			typeVersion: 1.1,
-			position: [600, 0],
-			parameters: {
-				resource: 'row',
-				operation: 'get',
-				dataTableId: tableById(dataTableId),
-				returnAll: true,
-			},
-		},
-	],
-	connections: {
-		[TRIGGER_NAME]: { main: [[{ node: INSERT_NAME, type: 'main', index: 0 }]] },
-		[INSERT_NAME]: { main: [[{ node: GET_NAME, type: 'main', index: 0 }]] },
-	},
-	active: false,
-});
+/** Points every Data Table node of the fixture at the table the test created. */
+const withDataTable =
+	(dataTableId: string) =>
+	(workflow: Partial<IWorkflowBase>): Partial<IWorkflowBase> => ({
+		...workflow,
+		nodes: workflow.nodes?.map((node) =>
+			node.type === 'n8n-nodes-base.dataTable'
+				? {
+						...node,
+						parameters: {
+							...node.parameters,
+							dataTableId: { __rl: true, mode: 'id', value: dataTableId },
+						},
+					}
+				: node,
+		),
+	});
 
 /**
  * The Data Table node reaches its tables through helpers the host wires in.
@@ -87,9 +52,9 @@ test.describe(
 					{ name: 'joined', type: 'date' },
 				],
 			});
-			const { workflowId } = await api.workflows.createWorkflowFromDefinition(
-				dataTableWorkflow(table.id),
-			);
+			const { workflowId } = await api.workflows.importWorkflowFromFile('data-table-node.json', {
+				transform: withDataTable(table.id),
+			});
 
 			const { executionId } = await api.workflows.runManually(workflowId, TRIGGER_NAME);
 			const execution = await api.workflows.waitForExecutionById(executionId);
@@ -114,9 +79,9 @@ test.describe(
 		test('reports a table the project does not have with the node message @engine:v2', async ({
 			api,
 		}) => {
-			const { workflowId } = await api.workflows.createWorkflowFromDefinition(
-				dataTableWorkflow('nosuchtable'),
-			);
+			const { workflowId } = await api.workflows.importWorkflowFromFile('data-table-node.json', {
+				transform: withDataTable('nosuchtable'),
+			});
 
 			const { executionId } = await api.workflows.runManually(workflowId, TRIGGER_NAME);
 			const execution = await api.workflows.waitForExecutionById(executionId);
