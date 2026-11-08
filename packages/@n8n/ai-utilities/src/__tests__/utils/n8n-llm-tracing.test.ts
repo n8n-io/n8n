@@ -26,6 +26,28 @@ vi.mock('src/utils/tokenizer/token-estimator', () => ({
 const logAiEvent = vi.mocked(logAiEventModule.logAiEvent);
 const estimateTokensFromStringList = vi.mocked(tokenEstimatorModule.estimateTokensFromStringList);
 
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Reads the json payload N8nLlmTracing emitted to addOutputData, without casting the mock call to `any`. */
+function getEmittedJson(addOutputDataMock: {
+	mock: { calls: ReadonlyArray<readonly unknown[]> };
+}): Record<string, unknown> {
+	const call = addOutputDataMock.mock.calls[0];
+	const runData: unknown = call[2];
+	if (!Array.isArray(runData) || !Array.isArray(runData[0])) {
+		throw new Error('expected emitted run data');
+	}
+
+	const entry: unknown = runData[0][0];
+	if (!isJsonRecord(entry) || !('json' in entry) || !isJsonRecord(entry.json)) {
+		throw new Error('expected an emitted json payload');
+	}
+
+	return entry.json;
+}
+
 describe('N8nLlmTracing', () => {
 	let mockExecutionFunctions: Mocked<ISupplyDataFunctions>;
 	let mockNode: INode;
@@ -946,8 +968,7 @@ describe('N8nLlmTracing', () => {
 
 			expect(customParser).toHaveBeenCalledWith(output);
 
-			const callArgs = mockExecutionFunctions.addOutputData.mock.calls[0] as any;
-			const outputData = callArgs[2][0][0].json;
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
 
 			expect(outputData.tokenUsage).toEqual({
 				completionTokens: 100,
@@ -1230,6 +1251,73 @@ describe('N8nLlmTracing', () => {
 			expect(tracer.runsMap['run-3']).toBeDefined();
 		});
 	});
+
+	describe('parser invariance across handleLLMEnd reorder', () => {
+		const chatGeneration = (): ChatGeneration => ({
+			text: 'Response',
+			message: new AIMessage({ content: 'Response' }),
+		});
+
+		const anthropicResult = (): LLMResult => ({
+			generations: [[chatGeneration()]],
+			llmOutput: { usage: { input_tokens: 10, output_tokens: 5 } },
+		});
+
+		const defaultResult = (): LLMResult => ({
+			generations: [[chatGeneration()]],
+			llmOutput: { tokenUsage: { promptTokens: 100, completionTokens: 40 } },
+		});
+
+		it('keeps the Anthropic parser on llmOutput.usage', () => {
+			expect(anthropicTokensUsageParser(anthropicResult())).toEqual({
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+			});
+		});
+
+		it('keeps the default parser on llmOutput.tokenUsage', () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+
+			expect(tracer.options.tokensUsageParser(defaultResult())).toEqual({
+				promptTokens: 100,
+				completionTokens: 40,
+				totalTokens: 140,
+			});
+		});
+
+		it('reports Anthropic usage through handleLLMEnd', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				tokensUsageParser: anthropicTokensUsageParser,
+			});
+			tracer.runsMap['run-anthropic'] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd(anthropicResult(), 'run-anthropic');
+
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
+			expect(outputData.tokenUsage).toEqual({
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+			});
+			expect(outputData.tokenUsageEstimate).toBeUndefined();
+		});
+
+		it('reports default-parser usage through handleLLMEnd', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			tracer.runsMap['run-default'] = { index: 0, messages: ['Test'], options: {} };
+
+			await tracer.handleLLMEnd(defaultResult(), 'run-default');
+
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
+			expect(outputData.tokenUsage).toEqual({
+				promptTokens: 100,
+				completionTokens: 40,
+				totalTokens: 140,
+			});
+			expect(outputData.tokenUsageEstimate).toBeUndefined();
+		});
+	});
 });
 
 describe('anthropicTokensUsageParser', () => {
@@ -1321,6 +1409,17 @@ describe('openAiTokensUsageParser', () => {
 		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
 	});
 
+	it('prefers a provider-reported total over input + output', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [
+					[chatGeneration({ input_tokens: 100, output_tokens: 40, total_tokens: 999 })],
+				],
+				llmOutput: {},
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 999 });
+	});
+
 	it('ignores a partial tokenUsage payload and falls through to the message', () => {
 		expect(
 			openAiTokensUsageParser({
@@ -1344,6 +1443,18 @@ describe('openAiTokensUsageParser', () => {
 			openAiTokensUsageParser({
 				generations: [[textGeneration()]],
 				llmOutput: { estimatedTokenUsage: { promptTokens: 100, completionTokens: 40 } },
+			}),
+		).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+	});
+
+	it('returns zeros when tokenUsage is zeroed even if the message has usage', () => {
+		// Documents the tracer contract: handleLLMEnd must pass the raw _generate
+		// output. A post-generate() result has tokenUsage {0,0} and would mask the
+		// message usage, routing the call to the estimate branch.
+		expect(
+			openAiTokensUsageParser({
+				generations: [[chatGeneration({ input_tokens: 100, output_tokens: 40 })]],
+				llmOutput: { tokenUsage: { promptTokens: 0, completionTokens: 0 } },
 			}),
 		).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
 	});
@@ -1385,8 +1496,7 @@ describe('openAiTokensUsageParser', () => {
 				runId,
 			);
 
-			const callArgs = mockExecutionFunctions.addOutputData.mock.calls[0] as any;
-			const outputData = callArgs?.[2]?.[0]?.[0]?.json;
+			const outputData = getEmittedJson(mockExecutionFunctions.addOutputData);
 
 			expect(outputData.tokenUsage).toEqual({
 				promptTokens: 100,

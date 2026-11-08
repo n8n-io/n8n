@@ -62,7 +62,7 @@ function hasMessage(generation: unknown): generation is { message: unknown } {
 
 /** Only AI messages declare `usage_metadata`; `BaseMessage` does not. */
 function hasUsageMetadata(message: unknown): message is {
-	usage_metadata?: { input_tokens?: number; output_tokens?: number };
+	usage_metadata?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
 } {
 	return typeof message === 'object' && message !== null && 'usage_metadata' in message;
 }
@@ -81,7 +81,9 @@ function isReportedTokenUsage(
  * OpenAI Chat Model usage. Reads the reported `tokenUsage` first (Chat Completions),
  * then the message's `usage_metadata` (Responses API, which reports only
  * `estimatedTokenUsage`). Never reads `estimatedTokenUsage`, which mixes provider
- * usage with local estimates.
+ * usage with local estimates. A provider-reported `total_tokens` on the message wins
+ * over recomputing input + output; the `tokenUsage` payload carries no total the
+ * default parser trusts, so that branch recomputes.
  */
 export function openAiTokensUsageParser(result: LLMResult): {
 	completionTokens: number;
@@ -89,9 +91,14 @@ export function openAiTokensUsageParser(result: LLMResult): {
 	totalTokens: number;
 } {
 	const reportedUsage: unknown = result.llmOutput?.tokenUsage;
+	// Correct only because handleLLMEnd receives @langchain/openai's raw _generate
+	// output. If it ever receives a post-generate() LLMResult, _combineLLMOutput
+	// zeroes tokenUsage (it ignores estimatedTokenUsage) and this branch returns
+	// 0/0/0, regressing to estimate even though message.usage_metadata is populated.
 	if (isReportedTokenUsage(reportedUsage)) {
 		const promptTokens = reportedUsage.promptTokens;
 		const completionTokens = reportedUsage.completionTokens;
+		// totalTokens is recomputed here (unlike usage_metadata) to preserve the default parser's historical Completions contract.
 		return {
 			completionTokens,
 			promptTokens,
@@ -102,12 +109,14 @@ export function openAiTokensUsageParser(result: LLMResult): {
 	const generation = result.generations?.[0]?.[0];
 	const message = generation && hasMessage(generation) ? generation.message : undefined;
 	if (hasUsageMetadata(message)) {
+		// Responses: prefer the provider's total, then fall back to input + output.
 		const promptTokens = message.usage_metadata?.input_tokens ?? 0;
 		const completionTokens = message.usage_metadata?.output_tokens ?? 0;
+		const totalTokens = message.usage_metadata?.total_tokens ?? promptTokens + completionTokens;
 		return {
 			completionTokens,
 			promptTokens,
-			totalTokens: promptTokens + completionTokens,
+			totalTokens,
 		};
 	}
 

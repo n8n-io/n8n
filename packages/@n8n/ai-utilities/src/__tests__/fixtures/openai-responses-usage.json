@@ -1,0 +1,54 @@
+{
+	"id": "resp_00000000000000000000000000000000",
+	"object": "response",
+	"created_at": 1770645899,
+	"status": "completed",
+	"background": false,
+	"error": null,
+	"incomplete_details": null,
+	"instructions": null,
+	"max_output_tokens": null,
+	"max_tool_calls": null,
+	"model": "gpt-4o-2024-08-06",
+	"output": [
+		{
+			"id": "msg_00000000000000000000000000000000",
+			"type": "message",
+			"status": "completed",
+			"content": [
+				{
+					"type": "output_text",
+					"annotations": [],
+					"logprobs": [],
+					"text": "Hello!"
+				}
+			],
+			"role": "assistant"
+		}
+	],
+	"parallel_tool_calls": true,
+	"presence_penalty": 0,
+	"previous_response_id": null,
+	"prompt_cache_key": null,
+	"prompt_cache_retention": null,
+	"reasoning": { "effort": null, "summary": null },
+	"safety_identifier": null,
+	"service_tier": "default",
+	"store": false,
+	"temperature": 1,
+	"text": { "format": { "type": "text" }, "verbosity": "medium" },
+	"tool_choice": "auto",
+	"tools": [],
+	"top_logprobs": 0,
+	"top_p": 1,
+	"truncation": "disabled",
+	"usage": {
+		"input_tokens": 100,
+		"input_tokens_details": { "cached_tokens": 0 },
+		"output_tokens": 40,
+		"output_tokens_details": { "reasoning_tokens": 0 },
+		"total_tokens": 140
+	},
+	"user": null,
+	"metadata": {}
+}
