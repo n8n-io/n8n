@@ -1402,6 +1402,41 @@ describe('AgentRuntime — execution counters', () => {
 		expect(observedCtx?.suspendPayload).toEqual(suspendPayload);
 	});
 
+	it('reports a deferred tool that suspends through call_tool by its own name and input', async () => {
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [makeInterruptibleTool()],
+			toolDeferral: { mode: 'catalog' },
+			checkpointStorage: 'memory',
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{
+					toolCallId: 'tc-1',
+					toolName: 'call_tool',
+					args: { tool: 'approve', arguments: { question: 'continue?' } },
+				},
+			]),
+		);
+
+		const first = await runtime.generate('needs approval');
+		const suspension = first.pendingSuspend![0];
+		expect(suspension).toMatchObject({ toolName: 'approve', input: { question: 'continue?' } });
+
+		// The checkpoint keeps the call_tool call, so resume still runs the tool.
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
+		const resumed = await runtime.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		expect(resumed.error).toBeUndefined();
+		expect(resumed.pendingSuspend).toBeUndefined();
+	});
+
 	it('persists dynamic suspension state privately and validates resume before claiming', async () => {
 		const continuation = { childRunId: 'child-run-1', taskPath: '/root/research_0' };
 		const dynamicResumeSchema = z.object({ decision: z.literal('continue') });

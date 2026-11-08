@@ -74,7 +74,7 @@ import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { resolveNativeToolDeferral } from '../model/model-factory';
 import { ToolCatalog } from '../tools/tool-catalog';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
+import { buildToolMap, reportedToolCall, resolveToolForCall } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -1245,7 +1245,7 @@ export class AgentRuntime {
 				suspendRunId: this.runId,
 				list,
 				usage: state.totalUsage,
-				suspensions: batch.suspensions,
+				suspensions: batch.suspensions.map((suspension) => reportedToolCall(toolMap, suspension)),
 			});
 			this.assertNotAborted(abortScope);
 			completed = true;
