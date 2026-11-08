@@ -65,7 +65,7 @@ import {
 	applyVersionedSettings,
 	assert,
 	calculateWorkflowChecksum,
-	omitVersionedSettings,
+	compareWorkflowSettings,
 	versionedSettingsEqual,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -685,23 +685,7 @@ export class WorkflowService {
 			);
 		}
 
-		const versionedSettingsEnabled = this.workflowVersionedSettings.isEnabled();
-		if (versionedSettingsEnabled) {
-			// A restore also brings back the version-scoped settings of the version, such as its engine.
-			const versionSettings = await this.findRestoredVersionSettings(workflowId, options);
-			if (
-				versionSettings &&
-				!versionedSettingsEqual(
-					workflow.settings,
-					applyVersionedSettings(workflow.settings, versionSettings),
-				)
-			) {
-				workflowUpdateData.settings = applyVersionedSettings(
-					workflowUpdateData.settings,
-					versionSettings,
-				);
-			}
-		}
+		await this.applyRestoredVersionSettings(workflow, workflowUpdateData, options);
 
 		// Update the workflow's version when changing nodes, connections, or nodeGroups
 		const hasNodesKey = 'nodes' in workflowUpdateData;
@@ -833,25 +817,15 @@ export class WorkflowService {
 			);
 		}
 
-		// A version-scoped setting goes live on publish, so a change to it saves a new version.
-		const versionedSettingsChanged =
-			versionedSettingsEnabled &&
-			workflowUpdateData.settings !== undefined &&
-			!versionedSettingsEqual(workflow.settings, workflowUpdateData.settings);
-		if (versionedSettingsChanged && !saveNewVersion) {
+		// A version-scoped change saves a new version. Only a live change republishes the active version.
+		const settingsChange = compareWorkflowSettings(
+			workflow.settings,
+			workflowUpdateData.settings,
+			this.workflowVersionedSettings.isEnabled(),
+		);
+		if (settingsChange.versioned && !saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
 		}
-
-		// Check if settings actually changed. A version-scoped change saves a new version, so it
-		// does not republish the active version.
-		const settingsChanged =
-			workflowUpdateData.settings !== undefined &&
-			(versionedSettingsEnabled
-				? !isEqual(
-						omitVersionedSettings(workflow.settings),
-						omitVersionedSettings(workflowUpdateData.settings),
-					)
-				: !isEqual(workflow.settings, workflowUpdateData.settings));
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
@@ -942,10 +916,10 @@ export class WorkflowService {
 			changes: workflowUpdateData,
 			updatePayload,
 			cleared,
-			saveNewVersion: saveNewVersion || versionedSettingsChanged,
+			saveNewVersion: saveNewVersion || settingsChange.versioned,
 			tagsDisabled: this.globalConfig.tags.disabled,
 			versionIdToPublish,
-			settingsChanged,
+			settingsChanged: settingsChange.live,
 			options: {
 				tagIds,
 				autosaved,
@@ -959,15 +933,29 @@ export class WorkflowService {
 		};
 	}
 
-	/** The version-scoped settings of the version that an update restores, if any. */
-	private async findRestoredVersionSettings(
-		workflowId: string,
+	/** A restore also brings back the version-scoped settings of the version, such as its engine. */
+	private async applyRestoredVersionSettings(
+		workflow: WorkflowEntity,
+		workflowUpdateData: WorkflowEntity,
 		{ restoredFromVersionId, restoredVersionSettings }: WorkflowUpdateOptions,
-	): Promise<VersionedWorkflowSettings | undefined> {
-		if (restoredVersionSettings) return restoredVersionSettings;
-		if (!restoredFromVersionId) return undefined;
+	) {
+		if (!this.workflowVersionedSettings.isEnabled()) return;
 
-		return await this.workflowHistoryService.findVersionSettings(workflowId, restoredFromVersionId);
+		const versionSettings =
+			restoredVersionSettings ??
+			(restoredFromVersionId
+				? await this.workflowHistoryService.findVersionSettings(workflow.id, restoredFromVersionId)
+				: undefined);
+		if (!versionSettings) return;
+
+		// Leave the settings unset when the restore keeps the current values.
+		const restored = applyVersionedSettings(workflow.settings, versionSettings);
+		if (versionedSettingsEqual(workflow.settings, restored)) return;
+
+		workflowUpdateData.settings = applyVersionedSettings(
+			workflowUpdateData.settings,
+			versionSettings,
+		);
 	}
 
 	/** Pass the caller's context to include the workflow and history in its transaction. */

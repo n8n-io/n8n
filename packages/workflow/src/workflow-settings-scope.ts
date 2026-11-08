@@ -86,6 +86,23 @@ export function omitVersionedSettings(settings?: IWorkflowSettings | null): IWor
 }
 
 /**
+ * Splits a settings update into a version-scoped change, which saves a new version,
+ * and a live change, which applies at once. Without version scope, every change is live.
+ */
+export function compareWorkflowSettings(
+	previous: IWorkflowSettings | null | undefined,
+	next: IWorkflowSettings | undefined,
+	versionScoped: boolean,
+): { versioned: boolean; live: boolean } {
+	if (next === undefined) return { versioned: false, live: false };
+	if (!versionScoped) return { versioned: false, live: !isEqual(previous, next) };
+	return {
+		versioned: !versionedSettingsEqual(previous, next),
+		live: !isEqual(omitVersionedSettings(previous), omitVersionedSettings(next)),
+	};
+}
+
+/**
  * Sets the version-scoped settings of a version. A version saved before history stored
  * these settings has none, so a setting that the version does not set keeps its value.
  */
