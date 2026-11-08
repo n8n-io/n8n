@@ -141,7 +141,12 @@ watchEffect(async () => {
 </script>
 
 <template>
-	<N8nDialog :open="modalOpen" size="2xlarge" @update:open="onDialogOpenUpdate">
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:aria-label="locale.baseText('workflows.templateRecoV2.ariaLabel')"
+		@update:open="onDialogOpenUpdate"
+	>
 		<N8nDialogHeader>
 			<N8nSegmentControl
 				v-model="selectedNode"
