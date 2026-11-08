@@ -1715,6 +1715,9 @@ describe('delete() and the workflowsFromAList caller policy', () => {
 	});
 });
 
+const versionSettings = async (versionId: string) =>
+	(await Container.get(WorkflowHistoryRepository).findOneByOrFail({ versionId })).settings;
+
 describe('version-scoped settings in workflow history', () => {
 	const changedNodes = (): INode[] => [
 		{
@@ -1726,9 +1729,6 @@ describe('version-scoped settings in workflow history', () => {
 			parameters: {},
 		},
 	];
-
-	const versionSettings = async (versionId: string) =>
-		(await Container.get(WorkflowHistoryRepository).findOneByOrFail({ versionId })).settings;
 
 	test('stores the new engine of an update', async () => {
 		const owner = await createOwner();
@@ -1787,9 +1787,6 @@ describe('version-scoped settings in workflow history', () => {
 });
 
 describe('version-scoped settings on save', () => {
-	const versionSettings = async (versionId: string) =>
-		(await Container.get(WorkflowHistoryRepository).findOneByOrFail({ versionId })).settings;
-
 	const settingsUpdate = (settings: WorkflowEntity['settings']) =>
 		Object.assign(workflowRepository.create(), { settings });
 
@@ -1966,17 +1963,18 @@ describe('version-scoped settings on save', () => {
 			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
 			expect(saved.settings?.engineType).toBe('v2');
 		});
+	});
 
-		test('rejects a restore of a version that is not in the history of the workflow', async () => {
-			const owner = await createOwner();
-			const workflow = await createWorkflowWithHistory({}, owner);
+	// The sharing license is off here, so this covers the check outside the credential guard.
+	test('rejects a restore of a version that is not in the history of the workflow', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
 
-			await expect(
-				workflowService.update(owner, settingsUpdate({}), workflow.id, {
-					forceSave: true,
-					restoredFromVersionId: uuid(),
-				}),
-			).rejects.toThrow("The version to restore is not in this workflow's history.");
-		});
+		await expect(
+			workflowService.update(owner, settingsUpdate({}), workflow.id, {
+				forceSave: true,
+				restoredFromVersionId: uuid(),
+			}),
+		).rejects.toThrow("The version to restore is not in this workflow's history.");
 	});
 });

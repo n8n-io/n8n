@@ -829,7 +829,7 @@ export class WorkflowService {
 		// so it must not republish the active version. Null stored settings skip the merge above,
 		// so compare them as empty settings.
 		const liveSettings = (settings: IWorkflowSettings | null) =>
-			versionedSettingsEnabled ? (omitVersionedSettings(settings) ?? {}) : settings;
+			versionedSettingsEnabled ? omitVersionedSettings(settings) : settings;
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
 			!isEqual(liveSettings(workflow.settings ?? null), liveSettings(workflowUpdateData.settings));

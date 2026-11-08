@@ -5831,7 +5831,7 @@
 	"workflowSettings.engineType.v1": "v1",
 	"workflowSettings.engineType.v2": "v2 (Beta)",
 	"workflowSettings.engineType.appliesOnPublish": "Applies on publish",
-	"workflowSettings.engineType.appliesOnPublish.tooltip": "Production executions keep the published engine until you publish this change. Manual executions use it right away.",
+	"workflowSettings.engineType.appliesOnPublish.tooltip": "Production executions keep the published engine until you publish draft. Manual executions use current setting right away.",
 	"workflowSettings.errorWorkflow": "Error Workflow (to notify when this one errors)",
 	"workflowSettings.errorWorkflow.placeholder": "Select workflow",
 	"workflowSettings.executionLogic": "Execution Logic",

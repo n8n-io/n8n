@@ -64,8 +64,9 @@ export function pickVersionedSettings(
 	const result = { ...VERSIONED_SETTING_DEFAULTS };
 	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) {
 		const value = settings?.[key];
-		if (value === undefined) continue;
-		result[key] = value;
+		if (value) {
+			result[key] = value;
+		}
 	}
 
 	return result;
@@ -79,10 +80,8 @@ export function versionedSettingsEqual(
 }
 
 /** Returns the settings without the version-scoped keys. */
-export function omitVersionedSettings(
-	settings: IWorkflowSettings | null,
-): IWorkflowSettings | null {
-	if (!settings) return settings;
+export function omitVersionedSettings(settings: IWorkflowSettings | null): IWorkflowSettings {
+	if (!settings) return {};
 
 	const result = { ...settings };
 	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) delete result[key];

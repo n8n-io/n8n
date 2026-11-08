@@ -485,8 +485,7 @@ export function useWorkflowSaving({
 				// Only the settings modal saves the version-scoped settings, such as the engine. The backend
 				// keeps the stored value when the key is absent, so a stale editor can't overwrite it.
 				if (workflowDataRequest.settings) {
-					workflowDataRequest.settings =
-						omitVersionedSettings(workflowDataRequest.settings) ?? undefined;
+					workflowDataRequest.settings = omitVersionedSettings(workflowDataRequest.settings);
 				}
 				// This can happen if the user has another workflow in the browser history and navigates
 				// via the browser back button, encountering our warning dialog with the new route already set
