@@ -235,7 +235,18 @@ If the user asks for a blocked action, explain that data sharing is turned off. 
  * checklist and returns instead of opening a card. Instance-wide flag, so the
  * two variants never fragment the prompt cache within one instance.
  */
-function getCredentialSetupBullet(setupPanelEnabled?: boolean): string {
+function getCredentialSetupBullet(
+	setupPanelEnabled?: boolean,
+	toolSearchEnabled?: boolean,
+): string {
+	const bullet = getCredentialSetupBulletText(setupPanelEnabled);
+	// `call_tool` is only registered when catalog deferral is active.
+	return toolSearchEnabled
+		? bullet
+		: bullet.replaceAll('Run `setup_credentials` through `call_tool`', 'Call `setup_credentials`');
+}
+
+function getCredentialSetupBulletText(setupPanelEnabled?: boolean): string {
 	if (setupPanelEnabled) {
 		return '**Early credential setup**: announce each explicitly requested service as soon as its exact credential type is known from node definitions or credential type search. Do this before detailed workflow planning, SDK research, or reasoning about implementation. Do not wait to identify every service. Run `setup_credentials` through `call_tool` with `filePath`, `workflowName` and `credentials` as the only tool call in that response. Wait for its successful `preBuild: true` result before planning the implementation or generating source. Never batch this call with workspace writes or workflow_builder_build_workflow. Pick the source filePath now and reuse it throughout the build. Include workflowId for an existing workflow and folderPath when creating in a known folder. This creates the workflow context and makes setup actionable immediately. Use the announced credential types when configuring matching nodes. Announce only supported service-specific types; leave ambiguous services and generic authentication to build-time discovery. Pass the complete known requirement list again if the plan changes, including an empty list if all requirements are dropped. Do not wait for the user to connect. The early result has `preBuild: true`: continue generating source, omit folderPath from workflow_builder_build_workflow, and do not end your turn. This early step overrides skill guidance that defers all setup until after building. After the build, **credential setup** uses `setup_workflow` when a workflowId is available. Requirements can appear in the setup panel while the workflow is being built. The user can complete them immediately. Do not describe setup as happening only after the build. When the result has `announced: true` without `preBuild: true`, the setup panel lists the remaining credentials and parameters. Summarize that result, report any validation warnings, and end your turn. Other results need their returned guidance: correct validation errors, respect denials and skipped items, and wait for requested destination approvals. Explicit credential replacement and an already-open setup card keep their card flow, including apply and test-trigger results. Do not treat a resumed card as a panel announcement. Each new user turn carries a `<workflow-setup-state>` block with current configuration; trust it over older tool results. Configuration alone does not prove successful testing. Run `setup_credentials` through `call_tool` without filePath when the user explicitly asks to create a credential outside of any workflow context. Early credential announcements and final workflow setup are separate stages; do not repeat either without changed requirements. Never describe workflow setup as something the user starts from the canvas or editor, and never ask the user to paste secrets into chat.';
 	}
@@ -299,7 +310,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 - **Standalone credential setup intent** — When using \`setup_credentials\` outside workflow context, set \`requireUserSelection=true\` only when the user explicitly asks for a new, separate, or different credential, or asks to see the setup card or choose a credential even if one already exists. Omit it for ordinary setup requests so a sole existing service-scoped credential can still be selected automatically.
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
-- ${getCredentialSetupBullet(setupPanelEnabled)}
+- ${getCredentialSetupBullet(setupPanelEnabled, toolSearchEnabled)}
 - **Never expose credential secrets** — metadata only.
 
 ${UNTRUSTED_CONTENT_DOCTRINE}

@@ -91,7 +91,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'polling-dedupe',
-			text: 'A polling trigger (Gmail, Outlook) that feeds a create/write action can return the same item again. Mark each item handled, or record handled ids in a Data Table and skip ids already seen.',
+			text: 'A polling trigger (Gmail, Outlook) that feeds a create/write action can return the same item again. Mark each item handled, or record handled ids in a Data Table and skip ids already seen. Check the id before creating, and record it only after the create succeeds.',
 			appliesWhen:
 				'A polling trigger such as Gmail, Outlook or an RSS feed starts a workflow that creates records, tickets or rows.',
 			fixes: 'Polling triggers created duplicate records for re-polled items.',
@@ -144,7 +144,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'webhook-envelope-shape',
-			text: "Webhook mocks for third-party platforms use that platform's documented envelope. AI/voice tool-call webhooks nest arguments in `body.message.toolCalls[0].function.arguments`.",
+			text: "Webhook mocks for third-party platforms use that platform's documented envelope. AI/voice tool-call webhooks nest arguments in `body.message.toolCalls[0].function.arguments`. n8n expressions cannot read a property named `arguments` in any form, because the expression sandbox blocks it. Read `function.arguments` in a Code node and pass the values on as normal fields.",
 			appliesWhen:
 				'A Webhook trigger receives calls from a third-party platform such as a voice agent, Stripe or GitHub, and needs mock data.',
 			fixes: 'Invented flat webhook mocks verified green, then parsed empty on real calls.',
@@ -162,7 +162,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'anthropic-output-shape',
-			text: 'Anthropic node `$json.content` is an array of blocks: read `$json.content[0].text`. See `knowledge-base/reference/anthropic-output-shape.md`.',
+			text: 'Anthropic node `$json.content` is an array of blocks: read `$json.merged_response` (with Include Merged Response on) or `$json.content.find(c => c.type === "text")?.text`, never `content[0]`, which can be a tool block. See `knowledge-base/reference/anthropic-output-shape.md`.',
 			appliesWhen:
 				'A workflow uses the Anthropic or Claude node and later nodes read its generated text.',
 			fixes: 'Downstream nodes treated Anthropic `$json.content` as a string.',
@@ -188,7 +188,7 @@ export const WORKFLOW_BUILDER_GOTCHAS: SkillGotchaSet = {
 		},
 		{
 			id: 'resource-locator-shape',
-			text: 'Resource-locator fields use `{ __rl: true, mode, value }`. Use `name` mode with a name the user gave, `list` mode with an empty value and a `cachedResultName` hint only when nothing is known, and never a raw `placeholder()`.',
+			text: 'Resource-locator fields use `{ __rl: true, mode, value }`. Use `name` mode with a name the user gave, `list` mode with an empty value and a `cachedResultName` hint only when nothing is known, and never a raw `placeholder()` unless the resource has no options; then use `placeholder("Select <resource>")` as the `value`.',
 			appliesWhen:
 				'Setting a resource-locator parameter such as a spreadsheet, channel, board, folder, base or document.',
 			fixes: 'Resource locators were left empty or held names in `list` mode.',

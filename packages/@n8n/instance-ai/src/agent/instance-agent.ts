@@ -16,6 +16,8 @@ import {
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
 import { createGotchaNotesProvider } from '../skills/gotcha-notes';
+import { INTENT_RECOGNITION_GOTCHAS } from '../skills/gotchas/intent-recognition.gotchas';
+import { POST_BUILD_FLOW_GOTCHAS } from '../skills/gotchas/post-build-flow.gotchas';
 import { WORKFLOW_BUILDER_GOTCHAS } from '../skills/gotchas/workflow-builder.gotchas';
 import { parseAblatedGotchas } from '../skills/skill-gotchas';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
@@ -289,7 +291,7 @@ export async function createInstanceAgent(
 		const threshold = Number(process.env.N8N_INSTANCE_AI_GOTCHA_THRESHOLD);
 		agent.contextNotes(
 			createGotchaNotesProvider({
-				sets: [WORKFLOW_BUILDER_GOTCHAS],
+				sets: [WORKFLOW_BUILDER_GOTCHAS, INTENT_RECOGNITION_GOTCHAS, POST_BUILD_FLOW_GOTCHAS],
 				embeddingModel: options.gotchaRetrieval?.embeddingModel,
 				onRetrieval: options.gotchaRetrieval?.onRetrieval,
 				onEmbeddingFailure: (error) =>

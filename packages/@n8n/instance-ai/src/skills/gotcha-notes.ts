@@ -3,6 +3,7 @@ import {
 	type ContextNote,
 	type ContextNoteProvider,
 	type ContextNoteRequest,
+	SKILL_LOAD_TOOL_NAME,
 } from '@n8n/agents';
 import type { EmbeddingModel } from 'ai';
 import { cosineSimilarity, embedMany } from 'ai';
@@ -10,6 +11,7 @@ import { cosineSimilarity, embedMany } from 'ai';
 import { createBm25Index } from './gotcha-bm25';
 import {
 	isGotchaAblated,
+	type GotchaDelivery,
 	type GotchaPhase,
 	type SkillGotcha,
 	type SkillGotchaSet,
@@ -144,6 +146,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Skills that the agent loaded in its latest assistant message. */
+export function detectJustLoadedSkills(messages: readonly AgentMessage[]): Set<string> {
+	const loaded = new Set<string>();
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const message = messages[i];
+		if (!isLlmMessage(message) || message.role !== 'assistant') continue;
+		for (const part of message.content) {
+			if (part.type !== 'tool-call' || part.toolName !== SKILL_LOAD_TOOL_NAME) continue;
+			if (isPlainObject(part.input) && typeof part.input.skillId === 'string') {
+				loaded.add(part.input.skillId);
+			}
+		}
+		break;
+	}
+	return loaded;
+}
+
 /** Phases the conversation has reached, from the tools that succeeded so far. */
 export function detectGotchaPhases(messages: readonly AgentMessage[]): Set<GotchaPhase> {
 	const phases = new Set<GotchaPhase>();
@@ -228,7 +247,8 @@ async function embedGotchaTexts(
 		(text) => !gotchaEmbeddingCache.has(`${modelKey}\u0000${text}`),
 	);
 	if (missing.length > 0) {
-		const batch = embedMany({ model, values: missing, abortSignal });
+		// Other runs share this batch, so one run's cancel must not abort it.
+		const batch = embedMany({ model, values: missing });
 		missing.forEach((text, i) => {
 			const key = `${modelKey}\u0000${text}`;
 			const entry = batch.then(({ embeddings }) => embeddings[i]);
@@ -237,17 +257,36 @@ async function embedGotchaTexts(
 			gotchaEmbeddingCache.set(key, entry);
 		});
 	}
-	return await Promise.all(
+	const all = Promise.all(
 		texts.map(async (text) => {
 			const entry = gotchaEmbeddingCache.get(`${modelKey}\u0000${text}`);
 			if (!entry) throw new Error(`Missing gotcha embedding for "${text}"`);
 			return await entry;
 		}),
 	);
+	return await waitUnlessAborted(all, abortSignal);
+}
+
+/** Waits for a shared promise, but stops waiting when this caller's run is cancelled. */
+async function waitUnlessAborted<T>(promise: Promise<T>, abortSignal?: AbortSignal): Promise<T> {
+	if (!abortSignal) return await promise;
+	abortSignal.throwIfAborted();
+	let onAbort: (() => void) | undefined;
+	const aborted = new Promise<never>((_, reject) => {
+		onAbort = () =>
+			reject(abortSignal.reason instanceof Error ? abortSignal.reason : new Error('Aborted'));
+		abortSignal.addEventListener('abort', onAbort, { once: true });
+	});
+	try {
+		return await Promise.race([promise, aborted]);
+	} finally {
+		if (onAbort) abortSignal.removeEventListener('abort', onAbort);
+	}
 }
 
 interface Candidate {
 	skillId: string;
+	delivery: GotchaDelivery;
 	gotcha: SkillGotcha;
 }
 
@@ -300,7 +339,11 @@ export function createGotchaNotesProvider(options: GotchaNotesOptions): ContextN
 	const candidates: Candidate[] = options.sets.flatMap((set) =>
 		set.gotchas
 			.filter((gotcha) => !isGotchaAblated(gotcha.id, ablated))
-			.map((gotcha) => ({ skillId: set.skillId, gotcha })),
+			.map((gotcha) => ({
+				skillId: set.skillId,
+				delivery: set.delivery ?? 'every-step',
+				gotcha,
+			})),
 	);
 
 	let method: GotchaRetrievalMethod = options.embeddingModel ? 'embedding' : 'bm25';
@@ -329,8 +372,17 @@ export function createGotchaNotesProvider(options: GotchaNotesOptions): ContextN
 	let lastScores: GotchaMatch[] = [];
 
 	return async (request: ContextNoteRequest): Promise<ContextNote[]> => {
-		const active = new Set(request.activeSkillIds);
-		if (!candidates.some(({ skillId }) => active.has(skillId))) return [];
+		// An `on-load` set counts only in the model call right after its skill loads.
+		const justLoaded = detectJustLoadedSkills(request.messages);
+		const active = new Set(
+			request.activeSkillIds.filter((skillId) =>
+				candidates.some(
+					(item) =>
+						item.skillId === skillId && (item.delivery === 'every-step' || justLoaded.has(skillId)),
+				),
+			),
+		);
+		if (active.size === 0) return [];
 
 		const query = buildStepQuery(request.messages);
 		const queries = [query.intent, query.step].filter((text) => text.trim());

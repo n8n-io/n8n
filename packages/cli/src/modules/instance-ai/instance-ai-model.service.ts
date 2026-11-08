@@ -20,6 +20,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION } from '@/constants';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { createProxyEmbeddingProviderOptions } from '@/utils/ai-proxy-embedding-options';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { createProxyLanguageModel } from '@/utils/ai-proxy-language-model';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
@@ -235,31 +236,23 @@ export class InstanceAiModelService {
 		try {
 			if (this.aiService.isProxyEnabled()) {
 				const client = await this.aiService.getClient();
-				const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
-				const tokenManager = new ProxyTokenManager(
-					async () =>
-						await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
+				return createEmbeddingModel(
+					DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
+					createProxyEmbeddingProviderOptions({
+						proxyBaseUrl: client.getApiProxyBaseUrl(),
+						feature: 'instance-ai',
+						fetchToken: async () =>
+							await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() }),
+						outboundHttp: this.outboundHttp,
+					}),
 				);
-				const proxyFetch = createAiProxyFetch(this.outboundHttp);
-				return createEmbeddingModel(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, {
-					baseURL,
-					apiKey: 'proxy-managed',
-					fetch: async (input, init) => {
-						const headers = new Headers(init?.headers);
-						for (const [key, value] of Object.entries({
-							...(await tokenManager.getAuthHeaders()),
-							...buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
-						})) {
-							headers.set(key, value);
-						}
-						return await proxyFetch(input, { ...init, headers });
-					},
-				});
 			}
 
 			const config = await this.settingsService.resolveModelConfig(user);
 			const endpoint = isEndpointModelConfig(config) ? config : undefined;
-			const usesOpenAi = endpoint && splitModelId(endpoint.id).provider === 'openai';
+			// Self-hosted OpenAI-compatible endpoints use the `custom` provider.
+			const provider = endpoint ? splitModelId(endpoint.id).provider : undefined;
+			const usesOpenAi = endpoint && (provider === 'openai' || provider === 'custom');
 			const apiKey = usesOpenAi ? endpoint.apiKey : process.env.OPENAI_API_KEY;
 			if (!apiKey) return undefined;
 			return createEmbeddingModel(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, {

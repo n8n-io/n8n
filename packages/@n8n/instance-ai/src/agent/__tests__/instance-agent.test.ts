@@ -8,6 +8,7 @@ const mockAgentInstances: Array<{
 	deferredTool: Mock;
 	toolDeferral: Mock;
 	skills: Mock;
+	contextNotes: Mock;
 	checkpoint: Mock;
 	memory: Mock;
 	telemetry: Mock;
@@ -37,6 +38,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.deferredTool = vi.fn().mockReturnThis();
 		this.toolDeferral = vi.fn().mockReturnThis();
 		this.skills = vi.fn().mockReturnThis();
+		this.contextNotes = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();

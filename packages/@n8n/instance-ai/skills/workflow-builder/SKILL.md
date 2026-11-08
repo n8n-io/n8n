@@ -1,8 +1,10 @@
 ---
 name: workflow-builder
 description: >-
-  Once the user wants a workflow, load it before you ask about that workflow. Use for new one-off
-  workflows, edits, repairs and verification of one workflow, and for its
+  Load before calling workflow_builder_build_workflow. Once the user wants a
+  workflow, load it before you ask about that workflow. Use for new one-off
+  workflows, edits, repairs and post-build verification of one workflow (not
+  requests only to run or inspect a saved workflow), and for its
   credentials, model choices, evaluations and error workflow. For any other new
   workflow, load intent-recognition first when it is listed. If the workflow
   writes Data Tables, load data-table-manager first. Do a one-time request (no
@@ -39,8 +41,9 @@ When the needed node types are already obvious from the request, make one
 `load_skill` call for this skill. Each extra sequential turn resends the whole
 context.
 
-All tools this skill names, except `load_skill` and `ask_user`, are catalog
-tools. Run each one through `call_tool`, never by its own name. "Call
+All tools this skill names, except `load_skill`, `ask_user` and `n8n-docs`,
+are catalog tools. Run each one through `call_tool`, never by its own name.
+Call `n8n-docs` directly. "Call
 `search_nodes`" below means `call_tool` with tool `search_nodes`.
 
 ## Process
@@ -101,9 +104,10 @@ topology. Never solicit secrets through `ask_user`.
 
 **Prefer n8n sources over guessing.** Consult, in this order:
 
-1. Knowledge base available in the sandbox workspace, read with the workspace tools (not `load_skill`):
+1. The knowledge base in the sandbox workspace, read with the workspace tools (not `load_skill`):
    `knowledge-base/index.json` (technique guides and reference docs),
-   `knowledge-base/templates/`
+   `knowledge-base/templates/` (search it; never load `templates/index.json`
+   wholesale), and `node-types/index.txt` (searchable node catalog)
 2. A matching runtime skill (`data-table-manager`, `debugging-executions`, …).
 3. Official n8n docs: load `n8n-docs-assistant` and call `n8n-docs`.
 
@@ -167,8 +171,12 @@ unsolicited `sticky()`. Fix every reported finding, then build again.
   rest. A Code node is only for multi-pass algorithms, `$getWorkflowStaticData`
   state, or a step that would need three or more nodes.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
-- SDK source builds a static graph and does not run. Full allowed/forbidden
-  list and "Native node mappings" table:
+- SDK source builds a static graph and does not run. Build strings with
+  template literals, not `.map()` or `.join()`. Do runtime joining,
+  aggregation, or transforms with `expr()` in a native node. For values an
+  agent supplies to a tool, write `fromAi(...)` directly, never
+  `($) => $.fromAi(...)`. Full allowed/forbidden list and
+  "Native node mappings" table:
   `knowledge-base/reference/workflow-sdk-language.md`.
 - Import only the symbols you use from `@n8n/workflow-sdk`.
 - Use `expr('{{ $json.field }}')` for expressions. `$json` is only the current

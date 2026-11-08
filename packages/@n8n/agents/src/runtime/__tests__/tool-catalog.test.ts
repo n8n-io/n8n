@@ -142,7 +142,9 @@ describe('ToolCatalog', () => {
 
 	it('routes a catalog tool called by its own name through call_tool', () => {
 		const map = buildToolMap(catalog().getControllerTools());
-		expect(resolveToolCallTarget(map, 'get_cell', { id: 'c1' })?.tool.name).toBe('get_cell');
+		const target = resolveToolCallTarget(map, 'get_cell', { id: 'c1' });
+		expect(target?.tool.name).toBe('get_cell');
+		expect(target?.dispatchedBy?.name).toBe(CALL_TOOL_TOOL_NAME);
 		expect(resolveToolCallTarget(map, 'not_a_tool', {})).toBeUndefined();
 	});
 

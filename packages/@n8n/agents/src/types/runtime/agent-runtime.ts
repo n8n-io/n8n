@@ -39,14 +39,17 @@ export interface VolatileInstructionsContext {
 
 /** A piece of guidance that a context note provider wants the model to see now. */
 export interface ContextNote {
-	/** Stable id. The runtime sends a note with the same id only once per conversation. */
+	/**
+	 * Stable id. The runtime skips a note whose id is already in the visible
+	 * conversation. Observation masking can hide a sent note, so it can be sent again.
+	 */
 	id: string;
 	content: string;
 }
 
 export interface ContextNoteRequest {
 	/** Messages the model sees, oldest first, before this model call. */
-	messages: AgentMessage[];
+	messages: readonly AgentMessage[];
 	/** Skills that are active for this run. */
 	activeSkillIds: readonly string[];
 	/** Ids of the notes that the conversation already contains. */

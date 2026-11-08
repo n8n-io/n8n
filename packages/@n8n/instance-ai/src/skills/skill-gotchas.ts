@@ -32,9 +32,19 @@ export interface SkillGotcha {
 	evalCases: string[];
 }
 
+/**
+ * When retrieval scores a set.
+ * - `every-step`: before each model call while the skill is active.
+ * - `on-load`: only for the model call right after the agent loads the skill.
+ *   Use it for skills that make one decision in that call, such as routing.
+ */
+export type GotchaDelivery = 'every-step' | 'on-load';
+
 export interface SkillGotchaSet {
 	/** The skill that must be active for these gotchas to apply. */
 	skillId: string;
+	/** Default: `every-step`. */
+	delivery?: GotchaDelivery;
 	gotchas: readonly SkillGotcha[];
 }
 

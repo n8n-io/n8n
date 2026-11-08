@@ -9,26 +9,36 @@ import {
 	gotchaNoteId,
 	type GotchaRetrievalTrace,
 } from '../gotcha-notes';
+import { INTENT_RECOGNITION_GOTCHAS } from '../gotchas/intent-recognition.gotchas';
+import { POST_BUILD_FLOW_GOTCHAS } from '../gotchas/post-build-flow.gotchas';
 import { WORKFLOW_BUILDER_GOTCHAS } from '../gotchas/workflow-builder.gotchas';
 import { isGotchaAblated, parseAblatedGotchas, type SkillGotchaSet } from '../skill-gotchas';
 import { loadInstanceAiSkills } from '../skills';
 
-describe('workflow-builder gotcha ledger', () => {
-	it('has unique ids and a trigger sentence for each gotcha', () => {
-		const ids = WORKFLOW_BUILDER_GOTCHAS.gotchas.map((g) => g.id);
-		expect(new Set(ids).size).toBe(ids.length);
-		for (const gotcha of WORKFLOW_BUILDER_GOTCHAS.gotchas) {
-			expect(gotcha.text.trim()).not.toBe('');
-			expect(gotcha.appliesWhen.trim()).not.toBe('');
-		}
-	});
+describe.each([WORKFLOW_BUILDER_GOTCHAS, INTENT_RECOGNITION_GOTCHAS, POST_BUILD_FLOW_GOTCHAS])(
+	'$skillId gotcha ledger',
+	(set) => {
+		it('has unique ids and a trigger sentence for each gotcha', () => {
+			const ids = set.gotchas.map((g) => g.id);
+			expect(new Set(ids).size).toBe(ids.length);
+			for (const gotcha of set.gotchas) {
+				expect(gotcha.text.trim()).not.toBe('');
+				expect(gotcha.appliesWhen.trim()).not.toBe('');
+			}
+		});
 
-	it('keeps gotchas out of the skill body', async () => {
-		const skill = await loadInstanceAiSkills().loadSkill('workflow-builder');
-		expect(skill?.instructions).not.toContain('gotcha:');
-		expect(skill?.instructions).not.toContain(WORKFLOW_BUILDER_GOTCHAS.gotchas[0].text);
-	});
+		it('keeps gotchas out of the skill body', async () => {
+			const skill = await loadInstanceAiSkills().loadSkill(set.skillId);
+			expect(skill).toBeDefined();
+			expect(skill?.instructions).not.toContain('gotcha:');
+			for (const gotcha of set.gotchas) {
+				expect(skill?.instructions).not.toContain(gotcha.text);
+			}
+		});
+	},
+);
 
+describe('gotcha ablation', () => {
 	it('parses ablation ids', () => {
 		expect(isGotchaAblated('one', parseAblatedGotchas('one, two'))).toBe(true);
 		expect(isGotchaAblated('three', parseAblatedGotchas('one'))).toBe(false);
@@ -223,6 +233,61 @@ describe('createGotchaNotesProvider', () => {
 		expect(doEmbed.mock.calls.length).toBeLessThanOrEqual(2);
 	});
 
+	describe('on-load delivery', () => {
+		const onLoadSets: SkillGotchaSet[] = [
+			{ ...sets[0], skillId: 'intent-recognition', delivery: 'on-load' },
+		];
+		const user: AgentMessage = { role: 'user', content: [{ type: 'text', text: 'about alpha' }] };
+		const loadCall = (skillId: string): AgentMessage => ({
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'load',
+					toolName: 'load_skill',
+					input: { skillId },
+					state: 'resolved',
+					output: {},
+				},
+			],
+		});
+		const laterStep: AgentMessage = {
+			role: 'assistant',
+			content: [{ type: 'text', text: 'Building it now.' }],
+		};
+		const onLoadRequest = (messages: AgentMessage[]) =>
+			request({ messages, activeSkillIds: ['intent-recognition'] });
+
+		it('fires in the call right after the skill loads', async () => {
+			const provider = createGotchaNotesProvider({
+				sets: onLoadSets,
+				embeddingModel: model,
+				threshold: 0.8,
+			});
+			expect(await provider(onLoadRequest([user, loadCall('intent-recognition')]))).toEqual([
+				{ id: gotchaNoteId('intent-recognition', 'a'), content: 'Rule A' },
+			]);
+		});
+
+		it('stays silent on later steps and when another skill loads', async () => {
+			const provider = createGotchaNotesProvider({
+				sets: onLoadSets,
+				embeddingModel: model,
+				threshold: 0,
+			});
+			expect(
+				await provider(onLoadRequest([user, loadCall('intent-recognition'), laterStep])),
+			).toEqual([]);
+			expect(await provider(onLoadRequest([user, loadCall('workflow-builder')]))).toEqual([]);
+			expect(await provider(onLoadRequest([user]))).toEqual([]);
+		});
+
+		it('leaves every-step sets firing on later steps', async () => {
+			const provider = createGotchaNotesProvider({ sets, embeddingModel: model, threshold: 0.8 });
+			expect(await provider(request({ messages: [user, laterStep] }))).toHaveLength(1);
+		});
+	});
+
 	it('returns nothing when the skill is not active', async () => {
 		const provider = createGotchaNotesProvider({ sets, embeddingModel: model });
 		expect(await provider(request({ activeSkillIds: [] }))).toEqual([]);
@@ -264,6 +329,31 @@ describe('createGotchaNotesProvider', () => {
 		expect(traces[0].method).toBe('bm25');
 		expect(notes.map((note) => note.id)).toContain(
 			gotchaNoteId('workflow-builder', 'if-branches-on-builder'),
+		);
+	});
+
+	// The build tool activates post-build-flow without a load_skill call.
+	it('fires post-build gotchas on later steps once the build activates the skill', async () => {
+		const provider = createGotchaNotesProvider({ sets: [POST_BUILD_FLOW_GOTCHAS] });
+		const notes = await provider(
+			request({
+				activeSkillIds: ['post-build-flow'],
+				messages: [
+					{ role: 'user', content: [{ type: 'text', text: 'Build me a lead intake form' }] },
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'text',
+								text: 'Verification used mocked credentials and simulated output. Setup finished, so I will suggest publishing next.',
+							},
+						],
+					},
+				],
+			}),
+		);
+		expect(notes.map((note) => note.id)).toContain(
+			gotchaNoteId('post-build-flow', 'no-publish-before-live-test'),
 		);
 	});
 

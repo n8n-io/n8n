@@ -1,12 +1,18 @@
 /**
  * BM25 ranking of gotchas, for runs without an embedding model. Scores are
- * normalized to 0–1 so one threshold works for short and long queries.
+ * normalized to 0–1 against a bound that does not grow with gotcha length, so
+ * one threshold works for short and long gotchas.
  */
 
 const K1 = 1.2;
 const B = 0.75;
 /** A match needs this many distinct shared terms, so one rare word cannot fire a gotcha. */
 const MIN_MATCHED_TERMS = 2;
+/**
+ * A step that shares this many of a gotcha's strongest terms scores 1. Capping
+ * the bound keeps long gotchas from needing every one of their terms to match.
+ */
+const FULL_MATCH_TERMS = 6;
 
 // Words that occur in most gotchas or steps and say nothing about which one applies.
 const STOPWORDS = new Set(
@@ -54,24 +60,35 @@ export function createBm25Index<K>(entries: ReadonlyArray<{ key: K; text: string
 		}
 	}
 
+	const termScore = (doc: Bm25Document<K>, term: string) => {
+		const frequency = doc.counts.get(term) ?? 0;
+		if (frequency === 0) return 0;
+		const df = documentFrequency.get(term) ?? 0;
+		const idf = Math.log(1 + (documents.length - df + 0.5) / (df + 0.5));
+		const norm = frequency + K1 * (1 - B + (B * doc.length) / (averageLength || 1));
+		return (idf * frequency * (K1 + 1)) / norm;
+	};
+
 	const rawScore = (doc: Bm25Document<K>, terms: Iterable<string>) => {
 		let score = 0;
 		let matched = 0;
 		for (const term of terms) {
-			const frequency = doc.counts.get(term) ?? 0;
-			if (frequency === 0) continue;
+			const value = termScore(doc, term);
+			if (value === 0) continue;
 			matched++;
-			const df = documentFrequency.get(term) ?? 0;
-			const idf = Math.log(1 + (documents.length - df + 0.5) / (df + 0.5));
-			const norm = frequency + K1 * (1 - B + (B * doc.length) / (averageLength || 1));
-			score += (idf * frequency * (K1 + 1)) / norm;
+			score += value;
 		}
 		return { score, matched };
 	};
 
-	// The score of a query that contains every term of the document is the
-	// upper bound used to normalize.
-	for (const doc of documents) doc.selfScore = rawScore(doc, doc.counts.keys()).score;
+	// The upper bound is the score of the document's strongest few terms.
+	for (const doc of documents) {
+		doc.selfScore = [...doc.counts.keys()]
+			.map((term) => termScore(doc, term))
+			.sort((a, b) => b - a)
+			.slice(0, FULL_MATCH_TERMS)
+			.reduce((sum, value) => sum + value, 0);
+	}
 
 	return {
 		score(query) {
