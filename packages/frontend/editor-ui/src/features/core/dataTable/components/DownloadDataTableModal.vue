@@ -28,6 +28,18 @@ const onConfirm = () => {
 	emit('confirm', includeSystemColumns.value);
 };
 
+function onDialogEnter(event: KeyboardEvent) {
+	const target = event.target;
+	if (!(target instanceof Element)) return;
+
+	// A button runs its own action on Enter. The checkbox is a button that
+	// ignores Enter, so Enter there still confirms the download.
+	const button = target.closest('button, [role="button"]');
+	if (button && button.getAttribute('role') !== 'checkbox') return;
+
+	onConfirm();
+}
+
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
