@@ -42,7 +42,6 @@ function setDocumentStoreActive(workflowId: string) {
 			workflowPublishHistory: [],
 			name: null,
 			description: null,
-			settings: {},
 		},
 	});
 }

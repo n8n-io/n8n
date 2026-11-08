@@ -17,7 +17,6 @@ const createHistoryVersion = (overrides: Partial<WorkflowHistory> = {}): Workflo
 	workflowPublishHistory: [],
 	name: 'Version One',
 	description: null,
-	settings: {},
 	...overrides,
 });
 

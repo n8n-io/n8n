@@ -158,7 +158,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
-				settings: {},
+				settings: { engineType: 'v1' },
 			});
 		});
 
@@ -183,7 +183,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
-				settings: {},
+				settings: { engineType: 'v1' },
 			});
 		});
 
@@ -207,7 +207,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: true,
-				settings: {},
+				settings: { engineType: 'v1' },
 			});
 		});
 
@@ -231,7 +231,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
-				settings: {},
+				settings: { engineType: 'v1' },
 			});
 		});
 

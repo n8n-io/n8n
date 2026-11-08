@@ -11,7 +11,6 @@ export const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
 	workflowPublishHistory: [],
 	name: faker.lorem.word(),
 	description: faker.lorem.sentence(),
-	settings: {},
 });
 
 export const workflowVersionDataFactory: () => WorkflowVersion = () => ({
