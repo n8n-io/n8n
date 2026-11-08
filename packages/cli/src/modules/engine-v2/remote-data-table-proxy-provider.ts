@@ -85,10 +85,10 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	) {}
 
 	/**
-	 * One round trip: `getProjectId()` on the result is synchronous, and the
-	 * control plane decides the project. The `projectId` parameter is the v1
-	 * override for load options and ephemeral runs, which never reach the data
-	 * plane, so it is not sent.
+	 * Returns the project-level proxy, with the project resolved up front so
+	 * `getProjectId()` is synchronous. The control plane derives the project
+	 * from the execution's workflow, so the workflow and project id inputs are
+	 * not sent.
 	 */
 	async getDataTableAggregateProxy(
 		_workflow: Workflow,
@@ -121,9 +121,9 @@ export class RemoteDataTableProxyProvider implements DataTableProxyProvider {
 	}
 
 	/**
-	 * No round trip: the control plane checks the table against the project on
-	 * every operation, and reports a missing one with the v1 node error. The
-	 * node acquires a proxy per item, so a check here would double the calls.
+	 * Returns the proxy for one table, without a round trip: the control plane
+	 * checks the table on every operation. The workflow and project id inputs
+	 * are not sent, as above.
 	 */
 	async getDataTableProxy(
 		_workflow: Workflow,
