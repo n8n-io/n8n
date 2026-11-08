@@ -414,7 +414,14 @@ export function buildSteps(
 	const responses = response.actionResponses ?? [];
 
 	if (response.metadata?.previousRequests) {
-		steps.push(...response.metadata.previousRequests);
+		// previousRequests can contain steps from every item in a batch (see
+		// executeBatch's batch merge), so only carry forward the ones that
+		// belong to this item, or untagged steps persisted before upgrade.
+		steps.push(
+			...response.metadata.previousRequests.filter(
+				(step) => step.itemIndex === undefined || step.itemIndex === itemIndex,
+			),
+		);
 	}
 
 	// First pass: collect all valid tool responses for this batch
@@ -496,6 +503,7 @@ export function buildSteps(
 				...(tool.data.error && { errored: true }),
 			},
 			observation,
+			itemIndex,
 		});
 	}
 

@@ -13,7 +13,12 @@ import {
 	wrapLangChainParserError,
 } from '@utils/output_parsers/langchainParserError';
 
-import { buildExecutionContext, executeBatch, resolveSubAgentRequest } from './helpers';
+import {
+	buildExecutionContext,
+	executeBatch,
+	mergeRequestMetadata,
+	resolveSubAgentRequest,
+} from './helpers';
 import { isExecuteFunctions } from '../../utils';
 
 /** Keys written in `finally` for Tools Agent V3 execution tracing (`setMetadata`). */
@@ -114,6 +119,8 @@ export async function toolsAgentExecute(
 					request = batchRequest;
 				} else {
 					request.actions.push.apply(request.actions, batchRequest.actions);
+					// Preserve each batch's previousRequests so buildSteps can rebuild conversation history per item
+					request.metadata = mergeRequestMetadata(request.metadata, batchRequest.metadata);
 				}
 			}
 

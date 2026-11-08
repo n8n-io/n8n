@@ -11,6 +11,7 @@ export function serializeIntermediateSteps(
 	steps: Array<{ action: { messageLog?: unknown[] }; [key: string]: unknown }>,
 ): void {
 	for (const step of steps) {
+		delete step.itemIndex;
 		if (step.action.messageLog) {
 			step.action.messageLog = step.action.messageLog.map((msg) => {
 				if (

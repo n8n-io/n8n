@@ -99,6 +99,26 @@ describe('serializeIntermediateSteps', () => {
 		).not.toThrow();
 	});
 
+	it('should strip internal itemIndex property from steps', () => {
+		const steps = [
+			{
+				action: {
+					tool: 'TestTool',
+					toolInput: {},
+					log: '',
+					toolCallId: 'call_1',
+					type: 'function',
+				},
+				observation: 'Tool result',
+				itemIndex: 0,
+			},
+		];
+
+		serializeIntermediateSteps(steps);
+
+		expect(steps[0]).not.toHaveProperty('itemIndex');
+	});
+
 	it('should handle empty steps array', () => {
 		const steps: Array<{ action: { messageLog?: unknown[] } }> = [];
 		expect(() => serializeIntermediateSteps(steps)).not.toThrow();
